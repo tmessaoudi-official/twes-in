@@ -19,6 +19,7 @@ use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
 use App\Tests\Support\InMemoryCurrentCompany;
 use App\Tests\Support\InMemoryMemberships;
+use App\Tests\Support\SupportDoubles;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -36,7 +37,7 @@ final class SwitchWorkingCompanyTest extends TestCase
     {
         $this->memberships = new InMemoryMemberships();
         $this->currentCompany = new InMemoryCurrentCompany();
-        $this->switch = new SwitchWorkingCompany($this->memberships, $this->currentCompany, new MockClock('2026-09-25 09:00:00'));
+        $this->switch = new SwitchWorkingCompany($this->memberships, $this->currentCompany, new MockClock('2026-09-25 09:00:00'), SupportDoubles::access($this->memberships), SupportDoubles::visits());
         $this->user = new User(Email::fromString('user@twes.local'), 'Someone');
     }
 

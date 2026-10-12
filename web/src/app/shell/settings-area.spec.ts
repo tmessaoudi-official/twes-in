@@ -161,7 +161,8 @@ describe('SettingsArea', () => {
         'nav-alerts',
       ],
       ['nav-taxes', 'nav-units', 'nav-closing', 'nav-fiscal-preset'],
-      ['nav-members', 'nav-roles', 'nav-support-access'],
+      // « Accès du support » is built since, and its owner's alone.
+      ['nav-members', 'nav-roles'],
       ['nav-custom-fields', 'nav-modules', 'nav-texts'],
     ]);
     const alerts = byTestId('nav-alerts');

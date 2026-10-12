@@ -1,0 +1,138 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Tenancy\Application\Support;
+
+use App\Audit\Application\AuditEntry;
+use App\Audit\Application\AuditTrail;
+use App\Identity\Domain\User;
+use App\Shared\Application\Notification;
+use App\Shared\Application\Notifications;
+use App\Shared\Application\Transactions;
+use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\InvalidSupportWindow;
+use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\SupportGrant;
+use App\Tenancy\Domain\SupportGrantRepository;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * The owner's side of « Accès support »: open the company to the platform's operators for an hour, a day or three, and
+ * close it early. Only the owner, whatever a custom role grants: letting someone outside the company read all of it is
+ * the owner's to decide. Every grant and every end is in the activity log, and the other owners are told of it.
+ */
+final readonly class ManageSupportAccess
+{
+    public const string ENTITY_TYPE = 'support_grant';
+    public const string GRANTED = 'support_access.granted';
+    public const string ENDED = 'support_access.ended';
+
+    public function __construct(
+        private MembershipRepository $memberships,
+        private SupportGrantRepository $grants,
+        private AuditTrail $audit,
+        private Notifications $notifications,
+        private Transactions $transactions,
+        private ClockInterface $clock,
+    ) {
+    }
+
+    /** @throws OwnerOnly */
+    public function current(Company $company, Uuid $userId): ?SupportGrant
+    {
+        $this->owner($company, $userId);
+
+        return $this->grants->liveIn($company->getId(), $this->clock->now());
+    }
+
+    /**
+     * Opens a new window from now; one still live is ended first, so there is only ever one.
+     *
+     * @throws OwnerOnly
+     * @throws InvalidSupportWindow
+     */
+    public function grant(Company $company, Uuid $userId, mixed $hours): SupportGrant
+    {
+        $owner = $this->owner($company, $userId);
+        if (!\is_int($hours)) {
+            throw new InvalidSupportWindow('Support access lasts a whole number of hours.');
+        }
+
+        return $this->transactions->run(function () use ($company, $owner, $hours): SupportGrant {
+            $now = $this->clock->now();
+            $grant = new SupportGrant($company, $owner, $hours, $now);
+            $this->endLive($company, $owner, $now);
+            $this->grants->save($grant);
+            $this->record($grant, self::GRANTED, $owner);
+            $this->tellOtherOwners($grant, self::GRANTED, $owner);
+
+            return $grant;
+        });
+    }
+
+    /** @throws OwnerOnly */
+    public function end(Company $company, Uuid $userId): void
+    {
+        $owner = $this->owner($company, $userId);
+        $this->transactions->run(function () use ($company, $owner): void {
+            $ended = $this->endLive($company, $owner, $this->clock->now());
+            if (null !== $ended) {
+                $this->tellOtherOwners($ended, self::ENDED, $owner);
+            }
+        });
+    }
+
+    private function endLive(Company $company, User $owner, \DateTimeImmutable $now): ?SupportGrant
+    {
+        $live = $this->grants->liveIn($company->getId(), $now);
+        if (null === $live) {
+            return null;
+        }
+        $live->end($owner, $now);
+        $this->grants->save($live);
+        $this->record($live, self::ENDED, $owner);
+
+        return $live;
+    }
+
+    /** @throws OwnerOnly */
+    private function owner(Company $company, Uuid $userId): User
+    {
+        $membership = $this->memberships->ofUserInCompany($userId, $company->getId());
+        if (null === $membership || Role::OWNER !== $membership->getRole()->getName()) {
+            throw new OwnerOnly('Only the owner opens the company to support.');
+        }
+
+        return $membership->getUser();
+    }
+
+    private function record(SupportGrant $grant, string $action, User $owner): void
+    {
+        $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $grant->getId(), $action, $owner->getId(), ['fields' => ['endsAt']], $grant->getCompany()->getId()));
+    }
+
+    private function tellOtherOwners(SupportGrant $grant, string $type, User $actor): void
+    {
+        $company = $grant->getCompany();
+        foreach ($this->memberships->ofCompany($company->getId()) as $membership) {
+            $owner = $membership->getUser();
+            if (Role::OWNER !== $membership->getRole()->getName() || $owner->getId()->equals($actor->getId())) {
+                continue;
+            }
+            $this->notifications->publish(new Notification(
+                'user:'.$owner->getId()->toRfc4122(),
+                $type,
+                ['company' => $company->getName(), 'by' => $actor->getDisplayName(), 'until' => $grant->getEndsAt()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d H:i')],
+                $company->getId()->toRfc4122(),
+            ));
+        }
+    }
+}

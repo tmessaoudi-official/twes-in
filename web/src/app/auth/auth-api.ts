@@ -239,6 +239,7 @@ function toState(me: Me): SignedInState {
       planned: module.planned,
     })),
     customerScreenCompanyId: me.customerScreenCompanyId,
+    supportAccessUntil: me.supportAccessUntil,
     support: {
       phone: me.support.phone,
       whatsapp: me.support.whatsapp,

@@ -31,6 +31,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { filter, map } from 'rxjs';
 import { SETTINGS_INDEX } from './settings-area';
 import { ErasureBanner } from '../data-erasure/erasure-banner';
+import { SupportBanner } from '../support-access/support-banner';
 import { AuthFacade } from '../auth/auth-facade';
 import { SubscriptionNoticeBar } from '../licensing/subscription-notice';
 import { CompanySwitcher } from '../company/company-switcher';
@@ -162,6 +163,7 @@ const TOP_BAR_HEIGHT = '--twes-top-bar-height';
     LegalFooter,
     CookieNotice,
     ErasureBanner,
+    SupportBanner,
   ],
   templateUrl: './app-shell.html',
   host: { '(document:keydown)': 'onKeydown($event)' },

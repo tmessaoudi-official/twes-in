@@ -25,6 +25,7 @@ use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
 use App\Tenancy\Domain\Signup;
+use App\Tenancy\Domain\SupportGrant;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\ToOneOwningSideMapping;
@@ -52,6 +53,7 @@ final class CompanyColumnTest extends KernelTestCase
     /** What carries a company_id the company filter leaves alone, and why. */
     private const array NOT_SCOPED = [
         Membership::class => 'attaches an account to each of its companies, and is read across them: the switcher, the second-factor rule',
+        SupportGrant::class => "an owner's « Accès support », read across companies by an operator's switcher and before a company is resolved",
         Role::class => 'company_id is null for the built-in roles every company shares',
         Setting::class => 'company_id is null for platform settings',
         AuditLog::class => "company_id is null for platform events and an account's own",

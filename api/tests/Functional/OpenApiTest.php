@@ -51,7 +51,7 @@ final class OpenApiTest extends KernelTestCase
         self::assertNotNull($paths->getPath('/api/companies/{companyId}/customer-screen/lock')?->getPost());
         self::assertNotNull($paths->getPath('/api/auth/customer-screen')?->getDelete());
 
-        self::assertSame(['user', 'company', 'permissions', 'mfa', 'modules', 'plannedModules', 'customerScreenCompanyId', 'support'], $this->required($schemas['Me']));
+        self::assertSame(['user', 'company', 'permissions', 'mfa', 'modules', 'plannedModules', 'customerScreenCompanyId', 'support', 'supportAccessUntil'], $this->required($schemas['Me']));
         self::assertSame(['phone', 'whatsapp', 'email'], $this->required($schemas['MeSupport']));
         self::assertSame(['key', 'planned'], $this->required($schemas['MePlannedModule']));
         self::assertSame(['enrolled', 'required', 'totp', 'passkeys'], $this->required($schemas['MeMfa']));

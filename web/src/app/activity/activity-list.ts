@@ -35,6 +35,7 @@ export const ACTIVITY_KINDS = [
   'setting',
   'module',
   'export',
+  'support_grant',
 ] as const;
 
 /**
@@ -132,6 +133,10 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'unit.revised',
   'custom_field.created',
   'custom_field.revised',
+  'support_access.granted',
+  'support_access.ended',
+  'support.entered',
+  'support.read',
 ];
 
 /** The translation key that says an action in words, or null for one said as recorded. */

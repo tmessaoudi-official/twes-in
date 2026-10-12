@@ -40,6 +40,7 @@ const owner: Me = {
     { key: 'zakat', planned: 'later' },
   ],
   customerScreenCompanyId: null,
+  supportAccessUntil: null,
   support: { phone: null, whatsapp: null, email: null },
 };
 

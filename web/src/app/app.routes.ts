@@ -494,6 +494,12 @@ export const routes: Routes = [
               import('./company/company-security-page').then((m) => m.CompanySecurityPage),
           },
           {
+            path: 'company/support-access',
+            title: 'nav.support_access',
+            loadComponent: () =>
+              import('./support-access/support-access-page').then((m) => m.SupportAccessPage),
+          },
+          {
             path: 'company/data-erasure',
             title: 'nav.data_erasure',
             loadComponent: () =>

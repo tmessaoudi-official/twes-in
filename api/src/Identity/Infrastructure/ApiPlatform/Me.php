@@ -45,6 +45,8 @@ final readonly class Me
         #[ApiProperty(required: true)] public ?string $customerScreenCompanyId = null,
         /** How to reach the platform's operators, from the help panel. */
         #[ApiProperty(required: true)] public MeSupport $support = new MeSupport(),
+        /** Until when the working company lets the platform's support read it, null while it does not: the banner. */
+        #[ApiProperty(required: true)] public ?string $supportAccessUntil = null,
     ) {
     }
 
@@ -64,6 +66,7 @@ final readonly class Me
             $plannedModules,
             $customerScreenCompanyId,
             $support,
+            $context?->supportAccessUntil?->format(\DateTimeInterface::ATOM),
         );
     }
 }

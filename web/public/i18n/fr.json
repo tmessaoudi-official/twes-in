@@ -130,7 +130,8 @@
     "admin": "administrateur",
     "member": "membre",
     "clerk": "caissier / vendeur",
-    "accountant": "comptable (lecture seule)"
+    "accountant": "comptable (lecture seule)",
+    "support": "Support"
   },
   "permissions": {
     "company": {
@@ -676,6 +677,8 @@
       "subscription_payment_decided": "Votre règlement de {{amount}} {{currency}} a reçu une réponse.",
       "module_arrived": "« {{label}} » est arrivé : vous pouvez l’activer pour {{company}} dans Modules.",
       "data_check_failed": "Le contrôle « {{label}} » a trouvé {{count}} {count, plural, one {anomalie} other {anomalies}} dans les données de {{company}}.",
+      "support_access_granted": "{{by}} a ouvert {{company}} au support de la plateforme, en lecture seule, jusqu’au {{until}}.",
+      "support_access_ended": "{{by}} a fermé l’accès du support de la plateforme à {{company}}.",
       "stock_count_difference": "Le comptage de {{product}} ({{reference}}) à {{location}} a trouvé un écart de {{difference}}.",
       "stock_low": "{{product}} ({{reference}}) est tombé à {{on_hand}} à {{establishment}}, au niveau ou sous son seuil de réapprovisionnement de {{point}}.",
       "invoice_credit_limit_passed": "{{customer}} dépasse sa limite de crédit : {{owed}} {{currency}} dus pour {{limit}} après la facture {{number}}.",
@@ -706,6 +709,8 @@
       "subscription_payment_decided": "Réponse à votre règlement",
       "module_arrived": "Module arrivé",
       "data_check_failed": "Contrôle des données en échec",
+      "support_access_granted": "Accès du support ouvert",
+      "support_access_ended": "Accès du support fermé",
       "unknown": "Autre notification",
       "stock_imported": "Écarts d’un import de stock"
     }
@@ -3918,10 +3923,6 @@
       "meanwhile": "En attendant, les taxes se règlent une à une :",
       "meanwhile_link": "Taxes"
     },
-    "support-access": {
-      "heading": "L’accès du support est en construction",
-      "does": "Ouvrir au support, pour un temps limité et sur votre accord, un accès en lecture à la société, et voir tout ce qu’il y a fait."
-    },
     "texts": {
       "heading": "Les textes sont en construction",
       "does": "Remplacer les mots de l’application par les vôtres (« Client » en « Patient », par exemple), dans chaque langue."
@@ -4539,7 +4540,8 @@
       "custom_field": "Champ personnalisé",
       "setting": "Paramètre",
       "module": "Module",
-      "export": "Export"
+      "export": "Export",
+      "support_grant": "Accès du support"
     },
     "actions": {
       "auth": {
@@ -4685,6 +4687,14 @@
       "custom_field": {
         "created": "a créé le champ personnalisé",
         "revised": "a modifié le champ personnalisé"
+      },
+      "support_access": {
+        "granted": "a ouvert l’accès du support",
+        "ended": "a fermé l’accès du support"
+      },
+      "support": {
+        "entered": "est entré pour le support",
+        "read": "a lu une page pour le support"
       }
     },
     "history": {
@@ -4974,5 +4984,34 @@
     "invoices_chain": "Chaîne des factures",
     "invoices_arithmetic": "Calculs des factures",
     "invoices_numbering": "Numérotation des factures"
+  },
+  "support_access": {
+    "title": "Accès du support",
+    "intro": "Ouvrez {{company}} au support de la plateforme quand vous lui demandez de l’aide : il voit alors vos écrans comme vous, sans rien pouvoir y changer.",
+    "reads": "Il lit tout ce que la société contient, en lecture seule.",
+    "never": "Il n’exporte rien, n’imprime aucune sélection de documents et ne voit pas les prix de revient.",
+    "logged": "Son arrivée et chaque page qu’il lit sont inscrites au",
+    "activity": "journal d’activité",
+    "owner_only": "Seul le propriétaire de la société ouvre l’accès du support.",
+    "open_until": "Le support peut lire la société jusqu’au {{until}}.",
+    "closed": "Le support n’a pas accès à la société.",
+    "for": "Durée de l’accès",
+    "hours": "{{count}} {count, plural, one {heure} other {heures}}",
+    "grant": "Ouvrir l’accès",
+    "grant_again": "Rouvrir pour cette durée",
+    "end": "Fermer l’accès maintenant",
+    "granted": "Accès du support ouvert jusqu’au {{until}}.",
+    "ended": "Accès du support fermé.",
+    "refused": {
+      "network": "La demande n’a pas abouti. Réessayez.",
+      "not_found": "Cette société n’est plus accessible.",
+      "owner_only": "Seul le propriétaire ouvre l’accès du support.",
+      "support_window": "Choisissez l’une des durées proposées."
+    },
+    "read_only": "Le support lit la société en lecture seule : rien n’y est modifié ni exporté.",
+    "banner_support": "Vous lisez {{company}} pour le support, en lecture seule, jusqu’au {{until}}.",
+    "banner_members": "Le support de la plateforme peut lire la société jusqu’au {{until}}.",
+    "manage": "Gérer",
+    "switcher": "Support"
   }
 }

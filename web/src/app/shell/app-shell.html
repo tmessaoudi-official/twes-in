@@ -520,6 +520,8 @@
       <!-- Keyed on the company a person acts for: switching REBUILDS the page, because a screen loaded for the
            previous company otherwise keeps showing its rows and its totals until the browser is refreshed
            (developer, 2026-09-20). The person is asked first when something is unsaved. -->
+      <!-- While the owner lets the platform's support read the company, on every page. -->
+      <app-support-banner />
       @for (companyId of [workingCompany()]; track companyId) {
         <router-outlet />
       }

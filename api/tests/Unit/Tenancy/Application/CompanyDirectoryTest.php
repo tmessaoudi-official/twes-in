@@ -29,6 +29,7 @@ use App\Tests\Support\InMemoryFileStorage;
 use App\Tests\Support\InMemoryInvitations;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryStoredFiles;
+use App\Tests\Support\SupportDoubles;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -55,7 +56,7 @@ final class CompanyDirectoryTest extends TestCase
         $first = $this->join($user, 'Acme');
         $second = $this->join($user, 'Globex');
 
-        $summaries = (new ListCompaniesOfUser($this->memberships, $this->logos()))->for($user->getId());
+        $summaries = (new ListCompaniesOfUser($this->memberships, $this->logos(), SupportDoubles::access($this->memberships)))->for($user->getId());
 
         self::assertCount(2, $summaries);
         self::assertSame([$first->getName(), $second->getName()], array_map(static fn ($s) => $s->name, $summaries));
@@ -66,7 +67,7 @@ final class CompanyDirectoryTest extends TestCase
 
     public function testTheSwitcherOfSomeoneWithNoCompanyIsEmpty(): void
     {
-        self::assertSame([], (new ListCompaniesOfUser($this->memberships, $this->logos()))->for(Uuid::v7()));
+        self::assertSame([], (new ListCompaniesOfUser($this->memberships, $this->logos(), SupportDoubles::access($this->memberships)))->for(Uuid::v7()));
     }
 
     public function testAnotherUsersCompaniesAreNotListed(): void
@@ -76,7 +77,7 @@ final class CompanyDirectoryTest extends TestCase
         $this->join($mine, 'Acme');
         $this->join($theirs, 'Globex');
 
-        $summaries = (new ListCompaniesOfUser($this->memberships, $this->logos()))->for($mine->getId());
+        $summaries = (new ListCompaniesOfUser($this->memberships, $this->logos(), SupportDoubles::access($this->memberships)))->for($mine->getId());
 
         self::assertCount(1, $summaries);
         self::assertSame('Acme', $summaries[0]->name);

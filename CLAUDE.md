@@ -131,6 +131,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `Legal` (the legal pages' versions, read by anyone at `GET /api/legal/{page}/{language}`; the shipped drafts are
   `api/resources/legal/<page>.<language>.md`, written at start where a page has none; the operator writes a new
   version and validates the latest through `/api/platform/legal-texts`, from `/platform/legal`),
+  `Tenancy` also holds « Accès du support » (the owner's `SupportGrant`; `Application/Support/SupportAccess`, which `CompanyGuard`
+  and `PermissionVoter` ask for an operator's read-only way in; `SupportReadOnlyListener`, which refuses anything but a GET
+  and every export under a grant, and records each page read),
   `FirstSteps` (« Premiers pas »: a context declares its step with `DeclaresFirstStep` in its own
   `Infrastructure/FirstSteps/`, done worked out from what is there, shown to whoever may do it),
   `DataHealth` (the data checks: a context declares what no constraint states with `DeclaresDataChecks` in its own
@@ -155,7 +158,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature — over twenty, so
   check `ls web/src/app` rather than this sentence: `account` — « Mon compte », the person's own preferences, `auth`, `company`, `customers`, `delivery-notes`, `expenses`,
   `fiscal`, `hello`, `inventory`, `invitation`, `invoices`, `legal` — the public `/legal/<slug>` pages, `platform`, `products`, `settings`, `signup`,
-  `vendors`, `pairing` — the phone's public `/pair` page, a scanner with no sign-in, `watch` — « À surveiller » and its home count, `first-steps` — « Premiers pas » on the home, `notifications` — the bell, the centre and the Centrifugo connection behind
+  `vendors`, `pairing` — the phone's public `/pair` page, a scanner with no sign-in, `support-access` — « Accès du support », the owner's page and the banner, `watch` — « À surveiller » and its home count, `first-steps` — « Premiers pas » on the home, `notifications` — the bell, the centre and the Centrifugo connection behind
   the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest (`planned-nav.ts` places the planned modules the signed-in state's `plannedModules` lists; `COMING_NAV` keeps only the settings pages not built yet), the home manifest (`home-manifest.ts`: a module declares its `*_HOME` panel, loaded lazily, beside its `*_NAV`), the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear, whose list stays put beside the page and folds to a rail with `]`; every
   signed-in route is a child of it but `/customer-display`, a window facing the customer), `shared/` for what several features use and which imports no feature (ESLint enforces it; `session/`: the `Session`
   port the auth facade answers; `theme/`: runtime accent colour tokens (`accentTokens`: the accent as picked and its readable roles), the lifecycle map every module's status tones derive from (`lifecycle-tones.ts`),
