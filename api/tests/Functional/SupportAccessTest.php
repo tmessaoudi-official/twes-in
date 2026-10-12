@@ -178,6 +178,11 @@ final class SupportAccessTest extends ApiTestCase
     public function testAGrantEndedByTheOwnerOrPastItsEndClosesTheCompanyAgain(): void
     {
         $this->grant(72);
+        $this->as(self::OPERATOR);
+        $this->postJson('/api/me/company', ['companyId' => $this->companyId()]);
+        self::assertResponseIsSuccessful();
+
+        $this->as(self::OWNER);
         $this->sendJson('DELETE', $this->path('/support-access'));
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         self::assertSame([self::CO_OWNER], $this->toldOf('support_access.ended'));
@@ -185,6 +190,14 @@ final class SupportAccessTest extends ApiTestCase
         $this->as(self::OPERATOR);
         $this->getJson($this->path('/customers'));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        // The session the operator entered with no longer carries the company, nor anything read through it.
+        $this->getJson('/api/auth/me');
+        self::assertResponseIsSuccessful();
+        $me = $this->json();
+        self::assertNull($me['supportAccessUntil']);
+        self::assertSame([], $me['permissions']);
+        $company = $me['company'];
+        self::assertTrue(null === $company || (\is_array($company) && $this->companyId() !== $company['id']), 'the closed company is still the working one');
 
         $this->grant(1);
         $this->connection()->executeStatement("UPDATE support_grant SET ends_at = now() - interval '1 minute' WHERE ended_at IS NULL");
