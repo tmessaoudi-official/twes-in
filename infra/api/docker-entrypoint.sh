@@ -33,6 +33,9 @@ if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 		# The legal pages' shipped drafts, where a page has no version yet (docs/SPEC.md § 8 row 148). Never over a
 		# version that exists, so every start may run it.
 		php bin/console app:legal:seed-drafts --no-interaction
+		# Issued documents no hash chain holds yet, such as those issued before the chain existed, chained in their
+		# issue order. Each series is held while it is sealed, so every start may run it, the worker's beside the API's.
+		php bin/console app:invoices:seal-chain --no-interaction
 	fi
 fi
 

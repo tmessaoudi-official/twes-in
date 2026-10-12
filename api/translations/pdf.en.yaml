@@ -29,6 +29,7 @@ invoice:
     credit_note_title: 'Credit note'
     corrects: 'Credit note for invoice %number% of %date%'
     reason: 'Reason: %reason%'
+    fingerprint: 'Fingerprint: %fingerprint%'
     customer: 'Customer'
     customer_number: 'Customer code'
     issue_date: 'Date'

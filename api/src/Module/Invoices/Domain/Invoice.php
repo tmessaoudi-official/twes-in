@@ -48,6 +48,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_invoice_pdf_file', columns: ['pdf_file_id'])]
 #[ORM\Index(name: 'idx_invoice_quote', columns: ['company_id', 'quote_id'], options: ['where' => '(quote_id IS NOT NULL)'])]
 #[ORM\UniqueConstraint(name: 'uniq_invoice_company_type_number', columns: ['company_id', 'document_type', 'number'])]
+// One document per place of a series' chain: a fork is refused by the database, whoever writes. Also the head's index.
+#[ORM\UniqueConstraint(name: 'uniq_invoice_chain_position', columns: ['company_id', 'establishment_id', 'document_type', 'chain_position'], options: ['where' => '(chain_position IS NOT NULL)'])]
 class Invoice implements CompanyOwned
 {
     /** The decimals of every stored amount column; the currency's scale is applied when the figures are read. */
@@ -159,6 +161,21 @@ class Invoice implements CompanyOwned
 
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $issuedBy = null;
+
+    /** Its place in its series' chain, from 1 (`InvoiceChain`); null on a draft and until it is sealed. */
+    #[ORM\Column(nullable: true)]
+    private ?int $chainPosition = null;
+
+    /** The hash of the document before it in its series; null for the first one and until it is sealed. */
+    #[ORM\Column(length: 64, nullable: true, options: ['fixed' => true])]
+    private ?string $chainPrevious = null;
+
+    #[ORM\Column(length: 64, nullable: true, options: ['fixed' => true])]
+    private ?string $chainHash = null;
+
+    /** The `InvoiceChain` version it was sealed with, which it is checked against. */
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    private ?int $chainVersion = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
     private ?string $subtotalNet = null;
@@ -982,6 +999,92 @@ class Invoice implements CompanyOwned
     public function getIssuedBy(): ?Uuid
     {
         return $this->issuedBy;
+    }
+
+    /**
+     * Chains an issued document after the one before it in its series, once: what it says is then held by its hash.
+     *
+     * @throws \LogicException on a draft, or a document already sealed
+     */
+    public function seal(int $position, ?string $previous): void
+    {
+        if (!$this->isIssued() || null !== $this->chainHash) {
+            throw new \LogicException(\sprintf('The document %s is %s: only an issued one is sealed, once.', $this->reference(), null === $this->chainHash ? $this->status->value : 'sealed'));
+        }
+        if ($position < 1 || (1 === $position) !== (null === $previous)) {
+            throw new \LogicException(\sprintf('Place %d of a chain %s a hash before it.', $position, null === $previous ? 'needs' : 'has no'));
+        }
+        $this->chainPosition = $position;
+        $this->chainPrevious = $previous;
+        $this->chainVersion = InvoiceChain::VERSION;
+        $this->chainHash = InvoiceChain::hash(InvoiceChain::VERSION, $position, $previous, $this->chained());
+    }
+
+    /** Whether what it says still gives the hash it was sealed with; false when it was never sealed. */
+    public function chainHolds(): bool
+    {
+        if (null === $this->chainHash || null === $this->chainPosition || null === $this->chainVersion) {
+            return false;
+        }
+
+        return hash_equals($this->chainHash, InvoiceChain::hash($this->chainVersion, $this->chainPosition, $this->chainPrevious, $this->chained()));
+    }
+
+    public function getChainPosition(): ?int
+    {
+        return $this->chainPosition;
+    }
+
+    public function getChainPrevious(): ?string
+    {
+        return $this->chainPrevious;
+    }
+
+    public function getChainHash(): ?string
+    {
+        return $this->chainHash;
+    }
+
+    /**
+     * What the chain holds of it, all of which issuing fixed and nothing after moves.
+     *
+     * @return array{
+     *     company: string, establishment: string, type: string, id: string, number: string, issueDate: string,
+     *     customer: string, corrects: string|null, totalNet: string, totalTax: string, totalGross: string,
+     *     withholding: string, lines: list<array{position: int, description: string, quantity: string, unitPriceNet: string, net: string, tax: string, gross: string}>
+     * }
+     */
+    private function chained(): array
+    {
+        $lines = [];
+        foreach ($this->getLines() as $line) {
+            $figures = $line->getFixedFigures() ?? throw new \LogicException('An issued line has its figures.');
+            $lines[] = [
+                'position' => $line->getPosition(),
+                'description' => $line->getDescription(),
+                'quantity' => $line->getQuantity(),
+                'unitPriceNet' => $line->getUnitPriceNet(),
+                'net' => $figures['net'],
+                'tax' => $figures['tax'],
+                'gross' => $figures['gross'],
+            ];
+        }
+
+        return [
+            'company' => $this->company->getId()->toRfc4122(),
+            'establishment' => $this->establishment->getId()->toRfc4122(),
+            'type' => $this->documentType->value,
+            'id' => $this->id->toRfc4122(),
+            'number' => $this->number ?? throw new \LogicException('An issued document has its number.'),
+            'issueDate' => ($this->issueDate ?? throw new \LogicException('An issued document has its day.'))->format('Y-m-d'),
+            'customer' => $this->customer->getId()->toRfc4122(),
+            'corrects' => $this->correctsInvoice?->getId()->toRfc4122(),
+            'totalNet' => $this->totalNet ?? throw new \LogicException('An issued document has its figures.'),
+            'totalTax' => $this->totalTax ?? throw new \LogicException('An issued document has its figures.'),
+            'totalGross' => $this->totalGross ?? throw new \LogicException('An issued document has its figures.'),
+            'withholding' => $this->withholdingAmount ?? '0',
+            'lines' => $lines,
+        ];
     }
 
     /**

@@ -12,6 +12,7 @@ namespace App\Tests\Functional;
 use App\DataFixtures\Scale\Rows;
 use App\DataFixtures\Scale\ScaleGenerator;
 use App\DataFixtures\Scale\ScaleInvariants;
+use App\Module\Invoices\Application\Chain\VerifyInvoiceChains;
 use App\Tenancy\Domain\NumberingSeries;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -115,6 +116,23 @@ final class ScaleGeneratorTest extends ApiTestCase
         self::assertGreaterThan($small, $this->invoices());
         self::assertSame(0, $this->number("SELECT COUNT(*) FROM invoice WHERE number LIKE '~%'"));
         self::assertSame(0, $this->number('SELECT COUNT(*) FROM (SELECT number FROM invoice WHERE number IS NOT NULL GROUP BY company_id, document_type, number HAVING COUNT(*) > 1) d'));
+    }
+
+    public function testEveryIssuedDocumentIsChainedAgainInTheOrderItWasNumbered(): void
+    {
+        $this->baseThenGenerate(300);
+        $company = Uuid::fromString($this->text('SELECT id FROM company WHERE name = ?', [self::COMPANY]));
+
+        self::assertSame(0, $this->number('SELECT COUNT(*) FROM invoice WHERE number IS NOT NULL AND chain_hash IS NULL'), 'every issued document, copied or not, is chained');
+        $this->em()->clear();
+        self::assertSame([], static::getContainer()->get(VerifyInvoiceChains::class)->of($company), 'each hash holds the number the copy was given');
+        // The chain's place and the number's place in its period agree: an inspector reads one against the other.
+        self::assertSame(0, $this->number(<<<'SQL'
+            SELECT COUNT(*) FROM (
+                SELECT chain_position, ROW_NUMBER() OVER (PARTITION BY company_id, establishment_id, document_type ORDER BY issue_date, LENGTH(number), number) AS place
+                FROM invoice WHERE number IS NOT NULL
+            ) o WHERE chain_position <> place
+            SQL));
     }
 
     public function testASeriesThePassDoesNotRenumberKeepsCountingAfterItsDocuments(): void
