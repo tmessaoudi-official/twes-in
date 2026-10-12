@@ -47,12 +47,12 @@ fresh machine from the real bucket (after P1); the unforced loss window (certifi
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | Gates read the image, the major and the overlay | S | todo | - | scripts/gates/** api/tests/Architecture/** |
-| 2 | Postgres image, pgBackRest, restic, schedule, overlay | M | todo | - | infra/postgres/** compose.backup.yaml |
-| 3 | Restore drill script and make target | M | todo | - | scripts/backup/** Makefile |
-| 4 | CI restore-drill workflow | S | todo | - | .github/workflows/** |
-| 5 | Sabotages | S | todo | - | - |
-| 6 | Docs, notices, SPEC rows 58 and 270 | S | todo | - | docs/** THIRD-PARTY-NOTICES.md scripts/notices/** |
+| 1 | Gates read the image, the major and the overlay | S | done | 5e46e3cf | scripts/gates/** api/tests/Architecture/** |
+| 2 | Postgres image, pgBackRest, restic, schedule, overlay | M | done | 5e46e3cf | infra/postgres/** compose.backup.yaml |
+| 3 | Restore drill script and make target | M | done | 84927353 | scripts/backup/** Makefile |
+| 4 | CI restore-drill workflow | S | done | 5e46e3cf | .github/workflows/** |
+| 5 | Sabotages | S | done | 5e46e3cf | - |
+| 6 | Docs, notices, SPEC rows 58 and 270 | S | done | 5e46e3cf | docs/** THIRD-PARTY-NOTICES.md scripts/notices/** |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
