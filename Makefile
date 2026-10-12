@@ -154,6 +154,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-log-rotation.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/deploy-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/release-overlay.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/publish.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/monitor-config.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/version-pins.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/host-tools.test.sh

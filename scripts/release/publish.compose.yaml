@@ -1,0 +1,19 @@
+# What scripts/release/publish.sh builds, over compose.yaml, compose.prod.yaml and compose.backup.yaml: each image under
+# a name of its own for this build, labelled with the commit it is, which is how staging tells the three images of one
+# commit from another's (docs/START.md § 14).
+services:
+  api:
+    image: "twes-release-api:${TWES_REVISION:?set TWES_REVISION, the commit}"
+    build:
+      labels: &labels
+        org.opencontainers.image.revision: "${TWES_REVISION:?set TWES_REVISION, the commit}"
+        org.opencontainers.image.source: "${TWES_SOURCE:-}"
+        org.opencontainers.image.licenses: "AGPL-3.0-or-later"
+  web:
+    image: "twes-release-web:${TWES_REVISION:?set TWES_REVISION, the commit}"
+    build:
+      labels: *labels
+  postgres:
+    image: "twes-release-database:${TWES_REVISION:?set TWES_REVISION, the commit}"
+    build:
+      labels: *labels

@@ -129,3 +129,26 @@ jobs:
             web/playwright-report
             web/test-results
           retention-days: 7
+
+  # Staging and production run the images published here, by their digests, never a build of their own checkout
+  # (docs/START.md § 14, scripts/release/publish.sh): only once every other job is green, for master only, and only
+  # while the repository variable PUBLISH_IMAGES is « true », which the developer sets after approving the first publish.
+  publish:
+    runs-on: ubuntu-latest
+    needs: [licences, api, web, prod-image, e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.PUBLISH_IMAGES == 'true'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - run: bash scripts/release/publish.sh "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" release.env
+      # What staging follows and a release tag records: the three images by their digests.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ github.sha }}
+          path: release.env
+          retention-days: 90
