@@ -53,8 +53,8 @@ real publish workflow.
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | W1 request handling, platform roles | M | todo | - | api/src/** api/tests/** |
-| 2 | W2 sign-in and session | L | todo | - | api/** web/** |
+| 1 | W1 request handling, platform roles | M | done | 5f811c55 | api/src/** api/tests/** |
+| 2 | W2 sign-in and session | L | doing | - | api/** web/** |
 | 3 | W3 tenancy and data | L | todo | - | api/** infra/postgres/** compose*.yaml scripts/** |
 | 4 | W4 realtime, PDF, web | L | todo | - | api/** web/** infra/** compose*.yaml |
 | 5 | W5 delivery and operations | L | todo | - | .github/** scripts/** infra/** compose*.yaml |
