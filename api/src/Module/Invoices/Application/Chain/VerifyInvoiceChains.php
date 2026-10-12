@@ -16,8 +16,9 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Walks each series' chain from its first place and says where it does not hold (`ChainBreak`): a document whose hash
- * no longer matches what it says, one that does not follow the one before it, a place missing or added, and an
- * issued document never sealed. Read-only, a slice at a time, so it may run over a whole database.
+ * no longer matches what it says, one that does not follow the one before it, a place missing or added, an
+ * issued document never sealed, and a chain that does not end where it was last recorded to (`InvoiceChainHead`).
+ * Read-only, a slice at a time, so it may run over a whole database.
  */
 final readonly class VerifyInvoiceChains
 {
@@ -68,6 +69,11 @@ final readonly class VerifyInvoiceChains
                     $after = $position;
                 }
                 $this->chains->forget();
+            }
+            // The end the chain was recorded to have: a chain that stops short of it lost its last documents.
+            $head = $this->chains->recordedHead($one);
+            if (null === $head ? 1 !== $expected : ($head->getPosition() !== $expected - 1 || $head->getHash() !== $previous)) {
+                $breaks[] = new ChainBreak($one, null, $head?->getPosition(), ChainBreak::HEAD);
             }
             foreach ($this->chains->unsealed($one, self::SLICE) as $invoice) {
                 $breaks[] = new ChainBreak($one, $invoice->getNumber(), null, ChainBreak::UNSEALED);

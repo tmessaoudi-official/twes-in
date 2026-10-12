@@ -675,6 +675,7 @@
       "subscription_payment_declared": "{{company}} a déclaré un règlement de {{amount}} {{currency}}.",
       "subscription_payment_decided": "Votre règlement de {{amount}} {{currency}} a reçu une réponse.",
       "module_arrived": "« {{label}} » est arrivé : vous pouvez l’activer pour {{company}} dans Modules.",
+      "data_check_failed": "Le contrôle « {{check}} » a trouvé {{count}} {count, plural, one {anomalie} other {anomalies}} dans les données de {{company}}.",
       "stock_count_difference": "Le comptage de {{product}} ({{reference}}) à {{location}} a trouvé un écart de {{difference}}.",
       "stock_low": "{{product}} ({{reference}}) est tombé à {{on_hand}} à {{establishment}}, au niveau ou sous son seuil de réapprovisionnement de {{point}}.",
       "invoice_credit_limit_passed": "{{customer}} dépasse sa limite de crédit : {{owed}} {{currency}} dus pour {{limit}} après la facture {{number}}.",
@@ -704,6 +705,7 @@
       "subscription_payment_declared": "Règlement déclaré par une société",
       "subscription_payment_decided": "Réponse à votre règlement",
       "module_arrived": "Module arrivé",
+      "data_check_failed": "Contrôle des données en échec",
       "unknown": "Autre notification",
       "stock_imported": "Écarts d’un import de stock"
     }

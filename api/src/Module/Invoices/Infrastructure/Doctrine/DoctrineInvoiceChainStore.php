@@ -11,8 +11,11 @@ namespace App\Module\Invoices\Infrastructure\Doctrine;
 
 use App\Module\Invoices\Domain\ChainSeries;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceChainHead;
 use App\Module\Invoices\Domain\InvoiceChainStore;
 use App\Module\Invoices\Domain\InvoiceType;
+use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Establishment;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\Uid\Uuid;
@@ -42,15 +45,29 @@ final readonly class DoctrineInvoiceChainStore implements InvoiceChainStore
             $query->andWhere('i.chainHash IS NULL');
         }
 
-        $series = [];
         /** @var list<array{company: string, establishment: string, type: InvoiceType|string}> $rows */
         $rows = $query->getQuery()->getArrayResult();
-        foreach ($rows as $row) {
-            $type = $row['type'] instanceof InvoiceType ? $row['type'] : InvoiceType::from($row['type']);
-            $series[] = new ChainSeries(Uuid::fromString($row['company']), Uuid::fromString($row['establishment']), $type);
+        if (!$unsealedOnly) {
+            // A series whose every document was taken away is still known by its head, and must be walked to say so.
+            $heads = $this->entityManager->createQueryBuilder()
+                ->select('IDENTITY(h.company) AS company', 'IDENTITY(h.establishment) AS establishment', 'h.documentType AS type')
+                ->from(InvoiceChainHead::class, 'h');
+            if (null !== $companyId) {
+                $heads->where('h.company = :company')->setParameter('company', $companyId, 'uuid');
+            }
+            /** @var list<array{company: string, establishment: string, type: InvoiceType|string}> $headRows */
+            $headRows = $heads->getQuery()->getArrayResult();
+            $rows = [...$rows, ...$headRows];
         }
 
-        return $series;
+        $series = [];
+        foreach ($rows as $row) {
+            $type = $row['type'] instanceof InvoiceType ? $row['type'] : InvoiceType::from($row['type']);
+            $series[$row['company'].'|'.$row['establishment'].'|'.$type->value] = new ChainSeries(Uuid::fromString($row['company']), Uuid::fromString($row['establishment']), $type);
+        }
+        ksort($series);
+
+        return array_values($series);
     }
 
     public function head(ChainSeries $series): ?Invoice
@@ -83,14 +100,63 @@ final readonly class DoctrineInvoiceChainStore implements InvoiceChainStore
 
     public function sealed(ChainSeries $series, int $afterPosition, int $limit): array
     {
-        /** @var list<Invoice> $sealed */
-        $sealed = $this->of($series)
+        // Two reads: the slice's ids, then those documents with their lines in one query, since every hash covers its
+        // lines and loading them one document at a time made the walk of 100,000 take 36 s. A limit cannot go on the
+        // joined read itself, which counts rows of lines, not documents.
+        /** @var list<array{id: Uuid}> $ids */
+        $ids = $this->of($series)
+            ->select('i.id')
             ->andWhere('i.chainPosition > :after')->setParameter('after', $afterPosition)
             ->orderBy('i.chainPosition')
             ->setMaxResults($limit)
+            ->getQuery()->getArrayResult();
+        if ([] === $ids) {
+            return [];
+        }
+
+        /** @var list<Invoice> $sealed */
+        $sealed = $this->entityManager->createQueryBuilder()
+            ->select('i', 'l')
+            ->from(Invoice::class, 'i')
+            ->leftJoin('i.lines', 'l')
+            ->where('i.id IN (:ids)')
+            ->setParameter('ids', array_map(static fn (array $row): string => $row['id']->toRfc4122(), $ids))
+            ->orderBy('i.chainPosition')
             ->getQuery()->getResult();
 
         return $sealed;
+    }
+
+    public function recordedHead(ChainSeries $series): ?InvoiceChainHead
+    {
+        /** @var InvoiceChainHead|null $head */
+        $head = $this->entityManager->createQueryBuilder()
+            ->select('h')
+            ->from(InvoiceChainHead::class, 'h')
+            ->where('h.establishment = :establishment')
+            ->andWhere('h.documentType = :type')
+            ->setParameter('establishment', $series->establishmentId, 'uuid')
+            ->setParameter('type', $series->type)
+            ->getQuery()->getOneOrNullResult();
+
+        return $head;
+    }
+
+    public function recordHead(ChainSeries $series, int $position, string $hash): void
+    {
+        $head = $this->recordedHead($series);
+        if (null !== $head) {
+            $head->moveTo($position, $hash);
+
+            return;
+        }
+        $this->entityManager->persist(InvoiceChainHead::at(
+            $this->entityManager->getReference(Company::class, $series->companyId) ?? throw new \LogicException('A series names its company.'),
+            $this->entityManager->getReference(Establishment::class, $series->establishmentId) ?? throw new \LogicException('A series names its establishment.'),
+            $series->type,
+            $position,
+            $hash,
+        ));
     }
 
     public function write(): void

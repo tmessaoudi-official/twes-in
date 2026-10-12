@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\DataFixtures\Scale\Rows;
 use App\DataFixtures\Scale\ScaleGenerator;
-use App\DataFixtures\Scale\ScaleInvariants;
+use App\DataHealth\Infrastructure\CompanyReferences;
 use App\Module\Invoices\Application\Chain\VerifyInvoiceChains;
 use App\Tenancy\Domain\NumberingSeries;
 use Doctrine\DBAL\Connection;
@@ -35,7 +35,7 @@ final class ScaleGeneratorTest extends ApiTestCase
         $base = $this->baseThenGenerate(300);
 
         self::assertGreaterThanOrEqual($base + 300, $this->invoices());
-        self::assertSame([], ScaleInvariants::crossCompanyReferences($this->connection()), 'every reference of every row stays inside one company');
+        self::assertSame([], static::getContainer()->get(CompanyReferences::class)->crossCompanyReferences(), 'every reference of every row stays inside one company');
         self::assertSame(0, $this->number("SELECT COUNT(*) FROM invoice i JOIN customer c ON c.id = i.customer_id WHERE i.customer_snapshot IS NOT NULL AND i.customer_snapshot->>'name' <> c.name"), 'an invoice\'s snapshot names its own customer, not the base one');
         self::assertSame(0, $this->number('SELECT COUNT(*) FROM invoice i WHERE i.amount_paid <> (SELECT COALESCE(SUM(p.amount), 0) FROM payment p WHERE p.invoice_id = i.id)'), 'what an invoice says it was paid is its payments');
         self::assertSame(0, $this->number("SELECT COUNT(*) FROM invoice WHERE company_id = (SELECT id FROM company WHERE name = ?) AND document_type = 'credit_note' AND corrects_invoice_id IS NULL", [self::COMPANY]));
@@ -48,7 +48,7 @@ final class ScaleGeneratorTest extends ApiTestCase
         $foreign = $this->text('SELECT c.id FROM customer c JOIN company o ON o.id = c.company_id WHERE o.name <> ? ORDER BY c.id LIMIT 1', [self::COMPANY]);
         $this->connection()->executeStatement('UPDATE invoice SET customer_id = ? WHERE id = (SELECT id FROM invoice WHERE company_id = (SELECT id FROM company WHERE name = ?) LIMIT 1)', [$foreign, self::COMPANY]);
 
-        $found = ScaleInvariants::crossCompanyReferences($this->connection());
+        $found = static::getContainer()->get(CompanyReferences::class)->crossCompanyReferences();
 
         self::assertContains('invoice.customer_id', array_map(static fn (array $hit): string => $hit['table'].'.'.$hit['column'], $found));
     }
@@ -99,7 +99,7 @@ final class ScaleGeneratorTest extends ApiTestCase
         self::assertSame(0, $second->getStatusCode(), $second->getDisplay());
         $done = $this->invoices();
         self::assertGreaterThanOrEqual($target, $done);
-        self::assertSame([], ScaleInvariants::crossCompanyReferences($this->connection()));
+        self::assertSame([], static::getContainer()->get(CompanyReferences::class)->crossCompanyReferences());
 
         $third = $this->generate($target, ['--chunk-copies' => 5]);
         self::assertSame(0, $third->getStatusCode(), $third->getDisplay());

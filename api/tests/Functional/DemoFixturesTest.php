@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\DataFixtures\DemoCompanies;
+use App\DataHealth\Application\DataFinding;
+use App\DataHealth\Application\RunDataChecks;
 use App\Module\Invoices\Application\Chain\VerifyInvoiceChains;
 use App\Module\Invoices\Application\FacturX\ExportFacturX;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
@@ -56,6 +58,11 @@ final class DemoFixturesTest extends ApiTestCase
             self::assertSame(0, $this->numberOf('SELECT COUNT(*) FROM invoice WHERE company_id = ? AND number IS NOT NULL AND chain_hash IS NULL', [$id]), "$name chains every document it issued");
             $this->em()->clear();
             self::assertSame([], static::getContainer()->get(VerifyInvoiceChains::class)->of(Uuid::fromString(\is_string($id) ? $id : self::fail('A company has an id.'))), "$name's chains hold");
+            // Every workflow the demo runs leaves data the nightly check finds nothing in, discounts and payments too.
+            self::assertSame([], array_values(array_map(
+                static fn (DataFinding $finding): string => "$finding->check: $finding->detail",
+                array_filter(static::getContainer()->get(RunDataChecks::class)->findings(), static fn (DataFinding $finding): bool => $finding->companyId?->toRfc4122() === $id),
+            )), "$name holds every data check");
 
             // A list page shows 25 rows: each of these pages past it.
             foreach (['customer', 'product', 'invoice'] as $table) {

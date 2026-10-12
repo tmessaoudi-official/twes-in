@@ -20,6 +20,8 @@ final readonly class ChainBreak
     public const string LINK = 'link';
     /** Its place is not the one after the document before it: one is missing, or was put in. */
     public const string POSITION = 'position';
+    /** The chain does not end where it was last recorded to end: its last documents were taken away. */
+    public const string HEAD = 'head';
     /** An issued document never sealed. */
     public const string UNSEALED = 'unsealed';
 

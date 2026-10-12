@@ -11,13 +11,17 @@ namespace App\Tests\Support;
 
 use App\Module\Invoices\Domain\ChainSeries;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceChainHead;
 use App\Module\Invoices\Domain\InvoiceChainStore;
 use Symfony\Component\Uid\Uuid;
 
 /** The chains over the invoices an `InMemoryInvoices` holds, read as the Doctrine store reads them. */
-final readonly class InMemoryInvoiceChains implements InvoiceChainStore
+final class InMemoryInvoiceChains implements InvoiceChainStore
 {
-    public function __construct(private InMemoryInvoices $invoices)
+    /** @var array<string, InvoiceChainHead> */
+    private array $heads = [];
+
+    public function __construct(private readonly InMemoryInvoices $invoices)
     {
     }
 
@@ -58,6 +62,23 @@ final readonly class InMemoryInvoiceChains implements InvoiceChainStore
         usort($sealed, static fn (Invoice $a, Invoice $b): int => $a->getChainPosition() <=> $b->getChainPosition());
 
         return \array_slice($sealed, 0, $limit);
+    }
+
+    public function recordedHead(ChainSeries $series): ?InvoiceChainHead
+    {
+        return $this->heads[$series->establishmentId.'|'.$series->type->value] ?? null;
+    }
+
+    public function recordHead(ChainSeries $series, int $position, string $hash): void
+    {
+        $head = $this->recordedHead($series);
+        if (null !== $head) {
+            $head->moveTo($position, $hash);
+
+            return;
+        }
+        $one = $this->of($series)[0] ?? throw new \LogicException('A head is recorded for a series with documents.');
+        $this->heads[$series->establishmentId.'|'.$series->type->value] = InvoiceChainHead::at($one->getCompany(), $one->getEstablishment(), $series->type, $position, $hash);
     }
 
     public function write(): void

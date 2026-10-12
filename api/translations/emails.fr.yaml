@@ -72,6 +72,7 @@ notification:
         invoice_recurring_drafted: 'Facture récurrente prête à émettre'
         invoice_recurring_stopped: 'Facture récurrente mise en pause'
         module_arrived: 'Module arrivé'
+        data_check_failed: 'Contrôle des données en échec'
     types:
         invitation_accepted: '%display_name% a rejoint l’entreprise.'
         stock_delivery_note_lines_left_out: 'Le bon de livraison %number% est validé, mais certaines de ses lignes n’ont pas sorti de stock (unité différente ou quantité absente).'
@@ -89,6 +90,7 @@ notification:
         invoice_recurring_drafted: 'Facture récurrente de %customer% : un brouillon copié de la facture %number% attend d’être émis.'
         invoice_recurring_stopped: 'Facture récurrente de %customer% mise en pause : la facture %number% qu’elle copie ne peut plus l’être.'
         module_arrived: 'Un module que vous attendiez est arrivé : vous pouvez l’activer pour %company% dans Modules.'
+        data_check_failed: 'Le contrôle « %check% » a trouvé des anomalies dans les données de %company% (nombre d’anomalies : %count%). Le détail est dans les journaux du serveur.'
     open: 'Ouvrir %product%'
     why: 'Vous recevez cet e-mail parce que « %kind% » vous est aussi envoyé par e-mail.'
     stop: 'Ne plus recevoir « %kind% » par e-mail'

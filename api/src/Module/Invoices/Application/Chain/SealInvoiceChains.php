@@ -55,6 +55,7 @@ final readonly class SealInvoiceChains
                 $invoice->seal(++$position, $previous);
                 $previous = $invoice->getChainHash();
             }
+            $this->chains->recordHead($series, $position, $previous ?? throw new \LogicException('A sealed document has its hash.'));
             $this->chains->write();
             $sealed += \count($unsealed);
         }

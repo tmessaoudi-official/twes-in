@@ -133,6 +133,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   version and validates the latest through `/api/platform/legal-texts`, from `/platform/legal`),
   `FirstSteps` (« Premiers pas »: a context declares its step with `DeclaresFirstStep` in its own
   `Infrastructure/FirstSteps/`, done worked out from what is there, shown to whoever may do it),
+  `DataHealth` (the data checks: a context declares what no constraint states with `DeclaresDataChecks` in its own
+  `Infrastructure/DataHealth/`; `RunDataChecks` runs them all, nightly through the worker and as `app:data:check`,
+  and tells the operators each check, company and count, never a document's contents),
   and the modules one level down in `api/src/Module/<Name>/`, the scanner among them (`Module/Scanning`: a phone lent
   to a computer tab as a scanner, `scan_pairing`, the tab's endpoints under its company and the phone's four public ones
   behind its key, named in `UnauthenticatedSweepTest`, which check the module themselves through `ScannerSwitch`) (a module reaches another only through a port it owns in its

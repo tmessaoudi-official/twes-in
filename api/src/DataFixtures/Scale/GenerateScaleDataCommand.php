@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\DataFixtures\Scale;
 
+use App\DataHealth\Application\RunDataChecks;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -22,7 +23,7 @@ use Symfony\Component\DependencyInjection\Attribute\When;
 #[AsCommand(name: 'app:scale:generate', description: 'Grow a company to a target number of invoices by cloning its invoice graph (a scale or test database only).')]
 final class GenerateScaleDataCommand extends Command
 {
-    public function __construct(private readonly ScaleGenerator $generator)
+    public function __construct(private readonly ScaleGenerator $generator, private readonly RunDataChecks $checks)
     {
         parent::__construct();
     }
@@ -62,6 +63,24 @@ final class GenerateScaleDataCommand extends Command
         }
 
         $io->success(\sprintf('%s: %d copies of %d wanted, %d invoice rows.', $report->stopped ? 'stopped' : 'done', $report->copies, $report->wanted, $report->invoices));
+        if ($report->stopped) {
+            return Command::SUCCESS;
+        }
+
+        // What was generated must hold every invariant a real database holds, or it measures data no use case makes.
+        $found = 0;
+        foreach ($this->checks->runQuietly() as $run) {
+            $io->writeln(\sprintf('data check %s: %d found in %.2f s', $run->check, \count($run->findings), $run->seconds));
+            foreach ($run->findings as $finding) {
+                $io->writeln('  '.$finding->detail);
+            }
+            $found += \count($run->findings);
+        }
+        if ($found > 0) {
+            $io->error(\sprintf('The generated data breaks the data checks: %d found.', $found));
+
+            return Command::FAILURE;
+        }
 
         return Command::SUCCESS;
     }

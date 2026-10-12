@@ -1,0 +1,205 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Tests\Functional;
+
+use App\DataHealth\Application\DataFinding;
+use App\DataHealth\Application\RunDataChecks;
+use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
+use App\Fiscal\Domain\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\UnitRepository;
+use App\Module\Customers\Domain\Customer;
+use App\Tenancy\Domain\Company;
+use Doctrine\DBAL\Connection;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Tester\ApplicationTester;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * The data check (docs/SPEC.md § 8 row 182): every invariant the contexts declare, run over the whole database, each
+ * finding named by its check and company. Each case breaks one invariant the way only a direct write could, which no
+ * use case allows, and the check must find it; the operators are told the check, the company and a count, never what
+ * the document says, since they keep no standing access to a company's data.
+ */
+final class DataCheckTest extends ApiTestCase
+{
+    private Company $company;
+    private string $customerId;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->company = $this->createCompany('Acme');
+        static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
+        static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
+        $this->customerId = $this->customerOf($this->company, 'Carthage Conseil');
+        $this->createUser('operator@twes.local', 'password-1234', operator: true);
+        $this->createUser('sales@twes.local', 'password-1234', $this->company, ['invoice.read', 'invoice.write', 'invoice.issue'], 'member');
+        $this->login('sales@twes.local', 'password-1234');
+    }
+
+    public function testADatabaseAsTheUseCasesLeaveItHasNoFindingAndTellsNobody(): void
+    {
+        $this->issue($this->draft('100'));
+        $this->issue($this->draft('200'));
+
+        self::assertSame([], $this->findings());
+        $run = $this->check();
+        self::assertSame(0, $run->getStatusCode(), $run->getDisplay());
+        self::assertSame([], $this->told());
+    }
+
+    public function testATotalChangedAfterIssueIsFoundAndTheOperatorsAreToldOnlyTheCheckTheCompanyAndACount(): void
+    {
+        $this->issue($this->draft('100'));
+        $id = $this->draft('200');
+        $this->issue($id);
+        $this->connection()->executeStatement('UPDATE invoice SET total_gross = total_gross + 1 WHERE id = ?', [$id]);
+
+        self::assertContains('invoices.chain', $this->checksFound());
+        $arithmetic = array_values(array_filter($this->findings(), static fn (DataFinding $finding): bool => 'invoices.arithmetic' === $finding->check));
+        self::assertCount(1, $arithmetic);
+        // The gross no longer adds up, and neither does what is due from it: each identity is checked on its own.
+        self::assertStringContainsString('gross', $arithmetic[0]->detail);
+        self::assertStringContainsString('due', $arithmetic[0]->detail);
+
+        $run = $this->check();
+        self::assertSame(1, $run->getStatusCode(), $run->getDisplay());
+        $told = $this->told();
+        self::assertNotSame([], $told);
+        foreach ($told as $payload) {
+            self::assertSame(['check', 'company', 'count'], array_keys($payload));
+            self::assertSame('Acme', $payload['company']);
+            self::assertStringNotContainsString('FAC-', (string) json_encode($payload), 'no document number reaches an operator');
+        }
+    }
+
+    public function testTheNewestDocumentTakenOutIsFound(): void
+    {
+        $this->issue($this->draft('100'));
+        $this->issue($this->draft('200'));
+        $newest = $this->draft('300');
+        $this->issue($newest);
+        // What the chain alone cannot show: a shorter chain whose every link holds.
+        $this->connection()->executeStatement('DELETE FROM invoice_line_tax WHERE line_id IN (SELECT id FROM invoice_line WHERE invoice_id = ?)', [$newest]);
+        $this->connection()->executeStatement('DELETE FROM invoice_line WHERE invoice_id = ?', [$newest]);
+        $this->connection()->executeStatement('DELETE FROM invoice WHERE id = ?', [$newest]);
+
+        self::assertContains('invoices.chain', $this->checksFound());
+    }
+
+    public function testANumberSkippedInASeriesIsFound(): void
+    {
+        $this->issue($this->draft('100'));
+        $second = $this->draft('200');
+        $this->issue($second);
+        $this->connection()->executeStatement("UPDATE invoice SET number = regexp_replace(number, '[0-9]+$', '00009') WHERE id = ?", [$second]);
+
+        self::assertContains('invoices.numbering', $this->checksFound());
+    }
+
+    public function testAReferenceIntoAnotherCompanyIsFound(): void
+    {
+        $id = $this->draft('100');
+        $this->issue($id);
+        $elsewhere = $this->createCompany('Elsewhere');
+        static::getContainer()->get(ProvisionCompany::class)->handle($elsewhere);
+        $this->connection()->executeStatement('UPDATE invoice SET customer_id = ? WHERE id = ?', [$this->customerOf($elsewhere, 'Globex'), $id]);
+
+        self::assertContains('references.company', $this->checksFound());
+    }
+
+    /** @return list<DataFinding> */
+    private function findings(): array
+    {
+        $this->em()->clear();
+
+        return static::getContainer()->get(RunDataChecks::class)->findings();
+    }
+
+    /** @return list<string> */
+    private function checksFound(): array
+    {
+        return array_values(array_unique(array_map(static fn (DataFinding $finding): string => $finding->check, $this->findings())));
+    }
+
+    private function check(): ApplicationTester
+    {
+        $this->em()->clear();
+        $application = new Application(self::$kernel ?? self::fail('No kernel.'));
+        $application->setAutoExit(false);
+        $tester = new ApplicationTester($application);
+        $tester->run(['command' => 'app:data:check']);
+
+        return $tester;
+    }
+
+    /** @return list<array<mixed>> */
+    private function told(): array
+    {
+        $told = [];
+        foreach ($this->connection()->fetchFirstColumn("SELECT payload FROM inbox_item WHERE type = 'data.check_failed'") as $payload) {
+            self::assertIsString($payload);
+            $decoded = json_decode($payload, true, flags: \JSON_THROW_ON_ERROR);
+            self::assertIsArray($decoded);
+            $told[] = $decoded;
+        }
+
+        return $told;
+    }
+
+    private function customerOf(Company $company, string $name): string
+    {
+        $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
+        self::assertNotNull($regime);
+        $customer = Customer::create($company, 'CLI-'.bin2hex(random_bytes(3)), self::aTunisianBusiness($name), null, $regime, [], new \DateTimeImmutable());
+        $this->em()->persist($customer);
+        $this->em()->flush();
+
+        return $customer->getId()->toRfc4122();
+    }
+
+    private function connection(): Connection
+    {
+        return $this->em()->getConnection();
+    }
+
+    private function issue(string $id): void
+    {
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseIsSuccessful();
+    }
+
+    private function draft(string $price): string
+    {
+        $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($unit);
+        $this->postJson($this->path(), [
+            'customerId' => $this->customerId,
+            'establishmentId' => null,
+            'supplyDate' => null,
+            'paymentTermsDays' => null,
+            'customerReference' => null,
+            'notesPrinted' => null,
+            'notesInternal' => null,
+            'discountAmount' => null,
+            'documentTaxComponentIds' => null,
+            'lines' => [['description' => 'Conseil', 'quantity' => '2', 'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => $price, 'taxComponentIds' => []]],
+        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        return $this->stringAt($this->json(), 'id');
+    }
+
+    private function path(?string $id = null): string
+    {
+        return '/api/companies/'.$this->company->getId()->toRfc4122().'/invoices'.(null === $id ? '' : '/'.$id);
+    }
+}
