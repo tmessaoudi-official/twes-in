@@ -2,22 +2,24 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Every stage, command and gate runs in Docker, never on the host's PHP, Composer or Node (docs/SPEC.md § 7, 2026-10-03).
 # Nothing else stops that coming back: a setup-php step in CI, a bare `npm` recipe in the Makefile. This refuses both.
-#   CI        no setup-php / setup-node / apt-get, and no bare composer / npm / npx / php / node run step
+#   CI        in every workflow: no setup-php / setup-node / apt-get, and no bare composer / npm / npx / php / node run step
 #   Makefile  a recipe line that starts with a host tool (cd api|web &&, php, composer, npm, npx, node, bin/console,
 #             vendor/bin) is allowed only in an `in-*` target, which runs inside the tools container
 # Usage: host-tools.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
-ci=.github/workflows/ci.yml
 problems=()
 problem() { problems+=("$1"); }
 
-if [[ ! -f "$root/$ci" ]]; then problem "found no $ci"
-else
+# ci.yml must be there; every other workflow is held to the same rule, since each one runs on a runner of its own.
+[[ -f "$root/.github/workflows/ci.yml" ]] || problem "found no .github/workflows/ci.yml"
+for path in "$root"/.github/workflows/*.yml; do
+  [[ -f "$path" ]] || continue
+  ci=${path#"$root/"}
   while IFS=: read -r n line; do problem "$ci:$n names a host toolchain step: ${line#"${line%%[![:space:]]*}"}"; done \
-    < <(grep -nE 'setup-php|setup-node|apt-get|^\s*(-\s+)?run:\s+(composer|npm|npx|php|node)\b' "$root/$ci")
-fi
+    < <(grep -nE 'setup-php|setup-node|apt-get|^\s*(-\s+)?run:\s+(composer|npm|npx|php|node)\b' "$path")
+done
 
 if [[ ! -f "$root/Makefile" ]]; then problem "found no Makefile"
 else

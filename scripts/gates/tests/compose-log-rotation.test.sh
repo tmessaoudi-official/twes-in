@@ -54,4 +54,41 @@ services:
         max-size: 10m
         max-file: "5"')
 out=$(bash "$GATE" --root "$d" 2>&1); check "another driver is refused" $? 1 "$out" "a"
+# The backup overlay is a file of its own: its services rotate too, and the secrets it requires are not needed to read it.
+d=$(project 'name: t
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+services:
+  a:
+    image: busybox
+    logging: *logging')
+printf '%s\n' 'x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+services:
+  backup:
+    image: busybox
+    environment:
+      KEY: "${BACKUP_KEY:?set BACKUP_KEY}"
+    logging: *logging' > "$d/compose.backup.yaml"
+out=$(bash "$GATE" --root "$d" 2>&1); check "the overlay's services are counted, its required secrets unset" $? 0 "$out" "OK — 2 services"
+d=$(project 'name: t
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+services:
+  a:
+    image: busybox
+    logging: *logging')
+printf '%s\n' 'services:
+  backup:
+    image: busybox' > "$d/compose.backup.yaml"
+out=$(bash "$GATE" --root "$d" 2>&1); check "a service only the overlay adds, without rotation, is named" $? 1 "$out" "backup"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

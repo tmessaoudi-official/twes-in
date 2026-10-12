@@ -44,4 +44,7 @@ out=$(run "$d"); check "a missing Makefile is refused, not skipped" $? 1 "$out" 
 d=$(tree); rm "$d/.github/workflows/ci.yml"
 out=$(run "$d"); check "a missing CI file is refused, not skipped" $? 1 "$out" "found no"
 
+d=$(tree); printf 'jobs:\n  drill:\n    steps:\n      - uses: actions/setup-node@v7\n' > "$d/.github/workflows/restore-drill.yml"
+out=$(run "$d"); check "a host toolchain step in another workflow is named with its file" $? 1 "$out" "restore-drill.yml"
+
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

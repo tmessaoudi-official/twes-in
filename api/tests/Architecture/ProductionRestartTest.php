@@ -52,6 +52,33 @@ final class ProductionRestartTest extends TestCase
         self::assertSame([], $staysDown, 'these services stay down after a crash or a reboot');
     }
 
+    /**
+     * The backup overlay runs over the production stack: a backup service that stays down after a reboot loses every
+     * night's copy from then on without a sound, and the database it rebuilds must come back as the plain one does.
+     */
+    public function testEveryServiceTheBackupOverlayStartsComesBackByItself(): void
+    {
+        $root = \dirname(__DIR__, 3);
+        $base = self::services($root.'/compose.yaml');
+        $production = self::services($root.'/compose.prod.yaml');
+        $backup = self::services($root.'/compose.backup.yaml');
+
+        $staysDown = [];
+        foreach ($backup as $name => $definition) {
+            if (isset($definition['profiles']) || isset($base[$name]['profiles'])) {
+                continue;
+            }
+            $restart = $definition['restart'] ?? $production[$name]['restart'] ?? $base[$name]['restart'] ?? null;
+            if (!\in_array($restart, self::COMES_BACK, true)) {
+                $staysDown[] = $name;
+            }
+        }
+
+        self::assertArrayHasKey('backup', $backup, 'the overlay starts the backup service');
+        self::assertArrayHasKey('postgres', $backup, 'the overlay rebuilds the database it backs up');
+        self::assertSame([], $staysDown, 'these services stay down after a crash or a reboot');
+    }
+
     /** @return array<array-key, array<array-key, mixed>> */
     private static function services(string $file): array
     {

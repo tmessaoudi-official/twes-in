@@ -30,7 +30,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -108,6 +108,9 @@ reset:         ## DESTRUCTIVE clean start (docs/START.md): deletes the database 
 	docker compose down --volumes --remove-orphans
 	rm -rf api/var/cache api/var/openapi.json web/src/app/api web/playwright/.auth
 	$(MAKE) up
+
+backup-drill:  ## the restore drill (docs/START.md § 13): the production images with the backup overlay, backed up, restored from the bucket alone into empty volumes to a moment and to the latest, checked; its own compose project (twes-drill), removed at the end
+	bash scripts/backup/restore-drill.sh
 
 versions:      ## every version pin, read from the file that holds it (docs/UPDATE.md says where each is copied and how to bump it)
 versions: tools-image

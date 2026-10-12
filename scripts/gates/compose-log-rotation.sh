@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Every service in compose.yaml has its output rotated by Docker's json-file driver, 10 MB × 5 files (docs/SPEC.md
+# Every service in compose.yaml and the backup overlay has its output rotated by Docker's json-file driver, 10 MB × 5 files (docs/SPEC.md
 # § 7, 2026-09-17): a service added without it grows its log until the disk is full. Reads the resolved
 # configuration, so an anchor, an override or an extension counts as what Docker will run.
 # Usage: compose-log-rotation.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
-# Every profile on: a service behind one (lan, started by make up) is a service too.
+# Every profile on: a service behind one (lan, started by make up) is a service too. The backup overlay is read with
+# compose.yaml, since its services run beside those; its secrets are left as written (--no-interpolate), as they are
+# required where it runs and never needed to say how a log rotates.
 # env -u COMPOSE_FILE: the Makefile exports one naming compose.live.yaml, which a --root fixture does not have.
-config=$(cd "$root" && env -u COMPOSE_FILE docker compose --profile "*" config --format json 2>&1) || { printf 'compose-log-rotation: FAIL — docker compose config failed:\n%s\n' "$config"; exit 1; }
+files=(-f compose.yaml)
+[[ -f "$root/compose.backup.yaml" ]] && files+=(-f compose.backup.yaml)
+config=$(cd "$root" && env -u COMPOSE_FILE docker compose "${files[@]}" --profile "*" config --no-interpolate --format json 2>&1) || { printf 'compose-log-rotation: FAIL — docker compose config failed:\n%s\n' "$config"; exit 1; }
 total=$(jq '.services | length' <<<"$config")
 mapfile -t wrong < <(jq -r '.services | to_entries[]
   | select(.value.logging.driver != "json-file" or .value.logging.options["max-size"] != "10m" or .value.logging.options["max-file"] != "5")

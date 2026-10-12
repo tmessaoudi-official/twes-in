@@ -1,0 +1,33 @@
+# The restore drill (scripts/backup/restore-drill.sh, docs/START.md § 13): a backup nobody restored is a hope, not a
+# backup. Weekly, so drift in an image, a package or the bucket's protocol shows within a week; by hand; and on any push
+# that changes how backups are made (docs/SPEC.md § 7, 2026-10-12). Not one of ci.yml's required checks: it does not
+# run on every push.
+name: restore-drill
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - compose.backup.yaml
+      - infra/postgres/**
+      - scripts/backup/**
+      - .github/workflows/restore-drill.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        # The images are built as the version git says each part is, which counts the day's changes.
+        with:
+          fetch-depth: 0
+      - run: bash scripts/build-version.sh --env >> "$GITHUB_ENV"
+      - run: make backup-drill

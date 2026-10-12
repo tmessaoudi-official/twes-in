@@ -1,0 +1,63 @@
+# The restore drill's own layer (scripts/backup/restore-drill.sh), over compose.yaml, compose.prod.yaml and
+# compose.backup.yaml, under the compose project `twes-drill` only. Never part of a deployment: it adds a stand-in for
+# the off-site bucket (SeaweedFS, Apache-2.0) behind a throwaway certificate authority, publishes no port, so a
+# development stack can run beside it, and names the database volume, so the drill can start the server again on a
+# volume it restored into.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+services:
+  s3:
+    logging: *logging
+    image: chrislusf/seaweedfs:4.48
+    command: >-
+      server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
+      -s3.cert.file=/certs/s3.crt -s3.key.file=/certs/s3.key
+    volumes:
+      - ${DRILL_DIR:?run through scripts/backup/restore-drill.sh}/s3.json:/etc/seaweedfs/s3.json:ro
+      - ${DRILL_DIR}/certs:/certs:ro
+
+  postgres:
+    ports: !reset []
+    environment:
+      PGBACKREST_REPO1_STORAGE_CA_FILE: /certs/ca.crt
+    volumes:
+      - ${DRILL_DIR}/certs:/certs:ro
+
+  backup:
+    environment:
+      PGBACKREST_REPO1_STORAGE_CA_FILE: /certs/ca.crt
+      RESTIC_CACERT: /certs/ca.crt
+    volumes:
+      - ${DRILL_DIR}/certs:/certs:ro
+
+  # What a restore runs in: the backup service's image, keys and bucket, writing into a volume of its own.
+  restore:
+    extends:
+      file: compose.backup.yaml
+      service: backup
+    profiles: [drill]
+    restart: "no"
+    environment:
+      PGBACKREST_REPO1_STORAGE_CA_FILE: /certs/ca.crt
+    volumes:
+      - restore-target:/var/lib/postgresql
+      - ${DRILL_DIR}/certs:/certs:ro
+
+  api:
+    ports: !reset []
+  gotenberg:
+    ports: !reset []
+  mailpit:
+    ports: !reset []
+  web:
+    ports: !reset []
+
+volumes:
+  postgres-data:
+    name: ${DRILL_PG_DATA:-twes-drill-pg-a}
+  restore-target:
+    name: ${DRILL_RESTORE_VOLUME:-twes-drill-pg-restore}

@@ -536,3 +536,54 @@ film is made, never written in the script, because a person may have changed it.
   chapters show one picture. Look at the frames: no test says a caption is readable.
 - It is not part of CI: `web/e2e/tours.spec.ts` proves the guides run, and a film is made for a release.
   `web/e2e-recorder/captions.test.ts` (the reading time, the WebVTT files) runs first in the same command.
+
+## 13. Backups and the restore drill
+
+`compose.backup.yaml` adds backups to the production stack (§ 10). It is a layer of its own, so a deployment that runs
+without it has none; the deploy compose includes it.
+
+- The database is built from `infra/postgres/Dockerfile`: the same PostgreSQL as `compose.yaml`, with pgBackRest. It
+  hands its WAL to pgBackRest as it writes, and pgBackRest sends it, encrypted, to an S3-compatible bucket. A quiet
+  database still sends within five minutes (`archive_timeout=300`), so a lost machine loses at most that.
+- The `backup` service takes the base backups the WAL replays from (full on Sunday, differential the other nights, at
+  01:00 UTC), and at 01:30 the night's `pg_dump` and the files volume (logos, issued PDFs, attachments) through restic,
+  encrypted, into the same bucket under its own prefix. Whatever is older than 14 days is removed by each tool. Once a
+  week both read their repository back whole. Its schedule is `infra/postgres/backup/crontab`; every step is
+  `twes-backup <step>` (`run`, `init`, `full`, `diff`, `copy`, `verify`), which runs by hand the same way:
+  `docker compose exec backup twes-backup full`.
+- A deployment storing files in a bucket (`FILES_STORAGE=s3`) has an empty files volume: its files rest on that
+  bucket's own versioning and replication, which its provider configures.
+
+It refuses to start without the bucket and two passphrases. Keep the passphrases somewhere other than the server: a
+backup is unreadable without its passphrase.
+
+```sh
+export BACKUP_S3_ENDPOINT=<the bucket service's host> BACKUP_S3_BUCKET=<bucket> BACKUP_S3_REGION=<region> \
+       BACKUP_S3_KEY=<access key> BACKUP_S3_SECRET=<secret key> \
+       BACKUP_DATABASE_PASSPHRASE=$(openssl rand -base64 36) BACKUP_FILES_PASSPHRASE=$(openssl rand -base64 36)
+# BACKUP_S3_PORT (443) and BACKUP_S3_URI_STYLE (host; path for most services other than AWS) when they differ
+docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml up -d --build --wait
+```
+
+**Restoring** to a moment, into an empty volume, as on a new machine (every value as above):
+
+```sh
+docker compose stop api worker postgres
+docker compose run --rm --no-deps -v <new volume>:/var/lib/postgresql backup \
+  gosu postgres pgbackrest --stanza=twes --spool-path=/tmp --type=time "--target=2026-10-12 08:25:00+00" \
+  --target-action=promote restore      # without --type and --target: the latest that reached the bucket
+```
+
+then point the `postgres-data` volume at `<new volume>` and start the stack again. The files and the dump come back with
+`docker compose exec backup restic restore latest --host twes --target /tmp/back`.
+
+**The drill.** `make backup-drill` does all of it on its own: the production images with this layer, a stand-in bucket
+(SeaweedFS, behind a certificate authority made for the run), a backup, a row written, then the moment noted from the
+database's clock, a second row; then two restores from the bucket alone into empty volumes. To the moment only the first
+row may come back, to the latest both. On the second the API must answer healthy and `app:data:check` find nothing, and
+restic must give back the files and the dump unchanged. It prints each step's time, runs as the compose project
+`twes-drill` beside your own stack, refuses any other, and removes its containers and volumes at the end. CI runs it
+weekly, by hand, and on every push that changes the backups (`.github/workflows/restore-drill.yml`).
+
+What it does not prove: the four hours the ruling allows for a real database (the drill restores a small one), and a
+restore by hand on a new machine from the real bucket, which follows the first deployment.

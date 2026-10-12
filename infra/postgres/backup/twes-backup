@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# The backup service's one command (compose.backup.yaml), run by the schedule in crontab and by the restore drill
+# (scripts/backup/restore-drill.sh), so what the drill proves is what runs every night:
+#   twes-backup run           prepares the bucket, then hands over to the schedule
+#   twes-backup init          the pgBackRest stanza and the restic repository, each made once and checked after
+#   twes-backup full|diff     a base backup of the database (pgBackRest expires what is past retention after it)
+#   twes-backup copy          the nightly pg_dump and the files volume into restic, then what is past 14 days pruned
+#   twes-backup verify        both repositories read back whole
+# pgBackRest runs as postgres, whose data it reads; restic runs as root, which can read the files the api wrote as
+# its own user. Output goes to the container's log; a failure exits non-zero, which supercronic logs as such.
+set -euo pipefail
+
+STANZA=twes
+DUMP_DIR=/var/lib/twes-backup/dump
+FILES_DIR=/files
+KEEP=14d
+
+say() { printf '%s twes-backup %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+pgbr() { gosu postgres pgbackrest --stanza="$STANZA" "$@"; }
+# restic reaches the same bucket as pgBackRest under its own prefix; a bucket addressed by path (most S3-compatible
+# services) or by host (AWS itself) is said once, in BACKUP_S3_URI_STYLE, for both.
+rst() {
+  local lookup=dns
+  [[ "${BACKUP_S3_URI_STYLE:-host}" == path ]] && lookup=path
+  restic -o "s3.bucket-lookup=$lookup" "$@"
+}
+
+wait_for_database() {
+  local tries=0
+  until gosu postgres pg_isready -q -h /var/run/postgresql -U twes -d twes; do
+    tries=$((tries + 1))
+    ((tries < 60)) || { say "the database did not answer in 60 s"; return 1; }
+    sleep 1
+  done
+}
+
+init() {
+  wait_for_database
+  pgbr stanza-create
+  # `cat config` reads the repository's own header: absent means never made, any other failure is a real one.
+  if ! rst cat config >/dev/null 2>&1; then
+    say "restic repository not found, making it"
+    rst init
+  fi
+  pgbr check
+  rst cat config >/dev/null
+  say "ready: stanza $STANZA and the files repository"
+}
+
+base_backup() {
+  pgbr --type="$1" backup
+  say "$1 backup done"
+}
+
+copy() {
+  wait_for_database
+  # Written beside, then moved: a dump cut short by a crash never replaces last night's whole one.
+  gosu postgres pg_dump -h /var/run/postgresql -U twes -d twes --format=custom --file="$DUMP_DIR/twes.dump.part"
+  gosu postgres mv "$DUMP_DIR/twes.dump.part" "$DUMP_DIR/twes.dump"
+  rst backup --tag nightly --host twes "$DUMP_DIR" "$FILES_DIR"
+  rst forget --host twes --keep-within "$KEEP" --prune
+  say "dump and files copied, kept $KEEP"
+}
+
+verify() {
+  pgbr verify
+  rst check
+  say "both repositories read back whole"
+}
+
+case "${1:-}" in
+  run) init; exec supercronic -passthrough-logs /etc/twes-backup/crontab ;;
+  init) init ;;
+  full|diff) base_backup "$1" ;;
+  copy) copy ;;
+  verify) verify ;;
+  *) echo "usage: twes-backup run|init|full|diff|copy|verify" >&2; exit 64 ;;
+esac
