@@ -49,6 +49,9 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_invoice_quote', columns: ['company_id', 'quote_id'], options: ['where' => '(quote_id IS NOT NULL)'])]
 #[ORM\UniqueConstraint(name: 'uniq_invoice_company_type_number', columns: ['company_id', 'document_type', 'number'])]
 // One document per place of a series' chain: a fork is refused by the database, whoever writes. Also the head's index.
+// What a series has issued and not chained yet, asked on every issue under the series' lock: almost always nothing,
+// so the index stays empty and the question never reads the series.
+#[ORM\Index(name: 'idx_invoice_unsealed', columns: ['company_id', 'establishment_id', 'document_type'], options: ['where' => '((chain_hash IS NULL) AND (number IS NOT NULL))'])]
 #[ORM\UniqueConstraint(name: 'uniq_invoice_chain_position', columns: ['company_id', 'establishment_id', 'document_type', 'chain_position'], options: ['where' => '(chain_position IS NOT NULL)'])]
 class Invoice implements CompanyOwned
 {
