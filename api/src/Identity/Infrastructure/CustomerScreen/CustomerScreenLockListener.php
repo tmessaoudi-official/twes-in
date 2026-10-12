@@ -11,6 +11,7 @@ namespace App\Identity\Infrastructure\CustomerScreen;
 
 use App\Identity\Application\CustomerScreen\CustomerScreenLock;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Shared\Infrastructure\Http\RoutedPath;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -45,7 +46,7 @@ final readonly class CustomerScreenLockListener
             return;
         }
         $request = $event->getRequest();
-        $path = rtrim($request->getPathInfo(), '/');
+        $path = rtrim(RoutedPath::of($request), '/');
         // The hold lives in the session: a request bringing none cannot be held, and asking who is signed in would make
         // the lazy firewall read a session for it, which turns a public answer's cache header private.
         if (!str_starts_with($path, '/api') || !$request->hasPreviousSession()) {

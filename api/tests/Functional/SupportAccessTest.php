@@ -166,6 +166,31 @@ final class SupportAccessTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testAPathSpelledWithPercentEscapesMeetsTheSameWall(): void
+    {
+        // The router decodes the path once before matching it; the wall must read the path the router routes.
+        $this->grant(24);
+        $this->as(self::OPERATOR);
+        $this->postJson('/api/me/company', ['companyId' => $this->companyId()]);
+        self::assertResponseIsSuccessful();
+        $id = $this->companyId();
+        $escapedId = '%'.bin2hex($id[0]).substr($id, 1);
+
+        $this->getJson($this->path('/%65xports/customers.csv'));
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('support_read_only', $this->json()['error']);
+        $this->getJson('/api/companies/'.$escapedId.'/exports/customers.csv');
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        $this->postJson('/api/companies/'.$escapedId.'/customers', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('support_read_only', $this->json()['error']);
+
+        // A read so spelled is still written in the activity log.
+        $this->getJson('/%61pi/companies/'.$escapedId.'/%63ustomers');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['support.entered' => 1, 'support.read' => 1], $this->supportVisits());
+    }
+
     public function testTheMembersKeepWorkingWhileSupportIsIn(): void
     {
         $this->grant(1);

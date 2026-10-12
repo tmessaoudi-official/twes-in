@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use App\Shared\Infrastructure\Http\RoutedPath;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -26,7 +27,7 @@ final class XhrApiListener
     public function __invoke(RequestEvent $event): void
     {
         $request = $event->getRequest();
-        if ($event->isMainRequest() && str_starts_with($request->getPathInfo(), '/api/') && !$request->headers->has('X-Requested-With')) {
+        if ($event->isMainRequest() && str_starts_with(RoutedPath::of($request), '/api/') && !$request->headers->has('X-Requested-With')) {
             $request->headers->set('X-Requested-With', 'XMLHttpRequest');
         }
     }

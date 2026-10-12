@@ -46,6 +46,19 @@ final class MfaEnrolmentTest extends ApiTestCase
         self::assertTrue($this->boolAt($this->section($this->json(), 'mfa'), 'required'));
     }
 
+    public function testThePathSpelledWithPercentEscapesIsHeldToo(): void
+    {
+        $this->createUser('op@twes.local', self::PASSWORD, operator: true, authenticator: false);
+        $this->login('op@twes.local', self::PASSWORD);
+        self::assertResponseIsSuccessful();
+
+        foreach (['/%61pi/platform/companies', '/api/%70latform/companies'] as $path) {
+            $this->getJson($path);
+            self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, $path);
+            self::assertSame('mfa_enrolment_required', $this->stringAt($this->json(), 'error'), $path);
+        }
+    }
+
     public function testEnrolmentHandsBackASecretAndAUriAnAuthenticatorCanRead(): void
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
