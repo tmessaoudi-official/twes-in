@@ -33,6 +33,13 @@ interface UserRepository
      */
     public function platformOperators(): array;
 
+    /**
+     * Every account holding an authenticator secret, pending or in force: what a key rotation reseals.
+     *
+     * @return list<User>
+     */
+    public function withTotpSecret(): array;
+
     /** Makes the user and every change to it durable. */
     public function save(User $user): void;
 }
