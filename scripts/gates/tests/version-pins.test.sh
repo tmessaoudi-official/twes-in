@@ -8,7 +8,7 @@ check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo 
 # A tree in which every copy of every pin agrees, shaped like the real files.
 tree() {
   local d; d=$(mktemp -d)
-  mkdir -p "$d/infra/api" "$d/infra/web" "$d/infra/postgres" "$d/api" "$d/web"
+  mkdir -p "$d/infra/api" "$d/infra/web" "$d/infra/postgres" "$d/infra/monitor" "$d/api" "$d/web"
   cat > "$d/compose.yaml" <<'EOF'
 services:
   postgres:
@@ -26,6 +26,7 @@ EOF
   printf 'FROM postgres:18.6-trixie\nRUN apt-get install -y pgbackrest\n' > "$d/infra/postgres/Dockerfile"
   printf '[twes]\npg1-path=/var/lib/postgresql/18/docker\n' > "$d/infra/postgres/pgbackrest.conf"
   printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine\n' > "$d/compose.deploy.yaml"
+  printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine\n  glitchtip-db:\n    image: postgres:18.6-trixie\n' > "$d/infra/monitor/compose.yaml"
   printf 'FROM node:26.8.2-alpine AS build\nFROM nginx:1.31.5-alpine\n' > "$d/infra/web/Dockerfile"
   printf 'FROM node:26.8.2-trixie-slim\nARG PLAYWRIGHT_VERSION=1.63.0\n' > "$d/infra/web/tools.Dockerfile"
   printf '{"packages":{"node_modules/@playwright/test":{"version":"1.63.0"}}}\n' > "$d/web/package-lock.json"
@@ -111,5 +112,14 @@ out=$(run "$d"); check "pgBackRest's data directory on another major than the im
 
 d=$(tree); sed -i '/pg1-path/d' "$d/infra/postgres/pgbackrest.conf"
 out=$(run "$d"); check "a pgBackRest configuration naming no data directory is refused" $? 1 "$out" "pgbackrest.conf"
+
+d=$(tree); sed -i 's/caddy:2.11.6-alpine/caddy:2.11.5-alpine/' "$d/infra/monitor/compose.yaml"
+out=$(run "$d"); check "the monitor's edge on another Caddy than the LAN door is named with its file" $? 1 "$out" "infra/monitor/compose.yaml"
+
+d=$(tree); sed -i 's/postgres:18.6-trixie/postgres:17.6-trixie/' "$d/infra/monitor/compose.yaml"
+out=$(run "$d"); check "the monitor's database on another postgres than compose.yaml's is named with its file" $? 1 "$out" "infra/monitor/compose.yaml"
+
+d=$(tree); rm "$d/infra/monitor/compose.yaml"
+out=$(run "$d"); check "a missing monitor compose file is refused, not skipped" $? 1 "$out" "infra/monitor/compose.yaml"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

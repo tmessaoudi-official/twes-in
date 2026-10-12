@@ -26,7 +26,7 @@ out=$(STEP=full run STEP_STATUS=3); check "a backup that failed exits with its o
 check "and tells the monitor it failed, and why" 0 0 "$(called)" "success=false --data-urlencode error=full exited 3"
 
 out=$(STEP=copy run); check "the nightly copy has its own heartbeat" $? 0 "$(called)" "Sauvegardes_Copie/external"
-out=$(STEP=verify run); check "so does the weekly verify" $? 0 "$(called)" "Sauvegardes_Verification/external"
+out=$(STEP=verify run); check "so does the weekly verify" $? 0 "$(called)" "Sauvegardes_Relecture/external"
 
 out=$(STEP=full run CURL_STATUS=7); check "a monitor that does not answer never fails the backup" $? 0 "$out" "did not take the Base heartbeat"
 

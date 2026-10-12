@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# What the monitor watches (docs/START.md § 15), each ${…} filled in by Gatus from infra/monitor/compose.yaml. The
+# dashboard is public: the status page linked from the sign-in footer. So every line has a plain name and hides its
+# address, host, port, conditions and errors; scripts/gates/monitor-config.sh refuses a line that shows one. A name
+# carries no accent: Gatus takes no heartbeat for one, and the backups post to Sauvegardes_<name>.
+storage:
+  type: sqlite
+  path: /data/data.db
+
+ui:
+  title: État du service
+  header: État du service
+
+# Nothing in an alert names a customer: the line's name, whether it failed, and when.
+alerting:
+  email:
+    from: "${ALERT_FROM}"
+    username: "${ALERT_SMTP_USERNAME}"
+    password: "${ALERT_SMTP_PASSWORD}"
+    host: "${ALERT_SMTP_HOST}"
+    port: ${ALERT_SMTP_PORT}
+    to: "${ALERT_TO}"
+    default-alert:
+      # Three failed reads in a row, three minutes, before anyone is woken; told again once it is back.
+      failure-threshold: 3
+      success-threshold: 2
+      send-on-resolved: true
+  telegram:
+    token: "${TELEGRAM_TOKEN}"
+    id: "${TELEGRAM_CHAT_ID}"
+    default-alert:
+      failure-threshold: 3
+      success-threshold: 2
+      send-on-resolved: true
+
+endpoints:
+  # The app answers, over a certificate with two weeks left at least: Caddy renews a month ahead, so two weeks left means
+  # renewal has been failing for two.
+  - name: Site
+    group: Application
+    url: "https://${TWES_HOST}/"
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 336h"
+    alerts: &alerts
+      - type: email
+      - type: telegram
+    ui: &hidden
+      hide-url: true
+      hide-hostname: true
+      hide-port: true
+      hide-conditions: true
+      hide-errors: true
+  # The queue, the disk and the archiving of the database, judged by the API itself (/api/health/deep): 503 when one fails.
+  - name: Traitements
+    group: Application
+    url: "https://${TWES_HOST}/api/health/deep"
+    headers:
+      Authorization: "Bearer ${MONITOR_TOKEN}"
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts: *alerts
+    ui: *hidden
+  - name: Suivi des erreurs
+    group: Surveillance
+    url: "https://${ERRORS_HOST}/_health/"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 336h"
+    alerts: *alerts
+    ui: *hidden
+
+# Each backup step says it ran (infra/postgres/backup/twes-backup); silence past its interval raises the alert. Base is
+# the nightly full or differential backup, Copie the files' nightly copy, Relecture the weekly read-back of both.
+external-endpoints:
+  - name: Base
+    group: Sauvegardes
+    token: "${MONITOR_HEARTBEAT_TOKEN}"
+    heartbeat:
+      interval: 26h
+    alerts: *alerts
+  - name: Copie
+    group: Sauvegardes
+    token: "${MONITOR_HEARTBEAT_TOKEN}"
+    heartbeat:
+      interval: 26h
+    alerts: *alerts
+  - name: Relecture
+    group: Sauvegardes
+    token: "${MONITOR_HEARTBEAT_TOKEN}"
+    heartbeat:
+      interval: 192h
+    alerts: *alerts

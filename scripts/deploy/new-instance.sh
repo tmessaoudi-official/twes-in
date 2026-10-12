@@ -34,6 +34,10 @@ BACKUP_S3_KEY=
 BACKUP_S3_SECRET=
 # BACKUP_S3_PORT=443
 # BACKUP_S3_URI_STYLE=host
+# The monitor, on a machine of its own (docs/START.md § 15): its status page's address, such as https://status.example,
+# and the DSN its error tracker gave this instance (infra/monitor/bootstrap.py prints it).
+MONITOR_URL=
+SENTRY_DSN=
 
 # The secrets, made for this instance alone.
 APP_SECRET=$(word 48)
@@ -43,6 +47,9 @@ REALTIME_API_KEY=$(word 48)
 POSTGRES_PASSWORD=$(word 40)
 BACKUP_DATABASE_PASSPHRASE=$(word 48)
 BACKUP_FILES_PASSPHRASE=$(word 48)
+# What the monitor reads the instance's health with, and what the backups' heartbeats carry: both copied to its values.
+MONITOR_TOKEN=$(word 48)
+MONITOR_HEARTBEAT_TOKEN=$(word 48)
 EOF
 chmod 600 "$file"
 
@@ -54,5 +61,6 @@ the backups, where nobody but you can read them (a password manager, and a seale
   BACKUP_FILES_PASSPHRASE      without it, no copy of the files can be read
   APP_SECRET                   signs the links and tokens the instance hands out; a new one voids those
   POSTGRES_PASSWORD            the restored database still answers to it
-The realtime keys can be made again at any time.
+The realtime keys can be made again at any time. Copy MONITOR_TOKEN and MONITOR_HEARTBEAT_TOKEN to the monitor's
+values (scripts/monitor/new-monitor.sh); a new pair is two edits, one on each side.
 EOF

@@ -33,6 +33,9 @@ x-deploy-environment: &deploy-environment
   FILES_S3_ACCESS_KEY: "${FILES_S3_ACCESS_KEY:-}"
   FILES_S3_SECRET_KEY: "${FILES_S3_SECRET_KEY:-}"
   FILES_S3_PATH_STYLE: "${FILES_S3_PATH_STYLE:-false}"
+  # The monitor (docs/START.md § 15): the token its health reads carry, and where errors are reported, scrubbed.
+  MONITOR_TOKEN: "${MONITOR_TOKEN:?set MONITOR_TOKEN, the token the monitor reads /api/health/deep with}"
+  SENTRY_DSN: "${SENTRY_DSN:?set SENTRY_DSN, the DSN the monitor's error tracker gave this instance}"
 
 services:
   edge:
@@ -70,6 +73,11 @@ services:
       CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "https://${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
   web:
     ports: !reset []
+  # Each backup step tells the monitor it ran; a step it never hears of raises the alert.
+  backup:
+    environment:
+      MONITOR_URL: "${MONITOR_URL:?set MONITOR_URL, the monitor's address, such as https://status.example}"
+      MONITOR_HEARTBEAT_TOKEN: "${MONITOR_HEARTBEAT_TOKEN:?set MONITOR_HEARTBEAT_TOKEN, the token the monitor takes heartbeats with}"
   gotenberg:
     ports: !reset []
   # Development's mail catcher: a deployment sends through its relay, so it never starts unless asked for by name.

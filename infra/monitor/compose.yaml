@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# The monitor (docs/START.md § 15), on a small machine of its own: what watches an instance must not fall with it. Gatus
+# reads the instance every minute, takes the backups' heartbeats, alerts by mail and Telegram and shows the public status
+# page; GlitchTip receives the instance's errors. Run with the values file scripts/monitor/new-monitor.sh starts:
+#   docker compose --env-file /etc/twes-monitor/monitor.env -f infra/monitor/compose.yaml up -d --wait
+# Every value is required, and only the edge publishes a port: Docker's published ports pass by the host's firewall.
+# scripts/gates/monitor-config.sh holds each of those promises.
+name: twes-monitor
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+services:
+  edge:
+    logging: *logging
+    restart: unless-stopped
+    image: caddy:2.11.6-alpine
+    environment:
+      STATUS_HOST: "${STATUS_HOST:?set STATUS_HOST, the name the status page answers on}"
+      ERRORS_HOST: "${ERRORS_HOST:?set ERRORS_HOST, the name the error tracker answers on}"
+      EDGE_TLS: "${EDGE_TLS:?set EDGE_TLS, the e-mail address the certificate authority writes to}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The certificates and the account with the authority: kept, or every restart asks for new ones and meets its limits.
+      - edge-data:/data
+      - edge-config:/config
+    depends_on:
+      gatus:
+        condition: service_started
+      glitchtip:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+
+  gatus:
+    logging: *logging
+    restart: unless-stopped
+    image: twinproduction/gatus:v5.37.0
+    # gatus.yaml names these as ${…}; Gatus fills them in when it reads the file.
+    environment:
+      TWES_HOST: "${TWES_HOST:?set TWES_HOST, the name the instance watched answers on}"
+      ERRORS_HOST: "${ERRORS_HOST:?set ERRORS_HOST, the name the error tracker answers on}"
+      MONITOR_TOKEN: "${MONITOR_TOKEN:?set MONITOR_TOKEN, the instance's own, from its values file}"
+      MONITOR_HEARTBEAT_TOKEN: "${MONITOR_HEARTBEAT_TOKEN:?set MONITOR_HEARTBEAT_TOKEN, the instance's own, from its values file}"
+      ALERT_SMTP_HOST: "${ALERT_SMTP_HOST:?set ALERT_SMTP_HOST, the alerts' mail relay}"
+      ALERT_SMTP_PORT: "${ALERT_SMTP_PORT:?set ALERT_SMTP_PORT, such as 587}"
+      ALERT_SMTP_USERNAME: "${ALERT_SMTP_USERNAME:?set ALERT_SMTP_USERNAME}"
+      ALERT_SMTP_PASSWORD: "${ALERT_SMTP_PASSWORD:?set ALERT_SMTP_PASSWORD}"
+      ALERT_FROM: "${ALERT_FROM:?set ALERT_FROM, the address alerts come from}"
+      ALERT_TO: "${ALERT_TO:?set ALERT_TO, who is told}"
+      TELEGRAM_TOKEN: "${TELEGRAM_TOKEN:?set TELEGRAM_TOKEN, the alert bot's}"
+      TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:?set TELEGRAM_CHAT_ID, the chat the bot writes to}"
+    volumes:
+      - ./gatus.yaml:/config/config.yaml:ro
+      # Each check's history, so the status page keeps its days across a restart.
+      - gatus-data:/data
+
+  glitchtip:
+    logging: *logging
+    restart: unless-stopped
+    image: glitchtip/glitchtip:6.2.6
+    # The web server and the worker in one process, with no Valkey: the database is the cache and the queue, which is
+    # enough for one instance's errors.
+    command: ./bin/run-all-in-one.sh
+    environment:
+      DATABASE_URL: "postgres://glitchtip:${GLITCHTIP_DB_PASSWORD:?set GLITCHTIP_DB_PASSWORD}@glitchtip-db:5432/glitchtip"
+      SECRET_KEY: "${GLITCHTIP_SECRET_KEY:?set GLITCHTIP_SECRET_KEY}"
+      GLITCHTIP_DOMAIN: "https://${ERRORS_HOST:?set ERRORS_HOST, the name the error tracker answers on}"
+      ALLOWED_HOSTS: "${ERRORS_HOST:?set ERRORS_HOST, the name the error tracker answers on}"
+      CSRF_TRUSTED_ORIGINS: "https://${ERRORS_HOST:?set ERRORS_HOST, the name the error tracker answers on}"
+      VALKEY_URL: ""
+      # Nobody signs up: the operator's account is made once (docs/START.md § 15), and a stranger finds a closed door.
+      ENABLE_USER_REGISTRATION: "false"
+      ENABLE_ORGANIZATION_CREATION: "false"
+      # Gatus watches; GlitchTip only receives errors.
+      GLITCHTIP_ENABLE_UPTIME: "false"
+      # An error report is kept a month: long enough to see a pattern, short enough to keep little.
+      GLITCHTIP_MAX_EVENT_LIFE_DAYS: "30"
+      EMAIL_HOST: "${ALERT_SMTP_HOST:?set ALERT_SMTP_HOST, the alerts' mail relay}"
+      EMAIL_PORT: "${ALERT_SMTP_PORT:?set ALERT_SMTP_PORT, such as 587}"
+      EMAIL_HOST_USER: "${ALERT_SMTP_USERNAME:?set ALERT_SMTP_USERNAME}"
+      EMAIL_HOST_PASSWORD: "${ALERT_SMTP_PASSWORD:?set ALERT_SMTP_PASSWORD}"
+      EMAIL_USE_TLS: "${ALERT_SMTP_STARTTLS:-true}"
+      DEFAULT_FROM_EMAIL: "${ALERT_FROM:?set ALERT_FROM, the address alerts come from}"
+    # Asked under its own name: Django answers any host outside ALLOWED_HOSTS 400, 127.0.0.1 included.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8000/_health/', headers={'Host': os.environ['ALLOWED_HOSTS']}), timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    depends_on:
+      glitchtip-db:
+        condition: service_healthy
+
+  glitchtip-db:
+    logging: *logging
+    restart: unless-stopped
+    image: postgres:18.6-trixie
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_DB: glitchtip
+      POSTGRES_PASSWORD: "${GLITCHTIP_DB_PASSWORD:?set GLITCHTIP_DB_PASSWORD}"
+    volumes:
+      - glitchtip-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "glitchtip", "-d", "glitchtip"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  edge-data:
+  edge-config:
+  gatus-data:
+  glitchtip-db:

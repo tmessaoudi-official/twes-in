@@ -58,6 +58,9 @@ fact BACKUP_S3_REGION us-east-1
 fact BACKUP_S3_KEY "check$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 fact BACKUP_S3_SECRET "$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 printf 'BACKUP_S3_PORT=8333\nBACKUP_S3_URI_STYLE=path\n' >> "$values"
+# No monitor here (make monitor-check boots one): names that resolve nowhere, which the instance must survive.
+fact MONITOR_URL "https://status.$HOST"
+fact SENTRY_DSN "https://check@errors.$HOST/1"
 BACKUP_S3_KEY=$(grep '^BACKUP_S3_KEY=' "$values" | cut -d= -f2) BACKUP_S3_SECRET=$(grep '^BACKUP_S3_SECRET=' "$values" | cut -d= -f2)
 BACKUP_S3_BUCKET=twes-backups
 

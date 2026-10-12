@@ -1,0 +1,34 @@
+# The instance's side of the monitor check (scripts/monitor/monitor-check.sh), over the deploy check's files: the edge
+# answers on the shared network under the instance's name, and what talks to the monitor (the api and the worker report
+# errors, the backups send heartbeats) joins it and trusts the monitor's throwaway authority, read from CHECK_DIR.
+services:
+  edge:
+    networks:
+      default:
+      monitor-check:
+        aliases:
+          - "${TWES_HOST:?run through scripts/monitor/monitor-check.sh}"
+  api:
+    environment:
+      # Added to the compiled scan directory (the leading colon): curl.cainfo names the monitor's authority.
+      PHP_INI_SCAN_DIR: ":/check/php"
+    volumes:
+      - "${CHECK_DIR:?run through scripts/monitor/monitor-check.sh}:/check:ro"
+    networks: [default, monitor-check]
+  worker:
+    environment:
+      PHP_INI_SCAN_DIR: ":/check/php"
+    volumes:
+      - "${CHECK_DIR}:/check:ro"
+    networks: [default, monitor-check]
+  backup:
+    environment:
+      CURL_CA_BUNDLE: /check/monitor-root.crt
+    volumes:
+      - "${CHECK_DIR}:/check:ro"
+    networks: [default, monitor-check]
+
+networks:
+  monitor-check:
+    external: true
+    name: twes-monitor-check

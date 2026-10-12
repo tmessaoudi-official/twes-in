@@ -92,9 +92,11 @@ main() {
   case "${1:-}" in
     run) init; exec supercronic -passthrough-logs /etc/twes-backup/crontab ;;
     init) init ;;
+    # Each name is the step's line on the public status page (infra/monitor/gatus.yaml), unaccented: Gatus takes no
+    # heartbeat for a name with an accent.
     full|diff) trap "heartbeat Base $1" EXIT; base_backup "$1" ;;
     copy) trap 'heartbeat Copie copy' EXIT; copy ;;
-    verify) trap 'heartbeat Verification verify' EXIT; verify ;;
+    verify) trap 'heartbeat Relecture verify' EXIT; verify ;;
     *) echo "usage: twes-backup run|init|full|diff|copy|verify" >&2; exit 64 ;;
   esac
 }
