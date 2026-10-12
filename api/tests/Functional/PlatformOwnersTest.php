@@ -84,6 +84,31 @@ final class PlatformOwnersTest extends ApiTestCase
         self::assertNull(self::getMailerMessage());
     }
 
+    public function testACompanyThatStillHasAnOwnerIsNotGivenAnotherFromThePlatform(): void
+    {
+        // Operators keep no standing access: owning a working company is its owners' to give, through their own invitations.
+        $company = $this->createCompany('Acme');
+        $this->createUser('owner@example.test', self::PASSWORD, $company, ['*'], Role::OWNER);
+        $this->signedInAsOperator();
+
+        $this->postJson($this->ownersOf($company), ['email' => 'op@twes.local']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame([], $this->queued());
+        self::assertSame([], $this->em()->getConnection()->fetchFirstColumn('SELECT id FROM invitation'));
+    }
+
+    public function testAWorkingCompanyWhoseOwnersAreGoneIsGivenOne(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('manager@example.test', self::PASSWORD, $company, ['customer.read'], 'manager');
+        $this->signedInAsOperator();
+
+        $this->postJson($this->ownersOf($company), ['email' => 'nadia@example.test']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
     public function testTheAddressMustBeOne(): void
     {
         $company = $this->pendingCompany();

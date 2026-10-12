@@ -33,6 +33,19 @@ final class CsrfRequestListenerTest extends TestCase
         self::assertSame(['error' => 'csrf_token_missing'], $this->body($event));
     }
 
+    public function testAPathSpelledWithPercentEscapesIsCheckedAsTheRouterReadsIt(): void
+    {
+        foreach (['/%61pi/auth/login', '/api/%61uth/login', '/%2Fapi/auth/login'] as $path) {
+            $event = $this->dispatch(Request::create($path, 'POST', server: ['HTTP_HOST' => 'localhost:8090', 'HTTP_ORIGIN' => 'http://localhost:8090']));
+            if ('/%2Fapi/auth/login' === $path) {
+                // Decoded once it reads //api/..., which no route answers: not the API, as the router sees it.
+                self::assertNull($event->getResponse(), $path);
+                continue;
+            }
+            self::assertSame(['error' => 'csrf_token_missing'], $this->body($event), $path);
+        }
+    }
+
     public function testAShortHeaderIsRefusedAsMissing(): void
     {
         $event = $this->dispatch(Request::create('/api/auth/login', 'POST', server: ['HTTP_HOST' => 'localhost:8090', 'HTTP_CSRF_TOKEN' => 'short']));

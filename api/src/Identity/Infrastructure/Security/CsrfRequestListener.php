@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use App\Shared\Infrastructure\Http\RoutedPath;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -60,7 +61,7 @@ final readonly class CsrfRequestListener
 
     private function isCovered(Request $request): bool
     {
-        $path = $request->getPathInfo();
+        $path = RoutedPath::of($request);
 
         return str_starts_with($path, '/api/') && !\in_array($path, self::EXEMPT_PATHS, true);
     }

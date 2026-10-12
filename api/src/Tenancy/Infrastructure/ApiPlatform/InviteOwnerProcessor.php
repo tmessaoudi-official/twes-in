@@ -15,9 +15,8 @@ use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Tenancy\Application\Company\AlreadyAMember;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\RoleNotManageable;
-use App\Tenancy\Application\Invitation\InviteRequest;
-use App\Tenancy\Application\Invitation\InviteToCompany;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Application\Invitation\CompanyHasOwners;
+use App\Tenancy\Application\Invitation\InviteOwnerFromPlatform;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -32,7 +31,7 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
  */
 final readonly class InviteOwnerProcessor implements ProcessorInterface
 {
-    public function __construct(private InviteToCompany $invite, private Security $security)
+    public function __construct(private InviteOwnerFromPlatform $invite, private Security $security)
     {
     }
 
@@ -44,13 +43,10 @@ final readonly class InviteOwnerProcessor implements ProcessorInterface
         }
 
         try {
-            $outcome = $this->invite->handle(
-                new InviteRequest(CompanyPath::identifier($uriVariables, 'companyId'), $data->email, Role::OWNER),
-                $account->getId(),
-            );
+            $outcome = $this->invite->handle(CompanyPath::identifier($uriVariables, 'companyId'), $data->email, $account->getId());
         } catch (CompanyNotFound $notFound) {
             throw new NotFoundHttpException($notFound->getMessage(), $notFound);
-        } catch (AlreadyAMember $already) {
+        } catch (AlreadyAMember|CompanyHasOwners $already) {
             throw new ConflictHttpException($already->getMessage(), $already);
         } catch (RoleNotManageable $refused) {
             // An operator who is also a member below owner of this company is bounded by that role, as in the company.

@@ -66,6 +66,19 @@ final class CustomerScreenLockTest extends ApiTestCase
         }
     }
 
+    public function testAPathSpelledWithPercentEscapesIsHeldToo(): void
+    {
+        $this->postJson($this->companyPath().'/customer-screen/lock', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $id = $this->company->getId()->toRfc4122();
+
+        foreach (['/%61pi/companies/'.$id.'/customers', '/api/companies/%'.bin2hex($id[0]).substr($id, 1).'/customers', '/api/me/%63ompanies'] as $path) {
+            $this->getJson($path);
+            self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, $path);
+            self::assertSame('customer_screen_locked', $this->json()['error'] ?? null, $path);
+        }
+    }
+
     public function testTheLockHoldsTheScreenToItsOwnCompany(): void
     {
         $other = $this->createCompany('Other');

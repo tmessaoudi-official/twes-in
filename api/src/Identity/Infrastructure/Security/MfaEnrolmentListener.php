@@ -11,6 +11,7 @@ namespace App\Identity\Infrastructure\Security;
 
 use App\Identity\Application\Mfa\SecondFactors;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Infrastructure\Http\RoutedPath;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -56,11 +57,11 @@ final readonly class MfaEnrolmentListener
 
         $request = $event->getRequest();
 
-        $path = rtrim($request->getPathInfo(), '/');
+        $path = rtrim(RoutedPath::of($request), '/');
 
         if (!str_starts_with($path, '/api')
             || \in_array($path, self::ALLOWED_EXACTLY, true)
-            || str_starts_with($request->getPathInfo(), self::ALLOWED_PREFIX)
+            || str_starts_with(RoutedPath::of($request), self::ALLOWED_PREFIX)
         ) {
             return;
         }

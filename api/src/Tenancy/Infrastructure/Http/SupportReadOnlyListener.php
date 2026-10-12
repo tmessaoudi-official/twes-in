@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\Http;
 
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Shared\Infrastructure\Http\RoutedPath;
 use App\Tenancy\Application\Support\RecordSupportVisit;
 use App\Tenancy\Application\Support\SupportAccess;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -42,7 +43,7 @@ final readonly class SupportReadOnlyListener
     public function onRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
-        if (!$event->isMainRequest() || !$request->hasPreviousSession() || 1 !== preg_match(self::COMPANY_PATH, $request->getPathInfo(), $match)) {
+        if (!$event->isMainRequest() || !$request->hasPreviousSession() || 1 !== preg_match(self::COMPANY_PATH, RoutedPath::of($request), $match)) {
             return;
         }
         $account = $this->security->getUser();
@@ -54,7 +55,7 @@ final readonly class SupportReadOnlyListener
         if (null === $grant) {
             return;
         }
-        if (!$request->isMethod('GET') || str_contains($request->getPathInfo(), '/exports/')) {
+        if (!$request->isMethod('GET') || str_contains(RoutedPath::of($request), '/exports/')) {
             $event->setResponse(new JsonResponse(['error' => SupportAccess::READ_ONLY], Response::HTTP_FORBIDDEN));
 
             return;
