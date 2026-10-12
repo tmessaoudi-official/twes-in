@@ -1,0 +1,39 @@
+# Errors to the instance's own GlitchTip (docs/START.md § 15), which speaks Sentry's protocol: the API through this
+# SDK, the web through the API (POST /api/client-errors). Production only, and only once SENTRY_DSN names a project;
+# empty, as in development, CI and a self-hosted install without a monitor, nothing is sent. Every report passes through
+# ScrubPersonalData before it leaves.
+when@prod:
+    sentry:
+        dsn: '%env(SENTRY_DSN)%'
+        options:
+            environment: '%env(DEPLOY_ENV)%'
+            release: '%env(BUILD_VERSION)%'
+            # No person, body, cookie, header or client address, whatever an integration would add.
+            send_default_pii: false
+            max_request_body_size: never
+            before_send: App\Shared\Infrastructure\ErrorReporting\ScrubPersonalData
+            # A tracker that is down or unreachable costs a request at most this, never a hang.
+            http_connect_timeout: 1
+            http_timeout: 2
+            in_app_exclude: ['%kernel.project_dir%/vendor']
+        # One road in, Monolog at error level, as the SDK's own guide sets it beside Monolog: Symfony logs every uncaught
+        # exception, PHP error and fatal there, a failed command too, and a message Messenger gives up on (its retries
+        # are warnings), so the SDK's own listeners would report each a second time.
+        register_error_listener: false
+        register_error_handler: false
+        messenger:
+            enabled: false
+
+    # What the code catches and logs at error level reaches the tracker as well, without the log record's context.
+    monolog:
+        handlers:
+            sentry:
+                type: service
+                id: Sentry\Monolog\Handler
+
+    services:
+        Sentry\Monolog\Handler:
+            arguments:
+                $hub: '@Sentry\State\HubInterface'
+                $level: !php/const Monolog\Level::Error
+                $fillExtraContext: false

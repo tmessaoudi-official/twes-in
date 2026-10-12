@@ -10,6 +10,7 @@
 - [2026-10-12 15:16] AGREED: plan approved: deep health, backup heartbeats, API errors through sentry-symfony, web errors through the API, the monitor machine's compose (Gatus, GlitchTip all-in-one), make monitor-check, the status link and legal line, then the deploy overlay requiring the monitor (developer)
 - [2026-10-12 15:31] AGREED: heartbeats leave the backup image through Debian's curl, installed pinned from the same signed sources and aggregated like pgBackRest, restic and supercronic, named in the notices sentence (developer)
 - [2026-10-12 15:31] AGREED: the backup image fetches only its own architecture's supercronic asset, still checked against its pinned sha256: the deploy check's first CI failure was that asset's download (developer)
+- [2026-10-12 15:45] ASSUMED (review): The error scrubber masks addresses, anything quoted ("…", «…», '…') and runs of six digits or more in messages and exception values, keeps the URL without query, drops user, extra, breadcrumbs and frame variables — because a message may name a customer's value and these shapes cover the ones the code writes. Alternatives: drop messages entirely (reports become unreadable); mask nothing beyond send_default_pii (values leak).
 
 ## Formal Plan
 
@@ -54,9 +55,9 @@ Not covered, said so: nothing watches the monitor machine; web stacks stay minif
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | Deep health behind a token | M | done | - | api/src/Shared/Infrastructure/Health/** api/tests/** compose.backup.yaml |
-| 2 | Backup heartbeats | S | done | - | infra/postgres/backup/** compose.backup.yaml |
-| 3 | API errors through sentry-symfony, scrubbed | M | todo | - | api/** |
+| 1 | Deep health behind a token | M | done | 5b88cf9d | api/src/Shared/Infrastructure/Health/** api/tests/** compose.backup.yaml |
+| 2 | Backup heartbeats | S | done | 5b88cf9d | infra/postgres/backup/** compose.backup.yaml |
+| 3 | API errors through sentry-symfony, scrubbed | M | doing | - | api/** |
 | 4 | Web errors through the API | M | todo | - | api/src/** web/src/app/shared/** |
 | 5 | Monitor machine compose, gatus.yaml, its gate | M | todo | - | infra/monitor/** scripts/monitor/** scripts/gates/** |
 | 6 | make monitor-check and its workflow | M | todo | - | scripts/monitor/** .github/workflows/** Makefile |
