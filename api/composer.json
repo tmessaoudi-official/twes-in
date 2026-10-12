@@ -20,6 +20,7 @@
     "league/flysystem-async-aws-s3": "^3",
     "league/flysystem-local": "^3",
     "openspout/openspout": "^5.12",
+    "sentry/sentry-symfony": "^5.14",
     "spomky-labs/otphp": "^11.5",
     "symfony/config": "8.1.*",
     "symfony/console": "8.1.*",

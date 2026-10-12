@@ -8,7 +8,7 @@ Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, Frank
 backup image installs (pgBackRest, MIT; restic, BSD-2-Clause; supercronic, MIT; curl, curl; see `docs/UPDATE.md`), are
 aggregated, not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 108 runtime, 54 dev
+## api (Composer) — 115 runtime, 54 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -41,6 +41,8 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | evenement/evenement | 3.0.2 | MIT | dev |
 | fidry/cpu-core-counter | 1.4.1 | MIT | dev |
 | friendsofphp/php-cs-fixer | 3.95.27 | MIT | dev |
+| guzzlehttp/psr7 | 3.1.0 | MIT | runtime |
+| jean85/pretty-package-versions | 2.1.1 | MIT | runtime |
 | league/flysystem | 3.36.0 | MIT | runtime |
 | league/flysystem-async-aws-s3 | 3.31.0 | MIT | runtime |
 | league/flysystem-local | 3.35.3 | MIT | runtime |
@@ -70,6 +72,8 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | psr/clock | 1.0.0 | MIT | runtime |
 | psr/container | 2.0.2 | MIT | runtime |
 | psr/event-dispatcher | 1.0.0 | MIT | runtime |
+| psr/http-factory | 1.1.0 | MIT | runtime |
+| psr/http-message | 2.0 | MIT | runtime |
 | psr/link | 2.0.1 | MIT | runtime |
 | psr/log | 3.0.2 | MIT | runtime |
 | react/cache | 1.2.0 | MIT | dev |
@@ -94,6 +98,8 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | sebastian/recursion-context | 8.0.1 | BSD-3-Clause | dev |
 | sebastian/type | 7.0.2 | BSD-3-Clause | dev |
 | sebastian/version | 7.0.0 | BSD-3-Clause | dev |
+| sentry/sentry | 4.34.0 | MIT | runtime |
+| sentry/sentry-symfony | 5.14.0 | MIT | runtime |
 | spomky-labs/cbor-php | 3.4.2 | MIT | runtime |
 | spomky-labs/otphp | 11.5.0 | MIT | runtime |
 | spomky-labs/pki-framework | 1.6.3 | MIT | runtime |
@@ -144,6 +150,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | symfony/process | 8.1.7 | MIT | dev |
 | symfony/property-access | 8.1.4 | MIT | runtime |
 | symfony/property-info | 8.1.8 | MIT | runtime |
+| symfony/psr-http-message-bridge | 8.1.0 | MIT | runtime |
 | symfony/rate-limiter | 8.1.6 | MIT | runtime |
 | symfony/routing | 8.1.8 | MIT | runtime |
 | symfony/runtime | 8.1.0 | MIT | runtime |
