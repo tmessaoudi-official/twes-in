@@ -153,6 +153,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/outcomes-as-toasts.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-log-rotation.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/deploy-overlay.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/release-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/monitor-config.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/version-pins.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/host-tools.test.sh
@@ -188,6 +189,7 @@ in-gate-licences:
 	bash scripts/gates/outcomes-as-toasts.sh
 	bash scripts/gates/compose-log-rotation.sh
 	bash scripts/gates/deploy-overlay.sh
+	bash scripts/gates/release-overlay.sh
 	bash scripts/gates/monitor-config.sh
 	bash scripts/gates/version-pins.sh
 	bash scripts/gates/host-tools.sh
