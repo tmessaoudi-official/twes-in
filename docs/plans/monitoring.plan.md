@@ -68,7 +68,7 @@ Not covered, said so: nothing watches the monitor machine; web stacks stay minif
 | 4 | Web errors through the API | M | done | cc1ca99b | api/src/** web/src/app/shared/** |
 | 5 | Monitor machine compose, gatus.yaml, its gate | M | done | a0311fa1 | infra/monitor/** scripts/monitor/** scripts/gates/** |
 | 6 | make monitor-check and its workflow | M | done | a0311fa1 | scripts/monitor/** .github/workflows/** Makefile |
-| 7 | Status link and legal monitor provider | S | todo | - | api/src/** api/resources/legal/** web/** |
+| 7 | Status link and legal monitor provider | S | done | 3b4553e3 | api/src/** api/resources/legal/** web/** |
 | 8 | Deploy overlay requires the monitor, docs, sabotages | M | doing | - | compose.deploy.yaml scripts/** docs/** CLAUDE.md |
 <!-- /progress-block -->
 ### Blocked
