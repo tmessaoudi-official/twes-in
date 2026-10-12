@@ -87,6 +87,15 @@ final readonly class RunDataChecks
         return $runs;
     }
 
+    /**
+     * The translation key of a check's name, the same in the screen texts and the mails: an operator reads the check
+     * by its name, the console by its code.
+     */
+    public static function labelKey(string $check): string
+    {
+        return 'data_checks.'.str_replace('.', '_', $check);
+    }
+
     /** @return list<CheckRun> */
     private function run(): array
     {
@@ -125,7 +134,7 @@ final readonly class RunDataChecks
                 $this->notifications->publish(new Notification(
                     'user:'.$operator->getId()->toRfc4122(),
                     self::NOTIFICATION_FAILED,
-                    ['check' => $group['check'], 'company' => $company ?? '—', 'count' => $group['count']],
+                    ['check' => $group['check'], 'label_key' => self::labelKey($group['check']), 'company' => $company ?? '—', 'count' => $group['count']],
                 ));
             }
         }

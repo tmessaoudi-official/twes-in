@@ -52,7 +52,7 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
             ->locale($mail->locale)
             ->context([
                 'kind' => $kind,
-                'sentence' => $this->translator->trans("notification.types.$key", self::parameters($mail->payload), 'emails', $mail->locale),
+                'sentence' => $this->translator->trans("notification.types.$key", $this->parameters($mail->payload, $mail->locale), 'emails', $mail->locale),
                 'companyName' => $mail->companyName,
                 'openUrl' => $this->openUrl,
                 'stopUrl' => $stopUrl,
@@ -67,9 +67,10 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
     /**
      * @param array<string, scalar|null> $payload
      *
-     * @return array<string, string> each value under its %name%, as the sentence reads it
+     * @return array<string, string> each value under its %name%, as the sentence reads it; a thing named by its
+     *                               translation key (`label_key`, as the screen reads it) is named in the mail's language as %label%
      */
-    private static function parameters(array $payload): array
+    private function parameters(array $payload, string $locale): array
     {
         $parameters = [];
         foreach ($payload as $name => $value) {
@@ -78,6 +79,10 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
                 \is_bool($value) => $value ? '1' : '0',
                 default => (string) $value,
             };
+        }
+
+        if (\is_string($payload['label_key'] ?? null)) {
+            $parameters['%label%'] = $this->translator->trans($payload['label_key'], [], 'emails', $locale);
         }
 
         return $parameters;

@@ -21,6 +21,10 @@ use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\ApplicationTester;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mime\Email;
+use Symfony\Component\Mime\RawMessage;
+use Symfony\Component\Translation\TranslatorBagInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * The data check (docs/SPEC.md § 8 row 182): every invariant the contexts declare, run over the whole database, each
@@ -77,10 +81,18 @@ final class DataCheckTest extends ApiTestCase
         $told = $this->told();
         self::assertNotSame([], $told);
         foreach ($told as $payload) {
-            self::assertSame(['check', 'company', 'count'], array_keys($payload));
+            self::assertSame(['check', 'label_key', 'company', 'count'], array_keys($payload));
             self::assertSame('Acme', $payload['company']);
             self::assertStringNotContainsString('FAC-', (string) json_encode($payload), 'no document number reaches an operator');
         }
+
+        // The mail names each check by its label in the operator's language, never by its code.
+        self::assertGreaterThan(0, $this->deliverQueued());
+        $bodies = implode("\n", array_map(static fn (RawMessage $mail): string => $mail instanceof Email ? (string) $mail->getHtmlBody() : '', self::getMailerMessages()));
+        self::assertStringContainsString('Chaîne des factures', $bodies);
+        self::assertStringNotContainsString('data_checks.', $bodies);
+        self::assertStringNotContainsString('invoices.chain', $bodies);
+        self::assertStringNotContainsString('FAC-', $bodies);
     }
 
     public function testTheNewestDocumentTakenOutIsFound(): void
@@ -134,6 +146,25 @@ final class DataCheckTest extends ApiTestCase
         $this->connection()->executeStatement('UPDATE invoice SET customer_id = ? WHERE id = ?', [$this->customerOf($elsewhere, 'Globex'), $id]);
 
         self::assertContains('references.company', $this->checksFound());
+    }
+
+    public function testEveryCheckDeclaredIsNamedInEveryLanguageOfTheMailsAndTheScreens(): void
+    {
+        $checks = static::getContainer()->get(RunDataChecks::class)->checks();
+        self::assertGreaterThanOrEqual(4, \count($checks));
+        $translator = static::getContainer()->get(TranslatorInterface::class);
+        self::assertInstanceOf(TranslatorBagInterface::class, $translator);
+        foreach (['fr', 'en'] as $language) {
+            $screens = json_decode((string) file_get_contents(\dirname(__DIR__, 3).'/web/public/i18n/'.$language.'.json'), true, flags: \JSON_THROW_ON_ERROR);
+            self::assertIsArray($screens);
+            foreach ($checks as $check) {
+                $key = RunDataChecks::labelKey($check);
+                self::assertTrue($translator->getCatalogue($language)->defines($key, 'emails'), "$key in emails.$language.yaml");
+                [$section, $name] = explode('.', $key, 2);
+                self::assertIsArray($screens[$section] ?? null);
+                self::assertIsString($screens[$section][$name] ?? null, "$key in web/public/i18n/$language.json");
+            }
+        }
     }
 
     /** @return list<DataFinding> */
