@@ -49,6 +49,8 @@ final class DataCheckTest extends ApiTestCase
     {
         $this->issue($this->draft('100'));
         $this->issue($this->draft('200'));
+        // What the demo data has none of: a document discount, under a percentage tax.
+        $this->issue($this->draft('333.333', discount: '12.5', taxed: true));
 
         self::assertSame([], $this->findings());
         $run = $this->check();
@@ -101,6 +103,24 @@ final class DataCheckTest extends ApiTestCase
         $second = $this->draft('200');
         $this->issue($second);
         $this->connection()->executeStatement("UPDATE invoice SET number = regexp_replace(number, '[0-9]+$', '00009') WHERE id = ?", [$second]);
+
+        self::assertContains('invoices.numbering', $this->checksFound());
+    }
+
+    public function testNumbersStartingAgainAtOneWhereAMonthBeginsAreNoGapWhateverTheResetSaysToday(): void
+    {
+        $ids = [$this->draft('100'), $this->draft('200'), $this->draft('300'), $this->draft('400')];
+        foreach ($ids as $id) {
+            $this->issue($id);
+        }
+        // Numbered yearly for two months, then monthly: a series' reset may be revised once it has numbered documents.
+        $this->renumber($ids, [['2026-01-10', 'FAC-2026-01-00001'], ['2026-01-20', 'FAC-2026-01-00002'], ['2026-02-05', 'FAC-2026-02-00003'], ['2026-03-01', 'FAC-2026-03-00001']]);
+        $this->connection()->executeStatement("UPDATE numbering_series SET reset_period = 'monthly' WHERE company_id = ? AND document_type = 'invoice'", [$this->company->getId()->toRfc4122()]);
+
+        self::assertNotContains('invoices.numbering', $this->checksFound());
+
+        // Starting again anywhere but where a month begins is a gap.
+        $this->renumber([$ids[3]], [['2026-02-20', 'FAC-2026-02-00001']]);
 
         self::assertContains('invoices.numbering', $this->checksFound());
     }
@@ -177,10 +197,27 @@ final class DataCheckTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
-    private function draft(string $price): string
+    /**
+     * @param list<string>                $ids
+     * @param list<array{string, string}> $days the issue day and the number each document is given
+     */
+    private function renumber(array $ids, array $days): void
+    {
+        foreach ($ids as $n => $id) {
+            $this->connection()->executeStatement('UPDATE invoice SET issue_date = ?, number = ? WHERE id = ?', [$days[$n][0], $days[$n][1], $id]);
+        }
+    }
+
+    private function draft(string $price, ?string $discount = null, bool $taxed = false): string
     {
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($unit);
+        $taxes = [];
+        if ($taxed) {
+            $vat = $this->connection()->fetchOne("SELECT id FROM tax_component WHERE company_id = ? AND code = 'TVA19'", [$this->company->getId()->toRfc4122()]);
+            self::assertIsString($vat);
+            $taxes = [$vat];
+        }
         $this->postJson($this->path(), [
             'customerId' => $this->customerId,
             'establishmentId' => null,
@@ -189,9 +226,9 @@ final class DataCheckTest extends ApiTestCase
             'customerReference' => null,
             'notesPrinted' => null,
             'notesInternal' => null,
-            'discountAmount' => null,
+            'discountAmount' => $discount,
             'documentTaxComponentIds' => null,
-            'lines' => [['description' => 'Conseil', 'quantity' => '2', 'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => $price, 'taxComponentIds' => []]],
+            'lines' => [['description' => 'Conseil', 'quantity' => '2', 'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => $price, 'taxComponentIds' => $taxes]],
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 

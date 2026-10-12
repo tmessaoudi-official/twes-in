@@ -89,10 +89,12 @@ final readonly class InvoiceDataChecks implements DeclaresDataChecks
     }
 
     /**
-     * Each series' numbers, per period it starts again in, run from one to the last without a gap or a repeat; the
-     * first period may start higher, where the company continued a sequence begun elsewhere. The sequence is the
-     * number's last digits, which is where every format ends it; a series whose format prints something after it is
-     * not checked here rather than reported every night for a gap it does not have.
+     * Each series' numbers, in the order they were issued, follow one another, or start again at one where a month
+     * begins: read from the documents, not from the series' reset as it stands today, which may have been revised
+     * since (yearly to monthly) and would then see a gap at every month the earlier numbers ran through. The first
+     * number may be any, where the company continued a sequence begun elsewhere. The sequence is the number's last
+     * digits, which is where every format ends it; a series whose format prints something after it is not checked
+     * here rather than reported every night for a gap it does not have.
      *
      * @return iterable<DataFinding>
      */
@@ -100,36 +102,31 @@ final readonly class InvoiceDataChecks implements DeclaresDataChecks
     {
         $rows = $this->connection->iterateAssociative(<<<'SQL'
             WITH numbered AS (
-                SELECT i.company_id, i.establishment_id, i.document_type,
-                       CASE s.reset_period WHEN 'yearly' THEN to_char(i.issue_date, 'YYYY') WHEN 'monthly' THEN to_char(i.issue_date, 'YYYY-MM') ELSE '' END AS period,
-                       substring(i.number FROM '([0-9]+)$')::bigint AS sequence
+                SELECT i.company_id, i.establishment_id, i.document_type, i.number, i.issue_date,
+                       substring(i.number FROM '([0-9]+)$')::bigint AS sequence,
+                       LAG(substring(i.number FROM '([0-9]+)$')::bigint) OVER issued AS previous,
+                       LAG(i.issue_date) OVER issued AS previous_day,
+                       ROW_NUMBER() OVER issued AS nth
                 FROM invoice i
                 JOIN numbering_series s ON s.establishment_id = i.establishment_id AND s.document_type = i.document_type AND s.is_default
                 WHERE i.number IS NOT NULL AND s.format ~ '\{SEQ(:[0-9]+)?\}$'
-            ), periods AS (
-                SELECT company_id, establishment_id, document_type, period,
-                       COUNT(*) FILTER (WHERE sequence IS NULL) AS unreadable,
-                       COUNT(sequence) AS numbered, COUNT(DISTINCT sequence) AS different, MIN(sequence) AS first, MAX(sequence) AS last,
-                       ROW_NUMBER() OVER (PARTITION BY company_id, establishment_id, document_type ORDER BY period) AS nth
-                FROM numbered
-                GROUP BY company_id, establishment_id, document_type, period
+                -- The order issuing gave them: by day, then by number within it, the shorter first where it is not padded.
+                WINDOW issued AS (PARTITION BY i.company_id, i.establishment_id, i.document_type ORDER BY i.issue_date, LENGTH(i.number), i.number, i.id)
             )
-            SELECT company_id, establishment_id, document_type, period, unreadable, numbered, different, first, last, nth
-            FROM periods
-            WHERE unreadable > 0 OR different <> numbered OR last - first + 1 <> numbered OR (nth > 1 AND first <> 1)
-            ORDER BY company_id, establishment_id, document_type, period
+            SELECT company_id, establishment_id, document_type, number, previous
+            FROM numbered
+            WHERE sequence IS NULL
+               OR (nth > 1 AND previous IS NOT NULL AND sequence <> previous + 1
+                   AND NOT (sequence = 1 AND date_trunc('month', issue_date) <> date_trunc('month', previous_day)))
+            ORDER BY company_id, establishment_id, document_type, issue_date, number
             SQL);
         foreach ($rows as $row) {
             yield new DataFinding(self::NUMBERING, self::uuid($row['company_id']), \sprintf(
-                '%s of establishment %s, period %s: %s numbers from %s to %s, %s different, %s unreadable',
+                '%s %s of establishment %s does not follow %s',
                 self::text($row['document_type']),
+                self::text($row['number']),
                 self::text($row['establishment_id']),
-                '' === $row['period'] ? '-' : self::text($row['period']),
-                self::text($row['numbered']),
-                self::text($row['first'] ?? '-'),
-                self::text($row['last'] ?? '-'),
-                self::text($row['different']),
-                self::text($row['unreadable']),
+                null === $row['previous'] ? 'anything: its sequence cannot be read' : self::text($row['previous']),
             ));
         }
     }

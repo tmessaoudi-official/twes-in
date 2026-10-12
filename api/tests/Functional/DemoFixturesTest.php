@@ -58,7 +58,8 @@ final class DemoFixturesTest extends ApiTestCase
             self::assertSame(0, $this->numberOf('SELECT COUNT(*) FROM invoice WHERE company_id = ? AND number IS NOT NULL AND chain_hash IS NULL', [$id]), "$name chains every document it issued");
             $this->em()->clear();
             self::assertSame([], static::getContainer()->get(VerifyInvoiceChains::class)->of(Uuid::fromString(\is_string($id) ? $id : self::fail('A company has an id.'))), "$name's chains hold");
-            // Every workflow the demo runs leaves data the nightly check finds nothing in, discounts and payments too.
+            // Every workflow the demo runs leaves data the nightly check finds nothing in: payments, withholding, credit notes
+            // and the stamp; a document discount, which the demo has none of, is DataCheckTest's.
             self::assertSame([], array_values(array_map(
                 static fn (DataFinding $finding): string => "$finding->check: $finding->detail",
                 array_filter(static::getContainer()->get(RunDataChecks::class)->findings(), static fn (DataFinding $finding): bool => $finding->companyId?->toRfc4122() === $id),

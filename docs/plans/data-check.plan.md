@@ -9,6 +9,7 @@
 - [2026-10-12 04:20] ASSUMED (review): gap check by last digits, per series and reset period, only formats ending with {SEQ}; invoices and credit notes first (SPEC § 7)
 - [2026-10-12 04:20] ASSUMED (review): check codes named by owning context (invoices.numbering, not numbering.gaps), shown untranslated (SPEC § 7)
 - [2026-10-12 04:20] ASSUMED (review): six arithmetic identities, line tax left out (SPEC § 7)
+- [2026-10-12 04:53] ASSUMED (review): gaps read from the documents in issue order, a restart allowed only where a month begins, whatever the reset says today (SPEC § 7)
 
 ## Formal Plan
 1. DataHealth context: `DeclaresDataChecks`, `DataFinding`, `RunDataChecks`, `app:data:check` (non-zero exit on any finding), a nightly `#[AsPeriodicTask]` from the hour `app.data_check.at` (no cron library: SPEC § 7 04:19).
