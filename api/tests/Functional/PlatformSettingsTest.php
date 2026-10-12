@@ -32,12 +32,12 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertSame([
             // The publisher's and host's identity the legal pages name (Legal\Application\LegalSettings), empty until filled in.
             'legal.backup.provider', 'legal.commercial.email', 'legal.host.address', 'legal.host.country', 'legal.host.name', 'legal.host.phone', 'legal.jurisdiction',
-            'legal.mail.provider', 'legal.privacy.email', 'legal.publisher.address', 'legal.publisher.director',
+            'legal.mail.provider', 'legal.monitor.provider', 'legal.privacy.email', 'legal.publisher.address', 'legal.publisher.director',
             'legal.publisher.email', 'legal.publisher.name', 'legal.publisher.phone', 'legal.publisher.registration',
             'legal.security.email', 'legal.source.url',
             'licensing.grace_days', 'licensing.hold_days', 'licensing.unpaid_mode', 'signup.approval_required', 'signup.enabled',
             // How a company reaches the operators (Settings\Application\SupportSettings), empty until filled in.
-            'support.email', 'support.phone', 'support.whatsapp',
+            'support.email', 'support.phone', 'support.status_url', 'support.whatsapp',
         ], $keys);
         $rows = array_column($rows, null, 'key');
         self::assertSame('', $rows['legal.publisher.name']['value']);

@@ -3271,6 +3271,9 @@
         "backup": {
           "provider": "Backup provider and country"
         },
+        "monitor": {
+          "provider": "Monitoring provider and country"
+        },
         "source": {
           "url": "Source code address"
         },
@@ -3326,6 +3329,8 @@
       "whatsapp_hint": "The number in international form, country code first: +216 20 123 456",
       "email": "Email address",
       "email_hint": "For example support@example.tn",
+      "status_url": "Service status page",
+      "status_url_hint": "Linked from the foot of every page, for example https://status.example.com",
       "save": "Save",
       "saved": "Support contact saved."
     }
@@ -4131,6 +4136,7 @@
   },
   "legal": {
     "navigation": "Legal information",
+    "status": "Service status",
     "pages": {
       "mentions": "Legal notice",
       "privacy": "Privacy",

@@ -42,6 +42,7 @@ final readonly class LegalSettings implements DeclaresSettings
         'commercial.email',
         'mail.provider',
         'backup.provider',
+        'monitor.provider',
         'source.url',
         'jurisdiction',
     ];
@@ -63,6 +64,7 @@ final readonly class LegalSettings implements DeclaresSettings
         yield new SettingDefinition(self::PREFIX.'commercial.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.commercial.email', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'mail.provider', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.mail.provider', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'backup.provider', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.backup.provider', self::MODULE);
+        yield new SettingDefinition(self::PREFIX.'monitor.provider', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.monitor.provider', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'source.url', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.source.url', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'jurisdiction', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.jurisdiction', self::MODULE);
     }

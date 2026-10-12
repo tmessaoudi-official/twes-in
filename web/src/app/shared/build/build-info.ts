@@ -41,6 +41,8 @@ export class BuildInfo {
   /** The build this page runs: the first one read, never replaced. Null until a server answered. */
   readonly web = signal<PartBuild | null>(null);
   readonly api = signal<ApiBuild | null>(null);
+  /** The status page the API names, read with its build. */
+  readonly statusUrl = computed(() => this.api()?.statusUrl ?? null);
   /** The server holds a web build other than the one this page runs. */
   readonly newWeb = signal(false);
 

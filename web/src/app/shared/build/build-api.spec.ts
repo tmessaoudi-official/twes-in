@@ -37,12 +37,14 @@ describe('BuildApi', () => {
       database: 'ok',
       build: { version: '2026.10.07.5', commit: 'bbbb2222', mode: 'prod' },
       deployment: null,
+      statusUrl: 'https://status.twes.test',
     });
     expect(await health).toEqual({
       version: '2026.10.07.5',
       commit: 'bbbb2222',
       mode: 'prod',
       deployment: null,
+      statusUrl: 'https://status.twes.test',
     });
   });
 
@@ -68,6 +70,7 @@ describe('BuildApi', () => {
         database: 'unreachable',
         build: { version: '2026.10.07.5', commit: 'bbbb2222', mode: 'dev' },
         deployment: 'staging',
+        statusUrl: null,
       },
       { status: 503, statusText: 'Service Unavailable' },
     );
@@ -76,6 +79,7 @@ describe('BuildApi', () => {
       commit: 'bbbb2222',
       mode: 'dev',
       deployment: 'staging',
+      statusUrl: null,
     });
 
     const unreachable = api.api();

@@ -21,7 +21,7 @@
 ## Qui y accède
 
 - Les membres de votre entreprise, chacun selon les droits que son rôle lui donne.
-- Les sous-traitants de l’éditeur, nommés sur la page « Sous-traitance (DPA) » : l’hébergeur {{host.name}}, le service d’envoi de courriels {{mail.provider}} et le prestataire des sauvegardes {{backup.provider}}.
+- Les sous-traitants de l’éditeur, nommés sur la page « Sous-traitance (DPA) » : l’hébergeur {{host.name}}, le service d’envoi de courriels {{mail.provider}}, le prestataire des sauvegardes {{backup.provider}} et celui de la surveillance {{monitor.provider}}.
 
 ## Combien de temps
 

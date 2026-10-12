@@ -136,7 +136,7 @@
                       <mat-label>{{ 'platform.support.' + channel | translate }}</mat-label>
                       <input
                         matInput
-                        [type]="channel === 'email' ? 'email' : 'tel'"
+                        [type]="supportInput[channel]"
                         [value]="draft[channel]"
                         (input)="typedSupport(channel, $event)"
                         [attr.data-testid]="'platform-support-' + channel"

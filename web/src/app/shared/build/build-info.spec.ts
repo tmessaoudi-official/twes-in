@@ -11,6 +11,7 @@ const api = (version: string, changes: Partial<ApiBuild> = {}): ApiBuild => ({
   commit: 'bbbb2222',
   mode: 'prod',
   deployment: 'prod',
+  statusUrl: null,
   ...changes,
 });
 

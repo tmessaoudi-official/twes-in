@@ -66,6 +66,29 @@ final class SupportContactTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    /**
+     * The monitor's public status page, which the footer of every page links to, signed out too: the public health
+     * answer carries it. Only an https address is taken, the one form a status page has.
+     */
+    public function testTheStatusPageTheOperatorSetsReachesThePublicHealthAnswer(): void
+    {
+        $this->client->request('GET', '/api/health');
+        self::assertNull($this->json()['statusUrl'], 'none until an operator sets it');
+
+        $this->signedInAsOperator();
+        foreach (['http://status.twes.test', 'status.twes.test', 'javascript:alert(1)', 'https://status twes'] as $value) {
+            $this->sendJson('PUT', '/api/platform/settings/support.status_url', ['value' => $value]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $value);
+        }
+        $this->sendJson('PUT', '/api/platform/settings/support.status_url', ['value' => 'https://status.twes.test']);
+        self::assertResponseIsSuccessful();
+        $this->client->getCookieJar()->clear();
+
+        $this->client->request('GET', '/api/health');
+        self::assertResponseIsSuccessful();
+        self::assertSame('https://status.twes.test', $this->json()['statusUrl']);
+    }
+
     private function signedInAsOperator(): void
     {
         $this->createUser('op@twes.local', 'password-1234', operator: true);

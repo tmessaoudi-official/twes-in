@@ -55,11 +55,13 @@ final class AuthTest extends ApiTestCase
         self::assertSame(0, $user->getFailedLoginCount());
         self::assertNotNull($user->getLastLoginAt());
 
-        $rows = $this->em()->getRepository(AuditLog::class)->findBy(['entityId' => $user->getId()], ['at' => 'ASC']);
-        self::assertSame([LoginAudit::LOGIN_FAILED, LoginAudit::LOGIN], array_map(static fn (AuditLog $r) => $r->getAction(), $rows));
-        self::assertSame($user->getId()->toRfc4122(), $rows[1]->getActorUserId()?->toRfc4122());
-        self::assertNotNull($rows[1]->getCompanyId(), 'the one membership becomes the session company, recorded on the row');
-        self::assertSame('127.0.0.1', $rows[1]->getIp());
+        $rows = $this->em()->getRepository(AuditLog::class)->findBy(['entityId' => $user->getId()]);
+        // Both rows may share one second (audit_log.at is to the second), so the set, and the login found by its action.
+        self::assertEqualsCanonicalizing([LoginAudit::LOGIN_FAILED, LoginAudit::LOGIN], array_map(static fn (AuditLog $r) => $r->getAction(), $rows));
+        $login = array_values(array_filter($rows, static fn (AuditLog $r): bool => LoginAudit::LOGIN === $r->getAction()))[0];
+        self::assertSame($user->getId()->toRfc4122(), $login->getActorUserId()?->toRfc4122());
+        self::assertNotNull($login->getCompanyId(), 'the one membership becomes the session company, recorded on the row');
+        self::assertSame('127.0.0.1', $login->getIp());
     }
 
     public function testMeAnswersTheSameShapeOnceSignedInAnd401Before(): void

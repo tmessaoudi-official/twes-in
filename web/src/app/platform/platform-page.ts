@@ -171,7 +171,19 @@ export class PlatformPage implements OnInit {
     kind in FAILED_KINDS ? `platform.failed.kinds.${FAILED_KINDS[kind]}` : null;
   protected readonly signup = this.platform.signup;
 
-  protected readonly supportChannels: readonly SupportChannel[] = ['phone', 'whatsapp', 'email'];
+  protected readonly supportChannels: readonly SupportChannel[] = [
+    'phone',
+    'whatsapp',
+    'email',
+    'status_url',
+  ];
+  /** What each channel's field takes, so a phone keyboard shows the right keys. */
+  protected readonly supportInput: Readonly<Record<SupportChannel, string>> = {
+    phone: 'tel',
+    whatsapp: 'tel',
+    email: 'email',
+    status_url: 'url',
+  };
   /** The support channels as typed, until saved: what the platform holds again after every load or save. */
   protected readonly supportDraft = linkedSignal<PlatformSupport | null>(() =>
     this.platform.support(),

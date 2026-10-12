@@ -36,6 +36,7 @@ The processing consists of hosting, storing and processing that data to provide 
 - Hosting: {{host.name}}, {{host.address}}.
 - E-mail sending: {{mail.provider}}.
 - Backup copies: {{backup.provider}}.
+- Service monitoring and error reports, without personal data: {{monitor.provider}}.
 
 Where the data is hosted: {{host.country}}.
 

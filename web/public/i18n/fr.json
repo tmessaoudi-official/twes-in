@@ -3271,6 +3271,9 @@
         "backup": {
           "provider": "Prestataire et pays des sauvegardes"
         },
+        "monitor": {
+          "provider": "Prestataire et pays de la surveillance"
+        },
         "source": {
           "url": "Adresse du code source"
         },
@@ -3326,6 +3329,8 @@
       "whatsapp_hint": "Le numéro au format international, indicatif du pays en tête : +216 20 123 456",
       "email": "Adresse e-mail",
       "email_hint": "Par exemple support@exemple.tn",
+      "status_url": "Page d’état du service",
+      "status_url_hint": "Lien en pied de chaque page, par exemple https://status.exemple.tn",
       "save": "Enregistrer",
       "saved": "Contact du support enregistré."
     }
@@ -4131,6 +4136,7 @@
   },
   "legal": {
     "navigation": "Informations légales",
+    "status": "État du service",
     "pages": {
       "mentions": "Mentions légales",
       "privacy": "Confidentialité",

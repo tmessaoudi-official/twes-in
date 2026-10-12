@@ -50,6 +50,7 @@ export class BuildApi {
       commit: given(build.commit),
       mode: build.mode,
       deployment: given(body?.deployment),
+      statusUrl: given(body?.statusUrl),
     };
   }
 }

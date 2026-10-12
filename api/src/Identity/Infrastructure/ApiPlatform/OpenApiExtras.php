@@ -57,7 +57,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
         ]);
         $schemas['Health'] = new \ArrayObject([
             'type' => 'object',
-            'required' => ['status', 'database', 'build', 'deployment'],
+            'required' => ['status', 'database', 'build', 'deployment', 'statusUrl'],
             'properties' => [
                 'status' => ['type' => 'string', 'enum' => ['ok', 'degraded']],
                 'database' => ['type' => 'string', 'enum' => ['ok', 'unreachable']],
@@ -71,6 +71,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                     ],
                 ],
                 'deployment' => ['type' => ['string', 'null'], 'description' => 'The deployment this is (dev, staging, prod), null when it names none'],
+                'statusUrl' => ['type' => ['string', 'null'], 'description' => 'The public status page (support.status_url), null when none is set or the database does not answer'],
             ],
         ]);
 

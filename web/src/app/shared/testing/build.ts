@@ -17,6 +17,7 @@ export function provideQuietBuild(): Provider[] {
         newWeb: signal(false),
         webMode: null,
         line: signal('Web 2026.10.07.1 (aaaa1111)'),
+        statusUrl: signal(null),
         start: () => undefined,
       },
     },

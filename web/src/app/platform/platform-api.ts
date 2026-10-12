@@ -122,7 +122,12 @@ export class PlatformApi {
         const value = rows.find((row) => row.key === `support.${channel}`)?.value;
         return typeof value === 'string' ? value : '';
       };
-      return { phone: valueOf('phone'), whatsapp: valueOf('whatsapp'), email: valueOf('email') };
+      return {
+        phone: valueOf('phone'),
+        whatsapp: valueOf('whatsapp'),
+        email: valueOf('email'),
+        status_url: valueOf('status_url'),
+      };
     });
   }
 
