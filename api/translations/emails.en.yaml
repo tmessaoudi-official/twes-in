@@ -71,6 +71,7 @@ notification:
         invoice_recurring_drafted: 'Recurring invoice ready to issue'
         invoice_recurring_stopped: 'Recurring invoice paused'
         module_arrived: 'Module arrived'
+        data_check_failed: 'Data check failed'
     types:
         invitation_accepted: '%display_name% joined the company.'
         stock_delivery_note_lines_left_out: 'Delivery note %number% is validated, but some of its lines moved no stock (another unit, or no quantity).'
@@ -88,6 +89,7 @@ notification:
         invoice_recurring_drafted: 'Recurring invoice for %customer%: a draft copied from invoice %number% is waiting to be issued.'
         invoice_recurring_stopped: 'Recurring invoice for %customer% paused: invoice %number%, which it copies, can no longer be copied.'
         module_arrived: 'A module you were waiting for has arrived: you can switch it on for %company% in Modules.'
+        data_check_failed: 'The check “%check%” found something wrong in the data of %company% (problems found: %count%). The detail is in the server’s logs.'
     open: 'Open %product%'
     why: 'You receive this e-mail because « %kind% » is also sent to you by e-mail.'
     stop: 'Stop receiving « %kind% » by e-mail'

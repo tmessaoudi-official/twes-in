@@ -90,6 +90,9 @@ This does three things, in order:
    invoices and credit notes no hash chain holds yet, such as those issued before the chain existed, in their issue
    order (`app:invoices:seal-chain`); a restart chains nothing twice. `make tools CMD='cd api && bin/console
    app:invoices:verify-chain'` (or `--company=<id>`) walks every chain and names each place one does not hold.
+   Every night at `app.data_check.at` (02:30, server time) the worker runs the data checks (`app:data:check`, below
+   in § 9): the chains to their recorded ends, the issued documents' sums, numbers without gaps and rows pointing into
+   another company.
 3. **Seeds** (`make seed`, see § 4). This step is idempotent: running it again creates nothing new.
 
 `make down` stops everything and **keeps** the data. `make up` again brings it back as it was. `make logs` follows
@@ -246,6 +249,10 @@ follow its dates through the real numbering series, so the next real issue conti
   with that in mind.
 - **It ends with `VACUUM (ANALYZE)`**: the planner's statistics are what a measurement reads, and the first page of the invoices
   read 3 to 4 s at 100k without them and 0.8 s with them.
+- **It runs without debug** (`--no-debug`): in debug Symfony keeps every query of the run in memory, and the chaining
+  of 90,000 renumbered documents ran out of the console's 256 MB at 100k.
+- **It runs the data checks once it is done** (`app:data:check --quietly`) and fails on any finding: generated data
+  no use case could make would measure nothing true. Each check's time is printed.
 - Not wired to `make up` yet: point `DATABASE_URL` at `twes_scale` to look at it.
 
 ### One account per role
@@ -440,6 +447,7 @@ the next build or gate.
 | A forgotten-password, signup or invitation mail never arrives | The request only queues it and the `worker` sends it: `docker compose ps worker` must say running, `docker compose exec api bin/console messenger:stats` shows what waits, and `bin/console messenger:failed:show` what failed for good (retry it with `messenger:failed:retry`). Under `make up` the worker's consumer starts again every minute, inside its container, to read the code as it is |
 | The api container restarts in a loop | A migration failed: `docker compose logs api` shows which, and the container refuses to serve until it passes |
 | The production api container stops at once, naming `APP_SECRET`, `APP_MFA_KEY` or a realtime key | Production refuses a missing secret and the development ones committed in `api/.env` (§ 10). Give it its own |
+| An operator is told « Contrôle des données en échec » | A data check found what no use case writes: an issued document changed or taken away, sums that no longer add up, a gap in a series' numbers, a row pointing into another company. The operator is told the check, the company and a count only. `make tools CMD='cd api && bin/console app:data:check --quietly'` names each finding, with each check's time and the peak memory; it exits 1 while anything is found, and the worker's log (`docker compose logs worker`) holds the same lines from the night's run |
 | An API answer is wrong, slow or refused, and the log does not say why | Open the profiler, development only: <http://localhost:8091/_profiler> lists the last requests, and every answer carries an `X-Debug-Token-Link` header to its own. It shows which voter decided, the listeners in order and their time, every query and their count, and the timeline. Imports are not profiled (§ 7 of `docs/SPEC.md`, 2026-09-19) |
 
 **Measured on this machine** (2026-09-19, a fresh compose project from a clean checkout of the committed tree):

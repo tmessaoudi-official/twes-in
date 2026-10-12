@@ -69,6 +69,7 @@ final class ScaleGenerator
         'expense' => 'expenses: a follow-up slice',
         'file' => 'stored files, PDFs included: a clone has none and renders on first request',
         'import_run' => 'the files a company imported: a clone imported none',
+        'invoice_chain_head' => 'where each series\' chain ends: written again when the company is chained after renumbering',
         'invoice_reminder' => 'the reminder stages late invoices reached: a clone has reached none',
         'payment_declaration' => 'a customer\'s declared payments: a follow-up slice',
         'payment_instrument' => 'cheques and traites received: a clone starts with none, as with a customer\'s credit',
@@ -383,6 +384,7 @@ final class ScaleGenerator
                 $this->connection->executeStatement("UPDATE invoice SET number = '~' || id::text WHERE company_id = ? AND number IS NOT NULL AND number NOT LIKE '~%'", [$company]);
                 // A hash covers the number: the whole company is chained again once it is numbered.
                 $this->connection->executeStatement('UPDATE invoice SET chain_position = NULL, chain_previous = NULL, chain_hash = NULL, chain_version = NULL WHERE company_id = ? AND chain_hash IS NOT NULL', [$company]);
+                $this->connection->executeStatement('DELETE FROM invoice_chain_head WHERE company_id = ?', [$company]);
                 // Only the series this pass renumbers start again: a company's delivery notes, say, keep their numbers, so
                 // their series must keep counting after them or the next one printed repeats the first.
                 $this->connection->executeStatement(

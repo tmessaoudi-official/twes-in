@@ -15,7 +15,7 @@ use Symfony\Component\Uid\Uuid;
 interface InvoiceChainStore
 {
     /**
-     * Every series with an issued document, of one company or of all.
+     * Every series with an issued document, or with a recorded head, of one company or of all.
      *
      * @return list<ChainSeries>
      */
@@ -37,6 +37,12 @@ interface InvoiceChainStore
      * @return list<Invoice>
      */
     public function sealed(ChainSeries $series, int $afterPosition, int $limit): array;
+
+    /** Where the series' chain was last recorded to end, apart from its documents; null before it was first sealed. */
+    public function recordedHead(ChainSeries $series): ?InvoiceChainHead;
+
+    /** Records where the series' chain now ends, written with what was sealed. */
+    public function recordHead(ChainSeries $series, int $position, string $hash): void;
 
     /** Writes what was sealed. */
     public function write(): void;
