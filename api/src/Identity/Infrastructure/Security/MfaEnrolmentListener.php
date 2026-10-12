@@ -65,6 +65,12 @@ final readonly class MfaEnrolmentListener
             return;
         }
 
+        // Only a session holds a signed-in account: a request bringing none has nothing to hold, and asking who is signed
+        // in would make the lazy firewall read a session for it, which turns a public answer's cache header private.
+        if (!$request->hasPreviousSession()) {
+            return;
+        }
+
         $account = $this->security->getUser();
 
         if (!$account instanceof SecurityUser) {

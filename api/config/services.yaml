@@ -70,6 +70,10 @@ parameters:
     app.pdf.gotenberg_url: '%env(GOTENBERG_URL)%'
     # Files live on a local volume through Flysystem, or in an S3-compatible bucket when FILES_STORAGE=s3 (docs/SPEC.md § 2 Files).
     app.files.directory: '%env(resolve:FILES_DIRECTORY)%'
+    # What /api/health/deep fails on (docs/START.md § 15): a message due for the worker and waiting longer than this, and
+    # less than this share of the disk under the stored files left free.
+    app.health.oldest_waiting_seconds: 600
+    app.health.disk_free_minimum: 0.2
     # What a person may attach to a record (docs/SPEC.md § 7, 2026-09-15): a document or a picture of one, read from its
     # bytes. nginx's client_max_body_size and PHP's upload_max_filesize/post_max_size sit just above the size.
     app.files.upload_max_bytes: 10485760
