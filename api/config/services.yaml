@@ -134,6 +134,7 @@ when@test:
         App\Tests\Support\FakeFacturXPdf: ~
         App\Shared\Application\FacturXPdf: '@App\Tests\Support\FakeFacturXPdf'
         # A module only the tests declare, needing customers: the dependency refusals go through the API with it.
+        App\Tests\Support\RecordedLogs: ~
         App\Tests\Support\Module\LedgerFixtureModule:
             tags: ['app.modules.declarations']
         # FrameworkBundle hardcodes MOCKSESSID for the mock file session storage; the functional tests assert the

@@ -25,6 +25,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
     private const array PUBLIC_PATHS = [
         '^/api/health$',
         '^/api/health/deep$',
+        '^/api/client-errors$',
         '^/api/auth/login$',
         '^/api/docs',
         '^/api/invitations',

@@ -7,6 +7,7 @@ import { tabInterceptor } from './shared/realtime/tab-interceptor';
 import { provideHttpClient, withInterceptors, withNoXsrfProtection } from '@angular/common/http';
 import {
   ApplicationConfig,
+  ErrorHandler,
   inject,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
@@ -37,12 +38,15 @@ import { BarcodeReader } from './shared/scan/barcode-reader';
 import { BrowserCamera, Camera } from './shared/scan/camera';
 import { ZxingBarcodeReader } from './shared/scan/zxing-barcode-reader';
 import { trackNavigation } from './shared/feedback/navigation-activity';
+import { ReportingErrorHandler } from './shared/errors/reporting-error-handler';
 import { LanguageFacade } from './shared/i18n/language-facade';
 import { ThemeFacade } from './shared/theme/theme-facade';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    // Every uncaught error is also reported to the API, which carries it on to the error tracker.
+    { provide: ErrorHandler, useClass: ReportingErrorHandler },
     // Route parameters arrive as component inputs; the invitation token is bound this way.
     provideRouter(routes, withComponentInputBinding()),
     // Each route's `title` is a translation key: the tab names the page in the interface language.

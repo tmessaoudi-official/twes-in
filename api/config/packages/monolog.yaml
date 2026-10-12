@@ -5,6 +5,7 @@ monolog:
     channels:
         - deprecation # Deprecations are logged in the dedicated "deprecation" channel when it exists
         - realtime # What the API pushes to Centrifugo
+        - client # Errors a browser posts to /api/client-errors, carried on to the error tracker
 
 when@dev:
     monolog:
@@ -85,6 +86,11 @@ when@test:
                 type: stream
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
                 level: debug
+            # What a browser's error became, read back by ClientErrorsTest.
+            client_errors:
+                type: service
+                id: App\Tests\Support\RecordedLogs
+                channels: [client]
 
 when@prod:
     monolog:

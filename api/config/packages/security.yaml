@@ -45,6 +45,8 @@ security:
         - { path: ^/api/health$, roles: PUBLIC_ACCESS }
         # Its own bearer token stands in for a session (DeepHealthController).
         - { path: ^/api/health/deep$, roles: PUBLIC_ACCESS }
+        # A browser's error report, from any page, the sign-in page included.
+        - { path: ^/api/client-errors$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         # Invitation links are opened from a mail client, so under SameSite=Strict they arrive with no session
