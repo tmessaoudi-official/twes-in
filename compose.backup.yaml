@@ -43,6 +43,11 @@ services:
       # The backup service reaches the server through its socket, as the server's own user.
       - postgres-socket:/var/run/postgresql
 
+  # The API's deep health (docs/START.md § 15) then fails while the server does not archive its write-ahead log.
+  api:
+    environment:
+      BACKUP_EXPECTED: "1"
+
   backup:
     logging: *logging
     restart: unless-stopped
@@ -59,6 +64,9 @@ services:
       AWS_ACCESS_KEY_ID: "${BACKUP_S3_KEY}"
       AWS_SECRET_ACCESS_KEY: "${BACKUP_S3_SECRET}"
       AWS_DEFAULT_REGION: "${BACKUP_S3_REGION}"
+      # Where each step's heartbeat goes (twes-backup); the deploy overlay requires both, the drill has no monitor.
+      MONITOR_URL: "${MONITOR_URL:-}"
+      MONITOR_HEARTBEAT_TOKEN: "${MONITOR_HEARTBEAT_TOKEN:-}"
       TZ: UTC
     volumes:
       - postgres-data:/var/lib/postgresql:ro

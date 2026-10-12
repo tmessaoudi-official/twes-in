@@ -24,6 +24,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
     /** security.yaml's PUBLIC_ACCESS paths, written out: opening a path to everyone is a change to this list. */
     private const array PUBLIC_PATHS = [
         '^/api/health$',
+        '^/api/health/deep$',
         '^/api/auth/login$',
         '^/api/docs',
         '^/api/invitations',

@@ -250,7 +250,7 @@ function renderNotices(array $records, array $fonts = [], array $wasm = []): str
     $out .= "twes-in is AGPL-3.0-or-later with a commercial licence (see `LICENSING.md`). Every package below is\n";
     $out .= "permissive under the policy in that file, as enforced by `scripts/gates/dependency-licences.php`.\n";
     $out .= "Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP), and the programs the\n";
-    $out .= "backup image installs (pgBackRest, MIT; restic, BSD-2-Clause; supercronic, MIT; see `docs/UPDATE.md`), are\n";
+    $out .= "backup image installs (pgBackRest, MIT; restic, BSD-2-Clause; supercronic, MIT; curl, curl; see `docs/UPDATE.md`), are\n";
     $out .= "aggregated, not compiled into what we distribute, and are not listed here.\n";
 
     foreach (['api' => 'api (Composer)', 'web' => 'web (npm)'] as $tier => $title) {

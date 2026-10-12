@@ -5,7 +5,7 @@
 twes-in is AGPL-3.0-or-later with a commercial licence (see `LICENSING.md`). Every package below is
 permissive under the policy in that file, as enforced by `scripts/gates/dependency-licences.php`.
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP), and the programs the
-backup image installs (pgBackRest, MIT; restic, BSD-2-Clause; supercronic, MIT; see `docs/UPDATE.md`), are
+backup image installs (pgBackRest, MIT; restic, BSD-2-Clause; supercronic, MIT; curl, curl; see `docs/UPDATE.md`), are
 aggregated, not compiled into what we distribute, and are not listed here.
 
 ## api (Composer) — 108 runtime, 54 dev
