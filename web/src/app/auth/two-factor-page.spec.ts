@@ -13,6 +13,7 @@ import { AuthFacade } from './auth-facade';
 import { Session } from '../shared/session/session';
 import type { MfaStatus, PasskeySummary, SignedInState } from './auth-types';
 import { PasskeyClient } from './passkey-client';
+import { StepUp } from '../shared/step-up/step-up';
 import { TwoFactorPage } from './two-factor-page';
 import { provideStillAppearance } from '../shared/testing/appearance';
 import { provideQuietFeedback } from '../shared/testing/feedback';
@@ -62,8 +63,16 @@ describe('TwoFactorPage', () => {
     addPasskey: ReturnType<typeof vi.fn>;
     removePasskey: ReturnType<typeof vi.fn>;
   };
+  let stepUp: { request: ReturnType<typeof vi.fn> };
 
-  async function render(mfa: MfaStatus, passkeys: PasskeySummary[] = []) {
+  async function render(
+    mfa: MfaStatus,
+    passkeys: PasskeySummary[] = [],
+    shapeBegin: (
+      begin: ReturnType<typeof vi.fn>,
+      proof: ReturnType<typeof vi.fn>,
+    ) => unknown = () => undefined,
+  ) {
     facade = {
       me: signal<SignedInState | null>(signedIn(mfa)),
       beginTotpEnrolment: vi.fn().mockResolvedValue({
@@ -77,6 +86,8 @@ describe('TwoFactorPage', () => {
       addPasskey: vi.fn(),
       removePasskey: vi.fn(),
     };
+    stepUp = { request: vi.fn().mockResolvedValue(true) };
+    shapeBegin(facade.beginTotpEnrolment, stepUp.request);
     TestBed.configureTestingModule({
       imports: [TwoFactorPage],
       providers: [
@@ -84,6 +95,7 @@ describe('TwoFactorPage', () => {
         { provide: AuthFacade, useValue: facade },
         { provide: Session, useExisting: AuthFacade },
         { provide: PasskeyClient, useValue: { supported: () => true } },
+        { provide: StepUp, useValue: stepUp },
         provideStillAppearance(),
         provideQuietFeedback(),
         provideTranslateService({
@@ -344,5 +356,61 @@ describe('TwoFactorPage', () => {
 
     expect(listed(rendered)).toEqual([]);
     expect(rendered.query('two-factor-passkey-error')).toBeNull();
+  });
+  it('asks who is at the screen before starting an authenticator, then starts it', async () => {
+    const { query } = await render(
+      { enrolled: false, required: true, totp: false, passkeys: 0 },
+      [],
+      (begin) =>
+        begin
+          .mockResolvedValueOnce({ ok: false, error: 'step_up_required' })
+          .mockResolvedValue({ ok: true, enrolment: { secret: SECRET, provisioningUri: URI } }),
+    );
+
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_factors');
+    expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(2);
+    expect(query('two-factor-secret')?.textContent?.replace(/\s/g, '')).toBe(SECRET);
+  });
+
+  it('adds a passkey once the proof is given, and changes nothing when it is declined', async () => {
+    const rendered = await render({ enrolled: true, required: false, totp: true, passkeys: 1 }, [
+      laptop,
+    ]);
+    facade.addPasskey
+      .mockResolvedValueOnce({ ok: false, error: 'step_up_required' })
+      .mockResolvedValue({
+        ok: true,
+        passkey: { ...laptop, id: 'p2', name: 'Phone' },
+        recoveryCodes: [],
+      });
+
+    await addPasskey(rendered, 'Phone');
+
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_factors');
+    expect(facade.addPasskey).toHaveBeenCalledTimes(2);
+    expect(listed(rendered)).toEqual(['Work laptop', 'Phone']);
+
+    stepUp.request.mockResolvedValueOnce(false);
+    facade.removePasskey.mockResolvedValue({ ok: false, error: 'step_up_required' });
+    rendered.query<HTMLButtonElement>('two-factor-passkey-remove')?.click();
+    await settle(rendered.fixture);
+
+    expect(facade.removePasskey).toHaveBeenCalledTimes(1);
+    expect(listed(rendered)).toEqual(['Work laptop', 'Phone']);
+    expect(rendered.query('two-factor-passkey-error')).toBeNull();
+  });
+  it('offers to start again, saying nothing went wrong, when the proof is declined', async () => {
+    const { query } = await render(
+      { enrolled: false, required: true, totp: false, passkeys: 0 },
+      [],
+      (begin, proof) => {
+        begin.mockResolvedValue({ ok: false, error: 'step_up_required' });
+        proof.mockResolvedValue(false);
+      },
+    );
+
+    expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);
+    expect(query('two-factor-error')).toBeNull();
+    expect(query('two-factor-app-start')).not.toBeNull();
   });
 });

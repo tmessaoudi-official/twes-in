@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Identity\Application\StepUp\ConfirmStepUp;
+use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Domain\PasskeyRepository;
 use App\Identity\Domain\UserRepository;
 use App\Shared\Application\Transactions;
@@ -31,15 +33,20 @@ final readonly class RemovePasskey
         private MfaRequirement $requirement,
         private AuditTrail $audit,
         private Transactions $transactions,
+        private ConfirmStepUp $stepUp,
     ) {
     }
 
     /**
      * @throws PasskeyNotFound  when the account has no such passkey
      * @throws LastSecondFactor when it is the last factor a company requires
+     * @throws StepUpRequired   when this sign-in has no fresh proof: a taken session must not strip the account's factors
      */
     public function handle(Uuid $userId, Uuid $passkeyId): void
     {
+        if (!$this->stepUp->isRecent($userId)) {
+            throw new StepUpRequired();
+        }
         $this->transactions->run(function () use ($userId, $passkeyId): void {
             $user = $this->users->ofId($userId);
             $passkey = null === $user ? null : $this->passkeys->ofUserAndId($user, $passkeyId);

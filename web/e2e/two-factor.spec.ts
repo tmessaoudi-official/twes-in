@@ -19,6 +19,14 @@ async function signIn(page: Page, email: string, password: string): Promise<void
   await page.getByTestId('submit').click();
 }
 
+/** Adding or removing a factor asks who is at the screen first: the password, in the step-up dialog. */
+async function prove(page: Page, password: string): Promise<void> {
+  await expect(page.getByTestId('step-up-title')).toBeVisible();
+  await page.getByTestId('step-up-password').fill(password);
+  await page.getByTestId('step-up-confirm').click();
+  await expect(page.getByTestId('step-up-title')).toHaveCount(0);
+}
+
 async function signOut(page: Page): Promise<void> {
   await page.getByTestId('user-menu').click();
   await page.getByTestId('logout').click();
@@ -70,6 +78,7 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   await page.getByTestId('user-menu').click();
   await page.getByTestId('two-factor-link').click();
   await expect(page).toHaveURL(/\/two-factor$/);
+  await prove(page, NEW_PASSWORD);
   await expect(page.getByTestId('two-factor-qr').locator('svg')).toBeVisible();
   const secret = (await page.getByTestId('two-factor-secret').innerText()).replace(/\s/g, '');
   await expectAccessible(page, 'two-factor, scan');
@@ -202,6 +211,7 @@ test('a company that requires two-step verification sends its owner to set it up
   // The owner has no factor, so turning the requirement on holds them back at once.
   await requirement.click();
   await expect(page).toHaveURL(/\/two-factor$/);
+  await prove(page, NEW_PASSWORD);
   await expect(page.getByTestId('two-factor-required')).toBeVisible();
   await page.screenshot({
     path: test.info().outputPath('two-factor-required.png'),

@@ -3784,7 +3784,8 @@
       "no_passkey": "No passkey could be used.",
       "network": "The server is not answering: try again."
     },
-    "intro_erasure": "To open « Erase data », enter your password or use a passkey."
+    "intro_erasure": "To open « Erase data », enter your password or use a passkey.",
+    "intro_factors": "To change how you verify it is you, enter your password or use a passkey."
   },
   "customer_display": {
     "title": "Customer display",

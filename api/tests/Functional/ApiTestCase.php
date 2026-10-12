@@ -12,6 +12,7 @@ namespace App\Tests\Functional;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
+use App\Identity\Domain\UserRepository;
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
 use App\Identity\Infrastructure\Security\CsrfRequestListener;
@@ -34,6 +35,7 @@ use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\ReceivedStamp;
 use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 /**
  * Functional tests talk to the API the way the SPA does: JSON bodies, a random csrf-token header on every
@@ -400,6 +402,20 @@ abstract class ApiTestCase extends WebTestCase
         }
 
         return $out;
+    }
+
+    /**
+     * Forgets the account's second-factor and step-up attempts, as if it had been set up earlier than the window they
+     * count in: a factor is added after a step-up, which spends one of the five, and a case counting its five guesses
+     * starts from none.
+     */
+    protected function forgetSecondFactorAttempts(string $email): void
+    {
+        $user = static::getContainer()->get(UserRepository::class)->ofEmail(Email::fromString($email));
+        self::assertNotNull($user);
+        $limiters = static::getContainer()->get('limiter.mfa_verify');
+        self::assertInstanceOf(RateLimiterFactoryInterface::class, $limiters);
+        $limiters->create($user->getId()->toRfc4122())->reset();
     }
 
     /** Proves who is at the screen again, as the step-up dialog does before an export (docs/SPEC.md § 7, audit H-b2). */

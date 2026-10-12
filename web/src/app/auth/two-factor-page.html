@@ -137,6 +137,15 @@
           >
             {{ 'auth.two_factor.app_start' | translate }}
           </button>
+        } @else if (error() === 'step_up_required') {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="startAuthenticator()"
+            data-testid="two-factor-app-start"
+          >
+            {{ 'auth.two_factor.app_start' | translate }}
+          </button>
         } @else if (error(); as errorCode) {
           <p role="alert" class="twes-auth-error" data-testid="two-factor-error">
             {{ 'auth.errors.' + errorCode | translate }}

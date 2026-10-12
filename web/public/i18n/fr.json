@@ -3784,7 +3784,8 @@
       "no_passkey": "Aucune clé d’accès n’a pu être utilisée.",
       "network": "Le serveur ne répond pas : réessayez."
     },
-    "intro_erasure": "Pour ouvrir « Effacer des données », saisissez votre mot de passe ou utilisez une clé d’accès."
+    "intro_erasure": "Pour ouvrir « Effacer des données », saisissez votre mot de passe ou utilisez une clé d’accès.",
+    "intro_factors": "Pour changer vos moyens de vérification, saisissez votre mot de passe ou utilisez une clé d’accès."
   },
   "customer_display": {
     "title": "Affichage client",
