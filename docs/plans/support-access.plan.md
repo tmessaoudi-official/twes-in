@@ -41,12 +41,12 @@ data only, documented). What would redirect me: wanting a named operator rather 
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | SupportGrant and migration | S | done | - | api/src/Tenancy/** api/migrations/** |
-| 2 | Owner endpoints, notices, settings page | M | done | - | api/src/Tenancy/** web/src/app/** |
-| 3 | Guard, voter, read-only listener | M | done | - | api/src/Tenancy/** api/src/Shared/** |
-| 4 | Switcher, Me, banner | M | done | - | api/src/Tenancy/** api/src/Identity/** web/src/app/** |
-| 5 | Audit of use | S | done | - | api/src/Tenancy/** api/src/Audit/** |
-| 6 | Tests, sabotages, e2e, screenshots | M | done | - | api/tests/** web/e2e/** |
+| 1 | SupportGrant and migration | S | done | ed319ace | api/src/Tenancy/** api/migrations/** |
+| 2 | Owner endpoints, notices, settings page | M | done | ed319ace | api/src/Tenancy/** web/src/app/** |
+| 3 | Guard, voter, read-only listener | M | done | ed319ace | api/src/Tenancy/** api/src/Shared/** |
+| 4 | Switcher, Me, banner | M | done | ed319ace | api/src/Tenancy/** api/src/Identity/** web/src/app/** |
+| 5 | Audit of use | S | done | ed319ace | api/src/Tenancy/** api/src/Audit/** |
+| 6 | Tests, sabotages, e2e, screenshots | M | done | ed319ace | api/tests/** web/e2e/** |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
