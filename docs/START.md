@@ -622,8 +622,10 @@ bash scripts/deploy/new-instance.sh /etc/twes-in/deploy.env
 
 It prints which values to keep somewhere other than the server (the MFA key, the two backup passphrases, the
 application secret, the database password): without them a restored backup cannot be read. Then fill in the facts it
-left blank: `TWES_HOST`, `EDGE_TLS` (the address Let's Encrypt writes to), `MAILER_DSN` and `MAILER_SENDER`, and the
-bucket (§ 13). Every one is required: compose refuses to start while one is empty. The name never changes afterwards:
+left blank: `TWES_HOST`, `EDGE_TLS` (the address Let's Encrypt writes to), `MAILER_DSN` and `MAILER_SENDER`, the
+bucket (§ 13), and the monitor's two (§ 15): `MONITOR_URL`, its status page's address, and `SENTRY_DSN`, the address its
+error tracker gave this instance. It also draws the two tokens the monitor reads the instance with, `MONITOR_TOKEN` and
+`MONITOR_HEARTBEAT_TOKEN`, which are copied into the monitor's own values. Every one is required: compose refuses to start while one is empty. The name never changes afterwards:
 passkeys are bound to it.
 
 **Deploying a release.** A release is a tag `vYYYY.MM.DD.N` on master. On the server:
@@ -650,7 +652,9 @@ read -rs PW && printf '%s\n' "$PW" | docker compose --env-file /etc/twes-in/depl
 ```
 
 Sign in at `https://<name>/` and enrol the authenticator: until then an operator reaches nothing but the enrolment. Then fill in the host's facts on
-`/platform/legal` (the provider, its country, the backup provider and its country): the legal pages print them.
+`/platform/legal` (the provider, its country, the backup provider and the monitor's provider, each with its country):
+the legal pages print them. On `/platform`, the support card's « Page d’état du service » takes the status page's
+address, which the footer of every page then links to.
 
 **The deploy check.** `make deploy-check` boots the same four files from values `new-instance.sh` wrote, given through
 `--env-file`, with the edge's own certificate authority (`EDGE_TLS=internal`), the restore drill's layer (its stand-in
@@ -665,3 +669,69 @@ What it does not prove: `deploy.sh` itself, whose refusals and compose line its 
 `docker` (`scripts/tests/deploy.test.sh`); a certificate from Let's Encrypt (the check's authority is Caddy's own); the
 mail relay; the DNS record; HTTP/3 from a real browser; how much memory a deployment needs; and a first deployment on a
 real machine, which follows.
+
+## 15. The monitor
+
+What watches an instance must not fall with it, so the monitor runs on a small machine of its own, at another provider
+if possible: `infra/monitor/compose.yaml`, three services behind a Caddy edge of their own.
+
+- **Gatus** reads the instance every minute, shows the public status page and alerts by mail and Telegram after three
+  failed reads in a row, then again once the line is back. Its lines (`infra/monitor/gatus.yaml`): the site answering
+  over a certificate with two weeks left at least; `/api/health/deep` read with `MONITOR_TOKEN` (the queue, the files
+  volume's free space and the database's archiving, 503 when one fails); the error tracker itself; and the backups'
+  heartbeats, which each step of `twes-backup` posts when it ends: `Base` (nightly, 26 hours), `Copie` (nightly, 26
+  hours) and `Relecture` (weekly, 8 days). Silence past a heartbeat's interval raises the alert. The page is public, so
+  every line hides its address, host, port, conditions and errors, and no alert names a customer.
+- **GlitchTip** receives the errors. The API reports through Sentry's SDK, and the web posts its own errors to the
+  API (`POST /api/client-errors`), which reports them the same way: no script from another site runs in the browser.
+  Addresses, quoted values and long numbers are masked before anything leaves the instance; an error report is kept 30
+  days. Nobody signs up: the operator's account is made once, below.
+- Its **PostgreSQL**, for GlitchTip alone.
+
+**The machine.** As in § 14: Docker with the Compose plugin, `git`, and only 22, 80 and 443 open at the provider's
+firewall. Two DNS names point at it, one for the status page and one for the error tracker (GlitchTip does not run
+under a path).
+
+**The values.** `new-monitor.sh` writes them, readable by their owner alone, the monitor's own secrets drawn at random,
+and refuses to write over a file that exists:
+
+```sh
+sudo install -d -m 700 -o "$USER" /etc/twes-monitor
+bash scripts/monitor/new-monitor.sh /etc/twes-monitor/monitor.env
+```
+
+Fill in the facts: the instance's `TWES_HOST`, and `MONITOR_TOKEN` and `MONITOR_HEARTBEAT_TOKEN` copied from its values
+file; `STATUS_HOST` and `ERRORS_HOST`; `EDGE_TLS`; the alerts' mail relay (`ALERT_SMTP_*`, `ALERT_FROM`, `ALERT_TO`),
+an account other than the instance's, so alerts still leave when the instance's relay is the trouble; and the Telegram
+bot (`TELEGRAM_TOKEN` from @BotFather, `TELEGRAM_CHAT_ID`). Every one is required.
+
+**Starting it**, from a checkout on the monitor's machine:
+
+```sh
+docker compose --env-file /etc/twes-monitor/monitor.env -f infra/monitor/compose.yaml up -d --wait
+```
+
+**The operator's account and the instance's DSN**, once. The password is read from standard input:
+
+```sh
+M="docker compose --env-file /etc/twes-monitor/monitor.env -f infra/monitor/compose.yaml"
+read -rs PW && $M exec -T -e DJANGO_SUPERUSER_EMAIL=<address> -e DJANGO_SUPERUSER_PASSWORD="$PW" glitchtip \
+  python manage.py createsuperuser --noinput; unset PW
+$M exec -T -e OPERATOR_EMAIL=<address> glitchtip python manage.py shell < infra/monitor/bootstrap.py
+```
+
+The second line prints `SENTRY_DSN=…`: put it in the instance's values with `MONITOR_URL=https://<status name>`, deploy
+the instance again (§ 14), and fill in the status page's address and the monitor's provider on its platform pages.
+`bin/console app:errors:test` on the instance's api then puts one masked test error in GlitchTip.
+
+**The monitor check.** `make monitor-check` boots a deployment (as the deploy check does) and a monitor from values the
+two scripts wrote, joined by one network on which each edge answers under its names, each trusting the other's
+certificate authority. Then Gatus must read the deep health green and take a base backup's heartbeat, an API error and
+a web error must reach GlitchTip's API with no address, quoted value or long number in them, and a tracker that never
+answers must cost a failing command a few seconds at most. It runs as the compose projects `twes-monitor-check` and
+`twes-monitor-check-app`, publishes nothing, and removes everything at the end. CI runs it weekly, by hand, and on every
+push that changes the monitor or what reports to it (`.github/workflows/monitor-check.yml`).
+
+What it does not prove: the mail and Telegram alerts (the relay and the bot are yours: an alert that fires during the
+check goes nowhere); the « Site » line, which an internal certificate of hours always fails; a certificate from Let's
+Encrypt; and the monitor itself staying up, which nothing watches.
