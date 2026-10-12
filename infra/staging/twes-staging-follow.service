@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Staging follows master (docs/RUNBOOK.md): one run of scripts/deploy/staging-follow.sh, started by the timer beside this
+# file. Runs as the user that owns the checkout and the values and belongs to the docker group; another name goes in
+# `systemctl edit twes-staging-follow.service` as User=. Where things are comes from /etc/twes-in/staging-follow.env.
+[Unit]
+Description=twes-in staging: deploy the newest commit master published
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=twes
+EnvironmentFile=/etc/twes-in/staging-follow.env
+ExecStart=/usr/bin/bash ${TWES_CHECKOUT}/scripts/deploy/staging-follow.sh ${TWES_REGISTRY} ${TWES_VALUES}
+# A deployment pulls three images and waits for every service to be healthy.
+TimeoutStartSec=20min

@@ -633,16 +633,21 @@ monitor (§ 15): `new-instance.sh` draws the two tokens; `new-monitor.sh` writes
 copied; the monitor starts; its operator account and `bootstrap.py` give the DSN; `SENTRY_DSN` and `MONITOR_URL` go into
 the instance's values; then the first deployment below.
 
-**Deploying a release.** A release is a tag `vYYYY.MM.DD.N` on master. On the server:
+**Deploying a release.** A release is an annotated tag `vYYYY.MM.DD.N` on master whose message names the three images CI
+published for that commit, by digest (`scripts/release/tag-release.sh`; promoting and rolling back are in
+`docs/RUNBOOK.md`). On the server:
 
 ```sh
 git fetch --tags && git checkout v2026.10.12.1
-bash scripts/deploy/deploy.sh /etc/twes-in/deploy.env
+bash scripts/deploy/deploy.sh --release /etc/twes-in/deploy.env
 ```
 
-`deploy.sh` refuses unless HEAD is exactly at a release tag and the checkout is clean, untracked files included (the
-images copy the tree as it is), and unless the values file is mode 600. It builds the images as the version git gives
-(§ 11) and starts the four files with `--env-file`. Always deploy through it: a bare `docker compose` on the server
+`deploy.sh` refuses unless HEAD is exactly at a release tag and the checkout is clean, untracked files included, and
+unless the values file is mode 600. `--release` builds nothing: it pulls the tag's images by digest, refuses one that
+says it was built from another commit, and starts the four files with `compose.release.yaml` and `--env-file`; it
+writes what it started under `releases/` beside the values, which a rollback deploys again. A self-hosted instance
+that builds its own images from the tag runs `deploy.sh --build` instead, which builds them as the version git gives
+(§ 11). Staging runs `--staging`, from `scripts/deploy/staging-follow.sh` (`docs/RUNBOOK.md`). Always deploy through it: a bare `docker compose` on the server
 reads the committed development `.env` for whatever it lacks, its database password included. The API migrates at start
 (§ 10).
 

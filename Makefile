@@ -155,6 +155,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/deploy-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/release-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/publish.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/tag-release.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/monitor-config.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/version-pins.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/host-tools.test.sh
@@ -177,6 +178,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-instance.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-monitor.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/deploy.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/forwarded-proto.test.sh

@@ -4,9 +4,14 @@
 # with random bytes of this instance's own and leaves every fact (the name, the mail relay, the bucket) blank for the
 # operator, since a guessed fact deploys to the wrong place. Readable by its owner alone, never overwritten: a second run
 # on an existing file would replace the keys a live database is encrypted under.
-# Usage: new-instance.sh <file>      (such as /etc/twes-in/deploy.env, outside the checkout)
+# --staging writes a staging instance's (docs/RUNBOOK.md): DEPLOY_ENV=staging, which its error reports carry and
+# deploy.sh --staging requires, and its backups under the prefix staging/, so they never land where production's are.
+# Usage: new-instance.sh [--staging] <file>      (such as /etc/twes-in/deploy.env, outside the checkout)
 set -euo pipefail
-[[ $# -eq 1 ]] || { echo "Usage: new-instance.sh <file>" >&2; exit 2; }
+usage() { echo "Usage: new-instance.sh [--staging] <file>" >&2; exit 2; }
+staging=no
+if [[ "${1:-}" == --staging ]]; then staging=yes; shift; fi
+[[ $# -eq 1 && "$1" != -* ]] || usage
 file=$1
 [[ -e "$file" ]] && { echo "new-instance: $file exists; it holds a live instance's keys, so it is never written over" >&2; exit 1; }
 
@@ -51,6 +56,15 @@ BACKUP_FILES_PASSPHRASE=$(word 48)
 MONITOR_TOKEN=$(word 48)
 MONITOR_HEARTBEAT_TOKEN=$(word 48)
 EOF
+if [[ "$staging" == yes ]]; then
+  cat >> "$file" <<'EOF'
+
+# Staging: what its error reports and deploy.sh --staging read, and where in its bucket its backups go. The bucket above
+# is staging's own, at keys that reach nothing of production's.
+DEPLOY_ENV=staging
+BACKUP_S3_PREFIX=staging/
+EOF
+fi
 chmod 600 "$file"
 
 cat <<EOF
@@ -64,3 +78,6 @@ the backups, where nobody but you can read them (a password manager, and a seale
 The realtime keys can be made again at any time. Copy MONITOR_TOKEN and MONITOR_HEARTBEAT_TOKEN to the monitor's
 values (scripts/monitor/new-monitor.sh); a new pair is two edits, one on each side.
 EOF
+if [[ "$staging" == yes ]]; then
+  echo "This is staging's: give it a bucket and keys of its own, never production's, and never production's data."
+fi

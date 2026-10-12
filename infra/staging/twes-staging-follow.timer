@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Asks the registry every five minutes whether master published a newer commit (docs/RUNBOOK.md). A run that is still
+# deploying is not started twice: the next one waits for it to end.
+[Unit]
+Description=twes-in staging: follow master every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target

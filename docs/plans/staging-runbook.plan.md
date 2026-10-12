@@ -48,8 +48,8 @@ Not certified until a real staging VM exists: GHCR itself, public visibility, th
 |---|------|------|-------|----------|-------|
 | 1 | app:keys:rotate-mfa | M | done | f2fbe39f | api/src/Identity/** api/tests/** |
 | 2 | compose.release.yaml digest overlay + gate | M | done | 9eba21b1 | compose.release.yaml scripts/gates/** Makefile |
-| 3 | publish.sh + ci.yml publish job | M | doing | - | scripts/release/** .github/workflows/ci.yml |
-| 4 | deploy modes, new-instance --staging, staging-follow + timer | M | todo | - | scripts/deploy/** infra/staging/** |
+| 3 | publish.sh + ci.yml publish job | M | done | 7cbbebe8 | scripts/release/** .github/workflows/ci.yml |
+| 4 | deploy modes, new-instance --staging, staging-follow + timer | M | doing | - | scripts/deploy/** infra/staging/** |
 | 5 | make staging-check + workflow | L | todo | - | scripts/staging/** Makefile .github/workflows/** |
 | 6 | RUNBOOK.md + docs | M | todo | - | docs/** CLAUDE.md |
 <!-- /progress-block -->
