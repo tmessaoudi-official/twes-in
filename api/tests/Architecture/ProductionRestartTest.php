@@ -70,29 +70,35 @@ final class ProductionRestartTest extends TestCase
         $deploy = self::services(\dirname(__DIR__, 3).'/compose.deploy.yaml');
 
         self::assertArrayHasKey('edge', $deploy, 'the overlay starts the edge every request comes through');
-        self::assertSame([], self::stayingDown($deploy), 'these services stay down after a crash or a reboot');
+        // It lies over the backup overlay, which starts the backup service it gives the monitor's values to.
+        self::assertSame([], self::stayingDown($deploy, 'compose.backup.yaml'), 'these services stay down after a crash or a reboot');
     }
 
     /**
      * An overlay's services that would stay down, each read through the files beneath it: a restart policy set in
-     * compose.yaml or compose.prod.yaml still holds for a service the overlay only adjusts.
+     * compose.yaml, compose.prod.yaml or an overlay beneath it still holds for a service the overlay only adjusts.
      *
      * @param array<array-key, array<array-key, mixed>> $overlay
      *
      * @return list<array-key>
      */
-    private static function stayingDown(array $overlay): array
+    private static function stayingDown(array $overlay, string ...$beneath): array
     {
         $root = \dirname(__DIR__, 3);
         $base = self::services($root.'/compose.yaml');
         $production = self::services($root.'/compose.prod.yaml');
+        $layers = array_map(static fn (string $file): array => self::services($root.'/'.$file), $beneath);
 
         $staysDown = [];
         foreach ($overlay as $name => $definition) {
             if (isset($definition['profiles']) || isset($base[$name]['profiles'])) {
                 continue;
             }
-            $restart = $definition['restart'] ?? $production[$name]['restart'] ?? $base[$name]['restart'] ?? null;
+            $restart = $definition['restart'] ?? null;
+            foreach ($layers as $layer) {
+                $restart ??= $layer[$name]['restart'] ?? null;
+            }
+            $restart ??= $production[$name]['restart'] ?? $base[$name]['restart'] ?? null;
             if (!\in_array($restart, self::COMES_BACK, true)) {
                 $staysDown[] = $name;
             }

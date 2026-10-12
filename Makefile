@@ -30,7 +30,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -115,6 +115,9 @@ backup-drill:  ## the restore drill (docs/START.md § 13): the production images
 deploy-check:  ## the deploy check (docs/START.md § 14): a deployment booted from new-instance.sh's values with the four compose files behind its Caddy edge, then asked through it for HSTS, the HTTPS redirect, health, a sign-in, the realtime socket and the client address; its own compose project (twes-deploy-check), removed at the end
 	bash scripts/deploy/deploy-check.sh
 
+monitor-check:  ## the monitor check (docs/START.md § 15): a deployment and its monitor (infra/monitor/) booted side by side from their values files, then Gatus must read the deep health green and take a backup's heartbeat, and an API and a web error must reach GlitchTip masked; its own compose projects (twes-monitor-check, twes-monitor-check-app), removed at the end
+	bash scripts/monitor/monitor-check.sh
+
 versions:      ## every version pin, read from the file that holds it (docs/UPDATE.md says where each is copied and how to bump it)
 versions: tools-image
 	$(TOOLS) make --no-print-directory in-versions
@@ -150,6 +153,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/outcomes-as-toasts.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-log-rotation.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/deploy-overlay.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/monitor-config.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/version-pins.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/host-tools.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/design-tokens.test.sh
@@ -169,6 +173,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/screen-texts-budget.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/build-version.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-instance.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-monitor.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/deploy.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh
@@ -183,6 +188,7 @@ in-gate-licences:
 	bash scripts/gates/outcomes-as-toasts.sh
 	bash scripts/gates/compose-log-rotation.sh
 	bash scripts/gates/deploy-overlay.sh
+	bash scripts/gates/monitor-config.sh
 	bash scripts/gates/version-pins.sh
 	bash scripts/gates/host-tools.sh
 	bash scripts/gates/design-tokens.sh

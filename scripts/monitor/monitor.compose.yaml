@@ -1,0 +1,27 @@
+# The monitor's side of the monitor check (scripts/monitor/monitor-check.sh), over infra/monitor/compose.yaml: the edge
+# publishes nothing and answers on the shared network under both of its names, and Gatus joins it to read the instance,
+# trusting the instance's throwaway authority, read from CHECK_DIR once the instance has made it.
+services:
+  edge:
+    ports: !reset []
+    networks:
+      default:
+      monitor-check:
+        aliases:
+          - "${STATUS_HOST:?run through scripts/monitor/monitor-check.sh}"
+          - "${ERRORS_HOST:?run through scripts/monitor/monitor-check.sh}"
+  gatus:
+    # The check's alerts fire (the Site line fails on an internal certificate's hours): the bot's address leads nowhere,
+    # so nothing leaves the machine with a made-up token.
+    extra_hosts:
+      - "api.telegram.org:0.0.0.0"
+    environment:
+      SSL_CERT_FILE: /check/instance-root.crt
+    volumes:
+      - "${CHECK_DIR:?run through scripts/monitor/monitor-check.sh}:/check:ro"
+    networks: [default, monitor-check]
+
+networks:
+  monitor-check:
+    external: true
+    name: twes-monitor-check

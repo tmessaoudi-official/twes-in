@@ -12,6 +12,10 @@
 - [2026-10-12 15:31] AGREED: the backup image fetches only its own architecture's supercronic asset, still checked against its pinned sha256: the deploy check's first CI failure was that asset's download (developer)
 - [2026-10-12 15:45] ASSUMED (review): The error scrubber masks addresses, anything quoted ("…", «…», '…') and runs of six digits or more in messages and exception values, keeps the URL without query, drops user, extra, breadcrumbs and frame variables — because a message may name a customer's value and these shapes cover the ones the code writes. Alternatives: drop messages entirely (reports become unreadable); mask nothing beyond send_default_pii (values leak).
 - [2026-10-12 16:05] ASSUMED (review): POST /api/client-errors keeps the CSRF header (the page already sends it, signed in or not), budgets 20 reports per client per 15 minutes, refuses a body over 16 KB with 413, cuts the message to 500 and the stack to 4,000 characters, keeps the page path without query or fragment, and masks the line with the scrubber before logging on a new 'client' channel — because the instance's own log must hold no more than the tracker. The web reports at most 5 errors per page load and leaves an HttpErrorResponse out (the API logged it). Alternatives: no CSRF (any site could flood it); report API answers too (each 5xx twice).
+- [2026-10-12 16:29] ASSUMED (review): GlitchTip pinned at 6.2.6 rather than the 6.1.8 the plan named: the newest, released 2026-08-08, and it runs without Valkey through VALKEY_URL="" (the database is its cache and queue). Its events are kept 30 days (GLITCHTIP_MAX_EVENT_LIFE_DAYS), its own uptime checks are off (Gatus watches), sign-up and organisation creation off. Alternatives: 6.1.8 as planned (older, same shape); the 90-day default retention (keeps more than a pattern needs).
+- [2026-10-12 16:29] ASSUMED (review): The monitor answers on two names, STATUS_HOST (Gatus: the public page and the heartbeats' door) and ERRORS_HOST (GlitchTip), since GlitchTip does not run under a sub-path. The public page's lines are Application: Site and Traitements, Surveillance: Suivi des erreurs, Sauvegardes: Base, Copie and Relecture. The weekly check's heartbeat is renamed Verification -> Relecture, as Gatus refused an accented name (probed: « Vérification » took no heartbeat under either spelling). Alerts after 3 failed reads, told again on recovery; a certificate under 14 days left alerts. Alternatives: one name with GlitchTip under a path (unsupported); unaccented « Verification » (misspelt French on a public page).
+- [2026-10-12 17:07] ASSUMED (review): make monitor-check boots a deployment and its monitor as two compose projects joined by one external network (each edge answering under its names, each side trusting the other's Caddy authority through CHECK_DIR), and checks Gatus's deep-health line and Base heartbeat green, an API and a web error in GlitchTip with no address, quoted value or long number, and a blackholed DSN costing under 5 s more (measured about 1 s). A frame's source lines (context, context_line, pre/post_context) are left out of the leak search: they are this repository's code, and app:errors:test writes its values on its throw line. Mail and Telegram alerts and the Site line (an internal certificate lasts hours) are not checked; the check sends api.telegram.org to 0.0.0.0 so its made-up bot token never leaves the machine. Weekly workflow plus pushes touching the monitor. Alternatives: one compose project with the monitor files added (relative paths resolve against the first file); keeping source context in the search (red on code, not data).
+- [2026-10-12 17:07] ASSUMED (review): GlitchTip's healthcheck asks /_health/ under its own name (Host: ALLOWED_HOSTS): Django answers 127.0.0.1 with 400, so the shipped healthcheck never passed and the monitor's edge, which waits for it, never started (probed: 400 without the header, 200 with it). Alternatives: add 127.0.0.1 to ALLOWED_HOSTS (widens what the tracker answers).
 
 ## Formal Plan
 
@@ -58,12 +62,12 @@ Not covered, said so: nothing watches the monitor machine; web stacks stay minif
 |---|------|------|-------|----------|-------|
 | 1 | Deep health behind a token | M | done | 5b88cf9d | api/src/Shared/Infrastructure/Health/** api/tests/** compose.backup.yaml |
 | 2 | Backup heartbeats | S | done | 5b88cf9d | infra/postgres/backup/** compose.backup.yaml |
-| 3 | API errors through sentry-symfony, scrubbed | M | doing | - | api/** |
-| 4 | Web errors through the API | M | todo | - | api/src/** web/src/app/shared/** |
-| 5 | Monitor machine compose, gatus.yaml, its gate | M | todo | - | infra/monitor/** scripts/monitor/** scripts/gates/** |
-| 6 | make monitor-check and its workflow | M | todo | - | scripts/monitor/** .github/workflows/** Makefile |
+| 3 | API errors through sentry-symfony, scrubbed | M | done | c4290e3d | api/** |
+| 4 | Web errors through the API | M | done | cc1ca99b | api/src/** web/src/app/shared/** |
+| 5 | Monitor machine compose, gatus.yaml, its gate | M | doing | - | infra/monitor/** scripts/monitor/** scripts/gates/** |
+| 6 | make monitor-check and its workflow | M | doing | - | scripts/monitor/** .github/workflows/** Makefile |
 | 7 | Status link and legal monitor provider | S | todo | - | api/src/** api/resources/legal/** web/** |
-| 8 | Deploy overlay requires the monitor, docs, sabotages | M | todo | - | compose.deploy.yaml scripts/** docs/** CLAUDE.md |
+| 8 | Deploy overlay requires the monitor, docs, sabotages | M | doing | - | compose.deploy.yaml scripts/** docs/** CLAUDE.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input

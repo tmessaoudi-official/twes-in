@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The monitor's edge (infra/monitor/compose.yaml; docs/START.md § 15): the status page and the error tracker, each on its
+# own name, over TLS. Caddy obtains and renews the certificates itself and answers plain HTTP with a redirect.
+{
+	admin off
+}
+
+# The public status page, and the door the backups' heartbeats come in by (each carries its token).
+{$STATUS_HOST} {
+	tls {$EDGE_TLS}
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy gatus:8080
+}
+
+# The error tracker: the instance's reports come in here, and the operator signs in to read them.
+{$ERRORS_HOST} {
+	tls {$EDGE_TLS}
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy glitchtip:8000
+}

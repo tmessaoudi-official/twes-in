@@ -6,7 +6,9 @@
 #   postgres image         compose.yaml (CI runs the compose service, never a pin of its own) = the backup overlay's
 #                          image (infra/postgres/Dockerfile), which archives and restores beside that very server
 #   postgres major         also pgBackRest's data directory (infra/postgres/pgbackrest.conf pg1-path)
-#   Caddy                  compose.yaml's lan = compose.deploy.yaml's edge
+#   Caddy                  compose.yaml's lan = compose.deploy.yaml's edge = the monitor's edge (infra/monitor/compose.yaml)
+#   monitor postgres       the monitor's error-tracker database (infra/monitor/compose.yaml) = compose.yaml's postgres,
+#                          so one bump moves every server this project runs
 #   serverVersion          every DATABASE_URL (compose.yaml, compose.deploy.yaml, api/.env*) = the postgres image's major
 #   PHP                    infra/api/Dockerfile's frankenphp tag = composer.json's floor
 #   Node                   web/.nvmrc = infra/web/Dockerfile's node image = web/package.json engines; and the
@@ -47,6 +49,12 @@ edge_caddy=$(grab compose.deploy.yaml 'image: caddy:[^[:space:]"]+' | sed 's/^im
 if [[ -z "$lan_caddy" ]]; then problem "caddy image: found none in compose.yaml (the lan service)"
 elif [[ -z "$edge_caddy" ]]; then problem "caddy image: found none in compose.deploy.yaml (the edge service)"
 elif [[ "$edge_caddy" != "$lan_caddy" ]]; then problem "caddy image: compose.deploy.yaml's edge runs $(inline "$edge_caddy"), compose.yaml's lan $lan_caddy"; fi
+monitor_caddy=$(grab infra/monitor/compose.yaml 'image: caddy:[^[:space:]"]+' | sed 's/^image: //' | sort -u)
+monitor_pg=$(grab infra/monitor/compose.yaml 'image: postgres:[^[:space:]"]+' | sed 's/^image: //' | sort -u)
+if [[ -z "$monitor_caddy" ]]; then problem "caddy image: found none in infra/monitor/compose.yaml (the monitor's edge)"
+elif [[ -n "$lan_caddy" && "$monitor_caddy" != "$lan_caddy" ]]; then problem "caddy image: infra/monitor/compose.yaml's edge runs $(inline "$monitor_caddy"), compose.yaml's lan $lan_caddy"; fi
+if [[ -z "$monitor_pg" ]]; then problem "postgres image: found none in infra/monitor/compose.yaml (the error tracker's database)"
+elif [[ -n "$compose_pg" && "$monitor_pg" != "$compose_pg" ]]; then problem "postgres image: infra/monitor/compose.yaml runs $(inline "$monitor_pg"), compose.yaml $compose_pg"; fi
 
 # serverVersion follows the image's major
 found=0

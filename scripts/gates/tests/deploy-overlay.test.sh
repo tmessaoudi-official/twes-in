@@ -45,7 +45,7 @@ services:
     ports: ["127.0.0.1:8092:8025"]
 EOF
   printf 'services:\n  api:\n    restart: unless-stopped\n' > "$d/compose.prod.yaml"
-  printf 'services:\n  backup:\n    image: busybox\n' > "$d/compose.backup.yaml"
+  printf 'services:\n  backup:\n    image: busybox\n    environment:\n      MONITOR_URL: "${MONITOR_URL:-}"\n      MONITOR_HEARTBEAT_TOKEN: "${MONITOR_HEARTBEAT_TOKEN:-}"\n' > "$d/compose.backup.yaml"
   cat > "$d/compose.deploy.yaml" <<'EOF'
 x-deploy-environment: &deploy
   DEFAULT_URI: "https://${TWES_HOST:?set TWES_HOST}"
@@ -55,6 +55,8 @@ x-deploy-environment: &deploy
   MAILER_DSN: "${MAILER_DSN:?set MAILER_DSN}"
   MAILER_SENDER: "${MAILER_SENDER:?set MAILER_SENDER}"
   DATABASE_URL: "postgresql://twes:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/twes"
+  MONITOR_TOKEN: "${MONITOR_TOKEN:?set MONITOR_TOKEN}"
+  SENTRY_DSN: "${SENTRY_DSN:?set SENTRY_DSN}"
 services:
   edge:
     image: busybox
@@ -76,6 +78,10 @@ services:
       CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "https://${TWES_HOST:?set TWES_HOST}"
   web:
     ports: !reset []
+  backup:
+    environment:
+      MONITOR_URL: "${MONITOR_URL:?set MONITOR_URL}"
+      MONITOR_HEARTBEAT_TOKEN: "${MONITOR_HEARTBEAT_TOKEN:?set MONITOR_HEARTBEAT_TOKEN}"
   mailpit:
     profiles: [mailpit]
     ports: !reset []
@@ -119,6 +125,15 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "a service depending on mailpit is r
 # The repository commits a development .env, which compose reads unless given --env-file, as a server always is.
 d=$(project); printf 'POSTGRES_PASSWORD=twes\n' > "$d/.env"
 out=$(bash "$GATE" --root "$d" 2>&1); check "the committed development .env does not fill a required value" $? 0 "$out" "OK"
+
+d=$(project); edit "$d/compose.deploy.yaml" 's/\${SENTRY_DSN:?set SENTRY_DSN}/${SENTRY_DSN:-}/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "an instance that may start reporting its errors nowhere is named" $? 1 "$out" "SENTRY_DSN is not required"
+
+d=$(project); edit "$d/compose.deploy.yaml" '/^  backup:/,/^  mailpit:/{/MONITOR_URL/d}'
+out=$(bash "$GATE" --root "$d" 2>&1); check "backups whose heartbeats may go nowhere are named" $? 1 "$out" "MONITOR_URL is not required"
+
+d=$(project); edit "$d/compose.deploy.yaml" '/^  worker:/,/^  postgres:/{/environment: \*deploy/d}' && edit "$d/compose.deploy.yaml" 's/^  worker:$/  worker: {}/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a worker that reports its errors nowhere is named" $? 1 "$out" "worker SENTRY_DSN"
 
 d=$(project); rm "$d/compose.deploy.yaml"
 out=$(bash "$GATE" --root "$d" 2>&1); check "a tree without the overlay fails" $? 1 "$out" "compose.deploy.yaml"

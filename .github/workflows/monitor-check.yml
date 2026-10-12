@@ -1,0 +1,41 @@
+# The monitor check (scripts/monitor/monitor-check.sh, docs/START.md § 15): a deployment and its monitor booted side by
+# side, then Gatus must read the instance's deep health and take a backup's heartbeat, and an API and a web error must
+# reach GlitchTip masked. Weekly, so drift in Gatus, GlitchTip or the Sentry SDK shows within a week; by hand; and on any
+# push that changes the monitor, what reports to it, or the deployment it watches. Not one of ci.yml's required checks:
+# it does not run on every push.
+name: monitor-check
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - infra/monitor/**
+      - scripts/monitor/**
+      - infra/postgres/backup/**
+      - compose.backup.yaml
+      - compose.deploy.yaml
+      - scripts/deploy/new-instance.sh
+      - api/src/Shared/Infrastructure/ErrorReporting/**
+      - api/src/Shared/Infrastructure/Health/**
+      - api/config/packages/sentry.yaml
+      - api/config/packages/monolog.yaml
+      - .github/workflows/monitor-check.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        # The images are built as the version git says each part is, which counts the day's changes.
+        with:
+          fetch-depth: 0
+      - run: bash scripts/build-version.sh --env >> "$GITHUB_ENV"
+      - run: make monitor-check
