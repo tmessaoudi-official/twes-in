@@ -424,7 +424,15 @@ test('« Mon compte » opens from the member’s menu and turns what is coming o
 
     await page.getByRole('tab', { name: /Préférences/ }).click();
     await expect(page).toHaveURL(/\/account\?tab=preferences$/);
+    // The menu changes before the API has kept the choice: wait for the save, or the cleanup below runs first and
+    // the save lands after it, leaving what is coming hidden for every later scenario of the run.
+    const saved = page.waitForResponse(
+      (response) =>
+        response.url().includes('/settings/presentation.show-coming') &&
+        response.request().method() === 'PUT',
+    );
     await page.getByTestId('account-show-coming').getByRole('switch').click();
+    expect((await saved).status()).toBe(200);
     await expect(page.getByTestId('nav-register')).toHaveCount(0);
   } finally {
     await forget(page, SHOW_COMING);
