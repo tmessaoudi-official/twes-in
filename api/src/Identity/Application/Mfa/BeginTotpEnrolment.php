@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace App\Identity\Application\Mfa;
 
 use App\Identity\Application\SecretCipher;
+use App\Identity\Application\StepUp\ConfirmStepUp;
+use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\UserRepository;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -28,13 +30,18 @@ final readonly class BeginTotpEnrolment
         private UserRepository $users,
         private TotpCodes $totp,
         private SecretCipher $cipher,
+        private ConfirmStepUp $stepUp,
         #[Autowire(param: 'app.mfa.issuer')]
         private string $issuer,
     ) {
     }
 
+    /** @throws StepUpRequired when this sign-in has no fresh proof: a taken session must not plant a factor of its own */
     public function handle(Uuid $userId): TotpEnrolment
     {
+        if (!$this->stepUp->isRecent($userId)) {
+            throw new StepUpRequired();
+        }
         $user = $this->users->ofId($userId);
 
         if (null === $user) {

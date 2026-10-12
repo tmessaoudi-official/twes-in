@@ -59,11 +59,39 @@ final class MfaEnrolmentTest extends ApiTestCase
         }
     }
 
+    public function testStartingAnAuthenticatorWaitsForAFreshProofOfWhoIsAtTheScreen(): void
+    {
+        // A session taken from someone must not let its taker plant a factor of their own and keep the account.
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+
+        $this->postJson('/api/auth/mfa/enrolment', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('step_up_required', $this->stringAt($this->json(), 'error'));
+
+        $this->stepUp(self::PASSWORD);
+        $this->postJson('/api/auth/mfa/enrolment', []);
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testAnAccountHeldForWantOfAFactorCanProveItselfAndEnrol(): void
+    {
+        $company = $this->createCompany('Secure');
+        $company->requireMfa(true);
+        $this->createUser('someone@twes.local', self::PASSWORD, $company);
+        $this->login('someone@twes.local', self::PASSWORD);
+
+        $this->stepUp(self::PASSWORD);
+        $this->postJson('/api/auth/mfa/enrolment', []);
+        self::assertResponseIsSuccessful();
+    }
+
     public function testEnrolmentHandsBackASecretAndAUriAnAuthenticatorCanRead(): void
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
 
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
 
         self::assertResponseIsSuccessful();
@@ -77,6 +105,7 @@ final class MfaEnrolmentTest extends ApiTestCase
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
 
         // Signing in again must not ask for a code: nothing has been confirmed.
@@ -91,6 +120,7 @@ final class MfaEnrolmentTest extends ApiTestCase
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
         $secret = $this->stringAt($this->json(), 'secret');
 
@@ -113,6 +143,7 @@ final class MfaEnrolmentTest extends ApiTestCase
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
         $secret = $this->stringAt($this->json(), 'secret');
         $sealedElsewhere = (new SodiumSecretCipher('AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE='))->encrypt($secret);
@@ -123,6 +154,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
 
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
         $fresh = $this->stringAt($this->json(), 'secret');
         $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($fresh, new \DateTimeImmutable())]);
@@ -133,6 +165,7 @@ final class MfaEnrolmentTest extends ApiTestCase
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
 
         $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => '000000']);
@@ -148,12 +181,14 @@ final class MfaEnrolmentTest extends ApiTestCase
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
         $secret = $this->stringAt($this->json(), 'secret');
         $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
         self::assertResponseIsSuccessful();
 
         // A session is all this endpoint asks for, so a forgotten or stolen one must not be able to turn the factor off.
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
@@ -201,6 +236,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertTrue($this->boolAt($this->section($this->json(), 'mfa'), 'required'));
 
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
         self::assertResponseIsSuccessful();
         $secret = $this->stringAt($this->json(), 'secret');

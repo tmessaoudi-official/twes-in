@@ -17,6 +17,7 @@ use App\Identity\Application\Mfa\SecondFactorLockout;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\SecondFactorUnreadable;
 use App\Identity\Application\Mfa\VerifySecondFactor;
+use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Infrastructure\Security\PendingSecondFactor;
 use App\Identity\Infrastructure\Security\SecondFactorLogin;
 use App\Identity\Infrastructure\Security\SecurityUser;
@@ -99,6 +100,8 @@ final readonly class MfaController
             $enrolment = $this->beginEnrolment->handle($this->currentUserId());
         } catch (SecondFactorAlreadyEnrolled) {
             return new JsonResponse(['error' => 'mfa_already_enrolled'], Response::HTTP_CONFLICT);
+        } catch (StepUpRequired) {
+            return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         }
 
         return new JsonResponse(['secret' => $enrolment->secret, 'provisioningUri' => $enrolment->provisioningUri]);

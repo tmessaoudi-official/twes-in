@@ -120,6 +120,8 @@ final class StepUpTest extends ApiTestCase
         $authenticator = new FakeAuthenticator();
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
+        // Adding the passkey is itself proven with the password, which is the first of the two confirmations below.
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/passkeys/options', null);
         $creation = $this->json();
         $this->postJson('/api/auth/mfa/passkeys', ['name' => 'Laptop', 'credential' => $authenticator->register($creation)]);
@@ -138,7 +140,7 @@ final class StepUpTest extends ApiTestCase
 
         $this->postJson(self::PASSKEY, ['credential' => $authenticator->assert($this->passkeyOptions())]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
-        self::assertSame(1, $this->audited('auth.step_up'));
+        self::assertSame(2, $this->audited('auth.step_up'));
     }
 
     public function testAnAccountWithoutAPasskeyIsToldSoWhenItAsksForOptions(): void

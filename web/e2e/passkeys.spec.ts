@@ -20,6 +20,14 @@ async function signIn(page: Page, email: string, password: string): Promise<void
   await page.getByTestId('submit').click();
 }
 
+/** Adding or removing a factor asks who is at the screen first: the password, in the step-up dialog. */
+async function prove(page: Page, password: string): Promise<void> {
+  await expect(page.getByTestId('step-up-title')).toBeVisible();
+  await page.getByTestId('step-up-password').fill(password);
+  await page.getByTestId('step-up-confirm').click();
+  await expect(page.getByTestId('step-up-title')).toHaveCount(0);
+}
+
 async function signOut(page: Page): Promise<void> {
   await page.getByTestId('user-menu').click();
   await page.getByTestId('logout').click();
@@ -80,6 +88,8 @@ test('an account adds a passkey, signs in with it, and removes it', async ({ pag
   await page.getByTestId('user-menu').click();
   await page.getByTestId('two-factor-link').click();
   await expect(page).toHaveURL(/\/two-factor$/);
+  // With no factor yet, the authenticator set-up starts on arrival and asks for the proof first.
+  await prove(page, NEW_PASSWORD);
   await expect(page.getByTestId('two-factor-passkeys-none')).toBeVisible();
   await page.getByTestId('two-factor-passkey-name').fill('Work laptop');
   await page.getByTestId('two-factor-passkey-add').click();
@@ -123,6 +133,8 @@ test('an account adds a passkey, signs in with it, and removes it', async ({ pag
   // This device already holds a passkey for the account, and says so rather than making a second one.
   await page.getByTestId('two-factor-passkey-name').fill('Same laptop');
   await page.getByTestId('two-factor-passkey-add').click();
+  // A new sign-in carries no proof of its own.
+  await prove(page, NEW_PASSWORD);
   await expect(page.getByTestId('two-factor-passkey-error')).toBeVisible();
   await expect(page.getByTestId('two-factor-passkey-name-label')).toHaveText(['Work laptop']);
 

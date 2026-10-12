@@ -210,6 +210,33 @@ final class PasskeyTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
     }
 
+    public function testAddingOrRemovingAPasskeyWaitsForAFreshProofOfWhoIsAtTheScreen(): void
+    {
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->postJson('/api/auth/mfa/passkeys/options', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('step_up_required', $this->stringAt($this->json(), 'error'));
+
+        $authenticator = new FakeAuthenticator();
+        $this->registerPasskey($authenticator);
+        $this->registerPasskey(new FakeAuthenticator());
+        [, $second] = $this->listedIds();
+
+        // A new sign-in carries no proof of its own: the second factor finishes the login, it is not the step-up.
+        $this->signOut();
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->postJson('/api/auth/mfa/passkey-login', ['credential' => $authenticator->assert($this->requestOptions())]);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('DELETE', '/api/auth/mfa/passkeys/'.$second);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('step_up_required', $this->stringAt($this->json(), 'error'));
+
+        $this->stepUp(self::PASSWORD);
+        $this->sendJson('DELETE', '/api/auth/mfa/passkeys/'.$second);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
     public function testRegisteringNeedsASession(): void
     {
         $this->postJson('/api/auth/mfa/passkeys/options', null);
@@ -339,8 +366,10 @@ final class PasskeyTest extends ApiTestCase
     {
         $this->createUser($email, self::PASSWORD);
         $this->login($email, self::PASSWORD);
+        $codes = $this->registerPasskey($authenticator, $signCount);
+        $this->forgetSecondFactorAttempts($email);
 
-        return $this->registerPasskey($authenticator, $signCount);
+        return $codes;
     }
 
     /** @return list<string> */
@@ -355,6 +384,7 @@ final class PasskeyTest extends ApiTestCase
     /** @return array<string, mixed> */
     private function creationOptions(): array
     {
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/passkeys/options', null);
         self::assertResponseIsSuccessful();
 

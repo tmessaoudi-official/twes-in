@@ -142,12 +142,14 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
         $this->secret = $this->stringAt($this->json(), 'secret');
         $this->confirmingCode = (new OtphpTotpCodes())->codeAt($this->secret, new \DateTimeImmutable());
         $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => $this->confirmingCode]);
         self::assertResponseIsSuccessful();
         $this->firstCodes = $this->codesIn($this->json());
+        $this->forgetSecondFactorAttempts('someone@twes.local');
     }
 
     /** The next step's code: the confirming step is spent, and one step of leeway admits this one. */

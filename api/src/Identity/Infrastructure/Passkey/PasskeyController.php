@@ -18,6 +18,7 @@ use App\Identity\Application\Mfa\PasskeyRefused;
 use App\Identity\Application\Mfa\RegenerateRecoveryCodesWithPasskey;
 use App\Identity\Application\Mfa\RegisterPasskey;
 use App\Identity\Application\Mfa\RemovePasskey;
+use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Domain\Passkey;
 use App\Identity\Domain\PasskeyRepository;
 use App\Identity\Domain\UserRepository;
@@ -83,6 +84,8 @@ final readonly class PasskeyController
             $options = $this->beginRegistration->handle($userId);
         } catch (PasskeyRefused) {
             return self::refused(Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (StepUpRequired) {
+            return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         }
 
         $this->challenges->remember(self::REGISTRATION, $userId, $options);
@@ -121,6 +124,8 @@ final readonly class PasskeyController
             return new JsonResponse(['error' => 'passkey_not_found'], Response::HTTP_NOT_FOUND);
         } catch (LastSecondFactor) {
             return new JsonResponse(['error' => 'mfa_last_factor'], Response::HTTP_CONFLICT);
+        } catch (StepUpRequired) {
+            return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);

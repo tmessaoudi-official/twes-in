@@ -31,13 +31,13 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 final readonly class MfaEnrolmentListener
 {
     /**
-     * The way out: read who you are, enrol, and leave. Everything else waits.
+     * The way out: read who you are, prove it again (adding a factor asks for that), enrol, and leave. Everything else waits.
      *
      * Matched on paths, not route names: API Platform generates its own names (`/api/auth/me` is
      * `_api_/auth/me_get`), and a list of names is a list that goes stale silently the next time a resource
      * is renamed. A path is the thing the rule is actually about.
      */
-    private const array ALLOWED_EXACTLY = ['/api/auth/me', '/api/auth/logout', '/api/health'];
+    private const array ALLOWED_EXACTLY = ['/api/auth/me', '/api/auth/logout', '/api/health', '/api/auth/step-up', '/api/auth/step-up/passkey/options', '/api/auth/step-up/passkey'];
 
     private const string ALLOWED_PREFIX = '/api/auth/mfa/';
 

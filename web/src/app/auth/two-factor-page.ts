@@ -11,6 +11,7 @@ import { AuthFacade } from './auth-facade';
 import type { LoginError, PasskeySummary, TotpEnrolment } from './auth-types';
 import { PasskeyClient } from './passkey-client';
 import { QrCode } from '../shared/qr/qr-code';
+import { StepUp } from '../shared/step-up/step-up';
 import { SignedOutLayout } from './signed-out-layout';
 
 /**
@@ -37,6 +38,7 @@ import { SignedOutLayout } from './signed-out-layout';
 export class TwoFactorPage {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+  private readonly stepUp = inject(StepUp);
 
   protected readonly required = this.auth.me()?.mfa.required === true;
   /** Any factor in force; read live, so a passkey added on this page counts at once. */
@@ -142,11 +144,12 @@ export class TwoFactorPage {
     }
     this.submitting.set(true);
     this.passkeyError.set(null);
-    const outcome = await this.auth.addPasskey(this.passkeyForm.controls.name.value.trim());
+    const name = this.passkeyForm.controls.name.value.trim();
+    const outcome = await this.proven(() => this.auth.addPasskey(name));
     this.submitting.set(false);
     if (!outcome.ok) {
-      // The name stays, so trying again after a cancelled prompt is one click.
-      this.passkeyError.set(outcome.error);
+      // The name stays, so trying again after a cancelled prompt is one click; a declined proof changed nothing to say.
+      this.passkeyError.set(outcome.error === 'step_up_required' ? null : outcome.error);
       return;
     }
     this.passkeys.update((list) => [...list, outcome.passkey]);
@@ -162,7 +165,7 @@ export class TwoFactorPage {
     }
     this.submitting.set(true);
     this.passkeyError.set(null);
-    const outcome = await this.auth.removePasskey(passkey.id);
+    const outcome = await this.proven(() => this.auth.removePasskey(passkey.id));
     this.submitting.set(false);
     if (outcome.ok) {
       this.passkeys.update((list) => list.filter((item) => item.id !== passkey.id));
@@ -170,7 +173,7 @@ export class TwoFactorPage {
       if (!this.enrolled()) {
         await this.begin();
       }
-    } else {
+    } else if (outcome.error !== 'step_up_required') {
       this.passkeyError.set(outcome.error);
     }
   }
@@ -185,12 +188,24 @@ export class TwoFactorPage {
   }
 
   private async begin(): Promise<void> {
-    const outcome = await this.auth.beginTotpEnrolment();
+    const outcome = await this.proven(() => this.auth.beginTotpEnrolment());
     if (outcome.ok) {
       this.enrolment.set(outcome.enrolment);
     } else {
       this.error.set(outcome.error);
     }
+  }
+
+  /**
+   * Adding or removing a factor waits for a fresh proof of who is at the screen, which the API asks for: the proof is
+   * requested once and the change tried again; declined, the API's refusal comes back and nothing changed.
+   */
+  private async proven<T extends { ok: true } | { ok: false; error: LoginError }>(
+    attempt: () => Promise<T>,
+  ): Promise<T> {
+    const first = await attempt();
+    if (first.ok || first.error !== 'step_up_required') return first;
+    return (await this.stepUp.request('step_up.intro_factors')) ? attempt() : first;
   }
 
   private async loadPasskeys(): Promise<void> {
