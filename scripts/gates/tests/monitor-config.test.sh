@@ -49,6 +49,12 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "an accented name is refused" $? 1 "
 d=$(project); edit "$d/infra/postgres/backup/twes-backup" "s/heartbeat Relecture verify/heartbeat Verification verify/"
 out=$(bash "$GATE" --root "$d" 2>&1); check "a heartbeat the monitor does not expect is named" $? 1 "$out" "Verification"
 
+d=$(project); edit "$d/infra/monitor/gatus.yaml" 's/Bearer \${MONITOR_TOKEN}/Bearer 0123456789abcdef/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a token written into gatus.yaml is refused" $? 1 "$out" "written out"
+
+d=$(project); edit "$d/infra/monitor/gatus.yaml" '0,/token: "\${MONITOR_HEARTBEAT_TOKEN}"/s//token: "abc"/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a heartbeat token written out is refused" $? 1 "$out" "written out"
+
 d=$(project); edit "$d/infra/monitor/Caddyfile" '0,/max-age=31536000"/s//max-age=31536000; includeSubDomains"/'
 out=$(bash "$GATE" --root "$d" 2>&1); check "HSTS reaching the subdomains is refused" $? 1 "$out" "Strict-Transport-Security"
 
