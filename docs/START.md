@@ -646,10 +646,10 @@ shell's history and the process list:
 ```sh
 read -rs PW && printf '%s\n' "$PW" | docker compose --env-file /etc/twes-in/deploy.env \
   -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml \
-  exec -T api bin/console app:seed --without-company --operator-email=<address> --operator-password-stdin; unset PW
+  exec -T api bin/console app:seed --no-interaction --without-company --operator-email=<address> --operator-password-stdin; unset PW
 ```
 
-Sign in at `https://<name>/`, enrol the authenticator the operator is asked for, then fill in the host's facts on
+Sign in at `https://<name>/` and enrol the authenticator: until then an operator reaches nothing but the enrolment. Then fill in the host's facts on
 `/platform/legal` (the provider, its country, the backup provider and its country): the legal pages print them.
 
 **The deploy check.** `make deploy-check` boots the same four files from values `new-instance.sh` wrote, given through
