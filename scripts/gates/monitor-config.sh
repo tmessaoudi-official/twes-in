@@ -7,6 +7,8 @@
 #   logs       every service rotates its output, 10 MB × 5
 #   public     the status page is public, so every line of gatus.yaml hides its address, host, port, conditions and
 #              errors, and alerts by mail and Telegram
+#   secrets    every token and Authorization header in gatus.yaml is a ${…} the compose file fills in: the repository is
+#              public, so a value written out is published
 #   names      a name is plain letters, digits and spaces (Gatus takes no heartbeat for an accented one), and the backups'
 #              heartbeats are exactly the ones infra/postgres/backup/twes-backup sends
 #   HSTS       infra/monitor/Caddyfile sends max-age=31536000 to each of its two hosts, no includeSubDomains, no preload
@@ -89,6 +91,10 @@ done <<<"$records"
 sent=$(grep -oE "trap [\"']heartbeat [A-Za-z]+ " "$root/infra/postgres/backup/twes-backup" | awk '{print $3}' | sort -u | tr '\n' ' ')
 taken=$(printf '%s\n' "${expected[@]}" | sort -u | tr '\n' ' ')
 [[ "$sent" == "$taken" ]] || problem "the backups send heartbeats [${sent% }] and gatus.yaml takes [${taken% }]: each must be the other"
+
+while IFS= read -r line; do
+  problem "gatus.yaml has a secret written out, where a \${…} from the values file belongs: ${line#"${line%%[![:space:]]*}"}"
+done < <(grep -E '^[[:space:]]*(token:|Authorization:)' "$monitor/gatus.yaml" | grep -vE ':[[:space:]]*"(Bearer )?\$\{[A-Z_]+\}"[[:space:]]*$')
 
 caddy=$monitor/Caddyfile
 hsts=$(grep -cE '^[[:space:]]*header Strict-Transport-Security' "$caddy")

@@ -15,9 +15,13 @@ on:
       - infra/monitor/**
       - scripts/monitor/**
       - infra/postgres/backup/**
+      - compose.yaml
+      - compose.prod.yaml
       - compose.backup.yaml
       - compose.deploy.yaml
       - scripts/deploy/new-instance.sh
+      - scripts/deploy/check.compose.yaml
+      - scripts/backup/**
       - api/src/Shared/Infrastructure/ErrorReporting/**
       - api/src/Shared/Infrastructure/Health/**
       - api/config/packages/sentry.yaml

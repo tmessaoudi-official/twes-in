@@ -106,7 +106,8 @@ step "monitor up behind its edge"
 
 # The operator's account and the instance's project, as docs/START.md § 15 makes them; a read-only token for the check.
 password=$(random 24)
-mon exec -T -e DJANGO_SUPERUSER_EMAIL="$OPERATOR" -e DJANGO_SUPERUSER_PASSWORD="$password" glitchtip \
+# As docs/START.md § 15 writes it: the password through the environment, never on the command line.
+DJANGO_SUPERUSER_PASSWORD="$password" mon exec -T -e DJANGO_SUPERUSER_EMAIL="$OPERATOR" -e DJANGO_SUPERUSER_PASSWORD glitchtip \
   python manage.py createsuperuser --noinput >/dev/null || fail "createsuperuser could not make the operator's account"
 dsn=$(mon exec -T -e OPERATOR_EMAIL="$OPERATOR" glitchtip python manage.py shell < "$root/infra/monitor/bootstrap.py" | sed -n 's/^SENTRY_DSN=//p')
 [[ "$dsn" == "https://"*"@$ERRORS/"* ]] || fail "bootstrap.py printed no DSN on $ERRORS: [$dsn]"

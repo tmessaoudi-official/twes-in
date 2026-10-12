@@ -628,6 +628,11 @@ error tracker gave this instance. It also draws the two tokens the monitor reads
 `MONITOR_HEARTBEAT_TOKEN`, which are copied into the monitor's own values. Every one is required: compose refuses to start while one is empty. The name never changes afterwards:
 passkeys are bound to it.
 
+**The monitor first.** The deployment requires the monitor's two values, so a first deployment comes after its
+monitor (§ 15): `new-instance.sh` draws the two tokens; `new-monitor.sh` writes the monitor's values, into which they are
+copied; the monitor starts; its operator account and `bootstrap.py` give the DSN; `SENTRY_DSN` and `MONITOR_URL` go into
+the instance's values; then the first deployment below.
+
 **Deploying a release.** A release is a tag `vYYYY.MM.DD.N` on master. On the server:
 
 ```sh
@@ -711,17 +716,19 @@ bot (`TELEGRAM_TOKEN` from @BotFather, `TELEGRAM_CHAT_ID`). Every one is require
 docker compose --env-file /etc/twes-monitor/monitor.env -f infra/monitor/compose.yaml up -d --wait
 ```
 
-**The operator's account and the instance's DSN**, once. The password is read from standard input:
+**The operator's account and the instance's DSN**, once. The password is read from standard input and handed to the
+container through the environment (`-e` with a name and no value), so it stays out of the shell's history and the
+process list:
 
 ```sh
 M="docker compose --env-file /etc/twes-monitor/monitor.env -f infra/monitor/compose.yaml"
-read -rs PW && $M exec -T -e DJANGO_SUPERUSER_EMAIL=<address> -e DJANGO_SUPERUSER_PASSWORD="$PW" glitchtip \
-  python manage.py createsuperuser --noinput; unset PW
+read -rs PW && DJANGO_SUPERUSER_PASSWORD="$PW" $M exec -T -e DJANGO_SUPERUSER_EMAIL=<address> \
+  -e DJANGO_SUPERUSER_PASSWORD glitchtip python manage.py createsuperuser --noinput; unset PW
 $M exec -T -e OPERATOR_EMAIL=<address> glitchtip python manage.py shell < infra/monitor/bootstrap.py
 ```
 
 The second line prints `SENTRY_DSN=…`: put it in the instance's values with `MONITOR_URL=https://<status name>`, deploy
-the instance again (§ 14), and fill in the status page's address and the monitor's provider on its platform pages.
+the instance (§ 14), and fill in the status page's address and the monitor's provider on its platform pages.
 `bin/console app:errors:test` on the instance's api then puts one masked test error in GlitchTip.
 
 **The monitor check.** `make monitor-check` boots a deployment (as the deploy check does) and a monitor from values the
