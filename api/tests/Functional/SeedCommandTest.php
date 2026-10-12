@@ -44,6 +44,27 @@ final class SeedCommandTest extends ApiTestCase
         self::assertSame(['*'], $this->json()['permissions']);
     }
 
+    public function testAProductionSeedReadsThePasswordFromStdinAndMakesNoCompany(): void
+    {
+        $tester = $this->seed(['--operator-email' => 'op@example.test', '--operator-password-stdin' => true, '--without-company' => true], ["read-from-stdin-secret\n"]);
+
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertStringNotContainsString('company', $tester->getDisplay());
+        self::assertSame([], $this->em()->getRepository(Company::class)->findAll());
+
+        $this->login('op@example.test', 'read-from-stdin-secret');
+        self::assertResponseStatusCodeSame(200);
+        self::assertNull($this->json()['company'] ?? null, 'the operator belongs to no company');
+    }
+
+    public function testThePasswordIsGivenOneWayOnly(): void
+    {
+        $tester = $this->seed(['--operator-email' => 'op@example.test', '--operator-password' => 'a', '--operator-password-stdin' => true], ["b\n"]);
+
+        self::assertSame(2, $tester->getStatusCode());
+        self::assertCount(0, $this->em()->getRepository(User::class)->findAll());
+    }
+
     public function testASecondRunChangesNothing(): void
     {
         $this->seed(['--operator-email' => 'op@example.test', '--operator-password' => 'seeded-secret']);
@@ -86,12 +107,16 @@ final class SeedCommandTest extends ApiTestCase
         self::assertCount(0, $this->em()->getRepository(User::class)->findAll());
     }
 
-    /** @param array<string, string> $options */
-    private function seed(array $options): CommandTester
+    /**
+     * @param array<string, string|true> $options
+     * @param list<string>               $stdin   what the command reads from its standard input
+     */
+    private function seed(array $options, array $stdin = []): CommandTester
     {
         $application = new Application(static::$kernel ?? throw new \LogicException('kernel not booted'));
         $tester = new CommandTester($application->find('app:seed'));
-        $tester->execute($options);
+        $tester->setInputs($stdin);
+        $tester->execute($options, ['interactive' => false]);
 
         return $tester;
     }

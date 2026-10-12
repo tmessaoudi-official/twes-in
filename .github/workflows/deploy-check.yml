@@ -1,0 +1,40 @@
+# The deploy check (scripts/deploy/deploy-check.sh, docs/START.md § 14): a deployment booted from the values
+# new-instance.sh writes, with the four compose files, then asked through its edge what a browser asks. Weekly, so drift
+# in Caddy, an image or a proxy setting shows within a week; by hand; and on any push that changes what sits between the
+# browser and the API: the compose files, the edge, nginx, the deploy scripts, the stand-in bucket, and the API's
+# trusted proxies. Not one of ci.yml's required checks: it does not run on every push.
+name: deploy-check
+
+on:
+  schedule:
+    - cron: "47 3 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - compose.yaml
+      - compose.prod.yaml
+      - compose.backup.yaml
+      - compose.deploy.yaml
+      - infra/edge/**
+      - infra/web/**
+      - scripts/deploy/**
+      - scripts/backup/**
+      - api/config/packages/framework.yaml
+      - .github/workflows/deploy-check.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        # The images are built as the version git says each part is, which counts the day's changes.
+        with:
+          fetch-depth: 0
+      - run: bash scripts/build-version.sh --env >> "$GITHUB_ENV"
+      - run: make deploy-check

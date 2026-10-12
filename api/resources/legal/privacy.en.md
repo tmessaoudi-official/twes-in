@@ -21,7 +21,7 @@
 ## Who can see it
 
 - The members of your company, each according to the rights their role gives them.
-- The publisher's sub-processors, named on the "Data processing (DPA)" page: the host {{host.name}} and the e-mail sending service {{mail.provider}}.
+- The publisher's sub-processors, named on the "Data processing (DPA)" page: the host {{host.name}}, the e-mail sending service {{mail.provider}} and the backup provider {{backup.provider}}.
 
 ## How long
 

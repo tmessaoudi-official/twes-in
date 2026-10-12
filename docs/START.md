@@ -595,3 +595,70 @@ What it does not prove: the four hours the ruling allows for a real database (th
 bucket addressed by host (`BACKUP_S3_URI_STYLE=host`, AWS itself), since the stand-in is addressed by path; that the
 schedule fires at its hours (the drill runs each step itself); and a restore by hand on a new machine from the real
 bucket, which follows the first deployment.
+
+## 14. Deploying
+
+A deployment is the production stack (§ 10) with its backups (§ 13) behind a Caddy edge, `compose.deploy.yaml`. The
+edge is the only service that publishes a port: 80, which answers 308 to HTTPS, and 443 over TCP and UDP. It takes its
+certificate from Let's Encrypt on the first request and renews it alone, and it sends
+`Strict-Transport-Security: max-age=31536000` for this host only (no subdomains, no preload list). Every address the
+API, the passkeys, the phone pairing and the realtime server use is derived from one name, `TWES_HOST`. Mailpit does
+not run: mail goes to the relay named in the values.
+
+**The machine.** Any Linux host with Docker and the Compose plugin, `git` and `make`, 4 GB of memory at least. A DNS
+`A` (and `AAAA`, if the host has IPv6) record for the name points at it before the first start, or the certificate
+cannot be issued. Close every port but 22, 80 and 443 at the provider's own firewall: a port Docker publishes goes
+around `ufw` and `firewalld`, so a host firewall alone does not protect it. The deployment publishes none but the
+edge's, which `scripts/gates/deploy-overlay.sh` holds in CI.
+
+**The values, once.** One file outside the checkout holds everything the instance needs. `new-instance.sh` writes it,
+readable by its owner alone, with every secret drawn at random, and refuses to write over one that exists, since it
+holds the keys the database and backups are encrypted under:
+
+```sh
+sudo install -d -m 700 -o "$USER" /etc/twes-in
+bash scripts/deploy/new-instance.sh /etc/twes-in/deploy.env
+```
+
+It prints which values to keep somewhere other than the server (the MFA key, the two backup passphrases, the
+application secret, the database password): without them a restored backup cannot be read. Then fill in the facts it
+left blank: `TWES_HOST`, `EDGE_TLS` (the address Let's Encrypt writes to), `MAILER_DSN` and `MAILER_SENDER`, and the
+bucket (§ 13). Every one is required: compose refuses to start while one is empty. The name never changes afterwards:
+passkeys are bound to it.
+
+**Deploying a release.** A release is a tag `vYYYY.MM.DD.N` on master. On the server:
+
+```sh
+git fetch --tags && git checkout v2026.10.12.1
+bash scripts/deploy/deploy.sh /etc/twes-in/deploy.env
+```
+
+`deploy.sh` refuses unless HEAD is exactly at a release tag and the checkout is clean, untracked files included (the
+images copy the tree as it is), and unless the values file is mode 600. It builds the images as the version git gives
+(§ 11) and starts the four files with `--env-file`. Always deploy through it: a bare `docker compose` on the server
+reads the committed development `.env` for whatever it lacks, its database password included. The API migrates at start
+(§ 10).
+
+**The first operator**, once, after the first deploy. Production makes no first company: an operator reaches a company
+only through the support access its owner opens. The password is read from standard input, so it stays out of the
+shell's history and the process list:
+
+```sh
+read -rs PW && printf '%s\n' "$PW" | docker compose --env-file /etc/twes-in/deploy.env \
+  -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml \
+  exec -T api bin/console app:seed --without-company --operator-email=<address> --operator-password-stdin; unset PW
+```
+
+Sign in at `https://<name>/`, enrol the authenticator the operator is asked for, then fill in the host's facts on
+`/platform/legal` (the provider, its country, the backup provider and its country): the legal pages print them.
+
+**The deploy check.** `make deploy-check` boots all of it as `deploy.sh` does, from values `new-instance.sh` wrote,
+with the edge's own certificate authority (`EDGE_TLS=internal`) and the restore drill's stand-in bucket, and asks the
+edge what a browser asks: the HSTS header, the 308 from plain HTTP, `/api/health`, the operator seeded as above signing
+in and reading `/api/auth/me` with its cookie, the realtime socket's upgrade, and six password-reset requests each
+claiming another `X-Forwarded-For`, whose sixth must still be refused as one client's (429). It runs as the compose
+project `twes-deploy-check` beside your own stack, publishes nothing, and removes everything at the end. CI runs it
+weekly, by hand, and on every push that changes the path from browser to API (`.github/workflows/deploy-check.yml`).
+
+What it does not prove: a certificate from Let's Encrypt (the check's authority is Caddy's own), the mail relay, the DNS
+record, HTTP/3 from a real browser, and a first deployment on a real machine, which follows.

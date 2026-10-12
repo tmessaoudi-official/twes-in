@@ -6,7 +6,8 @@
 #   postgres image         compose.yaml (CI runs the compose service, never a pin of its own) = the backup overlay's
 #                          image (infra/postgres/Dockerfile), which archives and restores beside that very server
 #   postgres major         also pgBackRest's data directory (infra/postgres/pgbackrest.conf pg1-path)
-#   serverVersion          every DATABASE_URL (compose.yaml, api/.env*) = the postgres image's major
+#   Caddy                  compose.yaml's lan = compose.deploy.yaml's edge
+#   serverVersion          every DATABASE_URL (compose.yaml, compose.deploy.yaml, api/.env*) = the postgres image's major
 #   PHP                    infra/api/Dockerfile's frankenphp tag = composer.json's floor
 #   Node                   web/.nvmrc = infra/web/Dockerfile's node image = web/package.json engines; and the
 #                          tools image (infra/web/tools.Dockerfile) runs the same full version
@@ -40,9 +41,16 @@ pg_path=$(grab infra/postgres/pgbackrest.conf '^pg1-path=/var/lib/postgresql/[0-
 if [[ -z "$pg_path" ]]; then problem "postgres major: found no pg1-path=/var/lib/postgresql/<major>/… in infra/postgres/pgbackrest.conf"
 elif [[ -n "$pg_major" && "$pg_path" != "$pg_major" ]]; then problem "postgres major: infra/postgres/pgbackrest.conf reads /var/lib/postgresql/$pg_path, the image is $pg_major"; fi
 
+# Caddy: the deployment's edge and the development LAN door are one TLS terminator, tested in development as it serves.
+lan_caddy=$(grab compose.yaml 'image: caddy:[^[:space:]"]+' | sed 's/^image: //' | sort -u)
+edge_caddy=$(grab compose.deploy.yaml 'image: caddy:[^[:space:]"]+' | sed 's/^image: //' | sort -u)
+if [[ -z "$lan_caddy" ]]; then problem "caddy image: found none in compose.yaml (the lan service)"
+elif [[ -z "$edge_caddy" ]]; then problem "caddy image: found none in compose.deploy.yaml (the edge service)"
+elif [[ "$edge_caddy" != "$lan_caddy" ]]; then problem "caddy image: compose.deploy.yaml's edge runs $(inline "$edge_caddy"), compose.yaml's lan $lan_caddy"; fi
+
 # serverVersion follows the image's major
 found=0
-for file in compose.yaml api/.env api/.env.*; do
+for file in compose.yaml compose.deploy.yaml api/.env api/.env.*; do
   [[ -f "$root/$file" ]] || continue
   while read -r v; do
     found=$((found + 1))
@@ -111,5 +119,5 @@ if ((${#problems[@]})); then
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi
-printf 'version-pins: OK — 7 pins agree across their copies (postgres %s, PHP %s, Node %s, Playwright %s, Symfony %s, Angular %s)\n' \
-  "${compose_pg#postgres:}" "$image_php" "$nvmrc" "$pw_lock" "$sf" "$core"
+printf 'version-pins: OK — 8 pins agree across their copies (postgres %s, Caddy %s, PHP %s, Node %s, Playwright %s, Symfony %s, Angular %s)\n' \
+  "${compose_pg#postgres:}" "${lan_caddy#caddy:}" "$image_php" "$nvmrc" "$pw_lock" "$sf" "$core"

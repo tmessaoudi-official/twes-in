@@ -3253,7 +3253,8 @@
         "host": {
           "name": "Host",
           "address": "Host’s address",
-          "phone": "Host’s phone"
+          "phone": "Host’s phone",
+          "country": "Country where the data is hosted"
         },
         "privacy": {
           "email": "Contact for personal data"
@@ -3266,6 +3267,9 @@
         },
         "mail": {
           "provider": "E-mail sending provider"
+        },
+        "backup": {
+          "provider": "Backup provider and country"
         },
         "source": {
           "url": "Source code address"

@@ -58,13 +58,37 @@ final class ProductionRestartTest extends TestCase
      */
     public function testEveryServiceTheBackupOverlayStartsComesBackByItself(): void
     {
+        $backup = self::services(\dirname(__DIR__, 3).'/compose.backup.yaml');
+
+        self::assertArrayHasKey('backup', $backup, 'the overlay starts the backup service');
+        self::assertArrayHasKey('postgres', $backup, 'the overlay rebuilds the database it backs up');
+        self::assertSame([], self::stayingDown($backup), 'these services stay down after a crash or a reboot');
+    }
+
+    public function testEveryServiceTheDeployOverlayStartsComesBackByItself(): void
+    {
+        $deploy = self::services(\dirname(__DIR__, 3).'/compose.deploy.yaml');
+
+        self::assertArrayHasKey('edge', $deploy, 'the overlay starts the edge every request comes through');
+        self::assertSame([], self::stayingDown($deploy), 'these services stay down after a crash or a reboot');
+    }
+
+    /**
+     * An overlay's services that would stay down, each read through the files beneath it: a restart policy set in
+     * compose.yaml or compose.prod.yaml still holds for a service the overlay only adjusts.
+     *
+     * @param array<array-key, array<array-key, mixed>> $overlay
+     *
+     * @return list<array-key>
+     */
+    private static function stayingDown(array $overlay): array
+    {
         $root = \dirname(__DIR__, 3);
         $base = self::services($root.'/compose.yaml');
         $production = self::services($root.'/compose.prod.yaml');
-        $backup = self::services($root.'/compose.backup.yaml');
 
         $staysDown = [];
-        foreach ($backup as $name => $definition) {
+        foreach ($overlay as $name => $definition) {
             if (isset($definition['profiles']) || isset($base[$name]['profiles'])) {
                 continue;
             }
@@ -74,9 +98,7 @@ final class ProductionRestartTest extends TestCase
             }
         }
 
-        self::assertArrayHasKey('backup', $backup, 'the overlay starts the backup service');
-        self::assertArrayHasKey('postgres', $backup, 'the overlay rebuilds the database it backs up');
-        self::assertSame([], $staysDown, 'these services stay down after a crash or a reboot');
+        return $staysDown;
     }
 
     /** @return array<array-key, array<array-key, mixed>> */

@@ -91,4 +91,21 @@ printf '%s\n' 'services:
   backup:
     image: busybox' > "$d/compose.backup.yaml"
 out=$(bash "$GATE" --root "$d" 2>&1); check "a service only the overlay adds, without rotation, is named" $? 1 "$out" "backup"
+# The deploy overlay too: its edge serves every request, and logs each.
+d=$(project 'name: t
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+services:
+  a:
+    image: busybox
+    logging: *logging')
+printf '%s\n' 'services:
+  edge:
+    image: busybox
+    environment:
+      TWES_HOST: "${TWES_HOST:?set TWES_HOST}"' > "$d/compose.deploy.yaml"
+out=$(bash "$GATE" --root "$d" 2>&1); check "the deploy overlay's edge, without rotation, is named" $? 1 "$out" "edge"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

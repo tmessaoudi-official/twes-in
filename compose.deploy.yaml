@@ -1,0 +1,82 @@
+# A deployment (docs/START.md § 14): the production stack, with its backups, behind a TLS edge, as the server runs it:
+#   scripts/deploy/deploy.sh /etc/twes-in/deploy.env
+# which builds from a clean checkout of a release tag and runs
+#   docker compose --env-file <file> -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml \
+#     up -d --build --wait
+# Nothing in it names a provider: any machine, bucket and mail relay, through the values in that file, which
+# scripts/deploy/new-instance.sh starts. Every address comes from one name, TWES_HOST, since a passkey is bound to it and
+# a link in a mail must open where the person signed in. Only the edge is reachable: Docker's published ports pass by the
+# host's firewall, so a port left published here would be open to the internet. scripts/gates/deploy-overlay.sh holds
+# each of those promises.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+# Written out for the api and the worker both: an anchor in compose.yaml does not reach this file, and the worker sends
+# the mails whose links must be the api's.
+x-deploy-environment: &deploy-environment
+  DEPLOY_ENV: "${DEPLOY_ENV:-prod}"
+  DEFAULT_URI: "https://${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
+  APP_WEBAUTHN_RP_ID: "${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
+  APP_WEBAUTHN_ORIGINS: "https://${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
+  PAIRING_ORIGIN: "https://${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
+  MAILER_DSN: "${MAILER_DSN:?set MAILER_DSN, the mail relay, such as smtp://user:pass@relay:587}"
+  MAILER_SENDER: "${MAILER_SENDER:?set MAILER_SENDER, the address mails come from}"
+  DATABASE_URL: "postgresql://twes:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/twes?serverVersion=18&charset=utf8"
+  # Files on the api-files volume, which the backups copy; or in a bucket (api/.env says what each value means).
+  FILES_STORAGE: "${FILES_STORAGE:-local}"
+  FILES_S3_BUCKET: "${FILES_S3_BUCKET:-}"
+  FILES_S3_ENDPOINT: "${FILES_S3_ENDPOINT:-}"
+  FILES_S3_REGION: "${FILES_S3_REGION:-}"
+  FILES_S3_ACCESS_KEY: "${FILES_S3_ACCESS_KEY:-}"
+  FILES_S3_SECRET_KEY: "${FILES_S3_SECRET_KEY:-}"
+  FILES_S3_PATH_STYLE: "${FILES_S3_PATH_STYLE:-false}"
+
+services:
+  edge:
+    logging: *logging
+    restart: unless-stopped
+    image: caddy:2.11.6-alpine
+    environment:
+      TWES_HOST: "${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
+      EDGE_TLS: "${EDGE_TLS:?set EDGE_TLS, the e-mail address the certificate authority writes to}"
+    volumes:
+      - ./infra/edge/Caddyfile:/etc/caddy/Caddyfile:ro
+      # The certificates and the account with the authority: kept, or every restart asks for new ones and meets its limits.
+      - edge-data:/data
+      - edge-config:/config
+    depends_on:
+      web:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+      # HTTP/3.
+      - "443:443/udp"
+
+  api:
+    ports: !reset []
+    environment: *deploy-environment
+  worker:
+    environment: *deploy-environment
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}"
+  centrifugo:
+    environment:
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "https://${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
+  web:
+    ports: !reset []
+  gotenberg:
+    ports: !reset []
+  # Development's mail catcher: a deployment sends through its relay, so it never starts unless asked for by name.
+  mailpit:
+    profiles: [mailpit]
+    ports: !reset []
+
+volumes:
+  edge-data:
+  edge-config:
