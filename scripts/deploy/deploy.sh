@@ -26,6 +26,14 @@ refuse() { echo "deploy: refused — $*" >&2; exit 1; }
 # The last value the file gives a name, as compose reads it; empty when it gives none.
 value() { awk -v k="$1" 'index($0, k "=") == 1 { v = substr($0, length(k) + 2) } END { print v }' "$values"; }
 
+# make staging-check (scripts/staging/) adds its stand-in bucket and an edge publishing nothing; nothing else may add a file.
+extra=()
+if [[ -n "${DEPLOY_EXTRA_FILES:-}" ]]; then
+  [[ "$mode" == --staging && "${COMPOSE_PROJECT_NAME:-}" == twes-staging-check ]] \
+    || refuse "DEPLOY_EXTRA_FILES is make staging-check's alone: --staging under the compose project twes-staging-check"
+  IFS=: read -ra layers <<<"$DEPLOY_EXTRA_FILES"
+  for layer in "${layers[@]}"; do extra+=(-f "$layer"); done
+fi
 [[ -f "$values" ]] || refuse "no values file at $values (scripts/deploy/new-instance.sh writes one)"
 [[ "$(stat -c %a "$values")" == 600 ]] || refuse "$values may be read by others than its owner: chmod 600 it"
 commit=$(git -C "$root" rev-parse HEAD)
@@ -103,7 +111,7 @@ export TWES_DATABASE_IMAGE=${release_value[TWES_DATABASE_IMAGE]}
 echo "deploy: $revision ($way), by digest"
 cd "$root"
 if ! docker compose --env-file "$values" -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml \
-  -f compose.release.yaml up -d --no-build --wait; then
+  -f compose.release.yaml "${extra[@]}" up -d --no-build --wait; then
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) failed $revision $way" >> "$records/history"
   echo "deploy: $revision did not start; the last line of $records/history before this one names what ran" >&2
   exit 1
