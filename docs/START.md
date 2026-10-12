@@ -565,25 +565,33 @@ export BACKUP_S3_ENDPOINT=<the bucket service's host> BACKUP_S3_BUCKET=<bucket> 
 docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml up -d --build --wait
 ```
 
-**Restoring** to a moment, into an empty volume, as on a new machine (every value as above):
+**Restoring** runs the layer's `restore` service, which starts only when named. It writes the database's volume, which
+pgBackRest fills only when it is empty, as on a new machine before the first `up`, and the files volume, which restic
+overwrites. Every value as above, the database server stopped:
 
 ```sh
-docker compose stop api worker postgres
-docker compose run --rm --no-deps -v <new volume>:/var/lib/postgresql backup \
-  gosu postgres pgbackrest --stanza=twes --spool-path=/tmp --type=time "--target=2026-10-12 08:25:00+00" \
-  --target-action=promote restore      # without --type and --target: the latest that reached the bucket
+B="docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml"
+$B run --rm --no-deps restore gosu postgres pgbackrest --stanza=twes --spool-path=/tmp \
+  --type=time "--target=2026-10-12 08:25:00+00" --target-action=promote restore
+  # without --type, --target and --target-action: the latest that reached the bucket
+$B run --rm --no-deps restore restic restore latest --host twes --include /files --target /
+$B up -d --build --wait
 ```
 
-then point the `postgres-data` volume at `<new volume>` and start the stack again. The files and the dump come back with
-`docker compose exec backup restic restore latest --host twes --target /tmp/back`.
+On the machine that lost its database, the volume still holds what is left of it, and pgBackRest refuses it: emptying or
+replacing it is the runbook's step, not this page's. The nightly dump comes back with `--include
+/var/lib/twes-backup/dump`, for `pg_restore`.
 
 **The drill.** `make backup-drill` does all of it on its own: the production images with this layer, a stand-in bucket
 (SeaweedFS, behind a certificate authority made for the run), a backup, a row written, then the moment noted from the
-database's clock, a second row; then two restores from the bucket alone into empty volumes. To the moment only the first
+database's clock, a second row, the night's differential, both repositories verified; then two restores from the bucket
+alone into empty volumes, through the `restore` service and the commands above. To the moment only the first
 row may come back, to the latest both. On the second the API must answer healthy and `app:data:check` find nothing, and
 restic must give back the files and the dump unchanged. It prints each step's time, runs as the compose project
 `twes-drill` beside your own stack, refuses any other, and removes its containers and volumes at the end. CI runs it
 weekly, by hand, and on every push that changes the backups (`.github/workflows/restore-drill.yml`).
 
-What it does not prove: the four hours the ruling allows for a real database (the drill restores a small one), and a
-restore by hand on a new machine from the real bucket, which follows the first deployment.
+What it does not prove: the four hours the ruling allows for a real database (the drill restores a small one); a
+bucket addressed by host (`BACKUP_S3_URI_STYLE=host`, AWS itself), since the stand-in is addressed by path; that the
+schedule fires at its hours (the drill runs each step itself); and a restore by hand on a new machine from the real
+bucket, which follows the first deployment.

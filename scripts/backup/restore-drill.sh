@@ -31,7 +31,7 @@ sql() { dc exec -T postgres psql -U twes -d twes -v ON_ERROR_STOP=1 -tAc "$1"; }
 cleanup() {
   local status=$?
   if ((status != 0)); then dc logs --no-color --tail 80 s3 postgres backup api 2>/dev/null || true; fi
-  dc --profile drill down --volumes --remove-orphans >/dev/null 2>&1 || true
+  dc --profile restore down --volumes --remove-orphans >/dev/null 2>&1 || true
   docker volume rm "${VOLUMES[@]}" >/dev/null 2>&1 || true
   rm -rf "$DRILL_DIR"
   exit "$status"
@@ -79,18 +79,25 @@ target=$(sql "SELECT now()")
 sleep 2
 sql "INSERT INTO restore_drill VALUES (2); SELECT pg_switch_wal()" >/dev/null
 dc exec -T backup gosu postgres pgbackrest --stanza=twes check >/dev/null
+# The nightly differential over Sunday's full: the latest restore goes through both, then the WAL after them.
+dc exec -T backup twes-backup diff
 companies_before=$(sql "SELECT count(*) FROM company")
 step "rows written either side of $target, WAL archived"
 
 dc exec -T api sh -c 'head -c 65536 /dev/urandom > /app/var/files/restore-drill.bin && sha256sum /app/var/files/restore-drill.bin' > "$DRILL_DIR/files.sha256"
 dc exec -T backup twes-backup copy
-step "nightly dump and files copied"
+# What the weekly check runs: both repositories read back whole.
+dc exec -T backup twes-backup verify
+# The file changes after the copy, so only a restore can bring the written bytes back.
+dc exec -T api sh -c 'head -c 65536 /dev/urandom > /app/var/files/restore-drill.bin'
+step "nightly dump and files copied, both repositories verified"
 
 dc stop api backup postgres >/dev/null
-# Restores into a volume nothing has written to, as on a new machine: the server's data is never deleted here.
+# The overlay's restore service, as docs/START.md § 13 runs it, into a database volume nothing has written to, as on a
+# new machine: the server's data is never deleted here.
 restore_into() {
   local volume=$1; shift
-  DRILL_RESTORE_VOLUME=$volume dc run --rm --no-deps -T restore gosu postgres pgbackrest --stanza=twes --spool-path=/tmp "$@" restore >/dev/null
+  DRILL_PG_DATA=$volume dc run --rm --no-deps -T restore gosu postgres pgbackrest --stanza=twes --spool-path=/tmp "$@" restore >/dev/null
 }
 rows_in() {
   DRILL_PG_DATA=$1 dc up -d --wait postgres >/dev/null
@@ -113,16 +120,18 @@ got=$(rows_in twes-drill-pg-b)
 [[ "$(sql "SELECT count(*) FROM company")" == "$companies_before" ]] || fail "the restored database lost companies"
 step "restored to the latest: [1,2]"
 
+# The files as docs/START.md § 13 brings them back, over the volume the api reads, before the api starts on it.
+DRILL_PG_DATA=twes-drill-pg-b dc run --rm --no-deps -T restore restic restore latest --host twes --include /files --target / >/dev/null
 DRILL_PG_DATA=twes-drill-pg-b dc up -d --wait api >/dev/null
 dc exec -T api php -r 'exit(str_contains((string) file_get_contents("http://localhost/api/health"), "\"status\":\"ok\"") ? 0 : 1);' \
   || fail "the API on the restored database is not healthy"
 dc exec -T api php bin/console app:data:check --no-interaction || fail "the data check found something in the restored database"
 step "API healthy and data check clean on the restored database"
 
+dc exec -T api sha256sum /app/var/files/restore-drill.bin > "$DRILL_DIR/back.sha256" || fail "restic gave back no files volume"
+[[ "$(cut -d' ' -f1 "$DRILL_DIR/files.sha256")" == "$(cut -d' ' -f1 "$DRILL_DIR/back.sha256")" ]] || fail "the file restic gave back differs from the one copied"
 DRILL_PG_DATA=twes-drill-pg-b dc up -d --wait backup >/dev/null
-dc exec -T backup sh -c 'restic restore latest --host twes --target /tmp/back >/dev/null && cd /tmp/back/files && sha256sum restore-drill.bin' > "$DRILL_DIR/back.sha256" \
-  || fail "restic gave back no files volume"
-[[ "$(cut -d' ' -f1 "$DRILL_DIR/files.sha256")" == "$(cut -d' ' -f1 "$DRILL_DIR/back.sha256")" ]] || fail "the file restic gave back differs from the one written"
+dc exec -T backup restic restore latest --host twes --include /var/lib/twes-backup/dump --target /tmp/back >/dev/null
 dc exec -T backup sh -c 'pg_restore --list /tmp/back/var/lib/twes-backup/dump/twes.dump | grep -q "TABLE DATA public restore_drill"' \
   || fail "the nightly dump does not hold the database"
 step "files and nightly dump restored from restic, identical"

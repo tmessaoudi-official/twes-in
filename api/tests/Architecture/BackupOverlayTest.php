@@ -83,7 +83,8 @@ final class BackupOverlayTest extends TestCase
     /** @return array<array-key, mixed> */
     private static function service(string $name): array
     {
-        $compose = Yaml::parseFile(\dirname(__DIR__, 3).'/compose.backup.yaml');
+        // Compose's own tags (`!reset`, `!override`) are read as tagged values, which no assertion here looks into.
+        $compose = Yaml::parseFile(\dirname(__DIR__, 3).'/compose.backup.yaml', Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($compose);
         $services = $compose['services'] ?? null;
         self::assertIsArray($services);

@@ -66,6 +66,20 @@ services:
       - api-files:/files:ro
       - backup-dump:/var/lib/twes-backup/dump
 
+  # What a restore runs in (docs/START.md § 13), only when asked for: the backup service's image, keys and bucket, writing
+  # the database's volume, which pgBackRest fills only when it is empty, and the files volume, which restic overwrites.
+  restore:
+    extends:
+      service: backup
+    profiles: [restore]
+    restart: "no"
+    command: []
+    # The server stays down while its data is written.
+    depends_on: !reset {}
+    volumes: !override
+      - postgres-data:/var/lib/postgresql
+      - api-files:/files
+
 volumes:
   pgbackrest-spool:
   postgres-socket:
