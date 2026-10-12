@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Brand } from '../brand/brand';
+import { BuildInfo } from '../build/build-info';
 import { BuildLine } from '../build/build-line';
 import { LegalLink } from './legal-link';
 import { LEGAL_PAGES } from './legal-pages';
@@ -19,6 +20,7 @@ import { LEGAL_PAGES } from './legal-pages';
  * The copyright and legal-links line: slim and centred, under the content of every page, signed out too, scrolling
  * with it. The brand is the installation's own, through the `Brand` port. The licence leads to the source page, which
  * a network service under the AGPL owes its users (§ 13). Each link opens its text over the screen (`LegalLink`). The
+ * monitor's status page closes the links once the operators name one (`/api/health`). The
  * builds that answer (`BuildLine`) stand on a line of their own under it. Each dot goes with the link after it, so a
  * line that wraps never ends on a dot left hanging, and the dot of a link that opens a line is not drawn.
  */
@@ -47,6 +49,12 @@ import { LEGAL_PAGES } from './legal-pages';
             }}</a></span
           >
         }
+        @if (statusUrl(); as url) {
+          <span class="twes-legal-item"
+            ><span aria-hidden="true">·</span>
+            <a [href]="url" data-testid="legal-status">{{ 'legal.status' | translate }}</a></span
+          >
+        }
       </span>
       <app-build-line />
     </nav>
@@ -56,6 +64,7 @@ export class LegalFooter {
   protected readonly brand = inject(Brand);
   protected readonly year = new Date().getFullYear();
   protected readonly pages = LEGAL_PAGES;
+  protected readonly statusUrl = inject(BuildInfo).statusUrl;
   private readonly links = viewChild.required<ElementRef<HTMLElement>>('links');
 
   constructor() {

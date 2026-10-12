@@ -24,6 +24,7 @@ describe('HelpPanel', () => {
             api: signal(null),
             webMode: null,
             line: signal(''),
+            statusUrl: signal(null),
             start: vi.fn(),
           },
         },

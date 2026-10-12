@@ -305,9 +305,15 @@ describe('PlatformApi', () => {
       { key: 'signup.enabled', value: true },
       { key: 'support.phone', value: '+216 71 000 000' },
       { key: 'support.email', value: '' },
+      { key: 'support.status_url', value: 'https://status.twes.test' },
     ]);
 
-    expect(await support).toEqual({ phone: '+216 71 000 000', whatsapp: '', email: '' });
+    expect(await support).toEqual({
+      phone: '+216 71 000 000',
+      whatsapp: '',
+      email: '',
+      status_url: 'https://status.twes.test',
+    });
   });
 
   it('sets one support channel at the platform level', async () => {

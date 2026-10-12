@@ -38,6 +38,7 @@ describe('BuildLine', () => {
     commit: 'bbbb2222',
     mode: 'prod',
     deployment: 'prod',
+    statusUrl: null,
   });
   const info = {
     web,
@@ -70,7 +71,13 @@ describe('BuildLine', () => {
 
   beforeEach(() => {
     web.set({ version: '2026.10.07.3', commit: 'aaaa1111' });
-    api.set({ version: '2026.10.07.5', commit: 'bbbb2222', mode: 'prod', deployment: 'prod' });
+    api.set({
+      version: '2026.10.07.5',
+      commit: 'bbbb2222',
+      mode: 'prod',
+      deployment: 'prod',
+      statusUrl: null,
+    });
     info.webMode = null;
     info.start.mockReset();
     clipboard.copy.mockClear();
@@ -102,7 +109,13 @@ describe('BuildLine', () => {
 
   it('names each part’s mode and the deployment when they are not production', () => {
     info.webMode = 'dev';
-    api.set({ version: '2026.10.07.5', commit: 'bbbb2222', mode: 'dev', deployment: 'staging' });
+    api.set({
+      version: '2026.10.07.5',
+      commit: 'bbbb2222',
+      mode: 'dev',
+      deployment: 'staging',
+      statusUrl: null,
+    });
     open();
 
     expect(q('build-web')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Web 2026.10.07.3 dev');
@@ -113,7 +126,13 @@ describe('BuildLine', () => {
   /** The line's name is its text: without a said separator a screen reader ran « devAPI » and « dev[staging] ». */
   it('keeps each part apart in what a screen reader is given', () => {
     info.webMode = 'dev';
-    api.set({ version: '2026.10.07.5', commit: 'bbbb2222', mode: 'dev', deployment: 'staging' });
+    api.set({
+      version: '2026.10.07.5',
+      commit: 'bbbb2222',
+      mode: 'dev',
+      deployment: 'staging',
+      statusUrl: null,
+    });
     open();
 
     expect(read('said')).toBe('Web 2026.10.07.3 dev, API 2026.10.07.5 dev, [staging]');

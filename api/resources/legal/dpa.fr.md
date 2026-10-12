@@ -36,6 +36,7 @@ Le traitement consiste à héberger, conserver et traiter ces données pour four
 - Hébergement : {{host.name}}, {{host.address}}.
 - Envoi des courriels : {{mail.provider}}.
 - Copies de sauvegarde : {{backup.provider}}.
+- Surveillance du service et rapports d’erreur, sans données personnelles : {{monitor.provider}}.
 
 Lieu d’hébergement des données : {{host.country}}.
 

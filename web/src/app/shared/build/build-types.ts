@@ -15,4 +15,6 @@ export interface ApiBuild extends PartBuild {
   mode: string;
   /** `dev`, `staging` or `prod`, or null when the deployment names none: shown only when it is not `prod`. */
   deployment: string | null;
+  /** The monitor's public status page the operators set, which the footer links to; null when none is. */
+  statusUrl: string | null;
 }

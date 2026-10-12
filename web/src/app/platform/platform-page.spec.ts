@@ -180,7 +180,12 @@ const row: PlatformCompanyRow = {
 describe('PlatformPage', () => {
   const waiting = signal<readonly PlatformCompanyRow[]>([row]);
   const signup = signal<PlatformSignup | null>({ enabled: false, approvalRequired: true });
-  const support = signal<PlatformSupport | null>({ phone: '', whatsapp: '', email: '' });
+  const support = signal<PlatformSupport | null>({
+    phone: '',
+    whatsapp: '',
+    email: '',
+    status_url: '',
+  });
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
@@ -238,7 +243,7 @@ describe('PlatformPage', () => {
   beforeEach(async () => {
     waiting.set([row]);
     signup.set({ enabled: false, approvalRequired: true });
-    support.set({ phone: '', whatsapp: '', email: '' });
+    support.set({ phone: '', whatsapp: '', email: '', status_url: '' });
     error.set(null);
     accounts.set([account]);
     companies.set([row]);
@@ -398,6 +403,20 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.saveSupport).toHaveBeenCalledWith({ whatsapp: '+216 20 123 456' });
+  });
+
+  it('takes the status page as an address, saved as the other channels are', async () => {
+    const { fixture, query } = await render();
+    const status = query<HTMLInputElement>('platform-support-status_url')!;
+    expect(status.type).toBe('url');
+
+    status.value = 'https://status.twes.test';
+    status.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    query<HTMLButtonElement>('platform-support-save')!.click();
+    await fixture.whenStable();
+
+    expect(facade.saveSupport).toHaveBeenCalledWith({ status_url: 'https://status.twes.test' });
   });
 
   it('reads the accounts again from the query the list asks for, and says how many there are', async () => {

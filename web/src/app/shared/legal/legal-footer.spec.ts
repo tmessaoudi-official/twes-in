@@ -17,7 +17,11 @@ import { LEGAL_PAGES } from './legal-pages';
 
 // shared/ reads no feature's files, the translations included: the few strings this line shows, inline.
 const fr = {
-  legal: { navigation: 'Informations légales', pages: { mentions: 'Mentions légales' } },
+  legal: {
+    navigation: 'Informations légales',
+    status: 'État du service',
+    pages: { mentions: 'Mentions légales' },
+  },
 };
 
 class StaticLoader implements TranslateLoader {
@@ -30,6 +34,7 @@ class StaticLoader implements TranslateLoader {
 describe('LegalFooter', () => {
   let fixture: ComponentFixture<LegalFooter>;
   const name = signal('Maison Kallel');
+  const statusUrl = signal<string | null>(null);
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -47,6 +52,7 @@ describe('LegalFooter', () => {
             api: signal(null),
             webMode: null,
             line: signal(''),
+            statusUrl,
             start: () => undefined,
           },
         },
@@ -67,6 +73,19 @@ describe('LegalFooter', () => {
     name.set('Autre marque');
     fixture.detectChanges();
     expect(line?.textContent).toContain('Autre marque');
+  });
+
+  it('links the status page only once the operators set one, after the legal pages', () => {
+    expect(el().querySelector('[data-testid="legal-status"]')).toBeNull();
+
+    statusUrl.set('https://status.twes.test');
+    fixture.detectChanges();
+    const link = el().querySelector<HTMLAnchorElement>('[data-testid="legal-status"]');
+    expect(link?.getAttribute('href')).toBe('https://status.twes.test');
+    expect(link?.textContent?.trim()).toBe('État du service');
+    const links = Array.from(el().querySelectorAll('[data-testid="legal-footer"] a'));
+    expect(links.at(-1)).toBe(link);
+    statusUrl.set(null);
   });
 
   it('links the licence to the source page, as the AGPL asks of a network service', () => {
