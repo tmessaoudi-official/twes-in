@@ -61,6 +61,16 @@ final class BackupOverlayTest extends TestCase
         self::assertMatchesRegularExpression('/RESTIC_PASSWORD: "\$\{BACKUP_FILES_PASSPHRASE:\?/', $overlay);
     }
 
+    public function testBothRepositoriesSitUnderTheInstancesPrefixInItsBucket(): void
+    {
+        $conf = (string) file_get_contents(\dirname(__DIR__, 3).'/infra/postgres/pgbackrest.conf');
+        self::assertDoesNotMatchRegularExpression('/^repo1-path=/m', $conf, 'the path comes from the overlay alone, with the prefix');
+
+        $overlay = (string) file_get_contents(\dirname(__DIR__, 3).'/compose.backup.yaml');
+        self::assertMatchesRegularExpression('#PGBACKREST_REPO1_PATH: "/\$\{BACKUP_S3_PREFIX:-\}pgbackrest"#', $overlay);
+        self::assertMatchesRegularExpression('#RESTIC_REPOSITORY: "s3:[^"]*/\$\{BACKUP_S3_BUCKET\}/\$\{BACKUP_S3_PREFIX:-\}restic"#', $overlay);
+    }
+
     /** @return array<string, string> each `-c name=value` the overlay starts the server with */
     private static function serverSettings(): array
     {

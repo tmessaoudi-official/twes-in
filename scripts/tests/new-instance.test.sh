@@ -36,6 +36,15 @@ out=$(bash "$SCRIPT" "$f" 2>&1); check "an existing file is refused" $? 1 "$out"
 [[ "$(cat "$f")" == "$before" ]]; check "and left as it was" $? 0 "" ""
 
 out=$(bash "$SCRIPT" 2>&1); check "a file must be named" $? 2 "$out" "Usage"
+out=$(bash "$SCRIPT" --production "$TMPDIR/c.env" 2>&1); check "only --staging may come before the file" $? 2 "$out" "Usage"
+
+grep -qE '^(DEPLOY_ENV|BACKUP_S3_PREFIX)=' "$f"; check "a production instance says neither staging's environment nor its prefix" $? 1 "" ""
+s="$TMPDIR/staging/deploy.env"
+out=$(bash "$SCRIPT" --staging "$s" 2>&1); check "a staging instance's file is written" $? 0 "$out" "$s"
+check "  saying it is staging, which its errors and deploy.sh read" 0 0 "$(value "$s" DEPLOY_ENV)" "staging"
+[[ "$(value "$s" BACKUP_S3_PREFIX)" == staging/ ]]; check "  with its backups under a prefix of their own" $? 0 "$(value "$s" BACKUP_S3_PREFIX)" ""
+check "  and the operator told to give it a bucket and keys of its own" 0 0 "$out" "never production's"
+[[ "$(value "$s" APP_MFA_KEY)" != "$(value "$f" APP_MFA_KEY)" ]]; check "  sharing no secret with production" $? 0 "" ""
 
 echo "new-instance: $pass passed, $fail failed"
 ((fail == 0))

@@ -16,6 +16,9 @@ x-backup-environment: &backup-environment
   PGBACKREST_REPO1_S3_BUCKET: "${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}"
   PGBACKREST_REPO1_S3_REGION: "${BACKUP_S3_REGION:?set BACKUP_S3_REGION}"
   PGBACKREST_REPO1_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
+  # Production's repositories sit at the bucket's root; staging's under staging/ (scripts/deploy/new-instance.sh --staging),
+  # so a staging that was handed production's bucket by mistake still never writes over its backups.
+  PGBACKREST_REPO1_PATH: "/${BACKUP_S3_PREFIX:-}pgbackrest"
   PGBACKREST_REPO1_S3_KEY: "${BACKUP_S3_KEY:?set BACKUP_S3_KEY}"
   PGBACKREST_REPO1_S3_KEY_SECRET: "${BACKUP_S3_SECRET:?set BACKUP_S3_SECRET}"
   PGBACKREST_REPO1_CIPHER_PASS: "${BACKUP_DATABASE_PASSPHRASE:?set BACKUP_DATABASE_PASSPHRASE, kept apart from the server: without it no backup can be read}"
@@ -59,7 +62,7 @@ services:
     environment:
       <<: *backup-environment
       BACKUP_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
-      RESTIC_REPOSITORY: "s3:https://${BACKUP_S3_ENDPOINT}:${BACKUP_S3_PORT:-443}/${BACKUP_S3_BUCKET}/restic"
+      RESTIC_REPOSITORY: "s3:https://${BACKUP_S3_ENDPOINT}:${BACKUP_S3_PORT:-443}/${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX:-}restic"
       RESTIC_PASSWORD: "${BACKUP_FILES_PASSPHRASE:?set BACKUP_FILES_PASSPHRASE, kept apart from the server: without it no copy can be read}"
       AWS_ACCESS_KEY_ID: "${BACKUP_S3_KEY}"
       AWS_SECRET_ACCESS_KEY: "${BACKUP_S3_SECRET}"
