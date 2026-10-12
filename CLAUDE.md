@@ -194,8 +194,15 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - Deploying (`docs/START.md` § 14): `compose.deploy.yaml` over compose.yaml + `compose.prod.yaml` + `compose.backup.yaml`
   adds the Caddy edge (`infra/edge/Caddyfile`: automatic certificates, HSTS for the host alone), the only service that
   publishes a port, and derives every address from `TWES_HOST`; every value is required and comes from one file outside
-  the checkout, written once by `scripts/deploy/new-instance.sh` and handed to compose by `scripts/deploy/deploy.sh`, which
-  refuses anything but a clean checkout at a `vYYYY.MM.DD.N` tag. The first operator: `app:seed --without-company
+  the checkout, written once by `scripts/deploy/new-instance.sh` (`--staging` for staging's) and handed to compose by
+  `scripts/deploy/deploy.sh`, which refuses anything but a clean checkout and takes a mode: `--release` (production: an
+  annotated `vYYYY.MM.DD.N` tag naming the three images by digest, written by `scripts/release/tag-release.sh`, started
+  over `compose.release.yaml` with nothing built), `--staging <release file>` and `--build` (self-hosted, built from the
+  tag). CI's `publish` job (`scripts/release/publish.sh`, behind the repository variable `PUBLISH_IMAGES`) pushes the
+  images to GHCR by commit and moves `:master` forward only; staging pulls it with `scripts/deploy/staging-follow.sh`
+  (`infra/staging/`, a systemd timer). Each digest deployment is written down in `releases/` beside the values.
+  Procedures, each marked tried or untried: `docs/RUNBOOK.md`. `make staging-check` (`scripts/staging/`, compose project
+  `twes-staging-check`, a registry on 127.0.0.1:5099) proves the road and the secret rotations on this machine. The first operator: `app:seed --without-company
   --operator-password-stdin`. `scripts/gates/deploy-overlay.sh` holds the overlay's shape in CI; `make deploy-check`
   (`scripts/deploy/deploy-check.sh`, compose project `twes-deploy-check` only, CI's `deploy-check` workflow) boots it and
   asks the edge for HSTS, the redirect, a sign-in, the socket and the client address.

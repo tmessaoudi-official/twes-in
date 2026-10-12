@@ -60,8 +60,8 @@ Not certified until a real staging VM exists: GHCR itself, public visibility, th
 | 2 | compose.release.yaml digest overlay + gate | M | done | 9eba21b1 | compose.release.yaml scripts/gates/** Makefile |
 | 3 | publish.sh + ci.yml publish job | M | done | 7cbbebe8 | scripts/release/** .github/workflows/ci.yml |
 | 4 | deploy modes, new-instance --staging, staging-follow + timer | M | done | 531c4e84 | scripts/deploy/** infra/staging/** |
-| 5 | make staging-check + workflow | L | doing | - | scripts/staging/** Makefile .github/workflows/** |
-| 6 | RUNBOOK.md + docs | M | todo | - | docs/** CLAUDE.md |
+| 5 | make staging-check + workflow | L | done | 280ff5c2 | scripts/staging/** Makefile .github/workflows/** |
+| 6 | RUNBOOK.md + docs | M | doing | - | docs/** CLAUDE.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
