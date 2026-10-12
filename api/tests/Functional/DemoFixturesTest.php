@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\DataFixtures\DemoCompanies;
+use App\Module\Invoices\Application\Chain\VerifyInvoiceChains;
 use App\Module\Invoices\Application\FacturX\ExportFacturX;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
 use App\Tenancy\Domain\Company;
@@ -50,6 +51,11 @@ final class DemoFixturesTest extends ApiTestCase
                     "$name has a $role called $email",
                 );
             }
+
+            // Issued under a moved clock, in the order the timeline runs: every chain must still hold.
+            self::assertSame(0, $this->numberOf('SELECT COUNT(*) FROM invoice WHERE company_id = ? AND number IS NOT NULL AND chain_hash IS NULL', [$id]), "$name chains every document it issued");
+            $this->em()->clear();
+            self::assertSame([], static::getContainer()->get(VerifyInvoiceChains::class)->of(Uuid::fromString(\is_string($id) ? $id : self::fail('A company has an id.'))), "$name's chains hold");
 
             // A list page shows 25 rows: each of these pages past it.
             foreach (['customer', 'product', 'invoice'] as $table) {

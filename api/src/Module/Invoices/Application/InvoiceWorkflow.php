@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Module\Invoices\Application\Chain\SealInvoiceChains;
+use App\Module\Invoices\Domain\ChainSeries;
 use App\Module\Invoices\Domain\CustomerCreditEntry;
 use App\Module\Invoices\Domain\CustomerCreditRepository;
 use App\Module\Invoices\Domain\InvalidInvoice;
@@ -63,6 +65,7 @@ final readonly class InvoiceWorkflow
         private FiscalPresets $presets,
         private DepositQuotes $depositQuotes,
         private CurrencyScales $scales,
+        private SealInvoiceChains $chains,
     ) {
     }
 
@@ -142,6 +145,9 @@ final readonly class InvoiceWorkflow
                 ? ($excessTo ?? throw new InvalidInvoice('excessTo', \sprintf('%s of this credit note was already paid: say whether it goes to the customer\'s credit balance or is refunded.', $excess)))
                 : null;
             $this->invoices->save($invoice);
+            // Still holding the series: it takes the place after the last one issued, and whatever an earlier release
+            // issued unsealed is chained before it.
+            $this->chains->series(new ChainSeries($company->getId(), $invoice->getEstablishment()->getId(), $type));
             $this->audit->record(new AuditEntry(ManageInvoices::ENTITY_TYPE, $invoice->getId(), self::ISSUED, $actorUserId, ['number' => $allocated->number], $company->getId()));
             if (null !== $corrected) {
                 $corrected->credit($invoice, $now);

@@ -29,6 +29,7 @@ invoice:
     credit_note_title: 'Avoir'
     corrects: 'Avoir sur la facture %number% du %date%'
     reason: 'Motif : %reason%'
+    fingerprint: 'Empreinte : %fingerprint%'
     customer: 'Client'
     customer_number: 'Code client'
     issue_date: 'Date'

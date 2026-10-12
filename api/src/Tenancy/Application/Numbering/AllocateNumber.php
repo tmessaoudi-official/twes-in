@@ -15,6 +15,7 @@ use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\InvalidNumbering;
 use App\Tenancy\Domain\NumberingSeriesRepository;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Takes the next number an establishment gives a document type, on the company's own day, from its default series
@@ -54,5 +55,18 @@ final readonly class AllocateNumber
         $this->series->save($series);
 
         return new AllocatedNumber($number, new \DateTimeImmutable($day->format('Y-m-d'), new \DateTimeZone('UTC')));
+    }
+
+    /**
+     * Holds an establishment's series of a document type until the transaction ends, without taking a number: what is
+     * written after the series' documents in order, such as their chain, then waits for a number being given as issuing
+     * does. Nothing is held where no series numbers that document, since nothing can be numbered there either.
+     */
+    public function hold(Uuid $establishmentId, string $documentType): void
+    {
+        if (!$this->transactions->active()) {
+            throw new \LogicException('A series is held inside a transaction.');
+        }
+        $this->series->lockedDefaultFor($establishmentId, $documentType);
     }
 }

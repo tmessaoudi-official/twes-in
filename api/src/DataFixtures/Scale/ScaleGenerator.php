@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\DataFixtures\Scale;
 
+use App\Module\Invoices\Application\Chain\SealInvoiceChains;
 use App\Tenancy\Domain\NumberingSeries;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -103,6 +104,7 @@ final class ScaleGenerator
         private readonly Connection $connection,
         private readonly EntityManagerInterface $entityManager,
         private readonly ClockInterface $clock,
+        private readonly SealInvoiceChains $chains,
     ) {
     }
 
@@ -311,6 +313,11 @@ final class ScaleGenerator
                 'issued_at' => $back('issued_at'),
                 // Not stored: the first request renders it, which is what PrintInvoice does for an issued document without one.
                 'pdf_file_id' => 'NULL',
+                // Unsealed: a copy is chained once it has its real number, after the renumbering.
+                'chain_position' => 'NULL',
+                'chain_previous' => 'NULL',
+                'chain_hash' => 'NULL',
+                'chain_version' => 'NULL',
                 'customer_snapshot' => "CASE WHEN src.customer_snapshot IS NULL THEN NULL ELSE jsonb_set(jsonb_set(src.customer_snapshot, '{name}', to_jsonb(nc.name)), '{email}', COALESCE(to_jsonb(nc.email), 'null'::jsonb)) END",
             ],
             ['company' => $company],
@@ -374,6 +381,8 @@ final class ScaleGenerator
         if ('numbering' !== $phase) {
             $this->connection->transactional(function () use ($company): void {
                 $this->connection->executeStatement("UPDATE invoice SET number = '~' || id::text WHERE company_id = ? AND number IS NOT NULL AND number NOT LIKE '~%'", [$company]);
+                // A hash covers the number: the whole company is chained again once it is numbered.
+                $this->connection->executeStatement('UPDATE invoice SET chain_position = NULL, chain_previous = NULL, chain_hash = NULL, chain_version = NULL WHERE company_id = ? AND chain_hash IS NOT NULL', [$company]);
                 // Only the series this pass renumbers start again: a company's delivery notes, say, keep their numbers, so
                 // their series must keep counting after them or the next one printed repeats the first.
                 $this->connection->executeStatement(
@@ -429,6 +438,8 @@ final class ScaleGenerator
             }
         }
         $this->entityManager->clear();
+        // In the order just numbered: the chain's backlog is read by day, then number, which is how these were given.
+        $this->chains->all();
         $this->connection->executeStatement("UPDATE scale.run SET phase = 'numbered' WHERE company_id = ?", [$company]);
     }
 

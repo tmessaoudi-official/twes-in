@@ -18,6 +18,7 @@ use App\Fiscal\Domain\TaxFamily;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
+use App\Module\Invoices\Application\Chain\SealInvoiceChains;
 use App\Module\Invoices\Application\InvoiceMentions;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
@@ -55,6 +56,7 @@ use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomerCredits;
 use App\Tests\Support\InMemoryDepositQuotes;
 use App\Tests\Support\InMemoryEstablishments;
+use App\Tests\Support\InMemoryInvoiceChains;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemorySettings;
@@ -107,9 +109,10 @@ final class InvoiceWorkflowTest extends TestCase
         $catalog = new SettingCatalog([new BusinessDefaultSettings(), new PresentationSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
+        $numbers = new AllocateNumber($this->series, $this->transactions, $this->clock);
         $this->workflow = new InvoiceWorkflow(
             $this->invoices,
-            new AllocateNumber($this->series, $this->transactions, $this->clock),
+            $numbers,
             $this->transactions,
             new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()),
             new InvoiceMentions(ShippedFiscalPresets::presets(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), ShippedMentionWording::wording(), new ReadSetting($resolve)),
@@ -123,6 +126,7 @@ final class InvoiceWorkflowTest extends TestCase
             ShippedFiscalPresets::presets(),
             $this->quotes = new InMemoryDepositQuotes(),
             ShippedFiscalPresets::scales(),
+            new SealInvoiceChains(new InMemoryInvoiceChains($this->invoices), $numbers, $this->transactions),
         );
         foreach ([$this->company, $this->globex] as $company) {
             $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));

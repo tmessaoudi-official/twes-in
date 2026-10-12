@@ -16,6 +16,7 @@
     .totals { width: 55%; }
     .totals .due td { font-size: 12pt; font-weight: 700; padding-top: 6px; }
     .footer { margin-top: 32px; padding-top: 8px; border-top: 1px solid #d0d7de; font-size: 8pt; color: #57606a; text-align: center; }
+    .fingerprint { margin-top: 8px; font-size: 7pt; color: #57606a; text-align: center; font-family: monospace; }
     .copy-mark { margin: 0 0 8px; font-weight: 700; letter-spacing: .05em; color: #cf222e; }
     .paid-stamp { display: inline-block; margin: 8px 0; padding: 4px 14px; border: 3px solid #1a7f37; color: #1a7f37; font-size: 18pt; font-weight: 800; letter-spacing: .1em; transform: rotate(-4deg); }
   </style>
@@ -191,6 +192,10 @@
 
   {%- if page.footer %}
     <div class="footer">{{ page.footer|nl2br }}</div>
+  {%- endif %}
+  {#- Outside the footer: a company that prints no footer text still prints where its document stands in the chain. #}
+  {%- if page.fingerprint %}
+    <p class="fingerprint" data-testid="chain-fingerprint">{{ 'invoice.fingerprint'|trans({'%fingerprint%': page.fingerprint}, t, locale) }}</p>
   {%- endif %}
 </body>
 </html>

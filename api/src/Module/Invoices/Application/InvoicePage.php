@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Application;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceChain;
 use App\Module\Invoices\Domain\InvoiceFigures;
 use App\Module\Invoices\Domain\OperationCategory;
 use App\Shared\Domain\DocumentDesign;
@@ -75,6 +76,14 @@ final readonly class InvoicePage
         /** What its operations are, printed where its country's law asks: as issued, or as its draft says today; null when not said. */
         public ?OperationCategory $operations = null,
     ) {
+    }
+
+    /** The start of its chain hash, which it prints for a reader to compare with the chain; null on a document in none. */
+    public function fingerprint(): ?string
+    {
+        $hash = $this->invoice->getChainHash();
+
+        return null === $hash ? null : InvoiceChain::fingerprint($hash);
     }
 
     /**

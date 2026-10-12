@@ -22,10 +22,13 @@ use App\Module\Invoices\Application\InvoicePage;
 use App\Module\Invoices\Application\InvoiceTemplate;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceFigures;
 use App\Module\Invoices\Domain\InvoiceHeader;
+use App\Module\Invoices\Domain\InvoiceIssue;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Shared\Domain\DocumentDesign;
 use App\Shared\Domain\DocumentLayout;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tenancy\Domain\SellerSnapshot;
@@ -89,6 +92,22 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
                 self::assertDoesNotMatchRegularExpression('/%[a-z_]+%/', $html);
             }
         }
+    }
+
+    public function testAChainedDocumentPrintsTheStartOfItsHashThoughItHasNoFooterAndADraftNone(): void
+    {
+        self::bootKernel();
+        self::assertStringNotContainsString('data-testid="chain-fingerprint"', $this->html(new DocumentDesign(), [], []), 'a draft is in no chain');
+
+        $now = new \DateTimeImmutable('2026-10-07 09:00:00');
+        $this->invoice->issue(new InvoiceIssue('FAC-2026-00001', $now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing): InvoiceFigures => $this->totals->issued($issuing), $now);
+        $this->invoice->seal(1, null);
+        $hash = $this->invoice->getChainHash();
+        self::assertNotNull($hash);
+        self::assertNull($this->invoice->getFooter(), 'the company prints no footer text, and the fingerprint is printed all the same');
+
+        $expected = implode(' ', str_split(substr($hash, 0, 16), 4));
+        self::assertStringContainsString("<p class=\"fingerprint\" data-testid=\"chain-fingerprint\">Empreinte\u{a0}: $expected</p>", $this->html(new DocumentDesign(), [], [], watermark: null));
     }
 
     public function testTheClassicDesignByDefaultPrintsInTheInkDocumentsAlwaysPrintedIn(): void
@@ -212,8 +231,9 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
      * @param list<string>                         $keys
      * @param array<string, array<string, string>> $parameters
      * @param list<QuantityTotal>                  $quantities
+     * @param InvoicePage::DRAFT|null              $watermark
      */
-    private function html(DocumentDesign $design, array $keys, array $parameters, ?string $savings = null, array $quantities = []): string
+    private function html(DocumentDesign $design, array $keys, array $parameters, ?string $savings = null, array $quantities = [], ?string $watermark = InvoicePage::DRAFT): string
     {
         $template = static::getContainer()->get(InvoiceTemplate::class);
         $company = $this->invoice->getCompany();
@@ -223,7 +243,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
             $this->totals->figures($this->invoice),
             CustomerSnapshot::of($this->invoice->getCustomer()),
             SellerSnapshot::of($company, $this->invoice->getEstablishment()),
-            InvoicePage::DRAFT,
+            $watermark,
             'fr',
             '',
             $keys,
