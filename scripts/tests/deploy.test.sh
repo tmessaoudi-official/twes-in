@@ -110,6 +110,9 @@ out=$(LABEL_REV=$(printf 'c%.0s' {1..40}) run "$d" --release "$e"); check "an im
 d=$(repo); e=$(staging_values); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
 out=$(run "$d" --release "$e"); check "staging's values never deploy production's release" $? 1 "$out" "staging"
 
+d=$(repo); e=$(envfile); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)" | sed 's|ghcr.invalid/o/|localhost:5099/o/|')"
+out=$(run "$d" --release "$e"); check "a registry named with its port is a registry" $? 0 "$out" "running"
+
 # --staging: any commit master published, from the release file the registry gave, nothing built.
 d=$(repo); e=$(staging_values); echo c > "$d/api/c.php"; git -C "$d" add -A; git -C "$d" commit -qm next; head=$(git -C "$d" rev-parse HEAD)
 r="$TMPDIR/release.env"; release_lines "$head" > "$r"

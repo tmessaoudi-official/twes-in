@@ -79,7 +79,7 @@ revision=${release_value[TWES_REVISION]:-}
 [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || refuse "$source_name names no commit (TWES_REVISION, 40 hexadecimal digits)"
 for part in api web database; do
   name="TWES_${part^^}_IMAGE"
-  [[ "${release_value[$name]:-}" =~ ^[a-z0-9][a-z0-9._/-]*/twes-in-$part@sha256:[0-9a-f]{64}$ ]] \
+  [[ "${release_value[$name]:-}" =~ ^[a-z0-9][a-z0-9._-]*(:[0-9]+)?(/[a-z0-9._-]+)*/twes-in-$part@sha256:[0-9a-f]{64}$ ]] \
     || refuse "$source_name names no $part image by its digest ($name=<registry>/twes-in-$part@sha256:<64 hex>)"
 done
 [[ "$revision" == "$commit" ]] \
