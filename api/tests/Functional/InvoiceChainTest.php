@@ -24,8 +24,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Each issued document is chained to the one issued before it in its series: its hash covers what it says and the hash
- * before it, so a figure changed afterwards, or a document taken out or put in, shows (docs/SPEC.md § 8 row 271). The
- * hash is checked from what the database gives back, which is how anyone checking it later reads it.
+ * before it, so a figure changed afterwards, or a document taken out of the middle or put in, shows. The newest one
+ * taken out leaves a shorter chain that holds; the chain alone cannot show that, the series' counter does. The hash is
+ * checked from what the database gives back, which is how anyone checking it later reads it.
  */
 final class InvoiceChainTest extends ApiTestCase
 {
@@ -99,7 +100,7 @@ final class InvoiceChainTest extends ApiTestCase
         self::assertSame([$this->numberOf($first), $this->numberOf($second)], array_map(static fn (ChainBreak $break): ?string => $break->number, $breaks));
     }
 
-    public function testADocumentTakenOutOfTheChainShows(): void
+    public function testADocumentTakenOutOfTheMiddleOfTheChainShows(): void
     {
         $first = $this->draft('100');
         $second = $this->draft('200');

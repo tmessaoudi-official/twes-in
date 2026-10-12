@@ -11,7 +11,8 @@ namespace App\Module\Invoices\Domain;
 
 /**
  * How an issued document is chained to the one issued before it in its series: SHA-256 over what it says and the hash
- * before it, so a figure changed afterwards, or a document taken out or put in, breaks every hash after it.
+ * before it, so a figure changed afterwards, or a document taken out of the middle or put in, breaks the chain from
+ * there. The newest one taken out leaves a shorter chain that holds: what shows it is the series' own counter.
  *
  * What is hashed is written out the same way whoever reads it: keys in a fixed order, decimals at their column's
  * scale and lines by their place, because the hash made at issue is checked against what the database gives back

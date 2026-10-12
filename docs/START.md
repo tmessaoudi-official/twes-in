@@ -86,7 +86,10 @@ This does three things, in order:
    serving (`infra/api/docker-entrypoint.sh`). A failed migration stops the container instead of serving a
    half-migrated schema. You never run migrations by hand. `make migrate` exists for a running container. Right
    after, it tells the companies that asked « Me prévenir » for a module this release brings
-   (`app:modules:announce-arrivals`); each is told once, so a restart tells nobody again.
+   (`app:modules:announce-arrivals`); each is told once, so a restart tells nobody again. It then chains the issued
+   invoices and credit notes no hash chain holds yet, such as those issued before the chain existed, in their issue
+   order (`app:invoices:seal-chain`); a restart chains nothing twice. `make tools CMD='cd api && bin/console
+   app:invoices:verify-chain'` (or `--company=<id>`) walks every chain and names each place one does not hold.
 3. **Seeds** (`make seed`, see § 4). This step is idempotent: running it again creates nothing new.
 
 `make down` stops everything and **keeps** the data. `make up` again brings it back as it was. `make logs` follows
