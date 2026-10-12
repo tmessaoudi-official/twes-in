@@ -111,6 +111,11 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "HSTS reaching the subdomains is ref
 d=$(project); edit "$d/compose.deploy.yaml" '/profiles: \[mailpit\]/d'
 out=$(bash "$GATE" --root "$d" 2>&1); check "mailpit started in a deployment is named" $? 1 "$out" "mailpit"
 
+# Mailpit behind its profile but a service waiting on it would stop `up` on the server, where nothing starts it; compose
+# refuses the merged project, and the gate with it.
+d=$(project); edit "$d/compose.yaml" 's/^  worker:$/  worker:\n    depends_on: [mailpit]/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a service depending on mailpit is refused" $? 1 "$out" '"worker" depends on undefined service "mailpit"'
+
 # The repository commits a development .env, which compose reads unless given --env-file, as a server always is.
 d=$(project); printf 'POSTGRES_PASSWORD=twes\n' > "$d/.env"
 out=$(bash "$GATE" --root "$d" 2>&1); check "the committed development .env does not fill a required value" $? 0 "$out" "OK"
