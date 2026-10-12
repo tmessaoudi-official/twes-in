@@ -60,7 +60,8 @@ final class ScrubPersonalData
         return $event;
     }
 
-    private static function mask(string $text): string
+    /** The text with every address, quoted value and long run of digits masked, as a report keeps it. */
+    public static function mask(string $text): string
     {
         return preg_replace(array_keys(self::MASKS), array_values(self::MASKS), $text) ?? '[unreadable]';
     }

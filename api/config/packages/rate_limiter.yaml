@@ -54,3 +54,9 @@ framework:
             policy: 'fixed_window'
             limit: 30
             interval: '15 minutes'
+        # A browser's error reports, posted by anyone, signed in or not. The page itself sends at most five per load, so
+        # this only keeps a client from flooding the error tracker through the API.
+        client_errors:
+            policy: 'fixed_window'
+            limit: 20
+            interval: '15 minutes'
