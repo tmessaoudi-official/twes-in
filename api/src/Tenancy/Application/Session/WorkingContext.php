@@ -25,6 +25,8 @@ final readonly class WorkingContext
         public array $permissions,
         /** the id of the company's stored logo, which changes with it; null without one */
         public ?string $logoVersion = null,
+        /** until when the owner lets support read the company, null while they do not */
+        public ?\DateTimeImmutable $supportAccessUntil = null,
     ) {
     }
 }

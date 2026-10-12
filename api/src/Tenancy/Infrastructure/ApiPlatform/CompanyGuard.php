@@ -13,6 +13,7 @@ use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Licensing\Application\CompanyAccess;
 use App\Licensing\Domain\Access;
 use App\Shared\Infrastructure\Doctrine\CompanyFilter;
+use App\Tenancy\Application\Support\SupportAccess;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyRepository;
 use App\Tenancy\Domain\MembershipRepository;
@@ -28,9 +29,10 @@ use Symfony\Component\Uid\Uuid;
  * not exist and a company the caller has nothing to do with answer the same 404: a 403 would confirm the
  * identifier exists, which is how a tenant list gets enumerated.
  *
- * A platform operator answers here as anyone else does, by membership (docs/SPEC.md § 7, 2026-09-15, S3): what an
- * operator does to a company they are not in, opening it, inviting its owners, deciding on it, goes through the
- * platform endpoints, never through a company's own.
+ * A platform operator answers here as anyone else does, by membership: what an operator does to a company they are not
+ * in, opening it, inviting its owners, deciding on it, goes through the platform endpoints, never through a company's
+ * own. The one way in besides is the owner's « Accès support », which lets an operator read, and only read
+ * (SupportAccess); a write or an export under it is refused before it gets here (SupportReadOnlyListener).
  *
  * A member whose company's subscription is unpaid past its grace period is refused with a 403 naming why, read-only
  * or locked; the requested permission is what is judged, so an owner's "*" passes nothing the subscription refuses.
@@ -50,6 +52,7 @@ final readonly class CompanyGuard
         private MembershipRepository $memberships,
         private EntityManagerInterface $entityManager,
         private CompanyAccess $access,
+        private SupportAccess $support,
     ) {
     }
 
@@ -99,8 +102,11 @@ final readonly class CompanyGuard
             return false;
         }
         $role = $this->memberships->ofUserInCompany($account->getId(), $company->getId())?->getRole();
+        if (null !== $role) {
+            return $role->grants($permission);
+        }
 
-        return null !== $role && $role->grants($permission);
+        return SupportAccess::permits($permission) && null !== $this->support->grantOf($account->getId(), $company->getId());
     }
 
     public function account(): SecurityUser

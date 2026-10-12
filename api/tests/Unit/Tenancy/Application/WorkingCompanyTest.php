@@ -26,6 +26,7 @@ use App\Tests\Support\InMemoryCurrentCompany;
 use App\Tests\Support\InMemoryFileStorage;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryStoredFiles;
+use App\Tests\Support\SupportDoubles;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
@@ -74,7 +75,7 @@ final class WorkingCompanyTest extends TestCase
         $this->current->set($company->getId());
 
         $logos = $this->logos();
-        $context = (new DescribeWorkingContext($this->memberships, $this->current, $logos))->for($this->user->getId());
+        $context = (new DescribeWorkingContext($this->memberships, $this->current, $logos, SupportDoubles::access($this->memberships), SupportDoubles::permissions()))->for($this->user->getId());
 
         self::assertNotNull($context);
         self::assertSame($company->getId()->toRfc4122(), $context->companyId);
@@ -88,13 +89,13 @@ final class WorkingCompanyTest extends TestCase
 
         // The customer screen names the company with its logo, read from this (audit 2026-10-06, V-33).
         $logo = $logos->set($company, 'logo.png', (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true), null);
-        $context = (new DescribeWorkingContext($this->memberships, $this->current, $logos))->for($this->user->getId());
+        $context = (new DescribeWorkingContext($this->memberships, $this->current, $logos, SupportDoubles::access($this->memberships), SupportDoubles::permissions()))->for($this->user->getId());
         self::assertSame($logo->getFile()->getId()->toRfc4122(), $context?->logoVersion);
     }
 
     public function testWithoutASessionCompanyOrAMembershipThereIsNoContext(): void
     {
-        $describe = new DescribeWorkingContext($this->memberships, $this->current, $this->logos());
+        $describe = new DescribeWorkingContext($this->memberships, $this->current, $this->logos(), SupportDoubles::access($this->memberships), SupportDoubles::permissions());
         self::assertNull($describe->for($this->user->getId()));
 
         $this->current->set((new Company('Other', 'FR', 'EUR', 'fr', 'Europe/Paris'))->getId());

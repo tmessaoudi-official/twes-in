@@ -1,0 +1,73 @@
+<section class="flex max-w-3xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="support-access-title">
+    {{ 'support_access.title' | translate }}
+  </h1>
+  <p class="m-0 max-w-prose">
+    {{ 'support_access.intro' | translate: { company: company()?.name ?? '' } }}
+  </p>
+  <ul class="m-0 flex max-w-prose list-disc flex-col gap-1 ps-6">
+    <li>{{ 'support_access.reads' | translate }}</li>
+    <li>{{ 'support_access.never' | translate }}</li>
+    <li>
+      {{ 'support_access.logged' | translate }}
+      <a
+        routerLink="/company/activity"
+        class="font-medium text-primary"
+        data-testid="support-access-activity"
+        >{{ 'support_access.activity' | translate }}</a
+      >
+    </li>
+  </ul>
+
+  @if (ownerOnly()) {
+    <p class="m-0" data-testid="support-access-owner-only">
+      {{ 'support_access.owner_only' | translate }}
+    </p>
+  } @else if (state(); as current) {
+    <section class="flex max-w-xl flex-col gap-3 rounded-lg border border-outline-variant p-4">
+      @if (until(); as closesAt) {
+        <p class="m-0 flex items-center gap-2 font-medium" data-testid="support-access-open">
+          <mat-icon aria-hidden="true">support_agent</mat-icon>
+          {{ 'support_access.open_until' | translate: { until: closesAt } }}
+        </p>
+        <button
+          mat-stroked-button
+          type="button"
+          class="self-start"
+          [disabled]="busy()"
+          (click)="end()"
+          data-testid="support-access-end"
+        >
+          {{ 'support_access.end' | translate }}
+        </button>
+      } @else {
+        <p class="m-0" data-testid="support-access-closed">
+          {{ 'support_access.closed' | translate }}
+        </p>
+      }
+      <mat-radio-group
+        class="flex flex-col gap-1"
+        [value]="hours()"
+        (change)="hours.set($event.value)"
+        [attr.aria-label]="'support_access.for' | translate"
+        data-testid="support-access-hours"
+      >
+        @for (choice of current.hours; track choice) {
+          <mat-radio-button [value]="choice" [attr.data-testid]="'support-access-hours-' + choice">
+            {{ 'support_access.hours' | translate: { count: choice } }}
+          </mat-radio-button>
+        }
+      </mat-radio-group>
+      <button
+        mat-flat-button
+        type="button"
+        class="self-start"
+        [disabled]="busy()"
+        (click)="grant()"
+        data-testid="support-access-grant"
+      >
+        {{ (until() === null ? 'support_access.grant' : 'support_access.grant_again') | translate }}
+      </button>
+    </section>
+  }
+</section>

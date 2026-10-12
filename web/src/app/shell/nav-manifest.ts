@@ -208,6 +208,16 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     permission: 'audit.read',
   },
   {
+    // « Accès du support »: the owner's to open, like everything that lets someone outside the company in.
+    key: 'support-access',
+    labelKey: 'nav.support_access',
+    icon: 'support_agent',
+    route: '/company/support-access',
+    section: 'team',
+    permission: 'company.settings',
+    role: 'owner',
+  },
+  {
     // « Effacer des données »: the owner's alone, behind a fresh proof of who is at the screen (docs/SPEC.md § 7).
     key: 'data-erasure',
     labelKey: 'nav.data_erasure',
@@ -263,15 +273,6 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     section: 'fiscal',
     permission: 'company.settings',
     coming: { after: 'units', version: 'later', row: 52, meanwhile: '/fiscal/taxes' },
-  },
-  {
-    key: 'support-access',
-    labelKey: 'nav.support_access',
-    icon: 'support_agent',
-    route: `${COMING_SETTINGS_ROUTE}/support-access`,
-    section: 'team',
-    permission: 'company.settings',
-    coming: { after: 'roles', version: 'later', row: 67 },
   },
   {
     key: 'texts',

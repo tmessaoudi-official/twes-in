@@ -116,12 +116,7 @@ describe('the planned modules in the menu', () => {
   });
 
   it('keeps the settings pages not built yet, which are not modules, in the web’s own list', () => {
-    expect(COMING_NAV.map((entry) => entry.key)).toEqual([
-      'alerts',
-      'fiscal-preset',
-      'support-access',
-      'texts',
-    ]);
+    expect(COMING_NAV.map((entry) => entry.key)).toEqual(['alerts', 'fiscal-preset', 'texts']);
     expect(comingEntries(undefined)).toEqual(COMING_NAV);
     const keys = comingEntries(catalogue).map((entry) => entry.key);
     expect(new Set(keys).size).toBe(keys.length);

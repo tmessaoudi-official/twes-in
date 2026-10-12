@@ -177,7 +177,7 @@ describe('the navigation manifest', () => {
         ],
       ],
       ['fiscal', ['taxes', 'units', 'closing']],
-      ['team', ['members', 'roles', 'activity']],
+      ['team', ['members', 'roles', 'activity', 'support-access']],
       ['data', ['data-erasure']],
       ['customisation', ['custom-fields', 'modules']],
     ]);

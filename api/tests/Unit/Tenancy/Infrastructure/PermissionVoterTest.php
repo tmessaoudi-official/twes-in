@@ -20,6 +20,7 @@ use App\Tenancy\Infrastructure\Security\PermissionVoter;
 use App\Tests\Support\FixedCompanyAccess;
 use App\Tests\Support\InMemoryCurrentCompany;
 use App\Tests\Support\InMemoryMemberships;
+use App\Tests\Support\SupportDoubles;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\NullToken;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
@@ -39,7 +40,7 @@ final class PermissionVoterTest extends TestCase
         $this->memberships = new InMemoryMemberships();
         $this->currentCompany = new InMemoryCurrentCompany($this->company->getId());
         $this->access = new FixedCompanyAccess();
-        $this->voter = new PermissionVoter($this->memberships, $this->currentCompany, $this->access);
+        $this->voter = new PermissionVoter($this->memberships, $this->currentCompany, $this->access, SupportDoubles::access($this->memberships));
     }
 
     public function testAMemberWhoseRoleListsThePermissionIsGranted(): void

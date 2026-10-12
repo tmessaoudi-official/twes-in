@@ -72,6 +72,11 @@ final class WorkingCompanyResource
     #[Groups([self::READ])]
     public ?string $logoVersion = null;
 
+    /** Until when the company lets support read it, for a company the operator reads only that way; absent otherwise. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $supportAccessUntil = null;
+
     public static function of(CompanySummary $summary): self
     {
         $resource = new self();
@@ -81,6 +86,7 @@ final class WorkingCompanyResource
         $resource->role = $summary->role;
         $resource->pinned = $summary->pinned;
         $resource->logoVersion = $summary->logoVersion;
+        $resource->supportAccessUntil = $summary->supportAccessUntil?->format(\DateTimeInterface::ATOM);
 
         return $resource;
     }

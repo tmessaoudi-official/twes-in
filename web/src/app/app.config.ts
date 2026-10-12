@@ -24,6 +24,7 @@ import { Session } from './shared/session/session';
 import { StepUpProof } from './shared/step-up/step-up-proof';
 import { CustomerScreenHold } from './shared/customer-view/customer-screen-hold';
 import { customerScreenInterceptor } from './shared/customer-view/customer-screen-interceptor';
+import { supportReadOnlyInterceptor } from './shared/support/support-read-only-interceptor';
 import { csrfInterceptor } from './auth/csrf-interceptor';
 import { ApiSettings } from './shared/settings/api-settings';
 import { BrowserStorageSettings } from './shared/settings/browser-storage-settings';
@@ -53,6 +54,7 @@ export const appConfig: ApplicationConfig = {
         tabInterceptor,
         activityInterceptor,
         customerScreenInterceptor,
+        supportReadOnlyInterceptor,
       ]),
       withNoXsrfProtection(),
     ),

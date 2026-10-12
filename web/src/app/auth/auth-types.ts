@@ -108,6 +108,8 @@ export interface SignedInState {
   customerScreenCompanyId?: string | null;
   /** how to reach the platform's operators, each channel null until they fill it in: the help panel offers it */
   support?: SupportContact;
+  /** until when the working company lets the platform's support read it, null while it does not: the banner says so */
+  supportAccessUntil?: string | null;
 }
 
 /** The phone, WhatsApp number and address the platform's operators are reached at, each null when not given. */

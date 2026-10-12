@@ -157,6 +157,11 @@ that scripts can compute codes. You can also add it to any authenticator app to 
   company choice instead. Pick **Demo**; that is the state this file describes. Its
   **Manage the platform** link (*Gérer la plateforme*) opens **Platform** (http://localhost:8090/platform), where the
   operator runs the platform.
+- Being Demo's owner is development data only: an operator keeps no standing access to a company. A company's owner
+  lets support in from **Settings → Support access** (*Paramètres → Accès du support*) for 1, 24 or 72 hours; the
+  company then appears in the operator's company switcher marked **Support**, read-only (no write, no export, no cost
+  price), under a banner saying until when, and every page read is in its activity log. To try it, use a company
+  the operator is not a member of, such as one opened from **Platform** for a new owner.
 
 **The interface opens in French**, Demo's language. The **FR** button at the top right switches to English. This
 file quotes the English labels. Their French counterparts:

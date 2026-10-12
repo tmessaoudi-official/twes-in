@@ -7,7 +7,7 @@ import { totp } from './totp';
 // against five per account in five minutes, successes included. So the run signs the operator in with a code once,
 // in the setup project (operator.setup.ts), and every scenario that only needs "the operator, signed in" reuses that
 // session. A scenario about signing in itself, or one that moves the session to another company, signs in afresh:
-// two a run, plus the setup's. Rerunning locally inside five minutes can therefore meet the limit.
+// three a run, plus the setup's. Rerunning locally inside five minutes can therefore meet the limit.
 // The credentials and the secret are the ones `make seed` and the CI e2e job pass to `app:seed`.
 export const OPERATOR_EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
 export const OPERATOR_PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';

@@ -81,6 +81,7 @@ final class ScaleGenerator
         'quote_line_tax' => 'quotes: a follow-up slice',
         'recurring_invoice' => 'a schedule copying a model invoice: a clone drafts nothing by itself',
         'stock_movement' => 'stock movements: a follow-up slice',
+        'support_grant' => 'the windows an owner opened to support: a clone opened none',
     ];
 
     /** Foreign keys of a cloned table that a copy points at a row of its own copy, or empties: `table.column`. */

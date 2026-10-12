@@ -20,6 +20,8 @@ final readonly class CompanySummary
         public bool $pinned = false,
         /** The id of the company's stored logo, which changes with the logo; null without one. */
         public ?string $logoVersion = null,
+        /** Until when its owner lets support read it, for a company an operator reads only through that; null otherwise. */
+        public ?\DateTimeImmutable $supportAccessUntil = null,
     ) {
     }
 }
