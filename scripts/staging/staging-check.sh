@@ -9,6 +9,10 @@
 #   again       a second follow finds nothing to do
 #   redeploy    with the deployment down and the three images gone from this machine, deploy.sh --staging with the
 #               release written down under releases/ pulls them back and starts them: what a rollback does
+#   rotations   APP_MFA_KEY (an enrolled authenticator unreadable under the new key alone, signing in again once
+#               app:keys:rotate-mfa resealed it), APP_SECRET (a mail's stop link made before refused, one made after
+#               taken), the realtime keys (Centrifugo refuses the old token and API key, takes the new ones) and the
+#               database password (the old one refused, the deployment healthy), each by the runbook's procedure
 # What it checks is the working tree as it is, committed or not: a snapshot commit made through a temporary index (the
 # real index is never touched) is what the bare origin, the publishing clone and the staging clone hold.
 # Runs under the compose project `twes-staging-check` only, with a registry container of its own bound to 127.0.0.1,
@@ -163,4 +167,87 @@ through_the_edge
 [[ "$(sign_in)" == 200 ]] || fail "signing in after the redeploy failed: the database volume was kept, the operator should be there"
 step "images removed, the recorded release pulled back and running"
 
-printf 'staging-check: OK — published, followed and redeployed by digest in %ss in all\n' "$(($(date +%s) - started))"
+# The rotations (docs/RUNBOOK.md, « Rotate a secret »), each on the running staging, each proving what its key guards.
+redeploy() {
+  bash "$staging/scripts/deploy/deploy.sh" --staging "$values" "$WORK/etc/releases/$snapshot.env" > "$WORK/redeploy.log" 2>&1 \
+    || { cat "$WORK/redeploy.log" >&2; fail "redeploying after $1 failed"; }
+  through_the_edge
+}
+php_in_api() { dc exec -T api php -r "require 'vendor/autoload.php'; $1" -- "${@:2}"; }
+# A code the authenticator would show now, from a step no code was taken in yet: a code is spent once per 30 seconds.
+code_now() {
+  local left=$((30 - $(date +%s) % 30)); sleep "$((left + 1))"
+  php_in_api 'echo (new App\Identity\Infrastructure\Mfa\OtphpTotpCodes())->codeAt($argv[1], new DateTimeImmutable());' "$1"
+}
+post() { # path, JSON body: the status, with the session cookie
+  ask -b /tmp/jar -c /tmp/jar -o /dev/null -w '%{http_code}' -H "Origin: https://$HOST" -H "csrf-token: $csrf" \
+    -H 'Content-Type: application/json' --data "$2" "https://$HOST$1"
+}
+get() { ask -b /tmp/jar -H "Origin: https://$HOST" -H "csrf-token: $csrf" "https://$HOST$1"; }
+signed_in_with() { # authenticator secret: password, then the code
+  [[ "$(sign_in)" == 200 ]] || fail "the password step failed"
+  post /api/auth/mfa/verify "{\"code\":\"$(code_now "$1")\"}"
+}
+
+# MFA: the operator enrols an authenticator; a new APP_MFA_KEY alone leaves it unreadable; app:keys:rotate-mfa, run with
+# the previous key while api and worker are stopped, reseals it, and the next code signs in.
+secret=$(ask -b /tmp/jar -c /tmp/jar -H "Origin: https://$HOST" -H "csrf-token: $csrf" -H 'Content-Type: application/json' \
+  --data '{}' "https://$HOST/api/auth/mfa/enrolment" | jq -r '.secret // empty')
+[[ -n "$secret" ]] || fail "enrolling an authenticator gave no secret"
+[[ "$(post /api/auth/mfa/enrolment/confirm "{\"code\":\"$(code_now "$secret")\"}")" == 200 ]] || fail "confirming the authenticator failed"
+[[ "$(signed_in_with "$secret")" == 200 ]] || fail "the enrolled operator did not sign in with a code"
+old_mfa=$(release_value APP_MFA_KEY "$values")
+fact APP_MFA_KEY "$(head -c 32 /dev/urandom | base64)"
+redeploy "a new APP_MFA_KEY"
+[[ "$(signed_in_with "$secret")" == 401 ]] || fail "a code was taken under a key the authenticator was not sealed with"
+dc stop api worker >/dev/null 2>&1
+printf '%s\n' "$old_mfa" | dc run --rm --no-deps -T api bin/console app:keys:rotate-mfa > "$WORK/rotate.log" 2>&1 \
+  || { cat "$WORK/rotate.log" >&2; fail "app:keys:rotate-mfa failed"; }
+grep -q "Resealed 1 authenticator secret" "$WORK/rotate.log" || fail "the rotation did not reseal the one secret: $(cat "$WORK/rotate.log")"
+redeploy "resealing"
+[[ "$(signed_in_with "$secret")" == 200 ]] || fail "the resealed authenticator did not sign in"
+step "MFA key rotated: unreadable alone, resealed by app:keys:rotate-mfa"
+
+# APP_SECRET signs the links mails carry to stop a kind of mail: one made before the rotation is refused after it.
+user=$(get /api/auth/me | jq -r '.user.id // empty')
+kind=$(get /api/me/notification-preferences | jq -r '[.preferences[] | select(.companyId == null) | .type][0] // empty')
+[[ -n "$user" && -n "$kind" ]] || fail "found no operator id ($user) or kind of mail told without a company ($kind)"
+stop_link() { php_in_api 'echo (new App\Inbox\Infrastructure\Mail\HmacMailStopTokens(getenv("APP_SECRET")))->issue(new App\Inbox\Application\MailStop(Symfony\Component\Uid\Uuid::fromString($argv[1]), null, $argv[2]));' "$user" "$kind"; }
+before=$(stop_link)
+[[ "$(post /api/notification-preferences/stop "{\"token\":\"$before\"}")" == 204 ]] || fail "a stop link made under the current APP_SECRET was refused"
+fact APP_SECRET "$(head -c 36 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 48)"
+redeploy "a new APP_SECRET"
+[[ "$(post /api/notification-preferences/stop "{\"token\":\"$before\"}")" == 404 ]] || fail "a stop link made before the APP_SECRET rotation still works"
+[[ "$(post /api/notification-preferences/stop "{\"token\":\"$(stop_link)\"}")" == 204 ]] || fail "a stop link made after the rotation was refused"
+step "APP_SECRET rotated: older mail links refused, newer ones taken"
+
+# The realtime keys: Centrifugo checks a connection token with REALTIME_TOKEN_KEY and its HTTP API with REALTIME_API_KEY.
+[[ "$(signed_in_with "$secret")" == 200 ]] || fail "signing in again after the APP_SECRET rotation failed"
+realtime_token() { get /api/me/realtime-token | jq -r '.token // empty'; }
+token_valid() { dc exec -T centrifugo centrifugo checktoken "$1" > "$WORK/checktoken.log" 2>&1; }
+api_key_answer() { dc exec -T gotenberg curl -sS -o /dev/null -w '%{http_code}' -H "X-API-Key: $1" --data '{}' http://centrifugo:8000/api/info; }
+old_token=$(realtime_token); old_api=$(release_value REALTIME_API_KEY "$values")
+token_valid "$old_token" || fail "Centrifugo refused a token the API issued: $(cat "$WORK/checktoken.log")"
+[[ "$(api_key_answer "$old_api")" == 200 ]] || fail "Centrifugo's API refused the current key"
+fact REALTIME_TOKEN_KEY "$(head -c 36 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 48)"
+fact REALTIME_API_KEY "$(head -c 36 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 48)"
+redeploy "new realtime keys"
+! token_valid "$old_token" || fail "Centrifugo still takes a token signed with the old key"
+token_valid "$(realtime_token)" || fail "Centrifugo refused a token issued after the rotation: $(cat "$WORK/checktoken.log")"
+[[ "$(api_key_answer "$old_api")" == 401 ]] || fail "Centrifugo's API still takes the old key"
+[[ "$(api_key_answer "$(release_value REALTIME_API_KEY "$values")")" == 200 ]] || fail "Centrifugo's API refused the new key"
+step "realtime keys rotated: old token and API key refused, new ones taken"
+
+# The database password: changed in the server first, then in the values; the old one no longer opens a connection.
+old_db=$(release_value POSTGRES_PASSWORD "$values"); new_db=$(head -c 36 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40)
+dc exec -T postgres psql -U twes -d twes -v ON_ERROR_STOP=1 -qc "ALTER ROLE twes PASSWORD '$new_db'" >/dev/null || fail "ALTER ROLE failed"
+fact POSTGRES_PASSWORD "$new_db"
+redeploy "a new database password"
+[[ "$(signed_in_with "$secret")" == 200 ]] || fail "signing in after the database password rotation failed"
+dc exec -T -e PGPASSWORD="$new_db" backup psql -h postgres -U twes -d twes -qtAc 'SELECT 1' >/dev/null \
+  || fail "the new database password does not open a connection over TCP"
+! dc exec -T -e PGPASSWORD="$old_db" backup psql -h postgres -U twes -d twes -qtAc 'SELECT 1' >/dev/null 2>&1 \
+  || fail "the old database password still opens a connection"
+step "database password rotated: the old one refused, the deployment healthy"
+
+printf 'staging-check: OK — published, followed and redeployed by digest, four secrets rotated in %ss in all\n' "$(($(date +%s) - started))"
