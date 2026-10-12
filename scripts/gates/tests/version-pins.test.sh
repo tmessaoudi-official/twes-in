@@ -13,6 +13,8 @@ tree() {
 services:
   postgres:
     image: postgres:18.6-trixie
+  lan:
+    image: caddy:2.11.6-alpine
   api:
     environment:
       DATABASE_URL: "postgresql://twes:x@postgres:5432/twes?serverVersion=18&charset=utf8"
@@ -23,6 +25,7 @@ RUN install-php-extensions pdo_pgsql intl zip opcache bcmath
 EOF
   printf 'FROM postgres:18.6-trixie\nRUN apt-get install -y pgbackrest\n' > "$d/infra/postgres/Dockerfile"
   printf '[twes]\npg1-path=/var/lib/postgresql/18/docker\n' > "$d/infra/postgres/pgbackrest.conf"
+  printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine\n' > "$d/compose.deploy.yaml"
   printf 'FROM node:26.8.2-alpine AS build\nFROM nginx:1.31.5-alpine\n' > "$d/infra/web/Dockerfile"
   printf 'FROM node:26.8.2-trixie-slim\nARG PLAYWRIGHT_VERSION=1.63.0\n' > "$d/infra/web/tools.Dockerfile"
   printf '{"packages":{"node_modules/@playwright/test":{"version":"1.63.0"}}}\n' > "$d/web/package-lock.json"
@@ -47,7 +50,13 @@ EOF
 run() { bash "$GATE" --root "$1" 2>&1; }
 echo "version-pins gate"
 
-d=$(tree); out=$(run "$d"); check "every copy agreeing passes" $? 0 "$out" "OK — 7 pins agree"
+d=$(tree); out=$(run "$d"); check "every copy agreeing passes" $? 0 "$out" "OK — 8 pins agree"
+d=$(tree); sed -i 's/caddy:2.11.6-alpine/caddy:2.11.5-alpine/' "$d/compose.deploy.yaml"
+out=$(run "$d"); check "the edge on another Caddy than the LAN door is refused" $? 1 "$out" "caddy image"
+d=$(tree); printf 'services:\n  edge:\n    image: nginx:1\n' > "$d/compose.deploy.yaml"
+out=$(run "$d"); check "a deploy overlay without its Caddy edge is refused" $? 1 "$out" "caddy image"
+d=$(tree); printf '  api:\n    environment:\n      DATABASE_URL: "postgresql://twes:x@postgres:5432/twes?serverVersion=17&charset=utf8"\n' >> "$d/compose.deploy.yaml"
+out=$(run "$d"); check "the deploy overlay's database address on another major is refused" $? 1 "$out" "compose.deploy.yaml"
 
 d=$(tree); sed -i 's/serverVersion=18/serverVersion=17/' "$d/api/.env"
 out=$(run "$d"); check "a serverVersion that is not the image's major is named with its file" $? 1 "$out" "api/.env"

@@ -1,0 +1,9 @@
+# The deploy check's own layer (scripts/deploy/deploy-check.sh), over the four deployment files and
+# scripts/backup/drill.compose.yaml (the stand-in bucket and its authority), under the compose project
+# `twes-deploy-check` only. The edge publishes nothing, so the check runs beside a development stack and the machine's own
+# 80 and 443 stay free; requests reach it on the stack's network. Mailpit starts, as the relay the instance mails to.
+services:
+  edge:
+    ports: !reset []
+  mailpit:
+    profiles: !reset []

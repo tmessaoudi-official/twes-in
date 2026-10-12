@@ -17,6 +17,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\StreamableInputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -34,6 +35,9 @@ final class SeedCommand extends Command
         $this
             ->addOption('operator-email', null, InputOption::VALUE_REQUIRED, 'Email of the platform operator', 'operator@twes.local')
             ->addOption('operator-password', null, InputOption::VALUE_REQUIRED, 'Password of the platform operator (required when the user is created)')
+            // A deployment's way: a password on the command line stays in the shell's history and shows in `ps`.
+            ->addOption('operator-password-stdin', null, InputOption::VALUE_NONE, 'Read the operator\'s password from the first line of standard input instead')
+            ->addOption('without-company', null, InputOption::VALUE_NONE, 'Make no first company (production: an operator reaches a company only through support access its owner opens)')
             ->addOption('operator-totp-secret', null, InputOption::VALUE_REQUIRED, 'Base32 authenticator secret enrolled for the operator when they have none (development and CI stacks only)')
             ->addOption('operator-name', null, InputOption::VALUE_REQUIRED, 'Display name of the platform operator', 'Operator')
             ->addOption('company-name', null, InputOption::VALUE_REQUIRED, 'Name of the first company', 'Demo')
@@ -47,6 +51,14 @@ final class SeedCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         $password = $input->getOption('operator-password');
+        if (true === $input->getOption('operator-password-stdin')) {
+            if (null !== $password) {
+                $io->error('Give the operator\'s password once: --operator-password or --operator-password-stdin.');
+
+                return Command::INVALID;
+            }
+            $password = self::firstLine($input);
+        }
         $totpSecret = $input->getOption('operator-totp-secret');
 
         try {
@@ -60,6 +72,7 @@ final class SeedCommand extends Command
                 self::option($input, 'locale'),
                 self::option($input, 'timezone'),
                 \is_string($totpSecret) ? $totpSecret : null,
+                true !== $input->getOption('without-company'),
             ));
         } catch (OperatorPasswordRequired|InvalidOperatorTotpSecret $e) {
             $io->error($e->getMessage());
@@ -70,6 +83,14 @@ final class SeedCommand extends Command
         $io->success([] === $created ? 'Nothing to do: every seed row already exists.' : 'Created: '.implode(', ', $created).'.');
 
         return Command::SUCCESS;
+    }
+
+    private static function firstLine(InputInterface $input): ?string
+    {
+        $stream = ($input instanceof StreamableInputInterface ? $input->getStream() : null) ?? \STDIN;
+        $line = fgets($stream);
+
+        return false === $line ? null : rtrim($line, "\r\n");
     }
 
     private static function option(InputInterface $input, string $name): string

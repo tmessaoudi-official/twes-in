@@ -21,6 +21,8 @@ final readonly class SeedRequest
         public string $locale,
         public string $timezone,
         public ?string $operatorTotpSecret = null,
+        // False in production: an operator reaches a company only through a grant its owner opens, never as a member.
+        public bool $withCompany = true,
     ) {
     }
 }

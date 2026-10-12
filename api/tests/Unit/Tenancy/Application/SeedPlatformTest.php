@@ -178,6 +178,20 @@ final class SeedPlatformTest extends TestCase
         self::assertCount(8, $this->regimes->regimes);
     }
 
+    public function testAProductionSeedMakesTheOperatorAndNoCompany(): void
+    {
+        $created = $this->seed->seed($this->request(password: 'secret', withCompany: false));
+
+        self::assertSame([
+            'role owner', 'role admin', 'role member', 'role clerk', 'role accountant', 'operator op@example.test',
+            'customer tax regimes of FR', 'customer tax regimes of TN',
+        ], $created);
+        $operator = $this->users->ofEmail(Email::fromString('op@example.test'));
+        self::assertNotNull($operator);
+        self::assertTrue($operator->isPlatformOperator());
+        self::assertSame([], $this->companies->all(), 'an operator owns no company of their own in production');
+    }
+
     public function testEveryCompanyCreatedBeforeTheFiscalPresetsGetsItsTaxesAndUnitsOnTheNextRun(): void
     {
         // The migration records a preset for every existing company but cannot read the preset files.
@@ -274,8 +288,8 @@ final class SeedPlatformTest extends TestCase
 
     private const string TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
 
-    private function request(?string $password, ?string $totpSecret = null): SeedRequest
+    private function request(?string $password, ?string $totpSecret = null, bool $withCompany = true): SeedRequest
     {
-        return new SeedRequest('op@example.test', $password, 'Op', 'Seeded', 'TN', 'TND', 'fr', 'Africa/Tunis', $totpSecret);
+        return new SeedRequest('op@example.test', $password, 'Op', 'Seeded', 'TN', 'TND', 'fr', 'Africa/Tunis', $totpSecret, $withCompany);
     }
 }

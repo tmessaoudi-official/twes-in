@@ -27,7 +27,8 @@ use App\Tenancy\Domain\RoleRepository;
 use Psr\Clock\ClockInterface;
 
 /**
- * The built-in roles, the first operator, the first company, the customer tax regimes of every fiscal preset and
+ * The built-in roles, the first operator, the first company (owned by the operator: development and CI data, which a
+ * production seed leaves out), the customer tax regimes of every fiscal preset and
  * every company's taxes and units, idempotently: run on an empty database and again after a migration it
  * converges on the same rows. `converge()` is the part a live database needs at every start, without the operator and
  * the first company. A company is unusable without an owner role, so the roles are seeded here too.
@@ -102,6 +103,10 @@ final readonly class SeedPlatform
             $operator->confirmTotpEnrolment($step, $now);
             $this->users->save($operator);
             $created[] = "authenticator for $email";
+        }
+
+        if (!$request->withCompany) {
+            return [...$created, ...$this->presets()];
         }
 
         $company = $this->companies->ofName($request->companyName);

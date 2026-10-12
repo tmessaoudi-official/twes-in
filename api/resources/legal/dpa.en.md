@@ -35,8 +35,11 @@ The processing consists of hosting, storing and processing that data to provide 
 
 - Hosting: {{host.name}}, {{host.address}}.
 - E-mail sending: {{mail.provider}}.
+- Backup copies: {{backup.provider}}.
 
-To be completed: where the data is hosted, and any transfer outside the company's country with its safeguards.
+Where the data is hosted: {{host.country}}.
+
+To be completed: any transfer outside the company's country, with its safeguards.
 
 ## Contact
 

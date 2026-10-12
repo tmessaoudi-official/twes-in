@@ -47,25 +47,12 @@ export BACKUP_S3_KEY=drill$(random 24 12) BACKUP_S3_SECRET=$(random 48 32)
 export BACKUP_DATABASE_PASSPHRASE=$(random 48 40) BACKUP_FILES_PASSPHRASE=$(random 48 40)
 export DRILL_PG_DATA=twes-drill-pg-a
 
-# A certificate authority that lives as long as the drill, and the stand-in bucket's identity.
-dc build -q postgres
-mkdir -p "$DRILL_DIR/certs"
-docker run --rm -u "$(id -u):$(id -g)" -v "$DRILL_DIR/certs:/c" -w /c --entrypoint sh twes-in-postgres-backup -c '
-  openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 1 -subj /CN=twes-drill-ca 2>/dev/null
-  openssl req -newkey rsa:2048 -nodes -keyout s3.key -out s3.csr -subj /CN=s3 2>/dev/null
-  printf "subjectAltName=DNS:s3\n" > ext
-  openssl x509 -req -in s3.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out s3.crt -days 1 -extfile ext 2>/dev/null
-  chmod 644 ./*'
-printf '{"identities":[{"name":"backup","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}\n' \
-  "$BACKUP_S3_KEY" "$BACKUP_S3_SECRET" > "$DRILL_DIR/s3.json"
+# shellcheck source=scripts/backup/stand-in-bucket.sh
+source "$root/scripts/backup/stand-in-bucket.sh"
+stand_in_bucket_keys
 step "images built, keys and certificate made"
 
-dc up -d s3
-for _ in $(seq 1 60); do
-  dc exec -T s3 sh -c "echo 's3.bucket.create -name $BACKUP_S3_BUCKET' | weed shell" 2>/dev/null | grep -q "created bucket" && break
-  sleep 2
-done
-dc exec -T s3 sh -c "echo 's3.bucket.list' | weed shell" 2>/dev/null | grep -q "$BACKUP_S3_BUCKET" || fail "the stand-in bucket was never made"
+stand_in_bucket_up
 dc up -d --build --wait postgres gotenberg api backup
 step "stack up: production api, archiving database, backup service ready"
 

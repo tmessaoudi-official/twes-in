@@ -36,10 +36,12 @@ final readonly class LegalSettings implements DeclaresSettings
         'host.name',
         'host.address',
         'host.phone',
+        'host.country',
         'privacy.email',
         'security.email',
         'commercial.email',
         'mail.provider',
+        'backup.provider',
         'source.url',
         'jurisdiction',
     ];
@@ -55,10 +57,12 @@ final readonly class LegalSettings implements DeclaresSettings
         yield new SettingDefinition(self::PREFIX.'host.name', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.host.name', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'host.address', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.host.address', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'host.phone', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.host.phone', self::MODULE);
+        yield new SettingDefinition(self::PREFIX.'host.country', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.host.country', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'privacy.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.privacy.email', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'security.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.security.email', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'commercial.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.commercial.email', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'mail.provider', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.mail.provider', self::MODULE);
+        yield new SettingDefinition(self::PREFIX.'backup.provider', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.backup.provider', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'source.url', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.source.url', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'jurisdiction', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.jurisdiction', self::MODULE);
     }

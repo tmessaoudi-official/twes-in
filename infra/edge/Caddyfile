@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The deployment's edge (compose.deploy.yaml; docs/START.md § 14): every request reaches the instance here, over TLS, and
+# goes on to the web container, whose nginx serves the app and passes /api and the realtime socket on. Caddy obtains and
+# renews the certificate itself, answers plain HTTP with a redirect to HTTPS, and replaces any X-Forwarded-* a client
+# sends with what it saw, which nginx and the API then trust as a private address's (api framework.yaml trusted_proxies).
+{
+	admin off
+}
+
+{$TWES_HOST} {
+	# An e-mail address: certificates from a public authority, which writes to it before one expires. `internal`: a
+	# certificate from Caddy's own authority, for a check that no public authority can reach (scripts/deploy/deploy-check.sh).
+	tls {$EDGE_TLS}
+	# A year, for this host alone: another name of the domain (mail, a status page) keeps its own choice, and the domain is
+	# not preloaded into browsers.
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy web:80
+}

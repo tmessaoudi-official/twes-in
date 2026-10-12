@@ -3253,7 +3253,8 @@
         "host": {
           "name": "Hébergeur",
           "address": "Adresse de l’hébergeur",
-          "phone": "Téléphone de l’hébergeur"
+          "phone": "Téléphone de l’hébergeur",
+          "country": "Pays où les données sont hébergées"
         },
         "privacy": {
           "email": "Contact pour les données personnelles"
@@ -3266,6 +3267,9 @@
         },
         "mail": {
           "provider": "Prestataire d’envoi des e-mails"
+        },
+        "backup": {
+          "provider": "Prestataire et pays des sauvegardes"
         },
         "source": {
           "url": "Adresse du code source"

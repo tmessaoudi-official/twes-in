@@ -56,7 +56,7 @@ make versions
 | **Centrifugo** | `compose.yaml`, service `centrifugo` | none | Change the tag | A major can rename `CENTRIFUGO_*` settings: read its migration notes. The realtime e2e scenarios prove it |
 | **Gotenberg** | `compose.yaml`, service `gotenberg` | none | Change the tag | Look at a rendered invoice PDF, not only the tests: a renderer change moves margins (`api/tests/Unit/Shared/Infrastructure/PdfTemplateMarginsTest.php`) |
 | **Mailpit** | `compose.yaml`, service `mailpit` | none | Change the tag | Development-only mail catcher |
-| **Caddy** | `compose.yaml`, service `lan` | none | Change the tag | Development-only HTTPS door for a phone (`infra/lan/Caddyfile`). The phone-pairing e2e run locally proves it: its phone follows the link through it |
+| **Caddy** | `compose.yaml`, service `lan` | The deploy overlay's edge, `compose.deploy.yaml`, service `edge` (**gate**) | Change both tags | In development the HTTPS door for a phone (`infra/lan/Caddyfile`), proved by the phone-pairing e2e run locally; in a deployment the edge (`infra/edge/Caddyfile`), proved by `make deploy-check` (docs/START.md § 14). Read Caddy's release notes for its handling of `X-Forwarded-*` and `Strict-Transport-Security` |
 
 ### Frameworks and packages
 
