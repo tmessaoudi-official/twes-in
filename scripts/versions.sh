@@ -14,8 +14,8 @@ wanted_js() { jq -r --arg n "$1" '(.dependencies + .devDependencies)[$n] // "-"'
 
 echo "Images (docker)"
 while read -r file line; do row "${line##* }" "$file" ""; done < <(
-  grep -HoE '^[[:space:]]*image: [^[:space:]]+' compose.yaml .github/workflows/ci.yml | sed 's/:[[:space:]]*image:/ image:/' | sort -u
-  grep -HoE '^FROM [^[:space:]]+:[^[:space:]]+|COPY --from=[^[:space:]]+:[^[:space:]]+' infra/api/Dockerfile infra/web/Dockerfile \
+  grep -HoE '^[[:space:]]*image: [^[:space:]]+' compose.yaml .github/workflows/ci.yml scripts/backup/drill.compose.yaml | sed 's/:[[:space:]]*image:/ image:/' | sort -u
+  grep -HoE '^FROM [^[:space:]]+:[^[:space:]]+|COPY --from=[^[:space:]]+:[^[:space:]]+' infra/api/Dockerfile infra/web/Dockerfile infra/postgres/Dockerfile \
     | sed -E 's/:(FROM |COPY --from=)/ /')
 
 echo
@@ -26,6 +26,8 @@ row "PHP (CI)" ".github/workflows/ci.yml" "$(grep -oE "php-version: '[^']+'" .gi
 row "Node (host, CI)" "web/.nvmrc" "$(cat web/.nvmrc)"
 row "Node engines" "web/package.json" "$(jq -r '.engines.node' web/package.json)"
 row "PostgreSQL serverVersion" "compose.yaml, api/.env, ci.yml" "$(git grep -ohE 'serverVersion=[0-9.]+' -- compose.yaml api/.env .github/workflows/ci.yml | sed 's/^serverVersion=//' | sort -u | paste -sd' ')"
+row "pgBackRest, restic (backup image)" "infra/postgres/Dockerfile" "$(grep -oE '^ARG (PGBACKREST|RESTIC)_VERSION=[^[:space:]]+' infra/postgres/Dockerfile | cut -d' ' -f2 | paste -sd' ')"
+row "supercronic (backup image)" "infra/postgres/Dockerfile" "$(grep -oE 'supercronic/releases/download/v[0-9.]+' infra/postgres/Dockerfile | sort -u | sed 's|.*/||')"
 
 echo
 echo "API frameworks (wanted in api/composer.json → locked in api/composer.lock)"

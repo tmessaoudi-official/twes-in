@@ -1,0 +1,72 @@
+# Backups, over compose.yaml and compose.prod.yaml (docs/START.md § 13):
+#   docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml up -d --build --wait
+# The database archives its WAL to an S3-compatible bucket as it writes, so any moment of the last 14 days can be
+# restored; the backup service takes the base backups it replays from, the nightly pg_dump and a copy of the files
+# volume, each encrypted before it leaves. Every value below is the instance's own: compose stops before starting
+# anything while one is missing. scripts/backup/restore-drill.sh proves the whole round trip on these very files.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+x-backup-environment: &backup-environment
+  PGBACKREST_REPO1_S3_ENDPOINT: "${BACKUP_S3_ENDPOINT:?set BACKUP_S3_ENDPOINT, the bucket service's host name}"
+  PGBACKREST_REPO1_STORAGE_PORT: "${BACKUP_S3_PORT:-443}"
+  PGBACKREST_REPO1_S3_BUCKET: "${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}"
+  PGBACKREST_REPO1_S3_REGION: "${BACKUP_S3_REGION:?set BACKUP_S3_REGION}"
+  PGBACKREST_REPO1_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
+  PGBACKREST_REPO1_S3_KEY: "${BACKUP_S3_KEY:?set BACKUP_S3_KEY}"
+  PGBACKREST_REPO1_S3_KEY_SECRET: "${BACKUP_S3_SECRET:?set BACKUP_S3_SECRET}"
+  PGBACKREST_REPO1_CIPHER_PASS: "${BACKUP_DATABASE_PASSPHRASE:?set BACKUP_DATABASE_PASSPHRASE, kept apart from the server: without it no backup can be read}"
+
+services:
+  postgres:
+    restart: unless-stopped
+    build:
+      context: infra/postgres
+    image: twes-in-postgres-backup
+    # Every commit reaches the archive within archive_timeout even on a quiet day: what the ruled 15 minutes rest on.
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_timeout=300
+      - -c
+      - archive_command=pgbackrest --stanza=twes archive-push %p
+    environment: *backup-environment
+    volumes:
+      - pgbackrest-spool:/var/spool/pgbackrest
+      # The backup service reaches the server through its socket, as the server's own user.
+      - postgres-socket:/var/run/postgresql
+
+  backup:
+    logging: *logging
+    restart: unless-stopped
+    image: twes-in-postgres-backup
+    command: [twes-backup, run]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *backup-environment
+      BACKUP_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
+      RESTIC_REPOSITORY: "s3:https://${BACKUP_S3_ENDPOINT}:${BACKUP_S3_PORT:-443}/${BACKUP_S3_BUCKET}/restic"
+      RESTIC_PASSWORD: "${BACKUP_FILES_PASSPHRASE:?set BACKUP_FILES_PASSPHRASE, kept apart from the server: without it no copy can be read}"
+      AWS_ACCESS_KEY_ID: "${BACKUP_S3_KEY}"
+      AWS_SECRET_ACCESS_KEY: "${BACKUP_S3_SECRET}"
+      AWS_DEFAULT_REGION: "${BACKUP_S3_REGION}"
+      TZ: UTC
+    volumes:
+      - postgres-data:/var/lib/postgresql:ro
+      - postgres-socket:/var/run/postgresql
+      - api-files:/files:ro
+      - backup-dump:/var/lib/twes-backup/dump
+
+volumes:
+  pgbackrest-spool:
+  postgres-socket:
+  backup-dump:

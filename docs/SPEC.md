@@ -4987,6 +4987,13 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-12 09:20] ASSUMED (review): the switcher shows a company read through a grant as « <company> — Support », with the separator every other role has in that menu, rather than « · », which the menu does not use (one canon per screen); the operator's account line reads « Support ». Alternatives: « · Support » in that one row.
 - [2026-10-12 09:20] ASSUMED (review): granting while a window is open ends it and opens the new one from now, both in the activity log; the other owners are told, in the bell and by mail, when an owner opens or closes it early, and nobody is told when a window ends by itself, which no job watches. Every member sees the banner with until when while it is open, the owner with « Gérer ». Alternatives: extending the open window; telling every member.
 - [2026-10-12 09:20] ASSUMED (review): each page support reads is recorded under the route's name, once per operator, company and route per 15 minutes, read back from the activity log, and only once the read answered; the operator's realtime token, which names the company's channel, may outlive the window by its own lifetime, carrying only which kind of record changed. Alternatives: the path with its identifiers; ending the realtime subscription when the window ends.
+- [2026-10-12 10:12] AGREED: PostgreSQL backups by pgBackRest (MIT, 2.59.3, from the PGDG repo the postgres image already uses): WAL archive for point-in-time restore plus base backups, encrypted, to an S3 repository (row 58, stage 1 step 4) (developer).
+- [2026-10-12 10:12] AGREED: the files volume and the nightly pg_dump go off-site by restic (BSD-2-Clause), encrypted snapshots in the same bucket (row 58, stage 1 step 4) (developer).
+- [2026-10-12 10:12] AGREED: SeaweedFS (Apache-2.0) stands in for the off-site bucket in CI and local drills, never shipped; MinIO is out, archived and AGPL (row 58, stage 1 step 4) (developer).
+- [2026-10-12 10:12] AGREED: the CI restore drill runs weekly, by hand, and on every push touching the backup files (row 58, stage 1 step 4) (developer).
+- [2026-10-12 10:32] AGREED: plan approved: opt-in overlay compose.backup.yaml, pgBackRest sidecar, restic, the drill on the production images under its own compose project (row 58, stage 1 step 4) (developer).
+- [2026-10-12 10:32] AGREED: pgBackRest, restic and supercronic inside the postgres image are aggregated like the base images: named in the notices sentence and their licences recorded beside their pins in docs/UPDATE.md, the licence gate unchanged (row 58, stage 1 step 4) (developer).
+- [2026-10-12 10:32] AGREED: row 58's file deletion with legal retention moves to its own SPEC § 8 row after stage 1; row 58 closes with the backups once CI is green (row 58, stage 1 step 4) (developer).
 
 ## 8. Status
 
@@ -5286,6 +5293,7 @@ verdict: https://claude.ai/artifact/2AUhf7V1Nuro3kqR1RKdN6 (sources in `var/clau
 | 274 | Stage 3 the four visibility layers, the dashboard of module widgets laid out per person, the shop and workshop trade templates, and the price catalogue: plans and add-ons with dated prices from a shipped YAML file and the operator's « Tarifs » screen, the latest version in effect applying, never retroactive (§ 7 2026-10-12 00:23) | L | todo | - | api/src/** api/config/** web/src/app/** |
 | 275 | Stage 4 every screen to one canon (the readiness page § 7: 72 screens, 47 gaps, G1–G8 first), guided tours per module, history on every audited record | L | todo | - | web/src/app/** web/e2e/** |
 | 276 | The France track: the French entity and lawyer, the DPA to art. 28, the French vectors, e-invoicing as a « solution compatible » with one accredited platform by Q2 2027 | L | todo | - | docs/fiscal/** api/src/** |
+| 277 | Files: deletion with the legal retention, detached drafts after 30 days, issued PDFs and booked receipts kept ten years, moved out of row 58 (§ 7 2026-10-12 10:32) | M | todo | - | api/src/Files/** api/tests/** docs/** |
 <!-- /progress-block -->
 
 ### Delivered

@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# The backup schedule, in UTC (supercronic, run by `twes-backup run`). WAL is archived continuously by the database
+# itself; these are the base backups it replays from, the nightly logical copy and the weekly read-back.
+# A full backup on Sunday, a differential the other nights.
+0 1 * * 0 twes-backup full
+0 1 * * 1-6 twes-backup diff
+# The nightly dump and the files volume, after the base backup.
+30 1 * * * twes-backup copy
+# Both repositories read back whole once a week.
+0 4 * * 0 twes-backup verify

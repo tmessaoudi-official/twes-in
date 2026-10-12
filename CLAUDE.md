@@ -186,6 +186,11 @@ tables, essay gotchas) was retired with the reset. What applies here:
   (`compose.yaml`, `make up`, CI's e2e) and `prod` (`compose.prod.yaml`, CI's `prod-image`: `php.ini-production`,
   `infra/api/conf.d/20-app.prod.ini` with preload, no dev packages, the cache warmed at build; `docs/START.md` § 10).
   PHP settings for every mode: `infra/api/conf.d/10-app.ini`.
+- Backups (`docs/START.md` § 13): `compose.backup.yaml`, an opt-in layer over the production compose, builds the database
+  from `infra/postgres/` (the same PostgreSQL plus pgBackRest, restic, supercronic; `pgbackrest.conf`, `backup/twes-backup`,
+  `backup/crontab`) and adds the `backup` service; `make backup-drill` (`scripts/backup/restore-drill.sh`, compose project
+  `twes-drill` only) restores from a stand-in bucket into empty volumes, as CI's `restore-drill` workflow does weekly.
+  `BackupOverlayTest` pins the loss window and the encryption.
 - `Makefile` — `make up` (live: compose.yaml + `compose.live.yaml`, the source mounted, API workers restarted by
   FrankenPHP's watcher, the web tier on `ng serve`; `make up-images` runs the built images as CI does; `make live-refresh`
   after a resource property change; docs/START.md § 2), web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, `lan` :8443 a phone's HTTPS door on this machine's network address, `infra/lan/Caddyfile`; the api image migrates at

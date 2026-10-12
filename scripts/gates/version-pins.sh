@@ -3,7 +3,9 @@
 # Several versions are written in more than one file, and a bump that moves only one copy builds one thing locally and
 # tests another in CI (docs/UPDATE.md lists every pin and its copies; docs/SPEC.md § 7, 2026-09-19). This gate
 # refuses any copy that disagrees, and any copy that disappeared: a pin found nowhere is a failure, never a skip.
-#   postgres image         compose.yaml (the one copy: CI runs the compose service, never a pin of its own)
+#   postgres image         compose.yaml (CI runs the compose service, never a pin of its own) = the backup overlay's
+#                          image (infra/postgres/Dockerfile), which archives and restores beside that very server
+#   postgres major         also pgBackRest's data directory (infra/postgres/pgbackrest.conf pg1-path)
 #   serverVersion          every DATABASE_URL (compose.yaml, api/.env*) = the postgres image's major
 #   PHP                    infra/api/Dockerfile's frankenphp tag = composer.json's floor
 #   Node                   web/.nvmrc = infra/web/Dockerfile's node image = web/package.json engines; and the
@@ -28,6 +30,15 @@ pg_major=
 if [[ -z "$compose_pg" ]]; then problem "postgres image: found none in compose.yaml"
 elif [[ "$(wc -l <<<"$compose_pg")" -ne 1 ]]; then problem "postgres image: compose.yaml names more than one ($(inline "$compose_pg"))"
 else pg_major=${compose_pg#postgres:}; pg_major=${pg_major%%[.-]*}; fi
+
+# The backup image is the same server with pgBackRest added: a backup taken by one release and restored by another is
+# what the drill would not see.
+backup_pg=$(grab infra/postgres/Dockerfile '^FROM postgres:[^[:space:]]+' | sed 's/^FROM //' | sort -u)
+if [[ -z "$backup_pg" ]]; then problem "postgres image: found none in infra/postgres/Dockerfile (FROM postgres:<tag>)"
+elif [[ -n "$compose_pg" && "$backup_pg" != "$compose_pg" ]]; then problem "postgres image: infra/postgres/Dockerfile builds on $backup_pg, compose.yaml runs $compose_pg"; fi
+pg_path=$(grab infra/postgres/pgbackrest.conf '^pg1-path=/var/lib/postgresql/[0-9]+/' | grep -oE '[0-9]+/$' | tr -d /)
+if [[ -z "$pg_path" ]]; then problem "postgres major: found no pg1-path=/var/lib/postgresql/<major>/… in infra/postgres/pgbackrest.conf"
+elif [[ -n "$pg_major" && "$pg_path" != "$pg_major" ]]; then problem "postgres major: infra/postgres/pgbackrest.conf reads /var/lib/postgresql/$pg_path, the image is $pg_major"; fi
 
 # serverVersion follows the image's major
 found=0
