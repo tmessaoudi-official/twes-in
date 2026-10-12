@@ -82,7 +82,8 @@ final class ProductionRestartTest extends TestCase
     /** @return array<array-key, array<array-key, mixed>> */
     private static function services(string $file): array
     {
-        $compose = Yaml::parseFile($file);
+        // Compose's own tags (`!reset`, `!override`) are read as tagged values, which no assertion here looks into.
+        $compose = Yaml::parseFile($file, Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($compose);
         $services = $compose['services'] ?? [];
         self::assertIsArray($services);
