@@ -14,6 +14,12 @@ its fix is on master, and the threat model lands last. P10 (continuity) follows 
 - [2026-10-13 00:04] ASSUMED (review): user-visible changes from the threat-model fixes: a step-up before adding or removing a second factor; one wording for any failed sign-in; everyone signed out once by the __Host- cookie rename; single-use links in mails carry the token after #; the mail-stop link keeps never expiring (idempotent, as List-Unsubscribe expects). Alternatives: per item, keep today's behaviour and record the residual risk.
 - [2026-10-13 07:35] AGREED: a locked or deactivated account is named only to the right password; a wrong one answers invalid_credentials as an unknown address does (amends the 2026-09-22 14:05 entry, which told the lock to any attempt)
 - [2026-10-13 10:05] ASSUMED (review): a phone presenting a wrong pairing key is answered as a pairing that never was (404 unknown) and sees the existing « Ce lien n’existe pas. Scannez à nouveau le code » text; « Ce téléphone n’est pas celui qui a été relié » is retired. Alternatives: keep a distinct answer for a wrong key, which tells a guessed id from a real one
+- [2026-10-13 12:22] AGREED: Journal wave also builds account deletion ('delete my account'), which calls the journal scrub; developer chose it over recording the gap as a residual.
+- [2026-10-13 12:31] AGREED: Account deletion refuses while the person is the only owner of a company, names those companies, and offers to erase them (the existing company erasure) before retrying (developer).
+- [2026-10-13 12:31] AGREED: Account deletion is cancellable: the account closes and signs out at once, a mail says so, signing in again cancels it; the days before it is final are a parameter, 7 by default; the nightly run then deletes it and scrubs the journal (developer).
+- [2026-10-13 12:31] AGREED: Screen texts for « Mon compte » move to a file of their own loaded with that page, so the first page's 60 KB budget is kept (developer).
+- [2026-10-13 12:36] AGREED: A sole owner asking to delete their account is offered two ways out: make another member owner (exists), or « Fermer l'entreprise », a new step: the company stops working at once, its issued documents stay read-only for the country's retention period (a preset value), then a scheduled run removes it (developer).
+- [2026-10-13 12:39] AGREED: Account-deletion plan approved in five commits (journal functions, lazy account texts, account deletion API, company closing API, screens); a closed company stays read-only to its members, with the accounting export, until its country's retention period ends, then is removed (developer).
 
 ## Formal Plan
 
@@ -57,7 +63,12 @@ real publish workflow.
 |---|------|------|-------|----------|-------|
 | 1 | W1 request handling, platform roles | M | done | 5f811c55 | api/src/** api/tests/** |
 | 2 | W2 sign-in and session | L | done | 7bbc6c26 | api/** web/** infra/** docs/START.md |
-| 3 | W3 tenancy and data | L | todo | - | api/** infra/postgres/** compose*.yaml scripts/** |
+| 3 | W3 tenancy and data | L | doing | 2064cc30 | api/** infra/postgres/** compose*.yaml scripts/** |
+| 3a | W3 journal functions and the 12-month purge | M | todo | - | api/migrations/** api/src/Audit/** api/tests/** |
+| 3b | W3 « Mon compte » texts loaded with their page | M | todo | - | web/** scripts/gates/** |
+| 3c | W3 account deletion API | L | todo | - | api/src/Identity/** api/tests/** |
+| 3d | W3 company closing API | L | todo | - | api/src/Tenancy/** api/config/fiscal/** docs/fiscal/** |
+| 3e | W3 account deletion and company closing screens | M | todo | - | web/** |
 | 4 | W4 realtime, PDF, web | L | todo | - | api/** web/** infra/** compose*.yaml |
 | 5 | W5 delivery and operations | L | todo | - | .github/** scripts/** infra/** compose*.yaml |
 | 6 | W6 invoice signing key | L | todo | - | api/src/** api/tests/** |
