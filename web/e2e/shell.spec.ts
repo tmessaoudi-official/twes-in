@@ -530,6 +530,39 @@ test('« Cet appareil » holds the scan’s beep and the scanner test, and Préf
   expect(await wcagViolations(page)).toEqual([]);
 });
 
+// « Mon compte »'s texts come with the page, not in the file every page waits for (shared/i18n/texts-part.ts).
+test('« Mon compte » brings its own texts, never shows a key, and follows a language switch', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const fetched: string[] = [];
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith('/i18n/')) fetched.push(path);
+  });
+  await signIn(page);
+  await forget(page, 'presentation.language');
+  try {
+    await page.goto('/');
+    await expect(page.getByTestId('greeting')).toBeVisible();
+    expect(fetched.filter((path) => path.startsWith('/i18n/account/'))).toEqual([]);
+
+    await page.goto('/account?tab=preferences');
+    await expect(page.getByRole('tab', { name: /Préférences/ })).toBeVisible();
+    expect(fetched).toContain('/i18n/account/fr.json');
+    await expect(page.locator('main')).not.toContainText(/\baccount\.[a-z_]/);
+
+    await page.getByTestId('user-menu').click();
+    await page.getByTestId('account-language-en').click();
+    await expect(page.getByRole('tab', { name: /Preferences/ })).toBeVisible();
+    await expect(page.getByTestId('account-show-coming')).toContainText('Show what is coming');
+    expect(fetched).toContain('/i18n/account/en.json');
+    await expect(page.locator('main')).not.toContainText(/\baccount\.[a-z_]/);
+  } finally {
+    await forget(page, 'presentation.language');
+  }
+});
+
 test.describe('a document scrolled under the top bar', () => {
   test.use({ viewport: { width: 1280, height: 560 } });
 

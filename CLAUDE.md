@@ -168,7 +168,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   every presentation key must be declared in; `list/`: `ListDescriptor`, the pure view
   functions and `DataList` (given a `total`, it shows the page the API answered and emits `queryChange`); `form/`: `FormDescriptor`, `buildFormGroup` and `DescriptorForm`, and `DecimalInput` (`kind: 'decimal'`, or `appDecimal` on a hand-written input: the screen's decimal separator shown, a comma or a point taken, the API's point kept in the control); `liveRecord`, which merges another person's save into an open editor field by field over `mergeSavedVersion` and `RecordSync`, with the `RecordChanged` banner and `PartConflict` for what merges as one field, such as a document's lines), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
-  `public/i18n/{fr,en}.json` with a parity test.
+  `public/i18n/{fr,en}.json` with a parity test; the texts only one page reads in `public/i18n/<page>/{fr,en}.json`,
+  fetched when it first opens (`textsPart('<page>')` on its route, `shared/i18n/texts-part.ts`; « Mon compte » so far),
+  added to the parity spec's `parts` and measured on their own by the budget gate.
 - `api/translations/*.{fr,en}.yaml` — the only strings the API itself emits: the invitation mail (`emails`), fiscal
   labels and mentions (`fiscal`), and printed documents (`pdf`, laid out in `api/templates/pdf/`, whose `_document.css.twig` every document shares with the
   built-in layouts and the accent, and rendered by
