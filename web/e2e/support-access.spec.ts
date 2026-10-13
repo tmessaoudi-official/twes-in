@@ -2,7 +2,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator, signInWithCode } from './session';
-import { proveByApi } from './step-up';
+import { sendProving } from './step-up';
 
 // « Accès du support » through the whole stack (docs/SPEC.md § 8 row 67): the owner of a company the operator is NOT a
 // member of opens it to support for a day; the operator finds it in their switcher, reads it under a banner and is
@@ -58,9 +58,9 @@ test('an owner opens the company to support for a day, support reads it read-onl
 
   // A company of its own, which the operator opens for its owner without becoming a member of it.
   await signInAsOperator(page);
-  // Every platform write, opening a company first, waits for the operator's recent proof (docs/SPEC.md § 7).
-  await proveByApi(page, OPERATOR_PASSWORD);
-  const opened = await api(page, 'POST', '/api/companies', {
+  // Opening a company and every platform write wait for the operator's recent proof (docs/SPEC.md § 7), given
+  // only when asked: every attempt counts against the operator's five in five minutes.
+  const opened = await sendProving(page, OPERATOR_PASSWORD, 'POST', '/api/companies', {
     name,
     countryCode: 'TN',
     currency: 'TND',
@@ -70,12 +70,27 @@ test('an owner opens the company to support for a day, support reads it read-onl
   expect(opened.status).toBe(201);
   const companyId = (opened.body as { id: string }).id;
   expect(
-    (await api(page, 'POST', `/api/platform/companies/${companyId}/owners`, { email: owner }))
-      .status,
+    (
+      await sendProving(
+        page,
+        OPERATOR_PASSWORD,
+        'POST',
+        `/api/platform/companies/${companyId}/owners`,
+        { email: owner },
+      )
+    ).status,
   ).toBe(201);
-  expect((await api(page, 'POST', `/api/platform/companies/${companyId}/approve`, {})).status).toBe(
-    200,
-  );
+  expect(
+    (
+      await sendProving(
+        page,
+        OPERATOR_PASSWORD,
+        'POST',
+        `/api/platform/companies/${companyId}/approve`,
+        {},
+      )
+    ).status,
+  ).toBe(200);
   expect((await companies(page)).map((row) => row.name)).not.toContain(name);
 
   const theirs = await browser.newContext();

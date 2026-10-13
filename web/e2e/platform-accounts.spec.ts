@@ -3,13 +3,12 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
-import { proveByApi } from './step-up';
+import { proveIfHeldBack, sendProving } from './step-up';
 
 // C3 through the whole stack (docs/SPEC.md § 7, 2026-09-15): an operator finds an account on /platform, ends its
 // sessions, deactivates it and reactivates it, while that account's own browser is signed in beside it. Each run
 // leaves one account behind, a member of Demo, because accounts are never deleted.
 const THEIR_PASSWORD = 'a-long-enough-password';
-const CSRF = '0123456789abcdef0123456789abcdef';
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
@@ -40,20 +39,18 @@ test('an operator ends the sessions of an account, deactivates it and reactivate
 
   // The account: somebody invited into Demo who made their account from the link, in a browser of their own.
   await signInAsOperator(page);
-  await proveByApi(page, OPERATOR_PASSWORD);
-  const invited = await page.evaluate(
-    async ([csrf, email]) => {
-      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const response = await fetch(`/api/companies/${me.company.id}/members`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-        body: JSON.stringify({ email, role: 'member' }),
-      });
-      return response.status;
-    },
-    [CSRF, managed] as const,
+  // Adding a member and every platform write wait for the operator's recent proof (docs/SPEC.md § 7), given only
+  // when asked: every attempt counts against the operator's five in five minutes.
+  const companyId = await page.evaluate(
+    async () =>
+      ((await (await fetch('/api/auth/me')).json()) as { company: { id: string } }).company.id,
   );
-  expect(invited).toBe(201);
+  const members = `/api/companies/${companyId}/members`;
+  const invited = await sendProving(page, OPERATOR_PASSWORD, 'POST', members, {
+    email: managed,
+    role: 'member',
+  });
+  expect(invited.status).toBe(201);
   const theirs = await browser.newContext();
   const theirPage = await theirs.newPage();
   await theirPage.goto(`/invitations/${await invitationTokenFor(request, managed)}`);
@@ -77,13 +74,17 @@ test('an operator ends the sessions of an account, deactivates it and reactivate
   );
   await page.getByTestId(`end-sessions-${managed}`).click();
   // Only once the API has ended them: a reload racing the click can still carry the old session.
-  expect((await ended).ok()).toBe(true);
+  expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, ended)).ok()).toBe(true);
   await theirPage.reload();
   await expect(theirPage).toHaveURL(/\/login/);
   await signIn(theirPage, managed, THEIR_PASSWORD);
 
   // Deactivating signs them out again, and they cannot sign back in.
+  const deactivated = page.waitForResponse(
+    (response) => response.url().endsWith('/deactivate') && response.request().method() === 'POST',
+  );
   await page.getByTestId(`deactivate-${managed}`).click();
+  await proveIfHeldBack(page, OPERATOR_PASSWORD, deactivated);
   await expect(line).toContainText('Désactivé');
   await page.screenshot({
     path: test.info().outputPath('platform-account-deactivated.png'),
@@ -98,7 +99,11 @@ test('an operator ends the sessions of an account, deactivates it and reactivate
   await expect(theirPage).toHaveURL(/\/login/);
 
   // Reactivated, the same password works again.
+  const reactivated = page.waitForResponse(
+    (response) => response.url().endsWith('/reactivate') && response.request().method() === 'POST',
+  );
   await page.getByTestId(`reactivate-${managed}`).click();
+  await proveIfHeldBack(page, OPERATOR_PASSWORD, reactivated);
   await expect(line).toContainText('Actif');
   await signIn(theirPage, managed, THEIR_PASSWORD);
   await theirs.close();

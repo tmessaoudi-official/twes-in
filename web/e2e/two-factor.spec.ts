@@ -3,15 +3,13 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
-import { proveByApi, proveIfAsked } from './step-up';
+import { proveIfAsked, sendProving } from './step-up';
 import { totp } from './totp';
 import { toast } from './toast';
 
 // Two-step verification through the real stack, for a freshly invited account. Never the shared operator: every
 // other scenario computes the operator's codes from the authenticator the seed gave them.
 const NEW_PASSWORD = 'a-long-enough-password';
-// The SPA sends one random token per page load as a header; any value of the right shape is accepted from the page.
-const CSRF = '0123456789abcdef0123456789abcdef';
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
@@ -166,33 +164,20 @@ test('a company that requires two-step verification sends its owner to set it up
   // A throwaway company, so the requirement never reaches Demo or the operator every other scenario signs in as.
   await signInAsOperator(page);
   await expect(page).toHaveURL(/\/$/);
-  // Every platform write, opening a company first, waits for the operator's recent proof (docs/SPEC.md § 7).
-  await proveByApi(page, OPERATOR_PASSWORD);
-  const invited = await page.evaluate(
-    async ([companyName, csrf, email]) => {
-      const headers = { 'content-type': 'application/json', 'csrf-token': csrf };
-      const created = await fetch('/api/companies', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          name: companyName,
-          countryCode: 'TN',
-          currency: 'TND',
-          locale: 'fr',
-          timezone: 'Africa/Tunis',
-        }),
-      });
-      const company = (await created.json()) as { id: string };
-      const member = await fetch(`/api/platform/companies/${company.id}/owners`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ email }),
-      });
-      return [created.status, member.status];
-    },
-    [name, CSRF, owner] as const,
-  );
-  expect(invited).toEqual([201, 201]);
+  // Opening a company and every platform write wait for the operator's recent proof (docs/SPEC.md § 7), given
+  // only when asked: every attempt counts against the operator's five in five minutes.
+  const created = await sendProving(page, OPERATOR_PASSWORD, 'POST', '/api/companies', {
+    name,
+    countryCode: 'TN',
+    currency: 'TND',
+    locale: 'fr',
+    timezone: 'Africa/Tunis',
+  });
+  expect(created.status).toBe(201);
+  const owners = `/api/platform/companies/${(created.body as { id: string }).id}/owners`;
+  expect(
+    (await sendProving(page, OPERATOR_PASSWORD, 'POST', owners, { email: owner })).status,
+  ).toBe(201);
   const token = await invitationTokenFor(request, owner);
 
   await page.context().clearCookies();

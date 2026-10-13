@@ -2,39 +2,18 @@
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
-import { proveByApi } from './step-up';
+import { proveIfHeldBack, sendProving } from './step-up';
 
 // Slice 2 through the whole stack (docs/SPEC.md § 7, 2026-09-17): an operator locks a company for not paying, its
 // owner is shut out of the shell and follows the one way back, declares what they paid, the operator sees it waiting
 // and confirms it, and the owner is in again. Each run leaves one company and one account behind: neither is deleted.
 const THEIR_PASSWORD = 'a-long-enough-password';
-const CSRF = '0123456789abcdef0123456789abcdef';
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
   await page.getByTestId('email').fill(email);
   await page.getByTestId('password').fill(password);
   await page.getByTestId('submit').click();
-}
-
-/** Calls the API from inside the page, which is the only way the session cookie travels (SameSite=Strict). */
-async function api(
-  page: Page,
-  method: string,
-  path: string,
-  body: unknown,
-): Promise<{ status: number; body: unknown }> {
-  return page.evaluate(
-    async ([csrf, verb, url, payload]) => {
-      const response = await fetch(url as string, {
-        method: verb as string,
-        headers: { 'content-type': 'application/json', 'csrf-token': csrf as string },
-        body: payload === null ? null : JSON.stringify(payload),
-      });
-      return { status: response.status, body: await response.json().catch(() => null) };
-    },
-    [CSRF, method, path, body] as const,
-  );
 }
 
 test('a locked company declares what it paid and the operator confirms it back open', async ({
@@ -48,10 +27,9 @@ test('a locked company declares what it paid and the operator confirms it back o
 
   // A company of its own, with an owner who made their account from the invitation.
   await signInAsOperator(page);
-  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7); one holds the scenario through,
-  // the confirmation on the screen included.
-  await proveByApi(page, OPERATOR_PASSWORD);
-  const opened = await api(page, 'POST', '/api/companies', {
+  // Opening a company and every platform write wait for the operator's recent proof (docs/SPEC.md § 7), given
+  // only when asked: every attempt counts against the operator's five in five minutes.
+  const opened = await sendProving(page, OPERATOR_PASSWORD, 'POST', '/api/companies', {
     name: `Payante ${stamp}`,
     countryCode: 'TN',
     currency: 'TND',
@@ -61,12 +39,27 @@ test('a locked company declares what it paid and the operator confirms it back o
   expect(opened.status).toBe(201);
   const companyId = (opened.body as { id: string }).id;
   expect(
-    (await api(page, 'POST', `/api/platform/companies/${companyId}/owners`, { email: owner }))
-      .status,
+    (
+      await sendProving(
+        page,
+        OPERATOR_PASSWORD,
+        'POST',
+        `/api/platform/companies/${companyId}/owners`,
+        { email: owner },
+      )
+    ).status,
   ).toBe(201);
-  expect((await api(page, 'POST', `/api/platform/companies/${companyId}/approve`, {})).status).toBe(
-    200,
-  );
+  expect(
+    (
+      await sendProving(
+        page,
+        OPERATOR_PASSWORD,
+        'POST',
+        `/api/platform/companies/${companyId}/approve`,
+        {},
+      )
+    ).status,
+  ).toBe(200);
 
   const theirs = await browser.newContext();
   const theirPage = await theirs.newPage();
@@ -82,17 +75,23 @@ test('a locked company declares what it paid and the operator confirms it back o
   const yesterday = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
   expect(
     (
-      await api(page, 'PUT', `/api/platform/companies/${companyId}/subscription`, {
-        periodCount: 1,
-        periodUnit: 'month',
-        trialEndsOn: null,
-        paidThrough: yesterday,
-        price: '600.000',
-        currency: 'TND',
-        graceDays: 0,
-        unpaidMode: 'locked',
-        holdDays: 7,
-      })
+      await sendProving(
+        page,
+        OPERATOR_PASSWORD,
+        'PUT',
+        `/api/platform/companies/${companyId}/subscription`,
+        {
+          periodCount: 1,
+          periodUnit: 'month',
+          trialEndsOn: null,
+          paidThrough: yesterday,
+          price: '600.000',
+          currency: 'TND',
+          graceDays: 0,
+          unpaidMode: 'locked',
+          holdDays: 7,
+        },
+      )
     ).status,
   ).toBe(200);
 
@@ -141,7 +140,11 @@ test('a locked company declares what it paid and the operator confirms it back o
     .first()
     .getAttribute('data-testid')
     .then((value) => (value ?? '').replace('payment-', ''));
+  const confirmed = page.waitForResponse(
+    (response) => response.url().endsWith('/confirm') && response.request().method() === 'POST',
+  );
   await page.getByTestId(`payment-confirm-${declarationId}`).click();
+  await proveIfHeldBack(page, OPERATOR_PASSWORD, confirmed);
   await expect(page.getByTestId(`payment-${declarationId}`)).toHaveCount(0);
 
   await theirPage.goto('/');
