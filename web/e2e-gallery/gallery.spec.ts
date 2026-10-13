@@ -433,8 +433,10 @@ test('every screen, desktop and phone, light and dark', async ({ browser, page }
   await forgetPresentationChoices(page);
   if (LANGUAGE === 'en') {
     // Chosen as a person does, on « Mon compte »; the next run's forgetting puts it back.
-    await page.goto('/account');
-    await page.getByTestId('account-language-en').click();
+    await page.goto('/account?tab=preferences');
+    // The page's own Select; `account-language-en` is the shell's account menu, closed here.
+    await page.getByTestId('account-language').click();
+    await page.getByTestId('account-language-option-en').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   }
   await captureAll(page, SIGNED_IN);

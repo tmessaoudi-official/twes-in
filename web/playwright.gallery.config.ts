@@ -16,6 +16,8 @@ export default defineConfig({
   timeout: 7_200_000,
   expect: { timeout: 15_000 },
   use: {
+    // One click whose target never shows otherwise waits out the whole two hours with nothing written.
+    actionTimeout: 30_000,
     baseURL: process.env['BASE_URL'] ?? 'http://127.0.0.1:8090',
     locale: 'fr-FR',
     timezoneId: 'Africa/Tunis',
