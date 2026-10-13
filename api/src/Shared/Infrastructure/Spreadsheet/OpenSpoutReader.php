@@ -15,6 +15,7 @@ use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
 use OpenSpout\Reader\CSV\Reader as CsvReader;
 use OpenSpout\Reader\XLSX\Options as XlsxOptions;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * The spreadsheet port on openspout, the one file in this codebase that names it. It streams: a row is read, handed
@@ -22,6 +23,11 @@ use OpenSpout\Reader\XLSX\Reader as XlsxReader;
  */
 final class OpenSpoutReader implements SpreadsheetReader
 {
+    /** @param int $maxInflatedBytes what a workbook's parts may inflate to, together: a few kilobytes of zip can hold gigabytes */
+    public function __construct(#[Autowire(param: 'app.import.max_inflated_bytes')] private readonly int $maxInflatedBytes)
+    {
+    }
+
     /**
      * Excel keeps a number as a float and a date as a number of days. Both are converted here rather than downstream,
      * so that every importer parses text and only text.
@@ -34,6 +40,10 @@ final class OpenSpoutReader implements SpreadsheetReader
             // and not a contract; empty rows stay so that a row keeps the line number its author sees.
             SpreadsheetFormat::Xlsx => new XlsxReader(new XlsxOptions(SHOULD_FORMAT_DATES: false, SHOULD_PRESERVE_EMPTY_ROWS: true)),
         };
+
+        if (SpreadsheetFormat::Xlsx === $format) {
+            $this->refuseWhatInflatesTooFar($path);
+        }
 
         try {
             $reader->open($path);
@@ -58,6 +68,32 @@ final class OpenSpoutReader implements SpreadsheetReader
             }
         } finally {
             $reader->close();
+        }
+    }
+
+    /**
+     * Read from the zip's own directory, before anything is inflated. A directory that understates a part is caught
+     * by the zip library itself, which refuses a part whose bytes do not match what it declared.
+     *
+     * @throws UnreadableSpreadsheet
+     */
+    private function refuseWhatInflatesTooFar(string $path): void
+    {
+        $zip = new \ZipArchive();
+        if (true !== $zip->open($path, \ZipArchive::RDONLY)) {
+            // Not a zip at all: the reader says so in its own words.
+            return;
+        }
+        try {
+            $inflated = 0;
+            for ($index = 0; $index < $zip->numFiles; ++$index) {
+                $inflated += (int) ($zip->statIndex($index)['size'] ?? 0);
+                if ($inflated > $this->maxInflatedBytes) {
+                    throw new UnreadableSpreadsheet(\sprintf('"%s" inflates to more than %d bytes.', basename($path), $this->maxInflatedBytes));
+                }
+            }
+        } finally {
+            $zip->close();
         }
     }
 

@@ -133,7 +133,7 @@ final class ImportTemplatesTest extends ApiTestCase
         $path = (string) tempnam(sys_get_temp_dir(), 'template-test-');
         file_put_contents($path, $contents);
         try {
-            return array_values(array_map(static fn (array $row): array => $row, iterator_to_array((new OpenSpoutReader())->rows($path, $format))));
+            return array_values(array_map(static fn (array $row): array => $row, iterator_to_array((new OpenSpoutReader(64 * 1024 * 1024))->rows($path, $format))));
         } finally {
             unlink($path);
         }
