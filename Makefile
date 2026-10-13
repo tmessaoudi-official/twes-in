@@ -68,8 +68,11 @@ live-refresh:  ## after changing an API resource's properties under make up: emp
 migrate:       ## apply pending migrations and the application role's grants again: the one-shot migrate service (make up already ran it)
 	docker compose run --rm migrate
 
-seed:          ## built-in roles, the operator (operator@twes.local) with a known authenticator and the Demo company; idempotent. Dev secrets only.
+seed:          ## built-in roles, the operators (operator@twes.local, codes@twes.local) with a known authenticator and the Demo company; idempotent. Dev secrets only.
 	docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev --operator-totp-secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+	@# The browser scenarios that sign in with a code use this second one, so the first one's codes and proofs, five in
+	@# five minutes, are left to the scenarios sharing its session (web/e2e/session.ts).
+	docker compose exec -T api bin/console app:seed --operator-email=codes@twes.local --operator-name='Operator Codes' --operator-password=twes-operator-dev --operator-totp-secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
 
 fixtures:      ## the demo companies Carthage Conseil (TN) and Atelier Mercier (FR), five months of activity written through the use cases; after make seed; appends, never empties the database; a company already there is left as it is
 	docker compose exec -T api bin/console doctrine:fixtures:load --append --no-interaction

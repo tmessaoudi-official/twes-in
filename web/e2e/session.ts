@@ -6,10 +6,13 @@ import { totp } from './totp';
 // The seeded operator must carry a second factor (docs/SPEC.md § 7, 2026-09-15, S3), and every code check counts
 // against five per account in five minutes, successes included. So the run signs the operator in with a code once,
 // in the setup project (operator.setup.ts), and every scenario that only needs "the operator, signed in" reuses that
-// session. A scenario about signing in itself, or one that moves the session to another company, signs in afresh:
-// three a run, plus the setup's. Rerunning locally inside five minutes can therefore meet the limit.
-// The credentials and the secret are the ones `make seed` and the CI e2e job pass to `app:seed`.
+// session, its proofs of who is at the screen counting against the same five. A scenario about signing in itself, or
+// one that moves the session to another company, signs in afresh as a second operator, `CODES_OPERATOR_EMAIL`, so its
+// codes never take the first one's proofs. Rerunning locally inside five minutes can still meet the limit.
+// The credentials and the secret are the ones `make seed` and the CI e2e job pass to `app:seed`, the same for both.
 export const OPERATOR_EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
+/** The operator the scenarios signing in with a code use: an owner of Demo too, seeded beside the first. */
+export const CODES_OPERATOR_EMAIL = process.env['E2E_CODES_EMAIL'] ?? 'codes@twes.local';
 export const OPERATOR_PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const OPERATOR_TOTP_SECRET = process.env['E2E_TOTP_SECRET'] ?? 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
 
@@ -126,9 +129,9 @@ export async function namedAsTheLawAsks(page: Page, csrf: string): Promise<void>
 }
 
 /** Signs the operator in from the login page, the password and then a code, on a session of its own. */
-export async function signInWithCode(page: Page): Promise<void> {
+export async function signInWithCode(page: Page, email: string = OPERATOR_EMAIL): Promise<void> {
   await page.goto('/login');
-  await page.getByTestId('email').fill(OPERATOR_EMAIL);
+  await page.getByTestId('email').fill(email);
   await page.getByTestId('password').fill(OPERATOR_PASSWORD);
   await page.getByTestId('submit').click();
   await enterOperatorCode(page);
