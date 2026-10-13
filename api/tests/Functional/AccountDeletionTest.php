@@ -94,6 +94,19 @@ final class AccountDeletionTest extends ApiTestCase
         self::assertSame('platform_operator', $this->stringAt($this->json(), 'error'));
     }
 
+    public function testTheOnlyOwnerOfAClosedCompanyMayGo(): void
+    {
+        $closed = $this->createCompany('Fermée SARL');
+        $this->addMembership($this->leaving, $closed, Role::OWNER);
+        $this->em()->getConnection()->executeStatement("UPDATE company SET status = 'closed', closed_down_at = now(), retain_until = '2036-12-31' WHERE id = ?", [$closed->getId()->toRfc4122()]);
+        $this->login(self::LEAVING, self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+
+        $this->sendJson('DELETE', '/api/auth/account');
+
+        self::assertResponseIsSuccessful('a closed company needs no one to run it');
+    }
+
     public function testTheAccountClosesAtOnceAndAMailSaysWhenItIsFinal(): void
     {
         $this->login(self::LEAVING, self::PASSWORD);

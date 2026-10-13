@@ -19,6 +19,7 @@ use App\Module\Invoices\Infrastructure\Scheduler\RemindLateInvoicesEveryHour;
 use App\Module\Recurring\Infrastructure\Scheduler\RunRecurringInvoicesEveryHour;
 use App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos;
 use App\Tenancy\Infrastructure\Invitation\InvitationToMailHandler;
+use App\Tenancy\Infrastructure\Scheduler\RemoveClosedCompaniesEveryNight;
 use App\Tenancy\Infrastructure\Signup\SignupAskedHandler;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -42,6 +43,7 @@ final class BackgroundWorkScopeTest extends TestCase
         NotificationToMailHandler::class => 'the person and the company the message names, both by id',
         PasswordResetAskedHandler::class => 'an address, no company: a password belongs to the account',
         PurgeFailedSignInAddressesEveryNight::class => 'every company at once, on purpose: a failed sign-in is purged by its age alone, and it names no company',
+        RemoveClosedCompaniesEveryNight::class => 'each closed company whose retention has ended, by its own id, removed whole in its own transaction',
         RemindLateInvoicesEveryHour::class => 'each active company with the invoices module on, handed to the use case one at a time',
         RunRecurringInvoicesEveryHour::class => 'each active company with the recurring module on, handed to the use case one at a time',
         SignupAskedHandler::class => 'an address, no company: the company is made only when the link is used',

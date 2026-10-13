@@ -11,6 +11,15 @@ disagree, both are cited and the preset's choice is stated.
 |---|---|---|---|
 | The dinar (TND) has three decimals (1 dinar = 1000 millimes) | `currency: TND`, `minor_unit: 3` | ISO 4217; Unicode CLDR through Symfony Intl (`Currencies::getFractionDigits('TND')` = 3) | unvalidated |
 
+## 1a. Keeping records
+
+| Rule | Preset | Source | Status |
+|---|---|---|---|
+| Every accounting document is kept ten years | `retention_years: 10` | Code de l'IRPP et de l'IS, art. 62 [19] | unvalidated |
+
+The article does not say from when the ten years run, so a company closed down in the app is kept until 31 December of
+the year it closed plus ten years, which is never shorter than the law whichever start applies. Unvalidated.
+
 ## 2. VAT (TVA)
 
 | Rule | Preset | Source | Status |
@@ -192,3 +201,4 @@ comes after the POC (docs/SPEC.md § 2).
 16. Hesabi, « Taux de retenue à la source en Tunisie 2026 » (secondary): https://hesabi.tn/actualites/taux-retenue-source-tunisie-2026
 17. Code de la TVA, art. 5 (fait générateur), read from the 2024 consolidated code: https://alliance-tunisie.com/wp-content/uploads/2024/06/CODE-DE-LA-TVA-2024.pdf ; and from the ministry's edition « mis à jour au 1er janvier 2023 » (art. 5 and 18-II): https://jibaya.tn/wp-content/uploads/2024/02/Code-de-la-taxe-sur-la-valeur-ajoutee-2023_compressed.pdf
 18. Ministère des Finances, FAQ « Quel est le fait générateur de la TVA en cas de vente de marchandises (cas des commandes successives) ? »: https://www.finances.gov.tn/fr/node/895
+19. Code de l'IRPP et de l'IS, art. 62, 9anoun mirror: https://9anoun.tn/fr/kb/codes/code-impot-sur-revenu-personnes-physiques-impot-sur-les-societes/code-impot-sur-revenu-personnes-physiques-impot-sur-les-societes-article-62 (read through docs/research/tax-data-tunisia.md § 3).

@@ -76,6 +76,18 @@ final class PermissionVoterTest extends TestCase
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), $pending, ['invoice.read']));
     }
 
+    public function testAClosedCompanyLetsItsMembersReadAndTakeItsBooksWhateverItsSubscription(): void
+    {
+        $owner = $this->member(new Role(Role::OWNER, ['*']));
+        $this->company->closeDown(new \DateTimeImmutable(), new \DateTimeImmutable('2036-12-31'));
+        $this->access->access = Access::Locked;
+
+        self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($owner), null, ['invoice.read']));
+        self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($owner), null, ['accounting.export']));
+        self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($owner), null, ['invoice.write']));
+        self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($owner), null, ['subscription.pay']));
+    }
+
     public function testAnUnpaidSubscriptionNarrowsWhatTheRoleGrantsJudgedOnThePermissionAskedFor(): void
     {
         $owner = $this->member(new Role(Role::OWNER, ['*']));

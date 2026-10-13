@@ -24,6 +24,11 @@ class Company
     public const string STATUS_PENDING = 'pending';
     public const string STATUS_ACTIVE = 'active';
     public const string STATUS_SUSPENDED = 'suspended';
+    /** Closed down by its owner: read, never worked in, until its retention ends and it is removed. */
+    public const string STATUS_CLOSED = 'closed';
+
+    /** What a closed company's members may still do: read it, and take its books with them. */
+    public const array OPEN_WHILE_CLOSED = ['accounting.export'];
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -68,6 +73,14 @@ class Company
      */
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $closedThrough = null;
+
+    /** When its owner closed the company down; null while it works. Not the accounting period's closedThrough. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $closedDownAt = null;
+
+    /** The last day a closed company's records must be kept, fixed when it closed; the day after, it is removed. */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $retainUntil = null;
 
     #[ORM\Column(length: 200, nullable: true)]
     private ?string $legalName = null;
@@ -157,14 +170,74 @@ class Company
     }
 
     /** Idempotent: a company that is already active stays active, and its timestamp does not move. */
+    /** @throws CompanyClosedDown nothing but its owner's reopening brings a closed company back */
     public function activate(?\DateTimeImmutable $now = null): void
     {
+        $this->refuseWhenClosedDown();
         $this->changeStatusTo(self::STATUS_ACTIVE, $now);
     }
 
+    /** @throws CompanyClosedDown */
     public function suspend(?\DateTimeImmutable $now = null): void
     {
+        $this->refuseWhenClosedDown();
         $this->changeStatusTo(self::STATUS_SUSPENDED, $now);
+    }
+
+    /**
+     * Its owner closes the company down: it stops working at once and is kept, read-only, until $retainUntil.
+     *
+     * @throws CompanyClosedDown when it is already closed
+     * @throws \DomainException  when it is not working: a company pending approval or suspended has nothing to close
+     */
+    public function closeDown(\DateTimeImmutable $now, \DateTimeImmutable $retainUntil): void
+    {
+        $this->refuseWhenClosedDown();
+        if (!$this->isActive()) {
+            throw new \DomainException('Only a working company is closed down.');
+        }
+        $this->changeStatusTo(self::STATUS_CLOSED, $now);
+        $this->closedDownAt = $now;
+        $this->retainUntil = $retainUntil;
+    }
+
+    /** Takes a closing back, which its owner may do only within the days the platform sets (ReopenCompany). */
+    public function reopen(\DateTimeImmutable $now): void
+    {
+        if (!$this->isClosedDown()) {
+            throw new \DomainException('Only a closed company is reopened.');
+        }
+        $this->changeStatusTo(self::STATUS_ACTIVE, $now);
+        $this->closedDownAt = null;
+        $this->retainUntil = null;
+    }
+
+    public function isClosedDown(): bool
+    {
+        return self::STATUS_CLOSED === $this->status;
+    }
+
+    /** Whether a member of this company, closed down, may still be granted the permission; a working company grants by role. */
+    public function permitsWhileClosedDown(string $permission): bool
+    {
+        return str_ends_with($permission, '.read') || \in_array($permission, self::OPEN_WHILE_CLOSED, true);
+    }
+
+    public function getClosedDownAt(): ?\DateTimeImmutable
+    {
+        return $this->closedDownAt;
+    }
+
+    public function getRetainUntil(): ?\DateTimeImmutable
+    {
+        return $this->retainUntil;
+    }
+
+    private function refuseWhenClosedDown(): void
+    {
+        if ($this->isClosedDown()) {
+            throw new CompanyClosedDown('A closed company is reopened by its owner, and only within the days allowed.');
+        }
     }
 
     private function changeStatusTo(string $status, ?\DateTimeImmutable $now): void

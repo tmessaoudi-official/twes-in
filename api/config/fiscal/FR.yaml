@@ -4,6 +4,8 @@
 country: FR
 currency: EUR
 minor_unit: 2
+# Years every record is kept, counted to the end of a closed-down company's last year (docs/fiscal § 1a).
+retention_years: 10
 document_languages: [fr]
 
 rounding:

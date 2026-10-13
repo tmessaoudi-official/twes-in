@@ -12,7 +12,8 @@ namespace App\Identity\Application\Account;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The companies that would be left with no one to run them if this account went: those it is the only owner of.
+ * The companies that would be left with no one to run them if this account went: those it is the only owner of, but
+ * for a company closed down, which no one runs any more.
  * Answered by Tenancy, which holds the memberships.
  */
 interface CompaniesOwnedAlone

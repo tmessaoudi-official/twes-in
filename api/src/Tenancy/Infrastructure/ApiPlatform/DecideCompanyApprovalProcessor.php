@@ -16,7 +16,9 @@ use App\Licensing\Application\CompanyStandings;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\DecideCompanyApproval;
 use App\Tenancy\Application\Company\PlatformCompanies;
+use App\Tenancy\Domain\CompanyClosedDown;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
@@ -45,6 +47,9 @@ final readonly class DecideCompanyApprovalProcessor implements ProcessorInterfac
                 : $this->decide->approve($companyId, $account->getId());
         } catch (CompanyNotFound $notFound) {
             throw new NotFoundHttpException($notFound->getMessage(), $notFound);
+        } catch (CompanyClosedDown $closed) {
+            // Its owner closed it down: only they take that back, and an operator's decision is no longer asked for.
+            throw new ConflictHttpException($closed->getMessage(), $closed);
         }
 
         return PlatformCompanyResource::of($this->companies->viewOf($company), $this->standings->of($company->getId()));
