@@ -123,6 +123,15 @@ const SIGNED_IN: Screen[] = [
   { key: 'company-activity', group: 'Paramètres', path: '/company/activity' },
   { key: 'company-closing', group: 'Paramètres', path: '/company/closing' },
   { key: 'company-documents', group: 'Paramètres', path: '/company/documents' },
+  { key: 'company-data-erasure', group: 'Paramètres', path: '/company/data-erasure' },
+  { key: 'company-support-access', group: 'Paramètres', path: '/company/support-access' },
+  { key: 'company-coming', group: 'Paramètres', path: '/company/coming/texts' },
+  { key: 'products-import', group: 'Produits', path: '/imports/products' },
+  { key: 'vendors-import', group: 'Fournisseurs', path: '/imports/vendors' },
+  { key: 'opening-stock-import', group: 'Stock', path: '/imports/opening-stock' },
+  { key: 'stock-location', group: 'Stock', path: '', firstRowOf: '/stock/locations' },
+  { key: 'subscription-locked', group: 'Abonnement', path: '/subscription' },
+  { key: 'awaiting-approval', group: 'Abonnement', path: '/awaiting-approval' },
   { key: 'fiscal-taxes', group: 'Paramètres', path: '/fiscal/taxes' },
   { key: 'fiscal-units', group: 'Paramètres', path: '/fiscal/units' },
 ];
@@ -150,6 +159,8 @@ const TESTER_PASSWORD = 'twes-role-test-2026';
 // `fr` or `en`; `rtl` draws the French texts right to left, to see how far the layout is from Arabic, which twes-in
 // does not ship yet.
 const LANGUAGE = process.env['GALLERY_LANG'] ?? 'fr';
+// `GALLERY_SCHEMES=light` pictures the light scheme alone, where a pass is about who sees what rather than colour.
+const SCHEMES = (process.env['GALLERY_SCHEMES'] ?? 'light,dark').split(',');
 // `GALLERY_AXE=1` adds the WCAG 2.1 A and AA scan of every screen at rest to the manifest.
 const AXE = process.env['GALLERY_AXE'] === '1';
 // `GALLERY_ONLY=invoice,home` pictures those screens alone, to check one change without the whole run.
@@ -183,6 +194,8 @@ async function settle(page: Page): Promise<void> {
   // bar shows while anything is still loading: a page that never gets there is reported missed, not pictured half-drawn.
   await page.locator('h1[aria-hidden="true"]').waitFor({ state: 'detached', timeout: 15_000 });
   await page.getByTestId('activity-progress').waitFor({ state: 'detached', timeout: 15_000 });
+  // The app drew something: a page that never started is missed, not pictured blank, which the waits above pass on.
+  await page.locator('app-root :visible').first().waitFor({ timeout: 15_000 });
   // The activity bar and any toast would otherwise sit in the picture.
   await page.waitForTimeout(400);
 }
@@ -212,7 +225,7 @@ async function open(page: Page, screen: Screen): Promise<boolean> {
 async function captureAll(page: Page, screens: Screen[]): Promise<void> {
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    for (const scheme of viewport.schemes) {
+    for (const scheme of viewport.schemes.filter((each) => SCHEMES.includes(each))) {
       await page.emulateMedia({ colorScheme: scheme });
       for (const screen of screens.filter((each) => ONLY.length === 0 || ONLY.includes(each.key))) {
         try {
@@ -407,10 +420,12 @@ test('every screen, desktop and phone, light and dark', async ({ browser, page }
   page.setDefaultNavigationTimeout(20_000);
   const locale = LANGUAGE === 'en' ? 'en-GB' : 'fr-FR';
 
-  const signedOut = await browser.newPage({ locale, timezoneId: 'Africa/Tunis' });
+  // A context of its own rather than `browser.newPage()`, which the WCAG scan refuses to read.
+  const signedOutContext = await browser.newContext({ locale, timezoneId: 'Africa/Tunis' });
+  const signedOut = await signedOutContext.newPage();
   if (LANGUAGE === 'rtl') await rightToLeft(signedOut);
   await captureAll(signedOut, SIGNED_OUT);
-  await signedOut.close();
+  await signedOutContext.close();
 
   if (LANGUAGE === 'rtl') await rightToLeft(page);
   await signInAs(page, AS);

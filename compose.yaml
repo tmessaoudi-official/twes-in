@@ -253,6 +253,7 @@ services:
       GALLERY_DIR:
       GALLERY_LANG:
       GALLERY_ONLY:
+      GALLERY_SCHEMES:
       GALLERY_WIDTHS:
       PLAYWRIGHT_BROWSERS_PATH: "${HOST_REPO:-${PWD}}/var/cache/ms-playwright"
     volumes:
