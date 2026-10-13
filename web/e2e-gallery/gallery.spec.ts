@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { type Page, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
+import { wcagViolations } from '../e2e/axe';
 import { forgetPresentationChoices } from '../e2e/presentation';
 import { signInWithCode } from '../e2e/session';
 import { auditScreen, type Finding } from './audit';
@@ -128,11 +129,29 @@ const SIGNED_IN: Screen[] = [
 
 // One width per window class of the shell: labelled menu, rail, bottom bar. The dark scheme is a matter of colour, not
 // of width, so the rail's width is pictured light only.
-const VIEWPORTS = [
+// `phone-360` is the narrowest phone the review judges every screen at; it is pictured only when asked for.
+const ALL_VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900, schemes: ['light', 'dark'] },
   { name: 'tablet', width: 1024, height: 768, schemes: ['light'] },
   { name: 'phone', width: 390, height: 844, schemes: ['light', 'dark'] },
+  { name: 'phone-360', width: 360, height: 800, schemes: ['light', 'dark'] },
 ] as const;
+// `GALLERY_WIDTHS=desktop,phone-360` pictures those widths alone; the default is the three window classes.
+const WIDTHS = (process.env['GALLERY_WIDTHS'] ?? 'desktop,tablet,phone')
+  .split(',')
+  .filter((name) => name !== '');
+const VIEWPORTS = ALL_VIEWPORTS.filter((viewport) => WIDTHS.includes(viewport.name));
+// Who is signed in: the operator, or one of the testers `make fixtures` puts in every demo company, one per built-in
+// role, so a screen is pictured as that role meets it (refused, read-only, or whole).
+const AS = process.env['GALLERY_AS'] ?? 'operator';
+const TESTERS = ['owner', 'admin', 'member', 'clerk', 'accountant'];
+// DemoCompanies::TESTER_PASSWORD in the API's fixtures: e2e imports nothing from the app.
+const TESTER_PASSWORD = 'twes-role-test-2026';
+// `fr` or `en`; `rtl` draws the French texts right to left, to see how far the layout is from Arabic, which twes-in
+// does not ship yet.
+const LANGUAGE = process.env['GALLERY_LANG'] ?? 'fr';
+// `GALLERY_AXE=1` adds the WCAG 2.1 A and AA scan of every screen at rest to the manifest.
+const AXE = process.env['GALLERY_AXE'] === '1';
 // `GALLERY_ONLY=invoice,home` pictures those screens alone, to check one change without the whole run.
 const ONLY = (process.env['GALLERY_ONLY'] ?? '').split(',').filter((key) => key !== '');
 // The tallest picture: a long list is pictured to this height, its foot left out.
@@ -150,6 +169,8 @@ interface Shot {
   file: string;
   /** What a measurement calls wrong on the screen, for the sweep; empty when nothing was. */
   findings: Finding[];
+  /** The WCAG violations at rest, when `GALLERY_AXE=1`; a scan that could not run says why. */
+  axe?: string[];
 }
 const shots: Shot[] = [];
 const missed: string[] = [];
@@ -207,6 +228,7 @@ async function captureAll(page: Page, screens: Screen[]): Promise<void> {
         const file = `${screen.key}--${viewport.name}--${scheme}.jpg`;
         // Measured at the window's own size: the picture below stretches the window to the page's height.
         const findings = await auditScreen(page);
+        const axe = AXE ? await scan(page) : undefined;
         await pictureWhole(page, viewport, `${OUT}/${file}`);
         const shot = {
           key: screen.key,
@@ -216,13 +238,22 @@ async function captureAll(page: Page, screens: Screen[]): Promise<void> {
           viewport: viewport.name,
           scheme,
         };
-        shots.push({ ...shot, state: 'rest', file, findings });
+        shots.push({
+          ...shot,
+          state: 'rest',
+          file,
+          findings,
+          ...(axe === undefined ? {} : { axe }),
+        });
         // A list is also used open: its filters, and a row's « ⋮ ». Pictured light, where the layout is the question.
         if (scheme === 'light') {
           for (const state of await openStates(page, screen, viewport, shot)) shots.push(state);
         }
         // Written after every picture, so a run cut short still says what it measured.
-        writeFileSync(`${OUT}/manifest.json`, JSON.stringify({ shots, missed }, null, 2));
+        writeFileSync(
+          `${OUT}/manifest.json`,
+          JSON.stringify({ as: AS, language: LANGUAGE, company: COMPANY, shots, missed }, null, 2),
+        );
       }
     }
   }
@@ -314,7 +345,11 @@ async function workIn(page: Page, name: string): Promise<void> {
       'csrf-token': crypto.randomUUID(),
     };
     const listed = await fetch('/api/me/companies', { headers });
-    const companies = (await listed.json()) as { companyId: string; name: string | null }[];
+    // An operator is answered the companies they belong to under `member`, a member a plain list.
+    const answered = (await listed.json()) as
+      | { member: { companyId: string; name: string | null }[] }
+      | { companyId: string; name: string | null }[];
+    const companies = Array.isArray(answered) ? answered : answered.member;
     const company = companies.find((each) => each.name === wanted);
     if (company === undefined) return `no company named ${wanted}: run make fixtures`;
     const switched = await fetch('/api/me/company', {
@@ -327,18 +362,70 @@ async function workIn(page: Page, name: string): Promise<void> {
   if (outcome !== 'ok') throw new Error(outcome);
 }
 
+/** The scan, or why it could not run: a screen the scan cannot read is a finding too, never a silent gap. */
+async function scan(page: Page): Promise<string[]> {
+  try {
+    return await wcagViolations(page);
+  } catch (error) {
+    return [`scan-failed: ${String(error).split('\n')[0]}`];
+  }
+}
+
+async function signInAs(page: Page, who: string): Promise<void> {
+  if (who === 'operator') {
+    await signInWithCode(page);
+    return;
+  }
+  await page.goto('/login');
+  await page.getByTestId('email').fill(`${who}@twes.local`);
+  await page.getByTestId('password').fill(TESTER_PASSWORD);
+  await page.getByTestId('submit').click();
+  await expect(page).toHaveURL(/\/$/);
+}
+
+/**
+ * Every page of this tab served as `<html dir="rtl">`, as an Arabic page will be, so the app starts right to left. An
+ * init script setting the attribute ran before the parser made the element, and the page stayed left to right.
+ */
+async function rightToLeft(page: Page): Promise<void> {
+  await page.route('**/*', async (route) => {
+    if (route.request().resourceType() !== 'document') return route.fallback();
+    const response = await route.fetch();
+    const body = (await response.text()).replace(/<html\b/, '<html dir="rtl"');
+    return route.fulfill({ response, body });
+  });
+}
+
 test('every screen, desktop and phone, light and dark', async ({ browser, page }) => {
+  const unknown = [
+    ...WIDTHS.filter((name) => !ALL_VIEWPORTS.some((viewport) => viewport.name === name)),
+    ...(AS === 'operator' || TESTERS.includes(AS) ? [] : [AS]),
+    ...(['fr', 'en', 'rtl'].includes(LANGUAGE) ? [] : [LANGUAGE]),
+  ];
+  if (unknown.length > 0) throw new Error(`unknown gallery choices: ${unknown.join(', ')}`);
   mkdirSync(OUT, { recursive: true });
   page.setDefaultNavigationTimeout(20_000);
+  const locale = LANGUAGE === 'en' ? 'en-GB' : 'fr-FR';
 
-  const signedOut = await browser.newPage({ locale: 'fr-FR', timezoneId: 'Africa/Tunis' });
+  const signedOut = await browser.newPage({ locale, timezoneId: 'Africa/Tunis' });
+  if (LANGUAGE === 'rtl') await rightToLeft(signedOut);
   await captureAll(signedOut, SIGNED_OUT);
   await signedOut.close();
 
-  await signInWithCode(page);
+  if (LANGUAGE === 'rtl') await rightToLeft(page);
+  await signInAs(page, AS);
   await workIn(page, COMPANY);
   await forgetPresentationChoices(page);
+  if (LANGUAGE === 'en') {
+    // Chosen as a person does, on « Mon compte »; the next run's forgetting puts it back.
+    await page.goto('/account');
+    await page.getByTestId('account-language-en').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  }
   await captureAll(page, SIGNED_IN);
 
-  writeFileSync(`${OUT}/manifest.json`, JSON.stringify({ shots, missed }, null, 2));
+  writeFileSync(
+    `${OUT}/manifest.json`,
+    JSON.stringify({ as: AS, language: LANGUAGE, company: COMPANY, shots, missed }, null, 2),
+  );
 });

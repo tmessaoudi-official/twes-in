@@ -246,6 +246,14 @@ services:
       # The browser build @playwright/test names, put there by `make playwright-browser` and kept in the tree's gitignored var/.
       # Passed through only when the caller sets it (`BASE_URL=… make e2e`): an empty one would defeat the config's default.
       BASE_URL:
+      # `make gallery`'s choices (web/e2e-gallery/gallery.spec.ts), passed through the same way.
+      GALLERY_AS:
+      GALLERY_AXE:
+      GALLERY_COMPANY:
+      GALLERY_DIR:
+      GALLERY_LANG:
+      GALLERY_ONLY:
+      GALLERY_WIDTHS:
       PLAYWRIGHT_BROWSERS_PATH: "${HOST_REPO:-${PWD}}/var/cache/ms-playwright"
     volumes:
       - "${HOST_REPO:-${PWD}}:${HOST_REPO:-${PWD}}"
