@@ -68,7 +68,9 @@ final readonly class RegenerateRecoveryCodes
             throw new SecondFactorRefused();
         }
 
-        return $this->transactions->run(function () use ($user, $timestep, $now): array {
+        return $this->transactions->run(function () use ($userId, $timestep, $now): array {
+            // Read again under the row lock: a login racing for the same code then waits, and one of the two finds it spent.
+            $user = $this->users->lockedOfId($userId) ?? throw new SecondFactorRefused();
             try {
                 $user->useTotpTimestep($timestep, $now);
             } catch (\DomainException) {

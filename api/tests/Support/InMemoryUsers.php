@@ -27,6 +27,11 @@ final class InMemoryUsers implements UserRepository
         return $this->users[$id->toRfc4122()] ?? null;
     }
 
+    public function lockedOfId(Uuid $id): ?User
+    {
+        return $this->ofId($id);
+    }
+
     public function platformOperators(): array
     {
         $operators = array_values(array_filter($this->users, static fn (User $user): bool => $user->isPlatformOperator()));

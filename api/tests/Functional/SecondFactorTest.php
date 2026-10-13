@@ -102,6 +102,39 @@ final class SecondFactorTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
     }
 
+    /** Two sessions racing one code take turns on the account's row, so the second finds the code already spent. */
+    public function testACodeIsSpentWhileTheAccountsRowIsLocked(): void
+    {
+        $codes = $this->enrolledUser('someone@twes.local');
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->client->enableProfiler();
+        $this->postJson('/api/auth/mfa/verify', ['code' => $this->currentCode()]);
+        self::assertResponseIsSuccessful();
+        self::assertLockedBefore($this->sqlOfTheLastRequest(), '"user"', 'UPDATE "user"');
+
+        $this->signOut();
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->client->enableProfiler();
+        $this->postJson('/api/auth/mfa/verify', ['code' => $codes[0]]);
+        self::assertResponseIsSuccessful();
+        self::assertLockedBefore($this->sqlOfTheLastRequest(), '"user"', 'DELETE FROM recovery_code');
+    }
+
+    /** The spend is a transaction, and a refusal leaves it committed: the wrong code is still on the record. */
+    public function testAWrongCodeIsAuditedThoughItSpentNothing(): void
+    {
+        $this->enrolledUser('someone@twes.local');
+        $this->login('someone@twes.local', self::PASSWORD);
+
+        $this->postJson('/api/auth/mfa/verify', ['code' => '000000']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertSame(
+            ['{"reason": "bad_code"}'],
+            $this->em()->getConnection()->fetchFirstColumn("SELECT changes::text FROM audit_log WHERE action = 'auth.mfa_failed'"),
+        );
+    }
+
     public function testVerifyingWithoutHavingPassedThePasswordIsRefused(): void
     {
         $this->enrolledUser('someone@twes.local');

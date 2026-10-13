@@ -17,6 +17,7 @@ use App\Identity\Domain\RecoveryCode;
 use App\Identity\Domain\RecoveryCodeRepository;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -24,7 +25,9 @@ use Symfony\Component\Uid\Uuid;
  *
  * One field accepts either a six-digit code or a recovery code, because the two are told apart by their shape
  * and asking the person which kind they are holding buys nothing. Whichever it is, it is spent on use: a TOTP
- * timestep cannot be replayed inside its window, and a recovery code is deleted.
+ * timestep cannot be replayed inside its window, and a recovery code is deleted. The account's row is locked while the
+ * code is checked and spent, so two requests racing one code take turns and the second finds it spent; a refusal is
+ * raised once that transaction has committed, so its audit row stays.
  */
 final readonly class VerifySecondFactor
 {
@@ -39,6 +42,7 @@ final readonly class VerifySecondFactor
         private SecretCipher $cipher,
         private AuditTrail $audit,
         private SecondFactors $secondFactors,
+        private Transactions $transactions,
     ) {
     }
 
@@ -49,13 +53,24 @@ final readonly class VerifySecondFactor
     public function handle(Uuid $userId, string $code, ?\DateTimeImmutable $now = null): User
     {
         $now ??= new \DateTimeImmutable();
-        $user = $this->users->ofId($userId);
+        $outcome = $this->transactions->run(fn (): User|SecondFactorRefused|SecondFactorUnreadable => $this->spend($userId, $code, $now));
+
+        if ($outcome instanceof User) {
+            return $outcome;
+        }
+
+        throw $outcome;
+    }
+
+    private function spend(Uuid $userId, string $code, \DateTimeImmutable $now): User|SecondFactorRefused|SecondFactorUnreadable
+    {
+        $user = $this->users->lockedOfId($userId);
 
         if (null === $user || !$this->secondFactors->has($user)) {
             // Nothing to verify against. Audited without a user id, because there may not be one.
             $this->audit->record(new AuditEntry('user', $user?->getId(), self::FAILED, null, ['reason' => 'no_factor']));
 
-            throw new SecondFactorRefused();
+            return new SecondFactorRefused();
         }
 
         $totp = $this->spendTotp($user, $code, $now);
@@ -71,12 +86,12 @@ final readonly class VerifySecondFactor
             // Already audited as unreadable_secret, so not audited again as a bad code. What this lets through
             // uncounted is a wrong recovery code on such an account: ten characters of a 31-letter alphabet, which the
             // verify limiter's pacing leaves out of reach, unlike the million six-digit codes the lock exists for.
-            throw new SecondFactorUnreadable();
+            return new SecondFactorUnreadable();
         }
 
         $this->audit->record(new AuditEntry('user', $user->getId(), self::FAILED, $user->getId(), ['reason' => 'bad_code']));
 
-        throw new SecondFactorRefused();
+        return new SecondFactorRefused();
     }
 
     /** True when the code verified and is now spent, false when it did not, null when the stored secret cannot be read. */
