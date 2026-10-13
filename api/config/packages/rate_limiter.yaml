@@ -17,6 +17,12 @@ framework:
             policy: 'fixed_window'
             limit: 1
             interval: '15 minutes'
+        # Finishing a signup: a refused finish leaves the link usable, so without a budget one link could ask without end
+        # which company names are taken. Ten tries a quarter of an hour per client, then 429.
+        signup_complete:
+            policy: 'fixed_window'
+            limit: 10
+            interval: '15 minutes'
         # Forgot password mails whoever asks, so both ends are budgeted like signup: per client five asks an hour, then 429;
         # per address one mail in fifteen minutes, and a second ask gets the same answer with nothing sent. Choosing the
         # new password is budgeted per client too: the link is 256 random bits, so this only keeps the table from being hammered.

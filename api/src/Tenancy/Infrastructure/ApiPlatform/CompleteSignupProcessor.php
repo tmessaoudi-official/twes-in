@@ -17,18 +17,30 @@ use App\Tenancy\Application\Signup\CompleteSignup;
 use App\Tenancy\Application\Signup\CompleteSignupRequest;
 use App\Tenancy\Application\Signup\InvalidSignup;
 use App\Tenancy\Application\Signup\SignupNotUsable;
+use Symfony\Component\DependencyInjection\Attribute\Target;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 /** @implements ProcessorInterface<SignupResource, SignupResource> */
 final readonly class CompleteSignupProcessor implements ProcessorInterface
 {
-    public function __construct(private CompleteSignup $complete)
-    {
+    public function __construct(
+        private CompleteSignup $complete,
+        private RequestStack $requests,
+        #[Target('signup_complete')]
+        private RateLimiterFactoryInterface $limiter,
+    ) {
     }
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): SignupResource
     {
+        // Before the link is even looked up: a refused finish leaves it usable, and each try would say whether a name is taken.
+        if (!$this->limiter->create($this->requests->getMainRequest()?->getClientIp() ?? '')->consume()->isAccepted()) {
+            throw new TooManyRequestsHttpException(null, 'Too many attempts.');
+        }
         $token = $uriVariables['token'] ?? null;
         if (!\is_string($token)) {
             throw new NotFoundHttpException('That signup link cannot be used.');
