@@ -20,6 +20,7 @@ import type {
   VendorSearch,
   VendorsError,
 } from './vendors-types';
+import { stepUpAsked } from '../shared/step-up/step-up-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class VendorsRefused extends Error {
@@ -109,6 +110,8 @@ function codeOf(error: unknown): VendorsError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
   }
+  // A vendor's IBAN or BIC, set or changed, waits for a recent proof (docs/SPEC.md § 7).
+  if (stepUpAsked(error)) return 'step_up_required';
   switch (error.status) {
     case 404:
       return 'not_found';

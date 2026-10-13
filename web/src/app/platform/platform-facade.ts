@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { StepUp } from '../shared/step-up/step-up';
 import { PlatformApi, PlatformRefused } from './platform-api';
 import {
   COMPANY_COUNTRIES,
@@ -28,6 +29,7 @@ import {
 export class PlatformFacade {
   private readonly api = inject(PlatformApi);
   private readonly auth = inject(AuthFacade);
+  private readonly stepUp = inject(StepUp);
   private readonly waitingSignal = signal<readonly PlatformCompanyRow[]>([]);
   private readonly signupSignal = signal<PlatformSignup | null>(null);
   private readonly supportSignal = signal<PlatformSupport | null>(null);
@@ -171,7 +173,9 @@ export class PlatformFacade {
   /** True once the terms are held; the company list is read again, since its standing changed. */
   async saveSubscription(companyId: string, terms: SubscriptionTerms): Promise<boolean> {
     return this.write(async () => {
-      this.subscriptionSignal.set(await this.api.setSubscription(companyId, terms));
+      this.subscriptionSignal.set(
+        await this.proven(() => this.api.setSubscription(companyId, terms)),
+      );
       await this.refreshCompanies();
       await this.auth.refresh();
 
@@ -181,7 +185,7 @@ export class PlatformFacade {
 
   async stopSubscription(companyId: string): Promise<boolean> {
     return this.write(async () => {
-      await this.api.stopSubscription(companyId);
+      await this.proven(() => this.api.stopSubscription(companyId));
       this.subscriptionSignal.set(null);
       await this.refreshCompanies();
       await this.auth.refresh();
@@ -209,7 +213,7 @@ export class PlatformFacade {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      const updated = await this.api.actOnAccount(userId, action);
+      const updated = await this.proven(() => this.api.actOnAccount(userId, action));
       // The answer to an action does not carry the companies, which the row already holds.
       this.accountsSignal.update((rows) =>
         rows.map((row) => (row.id === updated.id ? { ...updated, companies: row.companies } : row)),
@@ -236,13 +240,11 @@ export class PlatformFacade {
     this.errorSignal.set(null);
     let opened = false;
     try {
-      const companyId = await this.api.createCompany({
-        name,
-        countryCode,
-        ...COMPANY_COUNTRIES[countryCode],
-      });
+      const companyId = await this.proven(() =>
+        this.api.createCompany({ name, countryCode, ...COMPANY_COUNTRIES[countryCode] }),
+      );
       opened = true;
-      await this.api.inviteOwner(companyId, ownerEmail);
+      await this.proven(() => this.api.inviteOwner(companyId, ownerEmail));
       return true;
     } catch (error) {
       this.errorSignal.set(codeOf(error));
@@ -260,7 +262,7 @@ export class PlatformFacade {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      await this.api.inviteOwner(companyId, email);
+      await this.proven(() => this.api.inviteOwner(companyId, email));
       await this.readCompanies();
       return true;
     } catch (error) {
@@ -283,7 +285,7 @@ export class PlatformFacade {
   async setSignup(key: SignupSwitch, value: boolean): Promise<void> {
     this.errorSignal.set(null);
     try {
-      await this.api.setSignup(key, value);
+      await this.proven(() => this.api.setSignup(key, value));
       const current = this.signupSignal();
       if (current !== null) {
         this.signupSignal.set(
@@ -304,7 +306,7 @@ export class PlatformFacade {
   async saveSupport(changes: Partial<PlatformSupport>): Promise<boolean> {
     return this.write(async () => {
       for (const [channel, value] of Object.entries(changes) as [SupportChannel, string][]) {
-        await this.api.setSupport(channel, value);
+        await this.proven(() => this.api.setSupport(channel, value));
         const current = this.supportSignal();
         if (current !== null) this.supportSignal.set({ ...current, [channel]: value });
       }
@@ -318,7 +320,7 @@ export class PlatformFacade {
   async saveDelays(changes: Readonly<Record<string, number>>): Promise<boolean> {
     return this.write(async () => {
       for (const [key, value] of Object.entries(changes)) {
-        await this.api.setDelay(key, value);
+        await this.proven(() => this.api.setDelay(key, value));
         this.delaysSignal.update(
           (delays) =>
             delays?.map((delay) => (delay.key === key ? { ...delay, value } : delay)) ?? null,
@@ -337,12 +339,25 @@ export class PlatformFacade {
     if (this.companySearch !== null) await this.loadCompanies(this.companySearch);
   }
 
+  /**
+   * Every platform write waits for the operator to prove who is at the screen again (docs/SPEC.md § 7, the step-up
+   * list): asked once when the platform holds the write back, then the write is sent again. A proof holds a few
+   * minutes, so the next writes in a row ask nothing.
+   */
+  private proven<T>(call: () => Promise<T>): Promise<T> {
+    return this.stepUp.retrying(
+      call,
+      (error) => error instanceof PlatformRefused && error.code === 'step_up_required',
+      'step_up.intro_change',
+    );
+  }
+
   /** A decided company leaves the waiting list, so the list is read again rather than edited in place. */
   private async decide(call: () => Promise<unknown>): Promise<boolean> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      await call();
+      await this.proven(call);
       await this.readCompanies();
       // An operator can act on the company they are themselves working in, and its status, access and
       // subscription are read from the session by the shell (developer sweep, 2026-09-20).

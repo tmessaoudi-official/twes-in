@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Why the API refused, as the vendors screens translate it. */
-export type VendorsError = 'network' | 'not_found' | 'number_taken' | 'invalid';
+export type VendorsError =
+  'network' | 'not_found' | 'number_taken' | 'step_up_required' | 'invalid';
 
 /** What the API sorts vendors by. */
 export type VendorSortKey = 'number' | 'name' | 'city' | 'paymentTermsDays' | 'isActive';

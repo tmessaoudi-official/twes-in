@@ -17,6 +17,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { StepUp } from '../shared/step-up/step-up';
 import {
   SupportAccessApi,
   SupportAccessRefused,
@@ -41,6 +42,7 @@ export class SupportAccessPage {
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
+  private readonly stepUp = inject(StepUp);
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly state = signal<SupportAccessState | null>(null);
@@ -64,7 +66,15 @@ export class SupportAccessPage {
     if (!companyId || this.busy()) return;
     this.busy.set(true);
     try {
-      this.state.set(await this.api.grant(companyId, this.hours()));
+      // Opening the company to support waits for the owner to prove who is at the screen (docs/SPEC.md § 7).
+      const hours = this.hours();
+      this.state.set(
+        await this.stepUp.retrying(
+          () => this.api.grant(companyId, hours),
+          (error) => error instanceof SupportAccessRefused && error.code === 'step_up_required',
+          'step_up.intro_change',
+        ),
+      );
       this.feedback.effect('support_access.granted', { until: this.until() }, 'corrigeable');
       await this.auth.refresh();
     } catch (error) {

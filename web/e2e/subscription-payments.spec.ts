@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { signIn as signInAsOperator } from './session';
+import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
+import { proveByApi } from './step-up';
 
 // Slice 2 through the whole stack (docs/SPEC.md § 7, 2026-09-17): an operator locks a company for not paying, its
 // owner is shut out of the shell and follows the one way back, declares what they paid, the operator sees it waiting
@@ -47,6 +48,9 @@ test('a locked company declares what it paid and the operator confirms it back o
 
   // A company of its own, with an owner who made their account from the invitation.
   await signInAsOperator(page);
+  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7); one holds the scenario through,
+  // the confirmation on the screen included.
+  await proveByApi(page, OPERATOR_PASSWORD);
   const opened = await api(page, 'POST', '/api/companies', {
     name: `Payante ${stamp}`,
     countryCode: 'TN',

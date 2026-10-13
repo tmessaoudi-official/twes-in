@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
-import { inACompany, signIn } from './session';
+import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
+import { proveIfAsked } from './step-up';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 
@@ -61,6 +62,8 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     await page.getByTestId('field-paymentTermsDays').fill('30');
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('record-save').click();
+    // Where a vendor is paid waits for a recent proof (docs/SPEC.md § 7); the shared session may hold one already.
+    await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
 
     await expect(page).toHaveURL(/\/vendors\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId('vendor-title')).toContainText(number);

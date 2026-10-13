@@ -9,8 +9,10 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Identity\Infrastructure\StepUp\StepUpBounds;
 use App\Shared\Infrastructure\DevelopmentKeys;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
 
 class Kernel extends BaseKernel
@@ -27,6 +29,12 @@ class Kernel extends BaseKernel
         DevelopmentKeys::check($this->getEnvironment(), $_SERVER + $_ENV);
 
         parent::boot();
+    }
+
+    /** A deployment whose step-up numbers are out of their bounds is refused when its container is built. */
+    protected function build(ContainerBuilder $container): void
+    {
+        $container->addCompilerPass(new StepUpBounds());
     }
 
     /**

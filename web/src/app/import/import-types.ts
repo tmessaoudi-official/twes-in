@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Why the API refused a request outright, as the import screen translates it under `import.errors.*`. */
-export type ImportError = 'network' | 'not_found' | 'file_too_large' | 'invalid';
+export type ImportError =
+  'network' | 'not_found' | 'file_too_large' | 'step_up_required' | 'invalid';
 
 /** How a file is read: only new things, or new things and the ones already there. */
 export type ImportMode = 'create' | 'upsert';

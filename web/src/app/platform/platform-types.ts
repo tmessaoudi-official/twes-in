@@ -157,7 +157,13 @@ export type CompanyCountry = keyof typeof COMPANY_COUNTRIES;
  * reached.
  */
 export type PlatformError =
-  'not_found' | 'own_account' | 'name_taken' | 'already_member' | 'refused' | 'network';
+  | 'not_found'
+  | 'own_account'
+  | 'name_taken'
+  | 'already_member'
+  | 'step_up_required'
+  | 'refused'
+  | 'network';
 
 /** A planned module and how many companies asked to be told when it arrives (« Me prévenir », row 150). */
 /** What the worker gave up on after its retries, which waits in the failed transport for the operator to retry it. */

@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Vendors\Infrastructure\Import;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Identity\Application\StepUp\ConfirmStepUp;
+use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Application\DeclaresImport;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportContext;
@@ -46,7 +48,9 @@ use Symfony\Component\Uid\Uuid;
  *
  * A row is written through ManageVendors, the use case the vendor form uses, so a file is held to every rule a person
  * is. A row whose number is a vendor's already updates it in upsert mode, from the cells the row fills in only: a
- * blank cell keeps what is there.
+ * blank cell keeps what is there. A row setting or changing a vendor's IBAN or BIC asks who is at the screen again, as
+ * the vendor form does (docs/SPEC.md § 7, the step-up list): the whole file waits for it, once, and a preview asks
+ * nothing.
  */
 final readonly class VendorImport implements DeclaresImport
 {
@@ -75,6 +79,7 @@ final readonly class VendorImport implements DeclaresImport
         private VendorRepository $vendors,
         private ExpenseCategoryDirectory $expenseCategories,
         private EntityManagerInterface $entityManager,
+        private ConfirmStepUp $stepUp,
     ) {
     }
 
@@ -122,12 +127,16 @@ final readonly class VendorImport implements DeclaresImport
 
         $written = null;
         try {
+            $input = $this->input($company, $record, $existing);
+            if (!$context->dryRun && $input->profile->changesBankDetailsOf($existing?->getProfile()) && (null === $actorUserId || !$this->stepUp->isRecent($actorUserId))) {
+                throw new StepUpRequired();
+            }
             if (null === $existing) {
-                $written = $this->manage->create($company, $this->input($company, $record, null), $actorUserId);
+                $written = $this->manage->create($company, $input, $actorUserId);
 
                 return RowImported::Created;
             }
-            $written = $this->manage->revise($company, $existing->getId(), $this->input($company, $record, $existing), $actorUserId);
+            $written = $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
 
             return RowImported::Updated;
         } catch (InvalidVendor $refused) {

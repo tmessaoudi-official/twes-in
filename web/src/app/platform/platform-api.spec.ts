@@ -398,4 +398,28 @@ describe('PlatformApi', () => {
     http.expectOne('/api/platform/settings').error(new ProgressEvent('error'), { status: 0 });
     await expect(offline).rejects.toEqual(new PlatformRefused('network'));
   });
+
+  // docs/SPEC.md § 7, the step-up list: the platform's wall answers the code, creating a company the detail.
+  it('names the proof every platform write waits for, in either shape', async () => {
+    const approving = api.approve('c1');
+    http
+      .expectOne('/api/platform/companies/c1/approve')
+      .flush({ error: 'step_up_required' }, { status: 403, statusText: 'Forbidden' });
+    await expect(approving).rejects.toEqual(new PlatformRefused('step_up_required'));
+
+    const creating = api.createCompany({
+      name: 'Acme',
+      countryCode: 'TN',
+      currency: 'TND',
+      locale: 'fr',
+      timezone: 'Africa/Tunis',
+    });
+    http
+      .expectOne('/api/companies')
+      .flush(
+        { detail: 'step_up_required: confirm who you are first.' },
+        { status: 403, statusText: 'Forbidden' },
+      );
+    await expect(creating).rejects.toEqual(new PlatformRefused('step_up_required'));
+  });
 });

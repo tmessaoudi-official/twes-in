@@ -2867,7 +2867,8 @@
       "network": "Le serveur est injoignable.",
       "not_found": "Fournisseur introuvable.",
       "number_taken": "Un autre fournisseur porte déjà ce numéro.",
-      "invalid": "La modification a été refusée. Vérifiez les numéros d’immatriculation, l’IBAN et le BIC."
+      "invalid": "La modification a été refusée. Vérifiez les numéros d’immatriculation, l’IBAN et le BIC.",
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
     }
   },
   "expenses": {
@@ -3168,7 +3169,8 @@
       "own_account": "Vous ne pouvez pas désactiver votre propre compte.",
       "network": "Le serveur est injoignable.",
       "name_taken": "Une entreprise porte déjà ce nom.",
-      "already_member": "Cette adresse appartient déjà à cette entreprise."
+      "already_member": "Cette adresse appartient déjà à cette entreprise.",
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
     },
     "subscription": {
       "open": "Abonnement",
@@ -3416,7 +3418,8 @@
       "already_declared": "Un règlement est déjà en attente de confirmation.",
       "invalid": "Ce règlement ne peut pas être enregistré tel quel.",
       "refused": "L’opération a été refusée.",
-      "network": "Le serveur n’a pas répondu."
+      "network": "Le serveur n’a pas répondu.",
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
     },
     "payment": {
       "declare": "Déclarer un règlement",
@@ -3595,7 +3598,8 @@
       "network": "L’API est injoignable. Réessayez dans un instant.",
       "not_found": "Rien de tel ne peut être importé ici, ou vous n’avez pas le droit de l’écrire.",
       "file_too_large": "Le fichier est trop lourd.",
-      "invalid": "Le fichier n’a pas pu être lu."
+      "invalid": "Le fichier n’a pas pu être lu.",
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
     },
     "refusals": {
       "invalid_request": "La demande n’a pas été comprise.",
@@ -3800,7 +3804,8 @@
     },
     "intro_erasure": "Pour ouvrir « Effacer des données », saisissez votre mot de passe ou utilisez une clé d’accès.",
     "intro_factors": "Pour changer vos moyens de vérification, saisissez votre mot de passe ou utilisez une clé d’accès.",
-    "intro_sensitive": "Pour changer les coordonnées bancaires, les membres ou les rôles, saisissez votre mot de passe ou utilisez une clé d’accès."
+    "intro_sensitive": "Pour changer les coordonnées bancaires, les membres ou les rôles, saisissez votre mot de passe ou utilisez une clé d’accès.",
+    "intro_change": "Pour faire ce changement, saisissez votre mot de passe ou utilisez une clé d’accès."
   },
   "customer_display": {
     "title": "Affichage client",
@@ -4945,7 +4950,8 @@
       "network": "La demande n’a pas abouti. Réessayez.",
       "not_found": "Cette société n’est plus accessible.",
       "owner_only": "Seul le propriétaire ouvre l’accès du support.",
-      "support_window": "Choisissez l’une des durées proposées."
+      "support_window": "Choisissez l’une des durées proposées.",
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
     },
     "read_only": "Le support lit la société en lecture seule : rien n’y est modifié ni exporté.",
     "banner_support": "Vous lisez {{company}} pour le support, en lecture seule, jusqu’au {{until}}.",

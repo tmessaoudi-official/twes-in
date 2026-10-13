@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Support;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Identity\Application\StepUp\ConfirmStepUp;
+use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Domain\User;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
@@ -27,7 +29,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * The owner's side of « Accès support »: open the company to the platform's operators for an hour, a day or three, and
  * close it early. Only the owner, whatever a custom role grants: letting someone outside the company read all of it is
- * the owner's to decide. Every grant and every end is in the activity log, and the other owners are told of it.
+ * the owner's to decide, and the owner proves who is at the screen again to open it (docs/SPEC.md § 7, the step-up
+ * list); closing it asks nothing. Every grant and every end is in the activity log, and the other owners are told of it.
  */
 final readonly class ManageSupportAccess
 {
@@ -42,6 +45,7 @@ final readonly class ManageSupportAccess
         private Notifications $notifications,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private ConfirmStepUp $stepUp,
     ) {
     }
 
@@ -54,10 +58,12 @@ final readonly class ManageSupportAccess
     }
 
     /**
-     * Opens a new window from now; one still live is ended first, so there is only ever one.
+     * Opens a new window from now; one still live is ended first, so there is only ever one. What the person can fix,
+     * the owner and the window, is said before the proof is asked.
      *
      * @throws OwnerOnly
      * @throws InvalidSupportWindow
+     * @throws StepUpRequired
      */
     public function grant(Company $company, Uuid $userId, mixed $hours): SupportGrant
     {
@@ -65,10 +71,13 @@ final readonly class ManageSupportAccess
         if (!\is_int($hours)) {
             throw new InvalidSupportWindow('Support access lasts a whole number of hours.');
         }
+        $now = $this->clock->now();
+        $grant = new SupportGrant($company, $owner, $hours, $now);
+        if (!$this->stepUp->isRecent($userId)) {
+            throw new StepUpRequired();
+        }
 
-        return $this->transactions->run(function () use ($company, $owner, $hours): SupportGrant {
-            $now = $this->clock->now();
-            $grant = new SupportGrant($company, $owner, $hours, $now);
+        return $this->transactions->run(function () use ($company, $owner, $grant, $now): SupportGrant {
             $this->endLive($company, $owner, $now);
             $this->grants->save($grant);
             $this->record($grant, self::GRANTED, $owner);

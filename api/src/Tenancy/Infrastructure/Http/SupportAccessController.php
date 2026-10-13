@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Http;
 
+use App\Identity\Application\StepUp\StepUpRequired;
 use App\Tenancy\Application\Support\ManageSupportAccess;
 use App\Tenancy\Application\Support\OwnerOnly;
 use App\Tenancy\Domain\Company;
@@ -26,7 +27,8 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * « Accès support »: whether the company is open to support and until when, opening it, and closing it early. The
  * company and the permission are asked first, so a stranger meets the same 404 as for any company of others; only its
- * owner goes further, which answers a code the page translates.
+ * owner goes further, which answers a code the page translates. Opening it asks the owner for a recent proof of who is
+ * at the screen (`step_up_required`).
  */
 #[AsController]
 final readonly class SupportAccessController
@@ -85,6 +87,8 @@ final readonly class SupportAccessController
             return new JsonResponse(['error' => 'owner_only'], Response::HTTP_FORBIDDEN);
         } catch (InvalidSupportWindow) {
             return new JsonResponse(['error' => 'support_window', 'hours' => SupportGrant::HOURS], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (StepUpRequired) {
+            return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         }
     }
 

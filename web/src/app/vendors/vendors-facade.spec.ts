@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { StepUp } from '../shared/step-up/step-up';
 import { VendorsApi, VendorsRefused } from './vendors-api';
 import { VendorsFacade } from './vendors-facade';
 import type { VendorInput, VendorOptions, VendorRow, VendorSearch } from './vendors-types';
@@ -32,6 +33,11 @@ const input: VendorInput = {
 const sotumag: VendorRow = { ...input, id: 'v1' };
 const options: VendorOptions = { countryCode: 'TN', identifiers: [] };
 
+// The proof dialog is answered by the test; `retrying` itself is StepUp's own.
+const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
+  request: vi.fn<(intro?: string) => Promise<boolean>>(),
+});
+
 describe('VendorsFacade', () => {
   const api = {
     options: vi.fn(),
@@ -44,7 +50,12 @@ describe('VendorsFacade', () => {
 
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
-    TestBed.configureTestingModule({ providers: [{ provide: VendorsApi, useValue: api }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: VendorsApi, useValue: api },
+        { provide: StepUp, useValue: stepUp },
+      ],
+    });
     facade = TestBed.inject(VendorsFacade);
   });
 
@@ -97,5 +108,26 @@ describe('VendorsFacade', () => {
     api.reviseVendor.mockResolvedValue(sotumag);
     expect(await facade.reviseVendor('c1', 'v1', input)).toEqual(sotumag);
     expect([facade.error(), facade.vendor()]).toEqual([null, sotumag]);
+  });
+
+  // docs/SPEC.md § 7, the step-up list: where a vendor's bank details are paid to changes, the API waits for the proof.
+  it('asks for the proof the API wants, then keeps the vendor with its new bank details', async () => {
+    stepUp.request.mockReset().mockResolvedValue(true);
+    api.reviseVendor
+      .mockRejectedValueOnce(new VendorsRefused('step_up_required'))
+      .mockResolvedValueOnce(sotumag);
+
+    expect(await facade.reviseVendor('c1', 'v1', input)).toEqual(sotumag);
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
+    expect(api.reviseVendor).toHaveBeenCalledTimes(2);
+  });
+
+  it('says nothing changed when the person does not give the proof', async () => {
+    stepUp.request.mockReset().mockResolvedValue(false);
+    api.createVendor.mockRejectedValue(new VendorsRefused('step_up_required'));
+
+    expect(await facade.createVendor('c1', input)).toBeNull();
+    expect(facade.error()).toBe('step_up_required');
+    expect(api.createVendor).toHaveBeenCalledTimes(1);
   });
 });

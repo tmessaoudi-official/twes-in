@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test, type Page } from '@playwright/test';
 import { wcagViolations } from './axe';
-import { signIn } from './session';
+import { OPERATOR_PASSWORD, signIn } from './session';
+import { proveByApi } from './step-up';
 import { toast } from './toast';
 
 // How a company reaches the people who run the platform: the operators set a phone, a WhatsApp number and an address
@@ -15,6 +16,8 @@ test('the contact the operators set is offered in the help, a channel left empty
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page);
+  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7); one holds the scenario through.
+  await proveByApi(page, OPERATOR_PASSWORD);
   const before = await readContact(page);
   try {
     await page.goto('/platform');

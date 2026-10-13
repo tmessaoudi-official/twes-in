@@ -87,6 +87,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
             responses: [
                 '200' => new Response('A preview, or a file stored whole', $json($report)),
                 '401' => new Response('Not signed in'),
+                '403' => new Response('`step_up_required`: the file sets or changes what asks who is at the screen (a vendor\'s IBAN or BIC) and the proof is not recent; nothing was stored. A preview never asks', $json(['type' => 'object', 'properties' => ['error' => ['type' => 'string', 'enum' => ['step_up_required']]]])),
                 '404' => new Response('No such subject, its module switched off, or no permission to write it'),
                 '422' => new Response('The file refused whole, or an import stopped by rejected rows, in which case nothing was stored', $json(['oneOf' => [$report, $refused]])),
             ],

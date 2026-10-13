@@ -122,6 +122,23 @@ final class ConfirmStepUpTest extends TestCase
         }
     }
 
+    /** The number of wrong answers is the deployment's (app.step_up.attempts), not a constant of the code. */
+    public function testTheDeploymentsNumberOfAttemptsIsTheOneCounted(): void
+    {
+        for ($i = 0; $i < 2; ++$i) {
+            try {
+                $this->confirm(attempts: 3)->withPassword($this->user->getId(), 'guess-'.$i);
+                self::fail('a wrong password proved itself');
+            } catch (StepUpExhausted) {
+                self::fail('two wrong answers spent a budget of three');
+            } catch (StepUpRefused) {
+            }
+        }
+
+        $this->expectException(StepUpExhausted::class);
+        $this->confirm(attempts: 3)->withPassword($this->user->getId(), 'guess-2');
+    }
+
     public function testALockedAccountIsRefusedEvenTheRightPasswordUntilTheLockEnds(): void
     {
         $failures = new RecordFailedLogin($this->users, new InMemoryAuditTrail(), $this->clock, 5, 'PT15M');
@@ -148,7 +165,7 @@ final class ConfirmStepUpTest extends TestCase
         self::assertFalse($this->confirm()->isRecent(Uuid::v7()));
     }
 
-    private function confirm(): ConfirmStepUp
+    private function confirm(int $attempts = 5): ConfirmStepUp
     {
         $hasher = new class implements PasswordHasher {
             public function hash(string $plainPassword): string
@@ -165,6 +182,6 @@ final class ConfirmStepUpTest extends TestCase
 
         $audit = new InMemoryAuditTrail();
 
-        return new ConfirmStepUp($this->users, $hasher, $assertions, $audit, $this->proofs, $this->clock, 'PT5M');
+        return new ConfirmStepUp($this->users, $hasher, $assertions, $audit, $this->proofs, $this->clock, 'PT5M', $attempts);
     }
 }

@@ -76,6 +76,7 @@ final class SupportAccessTest extends ApiTestCase
     public function testTheOwnerGrantsADayAndTheOperatorReadsTheCompanyFromTheSwitcher(): void
     {
         $this->as(self::OWNER);
+        $this->stepUp(self::PASSWORD);
         $this->postJson($this->path('/support-access'), ['hours' => 24]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $until = $this->json()['endsAt'] ?? null;
@@ -154,6 +155,10 @@ final class SupportAccessTest extends ApiTestCase
         self::assertSame('support_read_only', $this->json()['error']);
         $this->getJson($this->path('/exports/invoices.pdf'));
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        // The month's withholding declaration carries every payment withheld at once: an export by another path.
+        $this->getJson($this->path('/withholding-declarations/tej/2026-10'));
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('support_read_only', $this->json()['error']);
 
         $this->getJson($this->path('/products/'.$this->productId));
         self::assertResponseIsSuccessful();
@@ -276,6 +281,7 @@ final class SupportAccessTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertNull($this->json()['endsAt']);
 
+        $this->stepUp(self::PASSWORD);
         // Granting again while a grant is live replaces it: one window at a time.
         $this->postJson($this->path('/support-access'), ['hours' => 1]);
         $this->postJson($this->path('/support-access'), ['hours' => 72]);
@@ -289,6 +295,8 @@ final class SupportAccessTest extends ApiTestCase
     private function grant(int $hours): void
     {
         $this->as(self::OWNER);
+        // Opening the company to support is on the step-up list.
+        $this->stepUp(self::PASSWORD);
         $this->postJson($this->path('/support-access'), ['hours' => $hours]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
     }

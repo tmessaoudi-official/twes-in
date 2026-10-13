@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Infrastructure\Http;
 
+use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\RunImport;
@@ -38,7 +39,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * checked against the data as it is when it runs, never against a preview another member's changes have overtaken.
  *
  * 200 answers what was done or would be; 422 a file refused whole (`error`, `columns`) or an import that stopped on
- * rejected rows (the report, `committed` false), in which case nothing was stored.
+ * rejected rows (the report, `committed` false), in which case nothing was stored; 403 `step_up_required` an import
+ * that changes what asks who is at the screen again (a vendor's bank details), kept nothing, and is sent again once
+ * the person proved it.
  */
 #[AsController]
 final readonly class ImportController
@@ -102,6 +105,8 @@ final readonly class ImportController
             return new JsonResponse(['error' => UnreadableImport::UNREADABLE, 'columns' => []], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (UnreadableImport $refused) {
             return new JsonResponse(['error' => $refused->reason, 'columns' => $refused->columns, 'limit' => $refused->limit], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (StepUpRequired) {
+            return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         }
 
         return new JsonResponse(

@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
-import { proveIfAsked } from './step-up';
+import { proveByApi, proveIfAsked } from './step-up';
 import { totp } from './totp';
 import { toast } from './toast';
 
@@ -166,6 +166,8 @@ test('a company that requires two-step verification sends its owner to set it up
   // A throwaway company, so the requirement never reaches Demo or the operator every other scenario signs in as.
   await signInAsOperator(page);
   await expect(page).toHaveURL(/\/$/);
+  // Every platform write, opening a company first, waits for the operator's recent proof (docs/SPEC.md § 7).
+  await proveByApi(page, OPERATOR_PASSWORD);
   const invited = await page.evaluate(
     async ([companyName, csrf, email]) => {
       const headers = { 'content-type': 'application/json', 'csrf-token': csrf };

@@ -18,8 +18,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * The rest of the short list of actions that ask who is at the screen again (docs/SPEC.md § 7, the step-up list):
- * changing the company's bank details, adding or removing a member, changing a role. A stolen session changing the IBAN
- * so customers pay the attacker is the attack it was ruled for. Exports, the list's fourth, are ExportStepUpTest's.
+ * changing the company's bank details, adding or removing a member, changing a role, granting « Accès du support ». A
+ * stolen session changing the IBAN so customers pay the attacker is the attack it was ruled for. Exports are
+ * ExportStepUpTest's, the platform's writes PlatformWritesStepUpTest's and a vendor's bank details VendorBankDetailsStepUpTest's.
  */
 final class SensitiveChangesStepUpTest extends ApiTestCase
 {
@@ -134,6 +135,36 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSame('14 rue de Marseille', $this->json()['addressLine1']);
+    }
+
+    /** Opening the company to the platform's operators lets someone outside it read all of it (« Accès du support »). */
+    public function testGrantingSupportAccessWaitsForTheProof(): void
+    {
+        $this->postJson($this->path('support-access'), ['hours' => 24]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('step_up_required', $this->json()['error'] ?? null);
+        self::assertSame(0, $this->rows('SELECT COUNT(*) FROM support_grant'));
+
+        $this->stepUp(self::PASSWORD);
+        $this->postJson($this->path('support-access'), ['hours' => 24]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(1, $this->rows('SELECT COUNT(*) FROM support_grant'));
+    }
+
+    /** What the person can fix is said before the proof is asked: the window, and that only an owner grants. */
+    public function testASupportWindowOutOfBoundsAndANonOwnerAreAnsweredBeforeTheProof(): void
+    {
+        // Made before the first request: the client's kernel reboot leaves the company detached afterwards.
+        $this->createUser('manager@twes.local', self::PASSWORD, $this->company, ['company.settings'], 'manager');
+        $this->postJson($this->path('support-access'), ['hours' => 2]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('support_window', $this->json()['error'] ?? null);
+
+        $this->login('manager@twes.local', self::PASSWORD);
+        $this->postJson($this->path('support-access'), ['hours' => 24]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('owner_only', $this->json()['error'] ?? null);
     }
 
     /** The proof is asked last: who may not act at all is answered as before, never told to prove who they are. */

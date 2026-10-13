@@ -17,6 +17,7 @@ import type {
   SettingSettingRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
+import { stepUpAsked } from '../shared/step-up/step-up-api';
 import type {
   AccountAction,
   PlatformAccountSearch,
@@ -387,6 +388,8 @@ function codeOf(error: unknown, conflict: PlatformError): PlatformError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
   }
+  // Every platform write waits for the operator to prove who is at the screen again (docs/SPEC.md § 7).
+  if (stepUpAsked(error)) return 'step_up_required';
   if (error.status === 409) {
     return conflict;
   }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { OPERATOR_EMAIL as EMAIL, signIn, signInWithCode } from './session';
+import { OPERATOR_EMAIL as EMAIL, OPERATOR_PASSWORD, signIn, signInWithCode } from './session';
 import { pickOption } from './select';
 import { proveByApi } from './step-up';
 import { toast } from './toast';
@@ -48,6 +48,10 @@ test('an operator opens a company from the platform, and the switcher moves the 
   await pickOption(page, 'platform-company-country', 'platform-company-country-option-TN');
   await page.getByTestId('platform-company-owner').fill(owner);
   await page.getByTestId('platform-company-create').click();
+  // A platform write waits for the operator to prove who is at the screen, and a sign-in is no proof (docs/SPEC.md
+  // § 7); once given, the invitation that follows asks nothing more.
+  await page.getByTestId('step-up-password').fill(OPERATOR_PASSWORD);
+  await page.getByTestId('step-up-confirm').click();
   await expect(toast(page)).toContainText(owner);
   // A company an operator opens waits for its first owner. The list is a page of many: search for it.
   await page.goto(`/platform?tab=companies&q=${encodeURIComponent(name)}`);

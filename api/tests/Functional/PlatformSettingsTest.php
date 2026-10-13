@@ -133,6 +133,7 @@ final class PlatformSettingsTest extends ApiTestCase
     {
         $this->createUser('op@twes.local', 'password-1234', operator: true);
         $this->login('op@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         self::assertResponseIsSuccessful();
     }
 }

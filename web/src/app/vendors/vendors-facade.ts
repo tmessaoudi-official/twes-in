@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import type { ExportFormat } from '../shared/list/export-address';
+import { StepUp } from '../shared/step-up/step-up';
 import { VendorsApi, VendorsRefused } from './vendors-api';
 import type {
   VendorInput,
@@ -15,6 +16,7 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class VendorsFacade {
   private readonly api = inject(VendorsApi);
+  private readonly stepUp = inject(StepUp);
   private readonly vendorsSignal = signal<readonly VendorRow[]>([]);
   private readonly totalSignal = signal(0);
   private pageRequest = 0;
@@ -94,7 +96,12 @@ export class VendorsFacade {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      const vendor = await call();
+      // A vendor's bank details, set or changed, wait for the person to prove who they are again (docs/SPEC.md § 7).
+      const vendor = await this.stepUp.retrying(
+        call,
+        (error) => error instanceof VendorsRefused && error.code === 'step_up_required',
+        'step_up.intro_sensitive',
+      );
       this.vendorSignal.set(vendor);
       return vendor;
     } catch (error) {

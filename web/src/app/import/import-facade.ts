@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { Feedback } from '../shared/feedback/feedback';
+import { StepUp } from '../shared/step-up/step-up';
 import { ImportApi, ImportNotKept, ImportRefused } from './import-api';
 import type {
   ImportError,
@@ -21,6 +22,7 @@ import type {
 export class ImportFacade {
   private readonly api = inject(ImportApi);
   private readonly feedback = inject(Feedback);
+  private readonly stepUp = inject(StepUp);
 
   private readonly guideSignal = signal<ImportGuide | null>(null);
   private readonly reportSignal = signal<ImportReport | null>(null);
@@ -60,7 +62,13 @@ export class ImportFacade {
     this.forget();
     this.busySignal.set(true);
     try {
-      const report = await this.api.run(companyId, subject, file, mode, dryRun, switches);
+      // A file changing a vendor's bank details waits for the person to prove who they are, then is sent again whole;
+      // a preview never asks (docs/SPEC.md § 7).
+      const report = await this.stepUp.retrying(
+        () => this.api.run(companyId, subject, file, mode, dryRun, switches),
+        (error) => error instanceof ImportRefused && error.code === 'step_up_required',
+        'step_up.intro_sensitive',
+      );
       this.reportSignal.set(report);
       this.errorSignal.set(null);
       if (report.committed) {

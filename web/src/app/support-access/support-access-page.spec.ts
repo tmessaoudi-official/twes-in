@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { Feedback } from '../shared/feedback/feedback';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -17,7 +18,8 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
-import { effectToasts, provideQuietFeedback } from '../shared/testing/feedback';
+import { StepUp } from '../shared/step-up/step-up';
+import { effectToasts, provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 import {
   SupportAccessApi,
   SupportAccessRefused,
@@ -30,6 +32,11 @@ class StaticLoader implements TranslateLoader {
     return of({});
   }
 }
+
+// The proof dialog is answered by the test; `retrying` itself is StepUp's own.
+const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
+  request: vi.fn<(intro?: string) => Promise<boolean>>(),
+});
 
 const CLOSED: SupportAccessState = { startsAt: null, endsAt: null, hours: [1, 24, 72] };
 const OPEN: SupportAccessState = {
@@ -79,6 +86,7 @@ describe('SupportAccessPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: SupportAccessApi, useValue: api },
+        { provide: StepUp, useValue: stepUp },
         {
           provide: AuthFacade,
           useValue: {
@@ -135,5 +143,38 @@ describe('SupportAccessPage', () => {
 
     expect(q('support-access-owner-only')).not.toBeNull();
     expect(q('support-access-grant')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, the step-up list: opening the company to support waits for the owner to prove who they are again.
+  it('asks the owner for the proof the API wants, then opens the window', async () => {
+    stepUp.request.mockReset().mockResolvedValue(true);
+    api.grant.mockReset();
+    api.grant
+      .mockRejectedValueOnce(new SupportAccessRefused('step_up_required'))
+      .mockResolvedValueOnce(OPEN);
+    await open();
+
+    q('support-access-grant')!.click();
+    await settle();
+
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_change');
+    expect(api.grant).toHaveBeenCalledTimes(2);
+    expect(q('support-access-open')).not.toBeNull();
+  });
+
+  it('says nothing changed when the owner does not give the proof', async () => {
+    stepUp.request.mockReset().mockResolvedValue(false);
+    api.grant.mockReset().mockRejectedValue(new SupportAccessRefused('step_up_required'));
+    await open();
+
+    q('support-access-grant')!.click();
+    await settle();
+
+    expect(api.grant).toHaveBeenCalledOnce();
+    expect(q('support-access-closed')).not.toBeNull();
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    expect(said.map(({ kind, key }) => `${kind}:${key}`)).toEqual([
+      'failure:support_access.refused.step_up_required',
+    ]);
   });
 });

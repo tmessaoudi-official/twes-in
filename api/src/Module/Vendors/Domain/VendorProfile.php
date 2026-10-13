@@ -91,6 +91,20 @@ final readonly class VendorProfile
         return array_keys(array_filter($this->comparable(), static fn (mixed $value, string $field): bool => $value !== $theirs[$field], \ARRAY_FILTER_USE_BOTH));
     }
 
+    /**
+     * Whether saving this profile over the one held sets or changes the bank details, the IBAN or the BIC, which asks
+     * who is at the screen again (docs/SPEC.md § 7, the step-up list). Compared once normalised, so the same details
+     * written as a person types them change nothing.
+     */
+    public function changesBankDetailsOf(?self $held): bool
+    {
+        if (null === $held) {
+            return null !== $this->iban || null !== $this->bic;
+        }
+
+        return [] !== array_intersect(['iban', 'bic'], $this->differencesFrom($held));
+    }
+
     /** @return array<string, mixed> */
     private function comparable(): array
     {
