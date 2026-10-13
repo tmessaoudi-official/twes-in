@@ -37,12 +37,16 @@ final class AuthTest extends ApiTestCase
 
         $cookie = null;
         foreach ($this->client->getResponse()->headers->getCookies() as $candidate) {
-            if ('twes_session' === $candidate->getName()) {
+            if (self::SESSION_COOKIE === $candidate->getName()) {
                 $cookie = $candidate;
             }
         }
-        self::assertNotNull($cookie, 'the session cookie is named twes_session');
+        // The __Host- prefix makes the browser refuse the cookie unless it is Secure, for / and bound to this host alone:
+        // a neighbouring subdomain can then neither set nor shadow it.
+        self::assertNotNull($cookie, 'the session cookie is named __Host-twes_session');
         self::assertTrue($cookie->isSecure());
+        self::assertSame('/', $cookie->getPath());
+        self::assertStringNotContainsStringIgnoringCase('domain=', (string) $cookie, 'no Domain attribute: this host alone');
         self::assertTrue($cookie->isHttpOnly());
         self::assertSame('strict', $cookie->getSameSite());
         self::assertSame(0, $cookie->getExpiresTime(), 'session-scoped: no persistent lifetime');
@@ -297,10 +301,10 @@ final class AuthTest extends ApiTestCase
     {
         $this->createUser('owner@example.test', self::PASSWORD);
         $this->client->request('GET', '/api/auth/me');
-        $before = $this->client->getCookieJar()->get('twes_session')?->getValue();
+        $before = $this->client->getCookieJar()->get(self::SESSION_COOKIE)?->getValue();
 
         $this->login('owner@example.test', self::PASSWORD);
-        $after = $this->client->getCookieJar()->get('twes_session')?->getValue();
+        $after = $this->client->getCookieJar()->get(self::SESSION_COOKIE)?->getValue();
 
         self::assertNotNull($after);
         self::assertNotSame($before, $after, 'session fixation: the id is rotated when the user signs in');

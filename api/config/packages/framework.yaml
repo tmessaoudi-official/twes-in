@@ -22,7 +22,9 @@ framework:
     # (metadata_update_threshold): nothing reads it.
     session:
         handler_id: App\Identity\Infrastructure\Session\PostgresSessionHandler
-        name: twes_session
+        # The __Host- prefix: the browser keeps it only Secure, for / and for this host alone, so no subdomain sets or
+        # shadows it.
+        name: __Host-twes_session
         cookie_secure: true
         cookie_httponly: true
         cookie_samesite: strict

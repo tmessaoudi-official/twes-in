@@ -143,7 +143,7 @@ when@test:
             class: Symfony\Component\HttpFoundation\Session\Storage\MockFileSessionStorageFactory
             arguments:
                 - '%kernel.cache_dir%/sessions'
-                - 'twes_session'
+                - '__Host-twes_session'
                 - !service
                     class: Symfony\Component\HttpFoundation\Session\Storage\MetadataBag
                     arguments: ['%session.metadata.storage_key%', '%session.metadata.update_threshold%']
