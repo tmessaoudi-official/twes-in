@@ -352,13 +352,15 @@ Operators are created from the console only, never from the application:
 
 ```sh
 docker compose exec -T api bin/console app:seed \
-  --operator-email=you@example.com --operator-password='a long passphrase of yours'
+  --operator-email=you@example.com --operator-password-stdin
 ```
 
-This creates the operator and makes them an owner of Demo (`--company-name=<name>` for another company, which is
-created if missing). Without `--operator-totp-secret`, the new operator enrols their own authenticator at first
-sign-in. That is how a real deployment's operator is created. **Never pass `--operator-totp-secret` outside
-development:** a known secret is a known second factor.
+The command reads the password from the first line of its standard input, so it stays out of the shell's history and
+of `ps`. This creates the operator and makes them an owner of Demo (`--company-name=<name>` for another company, which
+is created if missing; `--without-company` for none). Without `--operator-totp-secret`, the new operator enrols their
+own authenticator at first sign-in. That is how a real deployment's operator is created: a production kernel refuses
+`--operator-password` and `--operator-totp-secret` outright, since a known secret is a known second factor. Both
+remain for the development and CI stacks (`make seed`).
 
 ### 5.5 Deactivate an account, end sessions
 
