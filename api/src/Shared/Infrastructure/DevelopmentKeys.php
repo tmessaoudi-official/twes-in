@@ -23,12 +23,16 @@ namespace App\Shared\Infrastructure;
  */
 final class DevelopmentKeys
 {
-    /** The literals `api/.env` commits and `compose.yaml` defaults to, by the variable carrying each. */
+    /** The literals `api/.env`, `api/.env.dev` and `api/.env.test` commit and `compose.yaml` defaults to, by the variable carrying each. */
     private const array COMMITTED = [
-        'APP_MFA_KEY' => 'ojCIqjd0KzQ4JrX9wyEpy58LdtCAQ56MTwM8CWA0XOc=',
-        'REALTIME_TOKEN_KEY' => 'twes-in-development-realtime-token-key-0001',
-        'REALTIME_API_KEY' => 'twes-in-development-realtime-api-key',
+        'APP_SECRET' => ['09485d6948635a24ac59a2c004f96c76', 'test-secret-not-used-in-production'],
+        'APP_MFA_KEY' => ['ojCIqjd0KzQ4JrX9wyEpy58LdtCAQ56MTwM8CWA0XOc='],
+        'REALTIME_TOKEN_KEY' => ['twes-in-development-realtime-token-key-0001'],
+        'REALTIME_API_KEY' => ['twes-in-development-realtime-api-key'],
     ];
+
+    /** `APP_SECRET` signs the links mails carry: one short enough to guess lets anyone forge them. */
+    private const int SECRET_MINIMUM_LENGTH = 32;
 
     /** Every secret production must hold, `APP_SECRET` included: `api/.env` ships it empty. */
     private const array REQUIRED = ['APP_SECRET', 'APP_MFA_KEY', 'REALTIME_TOKEN_KEY', 'REALTIME_API_KEY'];
@@ -51,8 +55,14 @@ final class DevelopmentKeys
                 throw new \RuntimeException(\sprintf('%s is not set: production will not start without a secret of its own.', $name));
             }
 
-            if (isset(self::COMMITTED[$name]) && hash_equals(self::COMMITTED[$name], $value)) {
-                throw new \RuntimeException(\sprintf('%s still carries the development value committed in api/.env, which anyone can read: production will not start on it.', $name));
+            foreach (self::COMMITTED[$name] as $committed) {
+                if (hash_equals($committed, $value)) {
+                    throw new \RuntimeException(\sprintf('%s still carries a development value committed in this repository, which anyone can read: production will not start on it.', $name));
+                }
+            }
+
+            if ('APP_SECRET' === $name && \strlen($value) < self::SECRET_MINIMUM_LENGTH) {
+                throw new \RuntimeException(\sprintf('APP_SECRET is shorter than %d characters: production will not start on a secret that can be guessed.', self::SECRET_MINIMUM_LENGTH));
             }
         }
     }
