@@ -43,7 +43,7 @@
       row.fields | activityFields: row.entityType
     }}</ng-template>
     <ng-template appDataListCell="actor" let-row>
-      {{ row.actorName ?? ('activity.nobody' | translate) }}
+      {{ row.actorName ?? (unnamedActorKey(row) | translate) }}
     </ng-template>
     <ng-template appDataListCell="action" let-row>
       @if (actionKey(row.action); as key) {

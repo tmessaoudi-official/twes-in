@@ -1,0 +1,61 @@
+<section class="flex max-w-xl flex-col gap-3" data-testid="account-deletion">
+  <h2 class="text-lg font-semibold">{{ 'account.deletion.title' | translate }}</h2>
+  <p class="m-0 text-sm text-on-surface-variant">{{ 'account.deletion.intro' | translate }}</p>
+
+  @if (operator()) {
+    <p role="alert" class="m-0 text-sm text-error" data-testid="account-delete-operator">
+      {{ 'account.deletion.operator' | translate }}
+    </p>
+  }
+
+  @if (ownedAlone().length > 0) {
+    <div class="flex flex-col gap-2" data-testid="account-delete-sole-owner">
+      <p role="alert" class="m-0 text-sm text-error">
+        {{ 'account.deletion.sole_owner' | translate }}
+      </p>
+      <ul class="m-0 flex list-none flex-col gap-2 p-0">
+        @for (company of ownedAlone(); track company.id; let i = $index) {
+          <li
+            class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant p-3"
+            [attr.data-testid]="'account-delete-company-' + i"
+          >
+            <span class="font-medium">{{ company.name }}</span>
+            <span class="flex flex-wrap gap-2">
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="open(company, '/members')"
+                [attr.data-testid]="'account-delete-company-' + i + '-hand-over'"
+              >
+                {{ 'account.deletion.hand_over' | translate }}
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="open(company, '/company/profile')"
+                [attr.data-testid]="'account-delete-company-' + i + '-close'"
+              >
+                {{ 'account.deletion.close_company' | translate }}
+              </button>
+            </span>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (!operator()) {
+    <div>
+      <button
+        mat-stroked-button
+        type="button"
+        class="twes-danger"
+        [disabled]="busy()"
+        (click)="delete()"
+        data-testid="account-delete"
+      >
+        {{ 'account.deletion.delete' | translate }}
+      </button>
+    </div>
+  }
+</section>

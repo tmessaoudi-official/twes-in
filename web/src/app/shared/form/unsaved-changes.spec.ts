@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import type { Route } from '@angular/router';
 import { of } from 'rxjs';
+import { ConfirmDialog } from '../ui/confirm-dialog';
 import { guardUnsaved, UnsavedChanges, unsavedGuard } from './unsaved-changes';
 
 @Component({ template: '' })
@@ -18,6 +19,7 @@ class Page {
 describe('UnsavedChanges', () => {
   let answer: boolean | undefined;
   let asked: number;
+  let opened: unknown;
 
   function service(): UnsavedChanges {
     return TestBed.inject(UnsavedChanges);
@@ -36,7 +38,8 @@ describe('UnsavedChanges', () => {
         {
           provide: MatDialog,
           useValue: {
-            open: () => {
+            open: (component: unknown) => {
+              opened = component;
               asked += 1;
               return { afterClosed: () => of(answer) };
             },
@@ -62,6 +65,7 @@ describe('UnsavedChanges', () => {
 
     expect(await leaving()).toBe(false);
     expect(asked).toBe(1);
+    expect(opened).toBe(ConfirmDialog);
   });
 
   it('treats a dismissed question as staying, never as leaving', async () => {
@@ -75,7 +79,7 @@ describe('UnsavedChanges', () => {
     expect(await leaving()).toBe(false);
   });
 
-  it('lets a page through once when it says it saved, and asks again the time after', () => {
+  it('lets a page through once when it says it saved, and asks again the time after', async () => {
     // Narrow on purpose: the statement is consumed by the very navigation that follows the save, so it cannot
     // leave a later, genuine leave unguarded.
     const page = TestBed.createComponent(Page);
@@ -90,11 +94,7 @@ describe('UnsavedChanges', () => {
       .subscribe((allowed) => (first = allowed));
     expect([first, asked]).toEqual([true, 0]);
 
-    let second: boolean | undefined;
-    service()
-      .confirmLeave()
-      .subscribe((allowed) => (second = allowed));
-    expect([second, asked]).toEqual([false, 1]);
+    expect([await leaving(), asked]).toEqual([false, 1]);
   });
 
   it('stops asking once the page has been saved', async () => {

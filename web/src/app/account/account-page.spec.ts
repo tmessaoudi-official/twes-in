@@ -147,6 +147,7 @@ describe('AccountPage', () => {
   const auth = {
     me,
     changePassword: vi.fn(),
+    isPlatformOperator: () => false,
     hasModule: (module: string) => modules().includes(module),
   };
   const notificationChoices = { list: vi.fn(), change: vi.fn() };

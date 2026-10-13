@@ -31,3 +31,11 @@ export interface ActivitySearch {
 }
 
 export type ActivityError = 'not_found' | 'invalid' | 'network';
+
+/**
+ * Who an entry names when no name comes with it: an actor whose account was deleted since keeps their id in the journal
+ * and loses their name, which is not the same as no one at all, such as a scheduled run.
+ */
+export function unnamedActorKey(row: Pick<ActivityRow, 'actorId'>): string {
+  return row.actorId === null ? 'activity.nobody' : 'activity.deleted_account';
+}

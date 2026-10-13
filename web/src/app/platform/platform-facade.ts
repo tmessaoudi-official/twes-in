@@ -13,6 +13,7 @@ import {
   type PlatformAccountSearch,
   type PlatformCompanySearch,
   type PlatformCompanyRow,
+  type PlatformDelay,
   type PlatformError,
   type PlatformSignup,
   type PlatformSubscriptionRow,
@@ -30,6 +31,7 @@ export class PlatformFacade {
   private readonly waitingSignal = signal<readonly PlatformCompanyRow[]>([]);
   private readonly signupSignal = signal<PlatformSignup | null>(null);
   private readonly supportSignal = signal<PlatformSupport | null>(null);
+  private readonly delaysSignal = signal<readonly PlatformDelay[] | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<PlatformError | null>(null);
 
@@ -69,6 +71,8 @@ export class PlatformFacade {
   readonly signup = this.signupSignal.asReadonly();
   /** How companies reach the operators, null until read. */
   readonly support = this.supportSignal.asReadonly();
+  /** The numbers of days the platform sets, null until read. */
+  readonly delays = this.delaysSignal.asReadonly();
   private readonly subscriptionSignal = signal<PlatformSubscriptionRow | null>(null);
   private readonly openedSignal = signal<string | null>(null);
   /** The subscription of the company whose panel is open, null while it is being read or where there is none. */
@@ -85,15 +89,18 @@ export class PlatformFacade {
   async load(): Promise<void> {
     this.busySignal.set(true);
     try {
-      const [waiting, signup, support, every, accounts, demand, failed] = await Promise.all([
-        this.api.companies(WAITING_SEARCH),
-        this.api.signup(),
-        this.api.support(),
-        this.api.companies(COUNT_SEARCH),
-        this.api.accounts(ACCOUNT_COUNT_SEARCH),
-        this.api.moduleDemand(),
-        this.api.failedMessages(),
-      ]);
+      const [waiting, signup, support, delays, every, accounts, demand, failed] = await Promise.all(
+        [
+          this.api.companies(WAITING_SEARCH),
+          this.api.signup(),
+          this.api.support(),
+          this.api.delays(),
+          this.api.companies(COUNT_SEARCH),
+          this.api.accounts(ACCOUNT_COUNT_SEARCH),
+          this.api.moduleDemand(),
+          this.api.failedMessages(),
+        ],
+      );
       this.demandSignal.set(demand);
       this.failedSignal.set(failed);
       this.waitingSignal.set(waiting.rows);
@@ -102,6 +109,7 @@ export class PlatformFacade {
       this.everyAccountSignal.set(accounts.total);
       this.signupSignal.set(signup);
       this.supportSignal.set(support);
+      this.delaysSignal.set(delays);
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
@@ -302,6 +310,20 @@ export class PlatformFacade {
       }
       await this.auth.refresh();
 
+      return true;
+    });
+  }
+
+  /** Saves the delays changed, one at a time, and shows what the platform then holds. */
+  async saveDelays(changes: Readonly<Record<string, number>>): Promise<boolean> {
+    return this.write(async () => {
+      for (const [key, value] of Object.entries(changes)) {
+        await this.api.setDelay(key, value);
+        this.delaysSignal.update(
+          (delays) =>
+            delays?.map((delay) => (delay.key === key ? { ...delay, value } : delay)) ?? null,
+        );
+      }
       return true;
     });
   }

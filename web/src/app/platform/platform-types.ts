@@ -61,6 +61,19 @@ export type SupportChannel = 'phone' | 'whatsapp' | 'email' | 'status_url';
 /** Each support channel as the operators set it, empty where they did not. */
 export type PlatformSupport = Readonly<Record<SupportChannel, string>>;
 
+/**
+ * A number of days the platform sets for every company: each whole-number platform setting, drawn from its declaration
+ * (label, bounds), so a new one has its field without a line written here. `value` is what is in effect, the default
+ * where nothing was set.
+ */
+export interface PlatformDelay {
+  readonly key: string;
+  readonly labelKey: string;
+  readonly value: number;
+  readonly min: number | null;
+  readonly max: number | null;
+}
+
 /** An account as the platform's operators look it up. */
 export interface PlatformAccountRow {
   readonly id: string;

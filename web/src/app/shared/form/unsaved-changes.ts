@@ -3,8 +3,7 @@
 import { computed, DestroyRef, inject, Injectable, type Signal, signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import type { CanDeactivateFn, Route } from '@angular/router';
-import { map, type Observable, of } from 'rxjs';
-import { ConfirmDialog } from '../ui/confirm-dialog';
+import { from, map, type Observable, of, switchMap } from 'rxjs';
 
 /**
  * What is typed and not saved, anywhere on the page (row 45). Every record page counts its own through
@@ -50,18 +49,23 @@ export class UnsavedChanges {
     }
     if (this.count() === 0) return of(true);
 
-    return this.dialog
-      .open(ConfirmDialog, {
-        data: {
-          title: 'form.leave.title',
-          message: 'form.leave.message',
-          confirmLabel: 'form.leave.leave',
-          keepLabel: 'form.leave.stay',
-        },
-        autoFocus: 'dialog',
-      })
-      .afterClosed()
-      .pipe(map((answer) => answer === true));
+    // The guard sits on the first page through the routes; the dialog is fetched the first time it is needed.
+    return from(import('../ui/confirm-dialog')).pipe(
+      switchMap(({ ConfirmDialog }) =>
+        this.dialog
+          .open(ConfirmDialog, {
+            data: {
+              title: 'form.leave.title',
+              message: 'form.leave.message',
+              confirmLabel: 'form.leave.leave',
+              keepLabel: 'form.leave.stay',
+            },
+            autoFocus: 'dialog',
+          })
+          .afterClosed(),
+      ),
+      map((answer) => answer === true),
+    );
   }
 }
 

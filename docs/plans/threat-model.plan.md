@@ -27,6 +27,10 @@ its fix is on master, and the threat model lands last. P10 (continuity) follows 
 - [2026-10-13 14:53] AGREED: Closing a company can be undone by its owner alone during a grace period, a platform setting (7 days by default); after it the closing is final and the company stays read-only until its retention ends (developer).
 - [2026-10-13 14:53] ASSUMED (review): Company closing: retention runs from the end of the year the company closes plus the preset's years (TN 10, CIRPP/IS art. 62; FR 10, C. com. L123-22), never shorter than the law, marked unvalidated — because neither source in docs/research names the start. Alternatives: the closing day plus N years
 - [2026-10-13 14:53] ASSUMED (review): Company closing: on a closed company only GET passes, for *.read and accounting.export; every other request is 403 company_closed, the subscription is no longer judged, and approving, suspending or an invitation cannot reopen it; closing ends pending invitations and support grants — because a closed company is kept, not worked in. Alternatives: judge read-only by permission name alone
+- [2026-10-13 15:54] ASSUMED (review): 3e dialogs name no number of days before acting (Me stays as it is for deletion); the exact date is given after the action: the deletion toast and mail carry finalAt, the closed-company banner carries reopenUntil and retainUntil — because a non-operator cannot read platform settings and exposing both day counts on Me widens the API for one sentence. Alternatives: both day counts on Me.
+- [2026-10-13 15:54] ASSUMED (review): 3e a closed company opens in the shell read-only (only .read permissions and accounting.export, closed status taking precedence over the subscription's access) with a banner, instead of the awaiting-approval page — because the ruling keeps it readable to its members until its retention ends. Alternatives: an awaiting-page branch with the export alone.
+- [2026-10-13 16:43] AGREED: The screens-maturity review rounds run after 3e lands, on that frozen commit; W4-W7 resume while the developer rules on its proposals (developer).
+- [2026-10-13 17:01] AGREED: A fourth action kind, « Définitif à terme » (hourglass icon, drawn red like définitif): taken back during a delay, then final; account deletion and company closing use it; every définitif and définitif-à-terme confirmation draws its confirming button in the danger colour; account deletion, company closing and company erasure ask a typed word before the button enables (developer).
 
 ## Formal Plan
 
@@ -74,13 +78,26 @@ real publish workflow.
 | 3a | W3 journal functions and the 12-month purge | M | done | 02e51a98 | api/migrations/** api/src/Audit/** api/tests/** |
 | 3b | W3 « Mon compte » texts loaded with their page | M | done | 23bafd76 | web/** scripts/gates/** |
 | 3c | W3 account deletion API | L | done | 9c50a361 | api/src/Identity/** api/tests/** |
-| 3d | W3 company closing API | L | todo | - | api/src/Tenancy/** api/config/fiscal/** docs/fiscal/** |
-| 3e | W3 account deletion and company closing screens | M | todo | - | web/** |
+| 3d | W3 company closing API | L | done | 965a8d53 | api/src/Tenancy/** api/config/fiscal/** docs/fiscal/** |
+| 3e | W3 account deletion screen, the danger kind, the platform delays | M | doing | - | web/** docs/** |
+| 3f | W3 company closing and erasure screens (typed name, définitif à terme) | M | todo | - | web/** |
 | 4 | W4 realtime, PDF, web | L | todo | - | api/** web/** infra/** compose*.yaml |
 | 5 | W5 delivery and operations | L | todo | - | .github/** scripts/** infra/** compose*.yaml |
 | 6 | W6 invoice signing key | L | todo | - | api/src/** api/tests/** |
 | 7 | THREAT-MODEL.md + docs | M | todo | - | docs/** CLAUDE.md |
 <!-- /progress-block -->
+### Resume 3e/3f (2026-10-13 17:30)
+- 3e built: the 4th kind `definitif_a_terme` and `isDanger`, `ConfirmDialog` red for both final kinds with a typed word or name (`typed`),
+  `.twes-danger` through Material's button tokens, « Supprimer mon compte » red with SUPPRIMER/DELETE typed and an operator told
+  before any dialog, « Compte supprimé » in the journal, a « Délais » card on « Gérer la plateforme » drawing every whole-number
+  platform setting from its declaration; e2e `account-deletion.spec.ts` measures the colour as drawn in both schemes (a sabotage of the
+  CSS rule turned it red: rgb(0, 87, 195) received). Screenshots before/after in `var/claude/maturity/3e-*.png`.
+- 3f next, per the 15:54 entries: Me's company gains closedDownAt/retainUntil/reopenUntil; « Fermer l'entreprise » (kind
+  définitif à terme, the company's name typed, kept apart from « Clôture » of a period); a closed status wins over access; reads plus
+  accounting.export only; a `company_closed` interceptor; the shell read-only with a banner; e2e on a company the operator creates.
+  Proposed, to be ruled: the data erasure is final after its delay too (its banner says « Définitif le … »), so its preview would
+  move to the shared dialog with `definitif_a_terme` and the company's name typed (the 17:01 entry already asks a typed word for it).
+- Then freeze, `/compact`, round 0 of the screens-maturity review (ledger seeded: `var/claude/maturity/ledger.md`).
 ### Blocked
 ### Needs input
 ### Needs research

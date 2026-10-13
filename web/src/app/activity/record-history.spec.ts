@@ -30,6 +30,7 @@ class StaticLoader implements TranslateLoader {
     return of({
       activity: {
         nobody: 'Personne',
+        deleted_account: 'Compte supprimé',
         history: { none: 'Rien encore', all: 'Tout voir' },
         actions: { customer: { revised: 'a modifié le client' } },
       },
@@ -71,7 +72,14 @@ describe('RecordHistory', () => {
   }
 
   beforeEach(async () => {
-    api.entries.mockReset().mockResolvedValue({ rows: [revised], total: 1 });
+    api.entries.mockReset().mockResolvedValue({
+      rows: [
+        revised,
+        { ...revised, id: 'a2', actorName: null },
+        { ...revised, id: 'a3', actorId: null, actorName: null },
+      ],
+      total: 3,
+    });
     TestBed.configureTestingModule({
       imports: [Host],
       providers: [
@@ -119,6 +127,17 @@ describe('RecordHistory', () => {
     expect(entry).toContain('Leila');
     expect(entry).toContain('a modifié le client');
     expect(entry).toContain('email, phone');
+  });
+
+  it('names an account deleted since as such, and no one at all as « Personne »', () => {
+    const entries = [
+      ...(fixture.nativeElement as HTMLElement).querySelectorAll(
+        '[data-testid="record-history-entry"]',
+      ),
+    ];
+    expect(entries[1]?.textContent).toContain('Compte supprimé');
+    expect(entries[2]?.textContent).toContain('Personne');
+    expect(entries[2]?.textContent).not.toContain('Compte supprimé');
   });
 
   it('leads to the whole journal narrowed to the record', () => {

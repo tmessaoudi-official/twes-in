@@ -20,7 +20,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { ActivityApi } from './activity-api';
 import { ActivityFieldsPipe } from './activity-fields-pipe';
 import { actionKey } from './activity-list';
-import type { ActivityRow, ActivitySearch } from './activity-types';
+import { unnamedActorKey, type ActivityRow, type ActivitySearch } from './activity-types';
 
 /** How many of a record's latest entries its « Historique » shows; the journal holds the rest. */
 export const HISTORY_SIZE = 20;
@@ -46,7 +46,9 @@ export const HISTORY_SIZE = 20;
         @for (row of rows(); track row.id) {
           <li class="flex flex-wrap gap-x-2" data-testid="record-history-entry">
             <span class="text-on-surface-variant tabular-nums">{{ row.at | moment }}</span>
-            <span class="font-medium">{{ row.actorName ?? ('activity.nobody' | translate) }}</span>
+            <span class="font-medium">{{
+              row.actorName ?? (unnamedActorKey(row) | translate)
+            }}</span>
             @if (actionKey(row.action); as key) {
               <span>{{ key | translate }}</span>
             } @else {
@@ -86,6 +88,7 @@ export class RecordHistory implements OnInit {
   protected readonly rows = signal<readonly ActivityRow[]>([]);
   protected readonly error = signal(false);
   protected readonly actionKey = actionKey;
+  protected readonly unnamedActorKey = unnamedActorKey;
   private readonly companyId = computed(() => this.auth.me()?.company?.id ?? null);
   private request = 0;
 

@@ -933,6 +933,11 @@
     }
   },
   "settings": {
+    "platform": {
+      "account_deletion_days": "Jours avant qu’un compte supprimé le soit définitivement",
+      "company_reopen_days": "Jours pendant lesquels une entreprise fermée peut être rouverte",
+      "licensing_grace_days": "Jours de grâce après la fin d’un abonnement"
+    },
     "intro": "Les valeurs par défaut de la société. Un client, un produit ou un document peut encore en décider autrement.",
     "no_company": "Choisissez d’abord une société.",
     "forbidden": "Modifier les paramètres de la société demande la permission des paramètres.",
@@ -3320,6 +3325,13 @@
         "signup": "Inscriptions"
       }
     },
+    "delays": {
+      "title": "Délais",
+      "intro": "Les jours que la plateforme laisse à chaque entreprise et à chaque compte avant qu’un changement prenne effet.",
+      "bounds": "De {{min}} à {{max}} jours",
+      "save": "Enregistrer les délais",
+      "saved": "Délais enregistrés."
+    },
     "support": {
       "title": "Contact du support",
       "intro": "Ce que l’aide de chaque écran propose sous « Nous contacter » à toutes les personnes connectées. Un moyen laissé vide n’y figure pas.",
@@ -4004,13 +4016,16 @@
     "kind": {
       "annulable": "Annulable",
       "corrigeable": "Corrigeable",
-      "definitif": "Définitif"
+      "definitif": "Définitif",
+      "definitif_a_terme": "Définitif à terme"
     },
     "kind_help": {
       "annulable": "Vous pourrez revenir en arrière depuis le message qui suit.",
       "corrigeable": "Cela ne s’annule pas ; une erreur se corrige ensuite.",
-      "definitif": "Cela ne pourra être ni annulé ni corrigé."
+      "definitif": "Cela ne pourra être ni annulé ni corrigé.",
+      "definitif_a_terme": "Vous pourrez revenir en arrière pendant un délai ; ensuite, c’est définitif."
     },
+    "typed": "Pour confirmer, tapez « {{word}} ».",
     "final_group": "Définitif",
     "coming": "Bientôt sur cet écran"
   },
@@ -4396,6 +4411,7 @@
     "intro": "Ce qui a été fait dans la société, par qui et sur quoi. Ce qui a changé est nommé, jamais sa valeur.",
     "none": "Rien dans le journal pour ces filtres.",
     "nobody": "Personne (non connecté)",
+    "deleted_account": "Compte supprimé",
     "errors": {
       "not_found": "Ce journal n’est pas accessible.",
       "invalid": "Ces filtres n’ont pas pu être lus.",

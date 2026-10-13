@@ -16,21 +16,38 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       actions: {
-        kind: { annulable: 'Annulable', corrigeable: 'Corrigeable', definitif: 'Définitif' },
+        kind: {
+          annulable: 'Annulable',
+          corrigeable: 'Corrigeable',
+          definitif: 'Définitif',
+          definitif_a_terme: 'Définitif à terme',
+        },
         kind_help: {
           annulable: 'Vous pourrez revenir en arrière depuis le message qui suit.',
           corrigeable: 'Cela ne s’annule pas ; une erreur se corrige ensuite.',
           definitif: 'Cela ne pourra être ni annulé ni corrigé.',
+          definitif_a_terme:
+            'Vous pourrez revenir en arrière pendant un délai ; ensuite, c’est définitif.',
         },
+        typed: 'Pour confirmer, tapez « {{word}} ».',
       },
-      d: { title: 'Émettre ?', message: 'Elle reçoit son numéro.', run: 'Émettre', keep: 'Garder' },
+      d: {
+        title: 'Émettre ?',
+        message: 'Elle reçoit son numéro.',
+        run: 'Émettre',
+        keep: 'Garder',
+        word: 'SUPPRIMER',
+      },
     });
   }
 }
 
 // docs/SPEC.md § 7, 2026-09-25 22:17: every consequential action says whether it can be taken back, before it runs.
 describe('ConfirmDialog', () => {
-  function render(kind: ActionConfirm['kind']): HTMLElement {
+  const close = vi.fn();
+
+  function render(kind: ActionConfirm['kind'], typed?: ActionConfirm['typed']): HTMLElement {
+    close.mockReset();
     TestBed.configureTestingModule({
       imports: [ConfirmDialog],
       providers: [
@@ -39,7 +56,7 @@ describe('ConfirmDialog', () => {
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
-        { provide: MatDialogRef, useValue: { close: vi.fn() } },
+        { provide: MatDialogRef, useValue: { close } },
         {
           provide: MAT_DIALOG_DATA,
           useValue: {
@@ -48,13 +65,28 @@ describe('ConfirmDialog', () => {
             message: 'd.message',
             confirmLabel: 'd.run',
             keepLabel: 'd.keep',
+            ...(typed === undefined ? {} : { typed }),
           } satisfies ActionConfirm,
         },
       ],
     });
     const fixture = TestBed.createComponent(ConfirmDialog);
     fixture.detectChanges();
+    rendered = fixture;
     return fixture.nativeElement as HTMLElement;
+  }
+
+  let rendered: { detectChanges(): void } | undefined;
+
+  const run = (root: HTMLElement) =>
+    root.querySelector<HTMLButtonElement>('[data-testid="confirm-run"]');
+
+  function type(root: HTMLElement, text: string): void {
+    const field = root.querySelector<HTMLInputElement>('[data-testid="confirm-typed"]');
+    if (field === null) throw new Error('no typed field');
+    field.value = text;
+    field.dispatchEvent(new Event('input'));
+    rendered?.detectChanges();
   }
 
   const kindOf = (root: HTMLElement) =>
@@ -79,5 +111,69 @@ describe('ConfirmDialog', () => {
 
   it('marks its kind for the tours', () => {
     expect(kindOf(render('annulable'))?.getAttribute('data-tour')).toBe('action-kind');
+  });
+
+  // § 7 2026-10-13 17:01: what cannot be taken back, now or after a delay, is drawn as danger, and nothing else is.
+  it.each(['definitif', 'definitif_a_terme'] as const)(
+    'draws a %s action in the danger colour',
+    (kind) => {
+      expect(run(render(kind))?.classList).toContain('twes-danger');
+    },
+  );
+
+  it.each(['annulable', 'corrigeable'] as const)(
+    'keeps a %s action in the primary colour',
+    (kind) => {
+      expect(run(render(kind))?.classList).not.toContain('twes-danger');
+    },
+  );
+
+  it('says what « Définitif à terme » means, with its hourglass', () => {
+    const kind = kindOf(render('definitif_a_terme'));
+    expect(kind?.textContent).toContain('Définitif à terme');
+    expect(kind?.textContent).toContain('pendant un délai');
+    expect(kind?.querySelector('mat-icon')?.textContent?.trim()).toBe('hourglass_top');
+  });
+
+  describe('a typed confirmation', () => {
+    it('asks for the word and refuses until it is typed', () => {
+      const root = render('definitif_a_terme', { word: 'd.word' });
+      expect(root.textContent).toContain('Pour confirmer, tapez « SUPPRIMER ».');
+      expect(run(root)?.disabled).toBe(true);
+      type(root, 'SUPPRIME');
+      expect(run(root)?.disabled).toBe(true);
+    });
+
+    it('takes the word whatever its case and the spaces around it', () => {
+      const root = render('definitif_a_terme', { word: 'd.word' });
+      type(root, '  supprimer ');
+      expect(run(root)?.disabled).toBe(false);
+      run(root)?.click();
+      expect(close).toHaveBeenCalledWith(true);
+    });
+
+    it('takes a company name with either apostrophe, any case and its spaces collapsed', () => {
+      const root = render('definitif', { name: 'Atelier L’Étoile  du Sud' });
+      expect(root.textContent).toContain('« Atelier L’Étoile  du Sud »');
+      type(root, "atelier l'étoile du sud");
+      expect(run(root)?.disabled).toBe(false);
+    });
+
+    it('confirms on Enter only once the word matches', () => {
+      const root = render('definitif_a_terme', { word: 'd.word' });
+      const field = root.querySelector<HTMLInputElement>('[data-testid="confirm-typed"]');
+      type(root, 'non');
+      field?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      expect(close).not.toHaveBeenCalled();
+      type(root, 'supprimer');
+      field?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      expect(close).toHaveBeenCalledWith(true);
+    });
+
+    it('asks nothing to be typed when the action does not say so', () => {
+      const root = render('definitif');
+      expect(root.querySelector('[data-testid="confirm-typed"]')).toBeNull();
+      expect(run(root)?.disabled).toBe(false);
+    });
   });
 });

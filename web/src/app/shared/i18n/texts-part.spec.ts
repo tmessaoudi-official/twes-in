@@ -129,6 +129,30 @@ describe('textsPart', () => {
     expect(text()).toBe('Delete · Yes · 2 items');
   });
 
+  it('lends the page’s texts to what opens over it, a toast or a dialog, in either language', async () => {
+    const navigation = TestBed.inject(Router).navigateByUrl('/part');
+    await settled();
+    http.expectOne('/i18n/part/fr.json').flush(PART.fr);
+    await navigation;
+    // A toast or a dialog is drawn from the root injector, and translates through the root service.
+    const root = TestBed.inject(TranslateService);
+    expect(root.instant('part.remove')).toBe('Supprimer');
+    expect(root.instant('part.items', { count: 1 })).toBe('1 élément');
+    expect(root.instant('shared.yes')).toBe('Oui');
+
+    const switching = TestBed.inject(LanguageFacade).use('en');
+    for (const url of ['/i18n/part/en.json', '/i18n/en.json']) {
+      await settled();
+      for (const request of http.match(url)) {
+        request.flush(url === '/i18n/en.json' ? ROOT.en : PART.en);
+      }
+    }
+    await switching;
+
+    expect(root.instant('part.remove')).toBe('Delete');
+    expect(root.instant('shared.yes')).toBe('Yes');
+  });
+
   it('does not load the page’s texts while the page is not opened', () => {
     http.expectNone('/i18n/part/fr.json');
   });

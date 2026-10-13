@@ -69,6 +69,7 @@ export class LanguageFacade {
     const parts = this.parts.load(language);
     if (parts !== undefined) await parts;
     await firstValueFrom(this.translate.use(language));
+    this.parts.share(language);
     this.currentSignal.set(language);
     this.document.documentElement.lang = language;
   }

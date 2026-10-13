@@ -55,6 +55,8 @@ describe('PlatformFacade', () => {
     setSignup: vi.fn(),
     support: vi.fn(),
     setSupport: vi.fn(),
+    delays: vi.fn(),
+    setDelay: vi.fn(),
     accounts: vi.fn(),
     actOnAccount: vi.fn(),
     companies: vi.fn(),
@@ -72,6 +74,10 @@ describe('PlatformFacade', () => {
     Object.values(api).forEach((fn) => fn.mockReset());
     api.signup.mockResolvedValue({ enabled: false, approvalRequired: true });
     api.support.mockResolvedValue({ phone: '+216 71 000 000', whatsapp: '', email: '' });
+    api.delays.mockResolvedValue([
+      { key: 'account.deletion_days', labelKey: 'l.a', value: 7, min: 1, max: 90 },
+      { key: 'company.reopen_days', labelKey: 'l.c', value: 7, min: 1, max: 90 },
+    ]);
     api.accounts.mockResolvedValue({ rows: [account], total: 1 });
     api.companies.mockResolvedValue({ rows: [row], total: 1 });
     api.moduleDemand.mockResolvedValue([
@@ -258,6 +264,28 @@ describe('PlatformFacade', () => {
       whatsapp: '+216 20 123 456',
       email: 'help@twes.test',
     });
+  });
+
+  it('saves the delays changed, and shows what the platform then holds', async () => {
+    await facade.load();
+    api.setDelay.mockResolvedValue(undefined);
+
+    expect(await facade.saveDelays({ 'company.reopen_days': 14 })).toBe(true);
+
+    expect(api.setDelay.mock.calls).toEqual([['company.reopen_days', 14]]);
+    expect(facade.delays()?.map((delay) => [delay.key, delay.value])).toEqual([
+      ['account.deletion_days', 7],
+      ['company.reopen_days', 14],
+    ]);
+  });
+
+  it('keeps a delay as it was when the platform refuses it', async () => {
+    await facade.load();
+    api.setDelay.mockRejectedValue(new PlatformRefused('refused'));
+
+    expect(await facade.saveDelays({ 'account.deletion_days': 200 })).toBe(false);
+
+    expect(facade.delays()?.[0]?.value).toBe(7);
   });
 
   it('keeps the support channels as they were when the platform refuses one', async () => {

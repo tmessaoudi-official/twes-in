@@ -40,6 +40,7 @@ import {
   type PlatformTab,
   type SignupSwitch,
   type SupportChannel,
+  type PlatformDelay,
   type PlatformSupport,
   type SubscriptionTerms,
 } from './platform-types';
@@ -199,6 +200,34 @@ export class PlatformPage implements OnInit {
     );
   });
   protected readonly supportChanged = computed(() => Object.keys(this.supportChanges()).length > 0);
+  protected readonly delays = this.platform.delays;
+  /** The delays as typed, by key, until saved; a field never typed in shows what the platform holds. */
+  protected readonly delayDraft = linkedSignal<
+    readonly PlatformDelay[] | null,
+    Record<string, number>
+  >({
+    source: () => this.platform.delays(),
+    computation: () => ({}),
+  });
+  /** What differs from the platform, or null while a typed value is not a whole number within its bounds. */
+  private readonly delayChanges = computed<Record<string, number> | null>(() => {
+    const changes: Record<string, number> = {};
+    for (const delay of this.platform.delays() ?? []) {
+      const typed = this.delayDraft()[delay.key];
+      if (typed === undefined || typed === delay.value) continue;
+      const fits =
+        Number.isInteger(typed) &&
+        (delay.min === null || typed >= delay.min) &&
+        (delay.max === null || typed <= delay.max);
+      if (!fits) return null;
+      changes[delay.key] = typed;
+    }
+    return changes;
+  });
+  protected readonly delaysReady = computed(() => {
+    const changes = this.delayChanges();
+    return changes !== null && Object.keys(changes).length > 0;
+  });
   protected readonly busy = this.platform.busy;
   protected readonly error = this.platform.error;
   protected readonly accounts = this.platform.accounts;
@@ -382,6 +411,18 @@ export class PlatformPage implements OnInit {
   protected typedSupport(channel: SupportChannel, event: Event): void {
     const value = (event.target as HTMLInputElement).value.trim();
     this.supportDraft.update((draft) => (draft === null ? draft : { ...draft, [channel]: value }));
+  }
+
+  protected typedDelay(key: string, event: Event): void {
+    const raw = (event.target as HTMLInputElement).value.trim();
+    this.delayDraft.update((draft) => ({ ...draft, [key]: raw === '' ? Number.NaN : Number(raw) }));
+  }
+
+  protected async saveDelays(): Promise<void> {
+    const changes = this.delayChanges();
+    if (changes !== null && (await this.platform.saveDelays(changes))) {
+      this.feedback.success('platform.delays.saved');
+    }
   }
 
   protected async saveSupport(): Promise<void> {
