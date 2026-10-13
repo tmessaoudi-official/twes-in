@@ -31,6 +31,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(OpenSpoutWriter::class)]
 final class SpreadsheetTest extends TestCase
 {
+    private const int MAX_INFLATED_BYTES = 1024 * 1024;
+
     /** @var list<string> */
     private array $written = [];
 
@@ -115,7 +117,7 @@ final class SpreadsheetTest extends TestCase
 
         self::assertSame(
             ['123456789012345', '123456789012345.67', '19.99'],
-            iterator_to_array((new OpenSpoutReader())->rows($path, SpreadsheetFormat::Xlsx))[1],
+            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx))[1],
         );
     }
 
@@ -124,7 +126,7 @@ final class SpreadsheetTest extends TestCase
     {
         $path = $this->typed([[new \DateTimeImmutable('2026-09-18 14:30:00')]]);
 
-        self::assertSame('2026-09-18', iterator_to_array((new OpenSpoutReader())->rows($path, SpreadsheetFormat::Xlsx))[1][0]);
+        self::assertSame('2026-09-18', iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx))[1][0]);
     }
 
     /**
@@ -139,8 +141,34 @@ final class SpreadsheetTest extends TestCase
 
         self::assertSame(
             [1 => ['reference', 'name'], 2 => ['ART-001', 'Écran café']],
-            iterator_to_array((new OpenSpoutReader())->rows($path, SpreadsheetFormat::Csv)),
+            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Csv)),
         );
+    }
+
+    /**
+     * A workbook is a zip, and a few kilobytes of it can inflate to gigabytes, which the reader would then cache and
+     * walk. What the zip says its parts inflate to is read before anything is opened.
+     */
+    public function testAWorkbookThatInflatesBeyondTheLimitIsRefusedBeforeItIsRead(): void
+    {
+        $path = $this->path('xlsx');
+        (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Xlsx, [['number', 'name'], ['A-1', 'Alpha']]);
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path));
+        $zip->addFromString('xl/padding.xml', str_repeat(' ', self::MAX_INFLATED_BYTES));
+        $zip->close();
+        self::assertLessThan(self::MAX_INFLATED_BYTES / 10, (int) filesize($path), 'the file itself is small');
+
+        $this->expectException(UnreadableSpreadsheet::class);
+        iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx));
+    }
+
+    public function testAWorkbookWithinTheLimitIsRead(): void
+    {
+        $path = $this->path('xlsx');
+        (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Xlsx, [['number', 'name'], ['A-1', 'Alpha']]);
+
+        self::assertSame([1 => ['number', 'name'], 2 => ['A-1', 'Alpha']], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx)));
     }
 
     public function testAFileThatIsNotASpreadsheetIsRefusedByName(): void
@@ -150,7 +178,7 @@ final class SpreadsheetTest extends TestCase
         file_put_contents($path, 'this is not a workbook');
 
         $this->expectException(UnreadableSpreadsheet::class);
-        iterator_to_array((new OpenSpoutReader())->rows($path, SpreadsheetFormat::Xlsx));
+        iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx));
     }
 
     /**
@@ -187,7 +215,7 @@ final class SpreadsheetTest extends TestCase
         $path = $this->path($format->extension());
         (new OpenSpoutWriter())->write($path, $format, $rows);
 
-        return (new OpenSpoutReader())->rows($path, $format);
+        return (new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, $format);
     }
 
     /**

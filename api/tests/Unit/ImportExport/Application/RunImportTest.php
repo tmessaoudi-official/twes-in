@@ -168,6 +168,8 @@ final class RunImportTest extends TestCase
         yield 'a required column missing' => [[1 => ['number', 'email'], 2 => ['A-1', '']], UnreadableImport::MISSING_COLUMNS, ['name']];
         yield 'a column twice' => [[1 => ['number', 'name', 'Name'], 2 => ['A-1', 'Alpha', 'Beta']], UnreadableImport::DUPLICATE_COLUMNS, ['name']];
         yield 'more rows than allowed' => [[1 => ['number', 'name'], 2 => ['A-1', 'a'], 3 => ['A-2', 'b'], 4 => ['A-3', 'c'], 5 => ['A-4', 'd']], UnreadableImport::TOO_MANY_ROWS, []];
+        // Blank lines are skipped, not free: a file of nothing but them would otherwise be read to its last one.
+        yield 'more blank lines than rows allowed' => [[1 => ['number', 'name'], 2 => ['A-1', 'a'], 3 => ['', ''], 4 => ['', ''], 5 => ['', ''], 6 => ['', ''], 7 => ['A-2', 'b']], UnreadableImport::TOO_MANY_ROWS, []];
     }
 
     /**

@@ -117,9 +117,15 @@ final readonly class RunImport
     {
         $header = null;
         $records = [];
+        $blank = 0;
         foreach ($rows as $line => $cells) {
             $cells = array_map(trim(...), $cells);
             if ('' === implode('', $cells)) {
+                // Skipped, not free: a file of nothing but blank lines, or a workbook whose one cell sits on its millionth
+                // row, would otherwise be read to the end.
+                if (++$blank > $this->maxRows) {
+                    throw new UnreadableImport(UnreadableImport::TOO_MANY_ROWS, [], $this->maxRows);
+                }
                 continue;
             }
             if (null === $header) {
