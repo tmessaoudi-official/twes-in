@@ -108,6 +108,35 @@ final class DevelopmentKeysTest extends KernelTestCase
         self::bootKernel(['environment' => 'prod', 'debug' => false]);
     }
 
+    /** `api/.env.dev` and `api/.env.test` commit a secret each: the repository's readers hold both. */
+    public function testProductionRefusesTheCommittedSecrets(): void
+    {
+        foreach (['09485d6948635a24ac59a2c004f96c76', 'test-secret-not-used-in-production'] as $committed) {
+            $this->environment(secret: $committed);
+            $refusal = null;
+            try {
+                self::bootKernel(['environment' => 'prod', 'debug' => false]);
+            } catch (\RuntimeException $e) {
+                $refusal = $e->getMessage();
+            }
+
+            self::assertNotNull($refusal, "production booted on the committed secret $committed");
+            self::assertStringContainsString('APP_SECRET', $refusal);
+            self::assertStringContainsString('development value', $refusal);
+        }
+    }
+
+    /** A secret short enough to guess signs links anyone can then forge, so production asks for 32 characters. */
+    public function testProductionRefusesAShortSecret(): void
+    {
+        $this->environment(secret: str_repeat('a', 31));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/APP_SECRET.*32/');
+
+        self::bootKernel(['environment' => 'prod', 'debug' => false]);
+    }
+
     /**
      * And the other way round, which is the half that keeps the guard honest: development and the test suite run
      * on these very literals, so a guard that refused them everywhere would stop the stack rather than protect it.
