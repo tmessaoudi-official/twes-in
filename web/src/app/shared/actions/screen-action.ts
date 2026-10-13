@@ -64,19 +64,31 @@ export interface ScreenAction {
 }
 
 /**
- * Whether what an action did can be taken back (docs/SPEC.md § 7, 2026-09-25 22:17): `annulable` is undone from its
- * toast; `corrigeable` is not undone but corrected afterwards, by a counter-document such as a credit note;
- * `definitif` can be neither. The same word is said on the confirmation, in the menu and on the toast.
+ * Whether what an action did can be taken back (docs/SPEC.md § 7, 2026-09-25 22:17 and 2026-10-13 17:01): `annulable`
+ * is undone from its toast; `corrigeable` is not undone but corrected afterwards, by a counter-document such as a
+ * credit note; `definitif` can be neither; `definitif_a_terme` can be taken back for a while, then can be neither, as an
+ * account deleted or a company closed. The same word is said on the confirmation, in the menu and on the toast.
  */
-export type ActionKind = 'annulable' | 'corrigeable' | 'definitif';
+export type ActionKind = 'annulable' | 'corrigeable' | 'definitif' | 'definitif_a_terme';
 
-export const ACTION_KINDS: readonly ActionKind[] = ['annulable', 'corrigeable', 'definitif'];
+export const ACTION_KINDS: readonly ActionKind[] = [
+  'annulable',
+  'corrigeable',
+  'definitif',
+  'definitif_a_terme',
+];
+
+/** The kinds drawn as danger: what cannot be taken back, now or once its delay has run. */
+export function isDanger(kind: ActionKind | undefined): boolean {
+  return kind === 'definitif' || kind === 'definitif_a_terme';
+}
 
 /** The icon said beside a kind's word wherever it appears, so the three are told apart at a glance. */
 export const ACTION_KIND_ICONS: Readonly<Record<ActionKind, IconName>> = {
   annulable: 'undo',
   corrigeable: 'edit_note',
   definitif: 'lock',
+  definitif_a_terme: 'hourglass_top',
 };
 
 /** An action's kind, from its confirmation; an action that asks nothing has none. */
@@ -106,4 +118,11 @@ export interface ActionConfirm {
   confirmLabel: string;
   /** The word on the button that does nothing, which is the one a person reaches for by mistake. */
   keepLabel: string;
+  /**
+   * What must be typed before the confirming button answers, for the heaviest actions only (§ 7 2026-10-13 16:43):
+   * a word, as a translation key so each language types its own, or a name as it is, such as the company's.
+   */
+  typed?: TypedConfirm;
 }
+
+export type TypedConfirm = { readonly word: string } | { readonly name: string };

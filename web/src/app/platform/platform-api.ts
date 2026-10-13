@@ -28,6 +28,7 @@ import type {
   NewCompany,
   PlatformAccountRow,
   PlatformCompanyRow,
+  PlatformDelay,
   PlatformError,
   PlatformSignup,
   SignupSwitch,
@@ -128,6 +129,32 @@ export class PlatformApi {
         email: valueOf('email'),
         status_url: valueOf('status_url'),
       };
+    });
+  }
+
+  /** Every whole-number platform setting, in the order the API declares them. */
+  delays(): Promise<PlatformDelay[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<SettingSettingRead[]>('/api/platform/settings'),
+      );
+      return rows
+        .filter((row) => row.type === 'int' && row.key !== undefined)
+        .map((row) => ({
+          key: row.key ?? '',
+          labelKey: row.labelKey ?? '',
+          value: Number(row.value ?? row.default),
+          min: row.min === null || row.min === undefined ? null : Number(row.min),
+          max: row.max === null || row.max === undefined ? null : Number(row.max),
+        }));
+    });
+  }
+
+  setDelay(key: string, value: number): Promise<void> {
+    return this.guard(async () => {
+      await firstValueFrom(
+        this.http.put<SettingSettingRead>(`/api/platform/settings/${key}`, { value }),
+      );
     });
   }
 

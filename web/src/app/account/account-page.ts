@@ -22,6 +22,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { SCANNING_MODULE } from '../shared/scan/scanning-module';
 import type { PasswordChangeOutcome } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
+import { AccountDeletion } from './account-deletion';
 import { ConnectedDevices } from './connected-devices';
 import { NotificationChoices } from './notification-choices';
 import {
@@ -71,6 +72,7 @@ export type AccountTab = (typeof ACCOUNT_TABS)[number];
   selector: 'app-account-page',
   imports: [
     PasswordToggle,
+    AccountDeletion,
     ConnectedDevices,
     NotificationChoices,
     MatButtonModule,

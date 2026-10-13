@@ -30,7 +30,7 @@ import {
   kindKey,
   recordLink,
 } from './activity-list';
-import type { ActivitySearch } from './activity-types';
+import { unnamedActorKey, type ActivitySearch } from './activity-types';
 
 /**
  * « Journal d'activité » (docs/SPEC.md § 7, 2026-09-26 23:04): what was done in the company, by whom and to which
@@ -65,6 +65,7 @@ export class ActivityPage implements OnInit {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly actionKey = actionKey;
+  protected readonly unnamedActorKey = unnamedActorKey;
   protected readonly kindKey = kindKey;
   protected readonly recordLink = recordLink;
   protected readonly rowTestId = (row: { id: string }): string => `activity-${row.id}`;

@@ -298,6 +298,60 @@ describe('PlatformApi', () => {
     await done;
   });
 
+  it('reads every whole-number platform setting as a delay, with its label, bounds and default', async () => {
+    const delays = api.delays();
+
+    http.expectOne('/api/platform/settings').flush([
+      { key: 'signup.enabled', type: 'bool', value: true },
+      {
+        key: 'account.deletion_days',
+        type: 'int',
+        labelKey: 'settings.platform.account_deletion_days',
+        value: 10,
+        default: 7,
+        min: 1,
+        max: 90,
+      },
+      {
+        key: 'company.reopen_days',
+        type: 'int',
+        labelKey: 'settings.platform.company_reopen_days',
+        value: null,
+        default: 7,
+        min: 1,
+        max: 90,
+      },
+    ]);
+
+    expect(await delays).toEqual([
+      {
+        key: 'account.deletion_days',
+        labelKey: 'settings.platform.account_deletion_days',
+        value: 10,
+        min: 1,
+        max: 90,
+      },
+      {
+        key: 'company.reopen_days',
+        labelKey: 'settings.platform.company_reopen_days',
+        value: 7,
+        min: 1,
+        max: 90,
+      },
+    ]);
+  });
+
+  it('sets one delay at the platform level', async () => {
+    const done = api.setDelay('account.deletion_days', 14);
+
+    const request = http.expectOne('/api/platform/settings/account.deletion_days');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ value: 14 });
+    request.flush({ key: 'account.deletion_days', value: 14 });
+
+    await done;
+  });
+
   it('reads the support channels from the platform settings, an unset one empty', async () => {
     const support = api.support();
 

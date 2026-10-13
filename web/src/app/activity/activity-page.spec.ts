@@ -34,6 +34,7 @@ class StaticLoader implements TranslateLoader {
       activity: {
         title: 'Journal d’activité',
         nobody: 'Personne',
+        deleted_account: 'Compte supprimé',
         kinds: { invoice: 'Facture', role: 'Rôle' },
         actions: { invoice: { issued: 'a émis la facture' } },
       },
@@ -64,10 +65,22 @@ const unknown: ActivityRow = {
   ip: null,
 };
 
+const byDeleted: ActivityRow = {
+  id: 'a3',
+  at: '2026-03-04T08:00:00+00:00',
+  action: 'invoice.issued',
+  entityType: 'invoice',
+  entityId: 'i2',
+  actorId: 'u9',
+  actorName: null,
+  fields: [],
+  ip: null,
+};
+
 describe('ActivityPage', () => {
   const facade = {
     busy: signal(false).asReadonly(),
-    rows: signal<readonly ActivityRow[]>([issued, unknown]).asReadonly(),
+    rows: signal<readonly ActivityRow[]>([issued, unknown, byDeleted]).asReadonly(),
     total: signal(2).asReadonly(),
     error: signal(null).asReadonly(),
     loadPage: vi.fn(),
@@ -160,6 +173,12 @@ describe('ActivityPage', () => {
     expect(row?.querySelector('code')?.textContent).toBe('role.renamed_someday');
     expect(row?.textContent).toContain('Personne');
     expect(row?.querySelector('[data-testid="activity-record"]')).toBeNull();
+  });
+
+  it('says an entry was made by an account deleted since, rather than by nobody', () => {
+    expect(q('activity-a3')?.textContent).toContain('Compte supprimé');
+    expect(q('activity-a3')?.textContent).not.toContain('Personne');
+    expect(q('activity-a2')?.textContent).not.toContain('Compte supprimé');
   });
 
   it('offers what the journal shows as a file', () => {

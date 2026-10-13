@@ -90,6 +90,23 @@
       "mailed_apart": "Son propre e-mail",
       "failed": "Le choix n’a pas pu être enregistré.",
       "unreachable": "Les notifications n’ont pas pu être lues."
+    },
+    "deletion": {
+      "title": "Supprimer mon compte",
+      "intro": "Votre compte est fermé tout de suite, sur tous vos appareils, puis supprimé définitivement après quelques jours. Vous connecter avant cette date annule la suppression. Les documents restent aux entreprises qui les ont émis.",
+      "delete": "Supprimer mon compte",
+      "confirm_title": "Supprimer votre compte ?",
+      "confirm_message": "Toutes vos sessions se terminent maintenant. Un mail vous donne la date où la suppression devient définitive : jusque-là, vous connecter la reprend.",
+      "confirm": "Supprimer mon compte",
+      "keep": "Garder mon compte",
+      "step_up": "Pour supprimer votre compte, saisissez votre mot de passe ou utilisez une clé d’accès.",
+      "done": "Compte fermé. Il sera supprimé définitivement le {{day}}, sauf si vous vous connectez d’ici là.",
+      "failed": "Le compte n’a pas pu être supprimé. Réessayez.",
+      "operator": "Un compte d’opérateur de la plateforme ne se supprime pas d’ici : un autre opérateur peut le désactiver.",
+      "sole_owner": "Vous êtes le seul propriétaire de ces entreprises : donnez la propriété à un autre membre, ou fermez l’entreprise, puis recommencez.",
+      "hand_over": "Transmettre",
+      "close_company": "Fermer l’entreprise",
+      "typed_word": "SUPPRIMER"
     }
   }
 }

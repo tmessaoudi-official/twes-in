@@ -24,6 +24,7 @@ import type {
   PlatformCompanyRow,
   PlatformError,
   PlatformSignup,
+  PlatformDelay,
   PlatformSupport,
   ModuleDemandRow,
   PlatformSubscriptionRow,
@@ -39,6 +40,12 @@ class StaticLoader implements TranslateLoader {
     return of({
       modules: { quotes: 'Devis et commandes', zakat: 'Zakat' },
       roles: { owner: 'propriétaire', member: 'membre', clerk: 'caissier / vendeur' },
+      settings: {
+        platform: {
+          account_deletion_days: 'Jours avant qu’un compte supprimé le soit définitivement',
+          company_reopen_days: 'Jours pour rouvrir une entreprise fermée',
+        },
+      },
       platform: {
         failed: {
           title: 'Messages non partis',
@@ -186,6 +193,23 @@ describe('PlatformPage', () => {
     email: '',
     status_url: '',
   });
+  const delayRows: readonly PlatformDelay[] = [
+    {
+      key: 'account.deletion_days',
+      labelKey: 'settings.platform.account_deletion_days',
+      value: 7,
+      min: 1,
+      max: 90,
+    },
+    {
+      key: 'company.reopen_days',
+      labelKey: 'settings.platform.company_reopen_days',
+      value: 7,
+      min: 1,
+      max: 90,
+    },
+  ];
+  const delays = signal<readonly PlatformDelay[] | null>(delayRows);
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
@@ -216,6 +240,8 @@ describe('PlatformPage', () => {
     signup,
     support: support.asReadonly(),
     saveSupport: vi.fn(async () => true),
+    delays: delays.asReadonly(),
+    saveDelays: vi.fn(async () => true),
     busy,
     error,
     load: vi.fn(),
@@ -244,6 +270,7 @@ describe('PlatformPage', () => {
     waiting.set([row]);
     signup.set({ enabled: false, approvalRequired: true });
     support.set({ phone: '', whatsapp: '', email: '', status_url: '' });
+    delays.set(delayRows);
     error.set(null);
     accounts.set([account]);
     companies.set([row]);
@@ -403,6 +430,41 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.saveSupport).toHaveBeenCalledWith({ whatsapp: '+216 20 123 456' });
+  });
+
+  it('draws a field per delay the platform declares, labelled and bounded as declared', async () => {
+    const { query } = await render();
+    const deletion = query<HTMLInputElement>('platform-delay-account.deletion_days')!;
+
+    expect(deletion.type).toBe('number');
+    expect(deletion.value).toBe('7');
+    expect(deletion.min).toBe('1');
+    expect(deletion.max).toBe('90');
+    expect(query('platform-delays')?.textContent).toContain(
+      'Jours avant qu’un compte supprimé le soit définitivement',
+    );
+    expect(query('platform-delay-company.reopen_days')).not.toBeNull();
+  });
+
+  it('saves only the delays changed, and refuses one outside its bounds', async () => {
+    const { fixture, query } = await render();
+    const save = query<HTMLButtonElement>('platform-delays-save')!;
+    expect(save.disabled).toBe(true);
+
+    const reopen = query<HTMLInputElement>('platform-delay-company.reopen_days')!;
+    reopen.value = '0';
+    reopen.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(save.disabled).toBe(true);
+
+    reopen.value = '14';
+    reopen.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(save.disabled).toBe(false);
+    save.click();
+    await fixture.whenStable();
+
+    expect(facade.saveDelays).toHaveBeenCalledWith({ 'company.reopen_days': 14 });
   });
 
   it('takes the status page as an address, saved as the other channels are', async () => {

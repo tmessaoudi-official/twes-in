@@ -19,9 +19,23 @@ import { PluralCompiler } from './plural-compiler';
 @Injectable({ providedIn: 'root' })
 export class TextsParts {
   private readonly parts = new Set<TranslateService>();
+  private readonly root = inject(TranslateService);
 
   add(part: TranslateService): void {
     this.parts.add(part);
+  }
+
+  /**
+   * Lends every opened part's texts to the root service, which a toast or a dialog translates through: both are drawn
+   * from the root injector, never the page's, so a page's own words would otherwise reach them as keys. Only once the
+   * root holds the language, or the root would take the part for the whole language and never load its own file.
+   */
+  share(language: string): void {
+    if (this.root.getTranslations(language) === undefined) return;
+    for (const part of this.parts) {
+      const texts = part.getTranslations(language);
+      if (texts !== undefined) this.root.setCompiledTranslation(language, texts, true);
+    }
   }
 
   /** Nothing when every opened part already has the language, so a switch waits no longer than it did without them. */
@@ -36,12 +50,17 @@ export class TextsParts {
 /** The route waits for its texts in the current language, so the page never shows a key. */
 const textsLoaded: CanActivateFn = () => {
   const part = inject(TranslateService);
-  inject(TextsParts).add(part);
+  const parts = inject(TextsParts);
+  parts.add(part);
   return firstValueFrom(
     toObservable(part.isLoading, { injector: inject(Injector) }).pipe(
       filter((loading) => !loading),
     ),
-  ).then(() => true);
+  ).then(() => {
+    const language = part.getCurrentLang();
+    if (language !== null) parts.share(language);
+    return true;
+  });
 };
 
 /**

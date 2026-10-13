@@ -933,6 +933,11 @@
     }
   },
   "settings": {
+    "platform": {
+      "account_deletion_days": "Days before a deleted account is deleted for good",
+      "company_reopen_days": "Days during which a closed company can be reopened",
+      "licensing_grace_days": "Days of grace after a subscription ends"
+    },
     "intro": "The company's defaults. A customer, a product or a document may still say otherwise.",
     "no_company": "Choose a company first.",
     "forbidden": "Changing the company's settings needs the settings permission.",
@@ -3320,6 +3325,13 @@
         "signup": "Sign-ups"
       }
     },
+    "delays": {
+      "title": "Delays",
+      "intro": "The days the platform leaves every company and every account before a change takes effect.",
+      "bounds": "From {{min}} to {{max}} days",
+      "save": "Save the delays",
+      "saved": "Delays saved."
+    },
     "support": {
       "title": "Support contact",
       "intro": "What every screen’s help offers everyone signed in under “Contact us”. A channel left empty is not shown.",
@@ -4004,13 +4016,16 @@
     "kind": {
       "annulable": "Can be undone",
       "corrigeable": "Can be corrected",
-      "definitif": "Final"
+      "definitif": "Final",
+      "definitif_a_terme": "Final after a delay"
     },
     "kind_help": {
       "annulable": "You can take it back from the message that follows.",
       "corrigeable": "This cannot be undone; a mistake is corrected afterwards.",
-      "definitif": "This can be neither undone nor corrected."
+      "definitif": "This can be neither undone nor corrected.",
+      "definitif_a_terme": "You can take it back for a while; after that, it is final."
     },
+    "typed": "To confirm, type “{{word}}”.",
     "final_group": "Final",
     "coming": "Coming to this screen"
   },
@@ -4396,6 +4411,7 @@
     "intro": "What was done in the company, by whom and to what. What changed is named, never its value.",
     "none": "Nothing in the journal for these filters.",
     "nobody": "Nobody (not signed in)",
+    "deleted_account": "Deleted account",
     "errors": {
       "not_found": "This journal is not available.",
       "invalid": "These filters could not be read.",

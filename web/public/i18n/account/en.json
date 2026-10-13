@@ -90,6 +90,23 @@
       "mailed_apart": "Its own e-mail",
       "failed": "The choice could not be saved.",
       "unreachable": "The notifications could not be read."
+    },
+    "deletion": {
+      "title": "Delete my account",
+      "intro": "Your account is closed at once, on all your devices, then deleted for good after a few days. Signing in before then cancels the deletion. Documents stay with the companies that issued them.",
+      "delete": "Delete my account",
+      "confirm_title": "Delete your account?",
+      "confirm_message": "All your sessions end now. An email gives you the day the deletion becomes final: until then, signing in takes it back.",
+      "confirm": "Delete my account",
+      "keep": "Keep my account",
+      "step_up": "To delete your account, enter your password or use a passkey.",
+      "done": "Account closed. It will be deleted for good on {{day}}, unless you sign in before then.",
+      "failed": "The account could not be deleted. Try again.",
+      "operator": "A platform operator's account is not deleted from here: another operator can deactivate it.",
+      "sole_owner": "You are the only owner of these companies: give ownership to another member, or close the company, then try again.",
+      "hand_over": "Hand over",
+      "close_company": "Close the company",
+      "typed_word": "DELETE"
     }
   }
 }

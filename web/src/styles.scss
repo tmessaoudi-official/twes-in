@@ -953,6 +953,20 @@ body {
   gap: 0.375rem;
 }
 
+// What cannot be taken back, now or once its delay has run, in the danger colour, whatever the button's variant.
+// Material colours a button through its own tokens, which a `text-error` utility never reaches; the disabled tokens
+// are left alone, so a refused danger button reads as refused rather than as red.
+.mat-mdc-button-base.twes-danger {
+  --mat-button-filled-container-color: var(--mat-sys-error);
+  --mat-button-filled-label-text-color: var(--mat-sys-on-error);
+  --mat-button-filled-state-layer-color: var(--mat-sys-on-error);
+  --mat-button-outlined-label-text-color: var(--mat-sys-error);
+  --mat-button-outlined-outline-color: var(--mat-sys-error);
+  --mat-button-outlined-state-layer-color: var(--mat-sys-error);
+  --mat-button-text-label-text-color: var(--mat-sys-error);
+  --mat-button-text-state-layer-color: var(--mat-sys-error);
+}
+
 // A bar's « Bientôt » button while the header has no room for it: out of the flow and unseen, its width still known.
 // Qualified by Material's own class, whose `position: relative` loads after this sheet and would win at one class.
 .mat-mdc-button-base.twes-planned-measure {
