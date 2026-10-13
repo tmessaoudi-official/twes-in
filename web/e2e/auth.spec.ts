@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from '@playwright/test';
 import {
+  CODES_OPERATOR_EMAIL,
   enterOperatorCode,
   OPERATOR_EMAIL as EMAIL,
   OPERATOR_PASSWORD as PASSWORD,
@@ -19,7 +20,8 @@ test('an unauthenticated visitor is sent to the login page', async ({ page }) =>
 test('login, hello page, logout', async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
+  // The second operator: its code leaves the shared one's five in five minutes to the proofs (session.ts).
+  await page.getByTestId('email').fill(CODES_OPERATOR_EMAIL);
   await page.getByTestId('password').fill(PASSWORD);
   await page.getByTestId('submit').click();
   // An operator must carry a second factor, so the password alone leads to the code step.

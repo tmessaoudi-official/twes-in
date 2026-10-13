@@ -155,6 +155,10 @@ that scripts can compute codes. You can also add it to any authenticator app to 
   `make e2e` runs, and if you are locked out, wait five minutes rather than trying again.
 - A code from a phone authenticator only works if you added **this** secret to it; a secret enrolled any other way
   is not the one the seed stored.
+- `make seed` makes a **second operator**, `codes@twes.local`, with the same password and secret, also an owner of
+  Demo. The browser scenarios that sign in with a code use it, because the first one's budget of five also pays for
+  every proof of who is at the screen that the scenarios sharing its session give. Sign in by hand as either; locking
+  one out leaves the other free.
 - The operator is also the **owner of the Demo company**, so after signing in you land in Demo's home page — unless
   you have run `make fixtures`, which makes the operator a member of Demo, Carthage Conseil and Atelier Mercier.
   A sign-in picks a working company only when there is exactly one, so with the fixtures loaded you land on a

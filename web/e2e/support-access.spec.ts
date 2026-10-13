@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { OPERATOR_PASSWORD, signIn as signInAsOperator, signInWithCode } from './session';
+import {
+  CODES_OPERATOR_EMAIL,
+  OPERATOR_PASSWORD,
+  signIn as signInAsOperator,
+  signInWithCode,
+} from './session';
 import { sendProving } from './step-up';
 
 // « Accès du support » through the whole stack (docs/SPEC.md § 8 row 67): the owner of a company the operator is NOT a
@@ -113,10 +118,11 @@ test('an owner opens the company to support for a day, support reads it read-onl
   await expect(theirPage.getByTestId('support-access-open')).toBeVisible();
   await expect(theirPage.getByTestId('support-banner')).toBeVisible();
 
-  // The operator, on a session of their own, since switching moves a session to another company.
+  // An operator, on a session of their own, since switching moves a session to another company; the second seeded
+  // one, whose code leaves the shared one's five in five minutes to the proofs.
   const operators = await browser.newContext();
   const operatorPage = await operators.newPage();
-  await signInWithCode(operatorPage);
+  await signInWithCode(operatorPage, CODES_OPERATOR_EMAIL);
   await operatorPage.evaluate((key) => localStorage.setItem(key, 'closed'), 'twes.cookie-notice');
   expect(await companies(operatorPage)).toContainEqual(
     expect.objectContaining({ name, role: 'support' }),

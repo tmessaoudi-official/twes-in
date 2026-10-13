@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { OPERATOR_EMAIL as EMAIL, OPERATOR_PASSWORD, signIn, signInWithCode } from './session';
+import {
+  CODES_OPERATOR_EMAIL,
+  OPERATOR_EMAIL as EMAIL,
+  OPERATOR_PASSWORD,
+  signIn,
+  signInWithCode,
+} from './session';
 import { pickOption } from './select';
 import { proveByApi } from './step-up';
 import { toast } from './toast';
@@ -13,7 +19,8 @@ import { wcagViolations } from './axe';
 // The scenario puts the operator in a second company and has that company's owner take them out again at the
 // end. It has to: the seeded operator belongs to exactly one company, which is what the G1a scenario asserts,
 // and one database is shared by the whole suite. The switch moves a session, so the operator signs in on one of
-// their own rather than the one every other scenario shares.
+// their own rather than the one every other scenario shares, as the second seeded operator, whose codes leave the
+// shared one's five in five minutes to the proofs.
 
 // The SPA sends one random token per page load as a header; any value of the right shape is accepted, and
 // the origin proof comes from the request being made by the page itself.
@@ -37,7 +44,7 @@ test('an operator opens a company from the platform, and the switcher moves the 
   request,
 }) => {
   test.setTimeout(150_000);
-  await signInWithCode(page);
+  await signInWithCode(page, CODES_OPERATOR_EMAIL);
   const name = `Globex ${Date.now()}`;
   const owner = `globex-owner-${Date.now()}@twes.local`;
 
@@ -89,13 +96,13 @@ test('an operator opens a company from the platform, and the switcher moves the 
           body: JSON.stringify({ email, role: 'member' }),
         })
       ).status,
-    [companyId, CSRF, EMAIL] as const,
+    [companyId, CSRF, CODES_OPERATOR_EMAIL] as const,
   );
   expect(invited).toBe(201);
 
   try {
     // The operator already has an account, so accepting asks for nothing (docs/SPEC.md § 7, 2026-09-15).
-    const token = await invitationTokenFor(request, EMAIL);
+    const token = await invitationTokenFor(request, CODES_OPERATOR_EMAIL);
     const accepted = await page.evaluate(
       async ([link, csrf]) =>
         (
