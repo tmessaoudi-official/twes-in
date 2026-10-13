@@ -250,7 +250,7 @@ playwright-browser: web-tools-image
 e2e: playwright-browser   ## needs the full stack up; E2E_ARGS passes options through, e.g. E2E_ARGS=--shard=1/3
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx playwright test $(E2E_ARGS)'
 
-gallery: playwright-browser   ## every screen, desktop and phone, light and dark, into var/claude/gallery (needs the full stack up and make fixtures; GALLERY_COMPANY, GALLERY_AS, GALLERY_LANG, GALLERY_WIDTHS, GALLERY_AXE, GALLERY_ONLY, GALLERY_DIR: web/e2e-gallery/gallery.spec.ts; E2E_ARGS=e2e-gallery/gallery.spec.ts runs that one alone)
+gallery: playwright-browser   ## every screen, desktop and phone, light and dark, into var/claude/gallery (needs the full stack up and make fixtures; GALLERY_COMPANY, GALLERY_AS, GALLERY_LANG, GALLERY_WIDTHS, GALLERY_AXE, GALLERY_ONLY, GALLERY_SCHEMES, GALLERY_DIR: web/e2e-gallery/gallery.spec.ts; E2E_ARGS=e2e-gallery/gallery.spec.ts runs that one alone)
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx playwright test -c playwright.gallery.config.ts $(E2E_ARGS)'
 
 # Recording drops frames on a busy machine and must never share it with a gate (docs/START.md § 12). It refuses to start
