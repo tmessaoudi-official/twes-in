@@ -154,6 +154,26 @@ final class PostgresSessionHandlerTest extends KernelTestCase
         self::assertNotSame($first, $replaced);
     }
 
+    /**
+     * A database restarted while the worker lives (an upgrade, a password rotated, a crash) ends the handler's
+     * connection with no idle time behind it: the next session opens a new one instead of failing on the dead one.
+     */
+    public function testAConnectionTheServerEndedIsReplacedAtTheNextSession(): void
+    {
+        $id = $this->id();
+        $this->save($id, 'company|s:1:"A";', 'POST');
+        $handler = new PostgresSessionHandler($this->url(), $this->requests('POST'), self::IDLE, new MockClock());
+
+        $this->cycle($handler, $id);
+        [$first] = $this->sessionBackends();
+        $this->connection()->prepare('SELECT pg_terminate_backend(?)')->execute([$first]);
+
+        $this->cycle($handler, $id);
+        $replaced = $this->sessionBackends();
+        self::assertCount(1, $replaced);
+        self::assertNotSame([$first], $replaced);
+    }
+
     private function cycle(PostgresSessionHandler $handler, string $id): void
     {
         $handler->open('', 'twes_session');

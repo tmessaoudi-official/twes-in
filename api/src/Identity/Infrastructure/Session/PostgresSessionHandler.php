@@ -31,7 +31,8 @@ use Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler;
  *
  * In FrankenPHP's worker mode this handler, and the connection it opens, outlive the request. A connection idle as long as
  * Doctrine lets its own be (DoctrineBundle's idle_connection_ttl) is dropped at the next session's start, so one the
- * server or the network closed meanwhile is not the one the session runs on. It is named in pg_stat_activity.
+ * server or the network closed meanwhile is not the one the session runs on, and so is one that no longer answers. It
+ * is named in pg_stat_activity.
  */
 final class PostgresSessionHandler implements \SessionHandlerInterface, \SessionUpdateTimestampHandlerInterface
 {
@@ -120,10 +121,25 @@ final class PostgresSessionHandler implements \SessionHandlerInterface, \Session
     private function dropIdleConnection(): void
     {
         $now = $this->clock->now()->getTimestamp();
-        if (null !== $this->pdo && $now - $this->lastUsed >= self::CONNECTION_IDLE_TTL) {
+        if (null !== $this->pdo && ($now - $this->lastUsed >= self::CONNECTION_IDLE_TTL || !self::answers($this->pdo))) {
             $this->pdo = $this->locking = $this->reading = null;
         }
         $this->lastUsed = $now;
+    }
+
+    /**
+     * Whether a connection kept from an earlier request still reaches the server: a database restarted meanwhile (an
+     * upgrade, a rotated password, a crash) ends it with no idle time behind it, and every later query on it fails.
+     */
+    private static function answers(\PDO $pdo): bool
+    {
+        try {
+            $pdo->query('SELECT 1');
+
+            return true;
+        } catch (\PDOException) {
+            return false;
+        }
     }
 
     private function current(): PdoSessionHandler
