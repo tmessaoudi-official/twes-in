@@ -38,6 +38,10 @@ parameters:
     app.import.max_inflated_bytes: 67108864
     # The hour, in the server's time, at which the data checks run each day (CheckDataEveryNight).
     app.data_check.at: '02:30'
+    # How long a failed sign-in keeps the address typed and the network address it came from (at least 12 months: the
+    # database refuses fewer), and the hour the nightly purge runs (PurgeFailedSignInAddressesEveryNight).
+    app.audit.failed_sign_in_months: 12
+    app.audit.purge_at: '02:45'
     # Mail the API sends itself.
     app.mail.sender: '%env(MAILER_SENDER)%'
     app.product_name: 'twes-in'

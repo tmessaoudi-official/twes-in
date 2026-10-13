@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Architecture;
 
+use App\Audit\Infrastructure\Scheduler\PurgeFailedSignInAddressesEveryNight;
 use App\DataHealth\Infrastructure\Scheduler\CheckDataEveryNight;
 use App\Erasure\Infrastructure\Scheduler\EndErasuresEveryQuarterHour;
 use App\Identity\Infrastructure\Password\PasswordResetAskedHandler;
@@ -38,6 +39,7 @@ final class BackgroundWorkScopeTest extends TestCase
         InvitationToMailHandler::class => 'the invitation by its id, and the company that invitation names',
         NotificationToMailHandler::class => 'the person and the company the message names, both by id',
         PasswordResetAskedHandler::class => 'an address, no company: a password belongs to the account',
+        PurgeFailedSignInAddressesEveryNight::class => 'every company at once, on purpose: a failed sign-in is purged by its age alone, and it names no company',
         RemindLateInvoicesEveryHour::class => 'each active company with the invoices module on, handed to the use case one at a time',
         RunRecurringInvoicesEveryHour::class => 'each active company with the recurring module on, handed to the use case one at a time',
         SignupAskedHandler::class => 'an address, no company: the company is made only when the link is used',
