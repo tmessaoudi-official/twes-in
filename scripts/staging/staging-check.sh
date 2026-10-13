@@ -191,7 +191,9 @@ signed_in_with() { # authenticator secret: password, then the code
 }
 
 # MFA: the operator enrols an authenticator; a new APP_MFA_KEY alone leaves it unreadable; app:keys:rotate-mfa, run with
-# the previous key while api and worker are stopped, reseals it, and the next code signs in.
+# the previous key while api and worker are stopped, reseals it, and the next code signs in. Adding a factor asks for a
+# fresh proof first, the password, as the screen's step-up dialog does.
+[[ "$(post /api/auth/step-up "{\"password\":\"$password\"}")" == 204 ]] || fail "the step-up before enrolling refused the password"
 secret=$(ask -b /tmp/jar -c /tmp/jar -H "Origin: https://$HOST" -H "csrf-token: $csrf" -H 'Content-Type: application/json' \
   --data '{}' "https://$HOST/api/auth/mfa/enrolment" | jq -r '.secret // empty')
 [[ -n "$secret" ]] || fail "enrolling an authenticator gave no secret"
