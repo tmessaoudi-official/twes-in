@@ -40,6 +40,38 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         '^/api/notification-preferences/stop$',
     ];
 
+    /**
+     * Every route a caller without a session reaches, by method and name. The firewall's public paths are patterns, and
+     * some are prefixes: a route added beneath one, or a method added to one, is public the moment it exists. Listing
+     * them exactly makes that a decision taken here.
+     */
+    private const array PUBLIC_ROUTES = [
+        'GET _api_/invitations/{token}_get',
+        'GET _api_/legal/{page}/{language}_get',
+        'GET api_doc',
+        'GET api_health',
+        'GET api_health_deep',
+        'GET api_legal_security_txt',
+        'GET signup_availability',
+        'GET signup_link',
+        'POST _api_/invitations/{token}/accept_post',
+        'POST api_auth_login',
+        'POST api_auth_mfa_passkey_login',
+        'POST api_auth_mfa_passkey_login_options',
+        'POST api_auth_mfa_verify',
+        'POST api_auth_password_forgot',
+        'POST api_auth_password_reset',
+        'POST api_client_errors',
+        'POST api_notification_mail_stop',
+        'POST api_scan_pairing_choice',
+        'POST api_scan_pairing_claim',
+        'POST api_scan_pairing_photo',
+        'POST api_scan_pairing_realtime_token',
+        'POST api_scan_pairing_scan',
+        'POST signup_complete',
+        'POST signup_request',
+    ];
+
     /** A value each path placeholder accepts, so a request reaches the firewall rather than a 404 from the router. */
     private const array PLACEHOLDERS = [
         '_format' => 'json',
@@ -73,6 +105,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
     {
         $router = static::getContainer()->get(RouterInterface::class);
         $opened = [];
+        $public = [];
         $swept = 0;
         foreach ($router->getRouteCollection()->all() as $name => $route) {
             if (!str_starts_with($route->getPath(), '/api')) {
@@ -102,6 +135,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
 
                 if ($this->isPublic($path)) {
                     self::assertLessThan(500, $status, "$method $path ($name) is public and answered $status");
+                    $public[] = "$method $name";
                 } elseif (Response::HTTP_UNAUTHORIZED !== $status) {
                     $opened[] = "$method $path ($name) answered $status";
                 }
@@ -110,6 +144,8 @@ final class UnauthenticatedSweepTest extends ApiTestCase
 
         self::assertGreaterThan(100, $swept, 'the sweep reached the routes');
         self::assertSame([], $opened, 'these routes answer a caller without a session');
+        sort($public);
+        self::assertSame(self::PUBLIC_ROUTES, $public, 'the routes a caller without a session reaches: list a new one here on purpose');
     }
 
     private function isPublic(string $path): bool
