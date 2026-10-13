@@ -25,7 +25,8 @@ x-deploy-environment: &deploy-environment
   PAIRING_ORIGIN: "https://${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
   MAILER_DSN: "${MAILER_DSN:?set MAILER_DSN, the mail relay, such as smtp://user:pass@relay:587}"
   MAILER_SENDER: "${MAILER_SENDER:?set MAILER_SENDER, the address mails come from}"
-  DATABASE_URL: "postgresql://twes:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/twes?serverVersion=18&charset=utf8"
+  # The application's role, never the schema's owner, whose address only the migrate service below is handed.
+  DATABASE_URL: "postgresql://twes_app:${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD}@postgres:5432/twes?serverVersion=18&charset=utf8"
   # Files on the api-files volume, which the backups copy; or in a bucket (api/.env says what each value means).
   FILES_STORAGE: "${FILES_STORAGE:-local}"
   FILES_S3_BUCKET: "${FILES_S3_BUCKET:-}"
@@ -65,6 +66,10 @@ services:
     environment: *deploy-environment
   worker:
     environment: *deploy-environment
+  migrate:
+    environment:
+      <<: *deploy-environment
+      DATABASE_MIGRATION_URL: "postgresql://twes:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/twes?serverVersion=18&charset=utf8"
   postgres:
     ports: !reset []
     environment:

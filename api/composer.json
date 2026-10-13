@@ -98,6 +98,7 @@
     "test": [
       "Composer\\Config::disableProcessTimeout",
       "bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test",
+      "bin/console app:database:app-role --no-interaction --env=test",
       "phpunit"
     ],
     "gate": [

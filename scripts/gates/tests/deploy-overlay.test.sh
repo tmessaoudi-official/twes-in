@@ -54,7 +54,7 @@ x-deploy-environment: &deploy
   PAIRING_ORIGIN: "https://${TWES_HOST:?set TWES_HOST}"
   MAILER_DSN: "${MAILER_DSN:?set MAILER_DSN}"
   MAILER_SENDER: "${MAILER_SENDER:?set MAILER_SENDER}"
-  DATABASE_URL: "postgresql://twes:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/twes"
+  DATABASE_URL: "postgresql://twes_app:${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD}@postgres:5432/twes"
   MONITOR_TOKEN: "${MONITOR_TOKEN:?set MONITOR_TOKEN}"
   SENTRY_DSN: "${SENTRY_DSN:?set SENTRY_DSN}"
 services:
@@ -69,6 +69,12 @@ services:
     environment: *deploy
   worker:
     environment: *deploy
+  migrate:
+    image: busybox
+    environment:
+      <<: *deploy
+      DATABASE_MIGRATION_URL: "postgresql://twes:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/twes"
+      POSTGRES_APP_PASSWORD: "${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD}"
   postgres:
     ports: !reset []
     environment:
@@ -134,6 +140,15 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "backups whose heartbeats may go now
 
 d=$(project); edit "$d/compose.deploy.yaml" '/^  worker:/,/^  postgres:/{/environment: \*deploy/d}' && edit "$d/compose.deploy.yaml" 's/^  worker:$/  worker: {}/'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a worker that reports its errors nowhere is named" $? 1 "$out" "worker SENTRY_DSN"
+
+d=$(project); edit "$d/compose.deploy.yaml" 's|postgresql://twes_app:\${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD}|postgresql://twes:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}|'
+out=$(bash "$GATE" --root "$d" 2>&1); check "an api connecting as the schema's owner is named" $? 1 "$out" "api DATABASE_URL is not the application's role"
+
+d=$(project); edit "$d/compose.deploy.yaml" 's/^  worker:$/  worker:\n    environment:\n      LEAK: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}"/' && edit "$d/compose.deploy.yaml" '/^  worker:/,/^  migrate:/{/environment: \*deploy/d}'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a service other than migrate holding the owner's password is named" $? 1 "$out" "worker holds the owner's password"
+
+d=$(project); edit "$d/compose.deploy.yaml" '/DATABASE_MIGRATION_URL/d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a migrate service without the owner's address is named" $? 1 "$out" "migrate DATABASE_MIGRATION_URL"
 
 d=$(project); rm "$d/compose.deploy.yaml"
 out=$(bash "$GATE" --root "$d" 2>&1); check "a tree without the overlay fails" $? 1 "$out" "compose.deploy.yaml"

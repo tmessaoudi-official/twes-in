@@ -74,12 +74,15 @@ jobs:
       - run: bash scripts/build-version.sh --env >> "$GITHUB_ENV"
       # Production refuses the committed development keys, so this instance gets random ones.
       - run: |
-          for name in APP_SECRET REALTIME_TOKEN_KEY REALTIME_API_KEY; do
+          for name in APP_SECRET REALTIME_TOKEN_KEY REALTIME_API_KEY POSTGRES_APP_PASSWORD; do
             value=$(openssl rand -hex 24); echo "::add-mask::$value"; echo "$name=$value" >> "$GITHUB_ENV"
           done
           value=$(openssl rand -base64 32); echo "::add-mask::$value"; echo "APP_MFA_KEY=$value" >> "$GITHUB_ENV"
       - run: docker compose up -d --build --wait
       - run: docker compose exec -T api php < scripts/gates/production-image.php
+      # The api reaches the database as the application's role, which the one-shot migrate service made and granted.
+      - run: test "$(docker compose exec -T api bin/console dbal:run-sql --force-fetch 'SELECT current_user' | grep -c twes_app)" -ge 1
+      - run: test "$(docker compose ps -a --format '{{.Service}} {{.State}} {{.ExitCode}}' migrate)" = 'migrate exited 0'
       # Through nginx, as a browser reaches it: the health answer, and a refusal answered as JSON, not a debug page.
       - run: curl -fsS http://localhost:8090/api/health | grep -q '"status":"ok"'
       # The API says which build it is, and that it runs as production, which the footer then leaves unsaid.
@@ -109,7 +112,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: bash scripts/build-version.sh --env >> "$GITHUB_ENV"
-      # The api image migrates at start (infra/api/docker-entrypoint.sh) and --wait holds until it is healthy;
+      # The one-shot migrate service migrates before the api starts (infra/api/migrate.sh) and --wait holds until it is healthy;
       # the seed is data, not schema, so it stays a step: the operator the scenarios sign in as.
       - run: docker compose up -d --build --wait
       # The operator must carry a second factor; the scenarios compute its codes from this known dev secret.

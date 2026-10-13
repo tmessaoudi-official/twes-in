@@ -42,7 +42,8 @@ services:
       APP_ENV: dev
       # The deployment this is (dev, staging, prod), shown beside the build in the footer when it is not prod.
       DEPLOY_ENV: "${DEPLOY_ENV:-dev}"
-      DATABASE_URL: "postgresql://twes:${POSTGRES_PASSWORD:-twes}@postgres:5432/twes?serverVersion=18&charset=utf8"
+      # The application's own role, which reads and writes rows only; the migrate service below gives it its password.
+      DATABASE_URL: "postgresql://twes_app:${POSTGRES_APP_PASSWORD:-twes-app}@postgres:5432/twes?serverVersion=18&charset=utf8"
       MAILER_DSN: smtp://mailpit:1025
       MAILER_SENDER: no-reply@twes.local
       # The address mailed links and security.txt name: the LAN door when `make up` found one, so a link opens on a phone
@@ -64,16 +65,34 @@ services:
       # Stored files (issued PDFs) outlive the container.
       - api-files:/app/var/files
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       gotenberg:
         condition: service_healthy
     ports:
       - "${API_PORT:-8091}:80"
 
+  # The schema, migrated by its owner (infra/api/migrate.sh), and the application's role given its password and its
+  # grants; then it exits. The one service handed the owner's address: the api and the worker connect as the role, so a
+  # statement they are tricked into running reaches rows only, never the journal's past, the schema or the server.
+  migrate:
+    logging: *logging
+    build: *api-build
+    command: ["twes-migrate"]
+    environment:
+      <<: *api-environment
+      DATABASE_MIGRATION_URL: "postgresql://twes:${POSTGRES_PASSWORD:-twes}@postgres:5432/twes?serverVersion=18&charset=utf8"
+      POSTGRES_APP_PASSWORD: "${POSTGRES_APP_PASSWORD:-twes-app}"
+    # The image's check asks the web server, which this one-shot never runs.
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # The worker (docs/SPEC.md § 7, 2026-10-06 02:44): the api image, reading the queue the API writes to
-  # (api/config/packages/messenger.yaml). It starts once the api is up, so the migrations have run and are not run twice
-  # at once. It leaves after an hour, or at 96 MB, under PHP's 128, and is started again: a long-lived PHP process is
+  # (api/config/packages/messenger.yaml). It starts once the api is up, so the rows a release expects are brought up to
+  # date one container at a time. It leaves after an hour, or at 96 MB, under PHP's 128, and is started again: a long-lived PHP process is
   # renewed rather than trusted to free everything. It also runs the schedule
   # (api/src/Shared/Infrastructure/Scheduler/Schedule.php), read as the `scheduler_default` transport: one worker, so
   # each task runs once.

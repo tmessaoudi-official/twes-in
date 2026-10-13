@@ -1,8 +1,9 @@
 #!/bin/sh
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Modelled on the official Symfony Docker entrypoint: when the container starts the server or the console, wait
-# for the database, then apply pending migrations all or nothing. A failed migration stops the container instead
-# of serving a half-migrated schema. Anything else (a one-off shell) runs untouched.
+# for the database, then bring the rows this release expects up to date. The schema itself is the migrate service's
+# (infra/api/migrate.sh), which runs as its owner and has finished before this starts: this container connects as the
+# application's role, which cannot change the schema. Anything else (a one-off shell) runs untouched.
 set -e
 
 if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
@@ -18,9 +19,6 @@ if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 			echo 'The database is not up or not reachable:'
 			echo "$error"
 			exit 1
-		fi
-		if [ "$(find ./migrations -iname '*.php' -print -quit)" ]; then
-			php bin/console doctrine:migrations:migrate --no-interaction --all-or-nothing
 		fi
 		# A module arrives with a release: tell the companies that asked « Me prévenir » (docs/SPEC.md § 7,
 		# 2026-09-26). Each wait is told once, so every start may run it.

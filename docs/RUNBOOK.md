@@ -123,7 +123,7 @@ restore on staging and write the figure here.
 
 ## Rotate a secret
 
-The nine values `new-instance.sh` draws. For each: change it in `/etc/twes-in/deploy.env` (keep the old one until the
+The ten values `new-instance.sh` draws. For each: change it in `/etc/twes-in/deploy.env` (keep the old one until the
 procedure is done), then redeploy (`deploy.sh --release` at the running tag, or `--staging` with the running release).
 
 | Value | What changing it does | Procedure | Tried |
@@ -133,6 +133,7 @@ procedure is done), then redeploy (`deploy.sh --release` at the running tag, or 
 | `REALTIME_TOKEN_KEY` | open realtime connections are dropped and reconnect with a new token | new value, redeploy (api and Centrifugo restart together) | on the check stack (the old token refused by Centrifugo, a new one taken) |
 | `REALTIME_API_KEY` | nothing visible | new value, redeploy | on the check stack (the old key refused by Centrifugo's API, the new one taken) |
 | `POSTGRES_PASSWORD` | nothing visible if done in this order | `docker compose … exec postgres psql -U twes -d twes -c "ALTER ROLE twes PASSWORD '<new>'"`, then the values, then redeploy | on the check stack (the old password refused, the deployment healthy) |
+| `POSTGRES_APP_PASSWORD` | nothing visible: the migrate service sets the application role's password before api and worker start | new value, redeploy | untried |
 | `BACKUP_FILES_PASSPHRASE` | nothing, done in place: restic keeps its repository and changes the key that opens it | `docker compose … exec backup restic key passwd` (it asks for the new passphrase), then the values, then redeploy; the escrowed copy is replaced | untried |
 | `BACKUP_DATABASE_PASSPHRASE` | a new one means a new repository: pgBackRest 2.59 has no command that re-encrypts one (`pgbackrest help` lists none) | new passphrase in the values and a new `BACKUP_S3_PREFIX` (such as `2026b/`), redeploy, `docker compose … exec backup twes-backup init` then `twes-backup full`; keep the old prefix and its passphrase in escrow for 14 days, when its last backup expires, then delete it from the bucket | untried |
 | `MONITOR_TOKEN` | the monitor's deep-health line goes red until both sides agree | new value in the instance's values and in the monitor's (`/etc/twes-monitor/monitor.env`), redeploy both | untried |

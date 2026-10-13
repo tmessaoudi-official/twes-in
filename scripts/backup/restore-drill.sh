@@ -41,7 +41,7 @@ trap cleanup EXIT
 # This instance's own keys, never the development ones (production refuses those), and the bucket's.
 random() { head -c "$1" /dev/urandom | base64 | tr -d '\n/+=' | head -c "$2"; }
 export APP_SECRET=$(random 48 48) REALTIME_TOKEN_KEY=$(random 48 48) REALTIME_API_KEY=$(random 48 48)
-export APP_MFA_KEY=$(head -c 32 /dev/urandom | base64)
+export APP_MFA_KEY=$(head -c 32 /dev/urandom | base64) POSTGRES_APP_PASSWORD=$(random 48 40)
 export BACKUP_S3_ENDPOINT=s3 BACKUP_S3_PORT=8333 BACKUP_S3_BUCKET=twes-backups BACKUP_S3_REGION=us-east-1 BACKUP_S3_URI_STYLE=path
 export BACKUP_S3_KEY=drill$(random 24 12) BACKUP_S3_SECRET=$(random 48 32)
 export BACKUP_DATABASE_PASSPHRASE=$(random 48 40) BACKUP_FILES_PASSPHRASE=$(random 48 40)

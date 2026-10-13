@@ -25,10 +25,23 @@ services:
       - ./infra/api/live-entrypoint.sh:/usr/local/bin/live-entrypoint:ro
       - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
 
+  # The migrations come from the mounted source too, so a new one runs at the next `make up`. This starts before the
+  # api, so it installs the dependencies the shared vendor volume holds.
+  migrate:
+    entrypoint: ["live-entrypoint"]
+    command: ["twes-migrate"]
+    volumes:
+      - ./api:/app
+      - api-vendor:/app/vendor
+      - api-var:/app/var
+      - ./infra/api/live-entrypoint.sh:/usr/local/bin/live-entrypoint:ro
+      - ./infra/api/migrate.sh:/usr/local/bin/twes-migrate:ro
+      - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
+
   # The worker reads the same mounted source. A consumer keeps the code it started with, so it leaves after a minute
   # and is started again on what is there then, inside the container: restarting the container instead ran the start
-  # steps every minute (migrations, convergence, a cache clear the api shares), about one and a half cores for nothing.
-  # The api has migrated and installed the dependencies by the time this starts, and a stop reaches the consumer.
+  # steps every minute (convergence, a cache clear the api shares), about one and a half cores for nothing. The
+  # migrate service and the api have installed the dependencies by the time this starts, and a stop reaches the consumer.
   worker:
     command:
       - sh

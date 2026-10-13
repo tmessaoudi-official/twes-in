@@ -25,6 +25,12 @@ final class ProductionRestartTest extends TestCase
 {
     private const array COMES_BACK = ['unless-stopped', 'always'];
 
+    /**
+     * Run to completion and left down on purpose: restarted, it would run again for ever. After a reboot the services it
+     * unblocked come back by themselves on the schema it left.
+     */
+    private const array ONE_SHOT = ['migrate'];
+
     public function testEveryServiceOfTheProductionStackComesBackByItself(): void
     {
         $root = \dirname(__DIR__, 3);
@@ -43,13 +49,19 @@ final class ProductionRestartTest extends TestCase
         self::assertGreaterThan(5, \count($started), 'the compose files list the stack where this can read them');
 
         $staysDown = [];
+        $restarted = [];
         foreach ($started as $name => $restart) {
-            if (!\in_array($restart, self::COMES_BACK, true)) {
+            if (\in_array($name, self::ONE_SHOT, true)) {
+                if (null !== $restart && 'no' !== $restart) {
+                    $restarted[] = $name;
+                }
+            } elseif (!\in_array($restart, self::COMES_BACK, true)) {
                 $staysDown[] = $name;
             }
         }
 
         self::assertSame([], $staysDown, 'these services stay down after a crash or a reboot');
+        self::assertSame([], $restarted, 'these run once and must not be started again');
     }
 
     /**
@@ -91,7 +103,7 @@ final class ProductionRestartTest extends TestCase
 
         $staysDown = [];
         foreach ($overlay as $name => $definition) {
-            if (isset($definition['profiles']) || isset($base[$name]['profiles'])) {
+            if (isset($definition['profiles']) || isset($base[$name]['profiles']) || \in_array($name, self::ONE_SHOT, true)) {
                 continue;
             }
             $restart = $definition['restart'] ?? null;

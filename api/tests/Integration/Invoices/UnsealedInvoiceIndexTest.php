@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Invoices;
 
-use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -24,7 +24,9 @@ final class UnsealedInvoiceIndexTest extends KernelTestCase
     public function testTheDocumentsNotChainedYetAreFoundThroughTheirOwnIndex(): void
     {
         self::bootKernel();
-        $connection = static::getContainer()->get(EntityManagerInterface::class)->getConnection();
+        // The schema's owner, who alone may drop an index; the application's role may not.
+        $connection = static::getContainer()->get('doctrine.dbal.owner_connection');
+        self::assertInstanceOf(Connection::class, $connection);
 
         $connection->beginTransaction();
         try {

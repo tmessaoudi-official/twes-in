@@ -6,7 +6,10 @@
 #              the database, the api or a mail catcher left published would face the internet
 #   addresses  api and worker both take every address from TWES_HOST (the worker sends the mails, so its links must be
 #              the api's), and centrifugo accepts that origin alone
-#   required   TWES_HOST, EDGE_TLS, POSTGRES_PASSWORD, the mail settings and the monitor's (its token, its address,
+#   database   api and worker connect as the application's role with POSTGRES_APP_PASSWORD; the owner's password reaches
+#              only postgres and the one-shot migrate service, so a statement the application is tricked into running
+#              never holds the schema
+#   required   TWES_HOST, EDGE_TLS, POSTGRES_PASSWORD, POSTGRES_APP_PASSWORD, the mail settings and the monitor's (its token, its address,
 #              the heartbeats' token, the error tracker's DSN) have no default: a server missing one stops before
 #              starting anything, rather than run unwatched
 #   monitor    api and worker report their errors to SENTRY_DSN and answer MONITOR_TOKEN; the backup service sends its
@@ -29,11 +32,11 @@ finish() {
   exit 0
 }
 
-REQUIRED=(TWES_HOST EDGE_TLS POSTGRES_PASSWORD MAILER_DSN MAILER_SENDER MONITOR_TOKEN MONITOR_URL MONITOR_HEARTBEAT_TOKEN SENTRY_DSN)
+REQUIRED=(TWES_HOST EDGE_TLS POSTGRES_PASSWORD POSTGRES_APP_PASSWORD MAILER_DSN MAILER_SENDER MONITOR_TOKEN MONITOR_URL MONITOR_HEARTBEAT_TOKEN SENTRY_DSN)
 HOST=gate.twes.invalid
 # Every value the four files need, as made up as the host, given as the server gives them: in an --env-file, which
 # takes the place of the committed development .env, and with nothing of the developer's own environment.
-values=(TWES_HOST=$HOST EDGE_TLS=gate@twes.invalid POSTGRES_PASSWORD=gate-postgres
+values=(TWES_HOST=$HOST EDGE_TLS=gate@twes.invalid POSTGRES_PASSWORD=gate-postgres POSTGRES_APP_PASSWORD=gate-app
   MAILER_DSN=smtp://relay.invalid:587 MAILER_SENDER=no-reply@$HOST APP_SECRET=s APP_MFA_KEY=k REALTIME_TOKEN_KEY=t
   REALTIME_API_KEY=a BACKUP_S3_ENDPOINT=e BACKUP_S3_BUCKET=b BACKUP_S3_REGION=r BACKUP_S3_KEY=k BACKUP_S3_SECRET=s
   BACKUP_DATABASE_PASSPHRASE=d BACKUP_FILES_PASSPHRASE=f MONITOR_TOKEN=gate-monitor MONITOR_URL=https://status.$HOST
@@ -74,8 +77,16 @@ for service in api worker; do
     [[ "$got" == "$want" ]] || problem "$service $key is $got, wanted $want"
   done
   got=$(jq -r --arg s "$service" '.services[$s].environment.DATABASE_URL // ""' <<<"$config")
-  [[ "$got" == *":gate-postgres@"* ]] || problem "$service DATABASE_URL does not carry POSTGRES_PASSWORD: $got"
+  [[ "$got" == "postgresql://twes_app:gate-app@"* ]] || problem "$service DATABASE_URL is not the application's role with POSTGRES_APP_PASSWORD: $got"
 done
+got=$(jq -r '.services.migrate.environment.DATABASE_MIGRATION_URL // ""' <<<"$config")
+[[ "$got" == "postgresql://twes:gate-postgres@"* ]] || problem "migrate DATABASE_MIGRATION_URL is not the owner with POSTGRES_PASSWORD: $got"
+got=$(jq -r '.services.migrate.environment.POSTGRES_APP_PASSWORD // "(unset)"' <<<"$config")
+[[ "$got" == gate-app ]] || problem "migrate POSTGRES_APP_PASSWORD is $got, wanted the deployment's"
+while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(jq -r '.services | to_entries[]
+  | select(.key != "postgres" and .key != "migrate")
+  | select([.value.environment // {} | .[] | tostring | contains("gate-postgres")] | any)
+  | "\(.key) holds the owner'"'"'s password: only postgres and migrate may"' <<<"$config")
 for pair in "MONITOR_URL=https://status.$HOST" "MONITOR_HEARTBEAT_TOKEN=gate-heartbeat"; do
   key=${pair%%=*} want=${pair#*=}
   got=$(jq -r --arg k "$key" '.services.backup.environment[$k] // "(unset)"' <<<"$config")

@@ -13,7 +13,7 @@ use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Module\Invoices\Infrastructure\Watch\InvoiceWatch;
 use Doctrine\DBAL\ArrayParameterType;
-use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -27,7 +27,9 @@ final class OpenInvoiceIndexTest extends KernelTestCase
     public function testTheLateCustomersCountIsAnsweredByTheOpenInvoiceIndex(): void
     {
         self::bootKernel();
-        $connection = static::getContainer()->get(EntityManagerInterface::class)->getConnection();
+        // The schema's owner, who alone may drop an index; the application's role may not.
+        $connection = static::getContainer()->get('doctrine.dbal.owner_connection');
+        self::assertInstanceOf(Connection::class, $connection);
 
         $connection->beginTransaction();
         try {
