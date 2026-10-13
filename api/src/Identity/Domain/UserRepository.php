@@ -17,6 +17,12 @@ interface UserRepository
 {
     public function ofId(Uuid $id): ?User;
 
+    /**
+     * The account read again under a row lock, held until the caller's transaction ends: what spends a second factor
+     * reads it this way, so two requests racing for one code take turns and the second sees it spent.
+     */
+    public function lockedOfId(Uuid $id): ?User;
+
     public function ofEmail(Email $email): ?User;
 
     /**

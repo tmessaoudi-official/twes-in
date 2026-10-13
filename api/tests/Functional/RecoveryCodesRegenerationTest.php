@@ -50,6 +50,18 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    /** The code that pays for the new set is spent under the account's row lock, as a login's is. */
+    public function testTheCodeIsSpentWhileTheAccountsRowIsLocked(): void
+    {
+        $this->enrolledAndSignedIn();
+        $this->client->enableProfiler();
+
+        $this->postJson(self::PATH, ['code' => $this->nextCode()]);
+
+        self::assertResponseIsSuccessful();
+        self::assertLockedBefore($this->sqlOfTheLastRequest(), '"user"', 'UPDATE "user"');
+    }
+
     public function testARecoveryCodeIsNotProofEnoughToReplaceTheSet(): void
     {
         $this->enrolledAndSignedIn();

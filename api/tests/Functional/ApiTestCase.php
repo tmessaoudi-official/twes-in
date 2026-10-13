@@ -259,6 +259,17 @@ abstract class ApiTestCase extends WebTestCase
         $this->client->enableProfiler();
         $this->getJson($path.(str_contains($path, '?') ? '&' : '?').'itemsPerPage=1');
         self::assertResponseIsSuccessful();
+
+        return $this->sqlOfTheLastRequest();
+    }
+
+    /**
+     * The SQL the last request ran, in order; `enableProfiler()` must have been called before it.
+     *
+     * @return list<string>
+     */
+    protected function sqlOfTheLastRequest(): array
+    {
         $profile = $this->client->getProfile();
         self::assertInstanceOf(Profile::class, $profile, 'the profiler recorded the request');
         $collector = $profile->getCollector('db');
@@ -275,6 +286,29 @@ abstract class ApiTestCase extends WebTestCase
         }
 
         return $sql;
+    }
+
+    /**
+     * A row is read `FOR UPDATE` before the statement that changes what it guards: two requests racing for one spend
+     * then take turns, and the second reads what the first left.
+     *
+     * @param list<string> $sql
+     */
+    protected static function assertLockedBefore(array $sql, string $lockedTable, string $change): void
+    {
+        $lock = null;
+        $changed = null;
+        foreach ($sql as $at => $statement) {
+            if (null === $lock && 1 === preg_match('/\\bFROM '.preg_quote($lockedTable, '/').'\\s.*\\bFOR UPDATE\\b/is', $statement)) {
+                $lock = $at;
+            }
+            if (null === $changed && str_starts_with(ltrim($statement), $change)) {
+                $changed = $at;
+            }
+        }
+        self::assertNotNull($changed, \sprintf('the request ran "%s"', $change));
+        self::assertNotNull($lock, \sprintf('the request locked a row of %s', $lockedTable));
+        self::assertLessThan($changed, $lock, \sprintf('%s is locked before "%s"', $lockedTable, $change));
     }
 
     /** An invitation and its acceptance resolve a role through RoleRepository::builtIn, which only ever returns a company-less role. */

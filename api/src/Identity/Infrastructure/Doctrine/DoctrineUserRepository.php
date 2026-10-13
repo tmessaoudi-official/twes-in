@@ -17,7 +17,9 @@ use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
@@ -30,6 +32,23 @@ final readonly class DoctrineUserRepository implements UserRepository
     public function ofId(Uuid $id): ?User
     {
         return $this->entityManager->find(User::class, $id);
+    }
+
+    public function lockedOfId(Uuid $id): ?User
+    {
+        $user = $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.id = :id')
+            ->setParameter('id', $id, 'uuid')
+            ->getQuery()
+            // SELECT … FOR UPDATE, which Doctrine refuses outside a transaction; the refresh hint replaces what an
+            // earlier read of the row in this request left in memory with what the lock just read.
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+
+        return $user instanceof User ? $user : null;
     }
 
     public function platformOperators(): array

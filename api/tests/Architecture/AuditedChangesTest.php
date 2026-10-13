@@ -14,7 +14,6 @@ use App\Identity\Application\Login\RecordFailedLogin;
 use App\Identity\Application\Login\RecordLogout;
 use App\Identity\Application\Login\RecordSuccessfulLogin;
 use App\Identity\Application\Mfa\FinishPasskeyLogin;
-use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Shared\Application\Transactions;
 use PHPUnit\Framework\TestCase;
@@ -30,7 +29,6 @@ final class AuditedChangesTest extends TestCase
         RecordFailedLogin::class => 'a refused password is on record even though the login fails',
         RecordSuccessfulLogin::class => 'the login event itself',
         RecordLogout::class => 'the logout event itself',
-        VerifySecondFactor::class => 'a refused code is on record even though the verification fails',
         FinishPasskeyLogin::class => 'a refused passkey is on record even though the login fails',
         ConfirmStepUp::class => 'a refused proof of who is at the screen is on record even though the request fails',
     ];
