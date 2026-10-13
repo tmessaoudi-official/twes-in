@@ -25,6 +25,9 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-13 18:16] AGREED: While a pushed commit's CI runs, work continues on the next step and commits stay local; no push until that run reports (a push cancels it); green carries on, red stops the work for a fix on top (developer).
 - [2026-10-13 18:20] AGREED: Round 0 order: the inventory and the route x role matrix first, from code by read-only agents; then the gallery and axe in one Playwright pass on a worktree stack; the scale-data timings last.
 - [2026-10-13 18:34] ASSUMED (review): The gallery's language axis is fr, en and a right-to-left probe (French texts served under <html dir="rtl">) instead of fr / ar, because twes-in ships no Arabic yet (SUPPORTED_LANGUAGES fr, en; SPEC 7 2026-09-09 'Arabic later'): the probe measures how far the layout is from Arabic. Alternatives: picture fr only and record ar as a gap; build Arabic texts first.
+- [2026-10-13 19:17] ASSUMED (review): L-066 (the ruled step-up list, 2026-09-21 19:05) is checked where a person acts, in the API processors after the company and permission checks: changing the company's IBAN or BIC, inviting or removing a member, creating, revising or deleting a role; the use cases stay callable by the fixtures and the platform. A revision asks only when the bank details differ from what is stored; a role revision asks whatever it changes. Alternatives: in the use cases (breaks the fixtures and the platform's owner invitation); a role rename without a proof.
+- [2026-10-13 19:17] ASSUMED (review): A vendor's IBAN is outside the ruling's words (the company's own bank details) and is not given a step-up; asked of the developer with the round-0 security questions. Alternatives: include it now.
+- [2026-10-13 20:25] AGREED: Order: round 0 to its end (gallery role passes, measured API matrix, large-data timings), then L-066 and the five step-up rulings of 20:21 land on master under the 16:57 fix-now ruling, then round 1 on that frozen commit (developer).
 
 ## Formal Plan
 
@@ -92,7 +95,7 @@ Known before round 1:
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 0 | Round 0: the instruments (inventory, gallery, timings, axe, route × role matrix) | L | todo | - | scripts/** var/claude/maturity/** |
+| 0 | Round 0: the instruments (inventory, gallery, timings, axe, route × role matrix) | L | done | 5f0b6440 | scripts/** var/claude/maturity/** |
 | 1 | Rounds to maturity + unified artifact | L | todo | - | var/claude/maturity/** |
 | 2 | Developer rules the proposals | M | todo | - | - |
 | 3 | Screen texts split per feature | L | todo | - | web/** scripts/gates/** |
