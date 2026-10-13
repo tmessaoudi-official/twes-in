@@ -4,3 +4,9 @@ doctrine_migrations:
         # as migrations classes should NOT be autoloaded
         'DoctrineMigrations': '%kernel.project_dir%/migrations'
     enable_profiler: false
+    # The schema's owner migrates (config/packages/doctrine.yaml); the application's role could not.
+    connection: owner
+    services:
+        # What `doctrine:migrations:diff` compares the database with, which the library finds by itself only through the
+        # entity manager.
+        'Doctrine\Migrations\Provider\SchemaProvider': App\Shared\Infrastructure\Doctrine\MappedSchema

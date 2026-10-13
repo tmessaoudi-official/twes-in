@@ -30,7 +30,7 @@ declare -A IMAGES=([TWES_API_IMAGE]="ghcr.invalid/twes-in-api@sha256:$(printf '1
   [TWES_WEB_IMAGE]="ghcr.invalid/twes-in-web@sha256:$(printf '2%.0s' {1..64})"
   [TWES_DATABASE_IMAGE]="ghcr.invalid/twes-in-database@sha256:$(printf '3%.0s' {1..64})")
 # What the deployment's own files need to resolve, as made up as the host (scripts/gates/deploy-overlay.sh checks them).
-values=(TWES_HOST=$HOST EDGE_TLS=gate@twes.invalid POSTGRES_PASSWORD=gate-postgres
+values=(TWES_HOST=$HOST EDGE_TLS=gate@twes.invalid POSTGRES_PASSWORD=gate-postgres POSTGRES_APP_PASSWORD=gate-app
   MAILER_DSN=smtp://relay.invalid:587 MAILER_SENDER=no-reply@$HOST APP_SECRET=s APP_MFA_KEY=k REALTIME_TOKEN_KEY=t
   REALTIME_API_KEY=a BACKUP_S3_ENDPOINT=e BACKUP_S3_BUCKET=b BACKUP_S3_REGION=r BACKUP_S3_KEY=k BACKUP_S3_SECRET=s
   BACKUP_DATABASE_PASSPHRASE=d BACKUP_FILES_PASSPHRASE=f MONITOR_TOKEN=m MONITOR_URL=https://status.$HOST

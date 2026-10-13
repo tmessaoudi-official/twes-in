@@ -65,8 +65,8 @@ live-refresh:  ## after changing an API resource's properties under make up: emp
 	docker compose exec -T api sh -c 'bin/console cache:pool:clear --all && curl -fsS -o /dev/null -X POST http://localhost:2019/frankenphp/workers/restart'
 	docker compose exec -T web sh -c 'wget -q -O /tmp/openapi.json http://api/api/docs.jsonopenapi && OPENAPI_JSON=/tmp/openapi.json npm run api:types'
 
-migrate:       ## apply pending migrations inside a running api container (the image entrypoint already did at start)
-	docker compose exec -T api bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+migrate:       ## apply pending migrations and the application role's grants again: the one-shot migrate service (make up already ran it)
+	docker compose run --rm migrate
 
 seed:          ## built-in roles, the operator (operator@twes.local) with a known authenticator and the Demo company; idempotent. Dev secrets only.
 	docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev --operator-totp-secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
@@ -79,7 +79,8 @@ SIZE ?= 100k
 SCALE_INVOICES := $(subst m,000000,$(subst k,000,$(SIZE)))
 scale-data:    ## SIZE=100k|1m|5m|10m: a large company (the demo's Carthage Conseil, grown by cloning its invoice graph) in its own database twes_scale; the development data is never touched; resumable, so run it again if it stops
 	printf '%s\n' "SELECT 'CREATE DATABASE twes_scale OWNER twes' WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'twes_scale')\\gexec" | docker compose exec -T postgres psql -U twes -d postgres
-	docker compose exec -T -e DATABASE_URL="postgresql://twes:$${POSTGRES_PASSWORD:-twes}@postgres:5432/twes_scale?serverVersion=18" api sh -c 'bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration && bin/console app:seed --operator-password=twes-operator-dev --operator-totp-secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP && bin/console doctrine:fixtures:load --append --no-interaction && bin/console app:scale:generate --no-debug --company="Carthage Conseil" --invoices=$(SCALE_INVOICES)'
+	@# Built as the schema's owner on both connections, then granted to the application's role, as the migrate service does.
+	docker compose exec -T -e DATABASE_URL="postgresql://twes:$${POSTGRES_PASSWORD:-twes}@postgres:5432/twes_scale?serverVersion=18" -e DATABASE_MIGRATION_URL="postgresql://twes:$${POSTGRES_PASSWORD:-twes}@postgres:5432/twes_scale?serverVersion=18" -e POSTGRES_APP_PASSWORD="$${POSTGRES_APP_PASSWORD:-twes-app}" api sh -c 'bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration && bin/console app:database:app-role --no-interaction && bin/console app:seed --operator-password=twes-operator-dev --operator-totp-secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP && bin/console doctrine:fixtures:load --append --no-interaction && bin/console app:scale:generate --no-debug --company="Carthage Conseil" --invoices=$(SCALE_INVOICES)'
 	@# The planner's statistics are what the first measurement reads: without them page 1 of the invoices read 3 to 4 s at 100k, 0.8 s after.
 	printf '%s\n' 'VACUUM (ANALYZE)' | docker compose exec -T postgres psql -U twes -d twes_scale
 

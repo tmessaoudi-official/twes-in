@@ -14,6 +14,7 @@ use App\Tenancy\Domain\Company;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * « Me prévenir » (docs/SPEC.md § 7, 2026-09-26 10:08, row 150): a company asks to be told when a planned module
@@ -131,13 +132,14 @@ final class ModuleInterestsTest extends ApiTestCase
 
     public function testTheApiImageTellsTheArrivalsAfterItsMigrationsAtEveryStart(): void
     {
-        $entrypoint = (string) file_get_contents(\dirname(__DIR__, 3).'/infra/api/docker-entrypoint.sh');
+        $root = \dirname(__DIR__, 3);
+        $entrypoint = (string) file_get_contents($root.'/infra/api/docker-entrypoint.sh');
+        /** @var array{services: array{api: array{depends_on: array<string, array{condition: string}>}}} $compose */
+        $compose = Yaml::parseFile($root.'/compose.yaml');
 
-        $migrate = strpos($entrypoint, 'doctrine:migrations:migrate');
-        $announce = strpos($entrypoint, 'php bin/console app:modules:announce-arrivals');
-        self::assertNotFalse($migrate);
-        self::assertNotFalse($announce, 'nothing else ever runs the command');
-        self::assertGreaterThan($migrate, $announce);
+        self::assertStringContainsString('php bin/console app:modules:announce-arrivals', $entrypoint, 'nothing else ever runs the command');
+        self::assertStringContainsString('doctrine:migrations:migrate', (string) file_get_contents($root.'/infra/api/migrate.sh'));
+        self::assertSame('service_completed_successfully', $compose['services']['api']['depends_on']['migrate']['condition'] ?? null, 'the api starts once the migrations have run');
     }
 
     private function announce(): string

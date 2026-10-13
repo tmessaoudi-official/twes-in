@@ -117,9 +117,15 @@ final class ScaleGenerator
      */
     public static function refuseUnlessScaleDatabase(string $name): void
     {
-        if (1 !== preg_match('/_(scale|test\d*(_w\d+)?)$/', $name)) {
+        if (!self::isScaleDatabase($name)) {
             throw new \RuntimeException(\sprintf('The database "%s" is not a scale or test one, and the generator writes freely: name it twes_scale and point DATABASE_URL at it.', $name));
         }
+    }
+
+    /** A `_scale` database, or the test one (a parallel writer's `_test_w<n>` included): the only ones it writes to. */
+    public static function isScaleDatabase(string $name): bool
+    {
+        return 1 === preg_match('/_(scale|test\d*(_w\d+)?)$/', $name);
     }
 
     /**

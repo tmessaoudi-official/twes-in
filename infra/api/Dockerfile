@@ -19,9 +19,11 @@ COPY infra/api/conf.d/10-app.ini "$PHP_INI_DIR/conf.d/"
 
 COPY --from=composer:2.10.3 /usr/bin/composer /usr/bin/composer
 
-# Migrations run at container start, once the database answers (infra/api/docker-entrypoint.sh), as the official
-# Symfony Docker image does; the healthcheck below therefore also says "migrated".
+# The rows a release expects are brought up to date at container start, once the database answers
+# (infra/api/docker-entrypoint.sh), as the official Symfony Docker image does. The schema is migrated before that by the
+# migrate service, the same image running twes-migrate (infra/api/migrate.sh) as the schema's owner.
 COPY --chmod=755 infra/api/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+COPY --chmod=755 infra/api/migrate.sh /usr/local/bin/twes-migrate
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--adapter", "caddyfile"]
 

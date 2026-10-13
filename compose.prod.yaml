@@ -18,6 +18,15 @@ services:
       APP_MFA_KEY: "${APP_MFA_KEY:?set APP_MFA_KEY, 32 random bytes in base64}"
       REALTIME_TOKEN_KEY: "${REALTIME_TOKEN_KEY:?set REALTIME_TOKEN_KEY}"
       REALTIME_API_KEY: "${REALTIME_API_KEY:?set REALTIME_API_KEY}"
+  # The migrations, on the same production image: its kernel refuses to start without the same secrets. Left down once
+  # it has run (api/tests/Architecture/ProductionRestartTest.php). The application's role takes a password of the
+  # instance's own, which the api and the worker read in compose.yaml's DATABASE_URL.
+  migrate:
+    build:
+      target: prod
+    environment:
+      <<: *api-environment
+      POSTGRES_APP_PASSWORD: "${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD, the application role's own}"
   # The worker runs the same production image with the same secrets.
   worker:
     restart: unless-stopped

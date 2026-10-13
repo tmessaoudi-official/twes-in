@@ -22,7 +22,7 @@ revision=$(git -C "$root" rev-parse HEAD)
 # Interpolation needs every value the files require; none is built into an image, only the build's version and commit.
 placeholders=$(mktemp); trap 'rm -f "$placeholders"' EXIT
 for name in APP_SECRET APP_MFA_KEY REALTIME_TOKEN_KEY REALTIME_API_KEY BACKUP_S3_ENDPOINT BACKUP_S3_BUCKET \
-  BACKUP_S3_REGION BACKUP_S3_KEY BACKUP_S3_SECRET BACKUP_DATABASE_PASSPHRASE BACKUP_FILES_PASSPHRASE; do
+  BACKUP_S3_REGION BACKUP_S3_KEY BACKUP_S3_SECRET BACKUP_DATABASE_PASSPHRASE BACKUP_FILES_PASSPHRASE POSTGRES_APP_PASSWORD; do
   echo "$name=publish-placeholder"
 done > "$placeholders"
 {

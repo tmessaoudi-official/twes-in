@@ -8,7 +8,7 @@ check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo 
 value() { grep -E "^$2=" "$1" | head -1 | cut -d= -f2-; }
 echo "new-instance"
 
-SECRETS=(APP_SECRET APP_MFA_KEY REALTIME_TOKEN_KEY REALTIME_API_KEY POSTGRES_PASSWORD BACKUP_DATABASE_PASSPHRASE BACKUP_FILES_PASSPHRASE
+SECRETS=(APP_SECRET APP_MFA_KEY REALTIME_TOKEN_KEY REALTIME_API_KEY POSTGRES_PASSWORD POSTGRES_APP_PASSWORD BACKUP_DATABASE_PASSPHRASE BACKUP_FILES_PASSPHRASE
   MONITOR_TOKEN MONITOR_HEARTBEAT_TOKEN)
 FACTS=(TWES_HOST EDGE_TLS MAILER_DSN MAILER_SENDER BACKUP_S3_ENDPOINT BACKUP_S3_BUCKET BACKUP_S3_REGION BACKUP_S3_KEY BACKUP_S3_SECRET
   MONITOR_URL SENTRY_DSN)
@@ -21,6 +21,8 @@ check "every secret is filled in" "${#missing[@]}" 0 "${missing[*]:-}" ""
 filled=(); for k in "${FACTS[@]}"; do grep -qE "^$k=$" "$f" || filled+=("$k"); done
 check "every fact is left for the operator, blank, never guessed" "${#filled[@]}" 0 "${filled[*]:-}" ""
 [[ "$(value "$f" POSTGRES_PASSWORD)" =~ ^[A-Za-z0-9]{32,}$ ]]; check "the database password sits in a URL as it is: letters and digits" $? 0 "" ""
+[[ "$(value "$f" POSTGRES_APP_PASSWORD)" =~ ^[A-Za-z0-9]{32,}$ ]]; check "the application role's password sits in a URL as it is: letters and digits" $? 0 "" ""
+[[ "$(value "$f" POSTGRES_APP_PASSWORD)" != "$(value "$f" POSTGRES_PASSWORD)" ]]; check "the application role's password is not the owner's" $? 0 "" ""
 [[ "$(value "$f" MONITOR_HEARTBEAT_TOKEN)" =~ ^[A-Za-z0-9]{32,}$ ]]; check "the heartbeat token sits in a header as it is: letters and digits" $? 0 "" ""
 check "the monitor's tokens are named for copying to it" 0 0 "$out" "MONITOR_HEARTBEAT_TOKEN"
 [[ "$(value "$f" APP_MFA_KEY | base64 -d 2>/dev/null | wc -c)" -eq 32 ]]; check "the MFA key is 32 random bytes in base64" $? 0 "" ""

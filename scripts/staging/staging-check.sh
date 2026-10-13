@@ -11,8 +11,9 @@
 #               release written down under releases/ pulls them back and starts them: what a rollback does
 #   rotations   APP_MFA_KEY (an enrolled authenticator unreadable under the new key alone, signing in again once
 #               app:keys:rotate-mfa resealed it), APP_SECRET (a mail's stop link made before refused, one made after
-#               taken), the realtime keys (Centrifugo refuses the old token and API key, takes the new ones) and the
-#               database password (the old one refused, the deployment healthy), each by the runbook's procedure
+#               taken), the realtime keys (Centrifugo refuses the old token and API key, takes the new ones), the
+#               database password and the application role's (the old one refused, the deployment healthy), each by
+#               the runbook's procedure
 # What it checks is the working tree as it is, committed or not: a snapshot commit made through a temporary index (the
 # real index is never touched) is what the bare origin, the publishing clone and the staging clone hold.
 # Runs under the compose project `twes-staging-check` only, with a registry container of its own bound to 127.0.0.1,
@@ -250,4 +251,15 @@ dc exec -T -e PGPASSWORD="$new_db" backup psql -h postgres -U twes -d twes -qtAc
   || fail "the old database password still opens a connection"
 step "database password rotated: the old one refused, the deployment healthy"
 
-printf 'staging-check: OK — published, followed and redeployed by digest, four secrets rotated in %ss in all\n' "$(($(date +%s) - started))"
+# The application role's password: changed in the values alone; the migrate service sets it before api and worker start.
+old_app=$(release_value POSTGRES_APP_PASSWORD "$values"); new_app=$(head -c 36 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40)
+fact POSTGRES_APP_PASSWORD "$new_app"
+redeploy "a new application role password"
+[[ "$(signed_in_with "$secret")" == 200 ]] || fail "signing in after the application role's password rotation failed"
+dc exec -T -e PGPASSWORD="$new_app" backup psql -h postgres -U twes_app -d twes -qtAc 'SELECT 1' >/dev/null \
+  || fail "the new application role password does not open a connection"
+! dc exec -T -e PGPASSWORD="$old_app" backup psql -h postgres -U twes_app -d twes -qtAc 'SELECT 1' >/dev/null 2>&1 \
+  || fail "the old application role password still opens a connection"
+step "application role password rotated: the old one refused, the deployment healthy"
+
+printf 'staging-check: OK — published, followed and redeployed by digest, five secrets rotated in %ss in all\n' "$(($(date +%s) - started))"

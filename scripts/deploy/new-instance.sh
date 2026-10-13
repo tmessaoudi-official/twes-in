@@ -50,6 +50,8 @@ APP_MFA_KEY=$(head -c 32 /dev/urandom | base64)
 REALTIME_TOKEN_KEY=$(word 48)
 REALTIME_API_KEY=$(word 48)
 POSTGRES_PASSWORD=$(word 40)
+# The application's own database role; the owner's password above reaches only the migrate service.
+POSTGRES_APP_PASSWORD=$(word 40)
 BACKUP_DATABASE_PASSPHRASE=$(word 48)
 BACKUP_FILES_PASSPHRASE=$(word 48)
 # What the monitor reads the instance's health with, and what the backups' heartbeats carry: both copied to its values.
