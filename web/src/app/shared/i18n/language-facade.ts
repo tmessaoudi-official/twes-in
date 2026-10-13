@@ -5,6 +5,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { SettingsFacade } from '../settings/settings-facade';
 import { type Language, PRESENTATION, SUPPORTED_LANGUAGES } from '../settings/settings-registry';
+import { TextsParts } from './texts-part';
 
 export { type Language, SUPPORTED_LANGUAGES } from '../settings/settings-registry';
 
@@ -37,6 +38,7 @@ export class LanguageFacade {
   private readonly translate = inject(TranslateService);
   private readonly document = inject(DOCUMENT);
   private readonly settings = inject(SettingsFacade);
+  private readonly parts = inject(TextsParts);
   private readonly chosen = this.settings.value(PRESENTATION.language);
   private readonly currentSignal = signal<Language>(this.initial());
   /** The language being loaded, so a choice is not loaded a second time when its setting echoes back. */
@@ -64,6 +66,8 @@ export class LanguageFacade {
 
   private async apply(language: Language): Promise<void> {
     this.target = language;
+    const parts = this.parts.load(language);
+    if (parts !== undefined) await parts;
     await firstValueFrom(this.translate.use(language));
     this.currentSignal.set(language);
     this.document.documentElement.lang = language;

@@ -23,6 +23,7 @@ import { VENDORS_MODULE } from './vendors/vendors-nav';
 import { guardUnsaved } from './shared/form/unsaved-changes';
 import { customerScreenLock } from './customer-screen/customer-screen-lock';
 import { moduleGuard } from './shell/module-guard';
+import { textsPart } from './shared/i18n/texts-part';
 
 export const routes: Routes = [
   {
@@ -173,6 +174,7 @@ export const routes: Routes = [
         // « Mon compte »: the person's own account, apart from any company (docs/SPEC.md § 7, 2026-09-25 17:22).
         path: 'account',
         title: 'account.title',
+        ...textsPart('account'),
         loadComponent: () => import('./account/account-page').then((m) => m.AccountPage),
       },
       {

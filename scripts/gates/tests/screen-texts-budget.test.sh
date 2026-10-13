@@ -29,5 +29,14 @@ d=$(project '    gzip_comp_level 1;' fr en)
 out=$(bash "$GATE" --root "$d" 2>&1); check "another level is refused" $? 1 "$out" "gzip_comp_level 6"
 d=$(project '    gzip_comp_level 6;' fr)
 out=$(bash "$GATE" --root "$d" 2>&1); check "fewer than two languages means the gate stopped reading them" $? 1 "$out" "languages"
+d=$(project '    gzip_comp_level 6;' fr en)
+mkdir -p "$d/web/public/i18n/account"; printf '{"a": 1}\n' > "$d/web/public/i18n/account/fr.json"; printf '{"a": 1}\n' > "$d/web/public/i18n/account/en.json"
+out=$(bash "$GATE" --root "$d" 2>&1); check "a page's own texts within the budget with their language's pass, and are named" $? 0 "$out" "account/fr.json"
+d=$(project '    gzip_comp_level 6;' fr en)
+mkdir -p "$d/web/public/i18n/account"; heavy "$d/web/public/i18n/account/fr.json" 80; printf '{"a": 1}\n' > "$d/web/public/i18n/account/en.json"
+out=$(bash "$GATE" --root "$d" 2>&1); check "a page's own texts over the budget are named" $? 1 "$out" "account/fr.json:"
+d=$(project '    gzip_comp_level 6;' fr en)
+mkdir -p "$d/web/public/i18n/account"; printf '{"a": 1}\n' > "$d/web/public/i18n/account/fr.json"
+out=$(bash "$GATE" --root "$d" 2>&1); check "a page's texts missing a language are named: its page would show keys" $? 1 "$out" "account/en.json"
 echo "$pass passed, $fail failed"
 ((fail == 0))

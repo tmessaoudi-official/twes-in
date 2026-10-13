@@ -4,6 +4,7 @@
 # the first screen shows its words, and on a counter's phone over a weak connection every kilobyte is waited for.
 # Measured at gzip level 6, the level infra/web/nginx.conf serves at, which this checks too: measured at one level
 # and served at another, the number would say nothing about what a phone receives.
+# A page's own texts, fetched when it first opens, are measured each on their own.
 # Usage: screen-texts-budget.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -26,11 +27,31 @@ fi
 
 over=()
 sizes=()
+missing=()
 for file in "${files[@]}"; do
+  language=$(basename "$file")
   size=$(gzip -c -"$level" "$file" | wc -c)
-  sizes+=("$(basename "$file") $size B")
-  ((size > budget)) && over+=("$(basename "$file"): $size B")
+  sizes+=("$language $size B")
+  ((size > budget)) && over+=("$language: $size B")
+  # A page's own texts (web/public/i18n/<page>/<language>.json, shared/i18n/texts-part.ts) are fetched when that page
+  # first opens, on their own request, once the language's file is there: each stays within the budget by itself.
+  for part in "$root"/web/public/i18n/*/; do
+    name=$(basename "$part")
+    if [[ ! -f "$part$language" ]]; then
+      missing+=("$name/$language")
+      continue
+    fi
+    own=$(gzip -c -"$level" "$part$language" | wc -c)
+    sizes+=("$name/$language $own B")
+    ((own > budget)) && over+=("$name/$language: $own B")
+  done
 done
+
+if ((${#missing[@]})); then
+  printf 'screen-texts-budget: FAIL — a page'"'"'s texts are missing in a language, where it would show their keys:\n'
+  printf '  %s\n' "${missing[@]}"
+  exit 1
+fi
 
 if ((${#over[@]})); then
   printf 'screen-texts-budget: FAIL — over %d B at gzip level %d (split the texts per module rather than raise the budget):\n' "$budget" "$level"

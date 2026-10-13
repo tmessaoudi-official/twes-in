@@ -1,0 +1,95 @@
+{
+  "account": {
+    "devices": {
+      "title": "Connected devices",
+      "intro": "The browsers this account is signed in on. End a session you do not recognise, or one left open on a shared computer: that browser is asked to sign in again.",
+      "this_one": "This device",
+      "unknown": "Unknown device",
+      "seen": "{{address}} · last seen {{when}}",
+      "end": "Sign out",
+      "end_others": "Sign out of all the others",
+      "ended": "{{device}} is signed out.",
+      "others_ended": "Other devices signed out: {{count}}.",
+      "failed": "The session could not be ended.",
+      "unreachable": "The list of devices could not be read."
+    },
+    "password": {
+      "title": "Password",
+      "intro": "A new password signs you out of all your devices, this one included.",
+      "current": "Current password",
+      "new": "New password",
+      "new_hint": "At least 12 characters.",
+      "again": "Confirm the new password",
+      "submit": "Change password",
+      "changed": "Your password was changed. Sign in with the new one.",
+      "problems": {
+        "current_password": "The current password is not the right one.",
+        "too_short": "The new password must be at least 12 characters long.",
+        "unchanged": "Choose a password different from the current one.",
+        "breached": "This password appears in a data breach: choose another.",
+        "mismatch": "The two entries of the new password differ.",
+        "too_many": "Too many attempts. Try again in a few minutes.",
+        "network": "The server is not answering. Try again.",
+        "refused": "The password could not be changed."
+      }
+    },
+    "tabs": {
+      "security": "Security",
+      "preferences": "Preferences",
+      "device": "This device",
+      "notifications": "Notifications"
+    },
+    "display": "Display",
+    "language": "Language",
+    "scheme": "Theme",
+    "density": "Density",
+    "date_format": "Date format",
+    "number_format": "Number format",
+    "format_preview": "Preview: {{ day }} · {{ amount }}",
+    "coming": "What is coming",
+    "show_coming": "Show what is coming, marked “Soon”",
+    "scanning": "Scanning",
+    "scan_feedback": "Beep and buzz each time the camera reads a code",
+    "scanner": {
+      "title": "My scanner",
+      "gap": "A character must follow the one before within {{ms}} ms to be taken for a scan.",
+      "test": "Test my scanner: scan a code here",
+      "result": "Your scanner types a character every few milliseconds; suggested setting: {{ms}} ms.",
+      "apply": "Set to {{ms}} ms",
+      "nothing": "Nothing was read: these are keys typed by hand, or too few characters.",
+      "reset": "Back to {{ms}} ms"
+    },
+    "company_at_sign_in": "Company at sign-in",
+    "company_at_sign_in_on": "Always open the same company",
+    "company_at_sign_in_off": "Otherwise, the company used last opens.",
+    "company_at_sign_in_pick": "Company",
+    "shortcuts": "Keyboard shortcuts",
+    "shortcuts_intro": "One key, without Ctrl or Alt, for each action. It does nothing while you type in a field. Ctrl K always opens the search.",
+    "shortcuts_restore": "Restore",
+    "shortcut_refused": {
+      "length": "A single key: a letter or a sign.",
+      "browser": "The browser already uses this key.",
+      "interface": "This key already works everywhere (“?” and “[”).",
+      "screen": "A page already uses this key (S, V, L, P or F).",
+      "count": "Kept for the count typed before a scan (digits and ×).",
+      "taken": "Already given to another action."
+    },
+    "two_factor": "Two-step verification",
+    "two_factor_on": "On",
+    "two_factor_off": "Off",
+    "two_factor_manage": "Manage",
+    "notifications": {
+      "title": "Bell and e-mails",
+      "intro": "For each company, and for what is about your account, choose what the bell counts and what is also sent to you by e-mail. A muted notification stays in the list without being counted.",
+      "account": "Your account",
+      "kind": "Notification",
+      "bell": "Bell",
+      "bell_of": "Bell: {{kind}}",
+      "email": "E-mail",
+      "email_of": "E-mail: {{kind}}",
+      "mailed_apart": "Its own e-mail",
+      "failed": "The choice could not be saved.",
+      "unreachable": "The notifications could not be read."
+    }
+  }
+}

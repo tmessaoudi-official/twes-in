@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import enAccount from '../../public/i18n/account/en.json';
+import frAccount from '../../public/i18n/account/fr.json';
 import en from '../../public/i18n/en.json';
 import fr from '../../public/i18n/fr.json';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
@@ -17,7 +19,32 @@ function keysOf(value: unknown, prefix = ''): string[] {
   );
 }
 
-const files: Record<string, unknown> = { fr, en };
+/** The texts a page loads with itself (`textsPart`), beside the language's own file: checked as one with it. */
+const parts: Record<string, Record<string, unknown>> = {
+  account: { fr: frAccount, en: enAccount },
+};
+
+/** Two files' texts as one, refusing a key both hold: the part would silently win where the page reads it. */
+function merged(main: unknown, part: unknown, where: string): unknown {
+  if (typeof main !== 'object' || main === null || typeof part !== 'object' || part === null) {
+    throw new Error(`${where} is in the language's file and in a part`);
+  }
+  const into: Record<string, unknown> = { ...(main as Record<string, unknown>) };
+  for (const [key, value] of Object.entries(part as Record<string, unknown>)) {
+    into[key] = key in into ? merged(into[key], value, `${where}.${key}`) : value;
+  }
+  return into;
+}
+
+const files: Record<string, unknown> = Object.fromEntries(
+  Object.entries({ fr, en } as Record<string, unknown>).map(([lang, main]) => [
+    lang,
+    Object.entries(parts).reduce(
+      (all, [name, part]) => merged(all, part[lang], `${name}/${lang}`),
+      main,
+    ),
+  ]),
+);
 // The sign-in page's sample invoice wears the same badge as a real one, so it reads the same.
 const paidStatus = [
   fr.invoices.statuses.paid,
