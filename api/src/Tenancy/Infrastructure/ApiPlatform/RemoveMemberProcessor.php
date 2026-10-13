@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Identity\Infrastructure\StepUp\RecentProof;
 use App\Tenancy\Application\Company\LastOwner;
 use App\Tenancy\Application\Company\NotAMember;
 use App\Tenancy\Application\Company\RemoveMember;
@@ -23,13 +24,14 @@ use Symfony\Component\Uid\Uuid;
 /** @implements ProcessorInterface<MemberResource, null> */
 final readonly class RemoveMemberProcessor implements ProcessorInterface
 {
-    public function __construct(private RemoveMember $removeMember, private CompanyGuard $guard)
+    public function __construct(private RemoveMember $removeMember, private CompanyGuard $guard, private RecentProof $proof)
     {
     }
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): null
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), MemberPermission::WRITE);
+        $this->proof->demand($this->guard->account()->getId());
         $userId = $uriVariables['userId'] ?? null;
         if (!\is_string($userId) || !Uuid::isValid($userId)) {
             throw new NotFoundHttpException('No such member.');

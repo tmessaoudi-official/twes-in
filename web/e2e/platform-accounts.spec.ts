@@ -2,7 +2,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { signIn as signInAsOperator } from './session';
+import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
+import { proveByApi } from './step-up';
 
 // C3 through the whole stack (docs/SPEC.md § 7, 2026-09-15): an operator finds an account on /platform, ends its
 // sessions, deactivates it and reactivates it, while that account's own browser is signed in beside it. Each run
@@ -39,6 +40,7 @@ test('an operator ends the sessions of an account, deactivates it and reactivate
 
   // The account: somebody invited into Demo who made their account from the link, in a browser of their own.
   await signInAsOperator(page);
+  await proveByApi(page, OPERATOR_PASSWORD);
   const invited = await page.evaluate(
     async ([csrf, email]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };

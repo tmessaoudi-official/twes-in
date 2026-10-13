@@ -37,6 +37,7 @@ final class NotificationsTest extends ApiTestCase
     {
         $this->createUser('joiner@twes.local', 'password-1234');
         $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/members', ['email' => 'joiner@twes.local', 'role' => Role::MEMBER]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 

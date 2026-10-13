@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { inACompany, signIn as signInAsOperator } from './session';
+import { OPERATOR_PASSWORD, inACompany, signIn as signInAsOperator } from './session';
+import { proveIfAsked } from './step-up';
 import { toast } from './toast';
 
 // A whole list leaving the company waits for the person at the screen to prove who they are again, and the API holds
@@ -21,6 +22,7 @@ test('a list leaves as a file only once the password was given again, and the ne
   await page.getByTestId('nav-members').click();
   await page.getByTestId('member-email').fill(address);
   await page.getByTestId('member-add').click();
+  await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
   await expect(toast(page)).toContainText('invitation');
   const invitation = await invitationTokenFor(request, address);
   await page.context().clearCookies();

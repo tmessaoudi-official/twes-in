@@ -234,6 +234,7 @@ final class RolesTest extends ApiTestCase
         // The kernel was rebooted by the requests above: the company is read again rather than reused detached.
         $this->createUser('boss@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()));
         $this->login('boss@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         $this->postJson($this->path(), ['name' => 'payer', 'permissions' => ['invoice.issue']]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'an owner holds everything, so may grant everything');
     }
@@ -365,6 +366,8 @@ final class RolesTest extends ApiTestCase
         $this->createUser('admin@twes.local', 'password-1234', $this->company);
         $this->login('admin@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
+        // Changing a role waits for a recent proof (docs/SPEC.md § 7, the step-up list).
+        $this->stepUp('password-1234');
     }
 
     /** @param list<string> $permissions */
@@ -373,6 +376,8 @@ final class RolesTest extends ApiTestCase
         $this->createUser('admin@twes.local', 'password-1234', $this->company, $permissions, 'tester');
         $this->login('admin@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
+        // Changing a role waits for a recent proof (docs/SPEC.md § 7, the step-up list).
+        $this->stepUp('password-1234');
     }
 
     private function path(?string $roleId = null): string

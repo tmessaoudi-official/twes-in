@@ -2,6 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { AuthFacade } from '../auth/auth-facade';
+import { StepUp } from '../shared/step-up/step-up';
 import { RolesApi, RolesRefused } from './roles-api';
 import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
@@ -14,6 +15,11 @@ const seller: RoleRow = {
   permissions: ['customer.read'],
   memberCount: 2,
 };
+
+// The proof dialog is answered by the test; `retrying` itself is StepUp's own.
+const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
+  request: vi.fn<(intro?: string) => Promise<boolean>>(),
+});
 
 describe('RolesFacade', () => {
   const api = {
@@ -36,6 +42,7 @@ describe('RolesFacade', () => {
       providers: [
         { provide: RolesApi, useValue: api },
         { provide: AuthFacade, useValue: auth },
+        { provide: StepUp, useValue: stepUp },
       ],
     });
     facade = TestBed.inject(RolesFacade);
@@ -70,5 +77,25 @@ describe('RolesFacade', () => {
 
     expect(await facade.revise('c1', 'r1', 'Vendeur', [])).toBe(false);
     expect(auth.refresh).not.toHaveBeenCalled();
+  });
+
+  // docs/SPEC.md § 7, the step-up list: a role changed waits for the person to prove who they are again.
+  it('asks for the proof the API wants, then changes the role', async () => {
+    stepUp.request.mockReset().mockResolvedValue(true);
+    api.revise
+      .mockRejectedValueOnce(new RolesRefused('step_up_required'))
+      .mockResolvedValueOnce(undefined);
+
+    expect(await facade.revise('c1', 'r1', 'Vendeur', ['customer.read'])).toBe(true);
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
+    expect(api.revise).toHaveBeenCalledTimes(2);
+  });
+
+  it('says nothing changed when the person does not give the proof', async () => {
+    stepUp.request.mockReset().mockResolvedValue(false);
+    api.remove.mockRejectedValue(new RolesRefused('step_up_required'));
+
+    expect(await facade.remove('c1', 'r1')).toBe(false);
+    expect(facade.error()).toBe('step_up_required');
   });
 });

@@ -174,8 +174,8 @@ final class MembersTest extends ApiTestCase
 
     public function testTheSamePersonIsNotAddedTwice(): void
     {
-        $this->adminSignedIn();
         $this->createUser('joiner@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
+        $this->adminSignedIn();
 
         $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => Role::MEMBER]);
 
@@ -185,8 +185,8 @@ final class MembersTest extends ApiTestCase
 
     public function testAMemberIsRemoved(): void
     {
-        $this->adminSignedIn();
         $joiner = $this->createUser('joiner@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
+        $this->adminSignedIn();
 
         $this->sendJson('DELETE', $this->path().'/'.$joiner->getId()->toRfc4122());
 
@@ -259,6 +259,7 @@ final class MembersTest extends ApiTestCase
     {
         $owner = $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
         $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
 
         $this->sendJson('DELETE', $this->path().'/'.$owner->getId()->toRfc4122());
 
@@ -333,6 +334,7 @@ final class MembersTest extends ApiTestCase
     {
         $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
         $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
 
         $this->postJson($this->path(), ['email' => 'next-owner@twes.local', 'role' => Role::OWNER]);
 
@@ -349,5 +351,7 @@ final class MembersTest extends ApiTestCase
         $this->createUser('admin@twes.local', 'password-1234', $this->company, ['user.read', 'user.write', 'customer.read'], Role::ADMIN);
         $this->login('admin@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
+        // Changing who belongs to the company waits for a recent proof (docs/SPEC.md § 7, the step-up list).
+        $this->stepUp('password-1234');
     }
 }

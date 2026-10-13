@@ -95,6 +95,8 @@ export type CompanyError =
   | 'not_found'
   | 'invalid'
   | 'logo_refused'
+  /** A change on the step-up list, refused until the person proves who they are again. */
+  | 'step_up_required'
   | 'network';
 
 /** One place the company issues documents from, as the establishments page lists it. */

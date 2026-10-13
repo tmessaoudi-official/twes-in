@@ -217,7 +217,8 @@
       "forbidden": "Your role in this company does not allow that.",
       "not_found": "Company not found.",
       "invalid": "Invalid request.",
-      "network": "The server could not be reached."
+      "network": "The server could not be reached.",
+      "step_up_required": "Nothing changed: confirm it is you to make this change."
     },
     "no_company": "Choose a company first.",
     "invited": "The invitation was sent by email.",
@@ -289,7 +290,8 @@
         "not_found": "Company not found.",
         "network": "The server could not be reached.",
         "forbidden": "Your role in this company does not allow that.",
-        "logo_refused": "The picture was refused. Send a PNG, JPEG or WebP file of at most 2 MB and 4000 pixels on a side."
+        "logo_refused": "The picture was refused. Send a PNG, JPEG or WebP file of at most 2 MB and 4000 pixels on a side.",
+        "step_up_required": "Nothing changed: confirm it is you to make this change."
       },
       "hints": {
         "vatOnDebits": "Tick if the company opted to pay the VAT on its services when it invoices them rather than when it is paid. Its invoices for services will then carry the mention « Option pour le paiement de la taxe d’après les débits »."
@@ -470,7 +472,8 @@
         "built_in": "This role is shipped with the product and cannot be changed.",
         "unknown_permission": "One of the ticked rights does not exist. Reload the page.",
         "not_held": "You can only give a role the permissions you hold yourself.",
-        "invalid": "That save was refused."
+        "invalid": "That save was refused.",
+        "step_up_required": "Nothing changed: confirm it is you to make this change."
       }
     },
     "security": {
@@ -3796,7 +3799,8 @@
       "network": "The server is not answering: try again."
     },
     "intro_erasure": "To open « Erase data », enter your password or use a passkey.",
-    "intro_factors": "To change how you verify it is you, enter your password or use a passkey."
+    "intro_factors": "To change how you verify it is you, enter your password or use a passkey.",
+    "intro_sensitive": "To change the bank details, the members or the roles, enter your password or use a passkey."
   },
   "customer_display": {
     "title": "Customer display",

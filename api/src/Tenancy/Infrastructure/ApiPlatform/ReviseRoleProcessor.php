@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Identity\Infrastructure\StepUp\RecentProof;
 use App\Tenancy\Application\Role\ManageRoles;
 use App\Tenancy\Application\Role\PermissionNotHeld;
 use App\Tenancy\Application\Role\RoleNameTaken;
@@ -25,13 +26,14 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 /** @implements ProcessorInterface<RoleResource, RoleResource> */
 final readonly class ReviseRoleProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageRoles $roles, private CompanyGuard $guard)
+    public function __construct(private ManageRoles $roles, private CompanyGuard $guard, private RecentProof $proof)
     {
     }
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): RoleResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
+        $this->proof->demand($this->guard->account()->getId());
 
         try {
             return RoleResource::of($this->roles->revise(

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
+import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, CompanyProfile, CompanyProfileChanges } from './company-types';
 
@@ -8,6 +9,7 @@ import type { CompanyError, CompanyProfile, CompanyProfileChanges } from './comp
 @Injectable({ providedIn: 'root' })
 export class CompanyProfileFacade {
   private readonly api = inject(CompanyApi);
+  private readonly stepUp = inject(StepUp);
   private readonly profileSignal = signal<CompanyProfile | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<CompanyError | null>(null);
@@ -33,7 +35,14 @@ export class CompanyProfileFacade {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      this.profileSignal.set(await this.api.reviseProfile(companyId, changes));
+      // New bank details wait for the person to prove who they are again; the rest of the profile asks nothing.
+      this.profileSignal.set(
+        await this.stepUp.retrying(
+          () => this.api.reviseProfile(companyId, changes),
+          (error) => error instanceof CompanyRefused && error.code === 'step_up_required',
+          'step_up.intro_sensitive',
+        ),
+      );
       return true;
     } catch (error) {
       this.errorSignal.set(codeOf(error));

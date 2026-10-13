@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
-import { inACompany, signIn } from './session';
+import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
+import { proveByApi, proveIfAsked } from './step-up';
 import { toast } from './toast';
 
 // G3b through the real stack: the seeded Tunisian company's owner fills its profile, which asks for the matricule
@@ -80,6 +81,8 @@ test("the owner fills the company's profile with the identifier its preset requi
     await page.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
     await page.getByTestId('field-iban').fill('TN59 1000 6035 1835 9847 8831');
     await page.getByTestId('record-save').click();
+    // The bank details are on the step-up list (docs/SPEC.md § 7).
+    await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
     await expect(toast(page)).toContainText('Le profil a été enregistré.');
 
     await page.reload();
@@ -90,6 +93,7 @@ test("the owner fills the company's profile with the identifier its preset requi
       original['identifiers'] !== null &&
       Object.keys(original['identifiers'] as object).length > 0
     ) {
+      await proveByApi(page, OPERATOR_PASSWORD);
       await putProfile(page, original);
     }
   }
