@@ -11,7 +11,6 @@ namespace App\Tests\Functional;
 
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\RouterInterface;
-use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -21,6 +20,8 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class UnauthenticatedSweepTest extends ApiTestCase
 {
+    use RouteSweep;
+
     /** security.yaml's PUBLIC_ACCESS paths, written out: opening a path to everyone is a change to this list. */
     private const array PUBLIC_PATHS = [
         '^/api/health$',
@@ -72,23 +73,6 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         'POST signup_request',
     ];
 
-    /** A value each path placeholder accepts, so a request reaches the firewall rather than a 404 from the router. */
-    private const array PLACEHOLDERS = [
-        '_format' => 'json',
-        'format' => 'csv',
-        'index' => 'index',
-        'key' => 'signup.enabled',
-        'kind' => 'invoices.late_customer',
-        'language' => 'fr',
-        'moduleKey' => 'customers',
-        'month' => '09',
-        'page' => 'cookies',
-        'status' => '404',
-        'subject' => 'customers',
-        'token' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        'year' => '2026',
-    ];
-
     public function testThePublicPathsAreExactlyTheFirewallsOwn(): void
     {
         /** @var array{security: array{access_control: list<array{path: string, roles: string}>}} $config */
@@ -111,22 +95,8 @@ final class UnauthenticatedSweepTest extends ApiTestCase
             if (!str_starts_with($route->getPath(), '/api')) {
                 continue;
             }
-            $values = [];
-            /** @var list<string> $variables */
-            $variables = $route->compile()->getPathVariables();
-            foreach ($variables as $variable) {
-                // A route that allows a few literal values only, such as the JSON-LD context's `_format` or a file's
-                // `pdf|zip`, gets the first of them.
-                $requirement = $route->getRequirement($variable);
-                $values[$variable] = null !== $requirement && 1 === preg_match('/^\w+(\|\w+)*$/', $requirement)
-                    ? explode('|', $requirement)[0]
-                    : self::PLACEHOLDERS[$variable] ?? Uuid::v4()->toRfc4122();
-            }
-            $path = $router->generate($name, $values);
-            foreach ($route->getMethods() ?: ['GET'] as $method) {
-                if ('HEAD' === $method) {
-                    continue;
-                }
+            $path = self::pathOf($router, $name, $route);
+            foreach (self::methodsOf($route) as $method) {
                 $this->client->restart();
                 $this->client->setServerParameter('HTTP_ORIGIN', 'http://localhost');
                 $this->sendJson($method, $path, 'GET' === $method ? null : []);
