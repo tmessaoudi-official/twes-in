@@ -215,6 +215,25 @@ final class SignupTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    /**
+     * A link is not spent by a refused finish, so it could otherwise ask, without end, which company names are taken.
+     * Ten tries a quarter of an hour from one address, then even a right one waits.
+     */
+    public function testFinishingIsPacedPerClient(): void
+    {
+        $this->openSignup();
+        $token = $this->requestALink();
+        for ($i = 0; $i < 10; ++$i) {
+            $this->postJson('/api/signup/'.$token.'/complete', $this->finish(['timezone' => 'Mars/Olympus']));
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $this->postJson('/api/signup/'.$token.'/complete', $this->finish());
+
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertSame([], $this->em()->getConnection()->fetchFirstColumn("SELECT id FROM \"user\" WHERE email = 'new@twes.local'"));
+    }
+
     public function testATakenCompanyNameIsRefused(): void
     {
         $this->openSignup();
