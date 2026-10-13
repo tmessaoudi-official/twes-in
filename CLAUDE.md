@@ -499,3 +499,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - `make test-api` from a worktree recreates the shared `twes-in-postgres-1` (`compose.yaml` names the project), cutting the live
   stack's database and leaving postgres bind-mounting the worktree's `init.sql`. In a worktree run `make tools CMD='cd api &&
   vendor/bin/phpunit …'` over a copy of `api/vendor`, and `docker compose up -d postgres` from the main tree before removing it (2026-10-13).
+- An e2e never proves who is at the screen in advance: the scenarios share the operator's session and the step-up limiter counts
+  every attempt, five in five minutes, so eleven advance proofs ended in 429. Send API writes through `sendProving` and follow an
+  on-screen write with `proveIfHeldBack` (`web/e2e/step-up.ts`); a fresh session's write may fill the dialog directly (2026-10-13).
