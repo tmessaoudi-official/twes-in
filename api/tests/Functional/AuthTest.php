@@ -12,6 +12,9 @@ namespace App\Tests\Functional;
 use App\Audit\Domain\AuditLog;
 use App\Identity\Application\Login\LoginAudit;
 use App\Identity\Domain\User;
+use Symfony\Component\Clock\Clock;
+use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Clock\NativeClock;
 
 final class AuthTest extends ApiTestCase
 {
@@ -151,6 +154,62 @@ final class AuthTest extends ApiTestCase
     public function testADeactivatedAccountCannotSignIn(): void
     {
         $this->createUser('gone@example.test', self::PASSWORD, active: false);
+        $this->login('gone@example.test', self::PASSWORD);
+
+        self::assertResponseStatusCodeSame(401);
+        self::assertSame(['error' => 'account_disabled'], $this->json());
+    }
+
+    /**
+     * A wrong password tells nothing about the account: a locked or a deactivated one answers it as an address nobody
+     * registered does, so five guesses no longer say which addresses are real. Only the right password hears why.
+     */
+    public function testALockedOrDeactivatedAccountAnswersAWrongPasswordAsAnUnknownAddressDoes(): void
+    {
+        $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
+        $this->createUser('gone@example.test', self::PASSWORD, active: false);
+        for ($i = 0; $i < 5; ++$i) {
+            $this->login('owner@example.test', 'wrong');
+        }
+
+        $this->login('nobody@example.test', 'wrong');
+        $unknown = [$this->client->getResponse()->getStatusCode(), $this->json()];
+        $this->login('owner@example.test', 'wrong');
+        $locked = [$this->client->getResponse()->getStatusCode(), $this->json()];
+        $this->login('gone@example.test', 'wrong');
+        $deactivated = [$this->client->getResponse()->getStatusCode(), $this->json()];
+
+        self::assertSame([401, ['error' => 'invalid_credentials']], $unknown);
+        self::assertSame($unknown, $locked);
+        self::assertSame($unknown, $deactivated);
+    }
+
+    /** Guesses against an account already locked buy nothing, not even a longer lock for its owner. */
+    public function testAWrongPasswordAgainstALockedAccountDoesNotExtendTheLock(): void
+    {
+        $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
+        for ($i = 0; $i < 5; ++$i) {
+            $this->login('owner@example.test', 'wrong');
+        }
+
+        try {
+            Clock::set(new MockClock(new \DateTimeImmutable('+14 minutes')));
+            $this->login('owner@example.test', 'wrong');
+            self::assertResponseStatusCodeSame(401);
+
+            Clock::set(new MockClock(new \DateTimeImmutable('+16 minutes')));
+            $this->login('owner@example.test', self::PASSWORD);
+            self::assertResponseIsSuccessful();
+        } finally {
+            Clock::set(new NativeClock());
+        }
+    }
+
+    /** The account's state is told before any second factor is asked for, as it is to an account without one. */
+    public function testADeactivatedAccountWithASecondFactorIsRefusedBeforeTheCodeIsAsked(): void
+    {
+        $this->createUser('gone@example.test', self::PASSWORD, active: false, authenticator: true);
+
         $this->login('gone@example.test', self::PASSWORD);
 
         self::assertResponseStatusCodeSame(401);
