@@ -93,9 +93,9 @@ final class ScanPairingTest extends ApiTestCase
         $before = \count($this->publisher->pushed);
 
         $this->postJson("/api/scan-pairings/$id/scans", ['code' => '3017620422003', 'scan' => '0199aaaa-0000-4000-8000-000000000001'], server: ['HTTP_X_PAIRING_KEY' => str_repeat('0', 64)]);
-        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson("/api/scan-pairings/$id/scans", ['code' => '3017620422003', 'scan' => '0199aaaa-0000-4000-8000-000000000001']);
-        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 
         self::assertCount($before, $this->publisher->pushed);
     }
@@ -279,10 +279,50 @@ final class ScanPairingTest extends ApiTestCase
         $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => 'not-a-uuid'], server: ['HTTP_X_PAIRING_KEY' => $key]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => str_repeat('0', 64)]);
-        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'the key first');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the key first');
 
         self::assertCount($before, $this->publisher->pushed, 'nothing reached the tab');
         self::assertSame(0, $this->em()->getRepository(ScanPhoto::class)->count([]));
+    }
+
+    /**
+     * Without its key a pairing is one that never was, live or ended: the answer must not tell a guessed id from a real
+     * one. Only the phone holding the key hears that the computer has let it go.
+     */
+    public function testAWrongKeyAnswersAsAPairingThatNeverWas(): void
+    {
+        [$id, $link] = $this->open();
+        $key = $this->claim($link);
+        $this->login('till@twes.local', 'password-1234');
+        $this->sendJson('DELETE', $this->pairingPath($id));
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->phone();
+        $scan = ['code' => '3017620422003', 'scan' => '0199aaaa-0000-4000-8000-000000000001'];
+
+        $this->postJson('/api/scan-pairings/0199aaaa-0000-7000-8000-00000000dead/scans', $scan, server: ['HTTP_X_PAIRING_KEY' => str_repeat('0', 64)]);
+        $never = [$this->client->getResponse()->getStatusCode(), $this->json()];
+        $this->postJson("/api/scan-pairings/$id/scans", $scan, server: ['HTTP_X_PAIRING_KEY' => str_repeat('0', 64)]);
+        $ended = [$this->client->getResponse()->getStatusCode(), $this->json()];
+        $this->postJson("/api/scan-pairings/$id/scans", $scan, server: ['HTTP_X_PAIRING_KEY' => $key]);
+
+        self::assertSame([Response::HTTP_NOT_FOUND, ['error' => 'unknown']], $never);
+        self::assertSame($never, $ended);
+        self::assertResponseStatusCodeSame(Response::HTTP_GONE);
+    }
+
+    /** The budget is the phone's own: whoever knows the id without the key spends a budget of their own, never its. */
+    public function testRequestsWithoutTheKeyDoNotSpendThePhonesBudget(): void
+    {
+        [$id, $link] = $this->open();
+        $key = $this->claim($link);
+        for ($i = 0; $i < 21; ++$i) {
+            $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => str_repeat('0', 64)]);
+        }
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS, 'the wrong key has met a budget');
+
+        $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
     }
 
     public function testAPairingHoldsAFewPhotosAtOnce(): void

@@ -158,7 +158,7 @@ export class PhoneScannerPage implements OnInit {
 
   /**
    * A photo the camera took, made smaller and sent to the computer, which says on the next echo what became of it. A
-   * refused photo leaves the pairing as it was; a refused key or an ended pairing ends it, as a scan's would.
+   * refused photo leaves the pairing as it was; a pairing that is unknown to the API or has ended ends it, as a scan's would.
    */
   protected async photographed(input: HTMLInputElement): Promise<void> {
     const taken = input.files?.[0];

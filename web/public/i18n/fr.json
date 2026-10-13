@@ -3731,7 +3731,6 @@
       },
       "refused": {
         "unknown": "Ce lien n’existe pas. Scannez à nouveau le code affiché sur l’ordinateur.",
-        "key": "Ce téléphone n’est pas celui qui a été relié.",
         "claimed": "Ce lien a déjà été utilisé par un autre téléphone. Demandez-en un nouveau sur l’ordinateur.",
         "expired": "Ce lien a expiré. Demandez-en un nouveau sur l’ordinateur.",
         "ended": "L’ordinateur n’utilise plus ce lien. Demandez-en un nouveau sur l’ordinateur.",

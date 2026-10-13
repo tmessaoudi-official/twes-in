@@ -56,7 +56,7 @@ final readonly class ScanningOpenApi implements OpenApiFactoryInterface
         $schemas['ScanPairingRefusal'] = new \ArrayObject([
             'type' => 'object',
             'required' => ['error'],
-            'properties' => ['error' => ['type' => 'string', 'enum' => ['unknown', 'key', 'claimed', 'expired', 'ended', 'invalid']]],
+            'properties' => ['error' => ['type' => 'string', 'enum' => ['unknown', 'claimed', 'expired', 'ended', 'invalid']]],
         ]);
         $schemas['ScanPairingEcho'] = new \ArrayObject([
             'type' => 'object',
@@ -96,7 +96,7 @@ final readonly class ScanningOpenApi implements OpenApiFactoryInterface
 
         $json = static fn (string $schema, string $description): Response => new Response($description, new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/'.$schema]))]));
         $body = static fn (string $schema): RequestBody => new RequestBody(content: new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/'.$schema]))]), required: true);
-        $refused = $json('ScanPairingRefusal', 'Refused: unknown (404), key (403), claimed, expired or ended (410), invalid (422)');
+        $refused = $json('ScanPairingRefusal', 'Refused: unknown, also for a wrong key (404), claimed, expired or ended (410), invalid (422)');
         $company = new Parameter('companyId', 'path', 'The company the tab acts for', true, schema: $uuid);
         $pairing = new Parameter('id', 'path', 'The pairing', true, schema: $uuid);
         $key = new Parameter(PairedPhoneController::KEY_HEADER, 'header', 'The key the claim gave the phone', true, schema: ['type' => 'string']);
@@ -143,7 +143,7 @@ final readonly class ScanningOpenApi implements OpenApiFactoryInterface
         $paths->addPath('/api/scan-pairings/{id}/scans', new PathItem(post: new Operation(
             operationId: 'scanOnPairing',
             tags: $tags,
-            responses: ['202' => new Response('Handed to the tab'), '403' => $refused, '404' => $refused, '410' => $refused, '422' => $refused, '429' => new Response('Too fast')],
+            responses: ['202' => new Response('Handed to the tab'), '404' => $refused, '410' => $refused, '422' => $refused, '429' => new Response('Too fast')],
             summary: 'The phone hands a code to its tab',
             parameters: [$pairing, $key],
             requestBody: $body('ScanPairingScan'),
@@ -151,7 +151,7 @@ final readonly class ScanningOpenApi implements OpenApiFactoryInterface
         $paths->addPath('/api/scan-pairings/{id}/photos', new PathItem(post: new Operation(
             operationId: 'photoOnPairing',
             tags: $tags,
-            responses: ['202' => new Response('Held for the tab, which is told'), '403' => $refused, '404' => $refused, '410' => $refused, '422' => $refused, '429' => new Response('Too many photos at once')],
+            responses: ['202' => new Response('Held for the tab, which is told'), '404' => $refused, '410' => $refused, '422' => $refused, '429' => new Response('Too many photos at once')],
             summary: 'The phone hands a photo it took to its tab',
             description: 'A JPEG, PNG or WebP picture, read from its bytes, no larger than a product photo may be (5 MB by default); at most 3 wait for the tab at once, each for a quarter of an hour.',
             parameters: [$pairing, $key],
@@ -183,7 +183,7 @@ final readonly class ScanningOpenApi implements OpenApiFactoryInterface
         $paths->addPath('/api/scan-pairings/{id}/choices', new PathItem(post: new Operation(
             operationId: 'chooseOnPairing',
             tags: $tags,
-            responses: ['202' => new Response('Handed to the tab'), '403' => $refused, '404' => $refused, '410' => $refused, '422' => $refused, '429' => new Response('Too fast')],
+            responses: ['202' => new Response('Handed to the tab'), '404' => $refused, '410' => $refused, '422' => $refused, '429' => new Response('Too fast')],
             summary: 'The phone taps one of the choices its tab offered',
             parameters: [$pairing, $key],
             requestBody: $body('ScanPairingChoice'),
@@ -191,7 +191,7 @@ final readonly class ScanningOpenApi implements OpenApiFactoryInterface
         $paths->addPath('/api/scan-pairings/{id}/realtime-token', new PathItem(post: new Operation(
             operationId: 'scanPairingRealtimeToken',
             tags: $tags,
-            responses: ['200' => $json('RealtimeToken', 'A connection token for the pairing\'s channel alone'), '403' => $refused, '404' => $refused, '410' => $refused],
+            responses: ['200' => $json('RealtimeToken', 'A connection token for the pairing\'s channel alone'), '404' => $refused, '410' => $refused],
             summary: 'The phone\'s realtime connection token',
             parameters: [$pairing, $key],
         )));

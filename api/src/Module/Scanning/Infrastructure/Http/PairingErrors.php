@@ -19,11 +19,12 @@ final class PairingErrors
 {
     public static function refused(ScanPairingRefused $refused): JsonResponse
     {
-        return new JsonResponse(['error' => $refused->reason], match ($refused->reason) {
-            'unknown' => Response::HTTP_NOT_FOUND,
-            'key' => Response::HTTP_FORBIDDEN,
-            default => Response::HTTP_GONE,
-        });
+        // A wrong key answers as a pairing that never was, so a guessed id is not told from a real one.
+        if ('unknown' === $refused->reason || 'key' === $refused->reason) {
+            return new JsonResponse(['error' => 'unknown'], Response::HTTP_NOT_FOUND);
+        }
+
+        return new JsonResponse(['error' => $refused->reason], Response::HTTP_GONE);
     }
 
     public static function invalid(string $detail): JsonResponse

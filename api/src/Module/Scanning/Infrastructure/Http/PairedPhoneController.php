@@ -99,7 +99,7 @@ final readonly class PairedPhoneController
     #[Route('/api/scan-pairings/{id}/photos', name: 'api_scan_pairing_photo', requirements: ['id' => Requirement::UUID], methods: ['POST'])]
     public function photo(string $id, Request $request): Response
     {
-        if (!$this->photoLimiter->create($id)->consume()->isAccepted()) {
+        if (!$this->photoLimiter->create(self::budgetOf($id, $request))->consume()->isAccepted()) {
             throw new TooManyRequestsHttpException(null, 'Too many photos at once; slow down.');
         }
 
@@ -122,10 +122,19 @@ final readonly class PairedPhoneController
         });
     }
 
+    /**
+     * The phone's budget is its pairing's and its key's together: whoever knows the id without the key spends a budget of
+     * their own and never the phone's.
+     */
+    private static function budgetOf(string $id, Request $request): string
+    {
+        return $id.':'.hash('sha256', (string) $request->headers->get(self::KEY_HEADER, ''));
+    }
+
     /** @param \Closure(Uuid, string): Response $act */
     private function asThePhone(string $id, Request $request, \Closure $act): Response
     {
-        if (!$this->phoneLimiter->create($id)->consume()->isAccepted()) {
+        if (!$this->phoneLimiter->create(self::budgetOf($id, $request))->consume()->isAccepted()) {
             throw new TooManyRequestsHttpException(null, 'Too many scans at once; slow down.');
         }
         try {

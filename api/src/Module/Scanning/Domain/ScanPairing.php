@@ -107,13 +107,14 @@ class ScanPairing implements CompanyOwned
     }
 
     /** Refuses unless this is the claimed pairing's key and the computer tab is still there. */
+    /** The key before anything else: only the phone holding it may hear that the pairing has ended. */
     public function authorise(string $key, \DateTimeImmutable $now): void
     {
-        if (!$this->isLive($now)) {
-            throw new ScanPairingRefused('ended');
-        }
         if (null === $this->keyHash || !hash_equals($this->keyHash, hash('sha256', $key))) {
             throw new ScanPairingRefused('key');
+        }
+        if (!$this->isLive($now)) {
+            throw new ScanPairingRefused('ended');
         }
     }
 
