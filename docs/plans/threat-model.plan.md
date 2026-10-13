@@ -79,8 +79,8 @@ real publish workflow.
 | 3b | W3 « Mon compte » texts loaded with their page | M | done | 23bafd76 | web/** scripts/gates/** |
 | 3c | W3 account deletion API | L | done | 9c50a361 | api/src/Identity/** api/tests/** |
 | 3d | W3 company closing API | L | done | 965a8d53 | api/src/Tenancy/** api/config/fiscal/** docs/fiscal/** |
-| 3e | W3 account deletion screen, the danger kind, the platform delays | M | doing | - | web/** docs/** |
-| 3f | W3 company closing and erasure screens (typed name, définitif à terme) | M | todo | - | web/** |
+| 3e | W3 account deletion screen, the danger kind, the platform delays | M | done | 5fc6584c | web/** docs/** |
+| 3f | W3 company closing and erasure screens (typed name, définitif à terme), after round 0 | M | todo | - | web/** |
 | 4 | W4 realtime, PDF, web | L | todo | - | api/** web/** infra/** compose*.yaml |
 | 5 | W5 delivery and operations | L | todo | - | .github/** scripts/** infra/** compose*.yaml |
 | 6 | W6 invoice signing key | L | todo | - | api/src/** api/tests/** |
@@ -92,12 +92,17 @@ real publish workflow.
   before any dialog, « Compte supprimé » in the journal, a « Délais » card on « Gérer la plateforme » drawing every whole-number
   platform setting from its declaration; e2e `account-deletion.spec.ts` measures the colour as drawn in both schemes (a sabotage of the
   CSS rule turned it red: rgb(0, 87, 195) received). Screenshots before/after in `var/claude/maturity/3e-*.png`.
-- 3f next, per the 15:54 entries: Me's company gains closedDownAt/retainUntil/reopenUntil; « Fermer l'entreprise » (kind
+- 3f comes AFTER round 0 (rulings 16:43, 16:59: 3e lands, freeze, `/compact`, round 0; W3's last step and W4-W7 resume while the
+  developer rules the review's proposals). 3f, per the 15:54 entries: Me's company gains closedDownAt/retainUntil/reopenUntil; « Fermer l'entreprise » (kind
   définitif à terme, the company's name typed, kept apart from « Clôture » of a period); a closed status wins over access; reads plus
   accounting.export only; a `company_closed` interceptor; the shell read-only with a banner; e2e on a company the operator creates.
   Proposed, to be ruled: the data erasure is final after its delay too (its banner says « Définitif le … »), so its preview would
   move to the shared dialog with `definitif_a_terme` and the company's name typed (the 17:01 entry already asks a typed word for it).
-- Then freeze, `/compact`, round 0 of the screens-maturity review (ledger seeded: `var/claude/maturity/ledger.md`).
+  Budget: about 1.5 kB left on the first page, and the `company_closed` interceptor sits in `app.config`: measure before and after
+  with the stats walk, lazy-load what it pulls in.
+- 3e landed 5fc6584c (the unsaved-changes guard now fetches `ConfirmDialog` lazily: the first page was 1.12 kB over 1 MB, now
+  998.47 kB, about 1.5 kB left). That commit is the review's frozen one (ruling 16:59).
+- NEXT: `/compact`, then round 0 of the screens-maturity review on 5fc6584c (ledger seeded: `var/claude/maturity/ledger.md`).
 ### Blocked
 ### Needs input
 ### Needs research
