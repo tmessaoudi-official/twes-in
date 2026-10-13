@@ -45,6 +45,19 @@ final class InMemoryUsers implements UserRepository
         return array_values(array_filter($this->users, static fn (User $user): bool => null !== $user->getTotpSecret()));
     }
 
+    public function deletionsRequestedBefore(\DateTimeImmutable $moment): array
+    {
+        $due = array_values(array_filter($this->users, static fn (User $user): bool => null !== $user->getDeletionRequestedAt() && $user->getDeletionRequestedAt() < $moment));
+        usort($due, static fn (User $a, User $b): int => $a->getDeletionRequestedAt() <=> $b->getDeletionRequestedAt());
+
+        return $due;
+    }
+
+    public function remove(User $user): void
+    {
+        unset($this->users[$user->getId()->toRfc4122()]);
+    }
+
     public function ofEmail(Email $email): ?User
     {
         foreach ($this->users as $user) {

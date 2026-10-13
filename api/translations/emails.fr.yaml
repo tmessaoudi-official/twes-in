@@ -103,3 +103,10 @@ data_checks:
     invoices_chain: 'Chaîne des factures'
     invoices_arithmetic: 'Calculs des factures'
     invoices_numbering: 'Numérotation des factures'
+account_deletion:
+    subject: 'Votre compte %product% sera supprimé'
+    heading: 'Votre compte est fermé'
+    intro: 'Vous avez demandé la suppression de votre compte %product%. Il est fermé dès maintenant et toutes vos sessions sont terminées.'
+    final: 'La suppression sera définitive dans %days% jours, le %date% : votre compte et vos préférences seront alors effacés, et votre adresse retirée du journal.'
+    cancel: 'Pour garder votre compte, reconnectez-vous avant cette date : la suppression sera annulée.'
+    not_you: 'Si vous n’êtes pas à l’origine de cette demande, reconnectez-vous et changez votre mot de passe.'

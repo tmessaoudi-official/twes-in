@@ -12,6 +12,7 @@ namespace App\Tests\Unit\Inbox\Application;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Inbox\Application\DeclaresNotificationKinds;
+use App\Inbox\Application\DeletedAccounts;
 use App\Inbox\Application\InboxNotifications;
 use App\Inbox\Application\NotificationAudience;
 use App\Inbox\Application\NotificationKind;
@@ -44,6 +45,9 @@ final class InboxNotificationsTest extends TestCase
     private InMemoryInbox $inbox;
     private RecordingRealtimePublisher $realtime;
     private RecordingNotificationMailQueue $mails;
+
+    /** @var list<string> the accounts the journal says were deleted */
+    private array $deleted = [];
 
     protected function setUp(): void
     {
@@ -184,6 +188,18 @@ final class InboxNotificationsTest extends TestCase
         $this->notifications()->publish(new Notification('user:'.Uuid::v7()->toRfc4122(), 'membership.added'));
     }
 
+    public function testAPersonWhoseAccountWasDeletedSinceIsToldNothing(): void
+    {
+        $gone = Uuid::v7();
+        $this->deleted[] = $gone->toRfc4122();
+
+        $this->notifications()->publish(new Notification('user:'.$gone->toRfc4122(), 'membership.added'));
+
+        self::assertSame([], $this->inbox->items);
+        self::assertSame([], $this->realtime->pushed);
+        self::assertSame([], $this->mails->queued);
+    }
+
     public function testAnUnknownCompanyIsAContradictionNotASilentDrop(): void
     {
         $this->expectException(\LogicException::class);
@@ -204,7 +220,19 @@ final class InboxNotificationsTest extends TestCase
             }
         }]);
 
-        return new InboxNotifications($this->users, $this->companies, $this->memberships, $this->inbox, $this->realtime, new MockClock('2026-09-13 10:00:00'), $kinds, $this->mails);
+        $deleted = new readonly class($this->deleted) implements DeletedAccounts {
+            /** @param list<string> $ids */
+            public function __construct(private array $ids)
+            {
+            }
+
+            public function wasDeleted(Uuid $userId): bool
+            {
+                return \in_array($userId->toRfc4122(), $this->ids, true);
+            }
+        };
+
+        return new InboxNotifications($this->users, $this->companies, $this->memberships, $this->inbox, $this->realtime, new MockClock('2026-09-13 10:00:00'), $kinds, $this->mails, $deleted);
     }
 
     private function user(string $email): User

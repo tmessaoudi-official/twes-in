@@ -21,6 +21,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: '"user"')]
 #[ORM\UniqueConstraint(name: 'uniq_user_email', columns: ['email'])]
+#[ORM\Index(name: 'idx_user_deletion_requested', columns: ['deletion_requested_at'], options: ['where' => '(deletion_requested_at IS NOT NULL)'])]
 class User
 {
     #[ORM\Id]
@@ -56,6 +57,10 @@ class User
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $passwordChangedAt = null;
+
+    /** When the person asked for the account to be deleted: until the nightly run deletes it, signing in takes it back. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $deletionRequestedAt = null;
 
     /**
      * Ciphertext, never the secret itself: a TOTP secret cannot be a digest, because verifying a code needs
@@ -187,6 +192,30 @@ class User
         $this->lockedUntil = null;
         $this->lastLoginAt = $now;
         $this->touch($now);
+    }
+
+    /** The account closes at once: every session of it ends, and only signing in again opens it. */
+    public function requestDeletion(\DateTimeImmutable $now): void
+    {
+        $this->deletionRequestedAt = $now;
+        $this->securityStamp = bin2hex(random_bytes(16));
+        $this->touch($now);
+    }
+
+    public function cancelDeletion(\DateTimeImmutable $now): void
+    {
+        $this->deletionRequestedAt = null;
+        $this->touch($now);
+    }
+
+    public function isDeletionPending(): bool
+    {
+        return null !== $this->deletionRequestedAt;
+    }
+
+    public function getDeletionRequestedAt(): ?\DateTimeImmutable
+    {
+        return $this->deletionRequestedAt;
     }
 
     public function getPasswordHash(): string
