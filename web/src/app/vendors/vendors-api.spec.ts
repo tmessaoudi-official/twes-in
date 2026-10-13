@@ -156,4 +156,16 @@ describe('VendorsApi', () => {
       identifiers: [{ key: 'matricule_fiscal', label: 'Matricule fiscal', pattern: '^x$' }],
     });
   });
+
+  // docs/SPEC.md § 7, the step-up list: API Platform leads the 403 with the token.
+  it('names the proof the API waits for before it keeps new bank details', async () => {
+    const waiting = api.reviseVendor('c1', 'v1', sotumag);
+    http
+      .expectOne('/api/companies/c1/vendors/v1')
+      .flush(
+        { detail: 'step_up_required: confirm who you are first.' },
+        { status: 403, statusText: 'Forbidden' },
+      );
+    await expect(waiting).rejects.toEqual(new VendorsRefused('step_up_required'));
+  });
 });

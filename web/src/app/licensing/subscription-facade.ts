@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { StepUp } from '../shared/step-up/step-up';
 import { SubscriptionApi, SubscriptionRefused } from './subscription-api';
 import type {
   DeclaredPayment,
@@ -19,6 +20,7 @@ import type {
 export class SubscriptionFacade {
   private readonly api = inject(SubscriptionApi);
   private readonly auth = inject(AuthFacade);
+  private readonly stepUp = inject(StepUp);
   private readonly subscriptionSignal = signal<SubscriptionView | null>(null);
   private readonly waitingSignal = signal<readonly WaitingPayment[]>([]);
   private readonly busySignal = signal(false);
@@ -87,7 +89,12 @@ export class SubscriptionFacade {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      await call();
+      // A decision is a platform write: it waits for the operator to prove who is at the screen (docs/SPEC.md § 7).
+      await this.stepUp.retrying(
+        call,
+        (error) => error instanceof SubscriptionRefused && error.code === 'step_up_required',
+        'step_up.intro_change',
+      );
       this.waitingSignal.set(await this.api.waiting());
       // An operator can decide about the company they are themselves working in, and its status, access and
       // subscription are all things the shell reads from the session (developer sweep, 2026-09-20).

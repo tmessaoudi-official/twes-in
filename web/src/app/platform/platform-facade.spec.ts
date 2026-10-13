@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { StepUp } from '../shared/step-up/step-up';
 import { PlatformApi, PlatformRefused } from './platform-api';
 import { PlatformFacade } from './platform-facade';
 import type {
@@ -47,6 +48,11 @@ const ACCOUNTS: PlatformAccountSearch = {
   order: null,
 };
 
+// The proof dialog is answered by the test; `retrying` itself is StepUp's own.
+const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
+  request: vi.fn<(intro?: string) => Promise<boolean>>(),
+});
+
 describe('PlatformFacade', () => {
   const api = {
     approve: vi.fn(),
@@ -84,7 +90,12 @@ describe('PlatformFacade', () => {
       { key: 'quotes', labelKey: 'modules.quotes', planned: 'v1', companies: 2 },
     ]);
     api.failedMessages.mockResolvedValue({ total: 1, kinds: [{ kind: 'SignupAsked', count: 1 }] });
-    TestBed.configureTestingModule({ providers: [{ provide: PlatformApi, useValue: api }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: PlatformApi, useValue: api },
+        { provide: StepUp, useValue: stepUp },
+      ],
+    });
     facade = TestBed.inject(PlatformFacade);
   });
 
@@ -370,5 +381,32 @@ describe('PlatformFacade', () => {
       }),
     ).toBe(false);
     expect(facade.error()).toBe('refused');
+  });
+
+  // docs/SPEC.md § 7, the step-up list: every platform write waits for the operator to prove who is at the screen.
+  it('asks the operator for the proof the platform wants, then acts on the account', async () => {
+    stepUp.request.mockReset().mockResolvedValue(true);
+    await facade.loadAccounts(ACCOUNTS);
+    api.actOnAccount
+      .mockRejectedValueOnce(new PlatformRefused('step_up_required'))
+      .mockResolvedValueOnce({ ...account, active: false, companies: [] });
+
+    expect(await facade.actOnAccount('u1', 'deactivate')).toBe(true);
+
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_change');
+    expect(api.actOnAccount).toHaveBeenCalledTimes(2);
+    expect(facade.accounts()).toEqual([{ ...account, active: false }]);
+  });
+
+  it('changes nothing when the operator does not give the proof', async () => {
+    stepUp.request.mockReset().mockResolvedValue(false);
+    await facade.load();
+    api.setSupport.mockRejectedValue(new PlatformRefused('step_up_required'));
+
+    expect(await facade.saveSupport({ whatsapp: '20 123 456' })).toBe(false);
+
+    expect(api.setSupport).toHaveBeenCalledTimes(1);
+    expect(facade.support()).toEqual({ phone: '+216 71 000 000', whatsapp: '', email: '' });
+    expect(facade.error()).toBe('step_up_required');
   });
 });

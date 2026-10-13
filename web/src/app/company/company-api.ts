@@ -27,6 +27,7 @@ import {
   type NumberingChanges,
   type NumberingSeriesRow,
 } from './company-types';
+import { stepUpAsked } from '../shared/step-up/step-up-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CompanyRefused extends Error {
@@ -324,16 +325,6 @@ function profileCodeOf(error: unknown): CompanyError {
   }
   if (stepUpAsked(error)) return 'step_up_required';
   return error.status === 404 ? 'not_found' : 'invalid';
-}
-
-/** The API holds a change on the step-up list back with this token at the head of its 403's detail. */
-export function stepUpAsked(error: unknown): boolean {
-  return (
-    error instanceof HttpErrorResponse &&
-    error.status === 403 &&
-    typeof error.error?.detail === 'string' &&
-    error.error.detail.startsWith('step_up_required:')
-  );
 }
 
 const companyPath = (companyId: string, collection: string): string =>

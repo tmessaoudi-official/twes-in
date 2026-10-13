@@ -2,7 +2,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { Browser, expect, Page, test } from '@playwright/test';
 import { mailTo, signupTokenFor } from './mailpit';
-import { signIn as signInAsOperator } from './session';
+import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
+import { proveByApi } from './step-up';
 
 // G1d through the real bundle, nginx, FrankenPHP, PostgreSQL and Mailpit: an operator opens signup, somebody signs up
 // from the login page, their company waits, the operator approves it, and the owner gets in. The operator closes
@@ -63,6 +64,8 @@ test('somebody signs up, their company waits, an operator approves it, and the o
   // The operator opens signup, with approval required.
   await signInAsOperator(page);
   await expect(page).toHaveURL(/\/$/);
+  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7); one holds the scenario through.
+  await proveByApi(page, OPERATOR_PASSWORD);
   await page.getByTestId('hello-platform-link').click();
   await expect(page).toHaveURL(/\/platform$/);
   await setSwitch(page, 'platform-signup-enabled', true);

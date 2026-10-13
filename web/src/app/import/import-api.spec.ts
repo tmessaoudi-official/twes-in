@@ -160,4 +160,14 @@ describe('ImportApi', () => {
       '/api/companies/c1/import-templates/opening-stock.xlsx',
     );
   });
+
+  // docs/SPEC.md § 7, the step-up list: a file changing a vendor's bank details waits for the proof, and kept nothing.
+  it('names the proof the API waits for before it keeps a file', async () => {
+    const pending = api.run('c1', 'vendors', new File(['x'], 'vendors.csv'), 'upsert', false);
+    http
+      .expectOne('/api/companies/c1/imports/vendors')
+      .flush({ error: 'step_up_required' }, { status: 403, statusText: 'Forbidden' });
+    const refused = await pending.catch((error: unknown) => error);
+    expect(refused).toEqual(new ImportRefused('step_up_required'));
+  });
 });

@@ -423,6 +423,7 @@ final class InvitationTest extends ApiTestCase
             $this->createUser('op@twes.local', 'password-1234', operator: true);
             $this->login('op@twes.local', 'password-1234');
             self::assertResponseIsSuccessful();
+            $this->stepUp('password-1234');
             $this->postJson('/api/platform/companies/'.$company->getId()->toRfc4122().'/owners', ['email' => 'stranger@twes.local']);
         } else {
             $this->createUser('owner@twes.local', 'password-1234', $company, ['*'], Role::OWNER);

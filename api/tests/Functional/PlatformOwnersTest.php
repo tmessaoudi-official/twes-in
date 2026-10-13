@@ -147,6 +147,8 @@ final class PlatformOwnersTest extends ApiTestCase
         $operator = $this->createUser('op@twes.local', self::PASSWORD, operator: true);
         $this->login('op@twes.local', self::PASSWORD);
         self::assertResponseIsSuccessful();
+        // Every platform write waits for a recent proof (docs/SPEC.md § 7).
+        $this->stepUp(self::PASSWORD);
 
         return $operator;
     }

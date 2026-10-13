@@ -2867,7 +2867,8 @@
       "network": "The server could not be reached.",
       "not_found": "Vendor not found.",
       "number_taken": "Another vendor already has this number.",
-      "invalid": "The change was refused. Check the registration numbers, the IBAN and the BIC."
+      "invalid": "The change was refused. Check the registration numbers, the IBAN and the BIC.",
+      "step_up_required": "Nothing changed: confirm it is you to make this change."
     }
   },
   "expenses": {
@@ -3168,7 +3169,8 @@
       "own_account": "You cannot deactivate your own account.",
       "network": "The server could not be reached.",
       "name_taken": "A company already has that name.",
-      "already_member": "That address already belongs to this company."
+      "already_member": "That address already belongs to this company.",
+      "step_up_required": "Nothing changed: confirm it is you to make this change."
     },
     "subscription": {
       "open": "Subscription",
@@ -3416,7 +3418,8 @@
       "already_declared": "A payment is already waiting to be confirmed.",
       "invalid": "This payment cannot be recorded as written.",
       "refused": "The request was refused.",
-      "network": "The server did not answer."
+      "network": "The server did not answer.",
+      "step_up_required": "Nothing changed: confirm it is you to make this change."
     },
     "payment": {
       "declare": "Declare a payment",
@@ -3595,7 +3598,8 @@
       "network": "The API cannot be reached. Try again in a moment.",
       "not_found": "Nothing of the sort can be imported here, or you may not write it.",
       "file_too_large": "The file is too large.",
-      "invalid": "The file could not be read."
+      "invalid": "The file could not be read.",
+      "step_up_required": "Nothing changed: confirm it is you to make this change."
     },
     "refusals": {
       "invalid_request": "The request was not understood.",
@@ -3800,7 +3804,8 @@
     },
     "intro_erasure": "To open « Erase data », enter your password or use a passkey.",
     "intro_factors": "To change how you verify it is you, enter your password or use a passkey.",
-    "intro_sensitive": "To change the bank details, the members or the roles, enter your password or use a passkey."
+    "intro_sensitive": "To change the bank details, the members or the roles, enter your password or use a passkey.",
+    "intro_change": "To make this change, enter your password or use a passkey."
   },
   "customer_display": {
     "title": "Customer display",
@@ -4945,7 +4950,8 @@
       "network": "The request did not go through. Try again.",
       "not_found": "This company can no longer be reached.",
       "owner_only": "Only the owner opens support access.",
-      "support_window": "Choose one of the lengths offered."
+      "support_window": "Choose one of the lengths offered.",
+      "step_up_required": "Nothing changed: confirm it is you to make this change."
     },
     "read_only": "Support reads the company read-only: nothing is changed or exported.",
     "banner_support": "You are reading {{company}} for support, read-only, until {{until}}.",

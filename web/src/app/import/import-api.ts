@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { ImportGuideImportGuideRead } from '../api/types.gen';
+import { stepUpAsked } from '../shared/step-up/step-up-api';
 import type {
   ImportError,
   ImportGuide,
@@ -94,6 +95,9 @@ function refusalOf(error: unknown): Error {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return new ImportRefused('network');
   }
+  // A file setting or changing what asks who is at the screen (a vendor's bank details) waits for a recent proof, and
+  // kept nothing (docs/SPEC.md § 7).
+  if (stepUpAsked(error)) return new ImportRefused('step_up_required');
   switch (error.status) {
     case 404:
       return new ImportRefused('not_found');

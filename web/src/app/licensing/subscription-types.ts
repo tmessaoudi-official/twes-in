@@ -64,4 +64,4 @@ export interface SubscriptionView {
  * decision, the payment was refused as written, refused otherwise, or the API could not be reached.
  */
 export type SubscriptionError =
-  'not_managed' | 'already_declared' | 'invalid' | 'refused' | 'network';
+  'not_managed' | 'already_declared' | 'invalid' | 'step_up_required' | 'refused' | 'network';

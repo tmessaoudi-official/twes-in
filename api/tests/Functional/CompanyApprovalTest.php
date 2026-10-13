@@ -143,6 +143,8 @@ final class CompanyApprovalTest extends ApiTestCase
         $this->createUser('op@twes.local', 'password-1234', operator: true);
         $this->login('op@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
+        // Every platform write waits for a recent proof (docs/SPEC.md § 7).
+        $this->stepUp('password-1234');
     }
 
     private function pathOf(Company $company, string $decision): string

@@ -14,7 +14,8 @@ export interface SupportAccessState {
 }
 
 /** Why the API refused, as the page translates it. */
-export type SupportAccessError = 'network' | 'not_found' | 'owner_only' | 'support_window';
+export type SupportAccessError =
+  'network' | 'not_found' | 'owner_only' | 'support_window' | 'step_up_required';
 
 export class SupportAccessRefused extends Error {
   constructor(readonly code: SupportAccessError) {
@@ -64,6 +65,8 @@ function refusal(error: unknown): SupportAccessRefused {
   const code =
     typeof body === 'object' && body !== null ? (body as Record<string, unknown>)['error'] : null;
   return new SupportAccessRefused(
-    code === 'owner_only' || code === 'support_window' ? code : 'network',
+    code === 'owner_only' || code === 'support_window' || code === 'step_up_required'
+      ? code
+      : 'network',
   );
 }

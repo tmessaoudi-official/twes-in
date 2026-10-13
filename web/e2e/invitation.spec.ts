@@ -2,7 +2,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
-import { proveIfAsked } from './step-up';
+import { proveByApi, proveIfAsked } from './step-up';
 import { toast } from './toast';
 
 // The whole invitation, through the real stack: an operator invites an address with no account, Mailpit
@@ -67,6 +67,8 @@ test('an address that already has an account joins from the mailed link with not
 
   // The account comes first: the owner of a company of its own, invited the way an operator opens one.
   await signInAsOperator(page);
+  // Every platform write, opening a company first, waits for the operator's recent proof (docs/SPEC.md § 7).
+  await proveByApi(page, OPERATOR_PASSWORD);
   const opened = await page.evaluate(
     async ([companyName, csrf, email]) => {
       const headers = { 'content-type': 'application/json', 'csrf-token': csrf };

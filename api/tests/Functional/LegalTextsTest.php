@@ -63,6 +63,7 @@ final class LegalTextsTest extends ApiTestCase
         $this->write(LegalPage::Mentions, LegalLanguage::Fr, 'Éditeur : {{publisher.name}}', '2026-09-20 10:00');
         $this->createUser('op@twes.local', 'password-1234', operator: true);
         $this->login('op@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         $this->sendJson('PUT', '/api/platform/settings/legal.publisher.name', ['value' => 'twes SAS']);
         self::assertResponseIsSuccessful();
         $this->client->getCookieJar()->clear();
@@ -81,6 +82,7 @@ final class LegalTextsTest extends ApiTestCase
 
         $this->createUser('op@twes.local', 'password-1234', operator: true);
         $this->login('op@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         $this->sendJson('PUT', '/api/platform/settings/legal.security.email', ['value' => 'security@twes.test']);
         self::assertResponseIsSuccessful();
         $this->client->getCookieJar()->clear();

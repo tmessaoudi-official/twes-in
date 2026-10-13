@@ -2,10 +2,16 @@
 
 import { TestBed } from '@angular/core/testing';
 import { Feedback } from '../shared/feedback/feedback';
+import { StepUp } from '../shared/step-up/step-up';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { ImportApi, ImportNotKept, ImportRefused } from './import-api';
 import { ImportFacade } from './import-facade';
 import type { ImportReport } from './import-types';
+
+// The proof dialog is answered by the test; `retrying` itself is StepUp's own.
+const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
+  request: vi.fn<(intro?: string) => Promise<boolean>>(),
+});
 
 describe('ImportFacade', () => {
   const api = { guide: vi.fn(), run: vi.fn(), templateUrl: vi.fn() };
@@ -24,7 +30,11 @@ describe('ImportFacade', () => {
     api.guide.mockReset();
     api.run.mockReset();
     TestBed.configureTestingModule({
-      providers: [...provideQuietFeedback(), { provide: ImportApi, useValue: api }],
+      providers: [
+        ...provideQuietFeedback(),
+        { provide: ImportApi, useValue: api },
+        { provide: StepUp, useValue: stepUp },
+      ],
     });
     facade = TestBed.inject(ImportFacade);
   });
@@ -101,5 +111,33 @@ describe('ImportFacade', () => {
 
     expect(facade.error()).toBe('not_found');
     expect(facade.report()).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, the step-up list: a file changing a vendor's bank details waits for the proof, then goes again whole.
+  it('asks for the proof the API wants, then sends the same file again', async () => {
+    stepUp.request.mockReset().mockResolvedValue(true);
+    const kept = { ...report([]), committed: true, updated: [2] };
+    api.run
+      .mockRejectedValueOnce(new ImportRefused('step_up_required'))
+      .mockResolvedValueOnce(kept);
+    const file = new File(['x'], 'vendors.csv');
+
+    await facade.run('c1', 'vendors', file, 'upsert', false);
+
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
+    expect(api.run).toHaveBeenCalledTimes(2);
+    expect(api.run).toHaveBeenLastCalledWith('c1', 'vendors', file, 'upsert', false, []);
+    expect(facade.report()).toEqual(kept);
+  });
+
+  it('says nothing was kept when the person does not give the proof', async () => {
+    stepUp.request.mockReset().mockResolvedValue(false);
+    api.run.mockRejectedValue(new ImportRefused('step_up_required'));
+
+    await facade.run('c1', 'vendors', new File(['x'], 'vendors.csv'), 'upsert', false);
+
+    expect(facade.error()).toBe('step_up_required');
+    expect(facade.report()).toBeNull();
+    expect(api.run).toHaveBeenCalledTimes(1);
   });
 });

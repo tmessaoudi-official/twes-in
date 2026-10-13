@@ -25,7 +25,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * The second wall of « Accès support », whatever an endpoint's own permission says: under a grant an operator reads,
  * by GET, and nothing else, not even a read sent as a POST such as a preview, and never an export, which would carry
- * the company's data out whole. Each page read is then written in the activity log, once per quarter hour.
+ * the company's data out whole, nor the month's withholding declaration, which is one. Each page read is then written
+ * in the activity log, once per quarter hour.
  *
  * After the firewall (8), so the account is known, and before API Platform reads anything (4); matched on paths, as
  * `CustomerScreenLockListener` is. The grant found is kept on the request, which lives and dies with it.
@@ -34,6 +35,11 @@ final readonly class SupportReadOnlyListener
 {
     private const string COMPANY_PATH = '#^/api/companies/([0-9a-fA-F-]{36})(/|$)#';
     private const string GRANT = '_support_grant';
+    /**
+     * What carries the company's data out whole: the exports, and the month's withholding declaration (TEJ), every
+     * payment withheld at once by another path (docs/SPEC.md § 7). Each expense and its withholding stay readable.
+     */
+    private const string BULK_PATH = '#/exports/|/withholding-declarations/tej/#';
 
     public function __construct(private Security $security, private SupportAccess $support, private RecordSupportVisit $visits)
     {
@@ -55,7 +61,7 @@ final readonly class SupportReadOnlyListener
         if (null === $grant) {
             return;
         }
-        if (!$request->isMethod('GET') || str_contains(RoutedPath::of($request), '/exports/')) {
+        if (!$request->isMethod('GET') || 1 === preg_match(self::BULK_PATH, RoutedPath::of($request))) {
             $event->setResponse(new JsonResponse(['error' => SupportAccess::READ_ONLY], Response::HTTP_FORBIDDEN));
 
             return;

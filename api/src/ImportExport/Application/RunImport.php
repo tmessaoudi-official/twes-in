@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Application;
 
+use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Domain\ImportRun;
 use App\ImportExport\Domain\ImportRunRepository;
 use App\Shared\Application\Transactions;
@@ -46,12 +47,14 @@ final readonly class RunImport
      * @param list<string>                $ticked      the switches the request ticks; those the subject does not offer are ignored
      *
      * @throws UnreadableImport
+     * @throws StepUpRequired   when a row changes what asks who is at the screen again, without a recent proof: the
+     *                          whole file is rolled back, and kept once the proof is given
      */
     public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId, string $contentHash, array $ticked = []): ImportReport
     {
         $records = $this->records($subject, $rows);
         $already = $this->runs->lastOf($company->getId(), $declaration->key(), $contentHash)?->getAt();
-        $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked));
+        $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun);
 
         try {
             return $this->transactions->run(function () use ($declaration, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $already): ImportReport {

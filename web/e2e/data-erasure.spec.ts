@@ -2,7 +2,8 @@
 import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { invitationTokenFor } from './mailpit';
-import { signIn as signInAsOperator } from './session';
+import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
+import { proveByApi } from './step-up';
 import { toast } from './toast';
 
 // « Effacer des données » through the whole stack (docs/SPEC.md row 252): an owner proves who they are, counts what a
@@ -38,6 +39,8 @@ test('an owner erases the stock plan, sees it waiting on every page, and undoes 
   const owner = `eraser-${stamp}@twes.local`;
 
   await signInAsOperator(page);
+  // Every platform write, opening a company first, waits for the operator's recent proof (docs/SPEC.md § 7).
+  await proveByApi(page, OPERATOR_PASSWORD);
   const company = (await api(page, 'POST', '/api/companies', {
     name: `Effaçable ${stamp}`,
     countryCode: 'TN',

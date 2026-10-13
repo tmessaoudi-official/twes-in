@@ -159,6 +159,8 @@ final class VendorImportTest extends ApiTestCase
         $this->createUser('buyer@twes.local', 'password-1234', $this->company, $permissions, 'member');
         $this->login('buyer@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
+        // A vendor's bank details are on the step-up list; VendorBankDetailsStepUpTest is about that.
+        $this->stepUp('password-1234');
     }
 
     private function companyPath(): string

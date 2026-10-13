@@ -3,6 +3,8 @@
 import { inject, Injectable, signal } from '@angular/core';
 import type { LegalLanguage } from '../shared/legal/legal-api';
 import type { LegalPage } from '../shared/legal/legal-pages';
+import { StepUp } from '../shared/step-up/step-up';
+import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { PlatformLegalApi } from './platform-legal-api';
 import type { LegalStatusRow, LegalVersionRow } from './platform-legal-types';
 
@@ -13,6 +15,7 @@ import type { LegalStatusRow, LegalVersionRow } from './platform-legal-types';
 @Injectable({ providedIn: 'root' })
 export class PlatformLegalFacade {
   private readonly api = inject(PlatformLegalApi);
+  private readonly stepUp = inject(StepUp);
   private readonly overviewSignal = signal<readonly LegalStatusRow[]>([]);
   private readonly versionsSignal = signal<readonly LegalVersionRow[]>([]);
   private readonly busySignal = signal(false);
@@ -41,7 +44,7 @@ export class PlatformLegalFacade {
   async saveIdentity(changes: Readonly<Record<string, string>>): Promise<boolean> {
     return this.run(async () => {
       for (const [placeholder, value] of Object.entries(changes)) {
-        await this.api.setIdentity(placeholder, value);
+        await this.proven(() => this.api.setIdentity(placeholder, value));
       }
       this.identitySignal.set(await this.api.identity());
     });
@@ -58,7 +61,7 @@ export class PlatformLegalFacade {
     const opened = this.opened;
     if (opened === null) return false;
     return this.run(async () => {
-      await this.api.write(opened.page, opened.language, body);
+      await this.proven(() => this.api.write(opened.page, opened.language, body));
       await this.refresh(opened.page, opened.language);
     });
   }
@@ -68,9 +71,14 @@ export class PlatformLegalFacade {
     const opened = this.opened;
     if (opened === null) return false;
     return this.run(async () => {
-      await this.api.validate(opened.page, opened.language);
+      await this.proven(() => this.api.validate(opened.page, opened.language));
       await this.refresh(opened.page, opened.language);
     });
+  }
+
+  /** A platform write waits for the operator to prove who is at the screen again (docs/SPEC.md § 7, the step-up list). */
+  private proven<T>(call: () => Promise<T>): Promise<T> {
+    return this.stepUp.retrying(call, stepUpAsked, 'step_up.intro_change');
   }
 
   private async refresh(page: LegalPage, language: LegalLanguage): Promise<void> {

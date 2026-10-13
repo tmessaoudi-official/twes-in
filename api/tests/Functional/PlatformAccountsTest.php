@@ -172,6 +172,7 @@ final class PlatformAccountsTest extends ApiTestCase
         $operator = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('op@twes.local')])
             ?? $this->createUser('op@twes.local', self::PASSWORD, operator: true);
         $this->login('op@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
         self::assertResponseIsSuccessful();
 
         return $operator;

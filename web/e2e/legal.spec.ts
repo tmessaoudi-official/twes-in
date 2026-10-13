@@ -2,7 +2,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { wcagViolations } from './axe';
-import { NOTICE_CLOSED, OPERATOR_EMAIL, signIn } from './session';
+import { NOTICE_CLOSED, OPERATOR_EMAIL, OPERATOR_PASSWORD, signIn } from './session';
+import { proveByApi } from './step-up';
 import { toast } from './toast';
 
 // The copyright and legal links close every page, signed out or in, centred, inside the page so they scroll with it;
@@ -304,6 +305,8 @@ test('the operator publishes a legal page, which a visitor reads as a draft unti
 }) => {
   test.setTimeout(90_000);
   await signIn(page);
+  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7); one holds the scenario through.
+  await proveByApi(page, OPERATOR_PASSWORD);
   await page.goto('/platform/legal');
   await page.getByTestId('legal-cell-security-ar').click();
   await expect(page.getByTestId('legal-editor-body')).toHaveAttribute('dir', 'rtl');
@@ -339,6 +342,8 @@ test('the security contact the operator fills in is published in security.txt', 
   page,
 }) => {
   await signIn(page);
+  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7); one holds the scenario through.
+  await proveByApi(page, OPERATOR_PASSWORD);
   await page.goto('/platform/legal');
   const address = `security+${Date.now()}@twes.test`;
   await page.getByTestId('legal-identity-security.email').fill(address);

@@ -33,8 +33,6 @@ final readonly class ConfirmStepUp
     public const string CONFIRMED = 'auth.step_up';
     public const string REFUSED = 'auth.step_up_refused';
     public const string EXHAUSTED = 'auth.step_up_exhausted';
-    /** Wrong answers a sign-in may give before it ends. */
-    public const int BUDGET = 5;
 
     public function __construct(
         private UserRepository $users,
@@ -45,6 +43,9 @@ final readonly class ConfirmStepUp
         private ClockInterface $clock,
         #[Autowire(param: 'app.step_up.valid_for')]
         private string $validFor,
+        /** Wrong answers a sign-in may give before it ends. */
+        #[Autowire(param: 'app.step_up.attempts')]
+        private int $attempts,
     ) {
     }
 
@@ -58,8 +59,9 @@ final readonly class ConfirmStepUp
 
     /**
      * A wrong answer here is this sign-in's own, never a step toward the account lock (docs/SPEC.md § 7, the C-F3 ruling):
-     * a customer typing at the customer screen must not lock the clerk out everywhere. The fifth ends the sign-in instead,
-     * and a new one needs the password. A locked account is refused all the same, without counting.
+     * a customer typing at the customer screen must not lock the clerk out everywhere. The last wrong answer the deployment
+     * allows (app.step_up.attempts) ends the sign-in instead, and a new one needs the password. A locked account is
+     * refused all the same, without counting.
      *
      * @throws StepUpRefused   when the password is not the account's
      * @throws StepUpExhausted when that wrong answer was the last this sign-in may give
@@ -110,7 +112,7 @@ final readonly class ConfirmStepUp
     private function wrong(Uuid $userId, string $method): never
     {
         $this->audit->record(new AuditEntry('user', $userId, self::REFUSED, $userId, ['method' => $method]));
-        if ($this->proofs->failed($userId) >= self::BUDGET) {
+        if ($this->proofs->failed($userId) >= $this->attempts) {
             $this->audit->record(new AuditEntry('user', $userId, self::EXHAUSTED, $userId, ['method' => $method]));
 
             throw new StepUpExhausted();

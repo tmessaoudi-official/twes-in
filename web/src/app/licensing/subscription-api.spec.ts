@@ -168,4 +168,13 @@ describe('SubscriptionApi', () => {
     http.expectOne('/api/platform/payment-declarations').error(new ProgressEvent('error'));
     await expect(unreachable).rejects.toEqual(new SubscriptionRefused('network'));
   });
+
+  // docs/SPEC.md § 7, the step-up list: an operator's decision is a platform write.
+  it('names the proof the API waits for before it records a decision', async () => {
+    const deciding = api.reject('d1', null);
+    http
+      .expectOne('/api/platform/payment-declarations/d1/reject')
+      .flush({ error: 'step_up_required' }, { status: 403, statusText: 'Forbidden' });
+    await expect(deciding).rejects.toEqual(new SubscriptionRefused('step_up_required'));
+  });
 });

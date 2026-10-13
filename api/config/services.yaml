@@ -57,8 +57,11 @@ parameters:
     app.mfa.key: '%env(APP_MFA_KEY)%'
     # How long the half-authenticated state between password and second factor survives.
     app.mfa.pending_ttl: 'PT5M'
-    # How long a confirmed step-up opens what the API checks it for (an export), within the same sign-in.
+    # How long a confirmed step-up opens what the API checks it for (the step-up list, docs/SPEC.md § 7), within the
+    # same sign-in, and how many wrong answers a sign-in may give before it ends. A deployment's to set, within bounds
+    # checked when the container is built (StepUpBounds): PT1M to PT15M, and 3 to 10.
     app.step_up.valid_for: 'PT5M'
+    app.step_up.attempts: 5
     # How long « Effacer des données » keeps what it took, for its undo; then the copy and the files only it named go.
     app.erasure.undoable_for: 'PT24H'
     # The issuer an authenticator app shows beside the account.

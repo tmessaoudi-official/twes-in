@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { signIn as signInAsOperator, signInWithCode } from './session';
+import { OPERATOR_PASSWORD, signIn as signInAsOperator, signInWithCode } from './session';
+import { proveByApi } from './step-up';
 
 // « Accès du support » through the whole stack (docs/SPEC.md § 8 row 67): the owner of a company the operator is NOT a
 // member of opens it to support for a day; the operator finds it in their switcher, reads it under a banner and is
@@ -57,6 +58,8 @@ test('an owner opens the company to support for a day, support reads it read-onl
 
   // A company of its own, which the operator opens for its owner without becoming a member of it.
   await signInAsOperator(page);
+  // Every platform write, opening a company first, waits for the operator's recent proof (docs/SPEC.md § 7).
+  await proveByApi(page, OPERATOR_PASSWORD);
   const opened = await api(page, 'POST', '/api/companies', {
     name,
     countryCode: 'TN',
@@ -85,11 +88,13 @@ test('an owner opens the company to support for a day, support reads it read-onl
   await signIn(theirPage, owner, THEIR_PASSWORD);
   await expect(theirPage).toHaveURL(/\/$/);
 
-  // The owner opens it for the day offered first.
+  // The owner opens it for the day offered first, once they have proved who they are again: a sign-in is no proof.
   await theirPage.goto('/company/support-access');
   await expect(theirPage.getByTestId('support-access-closed')).toBeVisible();
   await expect(theirPage.getByTestId('support-access-hours-24').locator('input')).toBeChecked();
   await theirPage.getByTestId('support-access-grant').click();
+  await theirPage.getByTestId('step-up-password').fill(THEIR_PASSWORD);
+  await theirPage.getByTestId('step-up-confirm').click();
   await expect(theirPage.getByTestId('support-access-open')).toBeVisible();
   await expect(theirPage.getByTestId('support-banner')).toBeVisible();
 

@@ -215,6 +215,7 @@ final class CompanyClosingTest extends ApiTestCase
         $this->closeDown();
         $this->createUser('op@twes.local', self::PASSWORD, operator: true);
         $this->login('op@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
         self::assertResponseIsSuccessful();
 
         foreach (['approve', 'reject'] as $decision) {

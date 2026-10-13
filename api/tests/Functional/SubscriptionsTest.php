@@ -222,6 +222,7 @@ final class SubscriptionsTest extends ApiTestCase
             $this->operatorCreated = true;
         }
         $this->login('op@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
     }
 
     /**

@@ -3,6 +3,7 @@
 import { TestBed } from '@angular/core/testing';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { StepUp } from '../shared/step-up/step-up';
 import { SubscriptionApi, SubscriptionRefused } from './subscription-api';
 import { SubscriptionFacade } from './subscription-facade';
 import type { PaymentRow, SubscriptionView } from './subscription-types';
@@ -48,6 +49,11 @@ const held: SubscriptionView = {
   canDeclare: false,
 };
 
+// The proof dialog is answered by the test; `retrying` itself is StepUp's own.
+const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
+  request: vi.fn<(intro?: string) => Promise<boolean>>(),
+});
+
 describe('SubscriptionFacade', () => {
   const api = {
     ofCompany: vi.fn(),
@@ -68,6 +74,7 @@ describe('SubscriptionFacade', () => {
         { provide: SubscriptionApi, useValue: api },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
+        { provide: StepUp, useValue: stepUp },
       ],
     });
     facade = TestBed.inject(SubscriptionFacade);
@@ -130,5 +137,30 @@ describe('SubscriptionFacade', () => {
     await facade.loadWaiting();
 
     expect(facade.error()).toBe('network');
+  });
+
+  // docs/SPEC.md § 7, the step-up list: an operator's decision on a payment is a platform write.
+  it('asks the operator for the proof the platform wants, then records the decision', async () => {
+    stepUp.request.mockReset().mockResolvedValue(true);
+    api.waiting.mockResolvedValue([]);
+    api.confirm
+      .mockRejectedValueOnce(new SubscriptionRefused('step_up_required'))
+      .mockResolvedValueOnce({ ...declared, status: 'confirmed' });
+
+    expect(await facade.confirm('p1', 2, null)).toBe(true);
+
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_change');
+    expect(api.confirm).toHaveBeenCalledTimes(2);
+  });
+
+  it('records nothing when the operator does not give the proof', async () => {
+    stepUp.request.mockReset().mockResolvedValue(false);
+    api.reject.mockRejectedValue(new SubscriptionRefused('step_up_required'));
+
+    expect(await facade.reject('p1', null)).toBe(false);
+
+    expect(api.reject).toHaveBeenCalledTimes(1);
+    expect(api.waiting).not.toHaveBeenCalled();
+    expect(facade.error()).toBe('step_up_required');
   });
 });
