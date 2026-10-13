@@ -45,6 +45,9 @@ abstract class ApiTestCase extends WebTestCase
 {
     /** The authenticator createUser enrols; .env.test's key encrypts it. */
     protected const string AUTHENTICATOR_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+
+    /** The session cookie as the browser holds it. */
+    protected const string SESSION_COOKIE = '__Host-twes_session';
     private const string MFA_TEST_KEY = 'Fh0hAlB8Q7xUq0mJ0zRz2s4vXn6yKbPd8eGtWc3AjQY=';
 
     protected KernelBrowser $client;

@@ -187,7 +187,7 @@ test.describe('a first visit', () => {
     // The app works while it is open: its link opens the Cookies text over the page.
     await notice.getByTestId('cookie-notice-more').click();
     const panel = page.getByRole('dialog');
-    await expect(panel.getByTestId('stored-row').first()).toContainText('twes_session');
+    await expect(panel.getByTestId('stored-row').first()).toContainText('__Host-twes_session');
     await expect(page).toHaveURL(/\/login$/);
     await panel.getByTestId('legal-close').click();
 
@@ -283,7 +283,7 @@ test('stores in the browser nothing the Cookies page does not declare', async ({
     ...Object.keys(localStorage),
     ...Object.keys(sessionStorage),
   ]);
-  expect(cookies).toContain('twes_session');
+  expect(cookies).toContain('__Host-twes_session');
   expect(keys).toContain(NOTICE_CLOSED);
   // Symfony's profiler (SecurityDataCollector) links a request to its authentication with these two, where it collects:
   // development only (docs/SPEC.md § 7, 2026-09-19), so production never sets them and the Cookies page does not list

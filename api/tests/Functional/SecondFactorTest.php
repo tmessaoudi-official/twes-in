@@ -135,6 +135,22 @@ final class SecondFactorTest extends ApiTestCase
         );
     }
 
+    /** The half-login the password opened is not the session the code completes: a planted id would ride it otherwise. */
+    public function testTheSessionIdChangesWhenTheCodeCompletesTheLogin(): void
+    {
+        $this->enrolledUser('someone@twes.local');
+        $this->login('someone@twes.local', self::PASSWORD);
+        $before = $this->client->getCookieJar()->get(self::SESSION_COOKIE)?->getValue();
+
+        $this->postJson('/api/auth/mfa/verify', ['code' => $this->currentCode()]);
+        self::assertResponseIsSuccessful();
+        $after = $this->client->getCookieJar()->get(self::SESSION_COOKIE)?->getValue();
+
+        self::assertNotNull($before, 'the password step keeps the half-login in a session');
+        self::assertNotNull($after);
+        self::assertNotSame($before, $after);
+    }
+
     public function testVerifyingWithoutHavingPassedThePasswordIsRefused(): void
     {
         $this->enrolledUser('someone@twes.local');
