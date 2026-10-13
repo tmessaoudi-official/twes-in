@@ -2,7 +2,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
-import { proveByApi, proveIfAsked } from './step-up';
+import { proveIfAsked, sendProving } from './step-up';
 import { toast } from './toast';
 
 // G3b through the real stack: the seeded Tunisian company's owner fills its profile, which asks for the matricule
@@ -42,19 +42,13 @@ async function currentProfile(page: Page): Promise<Record<string, unknown>> {
 }
 
 async function putProfile(page: Page, body: Record<string, unknown>): Promise<void> {
-  const status = await page.evaluate(
-    async ([csrf, profile]) => {
-      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const response = await fetch(`/api/companies/${me.company.id}/profile`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-        body: JSON.stringify(profile),
-      });
-      return response.status;
-    },
-    [CSRF, body] as const,
+  const companyId = await page.evaluate(
+    async () =>
+      ((await (await fetch('/api/auth/me')).json()) as { company: { id: string } }).company.id,
   );
-  expect(status).toBe(200);
+  // Putting the bank details back waits for a recent proof (docs/SPEC.md § 7), given only when asked.
+  const url = `/api/companies/${companyId}/profile`;
+  expect((await sendProving(page, OPERATOR_PASSWORD, 'PUT', url, body)).status).toBe(200);
 }
 
 test("the owner fills the company's profile with the identifier its preset requires", async ({
@@ -93,7 +87,6 @@ test("the owner fills the company's profile with the identifier its preset requi
       original['identifiers'] !== null &&
       Object.keys(original['identifiers'] as object).length > 0
     ) {
-      await proveByApi(page, OPERATOR_PASSWORD);
       await putProfile(page, original);
     }
   }

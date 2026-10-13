@@ -3,7 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
-import { proveByApi } from './step-up';
+import { sendProving } from './step-up';
 import { toast } from './toast';
 
 // « Effacer des données » through the whole stack (docs/SPEC.md row 252): an owner proves who they are, counts what a
@@ -39,17 +39,23 @@ test('an owner erases the stock plan, sees it waiting on every page, and undoes 
   const owner = `eraser-${stamp}@twes.local`;
 
   await signInAsOperator(page);
-  // Every platform write, opening a company first, waits for the operator's recent proof (docs/SPEC.md § 7).
-  await proveByApi(page, OPERATOR_PASSWORD);
-  const company = (await api(page, 'POST', '/api/companies', {
+  // Opening a company and every platform write wait for the operator's recent proof (docs/SPEC.md § 7), given
+  // only when asked: every attempt counts against the operator's five in five minutes.
+  const opened = await sendProving(page, OPERATOR_PASSWORD, 'POST', '/api/companies', {
     name: `Effaçable ${stamp}`,
     countryCode: 'TN',
     currency: 'TND',
     locale: 'fr',
     timezone: 'Africa/Tunis',
-  })) as { id: string };
-  await api(page, 'POST', `/api/platform/companies/${company.id}/owners`, { email: owner });
-  await api(page, 'POST', `/api/platform/companies/${company.id}/approve`, {});
+  });
+  expect(opened.status).toBe(201);
+  const company = opened.body as { id: string };
+  const owned = `/api/platform/companies/${company.id}/owners`;
+  expect((await sendProving(page, OPERATOR_PASSWORD, 'POST', owned, { email: owner })).status).toBe(
+    201,
+  );
+  const approved = `/api/platform/companies/${company.id}/approve`;
+  expect((await sendProving(page, OPERATOR_PASSWORD, 'POST', approved, {})).status).toBe(200);
 
   const theirs = await browser.newContext();
   const theirPage = await theirs.newPage();

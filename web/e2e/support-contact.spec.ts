@@ -2,12 +2,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { OPERATOR_PASSWORD, signIn } from './session';
-import { proveByApi } from './step-up';
+import { proveIfHeldBack, sendProving } from './step-up';
 import { toast } from './toast';
 
 // How a company reaches the people who run the platform: the operators set a phone, a WhatsApp number and an address
 // on the platform page, and every screen's help offers them under « Nous contacter », with the build support asks for.
-const CSRF = '0123456789abcdef0123456789abcdef';
 const CHANNELS = ['phone', 'whatsapp', 'email'] as const;
 type Contact = Record<(typeof CHANNELS)[number], string>;
 
@@ -16,15 +15,20 @@ test('the contact the operators set is offered in the help, a channel left empty
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page);
-  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7); one holds the scenario through.
-  await proveByApi(page, OPERATOR_PASSWORD);
+  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7), given only when asked: every
+  // attempt counts against the operator's five in five minutes.
   const before = await readContact(page);
   try {
     await page.goto('/platform');
     await page.getByTestId('platform-support-phone').fill('+216 71 000 000');
     await page.getByTestId('platform-support-whatsapp').fill('+216 20 123 456');
     await page.getByTestId('platform-support-email').fill('');
+    const saved = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/platform/settings/') && response.request().method() === 'PUT',
+    );
     await page.getByTestId('platform-support-save').click();
+    await proveIfHeldBack(page, OPERATOR_PASSWORD, saved);
     await expect(toast(page)).toBeVisible();
 
     await page.getByTestId('help-open').click();
@@ -61,17 +65,10 @@ async function readContact(page: Page): Promise<Contact> {
 
 /** Puts each channel back as the run found it, so the shared platform is left as it was. */
 async function writeContact(page: Page, contact: Contact): Promise<void> {
-  await page.evaluate(
-    async ({ contact, token }) => {
-      for (const [channel, value] of Object.entries(contact)) {
-        const answer = await fetch(`/api/platform/settings/support.${channel}`, {
-          method: 'PUT',
-          headers: { 'content-type': 'application/json', 'csrf-token': token },
-          body: JSON.stringify({ value }),
-        });
-        if (!answer.ok) throw new Error(`restoring support.${channel} answered ${answer.status}`);
-      }
-    },
-    { contact, token: CSRF },
-  );
+  for (const [channel, value] of Object.entries(contact)) {
+    const url = `/api/platform/settings/support.${channel}`;
+    const answer = await sendProving(page, OPERATOR_PASSWORD, 'PUT', url, { value });
+    if (answer.status < 200 || answer.status > 299)
+      throw new Error(`restoring support.${channel} answered ${answer.status}`);
+  }
 }

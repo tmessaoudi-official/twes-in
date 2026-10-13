@@ -2,7 +2,7 @@
 import { expect, test } from '@playwright/test';
 import { invitationTokenFor, mailTo } from './mailpit';
 import { OPERATOR_PASSWORD, inACompany, signIn } from './session';
-import { proveByApi, proveIfAsked } from './step-up';
+import { proveIfAsked, sendProving } from './step-up';
 import { toast } from './toast';
 
 const CSRF = '0123456789abcdef0123456789abcdef';
@@ -104,18 +104,14 @@ test('a kind muted in « Mon compte » is still listed, and the bell no longer c
 
     const invited = `muted-${Date.now()}@twes.local`;
     const name = `Muted ${Date.now()}`;
-    await proveByApi(page, OPERATOR_PASSWORD);
-    const invitedStatus = await page.evaluate(
-      async ([csrf, company, email]) =>
-        (
-          await fetch(`/api/companies/${company}/members`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-            body: JSON.stringify({ email, role: 'member' }),
-          })
-        ).status,
-      [CSRF, companyId, invited] as const,
-    );
+    // Adding a member waits for a recent proof (docs/SPEC.md § 7), given only when asked.
+    const members = `/api/companies/${companyId}/members`;
+    const invitedStatus = (
+      await sendProving(page, OPERATOR_PASSWORD, 'POST', members, {
+        email: invited,
+        role: 'member',
+      })
+    ).status;
     expect(invitedStatus).toBeLessThan(300);
     const token = await invitationTokenFor(request, invited);
     const stranger = await browser.newContext();
@@ -200,18 +196,14 @@ test('a notification mail’s stop link turns that kind’s mail off from its pa
   try {
     const invited = `mailed-${Date.now()}@twes.local`;
     const name = `Mailed ${Date.now()}`;
-    await proveByApi(page, OPERATOR_PASSWORD);
-    const invitedStatus = await page.evaluate(
-      async ([csrf, company, email]) =>
-        (
-          await fetch(`/api/companies/${company}/members`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-            body: JSON.stringify({ email, role: 'member' }),
-          })
-        ).status,
-      [CSRF, companyId, invited] as const,
-    );
+    // Adding a member waits for a recent proof (docs/SPEC.md § 7), given only when asked.
+    const members = `/api/companies/${companyId}/members`;
+    const invitedStatus = (
+      await sendProving(page, OPERATOR_PASSWORD, 'POST', members, {
+        email: invited,
+        role: 'member',
+      })
+    ).status;
     expect(invitedStatus).toBeLessThan(300);
     const token = await invitationTokenFor(request, invited);
     const stranger = await browser.newContext();

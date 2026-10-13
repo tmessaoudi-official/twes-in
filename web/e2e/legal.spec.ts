@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { NOTICE_CLOSED, OPERATOR_EMAIL, OPERATOR_PASSWORD, signIn } from './session';
-import { proveByApi } from './step-up';
+import { proveIfHeldBack } from './step-up';
 import { toast } from './toast';
 
 // The copyright and legal links close every page, signed out or in, centred, inside the page so they scroll with it;
@@ -305,8 +305,8 @@ test('the operator publishes a legal page, which a visitor reads as a draft unti
 }) => {
   test.setTimeout(90_000);
   await signIn(page);
-  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7); one holds the scenario through.
-  await proveByApi(page, OPERATOR_PASSWORD);
+  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7), given only when asked: every
+  // attempt counts against the operator's five in five minutes.
   await page.goto('/platform/legal');
   await page.getByTestId('legal-cell-security-ar').click();
   await expect(page.getByTestId('legal-editor-body')).toHaveAttribute('dir', 'rtl');
@@ -314,7 +314,11 @@ test('the operator publishes a legal page, which a visitor reads as a draft unti
   await page.getByTestId('legal-editor-body').fill(`## الأمان\n\n${mark}`);
   await page.getByTestId('legal-preview-toggle').click();
   await expect(page.getByTestId('legal-body').locator('h2')).toHaveText('الأمان');
+  const published = page.waitForResponse(
+    (response) => response.url().endsWith('/versions') && response.request().method() === 'POST',
+  );
   await page.getByTestId('legal-publish').click();
+  await proveIfHeldBack(page, OPERATOR_PASSWORD, published);
   // The page ships a seeded draft, so the table's cell reads a draft either way: the history says whose it is.
   await expect(page.getByTestId('legal-version').first()).toContainText(OPERATOR_EMAIL);
   await expect(page.getByTestId('legal-validate')).toBeVisible();
@@ -327,7 +331,11 @@ test('the operator publishes a legal page, which a visitor reads as a draft unti
   await expect(reader.getByTestId('legal-body')).toContainText(mark);
   await expect(reader.getByTestId('legal-draft')).toBeVisible();
 
+  const validated = page.waitForResponse(
+    (response) => response.url().endsWith('/validate') && response.request().method() === 'POST',
+  );
   await page.getByTestId('legal-validate').click();
+  await proveIfHeldBack(page, OPERATOR_PASSWORD, validated);
   await expect(page.getByTestId('legal-validate')).toHaveCount(0);
   await reader.reload();
   await reader.getByTestId('legal-language-ar').click();
@@ -342,12 +350,17 @@ test('the security contact the operator fills in is published in security.txt', 
   page,
 }) => {
   await signIn(page);
-  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7); one holds the scenario through.
-  await proveByApi(page, OPERATOR_PASSWORD);
+  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7), given only when asked: every
+  // attempt counts against the operator's five in five minutes.
   await page.goto('/platform/legal');
   const address = `security+${Date.now()}@twes.test`;
   await page.getByTestId('legal-identity-security.email').fill(address);
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/platform/settings/') && response.request().method() === 'PUT',
+  );
   await page.getByTestId('legal-identity-save').click();
+  await proveIfHeldBack(page, OPERATOR_PASSWORD, saved);
   // The toast, not the button: the button is disabled while the save is still in flight, too.
   await expect(toast(page)).toBeVisible();
 

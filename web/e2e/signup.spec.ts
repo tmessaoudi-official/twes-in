@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { Browser, expect, Page, test } from '@playwright/test';
 import { mailTo, signupTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
-import { proveByApi } from './step-up';
+import { proveIfHeldBack } from './step-up';
 
 // G1d through the real bundle, nginx, FrankenPHP, PostgreSQL and Mailpit: an operator opens signup, somebody signs up
 // from the login page, their company waits, the operator approves it, and the owner gets in. The operator closes
@@ -30,7 +30,7 @@ async function setSwitch(page: Page, testId: string, on: boolean): Promise<void>
         response.url().includes('/api/platform/settings/') && response.request().method() === 'PUT',
     );
     await toggle.click();
-    expect((await saved).ok()).toBe(true);
+    expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, saved)).ok()).toBe(true);
   }
   await expect(toggle).toHaveAttribute('aria-checked', String(on));
 }
@@ -64,8 +64,8 @@ test('somebody signs up, their company waits, an operator approves it, and the o
   // The operator opens signup, with approval required.
   await signInAsOperator(page);
   await expect(page).toHaveURL(/\/$/);
-  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7); one holds the scenario through.
-  await proveByApi(page, OPERATOR_PASSWORD);
+  // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7), given only when asked: every
+  // attempt counts against the operator's five in five minutes.
   await page.getByTestId('hello-platform-link').click();
   await expect(page).toHaveURL(/\/platform$/);
   await setSwitch(page, 'platform-signup-enabled', true);
@@ -113,7 +113,11 @@ test('somebody signs up, their company waits, an operator approves it, and the o
     await expect(page.getByTestId(`company-sheet-${company}`)).toContainText(email);
     await page.screenshot({ path: `${SHOTS}/signup-4-platform.png` });
     await expectAccessible(page, 'platform');
+    const approved = page.waitForResponse(
+      (response) => response.url().endsWith('/approve') && response.request().method() === 'POST',
+    );
     await page.getByTestId(`approve-${company}`).click();
+    expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, approved)).ok()).toBe(true);
     await expect(line).toHaveCount(0);
 
     // The owner is told, and is let in.
