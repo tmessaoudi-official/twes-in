@@ -160,8 +160,12 @@ class User
         return null !== $this->lockedUntil && $this->lockedUntil > $now;
     }
 
+    /** A guess while the lock holds changes nothing: anyone could otherwise keep an owner locked out for good. */
     public function recordFailedLogin(\DateTimeImmutable $now, int $lockAfter, \DateInterval $lockFor): void
     {
+        if ($this->isLockedAt($now)) {
+            return;
+        }
         ++$this->failedLoginCount;
         if ($this->failedLoginCount >= $lockAfter) {
             $this->lockedUntil = $now->add($lockFor);

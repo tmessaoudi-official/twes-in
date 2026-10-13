@@ -12,6 +12,7 @@ its fix is on master, and the threat model lands last. P10 (continuity) follows 
 - [2026-10-13 00:04] AGREED: backups: the bucket keeps objects under S3 Object Lock, 14 days in governance mode; the server's key cannot delete; pruning runs from the monitor machine with a key the server never holds (developer).
 - [2026-10-13 00:04] AGREED: release signing: CI signs each published image with cosign keyless (GitHub OIDC) and deploy.sh refuses an image not signed by this repository's publish workflow; release tags are signed with the developer's SSH key, checked against a committed allowed_signers file; cosign (Apache-2.0) is a new tool on CI and the servers (developer).
 - [2026-10-13 00:04] ASSUMED (review): user-visible changes from the threat-model fixes: a step-up before adding or removing a second factor; one wording for any failed sign-in; everyone signed out once by the __Host- cookie rename; single-use links in mails carry the token after #; the mail-stop link keeps never expiring (idempotent, as List-Unsubscribe expects). Alternatives: per item, keep today's behaviour and record the residual risk.
+- [2026-10-13 07:35] AGREED: a locked or deactivated account is named only to the right password; a wrong one answers invalid_credentials as an unknown address does (amends the 2026-09-22 14:05 entry, which told the lock to any attempt)
 
 ## Formal Plan
 
