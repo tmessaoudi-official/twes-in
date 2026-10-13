@@ -3,9 +3,11 @@ framework:
     secret: '%env(APP_SECRET)%'
 
     # nginx terminates the client connection and forwards X-Forwarded-*; without this the audit log would
-    # record the container network's address as the actor. Private ranges only: never a public proxy.
+    # record the container network's address as the actor. Private ranges only: never a public proxy. The address and the
+    # scheme only: nothing in front of the API sets a host or a port, so one that arrives was written by whoever sent it,
+    # and believing it would let a foreign page pass the origin check.
     trusted_proxies: 'private_ranges'
-    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'x-forwarded-port']
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto']
 
     # CSRF for the API, Symfony's stateless mechanism: the SPA sends a random value of at least 24 characters in
     # the csrf-token header on every request, and App\Identity\Infrastructure\Security\CsrfRequestListener asks the

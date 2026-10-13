@@ -297,6 +297,42 @@ final class AuthTest extends ApiTestCase
         self::assertCount(0, $this->em()->getRepository(AuditLog::class)->findAll(), 'a refused request never reaches the firewall');
     }
 
+    /**
+     * A hop on the private network may say the client's address and scheme, never the host or the port: nothing in front
+     * of the API sets those, so a host it names is a forgery, and believing it lets a foreign page pass the origin check.
+     */
+    public function testAForwardedHostIsNotBelieved(): void
+    {
+        $this->createUser('owner@example.test', self::PASSWORD);
+        $this->client->setServerParameters([
+            'REMOTE_ADDR' => '10.0.0.5',
+            'HTTP_X_FORWARDED_HOST' => 'evil.example',
+            'HTTP_ORIGIN' => 'http://evil.example',
+            'HTTP_REFERER' => 'http://evil.example/',
+        ]);
+
+        $this->postJson('/api/auth/login', ['email' => 'owner@example.test', 'password' => self::PASSWORD]);
+
+        self::assertResponseStatusCodeSame(403);
+        self::assertSame(['error' => 'csrf_token_invalid'], $this->json());
+    }
+
+    /** The address a private hop forwards is the one the journal keeps: the edge replaces whatever a client sent. */
+    public function testTheForwardedClientAddressIsTheOneRecorded(): void
+    {
+        $user = $this->createUser('owner@example.test', self::PASSWORD);
+        $this->client->setServerParameters(['REMOTE_ADDR' => '10.0.0.5', 'HTTP_X_FORWARDED_FOR' => '203.0.113.9']);
+        $this->client->setServerParameter('HTTP_ORIGIN', 'http://localhost');
+
+        $this->login('owner@example.test', self::PASSWORD);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(
+            ['203.0.113.9'],
+            $this->em()->getConnection()->fetchFirstColumn("SELECT ip FROM audit_log WHERE action = 'auth.login' AND entity_id = ?", [$user->getId()->toRfc4122()]),
+        );
+    }
+
     public function testTheSessionIdChangesAtLogin(): void
     {
         $this->createUser('owner@example.test', self::PASSWORD);
