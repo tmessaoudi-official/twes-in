@@ -11,9 +11,11 @@ namespace App\Tests\Functional;
 
 use App\Identity\Domain\User;
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
+use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
+use App\Tenancy\Infrastructure\Console\SeedCommand;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -105,6 +107,32 @@ final class SeedCommandTest extends ApiTestCase
         self::assertSame(2, $tester->getStatusCode());
         self::assertStringContainsString('--operator-password is required', $tester->getDisplay());
         self::assertCount(0, $this->em()->getRepository(User::class)->findAll());
+    }
+
+    public function testAProductionKernelRefusesTheDevelopmentOptions(): void
+    {
+        foreach ([
+            '--operator-password' => ['--operator-password' => 'on-the-command-line'],
+            '--operator-totp-secret' => ['--operator-password-stdin' => true, '--operator-totp-secret' => 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'],
+        ] as $option => $options) {
+            $tester = new CommandTester(new SeedCommand(self::getContainer()->get(SeedPlatform::class), 'prod'));
+            $tester->setInputs(["stdin-secret\n"]);
+            $tester->execute(['--operator-email' => 'op@example.test', ...$options], ['interactive' => false]);
+
+            self::assertSame(2, $tester->getStatusCode(), $option);
+            self::assertStringContainsString($option, $tester->getDisplay());
+            self::assertCount(0, $this->em()->getRepository(User::class)->findAll(), $option);
+        }
+    }
+
+    public function testAProductionKernelStillSeedsFromStdin(): void
+    {
+        $tester = new CommandTester(new SeedCommand(self::getContainer()->get(SeedPlatform::class), 'prod'));
+        $tester->setInputs(["stdin-secret\n"]);
+        $tester->execute(['--operator-email' => 'op@example.test', '--operator-password-stdin' => true, '--without-company' => true], ['interactive' => false]);
+
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertCount(1, $this->em()->getRepository(User::class)->findAll());
     }
 
     /**

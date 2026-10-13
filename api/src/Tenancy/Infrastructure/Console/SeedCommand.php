@@ -20,13 +20,16 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\StreamableInputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /** `app:seed`: the console face of Tenancy\Application\Seed\SeedPlatform. The password and any authenticator secret are explicit options: no default ever ships in code. */
 #[AsCommand(name: 'app:seed', description: 'Create the built-in roles, the platform operator and a first company (idempotent).')]
 final class SeedCommand extends Command
 {
-    public function __construct(private readonly SeedPlatform $seed)
-    {
+    public function __construct(
+        private readonly SeedPlatform $seed,
+        #[Autowire('%kernel.environment%')] private readonly string $environment,
+    ) {
         parent::__construct();
     }
 
@@ -50,6 +53,17 @@ final class SeedCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        // A password on the command line stays in the shell's history and shows in `ps`, and a secret everyone can read
+        // in this repository would sign anyone in as the operator: both are for development and CI stacks only.
+        if ('prod' === $this->environment) {
+            foreach (['operator-password', 'operator-totp-secret'] as $option) {
+                if (null !== $input->getOption($option)) {
+                    $io->error("--$option is refused in production: give the password with --operator-password-stdin, and enrol the operator's authenticator after their first sign-in.");
+
+                    return Command::INVALID;
+                }
+            }
+        }
         $password = $input->getOption('operator-password');
         if (true === $input->getOption('operator-password-stdin')) {
             if (null !== $password) {
