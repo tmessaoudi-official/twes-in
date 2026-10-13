@@ -42,6 +42,8 @@ parameters:
     # database refuses fewer), and the hour the nightly purge runs (PurgeFailedSignInAddressesEveryNight).
     app.audit.failed_sign_in_months: 12
     app.audit.purge_at: '02:45'
+    # The nightly run that deletes the accounts whose days have passed (AccountDeletionSettings).
+    app.account.deletion_at: '03:15'
     # Mail the API sends itself.
     app.mail.sender: '%env(MAILER_SENDER)%'
     app.product_name: 'twes-in'

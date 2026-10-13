@@ -18,6 +18,7 @@ use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\LockMode;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\Tools\Pagination\Paginator;
@@ -94,6 +95,22 @@ final readonly class DoctrineUserRepository implements UserRepository
         $users = iterator_to_array($paginator, false);
 
         return new Page($users, \count($paginator), $page);
+    }
+
+    public function deletionsRequestedBefore(\DateTimeImmutable $moment): array
+    {
+        /** @var list<User> $users */
+        $users = $this->entityManager->createQueryBuilder()->select('u')->from(User::class, 'u')
+            ->where('u.deletionRequestedAt < :moment')->setParameter('moment', $moment, Types::DATETIME_IMMUTABLE)
+            ->orderBy('u.deletionRequestedAt')->getQuery()->getResult();
+
+        return $users;
+    }
+
+    public function remove(User $user): void
+    {
+        $this->entityManager->remove($user);
+        $this->entityManager->flush();
     }
 
     public function save(User $user): void

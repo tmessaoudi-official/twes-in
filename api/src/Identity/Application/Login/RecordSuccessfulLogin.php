@@ -11,6 +11,8 @@ namespace App\Identity\Application\Login;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Identity\Application\Account\DeleteOwnAccount;
+use App\Identity\Application\Account\ManageAccounts;
 use App\Identity\Domain\UserRepository;
 use App\Shared\Application\CurrentCompany;
 use Psr\Clock\ClockInterface;
@@ -30,8 +32,17 @@ final readonly class RecordSuccessfulLogin
     public function handle(Uuid $userId): void
     {
         $user = $this->users->ofId($userId) ?? throw new \DomainException('A login succeeded for a user that does not exist.');
-        $user->recordSuccessfulLogin($this->clock->now());
+        $now = $this->clock->now();
+        $user->recordSuccessfulLogin($now);
+        // Signing in again before the deletion a person asked for is final takes it back: the mail says so.
+        $cancelled = $user->isDeletionPending();
+        if ($cancelled) {
+            $user->cancelDeletion($now);
+        }
         $this->users->save($user);
         $this->audit->record(new AuditEntry(LoginAudit::ENTITY_TYPE, $userId, LoginAudit::LOGIN, $userId, [], $this->currentCompany->id()));
+        if ($cancelled) {
+            $this->audit->record(new AuditEntry(ManageAccounts::ENTITY_TYPE, $userId, DeleteOwnAccount::CANCELLED, $userId));
+        }
     }
 }

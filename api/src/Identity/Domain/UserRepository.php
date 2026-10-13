@@ -46,6 +46,16 @@ interface UserRepository
      */
     public function withTotpSecret(): array;
 
+    /**
+     * The accounts whose deletion was asked for before that moment, oldest request first: what the nightly run deletes.
+     *
+     * @return list<User>
+     */
+    public function deletionsRequestedBefore(\DateTimeImmutable $moment): array;
+
+    /** Deletes the account; what is only its own (sessions, factors, memberships) goes with it in the database. */
+    public function remove(User $user): void;
+
     /** Makes the user and every change to it durable. */
     public function save(User $user): void;
 }

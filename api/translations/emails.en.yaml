@@ -102,3 +102,10 @@ data_checks:
     invoices_chain: 'Invoice chain'
     invoices_arithmetic: 'Invoice figures'
     invoices_numbering: 'Invoice numbering'
+account_deletion:
+    subject: 'Your %product% account will be deleted'
+    heading: 'Your account is closed'
+    intro: 'You asked for your %product% account to be deleted. It is closed from now on and all your sessions have ended.'
+    final: 'The deletion becomes final in %days% days, on %date%: your account and preferences will then be erased, and your address taken out of the journal.'
+    cancel: 'To keep your account, sign in again before that date: the deletion will be cancelled.'
+    not_you: 'If you did not ask for this, sign in and change your password.'

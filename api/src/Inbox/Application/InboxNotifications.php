@@ -27,7 +27,8 @@ use Symfony\Component\Uid\Uuid;
  * rows are written first and the push follows, so a page that was closed, or a push that never arrived, still
  * finds the notification in the centre. A `user:` notification about one of the user's companies keeps that company,
  * which is where its kind is counted and chosen; a type no context declared is refused before anything is written.
- * Each row's reader is then queued its mail, unless the kind is mailed on its own by its context.
+ * Each row's reader is then queued its mail, unless the kind is mailed on its own by its context. A person whose
+ * account was deleted after the notification was raised is told nothing; any other unknown recipient is a contradiction.
  */
 final readonly class InboxNotifications implements Notifications
 {
@@ -42,6 +43,7 @@ final readonly class InboxNotifications implements Notifications
         private ClockInterface $clock,
         private NotificationKinds $kinds,
         private NotificationMailQueue $mails,
+        private DeletedAccounts $deleted,
     ) {
     }
 
@@ -60,8 +62,11 @@ final readonly class InboxNotifications implements Notifications
         $now = $this->clock->now();
 
         if ('user' === $match[1]) {
-            $user = $this->users->ofId($id)
-                ?? throw new \LogicException(\sprintf('A notification was published to user %s, who does not exist.', $id->toRfc4122()));
+            $user = $this->users->ofId($id);
+            if (null === $user && $this->deleted->wasDeleted($id)) {
+                return;
+            }
+            $user ??= throw new \LogicException(\sprintf('A notification was published to user %s, who does not exist.', $id->toRfc4122()));
             $about = null === $notification->companyId ? null : ($this->companies->ofId(Uuid::fromString($notification->companyId))
                 ?? throw new \LogicException(\sprintf('A notification was about company %s, which does not exist.', $notification->companyId)));
             $items = [new InboxItem($user, $about, $notification->type, $notification->payload, $now)];

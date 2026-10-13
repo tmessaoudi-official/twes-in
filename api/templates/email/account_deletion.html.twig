@@ -1,0 +1,12 @@
+{# The mail sent when a person asks for their account to be deleted. Plain, inline-styled HTML: mail clients strip stylesheets. #}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('fr') }}">
+  <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+    <h1 style="font-size: 20px;">{{ 'account_deletion.heading'|trans({}, 'emails') }}</h1>
+    <p>{{ 'account_deletion.intro'|trans({'%product%': productName}, 'emails') }}</p>
+    <p>{{ 'account_deletion.final'|trans({'%days%': days, '%date%': finalOn}, 'emails') }}</p>
+    <p>{{ 'account_deletion.cancel'|trans({}, 'emails') }}</p>
+    <p style="font-size: 13px; color: #555;">{{ 'account_deletion.not_you'|trans({}, 'emails') }}</p>
+    <p style="font-size: 12px; color: #888;">{{ productName }}</p>
+  </body>
+</html>
