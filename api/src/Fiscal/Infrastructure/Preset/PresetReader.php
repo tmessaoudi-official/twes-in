@@ -88,6 +88,7 @@ final readonly class PresetReader
             $this->numbering($this->node($config, 'numbering', 'numbering')),
             $this->units($this->node($config, 'units', 'units')),
             $this->establishment($this->node($config, 'establishment', 'establishment')),
+            $this->int($config, 'retention_years', 'retention_years'),
             $this->settings($config),
             $this->invoiceFields($config),
         );

@@ -24,6 +24,9 @@ its fix is on master, and the threat model lands last. P10 (continuity) follows 
 - [2026-10-13 14:24] ASSUMED (review): Account deletion: an account that became a company's only owner after asking is kept at the nightly run and tried again the next night, with a warning in the log — because the company would be left with no one to run it. Alternatives: delete anyway, or cancel the request
 - [2026-10-13 14:24] ASSUMED (review): Account deletion: a notification published after its recipient's account was deleted is dropped silently; one for an account that never existed still throws — because a stock alert raised before the deletion reaches the inbox after it. Alternatives: throw for both
 - [2026-10-13 14:24] ASSUMED (review): Account deletion: DELETE /api/auth/account answers finalAt and ends the session that asked, as the rotated security stamp ends every other — because the account is closed at once. Alternatives: keep the asking session open
+- [2026-10-13 14:53] AGREED: Closing a company can be undone by its owner alone during a grace period, a platform setting (7 days by default); after it the closing is final and the company stays read-only until its retention ends (developer).
+- [2026-10-13 14:53] ASSUMED (review): Company closing: retention runs from the end of the year the company closes plus the preset's years (TN 10, CIRPP/IS art. 62; FR 10, C. com. L123-22), never shorter than the law, marked unvalidated — because neither source in docs/research names the start. Alternatives: the closing day plus N years
+- [2026-10-13 14:53] ASSUMED (review): Company closing: on a closed company only GET passes, for *.read and accounting.export; every other request is 403 company_closed, the subscription is no longer judged, and approving, suspending or an invitation cannot reopen it; closing ends pending invitations and support grants — because a closed company is kept, not worked in. Alternatives: judge read-only by permission name alone
 
 ## Formal Plan
 
@@ -70,7 +73,7 @@ real publish workflow.
 | 3 | W3 tenancy and data | L | doing | 2064cc30 | api/** infra/postgres/** compose*.yaml scripts/** |
 | 3a | W3 journal functions and the 12-month purge | M | done | 02e51a98 | api/migrations/** api/src/Audit/** api/tests/** |
 | 3b | W3 « Mon compte » texts loaded with their page | M | done | 23bafd76 | web/** scripts/gates/** |
-| 3c | W3 account deletion API | L | todo | - | api/src/Identity/** api/tests/** |
+| 3c | W3 account deletion API | L | done | 9c50a361 | api/src/Identity/** api/tests/** |
 | 3d | W3 company closing API | L | todo | - | api/src/Tenancy/** api/config/fiscal/** docs/fiscal/** |
 | 3e | W3 account deletion and company closing screens | M | todo | - | web/** |
 | 4 | W4 realtime, PDF, web | L | todo | - | api/** web/** infra/** compose*.yaml |

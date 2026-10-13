@@ -26,4 +26,7 @@ interface StoredFileRepository
 
     /** How many bytes a company keeps, every file it was ever given counted: a stored file is never replaced. */
     public function bytesOfCompany(Uuid $companyId): int;
+
+    /** @return list<string> where the bytes of every file the company keeps are */
+    public function storageKeysOfCompany(Uuid $companyId): array;
 }

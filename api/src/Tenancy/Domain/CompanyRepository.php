@@ -30,4 +30,10 @@ interface CompanyRepository
     public function search(CompanySearch $search, PageRequest $page): Page;
 
     public function save(Company $company): void;
+
+    /** @return list<Company> the companies closed down whose last day kept is before $day, the earliest first */
+    public function closedDownKeptUntilBefore(\DateTimeImmutable $day): array;
+
+    /** Deletes the company and every row that is its own, in one statement the database's cascades carry through. */
+    public function removeWhole(Company $company): void;
 }

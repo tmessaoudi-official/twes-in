@@ -32,6 +32,8 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertSame([
             // The days before a deletion a person asked for is final (Identity\Application\Account\AccountDeletionSettings).
             'account.deletion_days',
+            // The days the owner of a company closed down may take it back (Tenancy\Application\Company\CompanyClosingSettings).
+            'company.reopen_days',
             // The publisher's and host's identity the legal pages name (Legal\Application\LegalSettings), empty until filled in.
             'legal.backup.provider', 'legal.commercial.email', 'legal.host.address', 'legal.host.country', 'legal.host.name', 'legal.host.phone', 'legal.jurisdiction',
             'legal.mail.provider', 'legal.monitor.provider', 'legal.privacy.email', 'legal.publisher.address', 'legal.publisher.director',
@@ -44,6 +46,7 @@ final class PlatformSettingsTest extends ApiTestCase
         $rows = array_column($rows, null, 'key');
         self::assertSame('', $rows['legal.publisher.name']['value']);
         self::assertSame(7, $rows['account.deletion_days']['value']);
+        self::assertSame(7, $rows['company.reopen_days']['value']);
         self::assertSame(7, $rows['licensing.grace_days']['value']);
         self::assertSame(7, $rows['licensing.hold_days']['value']);
         self::assertSame('read_only', $rows['licensing.unpaid_mode']['value']);

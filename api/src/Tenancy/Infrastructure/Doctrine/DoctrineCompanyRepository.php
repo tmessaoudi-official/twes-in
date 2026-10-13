@@ -19,6 +19,7 @@ use App\Tenancy\Domain\CompanySearch;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
@@ -42,6 +43,27 @@ final readonly class DoctrineCompanyRepository implements CompanyRepository
     public function all(): array
     {
         return $this->entityManager->getRepository(Company::class)->findBy([], ['name' => 'ASC']);
+    }
+
+    public function closedDownKeptUntilBefore(\DateTimeImmutable $day): array
+    {
+        /** @var list<Company> $companies */
+        $companies = $this->entityManager->createQueryBuilder()->select('c')->from(Company::class, 'c')
+            ->where('c.status = :closed')->andWhere('c.retainUntil < :day')
+            ->setParameter('closed', Company::STATUS_CLOSED)->setParameter('day', $day, Types::DATE_IMMUTABLE)
+            ->orderBy('c.retainUntil')->addOrderBy('c.id')->getQuery()->getResult();
+
+        return $companies;
+    }
+
+    /**
+     * One DELETE, never the ORM's removal: a company's rows reach each other through foreign keys checked at the end of
+     * the statement, so only a single statement can take them all; the ORM would delete them one table at a time.
+     */
+    public function removeWhole(Company $company): void
+    {
+        $this->entityManager->getConnection()->executeStatement('DELETE FROM company WHERE id = ?', [$company->getId()->toRfc4122()]);
+        $this->entityManager->detach($company);
     }
 
     public function search(CompanySearch $search, PageRequest $page): Page

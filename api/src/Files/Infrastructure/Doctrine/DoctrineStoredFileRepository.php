@@ -57,4 +57,14 @@ final readonly class DoctrineStoredFileRepository implements StoredFileRepositor
 
         return is_numeric($bytes) ? (int) $bytes : 0;
     }
+
+    public function storageKeysOfCompany(Uuid $companyId): array
+    {
+        /** @var list<string> $keys */
+        $keys = $this->entityManager->createQueryBuilder()->select('f.storageKey')->from(StoredFile::class, 'f')
+            ->where('f.company = :company')->setParameter('company', $companyId, 'uuid')
+            ->getQuery()->getSingleColumnResult();
+
+        return $keys;
+    }
 }

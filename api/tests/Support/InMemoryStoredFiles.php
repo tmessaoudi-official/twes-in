@@ -39,4 +39,9 @@ final class InMemoryStoredFiles implements StoredFileRepository
     {
         return array_sum(array_map(static fn (StoredFile $file): int => $file->getCompany()->getId()->equals($companyId) ? $file->getSize() : 0, $this->files));
     }
+
+    public function storageKeysOfCompany(Uuid $companyId): array
+    {
+        return array_values(array_map(static fn (StoredFile $file): string => $file->getStorageKey(), array_filter($this->files, static fn (StoredFile $file): bool => $file->getCompany()->getId()->equals($companyId))));
+    }
 }

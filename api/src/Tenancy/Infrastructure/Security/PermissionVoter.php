@@ -66,8 +66,14 @@ final class PermissionVoter extends Voter
             return null !== $grant && $grant->getCompany()->isActive() && $this->access->accessOf($companyId)->permits($permission->value);
         }
 
+        // A closed company still lets its members read it and take its books, whatever its subscription says.
+        $company = $membership->getCompany();
+        if ($company->isClosedDown()) {
+            return $membership->getRole()->grants($permission->value) && $company->permitsWhileClosedDown($permission->value);
+        }
+
         // A company that is not active grants its members nothing: pending an operator's approval, or suspended by one.
-        return $membership->getCompany()->isActive() && $membership->getRole()->grants($permission->value)
+        return $company->isActive() && $membership->getRole()->grants($permission->value)
             // An unpaid subscription narrows what the role grants, judged on the permission asked for, never on "*".
             && $this->access->accessOf($companyId)->permits($permission->value);
     }

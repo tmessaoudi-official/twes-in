@@ -51,6 +51,16 @@ final readonly class Files
         return $keys;
     }
 
+    /**
+     * Where the bytes of every file the company keeps are, for deleteContents() once the company itself is gone.
+     *
+     * @return list<string>
+     */
+    public function storageKeysOf(Uuid $companyId): array
+    {
+        return $this->records->storageKeysOfCompany($companyId);
+    }
+
     /** @param list<string> $keys */
     public function deleteContents(array $keys): void
     {

@@ -44,6 +44,8 @@ parameters:
     app.audit.purge_at: '02:45'
     # The nightly run that deletes the accounts whose days have passed (AccountDeletionSettings).
     app.account.deletion_at: '03:15'
+    # The nightly run that removes the closed companies whose retention has ended (RemoveClosedCompanies).
+    app.company.removal_at: '03:30'
     # Mail the API sends itself.
     app.mail.sender: '%env(MAILER_SENDER)%'
     app.product_name: 'twes-in'

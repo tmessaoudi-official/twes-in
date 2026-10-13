@@ -36,7 +36,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             normalizationContext: ['groups' => [self::READ]],
             parameters: [
                 'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: "Words found in a company's name or in the address of one of its owners, whatever their case and accents."),
-                'status[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['pending', 'active', 'suspended']]], description: 'Several statuses, OR\'d; a single `status=pending` still works.', constraints: []),
+                'status[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['pending', 'active', 'suspended', 'closed']]], description: 'Several statuses, OR\'d; a single `status=pending` still works.', constraints: []),
                 'countryCode[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'pattern' => '^[A-Z]{2}$']], description: 'Several countries, OR\'d, by their ISO 3166-1 alpha-2 code; a single `countryCode=TN` still works.', constraints: []),
                 'order[name]' => new QueryParameter(schema: self::DIRECTION),
                 'order[countryCode]' => new QueryParameter(schema: self::DIRECTION),
@@ -84,7 +84,7 @@ final class PlatformCompanyResource
     #[Groups([self::READ])]
     public string $countryCode = '';
 
-    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => ['pending', 'active', 'suspended']])]
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => ['pending', 'active', 'suspended', 'closed']])]
     #[Groups([self::READ])]
     public string $status = '';
 

@@ -17,7 +17,7 @@ namespace App\Tenancy\Domain;
 final readonly class CompanySearch
 {
     public const array SORTS = ['status', 'countryCode', 'createdAt', 'name'];
-    public const array STATUSES = [Company::STATUS_PENDING, Company::STATUS_ACTIVE, Company::STATUS_SUSPENDED];
+    public const array STATUSES = [Company::STATUS_PENDING, Company::STATUS_ACTIVE, Company::STATUS_SUSPENDED, Company::STATUS_CLOSED];
 
     /**
      * @param list<string>                $statuses     any of STATUSES

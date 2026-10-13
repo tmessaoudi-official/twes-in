@@ -34,7 +34,8 @@ use Symfony\Component\Uid\Uuid;
  * own. The one way in besides is the owner's « Accès support », which lets an operator read, and only read
  * (SupportAccess); a write or an export under it is refused before it gets here (SupportReadOnlyListener).
  *
- * A member whose company's subscription is unpaid past its grace period is refused with a 403 naming why, read-only
+ * A closed company is still its members' to read, and to take its books from; anything else is refused with a 403
+ * naming why. A member whose company's subscription is unpaid past its grace period is refused with a 403 naming why, read-only
  * or locked; the requested permission is what is judged, so an owner's "*" passes nothing the subscription refuses.
  *
  * Once it has resolved the company, it scopes the rest of the request to it through the company filter (review S5):
@@ -45,6 +46,8 @@ final readonly class CompanyGuard
     /** What a member is told when the company's unpaid subscription refuses the permission (docs/SPEC.md § 7, 2026-09-17). */
     public const string SUBSCRIPTION_READ_ONLY = 'subscription_read_only';
     public const string SUBSCRIPTION_LOCKED = 'subscription_locked';
+    /** What a member is told when the company is closed down and the permission is not one it keeps open. */
+    public const string COMPANY_CLOSED = 'company_closed';
 
     public function __construct(
         private Security $security,
@@ -66,10 +69,17 @@ final readonly class CompanyGuard
         if (null === $company || !$this->roleGrants($company, $permission)) {
             throw new NotFoundHttpException('No such company.');
         }
-        // Only a member reaches this point, so saying why does not tell a stranger the company exists.
-        $access = $this->access->accessOf($company->getId());
-        if (!$access->permits($permission)) {
-            throw new AccessDeniedHttpException(Access::Locked === $access ? self::SUBSCRIPTION_LOCKED : self::SUBSCRIPTION_READ_ONLY);
+        // Only a member reaches this point, so saying why does not tell a stranger the company exists. A closed company
+        // pays for nothing any more, so its subscription is no longer judged: what it keeps open is.
+        if ($company->isClosedDown()) {
+            if (!$company->permitsWhileClosedDown($permission)) {
+                throw new AccessDeniedHttpException(self::COMPANY_CLOSED);
+            }
+        } else {
+            $access = $this->access->accessOf($company->getId());
+            if (!$access->permits($permission)) {
+                throw new AccessDeniedHttpException(Access::Locked === $access ? self::SUBSCRIPTION_LOCKED : self::SUBSCRIPTION_READ_ONLY);
+            }
         }
         $this->entityManager->getFilters()->enable(CompanyFilter::NAME)->setParameter(CompanyFilter::COMPANY, $company->getId()->toRfc4122());
 
@@ -83,7 +93,25 @@ final readonly class CompanyGuard
      */
     public function may(Company $company, string $permission): bool
     {
-        return $this->roleGrants($company, $permission) && $this->access->accessOf($company->getId())->permits($permission);
+        return $this->roleGrants($company, $permission) && ($company->isClosedDown()
+            ? $company->permitsWhileClosedDown($permission)
+            : $this->access->accessOf($company->getId())->permits($permission));
+    }
+
+    /**
+     * The company a member asks to reopen, closed down as it is: the one way to act on a closed company that is not a
+     * read. Whether they are its owner, and whether the days allow it, is the use case's to say.
+     *
+     * @throws NotFoundHttpException when the company is absent or none of the caller's business
+     */
+    public function companyToReopen(Uuid $companyId, string $permission): Company
+    {
+        $company = $this->companies->ofId($companyId);
+        if (null === $company || !$this->roleGrants($company, $permission)) {
+            throw new NotFoundHttpException('No such company.');
+        }
+
+        return $company;
     }
 
     /**
@@ -98,7 +126,8 @@ final readonly class CompanyGuard
     private function roleGrants(Company $company, string $permission): bool
     {
         $account = $this->account();
-        if (!$company->isActive()) {
+        // A closed company is still its members', to read: what it keeps open is companyForActing's to judge.
+        if (!$company->isActive() && !$company->isClosedDown()) {
             return false;
         }
         $role = $this->memberships->ofUserInCompany($account->getId(), $company->getId())?->getRole();
@@ -106,7 +135,7 @@ final readonly class CompanyGuard
             return $role->grants($permission);
         }
 
-        return SupportAccess::permits($permission) && null !== $this->support->grantOf($account->getId(), $company->getId());
+        return $company->isActive() && SupportAccess::permits($permission) && null !== $this->support->grantOf($account->getId(), $company->getId());
     }
 
     public function account(): SecurityUser

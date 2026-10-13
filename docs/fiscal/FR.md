@@ -11,6 +11,17 @@ disagree, both are cited and the preset's choice is stated.
 |---|---|---|---|
 | The euro (EUR) has two decimals | `currency: EUR`, `minor_unit: 2` | ISO 4217; Unicode CLDR through Symfony Intl | unvalidated |
 
+## 1a. Keeping records
+
+| Rule | Preset | Source | Status |
+|---|---|---|---|
+| Documents a tax return rests on are kept six years from the last operation they record or their date | — | LPF art. L102 B [22] | unvalidated |
+| Accounting documents and their supporting documents are kept ten years | `retention_years: 10` | Code de commerce art. L123-22 [23] | unvalidated |
+
+The preset keeps the longer of the two. Neither article's start can run later than the end of the year a company stops
+trading, so a company closed down in the app is kept until 31 December of the year it closed plus ten years.
+Unvalidated.
+
 ## 2. VAT (TVA)
 
 | Rule | Preset | Source | Status |
@@ -240,3 +251,5 @@ E-invoicing comes after the POC (docs/SPEC.md § 2).
 19. European Commission, VIES, FAQ « VAT identification number structure »: https://ec.europa.eu/taxation_customs/vies/#/faq ; the table was read from the page's own English text, https://ec.europa.eu/taxation_customs/vies/assets/i18n/en.json (keys `faq_label_<prefix>format`, `faq_lbl_remarks`, `faq_txt_notes`), on 2026-10-09.
 20. Sovos, « Use case 21: Final invoice after advance payment » (secondary, on AFNOR XP Z12-014 § 3.2.19: the final invoice is a 380 and BG-3 names each pre-payment invoice, BT-25 and BT-26): https://docs.sovos.com/indirect-tax/indirect-tax-products/einvoicing/compliance-network/country-setup-guides/france/lifecycles-and-use-cases/use-case-21-final-invoice-after-advance-payment
 21. Factur-X 1.09, EN16931 profile XSD, `HeaderTradeSettlementType/InvoiceReferencedDocument` minOccurs 0, maxOccurs unbounded, read in the copy shipped by the BSD-licensed `factur-x` library (akretion/factur-x, src/facturx/xsd_and_schematron/facturx-en16931/) on 2026-10-09; Peppol's semantic model gives BG-3 « one or more preceding invoices », 0..n: https://docs.peppol.eu/tdd/sk/tdd-sk/trn-tdd/semantic-model/bg-03/
+22. Livre des procédures fiscales, art. L102 B: https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000041471233/ (read through docs/research/tax-data-france.md § 3).
+23. Code de commerce, art. L123-22: https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006219327 (read through docs/research/tax-data-france.md § 3).

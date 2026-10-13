@@ -64,4 +64,17 @@ final class InMemoryCompanies implements CompanyRepository
             $this->companies[] = $company;
         }
     }
+
+    public function closedDownKeptUntilBefore(\DateTimeImmutable $day): array
+    {
+        $due = array_values(array_filter($this->companies, static fn (Company $company): bool => $company->isClosedDown() && $company->getRetainUntil() < $day));
+        usort($due, static fn (Company $a, Company $b): int => $a->getRetainUntil() <=> $b->getRetainUntil());
+
+        return $due;
+    }
+
+    public function removeWhole(Company $company): void
+    {
+        $this->companies = array_values(array_filter($this->companies, static fn (Company $kept): bool => $kept !== $company));
+    }
 }
