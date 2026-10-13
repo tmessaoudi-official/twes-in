@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, MemberRole, MemberRow } from './company-types';
 
@@ -10,6 +11,7 @@ import type { CompanyError, MemberRole, MemberRow } from './company-types';
 export class MembersFacade {
   private readonly api = inject(CompanyApi);
   private readonly auth = inject(AuthFacade);
+  private readonly stepUp = inject(StepUp);
   private readonly membersSignal = signal<readonly MemberRow[]>([]);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<CompanyError | null>(null);
@@ -47,7 +49,12 @@ export class MembersFacade {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      const result = await call();
+      // Adding or removing somebody waits for the person to prove who they are again.
+      const result = await this.stepUp.retrying(
+        call,
+        (error) => error instanceof CompanyRefused && error.code === 'step_up_required',
+        'step_up.intro_sensitive',
+      );
       this.membersSignal.set(await this.api.members(companyId));
       // What was just written can be this person's OWN rights: the session is read again so the menu, the
       // permission-gated controls and the record bars follow at once (developer, 2026-09-20). `refresh`, never

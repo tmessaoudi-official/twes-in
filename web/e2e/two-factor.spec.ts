@@ -2,7 +2,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { signIn as signInAsOperator } from './session';
+import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
+import { proveIfAsked } from './step-up';
 import { totp } from './totp';
 import { toast } from './toast';
 
@@ -62,6 +63,7 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   await page.getByTestId('nav-members').click();
   await page.getByTestId('member-email').fill(invited);
   await page.getByTestId('member-add').click();
+  await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
   await expect(toast(page)).toContainText('invitation');
   const token = await invitationTokenFor(request, invited);
 

@@ -44,4 +44,13 @@ describe('RolesApi refusals', () => {
   it('reads any other 403 as a plain refusal', async () => {
     expect((await refusedBy(403, 'Forbidden')).code).toBe('invalid');
   });
+
+  it('tells a change that waits for the step-up proof, by its token', async () => {
+    const refused = await refusedBy(
+      403,
+      'step_up_required: confirm the password or a passkey again before this change.',
+    );
+
+    expect(refused.code).toBe('step_up_required');
+  });
 });

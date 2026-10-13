@@ -496,3 +496,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   its own name as `Host`, or the container never turns healthy and whatever waits on it never starts. And a Sentry event
   carries the source lines around each frame: a leak search over events skips a frame's `context*` fields, or it finds
   the test's own literals in our code (2026-10-12, `make monitor-check`).
+- `make test-api` from a worktree recreates the shared `twes-in-postgres-1` (`compose.yaml` names the project), cutting the live
+  stack's database and leaving postgres bind-mounting the worktree's `init.sql`. In a worktree run `make tools CMD='cd api &&
+  vendor/bin/phpunit …'` over a copy of `api/vendor`, and `docker compose up -d postgres` from the main tree before removing it (2026-10-13).

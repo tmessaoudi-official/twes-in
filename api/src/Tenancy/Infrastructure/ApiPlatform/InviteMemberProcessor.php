@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Identity\Infrastructure\StepUp\RecentProof;
 use App\Tenancy\Application\Company\AlreadyAMember;
 use App\Tenancy\Application\Company\RoleNotManageable;
 use App\Tenancy\Application\Company\UnknownRole;
@@ -28,13 +29,14 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
  */
 final readonly class InviteMemberProcessor implements ProcessorInterface
 {
-    public function __construct(private InviteToCompany $invite, private CompanyGuard $guard)
+    public function __construct(private InviteToCompany $invite, private CompanyGuard $guard, private RecentProof $proof)
     {
     }
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): MemberResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), MemberPermission::WRITE);
+        $this->proof->demand($this->guard->account()->getId());
 
         try {
             $outcome = $this->invite->handle(

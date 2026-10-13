@@ -57,6 +57,8 @@ final class CompanyProfileTest extends ApiTestCase
     public function testAnAdministratorRevisesTheProfile(): void
     {
         $this->signedIn(['company.read', 'company.settings']);
+        // The bank details are on the step-up list (docs/SPEC.md § 7); the rest of the profile asks for no proof.
+        $this->stepUp('password-1234');
 
         $this->sendJson('PUT', $this->path(), $this->profile([
             'legalName' => 'Acme SARL',

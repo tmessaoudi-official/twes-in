@@ -100,6 +100,22 @@ describe('CompanyApi, the members', () => {
 
     await expect(removing).rejects.toEqual(new CompanyRefused('forbidden'));
   });
+
+  // docs/SPEC.md § 7, the step-up list: the refusal names its token first, for the screen to ask for the proof.
+  it('tells a member change and new bank details that wait for the step-up proof, by its token', async () => {
+    const detail = 'step_up_required: confirm the password or a passkey again before this change.';
+    const removing = api.removeMember('c1', 'u2');
+    http
+      .expectOne({ method: 'DELETE', url: '/api/companies/c1/members/u2' })
+      .flush({ detail }, { status: 403, statusText: 'Forbidden' });
+    await expect(removing).rejects.toEqual(new CompanyRefused('step_up_required'));
+
+    const saving = api.reviseProfile('c1', {} as never);
+    http
+      .expectOne({ method: 'PUT', url: '/api/companies/c1/profile' })
+      .flush({ detail }, { status: 403, statusText: 'Forbidden' });
+    await expect(saving).rejects.toEqual(new CompanyRefused('step_up_required'));
+  });
 });
 
 // docs/SPEC.md § 7, 2026-09-25 09:03: « Société à l'ouverture », the company every sign-in opens.

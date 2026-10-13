@@ -2,6 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { AuthFacade } from '../auth/auth-facade';
+import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
@@ -14,6 +15,11 @@ const owner: MemberRow = {
   joinedAt: '2026-09-09T10:00:00+00:00',
   status: 'joined',
 };
+
+// The proof dialog is answered by the test; `retrying` itself is StepUp's own.
+const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
+  request: vi.fn<(intro?: string) => Promise<boolean>>(),
+});
 
 describe('MembersFacade', () => {
   const api = {
@@ -34,6 +40,7 @@ describe('MembersFacade', () => {
       providers: [
         { provide: CompanyApi, useValue: api },
         { provide: AuthFacade, useValue: auth },
+        { provide: StepUp, useValue: stepUp },
       ],
     });
     facade = TestBed.inject(MembersFacade);
@@ -112,5 +119,27 @@ describe('MembersFacade', () => {
     await facade.remove('c1', 'u1');
 
     expect(facade.busy()).toBe(false);
+  });
+
+  // docs/SPEC.md § 7, the step-up list: adding or removing somebody waits for the person to prove who they are again.
+  it('asks for the proof the API wants, then adds the person', async () => {
+    stepUp.request.mockReset().mockResolvedValue(true);
+    api.addMember
+      .mockRejectedValueOnce(new CompanyRefused('step_up_required'))
+      .mockResolvedValueOnce(owner);
+    api.members.mockResolvedValue([owner]);
+
+    expect(await facade.add('c1', 'joiner@example.test', 'member')).toEqual(owner);
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
+    expect(api.addMember).toHaveBeenCalledTimes(2);
+  });
+
+  it('says nothing changed when the person does not give the proof', async () => {
+    stepUp.request.mockReset().mockResolvedValue(false);
+    api.removeMember.mockRejectedValue(new CompanyRefused('step_up_required'));
+
+    expect(await facade.remove('c1', 'u1')).toBe(false);
+    expect(facade.error()).toBe('step_up_required');
+    expect(api.removeMember).toHaveBeenCalledTimes(1);
   });
 });

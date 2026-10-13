@@ -27,4 +27,22 @@ export class StepUp {
     });
     return (await firstValueFrom(ref.afterClosed())) === true;
   }
+
+  /**
+   * Runs a change the API may hold back until the person proves who they are (the company's bank details, a member, a
+   * role): when `asked` recognises that refusal, asks for the proof with `intro` and runs the change once more. A
+   * person who gives no proof gets the refusal back, for the screen to say why nothing changed.
+   */
+  async retrying<T>(
+    call: () => Promise<T>,
+    asked: (error: unknown) => boolean,
+    intro: string,
+  ): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      if (!asked(error) || !(await this.request(intro))) throw error;
+      return call();
+    }
+  }
 }

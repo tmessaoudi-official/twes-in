@@ -24,6 +24,7 @@ export type RolesError =
   | 'built_in'
   | 'unknown_permission'
   | 'not_held'
+  | 'step_up_required'
   | 'invalid';
 
 /** Thrown when the API refuses; carries the code the UI translates and, for a role in use, who holds it. */
@@ -120,7 +121,9 @@ function refusalOf(error: unknown): RolesRefused {
     case 404:
       return new RolesRefused('not_found', detail);
     case 403:
-      // A 403 here is the one refusal that is not a bare permission miss: the editor tried to give what they do not hold.
+      if (detail.startsWith('step_up_required:'))
+        return new RolesRefused('step_up_required', detail);
+      // Otherwise it is the one refusal that is not a bare permission miss: the editor tried to give what they do not hold.
       return new RolesRefused(
         detail.startsWith('role_permission_not_held:') ? 'not_held' : 'invalid',
         detail,

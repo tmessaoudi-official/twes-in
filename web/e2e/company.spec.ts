@@ -3,6 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_EMAIL as EMAIL, signIn, signInWithCode } from './session';
 import { pickOption } from './select';
+import { proveByApi } from './step-up';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 
@@ -69,6 +70,8 @@ test('an operator opens a company from the platform, and the switcher moves the 
 
   // A membership is what opens a company, so the owner invites the operator as a plain member, and takes them out
   // again at the end: a member removes nobody, and the seeded operator belongs to Demo alone in every other scenario.
+  // Both changes wait for the owner to prove who they are again (the step-up list, docs/SPEC.md § 7).
+  await proveByApi(ownerPage, OWNER_PASSWORD);
   const companyId = await ownerPage.evaluate(
     async () =>
       ((await (await fetch('/api/auth/me')).json()) as { company: { id: string } }).company.id,
@@ -115,6 +118,7 @@ test('an operator opens a company from the platform, and the switcher moves the 
     await expect(page.getByTestId('company-line')).toContainText(name);
   } finally {
     const operatorId = await userIdOf(page);
+    await proveByApi(ownerPage, OWNER_PASSWORD);
     const removed = await ownerPage.evaluate(
       async ([id, csrf, userId]) => {
         const response = await fetch(`/api/companies/${id}/members/${userId}`, {

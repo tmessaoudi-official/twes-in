@@ -2,7 +2,8 @@
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { inACompany, signIn as signInAsOperator } from './session';
+import { OPERATOR_PASSWORD, inACompany, signIn as signInAsOperator } from './session';
+import { proveIfAsked } from './step-up';
 import { toast } from './toast';
 
 const CSRF = '0123456789abcdef0123456789abcdef';
@@ -48,6 +49,7 @@ test('a member deletes their own account behind a red button and a typed word, a
   await page.getByTestId('nav-members').click();
   await page.getByTestId('member-email').fill(address);
   await page.getByTestId('member-add').click();
+  await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
   await expect(toast(page)).toContainText('invitation');
   const invitation = await invitationTokenFor(request, address);
 

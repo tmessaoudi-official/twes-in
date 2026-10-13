@@ -2,7 +2,8 @@
 
 import { expect, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { inACompany, signIn as signInAsOperator } from './session';
+import { OPERATOR_PASSWORD, inACompany, signIn as signInAsOperator } from './session';
+import { proveIfAsked } from './step-up';
 import { toast } from './toast';
 
 const CSRF = '0123456789abcdef0123456789abcdef';
@@ -26,6 +27,7 @@ test('an accountant invited to the company reads the books and takes their files
   await page.getByTestId('member-role').click();
   await page.getByRole('option', { name: /comptable/i }).click();
   await page.getByTestId('member-add').click();
+  await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
   await expect(toast(page)).toContainText('invitation');
   const invitation = await invitationTokenFor(request, address);
 

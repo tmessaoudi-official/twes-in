@@ -2,7 +2,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { signIn as signInAsOperator } from './session';
+import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
+import { proveIfAsked } from './step-up';
 import { toast } from './toast';
 
 // A passkey is bound to a domain, and Chromium refuses an IP address as one, so this file talks to the stack as
@@ -72,6 +73,7 @@ test('an account adds a passkey, signs in with it, and removes it', async ({ pag
   await page.getByTestId('nav-members').click();
   await page.getByTestId('member-email').fill(invited);
   await page.getByTestId('member-add').click();
+  await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
   await expect(toast(page)).toContainText('invitation');
   const token = await invitationTokenFor(request, invited);
 

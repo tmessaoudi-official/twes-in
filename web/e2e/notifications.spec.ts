@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from '@playwright/test';
 import { invitationTokenFor, mailTo } from './mailpit';
-import { inACompany, signIn } from './session';
+import { OPERATOR_PASSWORD, inACompany, signIn } from './session';
+import { proveByApi, proveIfAsked } from './step-up';
 import { toast } from './toast';
 
 const CSRF = '0123456789abcdef0123456789abcdef';
@@ -37,6 +38,7 @@ test('a member joining reaches the open page live, and stays in the centre after
 
   await page.getByTestId('member-email').fill(invited);
   await page.getByTestId('member-add').click();
+  await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
   await expect(toast(page)).toContainText('invitation');
   const token = await invitationTokenFor(request, invited);
 
@@ -102,6 +104,7 @@ test('a kind muted in « Mon compte » is still listed, and the bell no longer c
 
     const invited = `muted-${Date.now()}@twes.local`;
     const name = `Muted ${Date.now()}`;
+    await proveByApi(page, OPERATOR_PASSWORD);
     const invitedStatus = await page.evaluate(
       async ([csrf, company, email]) =>
         (
@@ -197,6 +200,7 @@ test('a notification mail’s stop link turns that kind’s mail off from its pa
   try {
     const invited = `mailed-${Date.now()}@twes.local`;
     const name = `Mailed ${Date.now()}`;
+    await proveByApi(page, OPERATOR_PASSWORD);
     const invitedStatus = await page.evaluate(
       async ([csrf, company, email]) =>
         (

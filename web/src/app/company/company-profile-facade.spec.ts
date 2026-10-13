@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import { CompanyProfileFacade } from './company-profile-facade';
 import type { CompanyProfile, CompanyProfileChanges } from './company-types';
@@ -34,6 +35,11 @@ const saved: CompanyProfile = {
   vatRegimes: [{ code: 'standard', label: 'Régime normal' }],
 };
 
+// The proof dialog is answered by the test; `retrying` itself is StepUp's own.
+const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
+  request: vi.fn<(intro?: string) => Promise<boolean>>(),
+});
+
 describe('CompanyProfileFacade', () => {
   const api = {
     profile: vi.fn(),
@@ -45,7 +51,12 @@ describe('CompanyProfileFacade', () => {
 
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
-    TestBed.configureTestingModule({ providers: [{ provide: CompanyApi, useValue: api }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: CompanyApi, useValue: api },
+        { provide: StepUp, useValue: stepUp },
+      ],
+    });
     facade = TestBed.inject(CompanyProfileFacade);
   });
 
@@ -101,5 +112,25 @@ describe('CompanyProfileFacade', () => {
 
     expect(facade.error()).toBe('logo_refused');
     expect(facade.profile()?.logoVersion).toBe('v1');
+  });
+
+  // docs/SPEC.md § 7, the step-up list: new bank details wait for the person to prove who they are again.
+  it('asks for the proof the API wants, then saves the profile', async () => {
+    stepUp.request.mockReset().mockResolvedValue(true);
+    api.reviseProfile
+      .mockRejectedValueOnce(new CompanyRefused('step_up_required'))
+      .mockResolvedValueOnce(saved);
+
+    expect(await facade.save('c1', changes)).toBe(true);
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
+    expect(facade.profile()).toEqual(saved);
+  });
+
+  it('keeps the profile and says why when the person does not give the proof', async () => {
+    stepUp.request.mockReset().mockResolvedValue(false);
+    api.reviseProfile.mockRejectedValue(new CompanyRefused('step_up_required'));
+
+    expect(await facade.save('c1', changes)).toBe(false);
+    expect(facade.error()).toBe('step_up_required');
   });
 });

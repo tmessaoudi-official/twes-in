@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from '@playwright/test';
 import { invitationTokenFor, mailTo } from './mailpit';
-import { signIn as signInAsOperator } from './session';
+import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
+import { proveIfAsked } from './step-up';
 import { toast } from './toast';
 
 // A forgotten password through the real stack: the request only queues the ask, and the worker looks the account up,
@@ -20,6 +21,7 @@ test('a forgotten password comes back through the mailed link, made by the worke
   await page.getByTestId('nav-members').click();
   await page.getByTestId('member-email').fill(address);
   await page.getByTestId('member-add').click();
+  await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
   await expect(toast(page)).toContainText('invitation');
   const invitation = await invitationTokenFor(request, address);
   await page.context().clearCookies();

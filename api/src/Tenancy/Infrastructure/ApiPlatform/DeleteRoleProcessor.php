@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Identity\Infrastructure\StepUp\RecentProof;
 use App\Tenancy\Application\Role\ManageRoles;
 use App\Tenancy\Application\Role\RoleInUse;
 use App\Tenancy\Application\Role\RoleNotEditable;
@@ -21,13 +22,14 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 /** @implements ProcessorInterface<RoleResource, null> */
 final readonly class DeleteRoleProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageRoles $roles, private CompanyGuard $guard)
+    public function __construct(private ManageRoles $roles, private CompanyGuard $guard, private RecentProof $proof)
     {
     }
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): null
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
+        $this->proof->demand($this->guard->account()->getId());
 
         try {
             $this->roles->delete($company, CompanyPath::identifier($uriVariables, 'roleId'), $this->guard->account()->getId());

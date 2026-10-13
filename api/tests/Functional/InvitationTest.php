@@ -166,6 +166,7 @@ final class InvitationTest extends ApiTestCase
         $em->flush();
         $this->createUser('editor@twes.local', 'password-1234', $this->company, ['company.read', 'company.settings', 'user.write', 'customer.read'], 'editor');
         $this->login('editor@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         self::assertResponseIsSuccessful();
         $companyPath = '/api/companies/'.$this->company->getId()->toRfc4122();
         $this->postJson($companyPath.'/members', ['email' => 'stranger@twes.local', 'role' => 'low']);
@@ -268,6 +269,7 @@ final class InvitationTest extends ApiTestCase
     {
         $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
         $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/members', ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -295,6 +297,7 @@ final class InvitationTest extends ApiTestCase
         $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
         $this->createUser('reader@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
         $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         $company = '/api/companies/'.$this->company->getId()->toRfc4122();
         $this->postJson($company.'/members', ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -329,6 +332,7 @@ final class InvitationTest extends ApiTestCase
 
         // Sent again (`messenger:failed:retry`), the mail goes out and the invitation leaves the subject.
         $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         static::getContainer()->get(MessageBusInterface::class)->dispatch(new Envelope($message, [new ReceivedStamp('async')]));
         self::assertEmailCount(1);
         $this->getJson($unsent);
@@ -349,6 +353,7 @@ final class InvitationTest extends ApiTestCase
     {
         $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
         $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/members', ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $first = $this->queued();
@@ -422,6 +427,7 @@ final class InvitationTest extends ApiTestCase
         } else {
             $this->createUser('owner@twes.local', 'password-1234', $company, ['*'], Role::OWNER);
             $this->login('owner@twes.local', 'password-1234');
+            $this->stepUp('password-1234');
             self::assertResponseIsSuccessful();
             $this->postJson('/api/companies/'.$company->getId()->toRfc4122().'/members', [
                 'email' => 'stranger@twes.local',

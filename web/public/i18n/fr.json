@@ -217,7 +217,8 @@
       "forbidden": "Votre rôle dans cette entreprise ne le permet pas.",
       "not_found": "Entreprise introuvable.",
       "invalid": "Demande invalide.",
-      "network": "Impossible de joindre le serveur."
+      "network": "Impossible de joindre le serveur.",
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
     },
     "no_company": "Choisissez d’abord une entreprise.",
     "invited": "L’invitation a été envoyée par e-mail.",
@@ -289,7 +290,8 @@
         "not_found": "Société introuvable.",
         "network": "Le serveur est injoignable.",
         "forbidden": "Votre rôle dans cette entreprise ne le permet pas.",
-        "logo_refused": "L’image est refusée. Envoyez un fichier PNG, JPEG ou WebP de 2 Mo et 4000 pixels de côté au plus."
+        "logo_refused": "L’image est refusée. Envoyez un fichier PNG, JPEG ou WebP de 2 Mo et 4000 pixels de côté au plus.",
+        "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
       },
       "hints": {
         "vatOnDebits": "Cochez si la société a opté pour payer la TVA de ses prestations de services à la facturation plutôt qu’à l’encaissement. Ses factures de services porteront alors la mention « Option pour le paiement de la taxe d’après les débits »."
@@ -470,7 +472,8 @@
         "built_in": "Ce rôle est fourni avec le produit et ne peut pas être modifié.",
         "unknown_permission": "Un des droits cochés n’existe pas. Rechargez la page.",
         "not_held": "Vous ne pouvez donner à un rôle que les droits que vous avez vous-même.",
-        "invalid": "Cet enregistrement a été refusé."
+        "invalid": "Cet enregistrement a été refusé.",
+        "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
       }
     },
     "security": {
@@ -3796,7 +3799,8 @@
       "network": "Le serveur ne répond pas : réessayez."
     },
     "intro_erasure": "Pour ouvrir « Effacer des données », saisissez votre mot de passe ou utilisez une clé d’accès.",
-    "intro_factors": "Pour changer vos moyens de vérification, saisissez votre mot de passe ou utilisez une clé d’accès."
+    "intro_factors": "Pour changer vos moyens de vérification, saisissez votre mot de passe ou utilisez une clé d’accès.",
+    "intro_sensitive": "Pour changer les coordonnées bancaires, les membres ou les rôles, saisissez votre mot de passe ou utilisez une clé d’accès."
   },
   "customer_display": {
     "title": "Affichage client",
