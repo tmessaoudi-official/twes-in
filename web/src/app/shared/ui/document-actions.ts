@@ -14,7 +14,7 @@ import { runAction } from '../actions/run-action';
 import type { PlannedAction } from '../actions/planned-actions';
 import { plannedRoom } from '../actions/planned-room';
 import { menuOrder } from '../actions/record-action';
-import { kindOf, type ScreenAction } from '../actions/screen-action';
+import { kindOf, type ActionConfirm, type ScreenAction } from '../actions/screen-action';
 import { Session } from '../session/session';
 import { ThemeFacade } from '../theme/theme-facade';
 import { ConfirmDialog } from './confirm-dialog';
@@ -154,7 +154,12 @@ export class DocumentActions {
    */
   protected run(action: ScreenAction): void {
     runAction(action, (confirm) =>
-      this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+      this.dialog
+        .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+          data: confirm,
+          autoFocus: 'dialog',
+        })
+        .afterClosed(),
     );
   }
 }

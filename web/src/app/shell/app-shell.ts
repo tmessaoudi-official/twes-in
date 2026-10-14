@@ -39,7 +39,7 @@ import { NotificationBell } from '../notifications/notification-bell';
 import { Label } from '../shared/a11y/label';
 import { RouteFocus } from '../shared/a11y/route-focus';
 import { runAction } from '../shared/actions/run-action';
-import type { ScreenAction } from '../shared/actions/screen-action';
+import type { ActionConfirm, ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CookieNotice } from '../shared/legal/cookie-notice';
 import { LegalFooter } from '../shared/legal/legal-footer';
@@ -595,7 +595,12 @@ export class AppShell {
   /** An action by the rule its button follows: asked first when it asks, nothing when refused for now. */
   private run(action: ScreenAction): void {
     runAction(action, (confirm) =>
-      this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+      this.dialog
+        .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+          data: confirm,
+          autoFocus: 'dialog',
+        })
+        .afterClosed(),
     );
   }
 

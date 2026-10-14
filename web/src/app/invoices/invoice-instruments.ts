@@ -21,6 +21,7 @@ import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-bu
 import { Feedback } from '../shared/feedback/feedback';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
+import type { ActionConfirm } from '../shared/actions/screen-action';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { instrumentForm, instrumentInput, instrumentValues } from './instruments-forms';
 import { InstrumentsFacade } from './instruments-facade';
@@ -149,7 +150,12 @@ export class InvoiceInstruments {
         },
       },
       (confirm) =>
-        this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+        this.dialog
+          .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+            data: confirm,
+            autoFocus: 'dialog',
+          })
+          .afterClosed(),
     );
   }
 

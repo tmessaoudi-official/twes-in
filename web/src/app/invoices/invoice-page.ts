@@ -72,7 +72,7 @@ import { onRecord } from '../shared/actions/record-action';
 import { kindAmong, type ActionConfirm, type ScreenAction } from '../shared/actions/screen-action';
 import { InvoiceActions, invoiceMay, isOpen, isZero } from './invoice-actions';
 import { ScreenActions } from '../shared/actions/screen-actions';
-import { CreditExcessDialog } from './credit-excess-dialog';
+import { CreditExcessDialog, type CreditExcessDialogData } from './credit-excess-dialog';
 import { InvoiceInstruments } from './invoice-instruments';
 import { InvoiceReminders } from './invoice-reminders';
 import { type RecordLead, RecordView } from '../shared/form/record-view';
@@ -900,7 +900,7 @@ export class InvoicePage {
       this.facade.clearError();
       const excessTo = await firstValueFrom(
         this.dialog
-          .open(CreditExcessDialog, {
+          .open<CreditExcessDialog, CreditExcessDialogData>(CreditExcessDialog, {
             data: { invoiceNumber: this.current()?.number ?? null },
             autoFocus: 'first-tabbable',
           })

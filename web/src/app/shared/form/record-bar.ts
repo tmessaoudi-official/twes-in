@@ -12,7 +12,7 @@ import { Label } from '../a11y/label';
 import type { PlannedAction } from '../actions/planned-actions';
 import { plannedRoom } from '../actions/planned-room';
 import { runAction } from '../actions/run-action';
-import type { ScreenAction } from '../actions/screen-action';
+import type { ActionConfirm, ScreenAction } from '../actions/screen-action';
 import { Session } from '../session/session';
 import { ThemeFacade } from '../theme/theme-facade';
 import { ConfirmDialog } from '../ui/confirm-dialog';
@@ -216,7 +216,12 @@ export class RecordBar {
 
   protected run(action: ScreenAction): void {
     runAction(action, (confirm) =>
-      this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+      this.dialog
+        .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+          data: confirm,
+          autoFocus: 'dialog',
+        })
+        .afterClosed(),
     );
   }
 }

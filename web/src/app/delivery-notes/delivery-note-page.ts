@@ -62,7 +62,11 @@ import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { DeliverDialog } from './deliver-dialog';
 import { InvoicePartDialog, type InvoicePartLine } from './invoice-part-dialog';
-import { InvoiceTargetDialog, type InvoiceTarget } from './invoice-target-dialog';
+import {
+  InvoiceTargetDialog,
+  type InvoiceTarget,
+  type InvoiceTargetData,
+} from './invoice-target-dialog';
 import { type RecordLead, RecordView } from '../shared/form/record-view';
 import { taxNames } from '../invoices/tax-names';
 import { QuantityTotalsView } from '../shared/documents/quantity-totals';
@@ -705,7 +709,10 @@ export class DeliveryNotePage {
     if (this.busy()) return;
     const day = await firstValueFrom(
       this.dialog
-        .open(DeliverDialog, { data: this.deliveredOn(), autoFocus: 'first-tabbable' })
+        .open<DeliverDialog, string, string | null>(DeliverDialog, {
+          data: this.deliveredOn(),
+          autoFocus: 'first-tabbable',
+        })
         .afterClosed(),
     );
     if (day !== null && day !== undefined) await this.deliver(day);
@@ -752,7 +759,7 @@ export class DeliveryNotePage {
     if (drafts === null || drafts.length === 0) return { draftId: null };
     const target = await firstValueFrom(
       this.dialog
-        .open(InvoiceTargetDialog, {
+        .open<InvoiceTargetDialog, InvoiceTargetData, InvoiceTarget | null>(InvoiceTargetDialog, {
           data: { drafts, scale: this.scale() ?? 3 },
           autoFocus: 'first-tabbable',
         })
@@ -775,7 +782,13 @@ export class DeliveryNotePage {
     }));
     const quantities = await firstValueFrom(
       this.dialog
-        .open(InvoicePartDialog, { data: lines, autoFocus: 'first-tabbable' })
+        .open<InvoicePartDialog, InvoicePartLine[], Record<string, string> | null>(
+          InvoicePartDialog,
+          {
+            data: lines,
+            autoFocus: 'first-tabbable',
+          },
+        )
         .afterClosed(),
     );
     if (!quantities) return;
