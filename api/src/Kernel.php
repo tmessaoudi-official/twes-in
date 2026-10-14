@@ -38,6 +38,17 @@ class Kernel extends BaseKernel
     }
 
     /**
+     * Symfony's documented override of the cache directory: the API suite's parallel workers each compile their own
+     * container and keep their own cache pools there, as one worker's clearing a pool must not reach another's test.
+     */
+    public function getCacheDir(): string
+    {
+        $directory = $_SERVER['APP_CACHE_DIR'] ?? null;
+
+        return \is_string($directory) && '' !== $directory ? $directory.'/'.$this->environment : parent::getCacheDir();
+    }
+
+    /**
      * @return list<string> An array of allowed values for APP_ENV
      */
     protected function getAllowedEnvs(): array

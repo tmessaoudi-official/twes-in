@@ -8,17 +8,18 @@ Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, Frank
 backup image installs (pgBackRest, MIT; restic, BSD-2-Clause; supercronic, MIT; curl, curl; see `docs/UPDATE.md`), are
 aggregated, not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 115 runtime, 54 dev
+## api (Composer) — 115 runtime, 55 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
 | api-platform/core | 5.0.2 | MIT | runtime |
 | async-aws/core | 1.30.0 | MIT | runtime |
 | async-aws/s3 | 3.5.0 | MIT | runtime |
+| brianium/paratest | 7.27.0 | MIT | dev |
 | brick/math | 1.0.0 | MIT | runtime |
 | clue/ndjson-react | 1.3.0 | MIT | dev |
 | composer/pcre | 3.4.0 | MIT | dev |
-| composer/semver | 3.5.0 | MIT | runtime |
+| composer/semver | 3.5.1 | MIT | runtime |
 | composer/xdebug-handler | 3.0.5 | MIT | dev |
 | dama/doctrine-test-bundle | 8.6.0 | MIT | dev |
 | doctrine/collections | 3.1.0 | MIT | runtime |
@@ -62,12 +63,12 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | phpstan/phpstan | 2.2.16 | MIT | dev |
 | phpstan/phpstan-doctrine | 2.0.28 | MIT | dev |
 | phpstan/phpstan-symfony | 2.0.20 | MIT | dev |
-| phpunit/php-code-coverage | 14.4.0 | BSD-3-Clause | dev |
+| phpunit/php-code-coverage | 14.4.1 | BSD-3-Clause | dev |
 | phpunit/php-file-iterator | 7.0.2 | BSD-3-Clause | dev |
 | phpunit/php-invoker | 7.0.0 | BSD-3-Clause | dev |
 | phpunit/php-text-template | 6.0.1 | BSD-3-Clause | dev |
 | phpunit/php-timer | 9.0.0 | BSD-3-Clause | dev |
-| phpunit/phpunit | 13.4.0 | BSD-3-Clause | dev |
+| phpunit/phpunit | 13.4.2 | BSD-3-Clause | dev |
 | psr/cache | 3.0.0 | MIT | runtime |
 | psr/clock | 1.0.0 | MIT | runtime |
 | psr/container | 2.0.2 | MIT | runtime |
@@ -97,7 +98,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | sebastian/object-reflector | 6.1.0 | BSD-3-Clause | dev |
 | sebastian/recursion-context | 8.0.1 | BSD-3-Clause | dev |
 | sebastian/type | 7.0.2 | BSD-3-Clause | dev |
-| sebastian/version | 7.0.0 | BSD-3-Clause | dev |
+| sebastian/version | 7.0.1 | BSD-3-Clause | dev |
 | sentry/sentry | 4.34.0 | MIT | runtime |
 | sentry/sentry-symfony | 5.14.0 | MIT | runtime |
 | spomky-labs/cbor-php | 3.4.2 | MIT | runtime |
