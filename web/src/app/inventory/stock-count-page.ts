@@ -28,6 +28,7 @@ import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { PageTabs } from '../shared/ui/page-tabs';
 import {
   type CountLine,
+  countGroups,
   countInputs,
   countLine,
   locationScanned,
@@ -41,9 +42,10 @@ import { INVENTORY_TABS } from './inventory-nav';
  * Count mode (docs/SPEC.md § 7, 2026-09-23 slice 8): walking the shelves with a scanner. The location counted is the
  * default one, or the one whose label's address opened the page, until a location's label — its address, or its
  * code — is scanned; every product scanned there is
- * tallied, the same product and lot counting on as a till does, and each line can be corrected by hand. Recording
- * writes one count per line, which sets what is on hand at that location to what was found; a line the API refused
- * stays on the sheet with the reason shown, and the others are gone. Nothing is recorded of what was not scanned.
+ * tallied at it, the same product and lot counting on as a till does, and each line can be corrected by hand. A line
+ * keeps the location it was scanned at, and the sheet is shown by location. Recording writes one count per line at its
+ * own location, which sets what is on hand there to what was found; a line the API refused stays on the sheet with the
+ * reason shown, and the others are gone. Nothing is recorded of what was not scanned.
  */
 @Component({
   selector: 'app-stock-count-page',
@@ -84,6 +86,14 @@ export class StockCountPage implements OnInit {
   /** The location being counted; empty until the locations are read, then the first default one. */
   protected readonly locationId = signal('');
   protected readonly lines = signal<readonly CountLine[]>([]);
+  /** The sheet by location, each named as the location picker names it. */
+  protected readonly groups = computed(() => {
+    const names = new Map(this.locations());
+    return countGroups(this.lines()).map((group) => ({
+      ...group,
+      name: names.get(group.locationId) ?? '',
+    }));
+  });
   /** A code typed by hand, for a label the scanner cannot read. */
   protected readonly code = signal('');
 
@@ -131,17 +141,16 @@ export class StockCountPage implements OnInit {
     this.lines.update((lines) => lines.filter((_, at) => at !== index));
   }
 
-  /** Records each line as a count at the location; what the API refused stays, the rest is done. */
+  /** Records each line as a count at the location it was found; what the API refused stays, the rest is done. */
   protected async record(): Promise<void> {
     const companyId = this.company()?.id;
-    const locationId = this.locationId();
     const lines = this.lines();
-    if (!companyId || locationId === '' || lines.length === 0 || this.busy()) return;
+    if (!companyId || lines.length === 0 || this.busy()) return;
     if (!lines.every(readyToRecord)) {
       this.feedback.failure('inventory.count.incomplete');
       return;
     }
-    const inputs = countInputs(lines, locationId);
+    const inputs = countInputs(lines);
     const kept: CountLine[] = [];
     for (const [index, input] of inputs.entries()) {
       if (!(await this.facade.record(companyId, input))) kept.push(lines[index]);
@@ -182,6 +191,7 @@ export class StockCountPage implements OnInit {
       product,
       named.lot ?? named.serial ?? '',
       Math.max(named.quantity, 1) * scan.times,
+      this.locationId(),
     );
     this.lines.set(counted.lines);
     return {

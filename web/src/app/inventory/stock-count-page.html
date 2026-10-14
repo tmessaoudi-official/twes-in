@@ -52,50 +52,64 @@
         {{ 'inventory.count.empty' | translate }}
       </p>
     } @else {
-      <ol class="m-0 flex list-none flex-col gap-2 p-0" data-testid="stock-count-lines">
-        @for (line of lines(); track $index; let i = $index) {
-          <li class="flex flex-wrap items-start gap-3" [attr.data-testid]="'stock-count-' + i">
-            <div class="flex min-w-48 flex-1 flex-col pt-3">
-              <span class="font-medium">{{ line.name }}</span>
-              <span class="text-sm opacity-80">{{ line.reference }}</span>
-            </div>
-            @if (line.tracking !== 'none') {
-              <mat-form-field>
-                <mat-label>{{ 'inventory.stock.fields.' + line.tracking | translate }}</mat-label>
-                <input
-                  matInput
-                  autocomplete="off"
-                  required
-                  [attr.data-testid]="'stock-count-' + i + '-lot'"
-                  [ngModel]="line.lotCode"
-                  (ngModelChange)="setLot(i, $event)"
-                />
-              </mat-form-field>
-            }
-            <mat-form-field class="w-36">
-              <mat-label>{{ 'inventory.count.counted' | translate }}</mat-label>
-              <input
-                matInput
-                appDecimal
-                required
-                [attr.data-testid]="'stock-count-' + i + '-counted'"
-                [ngModel]="line.counted"
-                (ngModelChange)="setCounted(i, $event)"
-              />
-            </mat-form-field>
-            <button
-              mat-icon-button
-              type="button"
-              class="mt-2"
-              [appLabel]="'inventory.count.remove' | translate"
-              [attr.data-testid]="'stock-count-' + i + '-remove'"
-              (click)="remove(i)"
-            >
-              <mat-icon>delete</mat-icon>
-            </button>
-          </li>
+      <div class="flex flex-col gap-4" data-testid="stock-count-lines">
+        @for (group of groups(); track group.locationId; let g = $index) {
+          <section class="flex flex-col gap-2" [attr.data-testid]="'stock-count-group-' + g">
+            <h2 class="m-0 text-lg font-medium">{{ group.name }}</h2>
+            <ol class="m-0 flex list-none flex-col gap-2 p-0">
+              @for (entry of group.entries; track entry.index) {
+                @let line = entry.line;
+                @let i = entry.index;
+                <li
+                  class="flex flex-wrap items-start gap-3"
+                  [attr.data-testid]="'stock-count-' + i"
+                >
+                  <div class="flex min-w-48 flex-1 flex-col pt-3">
+                    <span class="font-medium">{{ line.name }}</span>
+                    <span class="text-sm opacity-80">{{ line.reference }}</span>
+                  </div>
+                  @if (line.tracking !== 'none') {
+                    <mat-form-field>
+                      <mat-label>{{
+                        'inventory.stock.fields.' + line.tracking | translate
+                      }}</mat-label>
+                      <input
+                        matInput
+                        autocomplete="off"
+                        required
+                        [attr.data-testid]="'stock-count-' + i + '-lot'"
+                        [ngModel]="line.lotCode"
+                        (ngModelChange)="setLot(i, $event)"
+                      />
+                    </mat-form-field>
+                  }
+                  <mat-form-field class="w-36">
+                    <mat-label>{{ 'inventory.count.counted' | translate }}</mat-label>
+                    <input
+                      matInput
+                      appDecimal
+                      required
+                      [attr.data-testid]="'stock-count-' + i + '-counted'"
+                      [ngModel]="line.counted"
+                      (ngModelChange)="setCounted(i, $event)"
+                    />
+                  </mat-form-field>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    class="mt-2"
+                    [appLabel]="'inventory.count.remove' | translate"
+                    [attr.data-testid]="'stock-count-' + i + '-remove'"
+                    (click)="remove(i)"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </li>
+              }
+            </ol>
+          </section>
         }
-      </ol>
+      </div>
     }
 
     @if (!mayWrite()) {

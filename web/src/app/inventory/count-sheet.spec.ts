@@ -42,10 +42,10 @@ const location = (id: string, code: string): StockLocationRow => ({
 describe('the count sheet', () => {
   it('counts a product scanned again on its line, and a lot of its own on another', () => {
     let lines: readonly CountLine[] = [];
-    lines = countLine(lines, screws, '', 1).lines;
-    lines = countLine(lines, screws, '', 12).lines;
-    lines = countLine(lines, glue, 'L-07', 1).lines;
-    const placed = countLine(lines, glue, 'L-08', 1);
+    lines = countLine(lines, screws, '', 1, 'l1').lines;
+    lines = countLine(lines, screws, '', 12, 'l1').lines;
+    lines = countLine(lines, glue, 'L-07', 1, 'l1').lines;
+    const placed = countLine(lines, glue, 'L-08', 1, 'l1');
 
     expect(placed.lines.map((line) => [line.reference, line.lotCode, line.counted])).toEqual([
       ['VIS-6', '', '13'],
@@ -58,8 +58,8 @@ describe('the count sheet', () => {
   });
 
   it('keeps the decimals a counted quantity was typed with', () => {
-    const typed = [{ ...countLine([], screws, '', 1).lines[0], counted: '2.500' }];
-    expect(countLine(typed, screws, '', 2).lines[0].counted).toBe('4.500');
+    const typed = [{ ...countLine([], screws, '', 1, 'l1').lines[0], counted: '2.500' }];
+    expect(countLine(typed, screws, '', 2, 'l1').lines[0].counted).toBe('4.500');
   });
 
   it('knows a location by the address its label carries, or by its code, and nothing else', () => {
@@ -87,18 +87,34 @@ describe('the count sheet', () => {
   });
 
   it('records a line once it has a whole count, and a tracked product only with its lot', () => {
-    const [plain] = countLine([], screws, '', 3).lines;
-    const [lotless] = countLine([], glue, '', 1).lines;
-    const [lotted] = countLine([], glue, 'L-07', 1).lines;
+    const [plain] = countLine([], screws, '', 3, 'l1').lines;
+    const [lotless] = countLine([], glue, '', 1, 'l1').lines;
+    const [lotted] = countLine([], glue, 'L-07', 1, 'l1').lines;
 
     expect([plain, lotless, lotted].map(readyToRecord)).toEqual([true, false, true]);
     expect(readyToRecord({ ...plain, counted: '' })).toBe(false);
     expect(readyToRecord({ ...plain, counted: '1.2345' })).toBe(false);
     expect(readyToRecord({ ...plain, counted: '0' })).toBe(true);
 
-    expect(countInputs([plain, lotted], 'l1')).toEqual([
+    expect(countInputs([plain, lotted])).toEqual([
       { operation: 'count', productId: 'p1', locationId: 'l1', quantity: '3' },
       { operation: 'count', productId: 'p3', locationId: 'l1', quantity: '1', lotCode: 'L-07' },
     ]);
+  });
+
+  // Screens-maturity round 1, L-400: a line kept the location chosen last, and was recorded there.
+  it('counts a product found at another location on a line of its own, recorded where it was found', () => {
+    let lines: readonly CountLine[] = [];
+    lines = countLine(lines, screws, '', 2, 'l1').lines;
+    lines = countLine(lines, screws, '', 3, 'l2').lines;
+    lines = countLine(lines, screws, '', 1, 'l1').lines;
+
+    expect(lines.map((line) => [line.locationId, line.counted])).toEqual([
+      ['l1', '3'],
+      ['l2', '3'],
+    ]);
+    expect(countInputs(lines).map((input) => input.locationId)).toEqual(['l1', 'l2']);
+    // A line scanned before any location was known cannot be recorded anywhere.
+    expect(readyToRecord({ ...lines[0], locationId: '' })).toBe(false);
   });
 });
