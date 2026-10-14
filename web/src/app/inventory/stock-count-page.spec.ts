@@ -263,6 +263,28 @@ describe('StockCountPage', () => {
     );
   });
 
+  // Screens-maturity round 1, L-400: scanning another location's label moved every line already on the sheet there.
+  it('records each line at the location it was scanned at, and shows the sheet by location', async () => {
+    scans.named.mockResolvedValue(scanOf('p1'));
+    await scanned('3017620422003');
+    await scanned(`https://twes.example/stock/locations/${rack.id}`);
+    await scanned('3017620422003');
+    await scanned('3017620422003');
+    await settle();
+
+    expect(q('stock-count-group-0')?.textContent).toContain('000');
+    expect(q('stock-count-group-1')?.textContent).toContain('R1');
+    expect((q('stock-count-0-counted') as HTMLInputElement).value).toBe('1');
+    expect((q('stock-count-1-counted') as HTMLInputElement).value).toBe('2');
+
+    q('stock-count-record')!.click();
+    await settle();
+    expect(facade.record.mock.calls).toEqual([
+      ['c1', { operation: 'count', productId: 'p1', locationId: 'l1', quantity: '1' }],
+      ['c1', { operation: 'count', productId: 'p1', locationId: rack.id, quantity: '2' }],
+    ]);
+  });
+
   it('keeps a line the API refused, and takes a scan back', async () => {
     scans.named.mockResolvedValue(scanOf('p1'));
     await scanned('3017620422003');
