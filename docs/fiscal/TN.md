@@ -111,6 +111,11 @@ other value, `kept`, never gives it back. A credit note gives back its share of 
 base, and each line naming the invoice line it credits gives back its share of that line's discount amount by quantity;
 the credit note completing the invoice, or the line, takes what is left, so the credit notes add up to the invoice's
 discount exactly and never to more. A credit note takes no document discount of its own. Developer ruling, unvalidated.
+Each percentage tax goes the same way: the invoice rounds a rate's tax once over its lines and each credit note rounds
+its own, so the credit notes of its lines one by one could come to a millime more than it charged and the last be
+refused; the credit note completing the invoice takes what is left of each tax instead, where the difference is no
+more than that rounding (one smallest unit a credit note), and a credit note taxing other figures keeps its own.
+Arithmetic, not a text: unvalidated.
 
 ## 5. Withholding on payments (retenue à la source)
 
