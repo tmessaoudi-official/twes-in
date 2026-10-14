@@ -519,6 +519,138 @@ export function billTaxOptions(options: ExpenseOptions, row: SavedBill | null): 
   return [...offered, ...kept];
 }
 
+/** A rate a line carries, as `netFromGross` reads it: percent with up to three decimals. */
+export interface LineRate {
+  rate: string;
+  /** A levy such as FODEC, taxed by the VAT beside it. */
+  entersVatBase: boolean;
+}
+
+/** Thousandths of a percent: a rate's fraction is this over 100000. */
+const RATE = /^\d{1,3}(\.\d{1,3})?$/;
+
+function thousandths(rate: string): bigint | null {
+  if (!RATE.test(rate)) return null;
+  const [whole, fraction = ''] = rate.split('.');
+  return BigInt(whole! + fraction.padEnd(3, '0'));
+}
+
+/** a / b rounded half away from zero, for a and b above zero: the API's `Decimal::round`. */
+function halfUp(a: bigint, b: bigint): bigint {
+  return (2n * a + b) / (2n * b);
+}
+
+/**
+ * The net a line has when what it comes to with its taxes is `gross`, counted exactly in the currency's smallest unit,
+ * never through a float. Each levy is taken on the net and the VAT on the net and the levies, each rounded half away
+ * from zero as the API rounds them, and the net chosen is the one whose taxes give back the very figure typed; where
+ * no net does (0.003 at 19 %), the nearest is given and `exact` says so, and the bill's printed amounts take the
+ * supplier's rounding. Null for what is not an amount above zero at the currency's scale, or a rate not understood.
+ */
+export function netFromGross(
+  gross: string,
+  rates: readonly LineRate[],
+  scale: number,
+): { net: string; exact: boolean } | null {
+  const total = units(gross, scale);
+  const taxes = lineTaxes(rates);
+  if (total === null || total <= 0n || taxes === null) return null;
+  const nearest = halfUp(
+    total * HUNDRED * HUNDRED,
+    (HUNDRED + taxes.levies.reduce((sum, rate) => sum + rate, 0n)) * (HUNDRED + taxes.vat),
+  );
+  const found = [0n, -1n, 1n, -2n, 2n, -3n, 3n]
+    .map((step) => nearest + step)
+    .find((net) => net > 0n && comesTo(net, taxes) === total);
+  return {
+    net: decimal(found ?? (nearest > 0n ? nearest : 1n), scale),
+    exact: found !== undefined,
+  };
+}
+
+/** What a net comes to with its taxes, each rounded as the API rounds it; null where either is not understood. */
+export function grossFromNet(
+  net: string,
+  rates: readonly LineRate[],
+  scale: number,
+): string | null {
+  const amount = units(net, scale);
+  const taxes = lineTaxes(rates);
+  return amount === null || taxes === null ? null : decimal(comesTo(amount, taxes), scale);
+}
+
+/**
+ * The net of a line typed with its taxes. A one-line bill is typed as the receipt's total, so the fixed charges ticked,
+ * such as the stamp, are taken out first; null where the total does not exceed them.
+ */
+export function netOfLine(
+  gross: string,
+  rates: readonly LineRate[],
+  charges: readonly string[],
+  scale: number,
+): { net: string; exact: boolean } | null {
+  const total = units(gross, scale);
+  const fixed = sumOf(charges, scale);
+  if (total === null || fixed === null || total <= fixed) return null;
+  return netFromGross(decimal(total - fixed, scale), rates, scale);
+}
+
+/** What a line comes to with its taxes and, on a one-line bill, the fixed charges ticked: `netOfLine` reversed. */
+export function grossOfLine(
+  net: string,
+  rates: readonly LineRate[],
+  charges: readonly string[],
+  scale: number,
+): string | null {
+  const gross = grossFromNet(net, rates, scale);
+  const fixed = sumOf(charges, scale);
+  return gross === null || fixed === null ? null : decimal(units(gross, scale)! + fixed, scale);
+}
+
+function sumOf(amounts: readonly string[], scale: number): bigint | null {
+  let sum = 0n;
+  for (const amount of amounts) {
+    const each = units(amount, scale);
+    if (each === null) return null;
+    sum += each;
+  }
+  return sum;
+}
+
+const HUNDRED = 100000n;
+
+/** The levies a line's net carries and the VAT rate on the net and the levies, in thousandths of a percent. */
+function lineTaxes(rates: readonly LineRate[]): { levies: bigint[]; vat: bigint } | null {
+  const levies: bigint[] = [];
+  let vat = 0n;
+  for (const each of rates) {
+    const rate = thousandths(each.rate);
+    if (rate === null) return null;
+    if (each.entersVatBase) levies.push(rate);
+    else vat += rate;
+  }
+  return { levies, vat };
+}
+
+function comesTo(net: bigint, { levies, vat }: { levies: bigint[]; vat: bigint }): bigint {
+  const levied = levies.reduce((sum, rate) => sum + halfUp(net * rate, HUNDRED), 0n);
+  return net + levied + halfUp((net + levied) * vat, HUNDRED);
+}
+
+/** An amount in the currency's smallest unit; null for what is not one at its scale. */
+function units(text: string, scale: number): bigint | null {
+  const typed = text.trim();
+  if (!new RegExp(`^${amountPattern(scale)}$`).test(typed)) return null;
+  const [whole, fraction = ''] = typed.split('.');
+  return BigInt(whole! + fraction.padEnd(scale, '0'));
+}
+
+function decimal(amount: bigint, scale: number): string {
+  if (scale === 0) return amount.toString();
+  const unit = 10n ** BigInt(scale);
+  return `${amount / unit}.${(amount % unit).toString().padStart(scale, '0')}`;
+}
+
 /** As many lines as the API takes on one bill. */
 export const BILL_LINES_MAX = 50;
 

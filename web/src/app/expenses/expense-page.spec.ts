@@ -208,6 +208,12 @@ describe('ExpensePage', () => {
     input.dispatchEvent(new Event('input'));
   }
 
+  /** Switches the bill between amounts before tax and amounts taxes included, as a click on the radio does. */
+  async function chooseMode(mode: 'gross' | 'net'): Promise<void> {
+    (q('bill-mode-' + mode)?.querySelector('input') as HTMLInputElement).click();
+    await settle();
+  }
+
   async function open(expenseId: string | undefined): Promise<void> {
     fixture = TestBed.createComponent(ExpensePage);
     if (expenseId !== undefined) {
@@ -277,7 +283,7 @@ describe('ExpensePage', () => {
     expect(facade.loadExpense).toHaveBeenCalledWith('c1', null);
 
     type('field-description', 'Gasoil');
-    type('bill-line-0-net', '100,5');
+    type('bill-line-0-gross', '100,5');
     await pick('field-vendorId', 'FRN-1 · Sotumag');
     expect(form().get('categoryId')!.value).toBe('k2');
     q('record-save')!.click();
@@ -287,7 +293,7 @@ describe('ExpensePage', () => {
       'c1',
       expect.objectContaining({
         description: 'Gasoil',
-        lines: [{ amountNet: '100.5', taxComponentIds: [] }],
+        lines: [{ amountNet: '100.500', taxComponentIds: [] }],
         vendorId: 'v1',
         categoryId: 'k2',
       }),
@@ -305,7 +311,7 @@ describe('ExpensePage', () => {
     await open(undefined);
     expect(q('field-vendorId')).toBeNull();
     type('field-description', 'Stationnement');
-    type('bill-line-0-net', '4');
+    type('bill-line-0-gross', '4');
     type('field-payee', 'Parking Lafayette');
     await settle();
     q('record-save')!.click();
@@ -340,7 +346,7 @@ describe('ExpensePage', () => {
     expect(form().get('categoryId')!.value).toBe('k1');
 
     type('field-description', 'Gasoil');
-    type('bill-line-0-net', '100.5555');
+    type('bill-line-0-gross', '100.5555');
     await settle();
     q('record-save')!.click();
     await settle();
@@ -649,18 +655,126 @@ describe('ExpensePage', () => {
       expect(q('bill-printed-TVA19')).toBeNull();
 
       type('field-description', 'Fournitures');
-      type('bill-line-0-net', '50');
+      type('bill-line-0-gross', '50');
       await settle();
       q('record-save')!.click();
       await settle();
       expect(facade.createExpense).toHaveBeenCalledWith(
         'c1',
         expect.objectContaining({
-          lines: [{ amountNet: '50', taxComponentIds: [] }],
+          lines: [{ amountNet: '50.000', taxComponentIds: [] }],
           documentTaxComponentIds: [],
           printedTaxes: [],
         }),
       );
+    });
+
+    // docs/SPEC.md § 7: a new expense asks its bill's amounts taxes included, a saved draft opens on its nets.
+    it("works a new expense's net out of the receipt's total, the stamp included, whatever is typed first", async () => {
+      optionsState.set(offered);
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      await open(undefined);
+      expect(q('bill-mode')?.getAttribute('data-mode')).toBe('gross');
+      expect(q('bill-hint')?.textContent?.trim()).toBe('expenses.bill.hint_gross');
+      expect(q('bill-line-0-net')).toBeNull();
+
+      type('field-description', 'Café');
+      type('bill-line-0-gross', '12,9');
+      bill().controls.lines.at(0).controls.taxComponentIds.setValue(['t1']);
+      (q('bill-charge-s1')?.querySelector('input') as HTMLInputElement).click();
+      await settle();
+      expect(bill().controls.lines.at(0).controls.amountNet.value).toBe('10.000');
+      expect(q('bill-line-0-gross-hint')?.textContent?.trim()).toBe('expenses.bill.gross_hint');
+
+      // A second line takes the stamp out of the first one's total; its net stays, and comes back with it.
+      q('bill-add-line')!.click();
+      await settle();
+      expect((q('bill-line-0-gross') as HTMLInputElement).value).toBe('11,900');
+      q('bill-line-1-remove')!.click();
+      await settle();
+      expect((q('bill-line-0-gross') as HTMLInputElement).value).toBe('12,900');
+      expect(bill().controls.lines.at(0).controls.amountNet.value).toBe('10.000');
+
+      q('record-save')!.click();
+      await settle();
+      expect(facade.createExpense).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({
+          lines: [{ amountNet: '10.000', taxComponentIds: ['t1'] }],
+          documentTaxComponentIds: ['s1'],
+        }),
+      );
+    });
+
+    it('takes each rate of a bill at several rates taxes included, the stamp left out', async () => {
+      optionsState.set(offered);
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      await open(undefined);
+      (q('bill-charge-s1')?.querySelector('input') as HTMLInputElement).click();
+      q('bill-add-line')!.click();
+      await settle();
+      type('bill-line-0-gross', '1201,9');
+      bill().controls.lines.at(0).controls.taxComponentIds.setValue(['t1', 'tf']);
+      type('bill-line-1-gross', '214');
+      bill().controls.lines.at(1).controls.taxComponentIds.setValue(['t7']);
+      await settle();
+      expect(bill().controls.lines.at(0).controls.amountNet.value).toBe('1000.000');
+      expect(bill().controls.lines.at(1).controls.amountNet.value).toBe('200.000');
+    });
+
+    it('opens a saved draft on its nets, and switching to taxes included and back changes nothing', async () => {
+      optionsState.set(offered);
+      expense.set({ ...draft, documentTaxComponentIds: ['s1'] });
+      await open('e1');
+      expect(q('bill-mode')?.getAttribute('data-mode')).toBe('net');
+      expect(q('bill-hint')?.textContent?.trim()).toBe('expenses.bill.hint');
+      expect((q('bill-line-0-net') as HTMLInputElement).value).toBe('100,000');
+
+      await chooseMode('gross');
+      // One line: the receipt's total, the stamp in it.
+      expect((q('bill-line-0-gross') as HTMLInputElement).value).toBe('120,000');
+      await chooseMode('net');
+      expect(bill().controls.lines.at(0).controls.amountNet.value).toBe('100.000');
+      expect(q('record-changes')).toBeNull();
+
+      // A net changed before tax is what the total says once switched back.
+      type('bill-line-0-net', '200');
+      await chooseMode('gross');
+      expect((q('bill-line-0-gross') as HTMLInputElement).value).toBe('239,000');
+
+      // Another person's save rebuilds the bill: the amounts stay typed taxes included.
+      await chooseMode('net');
+      q('record-revert')!.click();
+      await chooseMode('gross');
+      facade.loadExpense.mockImplementation(async () => {
+        expense.set({
+          ...draft,
+          documentTaxComponentIds: ['s1'],
+          lines: [{ ...draft.lines[0]!, amountNet: '150.000' }],
+        });
+      });
+      await announceSaved('expense', 'e1');
+      await settle();
+      expect(q('bill-mode')?.getAttribute('data-mode')).toBe('gross');
+      expect((q('bill-line-0-gross') as HTMLInputElement).value).toBe('179,500');
+    });
+
+    it('refuses a total the stamp alone reaches, and one that is not an amount, before asking the API', async () => {
+      optionsState.set(offered);
+      await open(undefined);
+      (q('bill-charge-s1')?.querySelector('input') as HTMLInputElement).click();
+      type('field-description', 'Café');
+      type('bill-line-0-gross', '12,9');
+      type('bill-line-0-gross', '1');
+      await settle();
+      q('record-save')!.click();
+      await settle();
+      expect(facade.createExpense).not.toHaveBeenCalled();
+      expect(q('bill-line-0-gross-error')?.textContent).toContain('expenses.bill.gross_charges');
+
+      type('bill-line-0-gross', '');
+      await settle();
+      expect(q('bill-line-0-gross-error')?.textContent).toContain('expenses.bill.gross_required');
     });
 
     it('refuses two VAT rates on one line, and a line removed, before asking the API', async () => {
