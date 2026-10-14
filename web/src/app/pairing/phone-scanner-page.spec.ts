@@ -86,8 +86,8 @@ describe('PhoneScannerPage', () => {
 
   beforeEach(() => {
     api.claim.mockReset().mockResolvedValue({ id: 'p-1', key: 'k'.repeat(64) });
-    api.scan.mockClear();
-    api.choose.mockClear();
+    api.scan.mockReset().mockResolvedValue(undefined);
+    api.choose.mockReset().mockResolvedValue(undefined);
     api.realtimeToken.mockClear();
     api.photo.mockReset().mockResolvedValue(undefined);
     shrinker.shrink.mockReset().mockResolvedValue(shrunk);
@@ -279,5 +279,163 @@ describe('PhoneScannerPage', () => {
 
     expect(q('phone-ended')).not.toBeNull();
     expect(storage.getItem(PAIRING_STORAGE_KEY)).toBeNull();
+  });
+  // The bad-network standard (docs/SPEC.md § 7): a send is said to have gone only once the API answered, and what a
+  // short drop did not send is kept, shown unsent, and sent again with the id it first had, which the tab acts on once.
+  describe('on a bad network', () => {
+    const lost = () => new PairingRefused('network');
+    const all = (testId: string) =>
+      Array.from(
+        fixture.nativeElement.querySelectorAll(
+          `[data-testid="${testId}"]`,
+        ) as NodeListOf<HTMLElement>,
+      );
+    const scanIds = () => api.scan.mock.calls.map((call) => (call as unknown[])[3]);
+
+    async function shows(check: () => void): Promise<void> {
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        check();
+      });
+    }
+
+    function resend(): void {
+      (q('phone-resend') as HTMLButtonElement).click();
+    }
+
+    it('says a scan went only once the computer answered', async () => {
+      await open();
+      let answer!: () => void;
+      api.scan.mockImplementationOnce(
+        () => new Promise<undefined>((resolve) => (answer = () => resolve(undefined))),
+      );
+
+      await type('3017620422003');
+
+      expect(q('phone-sending')?.textContent).toContain('3017620422003');
+      expect(q('phone-sent')).toBeNull();
+      answer();
+      await shows(() => expect(q('phone-sent')?.textContent).toContain('3017620422003'));
+      expect(q('phone-sending')).toBeNull();
+    });
+
+    it('keeps a scan a lost network did not send, shows it unsent, and « Renvoyer » sends it again with its id', async () => {
+      await open();
+      api.scan.mockRejectedValueOnce(lost());
+
+      await type('111');
+
+      await shows(() => expect(q('phone-unsent')?.textContent).toContain('111'));
+      expect(q('phone-code')).not.toBeNull();
+      expect(q('phone-sent')).toBeNull();
+      resend();
+      await shows(() => expect(q('phone-sent')?.textContent).toContain('111'));
+      expect(q('phone-unsent')).toBeNull();
+      expect(scanIds()).toEqual([scanIds()[0], scanIds()[0]]);
+    });
+
+    it('sends what is unsent again, in order, once the phone is back online or the next send goes through', async () => {
+      await open();
+      api.scan.mockRejectedValueOnce(lost()).mockRejectedValueOnce(lost());
+      await type('111');
+      await type('222');
+      await shows(() => expect(all('phone-unsent')).toHaveLength(2));
+      const [first, second] = scanIds();
+
+      window.dispatchEvent(new Event('online'));
+
+      await shows(() => expect(all('phone-unsent')).toHaveLength(0));
+      expect(scanIds().slice(2)).toEqual([first, second]);
+
+      api.scan.mockRejectedValueOnce(lost());
+      await type('333');
+      await shows(() => expect(all('phone-unsent')).toHaveLength(1));
+      const third = scanIds()[4];
+      await type('444');
+      await shows(() => expect(all('phone-unsent')).toHaveLength(0));
+      expect(scanIds().slice(5)).toEqual([scanIds()[5], third]);
+    });
+
+    it('sends one thing at a time again, in order, however often it is asked', async () => {
+      await open();
+      api.scan.mockRejectedValueOnce(lost()).mockRejectedValueOnce(lost());
+      await type('111');
+      await type('222');
+      await shows(() => expect(all('phone-unsent')).toHaveLength(2));
+      const [first, second] = scanIds();
+      let answer!: () => void;
+      api.scan.mockImplementationOnce(
+        () => new Promise<undefined>((resolve) => (answer = () => resolve(undefined))),
+      );
+
+      window.dispatchEvent(new Event('online'));
+      window.dispatchEvent(new Event('online'));
+      resend();
+      expect(scanIds().slice(2)).toEqual([first]);
+      answer();
+
+      await shows(() => expect(q('phone-sent')?.textContent).toContain('222'));
+      expect(scanIds().slice(2)).toEqual([first, second]);
+    });
+
+    it('forgets what it had not sent once the pairing ends, and sends none of it', async () => {
+      await open();
+      api.scan.mockRejectedValueOnce(lost());
+      await type('111');
+      await shows(() => expect(q('phone-unsent')).not.toBeNull());
+
+      publish({ type: 'ended' });
+      window.dispatchEvent(new Event('online'));
+      await fixture.whenStable();
+
+      expect(q('phone-unsent')).toBeNull();
+      expect(api.scan).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps a photo a lost network did not send, and sends the same picture again with its id', async () => {
+      await open();
+      api.photo.mockRejectedValueOnce(lost());
+
+      await takePhoto(new File(['big'], 'IMG_0001.jpg', { type: 'image/jpeg' }));
+
+      await shows(() =>
+        expect(q('phone-unsent')?.textContent).toContain('scan.phone.page.unsent_photo'),
+      );
+      expect(q('phone-photo-refused')).toBeNull();
+      resend();
+      await shows(() => expect(successToasts()).toContain('scan.phone.page.photo_sent'));
+      expect(q('phone-unsent')).toBeNull();
+      const [firstCall, again] = api.photo.mock.calls as unknown[][];
+      expect(again![2]).toBe(firstCall![2]);
+      expect(again![3]).toBe(shrunk);
+    });
+
+    it('keeps a choice a lost network did not send, and drops it once the computer has moved on', async () => {
+      await open();
+      const offer = (id: string) => ({
+        type: 'echo',
+        id,
+        scan: null,
+        outcome: 'unclaimed',
+        message: 'scan.phone.unknown',
+        params: { code: '999' },
+        product: null,
+        choices: [{ id: 'create', label: 'products.scan.actions.create' }],
+      });
+      publish(offer(ECHO));
+      api.choose.mockRejectedValueOnce(lost());
+
+      (q('phone-choice-create') as HTMLButtonElement).click();
+      await shows(() =>
+        expect(q('phone-unsent')?.textContent).toContain('scan.phone.page.unsent_choice'),
+      );
+
+      publish(offer('0199aaaa-0000-4000-8000-00000000000f'));
+      window.dispatchEvent(new Event('online'));
+      await fixture.whenStable();
+
+      expect(q('phone-unsent')).toBeNull();
+      expect(api.choose).toHaveBeenCalledTimes(1);
+    });
   });
 });

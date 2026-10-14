@@ -77,6 +77,21 @@ interface Held {
 type Stage = 'loading' | 'scanning' | 'ended' | { refused: PairingRefusal };
 
 /**
+ * A send on its way, or kept after a lost network, with the id it was first sent with: the computer acts once on a
+ * scan or photo id and once on an offered choice, so sending it again is safe.
+ */
+interface Outgoing {
+  readonly id: string;
+  readonly kind: 'scan' | 'photo' | 'choice';
+  /** The code a scan sent, shown beside it. */
+  readonly code: string | null;
+  /** The echo a choice answers: once a newer one arrives the computer no longer takes it. */
+  readonly echo: string | null;
+  readonly state: 'sending' | 'unsent';
+  readonly attempt: () => Promise<void>;
+}
+
+/**
  * A phone lent to a computer as a scanner, with no sign-in: it claims the link the computer showed, then scans — with
  * its camera or by hand — and each code acts once on the computer, under the computer's session; a photo it takes
  * goes to the computer the same way. What it shows back is only what the computer echoes: the outcome, the product's name and
@@ -114,12 +129,24 @@ export class PhoneScannerPage implements OnInit {
   });
   protected readonly echoes = signal<readonly PairingEcho[]>([]);
   protected readonly sent = signal<string | null>(null);
+  protected readonly outgoing = signal<readonly Outgoing[]>([]);
+  protected readonly unsent = computed(() =>
+    this.outgoing().some((each) => each.state === 'unsent'),
+  );
+  private resending = false;
   /** Where the last photo the camera took stands: on its way, or why it was not sent; that it went is a toast. */
   protected readonly photo = signal<'idle' | 'sending' | 'unreadable' | 'refused'>('idle');
   protected code = '';
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.connection?.disconnect());
+    // Back online, what a drop kept goes again; an API that answers a later send does the same.
+    const view = inject(DOCUMENT).defaultView;
+    const online = () => void this.resend();
+    view?.addEventListener('online', online);
+    inject(DestroyRef).onDestroy(() => {
+      this.connection?.disconnect();
+      view?.removeEventListener('online', online);
+    });
   }
 
   async ngOnInit(): Promise<void> {
@@ -148,11 +175,30 @@ export class PhoneScannerPage implements OnInit {
   protected async send(code: string): Promise<void> {
     const held = this.held;
     if (held === null || this.stage() !== 'scanning') return;
-    this.sent.set(code);
+    const id = crypto.randomUUID();
+    await this.deliver({
+      id,
+      kind: 'scan',
+      code,
+      echo: null,
+      state: 'sending',
+      attempt: () => this.api.scan(held.id, held.key, code, id),
+    });
+  }
+
+  /** Sends again, in order and one at a time, what a lost network kept; stops at the first still not sent. */
+  protected async resend(): Promise<void> {
+    if (this.resending) return;
+    this.resending = true;
     try {
-      await this.api.scan(held.id, held.key, code, crypto.randomUUID());
-    } catch (error) {
-      this.refused(error);
+      for (const entry of this.outgoing().filter((each) => each.state === 'unsent')) {
+        if (this.stage() !== 'scanning') return;
+        if (!this.outgoing().some((each) => each.id === entry.id && each.state === 'unsent'))
+          continue;
+        if (!(await this.deliver(entry))) return;
+      }
+    } finally {
+      this.resending = false;
     }
   }
 
@@ -173,24 +219,77 @@ export class PhoneScannerPage implements OnInit {
       this.photo.set('unreadable');
       return;
     }
-    try {
-      await this.api.photo(held.id, held.key, crypto.randomUUID(), shrunk);
-      this.photo.set('idle');
-      this.feedback.success('scan.phone.page.photo_sent');
-    } catch (error) {
-      this.photo.set('refused');
-      if (error instanceof PairingRefused && error.reason !== 'invalid') this.refused(error);
-    }
+    const id = crypto.randomUUID();
+    await this.deliver({
+      id,
+      kind: 'photo',
+      code: null,
+      echo: null,
+      state: 'sending',
+      attempt: () => this.api.photo(held.id, held.key, id, shrunk),
+    });
   }
 
   protected async choose(echo: PairingEcho, choice: string): Promise<void> {
     const held = this.held;
     if (held === null) return;
+    const id = crypto.randomUUID();
+    await this.deliver({
+      id,
+      kind: 'choice',
+      code: null,
+      echo: echo.id,
+      state: 'sending',
+      attempt: () => this.api.choose(held.id, held.key, echo.id, choice),
+    });
+  }
+
+  /**
+   * Sends one thing and says what became of it: gone once the API answered, kept unsent after a lost network, and a
+   * refusal handled as before. Answers whether the next one may follow, which a lost network says it may not.
+   */
+  private async deliver(entry: Outgoing): Promise<boolean> {
+    this.put({ ...entry, state: 'sending' });
     try {
-      await this.api.choose(held.id, held.key, echo.id, choice);
+      await entry.attempt();
     } catch (error) {
-      this.refused(error);
+      if (error instanceof PairingRefused && error.reason === 'network') {
+        if (entry.kind === 'photo') this.photo.set('idle');
+        this.put({ ...entry, state: 'unsent' });
+        return false;
+      }
+      this.drop(entry.id);
+      if (entry.kind !== 'photo') {
+        this.refused(error);
+      } else {
+        this.photo.set('refused');
+        if (error instanceof PairingRefused && error.reason !== 'invalid') this.refused(error);
+      }
+      return true;
     }
+    this.drop(entry.id);
+    if (entry.kind === 'scan') this.sent.set(entry.code);
+    if (entry.kind === 'photo') {
+      this.photo.set('idle');
+      this.feedback.success('scan.phone.page.photo_sent');
+    }
+    void this.resend();
+    return true;
+  }
+
+  /** Adds or updates one send; nothing once the pairing is over, nor a choice the computer has moved on from. */
+  private put(entry: Outgoing): void {
+    if (this.stage() !== 'scanning') return;
+    if (entry.kind === 'choice' && this.echoes()[0]?.id !== entry.echo) return;
+    this.outgoing.update((all) =>
+      all.some((each) => each.id === entry.id)
+        ? all.map((each) => (each.id === entry.id ? entry : each))
+        : [...all, entry],
+    );
+  }
+
+  private drop(id: string): void {
+    this.outgoing.update((all) => all.filter((each) => each.id !== id));
   }
 
   private listen(held: Held): void {
@@ -210,6 +309,9 @@ export class PhoneScannerPage implements OnInit {
       // Held to its shape by the API before it was published: the computer cannot send the phone anything else.
       const echo = data as PairingEcho;
       this.echoes.update((echoes) => [echo, ...echoes].slice(0, ECHOES_KEPT));
+      this.outgoing.update((all) =>
+        all.filter((each) => each.kind !== 'choice' || each.echo === echo.id),
+      );
     }
   }
 

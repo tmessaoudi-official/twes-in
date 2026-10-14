@@ -5,7 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CSRF_HEADER } from '../session/csrf-token';
-import { PairingApi } from './pairing-api';
+import { PairingApi, PairingRefused } from './pairing-api';
 
 const SCAN_ID = '0199aaaa-0000-4000-8000-0000000000f1';
 
@@ -74,5 +74,21 @@ describe('PairingApi photos', () => {
     expect(request.request.responseType).toBe('blob');
     request.flush(new Blob(['jpeg'], { type: 'image/jpeg' }));
     expect((await taken).type).toBe('image/jpeg');
+  });
+
+  it('takes a gateway answering for an API that is restarting as a lost network, not as a refusal', async () => {
+    for (const status of [0, 502, 503, 504]) {
+      const sent = api.scan('p-1', 'k'.repeat(64), '111', SCAN_ID);
+      http
+        .expectOne('/api/scan-pairings/p-1/scans')
+        .flush('<html>Bad Gateway</html>', { status, statusText: 'Gateway' });
+      await expect(sent, String(status)).rejects.toEqual(new PairingRefused('network'));
+    }
+
+    const refused = api.scan('p-1', 'k'.repeat(64), '111', SCAN_ID);
+    http
+      .expectOne('/api/scan-pairings/p-1/scans')
+      .flush({}, { status: 404, statusText: 'Not Found' });
+    await expect(refused).rejects.toEqual(new PairingRefused('unknown'));
   });
 });

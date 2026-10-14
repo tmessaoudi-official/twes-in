@@ -138,8 +138,14 @@ function phone(key: string) {
   return { headers: new HttpHeaders({ [KEY_HEADER]: key }), context: BACKGROUND() };
 }
 
+/**
+ * No answer at all, or a gateway answering for an API that is restarting: a lost network, which the phone keeps its
+ * send through, never a refusal, which would end the pairing.
+ */
+const UNREACHABLE = new Set([0, 502, 503, 504]);
+
 function refusalOf(error: unknown): PairingRefusal {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) return 'network';
+  if (!(error instanceof HttpErrorResponse) || UNREACHABLE.has(error.status)) return 'network';
   const reason = (error.error as Partial<ScanPairingRefusal> | null)?.error;
   if (reason !== undefined) return reason;
   return error.status === 404 ? 'unknown' : 'invalid';
