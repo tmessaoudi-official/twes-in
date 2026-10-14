@@ -35,14 +35,15 @@ final class DocumentPreview
     public const array SECTIONS = ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['title', 'firstLine', 'lineCount', 'subtotal'], 'properties' => ['title' => ['type' => 'string'], 'firstLine' => ['type' => 'integer'], 'lineCount' => ['type' => 'integer'], 'subtotal' => ['type' => 'string']]]];
     private const array RATED = ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['code', 'rate', 'base', 'amount'], 'properties' => ['code' => self::AMOUNT, 'rate' => self::AMOUNT, 'base' => self::AMOUNT, 'amount' => self::AMOUNT]]];
 
-    /** @var list<array{amount: string, discount: string, net: string, documentDiscount: string, taxes: list<array{code: string, base: string, amount: string}>, total: string}> */
-    #[ApiProperty(description: 'In the document\'s order: quantity × price, the line discount, the net, its share of the document discount, each of its taxes as this line carries it (its share of the document\'s, so they add up to it), and what the line adds, tax included.', schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['amount', 'discount', 'net', 'documentDiscount', 'taxes', 'total'], 'properties' => [
+    /** @var list<array{amount: string, discount: string, net: string, documentDiscount: string, taxes: list<array{code: string, base: string, amount: string}>, total: string, sentFrom: int|null}> */
+    #[ApiProperty(description: 'In the document\'s order: quantity × price, the line discount, the net, its share of the document discount, each of its taxes as this line carries it (its share of the document\'s, so they add up to it), what the line adds, tax included, and where the line was sent from, by its position from 0 among the lines sent: a credit note keeps its lines otherwise than they were sent when it gives deposits back, or leaves them out, and null is a line it adds itself.', schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['amount', 'discount', 'net', 'documentDiscount', 'taxes', 'total', 'sentFrom'], 'properties' => [
         'amount' => self::AMOUNT,
         'discount' => self::AMOUNT,
         'net' => self::AMOUNT,
         'documentDiscount' => self::AMOUNT,
         'taxes' => ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['code', 'base', 'amount'], 'properties' => ['code' => self::AMOUNT, 'base' => self::AMOUNT, 'amount' => self::AMOUNT]]],
         'total' => self::AMOUNT,
+        'sentFrom' => ['type' => ['integer', 'null']],
     ]]])]
     #[Groups([self::READ])]
     public array $lines = [];
@@ -99,19 +100,21 @@ final class DocumentPreview
     /**
      * @param list<string|null>            $titles         the title of the section each line opens, in order; none for a document without sections
      * @param array<string, ChargeLeftOut> $chargesLeftOut why a chosen fixed charge is left out, by its code
+     * @param list<int|null>|null          $sentFrom       where each line was sent from, in order; each its own position for a document keeping its lines as sent
      */
-    public static function of(DocumentTotals $totals, int $scale, array $titles = [], array $chargesLeftOut = []): self
+    public static function of(DocumentTotals $totals, int $scale, array $titles = [], array $chargesLeftOut = [], ?array $sentFrom = null): self
     {
         $at = static fn (string $value): string => Decimal::format(Decimal::of($value), $scale);
         $rated = static fn (TaxTotal $each): array => ['code' => $each->code, 'rate' => Decimal::format(Decimal::of($each->rate->percentage()), 3), 'base' => $at($each->base), 'amount' => $at($each->amount)];
 
         $preview = new self();
-        $preview->lines = array_map(static function (LineTotals $line) use ($at, $scale): array {
+        $sentFrom ??= array_keys($totals->lines);
+        $preview->lines = array_map(static function (LineTotals $line, ?int $sent) use ($at, $scale): array {
             $taxes = array_map(static fn (LineTax $tax): array => ['code' => $tax->code, 'base' => $at($tax->base), 'amount' => $at($tax->amount)], $line->taxes);
             $total = Decimal::of($line->net)->sub(Decimal::of($line->documentDiscount))->add(Decimal::sum(array_map(static fn (array $tax) => Decimal::of($tax['amount']), $taxes)));
 
-            return ['amount' => $at($line->amount), 'discount' => $at($line->discount), 'net' => $at($line->net), 'documentDiscount' => $at($line->documentDiscount), 'taxes' => $taxes, 'total' => Decimal::format($total, $scale)];
-        }, $totals->lines);
+            return ['amount' => $at($line->amount), 'discount' => $at($line->discount), 'net' => $at($line->net), 'documentDiscount' => $at($line->documentDiscount), 'taxes' => $taxes, 'total' => Decimal::format($total, $scale), 'sentFrom' => $sent];
+        }, $totals->lines, $sentFrom);
         $preview->subtotalNet = $at($totals->subtotalNet);
         $preview->documentDiscount = $at($totals->documentDiscount);
         $preview->savings = $at($totals->savings());

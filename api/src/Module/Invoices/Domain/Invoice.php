@@ -1397,28 +1397,57 @@ class Invoice implements CompanyOwned
      */
     private function depositsCredited(array $lines): array
     {
+        return array_map(static fn (array $kept): InvoiceLineDetails => $kept[0], $this->keptFrom($lines));
+    }
+
+    /**
+     * Where each line a revision of this draft keeps was sent from, by its position among `$lines`, in the order it
+     * keeps them: null for a deposit line a credit note of the whole invoice adds itself. The screen places a preview's
+     * figures by it, as the lines it sent may be fewer, or in another order, than the ones kept.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<int|null>
+     *
+     * @throws InvalidInvoice
+     */
+    public function linesSentFrom(array $lines): array
+    {
+        return array_map(static fn (array $kept): ?int => $kept[1], $this->keptFrom($lines));
+    }
+
+    /**
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<array{InvoiceLineDetails, int|null}>
+     *
+     * @throws InvalidInvoice
+     */
+    private function keptFrom(array $lines): array
+    {
+        $sentAt = array_map(static fn (InvoiceLineDetails $line, int $index): array => [$line, $index], $lines, array_keys($lines));
         $given = array_values(array_filter($this->correctsInvoice?->getLines() ?? [], static fn (InvoiceLine $line): bool => null !== $line->getDeduction()));
         if (null === $this->correctsInvoice || [] === $given) {
-            return $lines;
+            return $sentAt;
         }
-        $sold = array_values(array_filter($lines, static fn (InvoiceLineDetails $line): bool => null === $line->deduction));
-        if ($this->givesBackWhole($this->correctsInvoice, $sold)) {
+        $sold = array_values(array_filter($sentAt, static fn (array $sent): bool => null === $sent[0]->deduction));
+        if ($this->givesBackWhole($this->correctsInvoice, array_map(static fn (array $sent): InvoiceLineDetails => $sent[0], $sold))) {
             $sent = array_values(array_filter(array_map(static fn (InvoiceLineDetails $line): ?string => $line->deduction?->deposit->getId()->toRfc4122(), $lines)));
             $owed = array_values(array_filter(array_map(static fn (InvoiceLine $line): ?string => $line->getDeduction()?->deposit->getId()->toRfc4122(), $given)));
             sort($sent);
             sort($owed);
 
-            return $sent === $owed ? $lines : [...$sold, ...array_map(self::creditOf(...), $given)];
+            return $sent === $owed ? $sentAt : [...$sold, ...array_map(static fn (InvoiceLine $line): array => [self::creditOf($line), null], $given)];
         }
         $part = [];
         $carried = null;
-        foreach ($lines as $line) {
+        foreach ($sentAt as [$line, $index]) {
             if (null !== $line->deduction) {
                 $carried = $line->section ?? $carried;
 
                 continue;
             }
-            $part[] = null === $line->section && null !== $carried ? $line->opening($carried) : $line;
+            $part[] = [null === $line->section && null !== $carried ? $line->opening($carried) : $line, $index];
             $carried = null;
         }
 

@@ -330,13 +330,11 @@ export class InvoicePage {
         // A line's figures do not depend on its words: one not described yet is still worked out.
         return line.description === '' ? { ...line, description: '…' } : line;
       });
-      const deposits = positions.filter((index) => input.lines[index]!.deductsInvoiceId != null);
       return {
         companyId,
         id,
         input: { ...input, lines: sent },
         positions,
-        deposits,
         count: lines.length,
       };
     });
@@ -344,9 +342,9 @@ export class InvoicePage {
   /** The figures as the document stands typed, from the API's one calculator, or null until it has answered. */
   protected readonly figures = liveFigures(
     () => this.previewDraft(),
-    async ({ companyId, id, input, positions, deposits, count }) => {
+    async ({ companyId, id, input, positions, count }) => {
       const body = await this.facade.preview(companyId, id, input);
-      return body === null ? null : toDocumentFigures(body, positions, count, deposits);
+      return body === null ? null : toDocumentFigures(body, positions, count);
     },
   );
   protected readonly lineFigures = computed(() => this.figures()?.lines ?? null);

@@ -2162,6 +2162,7 @@ describe('InvoicePage', () => {
           documentDiscount: '0.000',
           taxes: [{ code: 'TVA19', base: '3600.000', amount: '684.000' }],
           total: '4284.000',
+          sentFrom: 0,
         },
       ],
       subtotalNet: '3600.000',
@@ -2224,8 +2225,8 @@ describe('InvoicePage', () => {
       invoice.set({ ...draft, lines: [deposit, draft.lines[0]!] });
       await open('i1');
       await rested();
-      // The API leaves the deposit line out: it answers the sold line alone.
-      facade.preview.mockResolvedValue(twice);
+      // The API leaves the deposit line out: it answers the sold line alone, sent second.
+      facade.preview.mockResolvedValue({ ...twice, lines: [{ ...twice.lines![0]!, sentFrom: 1 }] });
 
       type('line-1-quantity', '2');
       await rested();
@@ -2233,6 +2234,7 @@ describe('InvoicePage', () => {
       const [, , asked] = facade.preview.mock.lastCall!;
       expect(asked.lines).toHaveLength(2);
       expect(text('line-1-net')).toContain('3 600,000');
+      expect(q('line-0-toggle')).toBeNull();
     });
 
     it('leaves a line not ready yet out, without figures, and works the others out', async () => {
