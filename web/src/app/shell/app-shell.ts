@@ -727,11 +727,12 @@ export class AppShell {
 
   protected async logout(): Promise<void> {
     this.signingOut.set(true);
+    let signedOut = true;
     try {
-      await this.auth.logout();
+      signedOut = await this.auth.logout();
     } finally {
       this.signingOut.set(false);
-      await this.router.navigateByUrl('/login');
+      if (signedOut) await this.router.navigateByUrl('/login');
     }
   }
 

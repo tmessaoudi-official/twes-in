@@ -37,9 +37,22 @@ test('login, hello page, logout', async ({ page }) => {
   await page.reload();
   await expect(page.getByTestId('greeting')).toContainText('Bonjour, Operator');
 
-  // Signing out lives in the account menu of the shell.
+  // Signing out lives in the account menu of the shell. It takes the page down with it, so what is typed and not
+  // saved is asked about first, as leaving the page would be: staying keeps it, leaving signs out.
+  await page.goto('/customers/new');
+  const name = page.getByTestId('field-name');
+  await name.fill('Typed, never saved');
   await page.getByTestId('user-menu').click();
   await page.getByTestId('logout').click();
+  await expect(page.getByTestId('confirm-title')).toHaveText('Quitter sans enregistrer ?');
+  await page.getByTestId('confirm-keep').click();
+  await expect(page.getByTestId('confirm-title')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/customers\/new$/);
+  await expect(name).toHaveValue('Typed, never saved');
+
+  await page.getByTestId('user-menu').click();
+  await page.getByTestId('logout').click();
+  await page.getByTestId('confirm-run').click();
   await expect(page).toHaveURL(/\/login$/);
 
   await page.goto('/');

@@ -69,11 +69,11 @@ function state(status: string, access: 'full' | 'read_only' | 'locked' = 'full')
 
 describe('AwaitingApprovalPage', () => {
   const me = signal<SignedInState | null>(state('pending'));
-  const auth = { me, logout: vi.fn() };
+  const auth = { me, logout: vi.fn(async () => true) };
 
   beforeEach(async () => {
     me.set(state('pending'));
-    auth.logout.mockReset().mockResolvedValue(undefined);
+    auth.logout.mockReset().mockResolvedValue(true);
     await TestBed.configureTestingModule({
       imports: [AwaitingApprovalPage],
       providers: [

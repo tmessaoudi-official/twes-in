@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { AuthApi, AuthRefused } from './auth-api';
 import { AuthFacade } from './auth-facade';
 import { PasskeyClient } from './passkey-client';
@@ -56,14 +58,17 @@ describe('AuthFacade', () => {
     leaveCustomerScreen: vi.fn(),
   };
   const client = { supported: vi.fn(), create: vi.fn(), get: vi.fn() };
+  const unsaved = { confirmLeaveBeforeNavigating: vi.fn() };
   let facade: AuthFacade;
 
   beforeEach(() => {
     [...Object.values(api), ...Object.values(client)].forEach((fn) => fn.mockReset());
+    unsaved.confirmLeaveBeforeNavigating.mockReset().mockReturnValue(of(true));
     TestBed.configureTestingModule({
       providers: [
         { provide: AuthApi, useValue: api },
         { provide: PasskeyClient, useValue: client },
+        { provide: UnsavedChanges, useValue: unsaved },
       ],
     });
     facade = TestBed.inject(AuthFacade);
@@ -401,9 +406,22 @@ describe('AuthFacade', () => {
     api.me.mockResolvedValue(owner);
     await facade.load();
     api.logout.mockRejectedValue(new Error('500'));
-    await facade.logout();
+    expect(await facade.logout()).toBe(true);
     expect(facade.status()).toBe('anonymous');
     expect(facade.me()).toBeNull();
+  });
+
+  it('logout() asks first whether to leave what is typed and unsaved, and keeps the session when the person stays', async () => {
+    api.me.mockResolvedValue(owner);
+    await facade.load();
+    unsaved.confirmLeaveBeforeNavigating.mockReturnValue(of(false));
+
+    expect(await facade.logout()).toBe(false);
+
+    expect(unsaved.confirmLeaveBeforeNavigating).toHaveBeenCalledOnce();
+    expect(api.logout).not.toHaveBeenCalled();
+    expect(facade.status()).toBe('authenticated');
+    expect(facade.me()).toEqual(owner);
   });
 
   it('hasPermission() narrows to reading, and to the way out, while the subscription is unpaid', async () => {

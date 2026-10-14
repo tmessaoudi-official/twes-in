@@ -3,7 +3,7 @@
 import { computed, DestroyRef, inject, Injectable, type Signal, signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import type { CanDeactivateFn, Route } from '@angular/router';
-import { from, map, type Observable, of, switchMap } from 'rxjs';
+import { from, map, type Observable, of, switchMap, tap } from 'rxjs';
 
 /**
  * What is typed and not saved, anywhere on the page (row 45). Every record page counts its own through
@@ -14,7 +14,8 @@ import { from, map, type Observable, of, switchMap } from 'rxjs';
 export class UnsavedChanges {
   private readonly dialog = inject(MatDialog);
   private readonly sources = signal<readonly Signal<number>[]>([]);
-  private leavingAfterSave = false;
+  /** The question the next navigation asks is already answered: consumed by that navigation alone. */
+  private answered = false;
 
   /** How many fields on the page hold something other than what was last saved. */
   readonly count: Signal<number> = computed(() =>
@@ -39,12 +40,12 @@ export class UnsavedChanges {
    * question is always the one that navigation asks, and it consumes this.
    */
   savedAndLeaving(): void {
-    this.leavingAfterSave = true;
+    this.answered = true;
   }
 
   confirmLeave(): Observable<boolean> {
-    if (this.leavingAfterSave) {
-      this.leavingAfterSave = false;
+    if (this.answered) {
+      this.answered = false;
       return of(true);
     }
     if (this.count() === 0) return of(true);
@@ -65,6 +66,19 @@ export class UnsavedChanges {
           .afterClosed(),
       ),
       map((answer) => answer === true),
+    );
+  }
+
+  /**
+   * For a way out that takes the page down before it navigates (signing out): the page still counts what was typed
+   * when the navigation that follows asks, so a yes here answers that question too, and the person is asked once.
+   */
+  confirmLeaveBeforeNavigating(): Observable<boolean> {
+    const unsaved = this.count() > 0;
+    return this.confirmLeave().pipe(
+      tap((leave) => {
+        if (leave && unsaved) this.answered = true;
+      }),
     );
   }
 }

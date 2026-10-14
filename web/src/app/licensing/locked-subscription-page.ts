@@ -33,7 +33,6 @@ export class LockedSubscriptionPage {
   private readonly router = inject(Router);
 
   protected async signOut(): Promise<void> {
-    await this.auth.logout();
-    await this.router.navigateByUrl('/login');
+    if (await this.auth.logout()) await this.router.navigateByUrl('/login');
   }
 }

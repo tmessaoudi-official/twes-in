@@ -31,7 +31,7 @@ class StaticLoader implements TranslateLoader {
 class StubSubscriptionPage {}
 
 describe('LockedSubscriptionPage', () => {
-  const logout = vi.fn().mockResolvedValue(undefined);
+  const logout = vi.fn().mockResolvedValue(true);
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {

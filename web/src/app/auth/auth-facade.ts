@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Session } from '../shared/session/session';
 import { CustomerScreenHold } from '../shared/customer-view/customer-screen-hold';
 import { type StepUpOutcome, StepUpProof } from '../shared/step-up/step-up-proof';
@@ -30,6 +32,7 @@ import { PasskeyClient } from './passkey-client';
 export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
   private readonly api = inject(AuthApi);
   private readonly passkeyClient = inject(PasskeyClient);
+  private readonly unsaved = inject(UnsavedChanges);
   private readonly stateSignal = signal<SignedInState | null>(null);
   private readonly statusSignal = signal<AuthStatus>('unknown');
 
@@ -290,13 +293,19 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
     }
   }
 
-  async logout(): Promise<void> {
+  /**
+   * Returns whether the session ended. Signing out takes every screen down before any route is left, so the leave
+   * question is asked here, for every way out, before what was typed is lost.
+   */
+  async logout(): Promise<boolean> {
+    if (!(await firstValueFrom(this.unsaved.confirmLeaveBeforeNavigating()))) return false;
     try {
       await this.api.logout();
     } catch {
       // Whatever the API answered, the client forgets the session; a stale cookie fails the next request anyway.
     }
     this.signedOut();
+    return true;
   }
 
   /** The API no longer knows the session (it expired, or was ended elsewhere): forget it here too, without asking. */
