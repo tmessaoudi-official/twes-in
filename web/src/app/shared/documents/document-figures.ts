@@ -62,9 +62,17 @@ export interface DocumentFigures {
   readonly chargesLeftOut: readonly ChargeLeftOut[];
 }
 
+/**
+ * A line as a preview answers it: its figures and the position, among the lines sent, of the one it was worked out
+ * from; null for a line the document adds itself, such as the deposit lines a credit note of a whole invoice gives back.
+ */
+export interface SentLineFigures extends LineFigures {
+  readonly sentFrom: number | null;
+}
+
 /** What the API answers to a preview, before it is read: its OpenAPI type is named after each document. */
 export interface PreviewBody {
-  lines?: LineFigures[];
+  lines?: SentLineFigures[];
   subtotalNet?: string;
   documentDiscount?: string;
   savings?: string;
@@ -95,26 +103,20 @@ export function savesSomething(savings: string | null): savings is string {
 }
 
 /**
- * Reads a preview's answer; a line sent from position `positions[i]` lands back there, the others stay null. A credit
- * note giving back part of an invoice gives no deposit back, so the API answers without the deposit lines sent: when
- * it answered exactly that many fewer, its lines land on the other positions.
+ * Reads a preview's answer; a line worked out from the one sent `i`th lands on row `positions[i]`, the others stay
+ * null. The API says which line each was sent from, as a credit note may keep its lines otherwise than they were sent:
+ * one giving back part of an invoice leaves the deposit lines out, one giving it all back adds them.
  */
 export function toDocumentFigures(
   body: PreviewBody,
   positions: readonly number[],
   count: number,
-  deposits: readonly number[] = [],
 ): DocumentFigures {
   const lines: (LineFigures | null)[] = Array.from({ length: count }, () => null);
-  const answered = body.lines ?? [];
-  const placed =
-    deposits.length > 0 && answered.length === positions.length - deposits.length
-      ? positions.filter((at) => !deposits.includes(at))
-      : positions;
-  answered.forEach((line, sent) => {
-    const at = placed[sent];
+  for (const { sentFrom, ...line } of body.lines ?? []) {
+    const at = sentFrom === null ? undefined : positions[sentFrom];
     if (at !== undefined && at < count) lines[at] = line;
-  });
+  }
   return {
     lines,
     subtotalNet: body.subtotalNet ?? '0',

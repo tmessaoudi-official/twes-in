@@ -304,6 +304,41 @@ final class DepositInvoicesTest extends ApiTestCase
     }
 
     /**
+     * A credit note's preview says where each line it answers was sent from, so the screen places the figures by it: a
+     * part leaves the deposit lines out, a whole note keeps them where they were sent or adds them, sent from nowhere.
+     */
+    public function testACreditNotesPreviewSaysWhereEachLineItAnswersWasSentFrom(): void
+    {
+        $this->signedIn(self::WRITER);
+        $quoteId = $this->accepted();
+        $depositId = $this->deposit($quoteId, ['depositPercentage' => '30', 'depositAmount' => null]);
+        $this->issue($depositId);
+        $this->postJson($this->quotePath($quoteId).'/invoice', null);
+        $finalId = $this->stringAt($this->json(), 'invoiceId');
+        $this->issue($finalId);
+        $this->postJson($this->companyPath().'/invoices/'.$finalId.'/credit-notes', ['creditNoteReason' => 'Retour']);
+        $note = $this->json();
+        [$machines, $labour, $firstDeposit, $secondDeposit] = $this->rows($note, 'lines');
+        $sentFrom = function (array $lines) use ($note): array {
+            $this->postJson($this->companyPath().'/invoices/'.$this->stringAt($note, 'id').'/preview', [...$this->editable($note), 'lines' => $lines]);
+            self::assertResponseIsSuccessful();
+
+            return array_column($this->rows($this->json(), 'lines'), 'sentFrom');
+        };
+
+        self::assertSame([1, 3], $sentFrom([$firstDeposit, [...$machines, 'quantity' => '1'], $secondDeposit, $labour]), 'a part answers its sold lines alone');
+        self::assertSame([0, 1, 2, 3], $sentFrom([$firstDeposit, $secondDeposit, $machines, $labour]), 'the whole invoice, its deposits sent first');
+        self::assertSame([0, 1, null, null], $sentFrom([$machines, $labour]), 'the whole invoice, its deposits added by the API');
+        self::assertSame([0, 1, 2, null], $sentFrom([$machines, $labour, $secondDeposit]), 'one row naming a deposit stands for its every line, the rest added');
+
+        $this->postJson($this->companyPath().'/quotes/preview', ['customerId' => $this->customer->getId()->toRfc4122(), 'establishmentId' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'lines' => [
+            ['description' => 'Pose', 'quantity' => '1', 'unitId' => $this->unitId('HUR'), 'unitPriceNet' => '40', 'taxComponentIds' => [$this->taxId($this->labourTax)]],
+        ]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([0], array_column($this->rows($this->json(), 'lines'), 'sentFrom'), 'a document keeping every line answers each where it was sent');
+    }
+
+    /**
      * Two credit notes each giving back part of a final invoice never give back more than it charged together: the
      * one bringing the rest of the goods carries no deposit either, so it is refused, for the deposit invoice to correct.
      */

@@ -579,6 +579,7 @@ describe('QuotePage', () => {
           documentDiscount: '0.000',
           taxes: [{ code: 'TVA19', base: '750.000', amount: '142.500' }],
           total: '892.500',
+          sentFrom: 0,
         },
       ],
       subtotalNet: '750.000',

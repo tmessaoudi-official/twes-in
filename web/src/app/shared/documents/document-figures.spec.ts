@@ -20,13 +20,20 @@ const line = (net: string): LineFigures => ({
   total: net,
 });
 
+/** A line as the preview answers it: its figures and the line sent it was worked out from. */
+const sent = (figures: LineFigures, sentFrom: number | null) => ({ ...figures, sentFrom });
+
 const figures = (total: string): DocumentFigures =>
-  toDocumentFigures({ lines: [line(total)], total }, [0], 1);
+  toDocumentFigures({ lines: [sent(line(total), 0)], total }, [0], 1);
 
 describe('toDocumentFigures', () => {
   it('puts each line worked out back at its place, the lines not sent yet left without figures', () => {
     const read = toDocumentFigures(
-      { lines: [line('10.000'), line('30.000')], total: '40.000', netToPay: '40.000' },
+      {
+        lines: [sent(line('10.000'), 0), sent(line('30.000'), 1)],
+        total: '40.000',
+        netToPay: '40.000',
+      },
       [0, 2],
       3,
     );
@@ -36,25 +43,27 @@ describe('toDocumentFigures', () => {
     expect(read.taxes).toEqual([]);
   });
 
-  it('puts the lines back around the deposit lines the API left out, a credit note of part of an invoice giving none back', () => {
+  it('puts each line on the row it was sent from, the deposit lines a credit note of part of an invoice leaves out keeping none', () => {
     // Sent: a deposit line, a sold line, a deposit line, a sold line; answered: the two sold lines alone.
     const read = toDocumentFigures(
-      { lines: [line('60.000'), line('1125.000')], total: '-1185.000' },
+      { lines: [sent(line('60.000'), 1), sent(line('1125.000'), 3)], total: '-1185.000' },
       [0, 1, 2, 3],
       4,
-      [0, 2],
     );
     expect(read.lines).toEqual([null, line('60.000'), null, line('1125.000')]);
   });
 
-  it('keeps every line in its place when the API answered each line sent, deposit lines included', () => {
+  it('follows the order the API kept the lines in, and puts a line it added itself on no row', () => {
+    // Sent: rows 0 and 2; answered: row 2's line, row 0's, then a deposit line the API adds to a whole credit note.
     const read = toDocumentFigures(
-      { lines: [line('-675.000'), line('60.000')], total: '-615.000' },
-      [0, 1],
-      2,
-      [0],
+      {
+        lines: [sent(line('60.000'), 1), sent(line('-675.000'), 0), sent(line('500.000'), null)],
+        total: '-115.000',
+      },
+      [0, 2],
+      3,
     );
-    expect(read.lines).toEqual([line('-675.000'), line('60.000')]);
+    expect(read.lines).toEqual([line('-675.000'), null, line('60.000')]);
   });
 });
 

@@ -270,12 +270,15 @@ final readonly class ManageInvoices
     {
         $current = null === $id ? null : $this->get($company, $id);
         $current?->assertDraft('changes');
-        [$establishment, $customer, $lines, $documentTaxes] = $this->checked($company, $input, $current);
+        [$establishment, $customer, $lines, $documentTaxes, $sentAt] = $this->checked($company, $input, $current);
         $draft = null === $current
             ? Invoice::create($company, $establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now())
             : $current->previewOf($establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
 
-        return new SectionedTotals($this->totals->checked($draft), array_map(static fn (InvoiceLine $line): ?string => $line->getSection(), $draft->getLines()), $this->totals->chargesLeftOut($draft));
+        $kept = null === $current ? array_keys($lines) : $current->linesSentFrom($lines);
+        $sentFrom = array_map(static fn (?int $index): ?int => null === $index ? null : $sentAt[$index], $kept);
+
+        return new SectionedTotals($this->totals->checked($draft), array_map(static fn (InvoiceLine $line): ?string => $line->getSection(), $draft->getLines()), $this->totals->chargesLeftOut($draft), $sentFrom);
     }
 
     /**
@@ -295,9 +298,11 @@ final readonly class ManageInvoices
     }
 
     /**
-     * What the input names, found in the company and checked; what the invoice already names is kept even retired.
+     * What the input names, found in the company and checked; what the invoice already names is kept even retired. Last,
+     * where each line was sent from among the input's: a deposit's lines are written again together where it is first
+     * named, each from the row sent in its place, and one the rows sent cannot be tied to from none.
      *
-     * @return array{Establishment, Customer, list<InvoiceLineDetails>, list<TaxComponent>}
+     * @return array{Establishment, Customer, list<InvoiceLineDetails>, list<TaxComponent>, list<int|null>}
      */
     private function checked(Company $company, InvoiceInput $input, ?Invoice $current): array
     {
@@ -324,6 +329,7 @@ final readonly class ManageInvoices
 
         $kept = self::named($current);
         $lines = [];
+        $sentFrom = [];
         $givenBack = [];
         $language = null;
         // A deposit's lines are written again from it; the title each was sent with, and where, is read first.
@@ -337,6 +343,7 @@ final readonly class ManageInvoices
             try {
                 if (null === $line->deductsInvoiceId) {
                     $lines[] = $this->line($company, $customer, $line, $kept);
+                    $sentFrom[] = $index;
                     continue;
                 }
                 // One line naming a deposit stands for all of it, written again from the deposit.
@@ -357,6 +364,7 @@ final readonly class ManageInvoices
             foreach (self::depositTitles($titles[$line->deductsInvoiceId->toRfc4122()], $deposit, $current?->linesGivingBack($line->deductsInvoiceId) ?? []) as $position => [$at, $title]) {
                 try {
                     $lines[] = $deposit[$position]->opening($title);
+                    $sentFrom[] = \in_array($at, $sentFrom, true) ? null : $at;
                 } catch (InvalidInvoice $refused) {
                     throw $refused->within("lines[$at]");
                 }
@@ -369,7 +377,7 @@ final readonly class ManageInvoices
             $lines = array_map(static fn (int $position, InvoiceLineDetails $line): InvoiceLineDetails => isset($amounts[$position]) ? $line->givingBack($amounts[$position]) : $line, array_keys($lines), $lines);
         }
 
-        return [$establishment, $customer, $lines, $this->documentTaxes($company, $customer, $input->documentTaxComponentIds, $kept['documentTaxes'])];
+        return [$establishment, $customer, $lines, $this->documentTaxes($company, $customer, $input->documentTaxComponentIds, $kept['documentTaxes']), $sentFrom];
     }
 
     /**

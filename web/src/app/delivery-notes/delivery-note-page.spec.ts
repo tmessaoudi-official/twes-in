@@ -326,6 +326,7 @@ describe('DeliveryNotePage', () => {
         documentDiscount: '0.000',
         taxes: [{ code: 'TVA19', base: '3750.000', amount: '712.500' }],
         total: '4462.500',
+        sentFrom: 0,
       },
     ],
     subtotalNet: '3750.000',
