@@ -92,7 +92,7 @@ describe('runAction', () => {
     ).not.toThrow();
   });
 
-  // Screens-maturity round 1, L-200: issuing saves what is typed, then asks about what was saved.
+  // Issuing saves what is typed, then asks about what was saved, so the question names what will be done.
   it('does what comes before first, then asks the question as it stands after it', async () => {
     const steps: string[] = [];
     let total = '100';
