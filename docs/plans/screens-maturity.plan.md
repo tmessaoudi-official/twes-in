@@ -40,6 +40,8 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-14 15:13] AGREED: Q1–Q21, the maturity rubric and the twelve feelings families are ruled on one private marking page, read back into SPEC § 7, before round 2's instruments and three waves.
 - [2026-10-14 15:14] AGREED: Fix-now before round 2: L-1000 (sign-out asks before typed work is lost), L-425 (the lent phone says « Envoyé » only once the API answered, and keeps an unsent scan) and L-820; L-603 (an expense with several taxes) gets its own plan, sourced first, and round 2's slice S8 waits for it to land.
 - [2026-10-14 15:14] AGREED: L-820: turning the company's two-factor requirement off asks for a step-up proof and joins the step-up list; turning it on asks nothing. The module-switch half of Q14 stays on the marking page.
+- [2026-10-14 15:19] AGREED: The fix-now batch (L-820, L-1000, L-425) is treated as Large: each item gets its own full plan and a hard stop for the developer's go before any code.
+- [2026-10-14 15:19] AGREED: After the fix-now batch: the L-1080 sourcing into docs/fiscal/TN.md, then L-603's own plan for approval; the marking page is read back whenever the developer finishes it.
 
 ## Formal Plan
 
@@ -122,6 +124,19 @@ Known before round 1:
 - « Mon compte → Notifications » lists every company in one run: to be restructured (grouped by company, one switch per
   kind across them).
 - « Textes »: editable screen texts, as ruled below.
+
+**Fix-now L-820** (plan for the developer's go; each fix-now item gets its own plan and stop): turning the company's
+two-factor requirement off waits for a recent proof; turning it on, or saying what is already so, asks nothing.
+- API: `RequireSecondFactorProcessor` calls `RecentProof::demand` after the company and permission checks, only when
+  the company requires a second factor and the request says it should not. `RecentProof`'s docblock lists it.
+- Web: `company-security-api.ts` maps the `step_up_required:` refusal through the existing `stepUpAsked`;
+  `CompanySecurityFacade.requireSecondFactor` runs through `StepUp.retrying` with the dialog intro the developer picks;
+  a declined proof leaves the switch on and shows `company.security.errors.step_up_required`.
+- Tests first: three cases in `SensitiveChangesStepUpTest` (off without a proof refused, the requirement kept and no
+  audit row; on asks nothing; off when already off asks nothing), each with its mutant; facade and API specs; the
+  e2e in `two-factor.spec.ts` signs the owner in again (a sign-in carries no proof), turns it off, meets the dialog,
+  proves, and reads the switch off.
+- Gates in turn, the licence gate for fr.json's budget, the touched e2e; one commit; a new SPEC § 8 row.
 
 ## Status
 <!-- progress-block v1 -->
