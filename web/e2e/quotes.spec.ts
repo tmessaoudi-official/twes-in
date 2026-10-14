@@ -185,6 +185,8 @@ test('a quote is drafted, sent, accepted and invoiced into a draft invoice', asy
 test('an accepted quote takes a deposit invoice, which its final invoice gives back', async ({
   page,
 }) => {
+  // The quote, its deposit, the final invoice and a credit note of part of it, each issued through the screens.
+  test.setTimeout(90_000);
   const run = Date.now().toString(36).toUpperCase();
   const customerNumber = `E2E-AC-${run}`;
   await signIn(page);
@@ -246,6 +248,35 @@ test('an accepted quote takes a deposit invoice, which its final invoice gives b
     await expect(page.getByTestId('line-1-net')).toContainText(/[-−]\s?300,000/);
     await expect(page.getByTestId('invoice-totals')).toContainText('700,000');
     expect(await wcagViolations(page)).toEqual([]);
+
+    // Half the work is given back: a credit note of part of the final invoice gives no deposit back, so the deposit line
+    // copied with the whole leaves once saved, and nothing is left unsaved to ask about on the way out.
+    await page.getByTestId('document-action-issue').click();
+    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
+    await page.getByTestId('document-more').click();
+    await page.getByTestId('document-menu-credit-note').click();
+    await expect(page.getByTestId('field-reason')).toBeFocused();
+    await page.getByTestId('field-reason').fill('Moitié de l’usinage reprise');
+    await page.getByTestId('credit-note-create').click();
+    await expect(page.getByTestId('invoice-title')).toContainText(
+      /Avoir en brouillon|Draft credit note/,
+    );
+    const creditUrl = page.url();
+    await expect(page.getByTestId('line-1-gives-back')).toBeVisible();
+    await page.getByTestId('line-0-price').fill('500');
+    await page.getByTestId('document-action-save').click();
+    await expect(page.getByTestId('line-1-gives-back')).toHaveCount(0);
+    await expect(page.getByTestId('invoice-totals')).toContainText('500,000');
+    await page.getByTestId('nav-invoices').click();
+    await expect(page).toHaveURL(/\/invoices$/);
+    await expect(page.getByTestId('confirm-title')).toHaveCount(0);
+    // All of it back again: the whole invoice, so its deposit is given back as the invoice gave it.
+    await page.goto(creditUrl);
+    await page.getByTestId('line-0-price').fill('1000');
+    await page.getByTestId('document-action-save').click();
+    await expect(page.getByTestId('line-1-gives-back')).toBeVisible();
+    await expect(page.getByTestId('invoice-totals')).toContainText('700,000');
 
     // The list names a deposit as one, as the accountant's file does: its VAT fell due when it was paid.
     await page.goto('/invoices');
