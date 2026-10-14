@@ -35,6 +35,27 @@ describe('toDocumentFigures', () => {
     expect(read.netToPay).toBe('40.000');
     expect(read.taxes).toEqual([]);
   });
+
+  it('puts the lines back around the deposit lines the API left out, a credit note of part of an invoice giving none back', () => {
+    // Sent: a deposit line, a sold line, a deposit line, a sold line; answered: the two sold lines alone.
+    const read = toDocumentFigures(
+      { lines: [line('60.000'), line('1125.000')], total: '-1185.000' },
+      [0, 1, 2, 3],
+      4,
+      [0, 2],
+    );
+    expect(read.lines).toEqual([null, line('60.000'), null, line('1125.000')]);
+  });
+
+  it('keeps every line in its place when the API answered each line sent, deposit lines included', () => {
+    const read = toDocumentFigures(
+      { lines: [line('-675.000'), line('60.000')], total: '-615.000' },
+      [0, 1],
+      2,
+      [0],
+    );
+    expect(read.lines).toEqual([line('-675.000'), line('60.000')]);
+  });
 });
 
 describe('negated', () => {

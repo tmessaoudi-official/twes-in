@@ -398,7 +398,9 @@ final readonly class ManageInvoices
     }
 
     /**
-     * A credit note reverses what its invoice gave back of a deposit, and gives back nothing else.
+     * A credit note reverses what its invoice gave back of a deposit, and gives back nothing else. Read from the invoice,
+     * not from the note: a note narrowed to part of the invoice holds no deposit line, and made whole again it gives the
+     * deposit back as the invoice did.
      *
      * @return list<InvoiceLineDetails>
      *
@@ -406,7 +408,7 @@ final readonly class ManageInvoices
      */
     private function keptOnACreditNote(Invoice $credit, Uuid $depositId): array
     {
-        $lines = $credit->linesGivingBack($depositId);
+        $lines = $credit->getCorrectedInvoice()?->linesGivingBack($depositId) ?? [];
         if ([] === $lines) {
             throw new InvalidInvoice('deductsInvoiceId', 'A credit note gives back only the deposits the invoice it corrects gave back.');
         }
