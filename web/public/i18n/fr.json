@@ -1519,7 +1519,8 @@
     },
     "document_taxes": {
       "title": "Droits et retenues du document",
-      "hint": "Proposés d’après la société et le client ; ils ne s’appliquent qu’une fois, sur tout le document."
+      "hint": "Proposés d’après la société et le client ; ils ne s’appliquent qu’une fois, sur tout le document.",
+      "stamp_held_back": "Le droit de timbre est rendu par l’avoir qui complète la facture."
     },
     "totals": {
       "title": "Totaux",

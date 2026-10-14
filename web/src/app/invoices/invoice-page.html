@@ -259,6 +259,11 @@
               testId="document-taxes"
             />
           </div>
+          @if (stampHeldBack()) {
+            <p class="text-sm text-on-surface-variant" data-testid="document-taxes-stamp-held-back">
+              {{ 'invoices.document_taxes.stamp_held_back' | translate }}
+            </p>
+          }
         </div>
       </mat-card-content>
     </mat-card>

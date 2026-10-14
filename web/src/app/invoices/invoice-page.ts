@@ -453,6 +453,20 @@ export class InvoicePage {
       : documentTaxOptions(options, this.customer(), this.documentTaxes());
   });
 
+  /**
+   * Whether a credit note's figures leave out the stamp chosen on it: the stamp is given back once, by the credit note
+   * completing its invoice, so a part shows it chosen and charges none. Read from what the API answered, never decided here.
+   */
+  protected readonly stampHeldBack = computed(() => {
+    const totals = this.isCreditNote() ? this.shownTotals() : null;
+    if (totals === null || !totals.live) return false;
+    const charged = new Set(totals.fixedTaxes.map((tax) => tax.code));
+    const chosen = this.documentTaxes();
+    return this.documentTaxChoices().some(
+      (tax) => tax.family === 'stamp' && chosen.includes(tax.id) && !charged.has(tax.code),
+    );
+  });
+
   protected readonly documentTaxSelectOptions = computed<SelectOption[]>(() =>
     this.documentTaxChoices().map((tax) => ({
       value: tax.id,
