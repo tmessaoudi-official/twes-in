@@ -45,6 +45,11 @@ test('login, hello page, logout', async ({ page }) => {
   await page.getByTestId('user-menu').click();
   await page.getByTestId('logout').click();
   await expect(page.getByTestId('confirm-title')).toHaveText('Quitter sans enregistrer ?');
+  await expect(page.getByTestId('confirm-kind')).toContainText('Définitif');
+  // A settled frame: the account menu fading out and the dialog fading in otherwise share it.
+  await expect(page.locator('.mat-mdc-menu-panel')).toHaveCount(0);
+  await expect(page.locator('.mdc-dialog--opening')).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath('sign-out-leave-question.png') });
   await page.getByTestId('confirm-keep').click();
   await expect(page.getByTestId('confirm-title')).toHaveCount(0);
   await expect(page).toHaveURL(/\/customers\/new$/);
