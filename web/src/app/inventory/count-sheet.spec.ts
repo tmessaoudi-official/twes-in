@@ -102,7 +102,7 @@ describe('the count sheet', () => {
     ]);
   });
 
-  // Screens-maturity round 1, L-400: a line kept the location chosen last, and was recorded there.
+  // A line once took the location chosen last, and was recorded there rather than where it was found.
   it('counts a product found at another location on a line of its own, recorded where it was found', () => {
     let lines: readonly CountLine[] = [];
     lines = countLine(lines, screws, '', 2, 'l1').lines;

@@ -60,3 +60,87 @@ test('count mode tallies what is scanned at a location and records it as the sto
     await forget(page, ids);
   }
 });
+
+// A line keeps the location it was scanned at: the same product counted on two shelves is two lines, shown under each
+// shelf. Nothing is recorded, so the shelf the run made has seen no movement and is deleted afterwards.
+test('a product counted on two shelves is a line under each', async ({ page }) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const shelfCode = `CNT-${run}`;
+  const code = gtin(`205${String(Date.now() % 1_000_000_000).padStart(9, '0')}`);
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const ids: string[] = [];
+  try {
+    ids.push(await aProduct(page, `CNL-${run}`));
+    await stockKept(page, ids[0], true);
+    await withCodes(page, ids[0], [code]);
+    await page.evaluate(
+      async ([csrf, code]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+        const base = `/api/companies/${me.company.id}`;
+        const [site] = (await (await fetch(`${base}/stock-locations`)).json()) as {
+          establishmentId: string;
+        }[];
+        const made = await fetch(`${base}/stock-locations`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({
+            establishmentId: site.establishmentId,
+            parentId: null,
+            kind: 'zone',
+            code,
+            name: 'Étagère comptée',
+          }),
+        });
+        if (!made.ok) throw new Error(`creating ${code} answered ${made.status}`);
+      },
+      [CSRF, shelfCode] as const,
+    );
+
+    await page.goto('/stock/count');
+    await expect(page.getByTestId('stock-count-empty')).toBeVisible();
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scan(page, code);
+    await expect(page.getByTestId('stock-count-0-counted')).toHaveValue('1');
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scan(page, shelfCode);
+    await expect(toast(page)).toContainText('Étagère comptée');
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scan(page, code);
+    await scan(page, code);
+
+    await expect(
+      page.getByTestId('stock-count-group-0').getByTestId('stock-count-0'),
+    ).toBeVisible();
+    await expect(page.getByTestId('stock-count-group-1')).toContainText('Étagère comptée');
+    await expect(page.getByTestId('stock-count-0-counted')).toHaveValue('1');
+    await expect(page.getByTestId('stock-count-1-counted')).toHaveValue('2');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.screenshot({
+      path: test.info().outputPath('count-by-location.png'),
+      fullPage: true,
+    });
+  } finally {
+    if (ids.length > 0) await stockKept(page, ids[0], false);
+    await forget(page, ids);
+    await page.evaluate(
+      async ([csrf, code]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+        const base = `/api/companies/${me.company.id}`;
+        const locations = (await (await fetch(`${base}/stock-locations`)).json()) as {
+          id: string;
+          code: string;
+        }[];
+        const shelf = locations.find((row) => row.code === code);
+        if (shelf) {
+          const gone = await fetch(`${base}/stock-locations/${shelf.id}`, {
+            method: 'DELETE',
+            headers: { 'csrf-token': csrf },
+          });
+          if (!gone.ok) throw new Error(`deleting ${code} answered ${gone.status}`);
+        }
+      },
+      [CSRF, shelfCode] as const,
+    );
+  }
+});

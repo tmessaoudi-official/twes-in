@@ -176,7 +176,7 @@ describe('vendor forms', () => {
     expect(vendorInput(vendorValues(null, options), options).paymentTermsDays).toBeNull();
   });
 
-  // Screens-maturity round 1, L-600: the vendor's usual expense category is shown and edited on its record.
+  // The API replaces the whole vendor, so a value the form does not carry must still be sent back.
   it("offers the usual expense category while the expenses module is on, the vendor's own archived one too", () => {
     expect(categoryField(vendorForm(options))).toBeUndefined();
     expect(categoryField(vendorForm(withCategories))?.options).toEqual([

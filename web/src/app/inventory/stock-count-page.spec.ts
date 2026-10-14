@@ -263,7 +263,7 @@ describe('StockCountPage', () => {
     );
   });
 
-  // Screens-maturity round 1, L-400: scanning another location's label moved every line already on the sheet there.
+  // Scanning another location's label once moved every line already on the sheet there.
   it('records each line at the location it was scanned at, and shows the sheet by location', async () => {
     scans.named.mockResolvedValue(scanOf('p1'));
     await scanned('3017620422003');

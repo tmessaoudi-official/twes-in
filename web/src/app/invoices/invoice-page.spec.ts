@@ -991,7 +991,7 @@ describe('InvoicePage', () => {
     expect(over('confirm-message')?.textContent).toContain('nature à choisir');
   });
 
-  // Screens-maturity round 1, L-200: the question quotes what will be issued, never the draft as last saved.
+  // The question quotes what will be issued, never the draft as last saved: issuing numbers it for good.
   it('saves what is typed before asking, so the question quotes the total and customer that will be issued', async () => {
     facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: null });
     invoice.set(draft);
