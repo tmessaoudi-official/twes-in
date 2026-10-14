@@ -3,7 +3,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
-import type { ScreenAction } from './screen-action';
+import type { ActionConfirm, ScreenAction } from './screen-action';
 import { runAction } from './run-action';
 import { ScreenActions } from './screen-actions';
 
@@ -90,6 +90,63 @@ describe('runAction', () => {
     expect(() =>
       runAction(action({ run: undefined, href: '/x.pdf' }), () => of(true)),
     ).not.toThrow();
+  });
+
+  // Screens-maturity round 1, L-200: issuing saves what is typed, then asks about what was saved.
+  it('does what comes before first, then asks the question as it stands after it', async () => {
+    const steps: string[] = [];
+    let total = '100';
+    const question = (): ActionConfirm => ({
+      kind: 'corrigeable',
+      title: 't',
+      message: 'm',
+      messageParams: { total },
+      confirmLabel: 'c',
+      keepLabel: 'k',
+    });
+    let askedWith: ActionConfirm | null = null;
+    runAction(
+      action({
+        confirm: question(),
+        before: async () => {
+          steps.push('before');
+          total = '296';
+          return true;
+        },
+        confirmNow: question,
+        run: () => steps.push('run'),
+      }),
+      (asked) => {
+        steps.push('ask');
+        askedWith = asked;
+        return of(true);
+      },
+    );
+    await vi.waitFor(() => expect(steps).toEqual(['before', 'ask', 'run']));
+    expect(askedWith!.messageParams).toEqual({ total: '296' });
+  });
+
+  it('asks nothing and runs nothing when what comes before says no', async () => {
+    let asked = 0;
+    let ran = 0;
+    let done = false;
+    runAction(
+      action({
+        confirm: { kind: 'definitif', title: 't', message: 'm', confirmLabel: 'c', keepLabel: 'k' },
+        before: async () => {
+          done = true;
+          return false;
+        },
+        run: () => (ran += 1),
+      }),
+      () => {
+        asked += 1;
+        return of(true);
+      },
+    );
+    await vi.waitFor(() => expect(done).toBe(true));
+    await Promise.resolve();
+    expect([asked, ran]).toEqual([0, 0]);
   });
 });
 
