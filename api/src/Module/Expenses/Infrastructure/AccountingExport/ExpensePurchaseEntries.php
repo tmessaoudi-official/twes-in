@@ -9,11 +9,13 @@ declare(strict_types=1);
 
 namespace App\Module\Expenses\Infrastructure\AccountingExport;
 
+use App\Module\AccountingExport\Application\DocumentTax;
 use App\Module\AccountingExport\Application\JournalPeriod;
 use App\Module\AccountingExport\Application\PurchaseEntries;
 use App\Module\AccountingExport\Application\PurchaseEntry;
 use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseStatus;
+use App\Module\Expenses\Domain\ExpenseTax;
 use App\Tenancy\Domain\Company;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -46,8 +48,7 @@ final readonly class ExpensePurchaseEntries implements PurchaseEntries
                     $expense->getVendor()?->getProfile()->name ?? $expense->getPayee() ?? '',
                     $expense->getDescription(),
                     $expense->getCategory()?->getName() ?? '',
-                    $expense->getTaxComponent()?->getCode() ?? '',
-                    $expense->getTaxRate(),
+                    array_map(static fn (ExpenseTax $tax): DocumentTax => new DocumentTax($tax->getCode(), $tax->getRate(), $tax->getBase(), $tax->getAmount()), $expense->getTaxes()),
                     $expense->getAmountNet(),
                     $expense->getTaxAmount(),
                     $expense->getAmountGross(),

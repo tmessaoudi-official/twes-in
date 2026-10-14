@@ -15,6 +15,7 @@ import {
   type ExpenseCategoryInput,
   type ExpenseCategoryRow,
   type ExpenseInput,
+  type ExpenseLine,
   type ExpenseOptions,
   type ExpensePayment,
   type ExpenseRow,
@@ -221,8 +222,10 @@ export function expenseForm(
   const chosen: Record<string, readonly [string | null, string]> = {
     categoryId: [current.categoryId, current.categoryName ?? current.categoryId ?? ''],
     taxComponentId: [
-      current.taxComponentId,
-      current.taxRate === null ? (current.taxComponentId ?? '') : `${Number(current.taxRate)} %`,
+      current.lines[0]?.taxComponentIds[0] ?? null,
+      current.taxes[0]?.rate == null
+        ? (current.lines[0]?.taxComponentIds[0] ?? '')
+        : `${Number(current.taxes[0].rate)} %`,
     ],
   };
   return {
@@ -247,7 +250,7 @@ export function expenseForm(
 /** What an expense has chosen, named as it was when the expense was read. */
 export type ExpenseChoices = Pick<
   ExpenseRow,
-  'vendorId' | 'vendorName' | 'categoryId' | 'categoryName' | 'taxComponentId' | 'taxRate'
+  'vendorId' | 'vendorName' | 'categoryId' | 'categoryName' | 'lines' | 'taxes'
 >;
 
 /** The form over what the company offers today; a deactivated vendor or category is not among it. */
@@ -369,8 +372,8 @@ export function expenseValues(row: ExpenseRow | null, today: string): FormValues
     vendorId: row?.vendorId ?? '',
     payee: row?.payee ?? '',
     categoryId: row?.categoryId ?? '',
-    amountNet: row?.amountNet ?? '',
-    taxComponentId: row?.taxComponentId ?? '',
+    amountNet: row?.lines[0]?.amountNet ?? '',
+    taxComponentId: row?.lines[0]?.taxComponentIds[0] ?? '',
     notes: row?.notes ?? '',
   };
 }
@@ -389,9 +392,18 @@ export function expenseInput(values: FormValues, keptVendorId: string | null = n
     vendorId,
     payee: vendorId === null ? text(values['payee']) : null,
     categoryId: text(values['categoryId']),
-    amountNet: String(values['amountNet'] ?? '').trim(),
-    taxComponentId: text(values['taxComponentId']),
+    lines: [lineOf(values)],
+    documentTaxComponentIds: [],
+    printedTaxes: [],
     notes: text(values['notes']),
+  };
+}
+
+function lineOf(values: FormValues): ExpenseLine {
+  const tax = text(values['taxComponentId']);
+  return {
+    amountNet: String(values['amountNet'] ?? '').trim(),
+    taxComponentIds: tax === null ? [] : [tax],
   };
 }
 

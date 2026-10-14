@@ -79,8 +79,32 @@ final class AccountingExportTest extends ApiTestCase
         self::assertSame([['2026-09-15', 'transfer', '50.000']], array_map(static fn (array $row): array => [$row['date'], $row['method'], $row['amount']], $payments));
 
         $purchases = $this->rows('purchases-journal', '2026-09-01', '2026-09-30');
-        self::assertSame(['date', 'reference', 'vendor', 'description', 'category', 'tax_code', 'tax_rate', 'net', 'tax', 'gross', 'withholding', 'status', 'paid_on', 'payment_method', 'currency'], array_keys($purchases[0] ?? []));
-        self::assertSame([['2026-09-05', 'Sotumag', 'Carburant', 'TVA19', '100.000', '19.000', '119.000', 'recorded']], array_map(static fn (array $row): array => [$row['date'], $row['vendor'], $row['category'], $row['tax_code'], $row['net'], $row['tax'], $row['gross'], $row['status']], $purchases), 'a draft is not in the books, and October is not September');
+        self::assertSame(['date', 'reference', 'vendor', 'description', 'category', 'tax_code', 'tax_rate', 'base', 'tax', 'net', 'gross', 'withholding', 'status', 'paid_on', 'payment_method', 'currency'], array_keys($purchases[0] ?? []));
+        self::assertSame([['2026-09-05', 'Sotumag', 'Carburant', 'TVA19', '100.000', '19.000', '100.000', '119.000', 'recorded']], array_map(static fn (array $row): array => [$row['date'], $row['vendor'], $row['category'], $row['tax_code'], $row['base'], $row['tax'], $row['net'], $row['gross'], $row['status']], $purchases), 'a draft is not in the books, and October is not September');
+    }
+
+    /**
+     * A supplier's bill at two rates with FODEC and the stamp is one journal row a tax, as a sales document is, and adds
+     * to the VAT summary at each rate on its own base: FODEC enters the 19 % base, the stamp enters none.
+     */
+    public function testABillAtSeveralRatesIsOneJournalRowATaxAndAddsToEachRateOfTheVatSummary(): void
+    {
+        $this->expense('2026-09-08', true, [['1000', ['TVA19', 'FODEC']], ['200', ['TVA7']]], ['TIMBRE']);
+
+        $purchases = $this->rows('purchases-journal', '2026-09-01', '2026-09-30');
+        self::assertSame([
+            ['TVA19', '19.000', '1010.000', '191.900', '1200.000', '1416.900'],
+            ['FODEC', '1.000', '1000.000', '10.000', '1200.000', '1416.900'],
+            ['TVA7', '7.000', '200.000', '14.000', '1200.000', '1416.900'],
+            ['TIMBRE', '', '', '1.000', '1200.000', '1416.900'],
+        ], array_map(static fn (array $row): array => [$row['tax_code'], $row['tax_rate'], $row['base'], $row['tax'], $row['net'], $row['gross']], $purchases));
+
+        $summary = $this->rows('vat-summary', '2026-09-01', '2026-09-30');
+        self::assertSame([
+            ['FODEC', '1000.000', '10.000'],
+            ['TVA19', '1010.000', '191.900'],
+            ['TVA7', '200.000', '14.000'],
+        ], array_map(static fn (array $row): array => [$row['tax_code'], $row['purchases_base'], $row['purchases_tax']], $summary), 'the stamp is no rate');
     }
 
     public function testTheVatSummaryAddsTheSalesAndThePurchasesByTaxAndRate(): void
@@ -181,7 +205,11 @@ final class AccountingExportTest extends ApiTestCase
         $this->em()->getConnection()->executeStatement('UPDATE invoice SET issue_date = :day WHERE id = :id', ['day' => $day, 'id' => $id]);
     }
 
-    private function expense(string $date, bool $inTheBooks): void
+    /**
+     * @param list<array{string, list<string>}>|null $lines   each line's net and tax codes; one at 100 and TVA19 if none
+     * @param list<string>                           $charges the fixed charges' codes
+     */
+    private function expense(string $date, bool $inTheBooks, ?array $lines = null, array $charges = []): void
     {
         $this->postJson($this->path().'/expenses', [
             'date' => $date,
@@ -189,8 +217,8 @@ final class AccountingExportTest extends ApiTestCase
             'description' => 'Gasoil',
             'vendorId' => $this->vendorId,
             'categoryId' => $this->categoryId,
-            'amountNet' => '100',
-            'taxComponentId' => $this->taxId('TVA19'),
+            'lines' => array_map(fn (array $line): array => ['amountNet' => $line[0], 'taxComponentIds' => array_map($this->taxId(...), $line[1])], $lines ?? [['100', ['TVA19']]]),
+            'documentTaxComponentIds' => array_map($this->taxId(...), $charges),
             'notes' => null,
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);

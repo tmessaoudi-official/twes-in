@@ -56,17 +56,29 @@ final class ExpenseOptionsResource
     #[Groups([self::READ])]
     public array $categories = [];
 
-    /** @var list<array{id: string, code: string, name: string, rate: string}> */
+    /** @var list<array{id: string, code: string, name: string, rate: string, entersVatBase: bool}> the rates a line may carry */
     #[ApiProperty(schema: [
         'type' => 'array',
         'items' => [
             'type' => 'object',
-            'required' => ['id', 'code', 'name', 'rate'],
-            'properties' => ['id' => ['type' => 'string'], 'code' => ['type' => 'string'], 'name' => ['type' => 'string'], 'rate' => ['type' => 'string', 'description' => 'Percent, three decimals.']],
+            'required' => ['id', 'code', 'name', 'rate', 'entersVatBase'],
+            'properties' => ['id' => ['type' => 'string'], 'code' => ['type' => 'string'], 'name' => ['type' => 'string'], 'rate' => ['type' => 'string', 'description' => 'Percent, three decimals.'], 'entersVatBase' => ['type' => 'boolean', 'description' => 'A levy such as FODEC, taxed by the VAT beside it; false for a VAT rate, of which a line carries one.']],
         ],
     ])]
     #[Groups([self::READ])]
     public array $taxes = [];
+
+    /** @var list<array{id: string, code: string, name: string, amount: string}> the fixed charges a bill may carry: the stamp */
+    #[ApiProperty(schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['id', 'code', 'name', 'amount'],
+            'properties' => ['id' => ['type' => 'string'], 'code' => ['type' => 'string'], 'name' => ['type' => 'string'], 'amount' => ['type' => 'string']],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $charges = [];
 
     /** @var list<string> */
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['transfer', 'cash', 'check', 'card', 'other']]])]

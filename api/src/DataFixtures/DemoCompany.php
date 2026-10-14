@@ -54,6 +54,13 @@ final readonly class DemoCompany
          * @var array<string, string>
          */
         public array $mentionData = [],
+        /**
+         * How a supplier's bill at several rates splits its amount: each line's share and the codes on it, then the
+         * fixed charges the bill carries. Some expenses are entered as such a bill.
+         *
+         * @var array{lines: list<array{share: numeric-string, taxes: list<string>}>, charges: list<string>}|null
+         */
+        public ?array $mixedBill = null,
     ) {
     }
 }

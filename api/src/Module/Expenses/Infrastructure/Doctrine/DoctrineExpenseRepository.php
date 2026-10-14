@@ -97,8 +97,32 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
         $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
         /** @var list<Expense> $expenses */
         $expenses = iterator_to_array($paginator, false);
+        $this->loadWhatARowShows($expenses);
 
         return new Page($expenses, \count($paginator), $page);
+    }
+
+    /**
+     * A row answers its bill: the lines with their rates, and the taxes. Read for the whole page at once, they cost the
+     * same for 1 row or 100 (Doctrine, "Improving performance": fetch joins). Two statements rather than one join of
+     * both collections, whose rows would multiply each other. The queries only fill collections of expenses in memory.
+     *
+     * @param list<Expense> $expenses
+     */
+    private function loadWhatARowShows(array $expenses): void
+    {
+        if ([] === $expenses) {
+            return;
+        }
+        $ids = array_map(static fn (Expense $expense): string => $expense->getId()->toRfc4122(), $expenses);
+        $this->entityManager
+            ->createQuery('SELECT e, l, lt FROM '.Expense::class.' e LEFT JOIN e.lines l LEFT JOIN l.taxes lt WHERE e.id IN (:ids)')
+            ->setParameter('ids', $ids, ArrayParameterType::STRING)
+            ->getResult();
+        $this->entityManager
+            ->createQuery('SELECT e, x FROM '.Expense::class.' e LEFT JOIN e.taxes x WHERE e.id IN (:ids)')
+            ->setParameter('ids', $ids, ArrayParameterType::STRING)
+            ->getResult();
     }
 
     public function statusCounts(Uuid $companyId, ExpenseSearch $search): array

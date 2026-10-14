@@ -68,13 +68,15 @@ final readonly class VatSummaryExport implements DeclaresExport
             }
         }
         foreach ($this->purchases->enteredIn($company, $period) as $entry) {
-            if ('' === $entry->taxCode || null === $entry->taxRate) {
-                continue;
+            foreach ($entry->taxes as $tax) {
+                if (null === $tax->rate || null === $tax->base) {
+                    continue;
+                }
+                $key = $tax->code.'|'.$tax->rate;
+                $sums[$key] ??= [$tax->code, $tax->rate, $zero, $zero, $zero, $zero];
+                $sums[$key][4] = $sums[$key][4]->add(Decimal::of($tax->base));
+                $sums[$key][5] = $sums[$key][5]->add(Decimal::of($tax->amount));
             }
-            $key = $entry->taxCode.'|'.$entry->taxRate;
-            $sums[$key] ??= [$entry->taxCode, $entry->taxRate, $zero, $zero, $zero, $zero];
-            $sums[$key][4] = $sums[$key][4]->add(Decimal::of($entry->net));
-            $sums[$key][5] = $sums[$key][5]->add(Decimal::of($entry->tax));
         }
         ksort($sums);
         $scale = $this->scales->of($company->getCurrency());

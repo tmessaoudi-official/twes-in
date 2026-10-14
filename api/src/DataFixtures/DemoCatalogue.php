@@ -113,6 +113,7 @@ final class DemoCatalogue
                 ['name' => 'Services Électricité et Eau', 'city' => 'Tunis', 'category' => 'Énergie', 'amount' => '420.000'],
             ],
             contacts: [['Sami', 'Mansouri', 'Directeur financier'], ['Ines', 'Chaabane', 'Comptable'], ['Walid', 'Hammami', 'Acheteur'], ['Rania', 'Ayari', 'Directrice'], ['Mehdi', 'Bouzid', 'Responsable achats'], ['Nour', 'Khelifi', 'Gérante']],
+            mixedBill: ['lines' => [['share' => '0.7', 'taxes' => ['TVA19', 'FODEC']], ['share' => '0.3', 'taxes' => ['TVA7']]], 'charges' => ['TIMBRE']],
         );
     }
 
@@ -208,6 +209,7 @@ final class DemoCatalogue
             contacts: [['Claire', 'Dubois', 'Gérante'], ['Antoine', 'Lambert', 'Directeur'], ['Émilie', 'Rousseau', 'Architecte'], ['Nicolas', 'Chevalier', 'Chef de cuisine'], ['Hélène', 'Gauthier', 'Libraire'], ['Pierre', 'Masson', 'Directeur']],
             // Demo values, not advice: the rate the penalties run at, and the provision its one exempt customer is under.
             mentionData: ['document.late_payment_rate' => 'trois fois le taux d’intérêt légal', 'document.exemption_reference' => 'article 261-4-4° du CGI'],
+            mixedBill: ['lines' => [['share' => '0.6', 'taxes' => ['TVA20']], ['share' => '0.4', 'taxes' => ['TVA10']]], 'charges' => []],
         );
     }
 

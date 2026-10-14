@@ -153,6 +153,13 @@ export class ExpensePage {
     return current ? expenseValues(current, todayIn(this.company()?.timezone)) : null;
   });
   protected readonly changes = unsavedChanges(this.form, this.savedValues);
+  /** The rates the bill carries, as « 19 % · 7 % »; null when it carries none. */
+  protected readonly rates = computed(() => {
+    const rates = (this.current()?.taxes ?? []).flatMap((tax) =>
+      tax.rate === null ? [] : [`${Number(tax.rate)}\u00a0%`],
+    );
+    return rates.length === 0 ? null : rates.join(' · ');
+  });
   /**
    * Which vendor the form names, as the picker answered it. The form carries the id; this is what the box READS,
    * which the form cannot know — an expense read from the API says it, and a search says it for a new one.

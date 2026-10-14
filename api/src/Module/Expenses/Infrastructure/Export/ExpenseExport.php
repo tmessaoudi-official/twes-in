@@ -54,7 +54,7 @@ final readonly class ExpenseExport implements DeclaresExport
 
     public function columns(Company $company): array
     {
-        return ['date', 'reference', 'description', 'vendor', 'category', 'currency', 'amount_net', 'tax_amount', 'amount_gross', 'withholding_amount', 'amount_to_pay', 'status', 'due_date', 'paid_on', 'payment_method', 'notes'];
+        return ['date', 'reference', 'description', 'vendor', 'category', 'currency', 'amount_net', 'tax_amount', 'fixed_amount', 'amount_gross', 'withholding_amount', 'amount_to_pay', 'status', 'due_date', 'paid_on', 'payment_method', 'notes'];
     }
 
     public function rows(Company $company, ExportQuery $query): iterable
@@ -87,6 +87,7 @@ final readonly class ExpenseExport implements DeclaresExport
             $expense->getCurrency(),
             $amount($expense->getAmountNet()),
             $amount($expense->getTaxAmount()),
+            $amount($expense->getFixedAmount()),
             $amount($expense->getAmountGross()),
             null === $expense->getWithholdingAmount() ? '' : $amount($expense->getWithholdingAmount()),
             $amount($expense->getAmountPaid()),
