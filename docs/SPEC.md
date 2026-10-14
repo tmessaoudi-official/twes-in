@@ -5089,6 +5089,8 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-14 15:13] AGREED: Q1–Q21, the maturity rubric and the twelve feelings families are ruled on one private marking page, read back into SPEC § 7, before round 2's instruments and three waves.
 - [2026-10-14 15:14] AGREED: Fix-now before round 2: L-1000 (sign-out asks before typed work is lost), L-425 (the lent phone says « Envoyé » only once the API answered, and keeps an unsent scan) and L-820; L-603 (an expense with several taxes) gets its own plan, sourced first, and round 2's slice S8 waits for it to land.
 - [2026-10-14 15:14] AGREED: L-820: turning the company's two-factor requirement off asks for a step-up proof and joins the step-up list; turning it on asks nothing. The module-switch half of Q14 stays on the marking page.
+- [2026-10-14 15:19] AGREED: The fix-now batch (L-820, L-1000, L-425) is treated as Large: each item gets its own full plan and a hard stop for the developer's go before any code.
+- [2026-10-14 15:19] AGREED: After the fix-now batch: the L-1080 sourcing into docs/fiscal/TN.md, then L-603's own plan for approval; the marking page is read back whenever the developer finishes it.
 
 ## 8. Status
 
