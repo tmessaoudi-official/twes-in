@@ -920,12 +920,18 @@ describe('InvoicePage', () => {
   it('issues exactly what is on screen, once the consequence is confirmed', async () => {
     invoice.set(draft);
     await open('i1');
+    // What is typed is saved before the question, and the API answers what it kept.
+    facade.revise.mockImplementation(() => {
+      const saved = { ...draft, lines: [{ ...draft.lines[0], quantity: '3.000' }] };
+      invoice.set(saved);
+      return Promise.resolve(saved);
+    });
     type('line-0-quantity', '3');
     q('document-action-issue')!.click();
     await settle();
     // Issuing numbers a fiscal document for good, so neither a click nor the bare key E does it unasked (EFF-01).
     expect(facade.reviseAndIssue).not.toHaveBeenCalled();
-    expect(over('confirm-run')).not.toBeNull();
+    await vi.waitFor(() => expect(over('confirm-run')).not.toBeNull());
     over('confirm-run')!.click();
     await settle();
     expect(facade.reviseAndIssue).toHaveBeenCalledWith(
@@ -933,7 +939,7 @@ describe('InvoicePage', () => {
       'i1',
       expect.objectContaining({
         documentTaxComponentIds: ['s1'],
-        lines: [expect.objectContaining({ quantity: '3' })],
+        lines: [expect.objectContaining({ quantity: expect.stringMatching(/^3(\.0+)?$/) })],
       }),
     );
     // What was confirmed as corrigeable is said so once done (docs/SPEC.md § 7, 2026-09-25 22:17).
@@ -983,6 +989,57 @@ describe('InvoicePage', () => {
     q('document-action-issue')!.click();
     await settle();
     expect(over('confirm-message')?.textContent).toContain('nature à choisir');
+  });
+
+  // Screens-maturity round 1, L-200: the question quotes what will be issued, never the draft as last saved.
+  it('saves what is typed before asking, so the question quotes the total and customer that will be issued', async () => {
+    facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: null });
+    invoice.set(draft);
+    await open('i1');
+    facade.revise.mockImplementation(() => {
+      const saved = { ...draft, total: '296.120', customerName: 'Djerba Hôtels' };
+      invoice.set(saved);
+      return Promise.resolve(saved);
+    });
+    type('line-0-quantity', '3');
+    await settle();
+
+    q('document-action-issue')!.click();
+    await settle();
+    await vi.waitFor(() => expect(over('confirm-message')?.textContent).toContain('296,120'));
+
+    expect(facade.revise).toHaveBeenCalledTimes(1);
+    expect(over('confirm-message')?.textContent).toContain('Djerba Hôtels');
+    over('confirm-keep')!.click();
+    await settle();
+    expect(facade.reviseAndIssue).not.toHaveBeenCalled();
+  });
+
+  it('asks straight away, saving nothing, when nothing typed is unsaved', async () => {
+    facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: null });
+    invoice.set(draft);
+    await open('i1');
+    q('document-action-issue')!.click();
+    await settle();
+    await vi.waitFor(() => expect(over('confirm-message')).not.toBeNull());
+    expect(facade.revise).not.toHaveBeenCalled();
+    over('confirm-keep')!.click();
+    await settle();
+  });
+
+  it('asks nothing when saving what is typed is refused', async () => {
+    facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: null });
+    invoice.set(draft);
+    await open('i1');
+    facade.revise.mockResolvedValue(null);
+    type('line-0-quantity', '3');
+    await settle();
+    q('document-action-issue')!.click();
+    await settle();
+    await vi.waitFor(() => expect(facade.revise).toHaveBeenCalledTimes(1));
+    await settle();
+    expect(over('confirm-message')).toBeNull();
+    expect(facade.reviseAndIssue).not.toHaveBeenCalled();
   });
 
   it('asks where the money already paid goes when a credit note is refused for it, and issues with the answer', async () => {

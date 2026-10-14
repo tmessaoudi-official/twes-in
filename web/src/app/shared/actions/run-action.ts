@@ -11,6 +11,8 @@ export interface RunnableAction {
   disabled?: boolean;
   run?: () => void;
   confirm?: ActionConfirm;
+  before?: () => Promise<boolean>;
+  confirmNow?: () => ActionConfirm;
 }
 
 /**
@@ -31,9 +33,25 @@ export function runAction(
     action.run();
     return;
   }
+  const confirm = action.confirm;
+  const before = action.before;
+  if (before === undefined) {
+    askThenRun(action, confirm, ask);
+    return;
+  }
+  // What comes first may change what the question says: issuing saves what is typed, then quotes what was saved.
+  void before().then((go) => {
+    if (go) askThenRun(action, action.confirmNow?.() ?? confirm, ask);
+  });
+}
 
+function askThenRun(
+  action: RunnableAction,
+  confirm: ActionConfirm,
+  ask: (confirm: ActionConfirm) => Observable<boolean | undefined>,
+): void {
   // `=== true`, because a dialog dismissed with Escape answers `undefined` — which is a no, not an absent answer.
-  ask(action.confirm).subscribe((confirmed) => {
+  ask(confirm).subscribe((confirmed) => {
     if (confirmed === true) action.run?.();
   });
 }

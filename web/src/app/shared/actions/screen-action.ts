@@ -57,6 +57,13 @@ export interface ScreenAction {
   /** What to ask before running it: translation keys for the question and the word on its confirming button. */
   confirm?: ActionConfirm;
   /**
+   * What must be done before the question is asked, such as saving what is typed so the question can name what was
+   * saved. Answering false asks nothing and runs nothing: the step said why itself.
+   */
+  before?: () => Promise<boolean>;
+  /** The question as it stands once `before` is done, when it quotes what `before` changed; else `confirm` is asked. */
+  confirmNow?: () => ActionConfirm;
+  /**
    * One character, pressed with no modifier at all. It is compared against what the keyboard PRODUCED, so the same
    * declaration works on AZERTY and QWERTY; `refuseReservedShortcut` rejects a key the browser already answers.
    */

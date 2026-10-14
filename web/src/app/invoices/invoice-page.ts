@@ -69,7 +69,7 @@ import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
 import type { PlannedAction } from '../shared/actions/planned-actions';
 import { onRecord } from '../shared/actions/record-action';
-import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
+import { kindAmong, type ActionConfirm, type ScreenAction } from '../shared/actions/screen-action';
 import { InvoiceActions, invoiceMay, isOpen, isZero } from './invoice-actions';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CreditExcessDialog } from './credit-excess-dialog';
@@ -486,22 +486,11 @@ export class InvoicePage {
         disabled: busy,
         run: () => void this.issue(),
         shown: this.canIssue(),
-        // Numbering is for good, so neither a click nor the bare key issues unasked (EFF-01, row 45).
-        confirm: this.isCreditNote()
-          ? {
-              kind: 'definitif',
-              title: 'invoices.actions.issue_credit_note_title',
-              message: 'invoices.actions.issue_credit_note_message',
-              confirmLabel: 'invoices.actions.confirm_issue',
-              keepLabel: 'invoices.actions.keep',
-            }
-          : {
-              kind: 'corrigeable',
-              title: 'invoices.actions.issue_title',
-              ...this.issuePreview(),
-              confirmLabel: 'invoices.actions.confirm_issue',
-              keepLabel: 'invoices.actions.keep',
-            },
+        // Numbering is for good, so neither a click nor the bare key issues unasked (EFF-01, row 45). What is typed is
+        // saved first, so the question quotes the figures that will be issued, and keeping the draft keeps them.
+        confirm: this.issueConfirm(),
+        before: () => this.saveBeforeIssue(),
+        confirmNow: () => this.issueConfirm(),
       },
       {
         id: 'customer-display',
@@ -579,6 +568,40 @@ export class InvoicePage {
         customer: current.customerName,
       },
     };
+  }
+
+  private issueConfirm(): ActionConfirm {
+    return this.isCreditNote()
+      ? {
+          kind: 'definitif',
+          title: 'invoices.actions.issue_credit_note_title',
+          message: 'invoices.actions.issue_credit_note_message',
+          confirmLabel: 'invoices.actions.confirm_issue',
+          keepLabel: 'invoices.actions.keep',
+        }
+      : {
+          kind: 'corrigeable',
+          title: 'invoices.actions.issue_title',
+          ...this.issuePreview(),
+          confirmLabel: 'invoices.actions.confirm_issue',
+          keepLabel: 'invoices.actions.keep',
+        };
+  }
+
+  /**
+   * Saves what is typed before issuing is asked about: the question then quotes what the API kept, not the last
+   * save. False, and nothing is asked, when the form is refused as it stands or the API refuses the save.
+   */
+  private async saveBeforeIssue(): Promise<boolean> {
+    if (this.changes() === 0) return true;
+    const companyId = this.company()?.id;
+    const id = this.id();
+    const input = this.collect();
+    if (!companyId || id === null || input === null) return false;
+    if ((await this.facade.revise(companyId, id, input)) === null) return false;
+    const form = this.form();
+    if (form !== null) this.sync.savedHere(form);
+    return true;
   }
 
   private readonly rights = computed(() => this.invoiceActions.rights());
