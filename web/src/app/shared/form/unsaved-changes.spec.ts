@@ -20,6 +20,7 @@ describe('UnsavedChanges', () => {
   let answer: boolean | undefined;
   let asked: number;
   let opened: unknown;
+  let openedWith: unknown;
 
   function service(): UnsavedChanges {
     return TestBed.inject(UnsavedChanges);
@@ -38,8 +39,9 @@ describe('UnsavedChanges', () => {
         {
           provide: MatDialog,
           useValue: {
-            open: (component: unknown) => {
+            open: (component: unknown, config: { data?: unknown }) => {
               opened = component;
+              openedWith = config.data;
               asked += 1;
               return { afterClosed: () => of(answer) };
             },
@@ -66,6 +68,17 @@ describe('UnsavedChanges', () => {
     expect(await leaving()).toBe(false);
     expect(asked).toBe(1);
     expect(opened).toBe(ConfirmDialog);
+  });
+
+  it('says leaving is definitive, as typed work that was never saved cannot be got back', async () => {
+    const page = TestBed.createComponent(Page);
+    page.componentInstance.changes.set(1);
+    page.detectChanges();
+    answer = false;
+
+    await leaving();
+
+    expect(openedWith).toMatchObject({ kind: 'definitif', title: 'form.leave.title' });
   });
 
   it('treats a dismissed question as staying, never as leaving', async () => {

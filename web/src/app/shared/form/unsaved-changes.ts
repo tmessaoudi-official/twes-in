@@ -4,6 +4,7 @@ import { computed, DestroyRef, inject, Injectable, type Signal, signal } from '@
 import { MatDialog } from '@angular/material/dialog';
 import type { CanDeactivateFn, Route } from '@angular/router';
 import { from, map, type Observable, of, switchMap, tap } from 'rxjs';
+import type { ActionConfirm } from '../actions/screen-action';
 
 /**
  * What is typed and not saved, anywhere on the page (row 45). Every record page counts its own through
@@ -54,8 +55,10 @@ export class UnsavedChanges {
     return from(import('../ui/confirm-dialog')).pipe(
       switchMap(({ ConfirmDialog }) =>
         this.dialog
-          .open(ConfirmDialog, {
+          .open<InstanceType<typeof ConfirmDialog>, ActionConfirm, boolean>(ConfirmDialog, {
+            // Typed work that was never saved cannot be got back, so leaving it is definitive.
             data: {
+              kind: 'definitif',
               title: 'form.leave.title',
               message: 'form.leave.message',
               confirmLabel: 'form.leave.leave',
