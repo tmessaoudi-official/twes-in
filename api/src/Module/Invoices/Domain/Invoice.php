@@ -386,9 +386,22 @@ class Invoice implements CompanyOwned
         // The document discount is the invoice's: each credit note gives back its share of it, worked out by its totals.
         $header = $invoice->getHeader();
         $credit->apply(new InvoiceHeader($header->supplyDate, $header->paymentTermsDays, $header->customerReference, $header->notesPrinted, $header->notesInternal, null, $header->operationCategory));
-        // The lot sold is the lot credited; a duplicate, a new sale, names none. Each line names the one it gives back,
-        // but a deposit given back, whose lines are the deposit's.
-        $credit->writeLines(array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
+        $credit->writeLines(array_map(self::creditOf(...), $invoice->getLines()));
+        $credit->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
+        $credit->retakeTaxes();
+
+        return $credit;
+    }
+
+    /**
+     * A line of an invoice as its credit note first gives it back. The lot sold is the lot credited; a duplicate, a new
+     * sale, names none. Each line names the one it gives back, but a deposit given back, whose lines are the deposit's.
+     *
+     * @throws InvalidInvoice
+     */
+    private static function creditOf(InvoiceLine $line): InvoiceLineDetails
+    {
+        return new InvoiceLineDetails(
             $line->getProduct(),
             $line->getDescription(),
             $line->getQuantity(),
@@ -402,11 +415,7 @@ class Invoice implements CompanyOwned
             discountAmount: $line->getDiscountAmount(),
             section: $line->getSection(),
             creditedLineId: null === $line->getDeduction() ? $line->getId() : null,
-        ), $invoice->getLines()));
-        $credit->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
-        $credit->retakeTaxes();
-
-        return $credit;
+        );
     }
 
     /**
@@ -542,7 +551,7 @@ class Invoice implements CompanyOwned
         if (null !== $this->correctsInvoice && !$customer->getId()->equals($this->correctsInvoice->getCustomer()->getId())) {
             throw new InvalidInvoice('customerId', 'A credit note goes to the customer of the invoice it corrects.');
         }
-        $lines = $this->deductionsFor($this->linesOfThisCompany($lines), $customer);
+        $lines = $this->deductionsFor($this->depositsCredited($this->linesOfThisCompany($lines)), $customer);
         $documentTaxes = $this->documentTaxesOfThisCompany($documentTaxes);
         // Delivery notes are invoiced to their customer, numbered in their establishment's series: a draft that still
         // invoices note lines keeps both, or one customer's delivered goods are invoiced to another.
@@ -1371,6 +1380,82 @@ class Invoice implements CompanyOwned
         }
 
         return $lines;
+    }
+
+    /**
+     * A credit note gives its invoice's deposits back only when it gives back the whole invoice, every line it sold
+     * charged as it was: a return of part of it is credited at what the goods returned cost, the deposit staying taken
+     * off what is kept, and what the final invoice no longer owes is corrected on the deposit invoice (docs/fiscal TN.md
+     * § 2b). The deposit lines are then the invoice's, whichever of them the screen sent back; on a part, a section one
+     * of them opened is opened by the next line, as a duplicate does.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<InvoiceLineDetails>
+     *
+     * @throws InvalidInvoice
+     */
+    private function depositsCredited(array $lines): array
+    {
+        $given = array_values(array_filter($this->correctsInvoice?->getLines() ?? [], static fn (InvoiceLine $line): bool => null !== $line->getDeduction()));
+        if (null === $this->correctsInvoice || [] === $given) {
+            return $lines;
+        }
+        $sold = array_values(array_filter($lines, static fn (InvoiceLineDetails $line): bool => null === $line->deduction));
+        if ($this->givesBackWhole($this->correctsInvoice, $sold)) {
+            $sent = array_values(array_filter(array_map(static fn (InvoiceLineDetails $line): ?string => $line->deduction?->deposit->getId()->toRfc4122(), $lines)));
+            $owed = array_values(array_filter(array_map(static fn (InvoiceLine $line): ?string => $line->getDeduction()?->deposit->getId()->toRfc4122(), $given)));
+            sort($sent);
+            sort($owed);
+
+            return $sent === $owed ? $lines : [...$sold, ...array_map(self::creditOf(...), $given)];
+        }
+        $part = [];
+        $carried = null;
+        foreach ($lines as $line) {
+            if (null !== $line->deduction) {
+                $carried = $line->section ?? $carried;
+
+                continue;
+            }
+            $part[] = null === $line->section && null !== $carried ? $line->opening($carried) : $line;
+            $carried = null;
+        }
+
+        return $part;
+    }
+
+    /**
+     * Whether a credit note's lines give back each line `$invoice` sold, once, charged as it was: the product, the
+     * quantity, the unit, the price, the rate discount and the taxes. Its wording, lot and sections may differ; a
+     * discount by amount follows from the quantity credited.
+     *
+     * @param list<InvoiceLineDetails> $sold
+     *
+     * @throws InvalidInvoice
+     */
+    private function givesBackWhole(self $invoice, array $sold): bool
+    {
+        $charged = static function (InvoiceLineDetails $line): array {
+            $taxes = array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $line->taxes);
+            sort($taxes);
+
+            return [$line->product?->getId()->toRfc4122(), $line->quantity, $line->unit->getId()->toRfc4122(), $line->unitPriceNet, $line->discountRate, $taxes];
+        };
+        $byLine = [];
+        foreach ($sold as $line) {
+            $id = $line->creditedLineId?->toRfc4122();
+            if (null === $id || isset($byLine[$id])) {
+                return false;
+            }
+            $byLine[$id] = $charged($line);
+        }
+        $invoiced = array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => null === $line->getDeduction());
+
+        return \count($invoiced) === \count($byLine) && array_all(
+            $invoiced,
+            static fn (InvoiceLine $line): bool => ($byLine[$line->getId()->toRfc4122()] ?? null) === $charged(self::creditOf($line)),
+        );
     }
 
     /**

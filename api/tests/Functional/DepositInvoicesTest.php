@@ -232,6 +232,63 @@ final class DepositInvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'nor on a new document');
     }
 
+    /**
+     * Only a credit note of the whole final invoice gives its deposits back: one giving back part of it carries no deposit
+     * line, so a return is credited at what the goods returned cost, the deposit staying deducted from what is kept, and
+     * a return worth more than the final invoice still owes is refused there, for the deposit invoice to correct.
+     */
+    public function testACreditNoteOfPartOfAFinalInvoiceGivesNoDepositBack(): void
+    {
+        $this->signedIn(self::WRITER);
+        $quoteId = $this->accepted();
+        $depositId = $this->deposit($quoteId, ['depositPercentage' => '30', 'depositAmount' => null]);
+        $this->issue($depositId);
+        $this->postJson($this->quotePath($quoteId).'/invoice', null);
+        $finalId = $this->stringAt($this->json(), 'invoiceId');
+        $this->issue($finalId);
+        $this->postJson($this->companyPath().'/invoices/'.$finalId.'/credit-notes', ['creditNoteReason' => 'Retour']);
+        self::assertResponseIsSuccessful();
+        $note = $this->json();
+        $noteId = $this->stringAt($note, 'id');
+        $copied = $this->rows($note, 'lines');
+        self::assertSame([null, null, $depositId, $depositId], array_column($copied, 'deductsInvoiceId'), 'a new credit note copies the whole invoice');
+
+        // The labour alone comes back, the screen echoing the deposit lines it was given: none is kept.
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$noteId, [...$this->editable($note), 'lines' => [$copied[1], $copied[2], $copied[3]]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([null], array_column($this->rows($this->json(), 'lines'), 'deductsInvoiceId'));
+        self::assertSame(['-60.000', '-11.400'], [$this->json()['subtotalNet'], $this->json()['totalTax']]);
+
+        // One of the two machines back, its price and taxes as invoiced: still a part, so still no deposit.
+        $half = [...$copied[0], 'quantity' => '1'];
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$noteId, [...$this->editable($note), 'lines' => [$half, $copied[1], $copied[2], $copied[3]]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([null, null], array_column($this->rows($this->json(), 'lines'), 'deductsInvoiceId'));
+
+        // Every line back as invoiced, its wording changed: the whole invoice, so its deposits are given back again,
+        // though the screen sent none of them this time.
+        $whole = [[...$copied[0], 'description' => 'Tour CNC rendu'], $copied[1]];
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$noteId, [...$this->editable($note), 'lines' => $whole]);
+        self::assertResponseIsSuccessful();
+        $whole = $this->json();
+        self::assertSame([null, null, $depositId, $depositId], array_column($this->rows($whole, 'lines'), 'deductsInvoiceId'));
+        self::assertSame($this->negated($this->stringAt($this->invoice($finalId), 'total')), $whole['total']);
+
+        // The machines alone come to more than the final invoice still owes once its deposit is not taken off: refused,
+        // the rest being the deposit invoice's to correct.
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$noteId, [...$this->editable($note), 'lines' => [$copied[0], $copied[2], $copied[3]]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([null], array_column($this->rows($this->json(), 'lines'), 'deductsInvoiceId'));
+        $this->postJson($this->companyPath().'/invoices/'.$noteId.'/issue', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('at most', $this->stringAt($this->json(), 'detail'));
+
+        // A section a deposit line opened is kept on a part, opened by the next line, as a duplicate does.
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$noteId, [...$this->editable($note), 'lines' => [[...$copied[2], 'section' => 'Acomptes'], $copied[3], $copied[1]]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([['Pose', 'Acomptes']], array_map(static fn (array $line): array => [$line['description'], $line['section']], $this->rows($this->json(), 'lines')));
+    }
+
     public function testADepositIsAShareOrAnAmountTheQuoteLeaves(): void
     {
         $this->signedIn(self::WRITER);

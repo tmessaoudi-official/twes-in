@@ -80,15 +80,25 @@ export function savesSomething(savings: string | null): savings is string {
   return savings !== null && !savings.startsWith('-') && /[1-9]/.test(savings);
 }
 
-/** Reads a preview's answer; a line sent from position `positions[i]` lands back there, the others stay null. */
+/**
+ * Reads a preview's answer; a line sent from position `positions[i]` lands back there, the others stay null. A credit
+ * note giving back part of an invoice gives no deposit back, so the API answers without the deposit lines sent: when
+ * it answered exactly that many fewer, its lines land on the other positions.
+ */
 export function toDocumentFigures(
   body: PreviewBody,
   positions: readonly number[],
   count: number,
+  deposits: readonly number[] = [],
 ): DocumentFigures {
   const lines: (LineFigures | null)[] = Array.from({ length: count }, () => null);
-  (body.lines ?? []).forEach((line, sent) => {
-    const at = positions[sent];
+  const answered = body.lines ?? [];
+  const placed =
+    deposits.length > 0 && answered.length === positions.length - deposits.length
+      ? positions.filter((at) => !deposits.includes(at))
+      : positions;
+  answered.forEach((line, sent) => {
+    const at = placed[sent];
     if (at !== undefined && at < count) lines[at] = line;
   });
   return {

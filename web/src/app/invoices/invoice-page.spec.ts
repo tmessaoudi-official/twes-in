@@ -2204,6 +2204,33 @@ describe('InvoicePage', () => {
       expect(text('invoice-totals-note')).toContain('document_figures.as_typed');
     });
 
+    it('puts the figures on the lines kept when a credit note of part of an invoice gives no deposit back', async () => {
+      const deposit = {
+        ...draft.lines[0]!,
+        productId: null,
+        productReference: null,
+        productName: null,
+        productTracking: null,
+        description: 'Acompte déjà facturé : facture F-2026-0003 du 07/10/2026',
+        unitPriceNet: '500.0000',
+        deductsInvoiceId: 'd1',
+        section: null,
+        net: '-500.000',
+      };
+      invoice.set({ ...draft, lines: [deposit, draft.lines[0]!] });
+      await open('i1');
+      await rested();
+      // The API leaves the deposit line out: it answers the sold line alone.
+      facade.preview.mockResolvedValue(twice);
+
+      type('line-1-quantity', '2');
+      await rested();
+
+      const [, , asked] = facade.preview.mock.lastCall!;
+      expect(asked.lines).toHaveLength(2);
+      expect(text('line-1-net')).toContain('3 600,000');
+    });
+
     it('leaves a line not ready yet out, without figures, and works the others out', async () => {
       invoice.set(draft);
       await open('i1');
