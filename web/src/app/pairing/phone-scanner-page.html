@@ -78,10 +78,41 @@
       }
     </div>
 
-    @if (sent(); as code) {
-      <p class="m-0 text-sm" data-testid="phone-sent">
-        {{ 'scan.phone.page.sent' | translate }} <span class="font-mono">{{ code }}</span>
-      </p>
+    <div class="flex flex-col gap-1" aria-live="polite">
+      @for (entry of outgoing(); track entry.id) {
+        @if (entry.state === 'unsent') {
+          <p class="m-0 text-sm text-error" data-testid="phone-unsent">
+            {{ 'scan.phone.page.unsent' | translate }}
+            @switch (entry.kind) {
+              @case ('photo') {
+                {{ 'scan.phone.page.unsent_photo' | translate }}
+              }
+              @case ('choice') {
+                {{ 'scan.phone.page.unsent_choice' | translate }}
+              }
+              @default {
+                <span class="font-mono">{{ entry.code }}</span>
+              }
+            }
+          </p>
+        } @else if (entry.kind === 'scan') {
+          <p class="m-0 text-sm" data-testid="phone-sending">
+            {{ 'scan.phone.page.sending' | translate }}
+            <span class="font-mono">{{ entry.code }}</span>
+          </p>
+        }
+      }
+      @if (sent(); as code) {
+        <p class="m-0 text-sm" data-testid="phone-sent">
+          {{ 'scan.phone.page.sent' | translate }} <span class="font-mono">{{ code }}</span>
+        </p>
+      }
+    </div>
+    @if (unsent()) {
+      <button mat-stroked-button type="button" (click)="resend()" data-testid="phone-resend">
+        <mat-icon aria-hidden="true">send</mat-icon>
+        {{ 'scan.phone.page.resend' | translate }}
+      </button>
     }
 
     <section class="flex flex-col gap-3" aria-live="polite">

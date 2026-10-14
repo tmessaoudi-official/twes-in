@@ -52,6 +52,29 @@ test('a phone scans for the computer with no sign-in, sees what it did, and its 
     await expect(screen.getByTestId('phone-echo')).toContainText('1,000');
     expect(await wcagViolations(screen)).toEqual([]);
 
+    // A short drop (the bad-network standard, docs/SPEC.md § 7): a scan the network lost is kept and said unsent,
+    // never « Envoyé », and goes with « Renvoyer » once the API answers again, counted once on the computer.
+    const scans = '**/api/scan-pairings/*/scans';
+    await screen.route(scans, (route) => route.abort('internetdisconnected'));
+    await screen.getByTestId('phone-code').fill(code);
+    await screen.getByTestId('phone-send').click();
+    await expect(screen.getByTestId('phone-unsent')).toContainText(code);
+    expect(await wcagViolations(screen)).toEqual([]);
+    await screen.unroute(scans);
+    await screen.getByTestId('phone-resend').click();
+    await expect(page.getByTestId('line-0-quantity')).toHaveValue('2');
+    await expect(screen.getByTestId('phone-unsent')).toHaveCount(0);
+    await expect(screen.getByTestId('phone-sent')).toContainText(code);
+
+    // The phone itself offline, then back: what it kept goes by itself.
+    await phone.setOffline(true);
+    await screen.getByTestId('phone-code').fill(code);
+    await screen.getByTestId('phone-send').click();
+    await expect(screen.getByTestId('phone-unsent')).toContainText(code);
+    await phone.setOffline(false);
+    await expect(page.getByTestId('line-0-quantity')).toHaveValue('3');
+    await expect(screen.getByTestId('phone-unsent')).toHaveCount(0);
+
     // A code nobody holds opens the computer's card, whose choices the phone offers; a tap acts on the computer.
     const unknown = `NEW-${run}`;
     await screen.getByTestId('phone-code').fill(unknown);
