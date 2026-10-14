@@ -29,6 +29,8 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-13 19:17] ASSUMED (review): A vendor's IBAN is outside the ruling's words (the company's own bank details) and is not given a step-up; asked of the developer with the round-0 security questions. Alternatives: include it now.
 - [2026-10-13 20:25] AGREED: Order: round 0 to its end (gallery role passes, measured API matrix, large-data timings), then L-066 and the five step-up rulings of 20:21 land on master under the 16:57 fix-now ruling, then round 1 on that frozen commit (developer).
 - [2026-10-13 23:57] AGREED: Order after the step-up work (landed, CI green at 1a5f5e8a): the paratest trial first (API suite timings before and after, kept only if faster and green), then round 1 on the frozen commit; changed-only runs and one-container sabotage after round 1 (developer).
+- [2026-10-14 11:55] AGREED: Lens 53, first focus: reaching a screen or a step with something to type (a route, a dialog, the sign-in's authenticator code step) puts the focus in the field typed first, so typing never goes nowhere; checked on every screen, measured by the gallery where a route lands and read in the code for in-screen steps and dialogs (developer).
+- [2026-10-14 12:05] AGREED: Lens 53 widened from first focus to the whole family, focus and typing flow, the sign-in's code step being one worked example to generalise from: focus on arrival (route, in-place step, dialog, tab, sheet); after a refusal, on the first field in error; returned to the opener when a dialog, menu or sheet closes; on the next row after one is removed, on the new line after one is added; kept across saves and live reloads, never stolen by a toast; Enter submits and Escape cancels where expected; tab order follows the visual order, right to left too; focus always visible; one-time-code and numeric fields take paste and the right phone keyboard; on a phone, whether arrival focus opens the keyboard is ruled with the rubric; the sign-in fix waits for the kind fix after the ruling (developer).
 
 ## Formal Plan
 
@@ -66,7 +68,8 @@ Stop rule: a round that adds no new category and under about 5 % new findings; a
   37 responsiveness felt · 38 one product · 39 sound and touch · 40 the real place · 41 reading level · 42 colour-blind
   and cognitive load · 43 company size · 44 data decay · 45 notification hygiene · 46 find anything · 47 setting side
   effects · 48 when something else is down · 49 honesty · 50 one word per action · 51 help that's true · 52 seen from
-  outside.
+  outside · 53 focus and typing flow (arrival, in-place steps, after a refusal, returned on close, after add and remove,
+  across saves and live reloads, Enter and Escape, tab order, focus visible, paste and phone keyboards).
 - **58 feelings**, in families so they never mean 58 colours: danger (définitif), consequence (corrigeable), undoable,
   safe to try, locked, needs attention, urgent, sensitive, someone else is here, working, done, failed, not allowed, not
   yet, changed since you looked, first time, trusted, uncertain, money direction, loss, connection lost, which company
@@ -85,6 +88,21 @@ stop was reached and on what criteria.
 **B. Build.** Screen by screen to the agreed level, from the ruled proposals only, test first; then the maturity checker
 in the form decided after the audit, so every future screen meets the level automatically.
 
+**Round 1** (go 2026-10-14 12:00), on the product frozen at 68f607f3 (`web/src` and `api/src` unchanged after it):
+1. Lens 53's instrument: the gallery's focus pass (`web/e2e-gallery/`, `GALLERY_FOCUS=1`), facts only and no
+   pictures: what holds the focus and the first typeable field on every route, arrived at by a fresh load and from
+   inside the app; the sign-in's code step (`codes@twes.local`, never submitted) and its refusal of an empty form; the
+   step-up dialog (its refusal mocked, so no write reaches the API) and the account deletion dialog, both cancelled
+   with every other write aborted, focus read on opening and after closing. Its own check focuses and blurs
+   `#mfa-code` from the page.
+2. Five read-only agents, one cluster each (sales and fiscal; catalogue and stock; customers, vendors, expenses,
+   export; company, settings, account, sign-in, platform; the whole product: components, shell, fiscal rules, tests,
+   promises), each given the ledger and asking 53 lenses of every screen, new findings only, in its own id range,
+   with a coverage cell per screen × lens backed by a pointer; `fix-now` flagged for data loss, security, wrong money.
+3. One synthesis agent: dedupe, ledger, `round1/round-1.md` (counts, share new, new categories, coverage), the draft
+   rubric and the 58 feelings' looks and wordings for the developer's ruling; then a spot check of `ok` cells and the
+   fix-now screening.
+
 Known before round 1:
 - « Gérer les pages légales » appears twice in « Gérer la plateforme » (Vue d'ensemble and Demande, one section copied):
   it becomes a tab of its own; the overview keeps a one-line status linking to it.
@@ -97,7 +115,7 @@ Known before round 1:
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
 | 0 | Round 0: the instruments (inventory, gallery, timings, axe, route × role matrix) | L | done | 5f0b6440 | scripts/** var/claude/maturity/** |
-| 1 | Rounds to maturity + unified artifact | L | todo | - | var/claude/maturity/** |
+| 1 | Rounds to maturity + unified artifact | L | doing | - | var/claude/maturity/** |
 | 2 | Developer rules the proposals | M | todo | - | - |
 | 3 | Screen texts split per feature | L | todo | - | web/** scripts/gates/** |
 | 4 | Build the ruled proposals screen by screen | L | todo | - | web/** api/** |
