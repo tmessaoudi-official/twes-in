@@ -11,7 +11,9 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Module\Expenses\Domain\Expense;
+use App\Module\Expenses\Domain\ExpenseAmounts;
 use App\Module\Expenses\Domain\ExpenseDetails;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorProfile;
@@ -127,9 +129,11 @@ final class ExpensesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $created = $this->json();
         self::assertSame(
-            ['draft', '2026-09-10', 'F-2026-118', 'Sotumag', 'Carburant', '100.005', '19.000', '19.001', '119.006', 'TND', '2026-10-10', null, null, 0],
-            [$created['status'], $created['date'], $created['reference'], $created['vendorName'], $created['categoryName'], $created['amountNet'], $created['taxRate'], $created['taxAmount'], $created['amountGross'], $created['currency'], $created['dueDate'], $created['paymentMethod'], $created['paidOn'], $created['attachmentCount']],
+            ['draft', '2026-09-10', 'F-2026-118', 'Sotumag', 'Carburant', '100.005', '19.001', '0.000', '119.006', 'TND', '2026-10-10', null, null, 0],
+            [$created['status'], $created['date'], $created['reference'], $created['vendorName'], $created['categoryName'], $created['amountNet'], $created['taxAmount'], $created['fixedAmount'], $created['amountGross'], $created['currency'], $created['dueDate'], $created['paymentMethod'], $created['paidOn'], $created['attachmentCount']],
         );
+        self::assertSame([['code' => 'TVA19', 'kind' => 'percentage_line', 'rate' => '19.000', 'base' => '100.005', 'workedOut' => '19.001', 'amount' => '19.001']], $this->arrayAt($created, 'taxes'));
+        self::assertSame([['amountNet' => '100.005', 'taxComponentIds' => [$this->taxId('TVA19')], 'taxCodes' => ['TVA19']]], $this->arrayAt($created, 'lines'));
         $this->getJson($this->path($this->stringAt($created, 'id')));
         self::assertResponseIsSuccessful();
         $this->getJson($this->path());
@@ -184,11 +188,13 @@ final class ExpensesTest extends ApiTestCase
 
         foreach ([
             'description' => ['description' => ''],
-            'amountNet' => ['amountNet' => '0'],
-            'amountNet ' => ['amountNet' => '1.2345'],
+            'amountNet' => ['lines' => $this->line('0')],
+            'amountNet ' => ['lines' => $this->line('1.2345')],
             'date' => ['date' => '15/09/2026'],
             'reference' => ['reference' => str_repeat('x', 65)],
-            'taxComponentId' => ['taxComponentId' => $stamp],
+            'lines[0].taxComponentIds' => ['lines' => [['amountNet' => '100', 'taxComponentIds' => [$stamp]]]],
+            'documentTaxComponentIds' => ['documentTaxComponentIds' => [$this->taxId('TVA19')]],
+            'printedTaxes' => ['printedTaxes' => [['code' => 'TVA19', 'amount' => '19.100']]],
             'categoryId' => ['categoryId' => '01920000-0000-7000-8000-000000000000'],
             'vendorId' => ['vendorId' => '01920000-0000-7000-8000-000000000000'],
         ] as $field => $change) {
@@ -213,11 +219,11 @@ final class ExpensesTest extends ApiTestCase
         $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'cash', 'paidOn' => $today->format('Y-m-d')]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not paid');
 
-        $this->sendJson('PUT', $this->path($id), $this->expense(['date' => $today->modify('-10 days')->format('Y-m-d'), 'categoryId' => $this->category('Carburant'), 'amountNet' => '200']));
+        $this->sendJson('PUT', $this->path($id), $this->expense(['date' => $today->modify('-10 days')->format('Y-m-d'), 'categoryId' => $this->category('Carburant'), 'lines' => $this->line('200')]));
         self::assertResponseIsSuccessful();
         $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'expense.revised'");
         self::assertIsString($changes);
-        self::assertSame(['fields' => ['amountNet', 'categoryId']], json_decode($changes, true));
+        self::assertSame(['fields' => ['lines', 'categoryId']], json_decode($changes, true));
         $this->postJson($this->path($id).'/record', null);
         self::assertResponseIsSuccessful();
         self::assertSame('recorded', $this->json()['status']);
@@ -248,7 +254,7 @@ final class ExpensesTest extends ApiTestCase
         $first = $today->modify('first day of this month');
         // The first of a month is always inside the days compared; two years back is inside neither.
         $made = function (\DateTimeImmutable $day, string $net, bool $record) use ($category): string {
-            $this->postJson($this->path(), $this->expense(['date' => $day->format('Y-m-d'), 'amountNet' => $net, 'categoryId' => $category]));
+            $this->postJson($this->path(), $this->expense(['date' => $day->format('Y-m-d'), 'lines' => $this->line($net), 'categoryId' => $category]));
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
             $gross = $this->stringAt($this->json(), 'amountGross');
             if ($record) {
@@ -283,7 +289,7 @@ final class ExpensesTest extends ApiTestCase
         $this->signedIn(['expense.read', 'expense.write']);
         $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
         $recorded = function (string $net): string {
-            $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Fournitures '.$net), 'amountNet' => $net]));
+            $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Fournitures '.$net), 'lines' => $this->line($net)]));
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
             $id = $this->stringAt($this->json(), 'id');
             $this->postJson($this->path($id).'/record', null);
@@ -332,7 +338,7 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame(['code' => 'RS1_000002', 'label' => 'Loyers servis à des résidents établis'], $codes[1]);
 
         $recorded = function (): string {
-            $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Achats '.bin2hex(random_bytes(3))), 'amountNet' => '1000']));
+            $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Achats '.bin2hex(random_bytes(3))), 'lines' => $this->line('1000')]));
             $id = $this->stringAt($this->json(), 'id');
             $this->postJson($this->path($id).'/record', null);
             self::assertResponseIsSuccessful();
@@ -397,8 +403,9 @@ final class ExpensesTest extends ApiTestCase
 
         self::assertSame($statements[1], $statements[6], 'six rows cost what one does (audit PF-07)');
         // Measured 11 on 2026-09-25 (16 for six rows before), the session and the company's checks included, plus one:
-        // the read of whether the person ended this session (the connected devices screen), made on every signed-in request.
-        self::assertLessThanOrEqual(12, $statements[6]);
+        // the read of whether the person ended this session (the connected devices screen), made on every signed-in request,
+        // and two for the page's bills: their lines with the rates, then their taxes.
+        self::assertLessThanOrEqual(14, $statements[6]);
         $counts = array_column($this->jsonList(), 'attachmentCount', 'reference');
         ksort($counts);
         self::assertSame(['F-2026-101' => 0, 'F-2026-102' => 1, 'F-2026-103' => 0, 'F-2026-104' => 1, 'F-2026-105' => 0, 'F-2026-106' => 1], $counts, 'each row still counts its own');
@@ -514,7 +521,7 @@ final class ExpensesTest extends ApiTestCase
 
         // Made before the next request: the test client reboots the kernel, and with it the entity manager.
         $globex = $this->createCompany('Globex');
-        $their = Expense::create($globex, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Loyer', '500'), null, null, null, 3, new \DateTimeImmutable());
+        $their = Expense::create($globex, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Loyer'), ExpenseAmounts::one('500'), null, null, 3, RoundingPoint::PerRateGroup, new \DateTimeImmutable());
         $this->em()->persist($their);
         $this->em()->flush();
         $theirs = '/api/companies/'.$globex->getId()->toRfc4122().'/expenses';
@@ -580,7 +587,7 @@ final class ExpensesTest extends ApiTestCase
             'description' => 'Loyer du dépôt',
             'vendorId' => $otherId,
             'categoryId' => $rent,
-            'amountNet' => '900',
+            'lines' => $this->line('900'),
         ]));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
@@ -637,11 +644,11 @@ final class ExpensesTest extends ApiTestCase
         $this->em()->flush();
         $otherId = $other->getId()->toRfc4122();
         // 1 190 taxes included, paid by transfer: the preset withholds 1 %.
-        $this->paid(['categoryId' => $fuel, 'amountNet' => '1000'], 'transfer', null);
+        $this->paid(['categoryId' => $fuel, 'lines' => $this->line('1000')], 'transfer', null);
         // 11.900, paid in cash, nothing withheld; filed under the parent category itself.
-        $this->paid(['date' => '2026-08-05', 'description' => 'Péage', 'reference' => null, 'categoryId' => $vehicle, 'amountNet' => '10'], 'cash', '0');
+        $this->paid(['date' => '2026-08-05', 'description' => 'Péage', 'reference' => null, 'categoryId' => $vehicle, 'lines' => $this->line('10')], 'cash', '0');
         // 119, still a draft, another vendor.
-        $this->postJson($this->path(), $this->expense(['date' => '2026-09-20', 'reference' => null, 'description' => 'Loyer du dépôt', 'vendorId' => $otherId, 'categoryId' => $rent, 'amountNet' => '100']));
+        $this->postJson($this->path(), $this->expense(['date' => '2026-09-20', 'reference' => null, 'description' => 'Loyer du dépôt', 'vendorId' => $otherId, 'categoryId' => $rent, 'lines' => $this->line('100')]));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
         foreach ([
@@ -781,10 +788,19 @@ final class ExpensesTest extends ApiTestCase
             'description' => 'Gasoil septembre',
             'vendorId' => $this->vendor->getId()->toRfc4122(),
             'categoryId' => null,
-            'amountNet' => '100.005',
-            'taxComponentId' => $this->taxId('TVA19'),
+            'lines' => $this->line('100.005'),
             'notes' => null,
         ], ...$changes];
+    }
+
+    /**
+     * A bill of one line at the standard rate, or at none.
+     *
+     * @return list<array{amountNet: string, taxComponentIds: list<string>}>
+     */
+    private function line(string $net, bool $taxed = true): array
+    {
+        return [['amountNet' => $net, 'taxComponentIds' => $taxed ? [$this->taxId('TVA19')] : []]];
     }
 
     /** @param list<string> $permissions */

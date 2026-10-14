@@ -440,7 +440,8 @@ final class DemoCompanies extends Fixture
     }
 
     /**
-     * Sixteen expenses, one every nine days: a third left as drafts, a third recorded, a third recorded and paid.
+     * Sixteen expenses, one every nine days: a third left as drafts, a third recorded, a third recorded and paid. Every
+     * fourth of a taxed vendor is a bill at several rates, as the company's preset prints one.
      *
      * @param \Closure(): Company                                                                        $company
      * @param list<array{id: Uuid, category: Uuid, amount: numeric-string, untaxed: bool, name: string}> $vendors
@@ -453,11 +454,16 @@ final class DemoCompanies extends Fixture
             $day = self::FIRST_DAY + 10 + 9 * $e;
             $timeline->at($day, function () use ($demo, $timeline, $company, $vendor, $tax, $actor, $e, $day): void {
                 $date = $timeline->day($day);
+                $amount = bcmul($vendor['amount'], ['1', '1.1', '0.95'][$e % 3], $demo->scale);
+                $mixed = null !== $demo->mixedBill && !$vendor['untaxed'] && 1 === $e % 4 ? $demo->mixedBill : null;
                 $expense = $this->expenses->create($company(), new ExpenseInput(
-                    new ExpenseDetails($date, \sprintf('%s, %s', $vendor['name'], $date->format('m/Y')), bcmul($vendor['amount'], ['1', '1.1', '0.95'][$e % 3], $demo->scale), \sprintf('F-%s-%04d', $date->format('Y'), 310 + $e)),
+                    new ExpenseDetails($date, \sprintf('%s, %s', $vendor['name'], $date->format('m/Y')), \sprintf('F-%s-%04d', $date->format('Y'), 310 + $e)),
+                    null === $mixed
+                        ? ExpenseInput::oneLine($amount, $vendor['untaxed'] ? null : $tax($demo->vatCode))
+                        : array_map(static fn (array $line): array => ['amountNet' => bcmul($amount, $line['share'], $demo->scale), 'taxComponentIds' => array_map($tax, $line['taxes'])], $mixed['lines']),
                     $vendor['id'],
                     $vendor['category'],
-                    $vendor['untaxed'] ? null : $tax($demo->vatCode),
+                    null === $mixed ? [] : array_map($tax, $mixed['charges']),
                 ), $actor);
                 if (0 !== $e % 3) {
                     $this->expenses->recordInBooks($company(), $expense->getId(), $actor);

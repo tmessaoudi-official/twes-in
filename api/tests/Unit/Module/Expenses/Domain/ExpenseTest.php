@@ -9,9 +9,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Expenses\Domain;
 
+use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxFamily;
 use App\Module\Expenses\Domain\Expense;
+use App\Module\Expenses\Domain\ExpenseAmounts;
 use App\Module\Expenses\Domain\ExpenseCategory;
 use App\Module\Expenses\Domain\ExpenseDetails;
 use App\Module\Expenses\Domain\ExpenseStatus;
@@ -41,90 +43,90 @@ final class ExpenseTest extends TestCase
 
     public function testTheTaxIsTheRateOnTheNetRoundedHalfAwayFromZeroAtTheCurrencysScale(): void
     {
-        $expense = Expense::create($this->acme, $this->details('100.005'), null, $this->fuel, $this->vat19, 3, $this->now);
+        $expense = $this->create($this->acme, '100.005', null, $this->fuel, $this->vat19, 3);
 
-        self::assertSame(['100.005', '19.000', '19.001', '119.006', 'TND'], [$expense->getAmountNet(), $expense->getTaxRate(), $expense->getTaxAmount(), $expense->getAmountGross(), $expense->getCurrency()]);
+        self::assertSame(['100.005', '19.000', '19.001', '119.006', 'TND'], [$expense->getAmountNet(), $expense->getTaxes()[0]->getRate(), $expense->getTaxAmount(), $expense->getAmountGross(), $expense->getCurrency()]);
 
         $globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris');
         $vat5 = $this->percentage($globex, 'TVA5', '5', 2);
-        $tie = Expense::create($globex, $this->details('0.10'), null, null, $vat5, 2, $this->now);
+        $tie = $this->create($globex, '0.10', null, null, $vat5, 2);
         self::assertSame(['0.100', '0.010', '0.110', 'EUR'], [$tie->getAmountNet(), $tie->getTaxAmount(), $tie->getAmountGross(), $tie->getCurrency()], '0.005 is a tie, rounded away from zero');
     }
 
     public function testWithoutATaxTheGrossIsTheNet(): void
     {
-        $expense = Expense::create($this->acme, $this->details('42.5'), null, null, null, 3, $this->now);
+        $expense = $this->create($this->acme, '42.5', null, null, null, 3);
 
-        self::assertSame(['42.500', null, '0.000', '42.500'], [$expense->getAmountNet(), $expense->getTaxRate(), $expense->getTaxAmount(), $expense->getAmountGross()]);
+        self::assertSame(['42.500', [], '0.000', '42.500'], [$expense->getAmountNet(), $expense->getTaxes(), $expense->getTaxAmount(), $expense->getAmountGross()]);
         self::assertSame(ExpenseStatus::Draft, $expense->getStatus());
     }
 
     public function testANetOfZeroOrFinerThanTheCurrencyIsRefused(): void
     {
         foreach (['0', '0.000', '-3', '1.2345', 'ten'] as $net) {
-            $this->assertRefused('amountNet', fn () => $this->details($net), $net);
+            $this->assertRefused('lines[0].amountNet', static fn () => ExpenseAmounts::one($net), $net);
         }
-        $this->assertRefused('amountNet', fn () => Expense::create($this->acme, $this->details('10.005'), null, null, null, 2, $this->now), 'a euro has two decimals');
+        $this->assertRefused('lines[0].amountNet', fn () => $this->create($this->acme, '10.005', null, null, null, 2), 'a euro has two decimals');
     }
 
     public function testOnlyAnActiveRateOnTheNetOfTheSameCompanyTaxesAnExpense(): void
     {
         $stamp = TaxComponent::create($this->acme, 'TIMBRE', 'Timbre', TaxFamily::Stamp, null, '1.000', null, false, false, null, 0, 3, $this->now);
-        $this->assertRefused('taxComponentId', fn () => Expense::create($this->acme, $this->details('10'), null, null, $stamp, 3, $this->now), 'a stamp');
+        $this->assertRefused('lines[0].taxComponentIds', fn () => $this->create($this->acme, '10', null, null, $stamp, 3), 'a stamp');
 
         $theirs = $this->percentage(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'TVA19', '19', 3);
-        $this->assertRefused('taxComponentId', fn () => Expense::create($this->acme, $this->details('10'), null, null, $theirs, 3, $this->now), 'another company’s');
+        $this->assertRefused('lines[0].taxComponentIds', fn () => $this->create($this->acme, '10', null, null, $theirs, 3), 'another company’s');
 
         $this->vat19->revise('TVA 19 %', '19', null, null, false, false, false, null, 0, 3, $this->now);
-        $this->assertRefused('taxComponentId', fn () => Expense::create($this->acme, $this->details('10'), null, null, $this->vat19, 3, $this->now), 'an inactive one');
+        $this->assertRefused('lines[0].taxComponentIds', fn () => $this->create($this->acme, '10', null, null, $this->vat19, 3), 'an inactive one');
     }
 
     public function testTheVendorAndTheCategoryAreTheCompanysAndActive(): void
     {
         $theirVendor = Vendor::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'FRN-0001', new VendorProfile('Autre'), $this->now);
-        $this->assertRefused('vendorId', fn () => Expense::create($this->acme, $this->details('10'), $theirVendor, null, null, 3, $this->now), 'another company’s vendor');
+        $this->assertRefused('vendorId', fn () => $this->create($this->acme, '10', $theirVendor, null, null, 3), 'another company’s vendor');
 
         $retired = Vendor::create($this->acme, 'FRN-0002', new VendorProfile('Ancien'), $this->now);
         $retired->revise('FRN-0002', new VendorProfile('Ancien'), false, $this->now);
-        $this->assertRefused('vendorId', fn () => Expense::create($this->acme, $this->details('10'), $retired, null, null, 3, $this->now), 'an inactive vendor');
+        $this->assertRefused('vendorId', fn () => $this->create($this->acme, '10', $retired, null, null, 3), 'an inactive vendor');
 
         $closed = ExpenseCategory::create($this->acme, 'Ancienne', null, $this->now);
         $closed->revise('Ancienne', null, false, $this->now);
-        $this->assertRefused('categoryId', fn () => Expense::create($this->acme, $this->details('10'), null, $closed, null, 3, $this->now), 'an inactive category');
+        $this->assertRefused('categoryId', fn () => $this->create($this->acme, '10', null, $closed, null, 3), 'an inactive category');
     }
 
     /** A payment with no vendor record (a car park, a notary) names who was paid in words; a vendor already names it. */
     public function testAPayeeNamesWhoWasPaidWhenNoVendorDoesAndNeverBesideOne(): void
     {
-        $parking = Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Parking', '5', payee: '  Parking du Lac  '), null, null, null, 3, $this->now);
+        $parking = $this->create($this->acme, '5', null, null, null, 3, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Parking', payee: '  Parking du Lac  '));
         self::assertSame('Parking du Lac', $parking->getPayee());
-        self::assertNull(Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Parking', '5', payee: '   '), null, null, null, 3, $this->now)->getPayee());
+        self::assertNull($this->create($this->acme, '5', null, null, null, 3, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Parking', payee: '   '))->getPayee());
 
         $vendor = Vendor::create($this->acme, 'FRN-0001', new VendorProfile('STEG'), $this->now);
-        $this->assertRefused('payee', fn () => Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Électricité', '80', payee: 'STEG'), $vendor, null, null, 3, $this->now), 'a payee beside a vendor');
-        $this->assertRefused('payee', static fn () => new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Parking', '5', payee: str_repeat('a', ExpenseDetails::PAYEE_MAX + 1)), 'a payee too long');
+        $this->assertRefused('payee', fn () => $this->create($this->acme, '80', $vendor, null, null, 3, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Électricité', payee: 'STEG')), 'a payee beside a vendor');
+        $this->assertRefused('payee', static fn () => new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Parking', payee: str_repeat('a', ExpenseDetails::PAYEE_MAX + 1)), 'a payee too long');
     }
 
     public function testADraftIsRevisedThenRecordedOnceItHasACategoryAndNeverRevisedAgain(): void
     {
-        $expense = Expense::create($this->acme, $this->details('10'), null, null, null, 3, $this->now);
+        $expense = $this->create($this->acme, '10', null, null, null, 3);
 
         $this->assertRefused('categoryId', fn () => $expense->record($this->now), 'an expense is recorded under a category');
 
-        self::assertSame(['amountNet', 'categoryId', 'taxComponentId'], $expense->revise($this->details('20'), null, $this->fuel, $this->vat19, 3, $this->now));
-        self::assertSame([], $expense->revise($this->details('20'), null, $this->fuel, $this->vat19, 3, $this->now));
+        self::assertSame(['lines', 'categoryId'], $expense->revise($this->details(), ExpenseAmounts::one('20', $this->vat19), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now));
+        self::assertSame([], $expense->revise($this->details(), ExpenseAmounts::one('20', $this->vat19), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now));
         self::assertSame(['23.800'], [$expense->getAmountGross()]);
 
         $expense->record($this->now);
         self::assertSame(ExpenseStatus::Recorded, $expense->getStatus());
 
         $this->expectException(ExpenseTransitionRefused::class);
-        $expense->revise($this->details('30'), null, $this->fuel, null, 3, $this->now);
+        $expense->revise($this->details(), ExpenseAmounts::one('30', null), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now);
     }
 
     public function testARecordedExpenseIsPaidOnADayFromItsDateToToday(): void
     {
-        $expense = Expense::create($this->acme, $this->details('10'), null, $this->fuel, null, 3, $this->now);
+        $expense = $this->create($this->acme, '10', null, $this->fuel, null, 3);
         $today = new \DateTimeImmutable('2026-09-15');
 
         try {
@@ -148,7 +150,7 @@ final class ExpenseTest extends TestCase
     {
         // docs/SPEC.md § 7, 2026-09-24 11:40 (RPT-09): the withholding on a supplier is recorded on the expense's payment.
         $today = new \DateTimeImmutable('2026-09-15');
-        $expense = Expense::create($this->acme, $this->details('1037.451'), null, $this->fuel, $this->vat19, 3, $this->now);
+        $expense = $this->create($this->acme, '1037.451', null, $this->fuel, $this->vat19, 3);
         $expense->record($this->now);
         self::assertSame(['1234.567', null, null, '1234.567'], [$expense->getAmountGross(), $expense->getWithholdingRate(), $expense->getWithholdingAmount(), $expense->getAmountPaid()], 'nothing is withheld before the payment');
 
@@ -164,7 +166,7 @@ final class ExpenseTest extends TestCase
 
     public function testAPaymentAtARateOfZeroWithholdsNothing(): void
     {
-        $expense = Expense::create($this->acme, $this->details('10'), null, $this->fuel, null, 2, $this->now);
+        $expense = $this->create($this->acme, '10', null, $this->fuel, null, 2);
         $expense->record($this->now);
 
         $expense->pay(PaymentMethod::Cash, new \DateTimeImmutable('2026-09-12'), new \DateTimeImmutable('2026-09-15'), $this->now, '0', 2);
@@ -175,23 +177,23 @@ final class ExpenseTest extends TestCase
     public function testAPaymentRecordsTheTejOperationItWasSaidToBeAndNeverGuessesOne(): void
     {
         $today = new \DateTimeImmutable('2026-09-15');
-        $said = Expense::create($this->acme, $this->details('1000'), null, $this->fuel, $this->vat19, 3, $this->now);
+        $said = $this->create($this->acme, '1000', null, $this->fuel, $this->vat19, 3);
         $said->record($this->now);
         $said->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, '1.5', 3, TejOperationCode::Rs7_000001);
         self::assertSame(TejOperationCode::Rs7_000001, $said->getWithholdingOperationCode());
 
-        $unsaid = Expense::create($this->acme, $this->details('1000'), null, $this->fuel, $this->vat19, 3, $this->now);
+        $unsaid = $this->create($this->acme, '1000', null, $this->fuel, $this->vat19, 3);
         $unsaid->record($this->now);
         $unsaid->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, '1.5', 3);
         self::assertNull($unsaid->getWithholdingOperationCode(), 'a rate of 1.5 is RS7_000001 on its face, and still not assumed');
 
-        $exempt = Expense::create($this->acme, $this->details('1000'), null, $this->fuel, $this->vat19, 3, $this->now);
+        $exempt = $this->create($this->acme, '1000', null, $this->fuel, $this->vat19, 3);
         $exempt->record($this->now);
         $exempt->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, '0', 3, TejOperationCode::Rs7_000006);
         self::assertSame([null, TejOperationCode::Rs7_000006], [$exempt->getWithholdingRate(), $exempt->getWithholdingOperationCode()], 'a supplier exempt from withholding is still declared, at 0 %');
 
         $french = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
-        $abroad = Expense::create($french, $this->details('1000'), null, ExpenseCategory::create($french, 'Loyer', null, $this->now), null, 2, $this->now);
+        $abroad = $this->create($french, '1000', null, ExpenseCategory::create($french, 'Loyer', null, $this->now), null, 2);
         $abroad->record($this->now);
         $this->assertRefused('withholdingOperationCode', fn () => $abroad->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, null, 2, TejOperationCode::Rs1_000002), 'a TEJ code outside Tunisia');
         self::assertSame(ExpenseStatus::Recorded, $abroad->getStatus(), 'a refused code pays nothing');
@@ -199,7 +201,7 @@ final class ExpenseTest extends TestCase
 
     public function testAPaidExpenseIsGivenItsTejOperationAfterwardsAndNothingElseIs(): void
     {
-        $expense = Expense::create($this->acme, $this->details('1000'), null, $this->fuel, null, 3, $this->now);
+        $expense = $this->create($this->acme, '1000', null, $this->fuel, null, 3);
         foreach (['draft' => null, 'recorded' => 'record'] as $state => $step) {
             if (null !== $step) {
                 $expense->record($this->now);
@@ -235,9 +237,9 @@ final class ExpenseTest extends TestCase
         $sotumag = Vendor::create($this->acme, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), $this->now);
         $cash = Vendor::create($this->acme, 'FRN-0002', new VendorProfile('Kiosque'), $this->now);
 
-        self::assertSame('2026-10-10', Expense::create($this->acme, $this->details('10'), $sotumag, null, null, 3, $this->now)->getDueDate()?->format('Y-m-d'));
-        self::assertNull(Expense::create($this->acme, $this->details('10'), $cash, null, null, 3, $this->now)->getDueDate(), 'a vendor without terms');
-        self::assertNull(Expense::create($this->acme, $this->details('10'), null, null, null, 3, $this->now)->getDueDate(), 'no vendor');
+        self::assertSame('2026-10-10', $this->create($this->acme, '10', $sotumag, null, null, 3)->getDueDate()?->format('Y-m-d'));
+        self::assertNull($this->create($this->acme, '10', $cash, null, null, 3)->getDueDate(), 'a vendor without terms');
+        self::assertNull($this->create($this->acme, '10', null, null, null, 3)->getDueDate(), 'no vendor');
     }
 
     public function testACategoryNeverSitsUnderItselfOrOneOfItsOwnSubcategories(): void
@@ -256,9 +258,15 @@ final class ExpenseTest extends TestCase
         $this->assertRefused('name', fn () => ExpenseCategory::create($this->acme, '  ', null, $this->now), 'an empty name');
     }
 
-    private function details(string $net): ExpenseDetails
+    private function details(): ExpenseDetails
     {
-        return new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Gasoil septembre', $net, 'F-2026-118');
+        return new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Gasoil septembre', 'F-2026-118');
+    }
+
+    /** A receipt: one line at one rate or none. */
+    private function create(Company $company, string $net, ?Vendor $vendor, ?ExpenseCategory $category, ?TaxComponent $tax, int $scale, ?ExpenseDetails $details = null): Expense
+    {
+        return Expense::create($company, $details ?? $this->details(), ExpenseAmounts::one($net, $tax), $vendor, $category, $scale, RoundingPoint::PerRateGroup, $this->now);
     }
 
     private function percentage(Company $company, string $code, string $rate, int $scale): TaxComponent

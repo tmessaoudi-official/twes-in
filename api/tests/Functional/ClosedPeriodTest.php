@@ -207,8 +207,7 @@ final class ClosedPeriodTest extends ApiTestCase
             'description' => 'Gasoil',
             'vendorId' => $this->vendor->getId()->toRfc4122(),
             'categoryId' => $categoryId,
-            'amountNet' => '100',
-            'taxComponentId' => null,
+            'lines' => [['amountNet' => '100', 'taxComponentIds' => []]],
             'notes' => null,
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'a draft may carry any day');

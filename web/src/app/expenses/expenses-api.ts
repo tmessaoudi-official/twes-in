@@ -408,10 +408,17 @@ function toExpense(raw: ExpenseExpenseRead | ExpenseJsonldExpenseRead): ExpenseR
     payee: raw.payee ?? null,
     categoryId: raw.categoryId ?? null,
     categoryName: raw.categoryName ?? null,
+    lines: (raw.lines ?? []).map((line) => ({
+      amountNet: line.amountNet ?? '',
+      taxComponentIds: [...(line.taxComponentIds ?? [])],
+      taxCodes: [...(line.taxCodes ?? [])],
+    })),
+    documentTaxComponentIds: [...(raw.documentTaxComponentIds ?? [])],
+    printedTaxes: (raw.printedTaxes ?? []).map((tax) => ({ ...tax })),
+    taxes: (raw.taxes ?? []).map((tax) => ({ ...tax })),
     amountNet: raw.amountNet ?? '',
-    taxComponentId: raw.taxComponentId ?? null,
-    taxRate: raw.taxRate ?? null,
     taxAmount: raw.taxAmount ?? '',
+    fixedAmount: raw.fixedAmount ?? '',
     amountGross: raw.amountGross ?? '',
     currency: raw.currency ?? '',
     dueDate: raw.dueDate ?? null,
@@ -459,7 +466,13 @@ function toCountParams(search: ExpenseSearch): HttpParams {
 }
 
 function toExpenseBody(input: ExpenseInput): ExpenseExpenseWrite {
-  return { ...input };
+  return {
+    ...input,
+    lines: input.lines.map((line) => ({
+      amountNet: line.amountNet,
+      taxComponentIds: [...line.taxComponentIds],
+    })),
+  };
 }
 
 interface RawTejRefusal {
@@ -516,6 +529,7 @@ function toOptions(raw: ExpenseOptionsExpenseOptionsRead): ExpenseOptions {
     currencyScale: raw.currencyScale ?? 2,
     categories: (raw.categories ?? []).map((category) => ({ ...category })),
     taxes: (raw.taxes ?? []).map((tax) => ({ ...tax })),
+    charges: (raw.charges ?? []).map((charge) => ({ ...charge })),
     paymentMethods: [...(raw.paymentMethods ?? [])],
     withholdingOperationCodes: (raw.withholdingOperationCodes ?? []).map((each) => ({ ...each })),
   };

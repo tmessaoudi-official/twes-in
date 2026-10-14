@@ -94,12 +94,16 @@ export interface ExpenseRow {
   payee: string | null;
   categoryId: string | null;
   categoryName: string | null;
-  /** Decimal strings at the currency's scale. */
+  /** The supplier's bill as it prints it: its lines, the fixed charges it carries and the tax amounts it prints. */
+  lines: ExpenseLine[];
+  documentTaxComponentIds: string[];
+  printedTaxes: PrintedTax[];
+  /** What the bill charges of each tax, rates first in the order the bill shows them, then the fixed charges. */
+  taxes: ExpenseTax[];
+  /** Decimal strings at the currency's scale: the lines, the rated taxes, the fixed charges, and all of it. */
   amountNet: string;
-  taxComponentId: string | null;
-  /** Percent, three decimals. */
-  taxRate: string | null;
   taxAmount: string;
+  fixedAmount: string;
   amountGross: string;
   currency: string;
   dueDate: string | null;
@@ -118,6 +122,31 @@ export interface ExpenseRow {
   attachmentCount: number;
 }
 
+/** One block of a supplier's bill: a net and the rates on it. */
+export interface ExpenseLine {
+  amountNet: string;
+  taxComponentIds: string[];
+  /** The rates' codes as the expense recorded them; absent on what is sent. */
+  taxCodes?: string[];
+}
+
+/** A tax amount a bill prints where it differs from the worked-out one by the supplier's rounding. */
+export interface PrintedTax {
+  code: string;
+  amount: string;
+}
+
+export interface ExpenseTax {
+  code: string;
+  kind: 'percentage_line' | 'fixed_document';
+  /** Percent, three decimals; null for a fixed charge, which has no base either. */
+  rate: string | null;
+  base: string | null;
+  /** What twes-in works out, and what the bill charges. */
+  workedOut: string;
+  amount: string;
+}
+
 export interface ExpenseInput {
   date: string;
   reference: string | null;
@@ -125,8 +154,9 @@ export interface ExpenseInput {
   vendorId: string | null;
   payee: string | null;
   categoryId: string | null;
-  amountNet: string;
-  taxComponentId: string | null;
+  lines: ExpenseLine[];
+  documentTaxComponentIds: string[];
+  printedTaxes: PrintedTax[];
   notes: string | null;
 }
 
@@ -163,6 +193,16 @@ export interface ExpenseTaxOption {
   code: string;
   name: string;
   rate: string;
+  /** Whether it is added to what VAT is taken on, as FODEC is. */
+  entersVatBase: boolean;
+}
+
+/** A fixed amount a bill may carry once, such as the stamp. */
+export interface ExpenseChargeOption {
+  id: string;
+  code: string;
+  name: string;
+  amount: string;
 }
 
 /**
@@ -174,6 +214,7 @@ export interface ExpenseOptions {
   currencyScale: number;
   categories: Omit<ExpenseCategoryRow, 'isActive'>[];
   taxes: ExpenseTaxOption[];
+  charges: ExpenseChargeOption[];
   paymentMethods: PaymentMethod[];
   /** The TEJ operations a withholding may be declared under, labelled as the administration publishes them; empty
    * for a company that does not declare to TEJ (docs/SPEC.md § 7, 2026-09-26 00:22). */

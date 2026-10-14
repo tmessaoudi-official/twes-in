@@ -13,6 +13,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseRepository;
 use App\Module\Expenses\Domain\TejOperationCode;
+use App\Module\Expenses\Domain\WithholdingOperation;
 use App\Module\Vendors\Domain\Vendor;
 use App\Tenancy\Domain\Company;
 
@@ -117,7 +118,8 @@ final readonly class DeclareTejWithholdings
         }
         $problems[] = null === $expense->getWithholdingOperationCode() ? 'operation_code_missing' : null;
         $problems[] = null === self::rate($expense->getWithholdingRate()) ? 'withholding_rate_too_precise' : null;
-        $problems[] = null === self::rate($expense->getTaxRate()) ? 'tax_rate_too_precise' : null;
+        $tooPrecise = array_filter($expense->getWithholdingOperations(), static fn (WithholdingOperation $operation): bool => null === self::rate($operation->vatRate));
+        $problems[] = [] !== $tooPrecise ? 'tax_rate_too_precise' : null;
 
         return array_values(array_filter($problems, static fn (?string $problem): bool => null !== $problem));
     }
@@ -129,19 +131,29 @@ final readonly class DeclareTejWithholdings
         $profile = $vendor->getProfile();
         $matricule = TejMatricule::parse($profile->identifiers[TejMatricule::KEY] ?? '') ?? throw new \LogicException('A declared vendor has its matricule.');
         $paidOn = $expense->getPaidOn() ?? throw new \LogicException('A declared expense is paid.');
-        $withheld = $expense->getWithholdingAmount() ?? '0';
+        $code = $expense->getWithholdingOperationCode() ?? throw new \LogicException('A declared payment names its operation.');
+        $rate = $expense->getWithholdingRate() ?? '0';
 
-        $operation = new TejOperation(
-            $expense->getWithholdingOperationCode() ?? throw new \LogicException('A declared payment names its operation.'),
-            (int) $expense->getDate()->format('Y'),
-            self::millimes($expense->getAmountNet()),
-            (string) self::rate($expense->getWithholdingRate()),
-            (string) self::rate($expense->getTaxRate()),
-            self::millimes($expense->getTaxAmount()),
-            self::millimes($expense->getAmountGross()),
-            self::millimes($withheld),
-            self::millimes($expense->getAmountPaid()),
-        );
+        // One operation a VAT rate, each withheld on its own amount taxes included, as the payment was: the stamp is in
+        // none of them, so what the supplier was handed exceeds the declared net paid by it.
+        $operations = array_map(static function (WithholdingOperation $operation) use ($code, $expense, $rate): TejOperation {
+            $withheld = $operation->withheld($rate, 3);
+
+            return new TejOperation(
+                $code,
+                (int) $expense->getDate()->format('Y'),
+                self::millimes($operation->amountExcludingVat),
+                (string) self::rate($rate),
+                (string) self::rate($operation->vatRate),
+                self::millimes($operation->vat),
+                self::millimes($operation->amountIncludingVat),
+                self::millimes($withheld),
+                self::millimes((string) Decimal::of($operation->amountIncludingVat)->sub(Decimal::of($withheld))),
+            );
+        }, $expense->getWithholdingOperations());
+        if ([] === $operations) {
+            throw new \LogicException('A bill above zero has a part at a VAT rate or at none.');
+        }
 
         return new TejCertificate(
             $matricule->identifier,
@@ -152,7 +164,7 @@ final readonly class DeclareTejWithholdings
             (string) $profile->phone,
             $paidOn,
             $expense->getId()->toRfc4122(),
-            [$operation],
+            $operations,
         );
     }
 

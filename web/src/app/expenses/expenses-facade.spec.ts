@@ -12,8 +12,9 @@ const input: ExpenseInput = {
   vendorId: null,
   payee: null,
   categoryId: 'k1',
-  amountNet: '100.000',
-  taxComponentId: null,
+  lines: [{ amountNet: '100.000', taxComponentIds: [] }],
+  documentTaxComponentIds: [],
+  printedTaxes: [],
   notes: null,
 };
 const draft: ExpenseRow = {
@@ -22,8 +23,10 @@ const draft: ExpenseRow = {
   status: 'draft',
   vendorName: null,
   categoryName: 'Carburant',
-  taxRate: null,
+  taxes: [],
+  amountNet: '100.000',
   taxAmount: '0.000',
+  fixedAmount: '0.000',
   amountGross: '100.000',
   currency: 'TND',
   dueDate: null,
@@ -48,6 +51,7 @@ const options: ExpenseOptions = {
   currencyScale: 3,
   categories: [],
   taxes: [],
+  charges: [],
   paymentMethods: ['transfer'],
   withholdingOperationCodes: [],
 };

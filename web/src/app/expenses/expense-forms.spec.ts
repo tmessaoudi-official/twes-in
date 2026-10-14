@@ -35,7 +35,8 @@ const options: ExpenseOptions = {
   currency: 'TND',
   currencyScale: 3,
   categories: [vehicles, fuel],
-  taxes: [{ id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000' }],
+  taxes: [{ id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000', entersVatBase: false }],
+  charges: [],
   paymentMethods: ['transfer', 'cash'],
   withholdingOperationCodes: [],
 };
@@ -180,6 +181,7 @@ describe('expense forms', () => {
     const named = expenseForm({
       ...options,
       taxes: [{ ...options.taxes[0]!, name: 'TVA 19\u00a0%' }],
+      charges: [],
     })
       .sections.flatMap((section) => section.fields)
       .find((field) => field.id === 'taxComponentId');
@@ -253,8 +255,9 @@ describe('expense forms', () => {
       vendorId: null,
       payee: null,
       categoryId: 'k2',
-      amountNet: '100.5',
-      taxComponentId: null,
+      lines: [{ amountNet: '100.5', taxComponentIds: [] }],
+      documentTaxComponentIds: [],
+      printedTaxes: [],
       notes: null,
     });
     expect(paymentInput({ paymentMethod: 'check', paidOn: '2026-09-12' })).toEqual({
@@ -367,8 +370,17 @@ describe('expense forms', () => {
       vendorName: 'Ancien fournisseur',
       categoryId: 'k9',
       categoryName: 'Péages',
-      taxComponentId: 't9',
-      taxRate: '7.000',
+      lines: [{ amountNet: '10.000', taxComponentIds: ['t9'] }],
+      taxes: [
+        {
+          code: 'TVA7',
+          kind: 'percentage_line',
+          rate: '7.000',
+          base: '10.000',
+          workedOut: '0.700',
+          amount: '0.700',
+        },
+      ],
     });
     // The vendor is a picker: what the expense says is shown by the page, not added to a list of options here.
     expect(kept.get('vendorId')).toBeUndefined();
@@ -380,8 +392,8 @@ describe('expense forms', () => {
       vendorName: 'Sotumag',
       categoryId: 'k2',
       categoryName: 'Carburant',
-      taxComponentId: null,
-      taxRate: null,
+      lines: [{ amountNet: '10.000', taxComponentIds: [] }],
+      taxes: [],
     });
     expect(offered.get('categoryId')).toHaveLength(3);
     expect(offered.get('taxComponentId')).toHaveLength(2);

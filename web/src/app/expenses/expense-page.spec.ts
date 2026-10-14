@@ -64,7 +64,8 @@ const options: ExpenseOptions = {
     { id: 'k1', name: 'Véhicules', parentId: null },
     { id: 'k2', name: 'Carburant', parentId: 'k1' },
   ],
-  taxes: [{ id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000' }],
+  taxes: [{ id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000', entersVatBase: false }],
+  charges: [],
   paymentMethods: ['transfer', 'cash'],
   withholdingOperationCodes: [],
 };
@@ -83,10 +84,22 @@ const draft: ExpenseRow = {
   payee: null,
   categoryId: 'k2',
   categoryName: 'Carburant',
+  lines: [{ amountNet: '100.000', taxComponentIds: ['t1'], taxCodes: ['TVA19'] }],
+  documentTaxComponentIds: [],
+  printedTaxes: [],
+  taxes: [
+    {
+      code: 'TVA19',
+      kind: 'percentage_line',
+      rate: '19.000',
+      base: '100.000',
+      workedOut: '19.000',
+      amount: '19.000',
+    },
+  ],
   amountNet: '100.000',
-  taxComponentId: 't1',
-  taxRate: '19.000',
   taxAmount: '19.000',
+  fixedAmount: '0.000',
   amountGross: '119.000',
   currency: 'TND',
   dueDate: '2026-10-10',
@@ -268,10 +281,9 @@ describe('ExpensePage', () => {
       'c1',
       expect.objectContaining({
         description: 'Gasoil',
-        amountNet: '100.5',
+        lines: [{ amountNet: '100.5', taxComponentIds: [] }],
         vendorId: 'v1',
         categoryId: 'k2',
-        taxComponentId: null,
       }),
     );
     await vi.waitFor(() =>
@@ -307,7 +319,11 @@ describe('ExpensePage', () => {
     expect(facade.reviseExpense).toHaveBeenCalledWith(
       'c1',
       'e1',
-      expect.objectContaining({ amountNet: '120', vendorId: 'v1', payee: null }),
+      expect.objectContaining({
+        lines: [{ amountNet: '120', taxComponentIds: ['t1'] }],
+        vendorId: 'v1',
+        payee: null,
+      }),
     );
   });
 
@@ -336,7 +352,7 @@ describe('ExpensePage', () => {
     expect(facade.reviseExpense).toHaveBeenCalledWith(
       'c1',
       'e1',
-      expect.objectContaining({ amountNet: '120' }),
+      expect.objectContaining({ lines: [{ amountNet: '120', taxComponentIds: ['t1'] }] }),
     );
     expect(facade.recordExpense).toHaveBeenCalledWith('c1', 'e1');
     expect(facade.reviseExpense.mock.invocationCallOrder[0]).toBeLessThan(

@@ -66,8 +66,8 @@
           <div>
             <dt class="text-sm text-on-surface-variant">
               {{ 'expenses.fields.taxAmount' | translate }}
-              @if (expense.taxRate !== null) {
-                ({{ +expense.taxRate }}&nbsp;%)
+              @if (rates(); as shown) {
+                ({{ shown }})
               }
             </dt>
             <dd class="tabular-nums" data-testid="expense-tax">

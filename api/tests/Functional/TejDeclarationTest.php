@@ -144,7 +144,7 @@ final class TejDeclarationTest extends ApiTestCase
         $category = $this->stringAt($this->json(), 'id');
         $tax = $this->em()->getConnection()->fetchOne('SELECT id FROM tax_component WHERE company_id = ? AND code = ?', [$this->company->getId()->toRfc4122(), 'TVA19']);
         self::assertIsString($tax);
-        $this->postJson($this->expensePath(), ['date' => $this->today->format('Y-m-d'), 'reference' => 'F-'.$net, 'description' => 'Achat '.$net, 'vendorId' => $this->vendor->getId()->toRfc4122(), 'categoryId' => $category, 'amountNet' => $net, 'taxComponentId' => $tax, 'notes' => null]);
+        $this->postJson($this->expensePath(), ['date' => $this->today->format('Y-m-d'), 'reference' => 'F-'.$net, 'description' => 'Achat '.$net, 'vendorId' => $this->vendor->getId()->toRfc4122(), 'categoryId' => $category, 'lines' => [['amountNet' => $net, 'taxComponentIds' => [$tax]]], 'notes' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
         $this->postJson($this->expensePath($id).'/record', null);

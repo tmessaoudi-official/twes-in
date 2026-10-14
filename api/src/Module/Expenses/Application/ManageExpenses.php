@@ -17,11 +17,14 @@ use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
 use App\Files\Domain\Attachment;
 use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Expenses\Domain\Expense;
+use App\Module\Expenses\Domain\ExpenseAmountLine;
+use App\Module\Expenses\Domain\ExpenseAmounts;
 use App\Module\Expenses\Domain\ExpenseCategory;
 use App\Module\Expenses\Domain\ExpenseCategoryRepository;
 use App\Module\Expenses\Domain\ExpenseRepository;
@@ -74,6 +77,7 @@ final readonly class ManageExpenses
         private ClockInterface $clock,
         private Transactions $transactions,
         private ModuleStates $modules,
+        private FiscalPresets $presets,
     ) {
     }
 
@@ -131,7 +135,7 @@ final readonly class ManageExpenses
     public function create(Company $company, ExpenseInput $input, ?Uuid $actorUserId): Expense
     {
         return $this->transactions->run(function () use ($company, $input, $actorUserId): Expense {
-            $expense = Expense::create($company, $input->details, $this->vendor($company, $input->vendorId, null), $this->category($company, $input->categoryId), $this->tax($company, $input->taxComponentId), $this->scales->of($company->getCurrency()), $this->clock->now());
+            $expense = Expense::create($company, $input->details, $this->amounts($company, $input), $this->vendor($company, $input->vendorId, null), $this->category($company, $input->categoryId), $this->scales->of($company->getCurrency()), $this->presets->get($company->getFiscalPreset())->vatRoundingPoint, $this->clock->now());
             $this->expenses->save($expense);
             $this->record($company, $expense->getId(), self::CREATED, [], $actorUserId);
 
@@ -149,7 +153,7 @@ final readonly class ManageExpenses
         return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Expense {
             $expense = $this->get($company, $id);
             $expense->assertDraft('revised');
-            $changed = $expense->revise($input->details, $this->vendor($company, $input->vendorId, $expense->getVendor()), $this->category($company, $input->categoryId), $this->tax($company, $input->taxComponentId), $this->scales->of($company->getCurrency()), $this->clock->now());
+            $changed = $expense->revise($input->details, $this->amounts($company, $input), $this->vendor($company, $input->vendorId, $expense->getVendor()), $this->category($company, $input->categoryId), $this->scales->of($company->getCurrency()), $this->presets->get($company->getFiscalPreset())->vatRoundingPoint, $this->clock->now());
             if ([] !== $changed) {
                 $this->expenses->save($expense);
                 $this->record($company, $expense->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
@@ -231,8 +235,8 @@ final readonly class ManageExpenses
 
     /**
      * What paying this expense withholds unless told otherwise: the company's one active withholding on a total, when
-     * the expense's gross reaches its threshold. The TN preset's RS1 is 1 % from 1 000 TND taxes included (art. 52 of
-     * the IRPP and IS code, docs/fiscal/TN.md § 5). None for an expense that is not recorded, for a company with no
+     * the expense's gross less its fixed charges reaches its threshold. The TN preset's RS1 is 1 % from 1 000 TND taxes
+     * included, the stamp aside (art. 52 of the IRPP and IS code, docs/fiscal/TN.md § 5 and § 5a). None for an expense that is not recorded, for a company with no
      * such withholding, or with several, since which one applies depends on the supplier and is said on the payment.
      */
     public function suggestedWithholdingRate(Company $company, Expense $expense): ?string
@@ -249,7 +253,7 @@ final readonly class ManageExpenses
             return null;
         }
         $threshold = $withholdings[0]->getThreshold();
-        if (null !== $threshold && Decimal::of($expense->getAmountGross())->compare(Decimal::of($threshold)) < 0) {
+        if (null !== $threshold && Decimal::of($expense->getWithholdingBase())->compare(Decimal::of($threshold)) < 0) {
             return null;
         }
 
@@ -388,9 +392,29 @@ final readonly class ManageExpenses
         return null === $id ? null : ($this->categories->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense('categoryId', 'No expense category of this company has this id.'));
     }
 
-    private function tax(Company $company, ?Uuid $id): ?TaxComponent
+    /**
+     * The bill as the expense takes it, each tax looked up in the company.
+     *
+     * @throws InvalidExpense
+     */
+    private function amounts(Company $company, ExpenseInput $input): ExpenseAmounts
     {
-        return null === $id ? null : ($this->taxes->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense('taxComponentId', 'No tax of this company has this id.'));
+        $lines = [];
+        foreach ($input->lines as $at => $line) {
+            try {
+                $lines[] = new ExpenseAmountLine($line['amountNet'], array_map(fn (Uuid $id): TaxComponent => $this->tax($company, $id, 'taxComponentIds'), $line['taxComponentIds']));
+            } catch (InvalidExpense $refused) {
+                throw $refused->within("lines[$at]");
+            }
+        }
+
+        return new ExpenseAmounts($lines, array_map(fn (Uuid $id): TaxComponent => $this->tax($company, $id, 'documentTaxComponentIds'), $input->documentTaxComponentIds), $input->printedTaxes);
+    }
+
+    /** @throws InvalidExpense */
+    private function tax(Company $company, Uuid $id, string $field): TaxComponent
+    {
+        return $this->taxes->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense($field, 'No tax of this company has this id.');
     }
 
     /** @param array<string, mixed> $changes */

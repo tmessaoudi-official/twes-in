@@ -12,6 +12,7 @@ namespace App\Module\Expenses\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Expenses\Domain\ExpenseCategoryRepository;
@@ -44,7 +45,10 @@ final readonly class ExpenseOptionsProvider implements ProviderInterface
         }
         foreach ($this->taxes->ofCompany($company->getId()) as $tax) {
             if ($tax->isActive() && TaxKind::PercentageLine === $tax->getKind()) {
-                $options->taxes[] = ['id' => $tax->getId()->toRfc4122(), 'code' => $tax->getCode(), 'name' => $tax->getName(), 'rate' => (string) $tax->getRate()];
+                $options->taxes[] = ['id' => $tax->getId()->toRfc4122(), 'code' => $tax->getCode(), 'name' => $tax->getName(), 'rate' => (string) $tax->getRate(), 'entersVatBase' => $tax->entersVatBase()];
+            }
+            if ($tax->isActive() && TaxKind::FixedDocument === $tax->getKind()) {
+                $options->charges[] = ['id' => $tax->getId()->toRfc4122(), 'code' => $tax->getCode(), 'name' => $tax->getName(), 'amount' => Decimal::format(Decimal::of($tax->getAmount() ?? '0'), $options->currencyScale)];
             }
         }
         $options->paymentMethods = ExpenseResource::methods();

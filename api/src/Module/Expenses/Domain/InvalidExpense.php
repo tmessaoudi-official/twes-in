@@ -16,4 +16,10 @@ final class InvalidExpense extends \DomainException
     {
         parent::__construct($message);
     }
+
+    /** The same refusal named under what holds the field, such as `lines[1]`. */
+    public function within(string $parent): self
+    {
+        return new self($parent.'.'.$this->field, $this->getMessage());
+    }
 }

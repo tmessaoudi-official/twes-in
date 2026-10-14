@@ -18,9 +18,14 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Fiscal\Domain\TaxKind;
 use App\Module\Expenses\Application\ExpenseInput;
 use App\Module\Expenses\Domain\Expense;
+use App\Module\Expenses\Domain\ExpenseAmounts;
 use App\Module\Expenses\Domain\ExpenseDetails;
+use App\Module\Expenses\Domain\ExpenseLine;
+use App\Module\Expenses\Domain\ExpenseLineTax;
+use App\Module\Expenses\Domain\ExpenseTax;
 use App\Module\Expenses\Domain\InvalidExpense;
 use App\Module\Expenses\Domain\TejOperationCode;
 use App\Shared\Domain\PaymentMethod;
@@ -186,23 +191,110 @@ final class ExpenseResource
     #[Groups([self::READ])]
     public ?string $categoryName = null;
 
-    /** Above 0, at most the currency's decimals. */
+    /**
+     * The supplier's bill as it prints it (docs/plans/expense-taxes.plan.md), in order: each line a net above 0 at
+     * most the currency's decimals and the rates on it, one VAT rate at most and FODEC; a bill at two VAT rates has a
+     * line for each. A refusal names `lines[i].amountNet` or `lines[i].taxComponentIds`.
+     *
+     * @var list<array<string, mixed>>
+     */
+    #[ApiProperty(schema: [
+        'type' => 'array',
+        'minItems' => 1,
+        'maxItems' => ExpenseAmounts::LINES_MAX,
+        'items' => [
+            'type' => 'object',
+            'required' => ['amountNet'],
+            'properties' => [
+                'amountNet' => ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\\.[0-9]{1,3})?$', 'example' => '1000'],
+                'taxComponentIds' => ['type' => 'array', 'items' => self::ID, 'description' => 'Rates on the net of the company: one VAT rate at most, and levies such as FODEC, which enters the VAT base.'],
+                'taxCodes' => ['type' => 'array', 'items' => ['type' => 'string'], 'readOnly' => true, 'description' => 'The codes the line was taxed under when written.'],
+            ],
+        ],
+    ])]
     #[Assert\NotBlank(groups: [self::WRITE])]
+    #[Assert\Type('list', groups: [self::WRITE])]
+    #[Assert\All([new Assert\Collection(fields: [
+        'amountNet' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'taxComponentIds' => new Assert\Optional([
+            new Assert\Type('list', groups: [self::WRITE]),
+            new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        ], groups: [self::WRITE]),
+    ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    public string $amountNet = '';
+    public array $lines = [];
 
-    /** A rate on the net: VAT or a levy. */
-    #[Assert\Uuid(groups: [self::WRITE])]
+    /**
+     * The fixed charges the bill carries, such as the stamp; an empty list for none.
+     *
+     * @var list<string>
+     */
+    #[ApiProperty(schema: ['type' => 'array', 'items' => self::ID])]
+    #[Assert\Type('list', groups: [self::WRITE])]
+    #[Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    public ?string $taxComponentId = null;
+    public array $documentTaxComponentIds = [];
 
+    /**
+     * The tax amounts the bill prints where they differ from what is worked out, by tax code: each a rate of the bill,
+     * at most one unit of the currency's last decimal a line from what it works out to. Refused on `printedTaxes`.
+     *
+     * @var list<array<string, mixed>>
+     */
+    #[ApiProperty(schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['code', 'amount'],
+            'properties' => ['code' => ['type' => 'string', 'example' => 'TVA19'], 'amount' => ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\\.[0-9]{1,3})?$', 'example' => '191.901']],
+        ],
+    ])]
+    #[Assert\Type('list', groups: [self::WRITE])]
+    #[Assert\All([new Assert\Collection(fields: [
+        'code' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'amount' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+    ], groups: [self::WRITE])], groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public array $printedTaxes = [];
+
+    /** What the lines come to excluding taxes. */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
-    public ?string $taxRate = null;
+    public string $amountNet = '';
 
+    /**
+     * Each tax the bill charges: the rates in the order printed with their base, then the fixed charges with none;
+     * `workedOut` is what twes-in works out, `amount` what the bill charges.
+     *
+     * @var list<array{code: string, kind: string, rate: string|null, base: string|null, workedOut: string, amount: string}>
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['code', 'kind', 'rate', 'base', 'workedOut', 'amount'],
+            'properties' => [
+                'code' => ['type' => 'string'],
+                'kind' => ['type' => 'string', 'enum' => ['percentage_line', 'fixed_document']],
+                'rate' => ['type' => ['string', 'null']],
+                'base' => ['type' => ['string', 'null']],
+                'workedOut' => ['type' => 'string'],
+                'amount' => ['type' => 'string'],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $taxes = [];
+
+    /** What the rates come to, as the bill charges them. */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
     public string $taxAmount = '';
+
+    /** What the fixed charges come to: the stamp. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $fixedAmount = '';
 
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
@@ -286,10 +378,25 @@ final class ExpenseResource
         $resource->payee = $expense->getPayee();
         $resource->categoryId = $expense->getCategory()?->getId()->toRfc4122();
         $resource->categoryName = $expense->getCategory()?->getName();
+        $resource->lines = array_map(static fn (ExpenseLine $line): array => [
+            'amountNet' => $amount($line->getAmountNet()),
+            'taxComponentIds' => array_map(static fn (ExpenseLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
+            'taxCodes' => $line->getTaxCodes(),
+        ], $expense->getLines());
+        $taxes = $expense->getTaxes();
+        $resource->documentTaxComponentIds = array_values(array_map(static fn (ExpenseTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), array_filter($taxes, static fn (ExpenseTax $tax): bool => TaxKind::FixedDocument === $tax->getKind())));
+        $resource->printedTaxes = array_values(array_map(static fn (ExpenseTax $tax): array => ['code' => $tax->getCode(), 'amount' => $amount($tax->getAmount())], array_filter($taxes, static fn (ExpenseTax $tax): bool => $tax->isPrinted())));
+        $resource->taxes = array_map(static fn (ExpenseTax $tax): array => [
+            'code' => $tax->getCode(),
+            'kind' => $tax->getKind()->value,
+            'rate' => $tax->getRate(),
+            'base' => null === $tax->getBase() ? null : $amount($tax->getBase()),
+            'workedOut' => $amount($tax->getWorkedOutAmount()),
+            'amount' => $amount($tax->getAmount()),
+        ], $taxes);
         $resource->amountNet = $amount($expense->getAmountNet());
-        $resource->taxComponentId = $expense->getTaxComponent()?->getId()->toRfc4122();
-        $resource->taxRate = $expense->getTaxRate();
         $resource->taxAmount = $amount($expense->getTaxAmount());
+        $resource->fixedAmount = $amount($expense->getFixedAmount());
         $resource->amountGross = $amount($expense->getAmountGross());
         $resource->currency = $expense->getCurrency();
         $resource->dueDate = $expense->getDueDate()?->format('Y-m-d');
@@ -311,11 +418,22 @@ final class ExpenseResource
     {
         $uuid = static fn (?string $id): ?Uuid => null === $id ? null : Uuid::fromString($id);
 
+        $uuids = static fn (mixed $ids): array => \is_array($ids) ? array_values(array_map(static fn (mixed $id): Uuid => Uuid::fromString(\is_string($id) ? $id : ''), $ids)) : [];
+        $printed = [];
+        foreach ($this->printedTaxes as $tax) {
+            $printed[\is_string($tax['code'] ?? null) ? $tax['code'] : ''] = \is_string($tax['amount'] ?? null) ? $tax['amount'] : '';
+        }
+
         return new ExpenseInput(
-            new ExpenseDetails(new \DateTimeImmutable($this->date, new \DateTimeZone('UTC')), $this->description, $this->amountNet, $this->reference, $this->notes, $this->payee),
+            new ExpenseDetails(new \DateTimeImmutable($this->date, new \DateTimeZone('UTC')), $this->description, $this->reference, $this->notes, $this->payee),
+            array_map(static fn (array $line): array => [
+                'amountNet' => \is_string($line['amountNet'] ?? null) ? $line['amountNet'] : '',
+                'taxComponentIds' => $uuids($line['taxComponentIds'] ?? []),
+            ], $this->lines),
             $uuid($this->vendorId),
             $uuid($this->categoryId),
-            $uuid($this->taxComponentId),
+            $uuids($this->documentTaxComponentIds),
+            $printed,
         );
     }
 

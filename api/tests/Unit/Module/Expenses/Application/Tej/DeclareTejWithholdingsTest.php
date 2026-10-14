@@ -9,11 +9,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Expenses\Application\Tej;
 
+use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxFamily;
 use App\Module\Expenses\Application\Tej\DeclareTejWithholdings;
 use App\Module\Expenses\Application\Tej\TejDeclarationRefused;
 use App\Module\Expenses\Domain\Expense;
+use App\Module\Expenses\Domain\ExpenseAmountLine;
+use App\Module\Expenses\Domain\ExpenseAmounts;
 use App\Module\Expenses\Domain\ExpenseCategory;
 use App\Module\Expenses\Domain\ExpenseDetails;
 use App\Module\Expenses\Domain\ExpenseRepository;
@@ -91,6 +94,33 @@ final class DeclareTejWithholdingsTest extends TestCase
         self::assertSame([TejOperationCode::Rs7_000006, '0', 0, 2380000, 2380000], [$zero->code, $zero->withholdingRate, $zero->withheld, $zero->amountGross, $zero->netPaid], 'an exempt supplier is declared at 0 %');
     }
 
+    /**
+     * A bill at two VAT rates is one certificate of two operations, each withheld on its own amount taxes included:
+     * FODEC inside the 19 % part's amount excluding VAT, the stamp in neither (docs/research/tax-data-tunisia.md § 2.2).
+     */
+    public function testABillAtTwoRatesIsOneCertificateOfAnOperationARateEachWithheldOnItsOwnAmount(): void
+    {
+        $fodec = TaxComponent::create($this->acme, 'FODEC', 'FODEC', TaxFamily::Levy, '1', null, null, true, false, null, 1, 3, $this->now);
+        $vat7 = TaxComponent::create($this->acme, 'TVA7', 'TVA7', TaxFamily::Vat, '7', null, null, false, false, null, 2, 3, $this->now);
+        $stamp = TaxComponent::create($this->acme, 'TIMBRE', 'Timbre', TaxFamily::Stamp, null, '1.000', null, false, false, null, 3, 3, $this->now);
+        $bill = new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $fodec]), new ExpenseAmountLine('200', [$vat7])], [$stamp]);
+        $expense = Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable('2026-09-01'), 'Quincaillerie', 'F-77'), $bill, $this->sotumag, $this->purchases, 3, RoundingPoint::PerRateGroup, $this->now);
+        $expense->record($this->now);
+        $expense->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-10'), new \DateTimeImmutable('2026-09-20'), $this->now, '1.5', 3, TejOperationCode::Rs7_000001);
+        $this->stored[] = $expense;
+
+        $certificates = $this->declare(2026, 9)->certificates;
+
+        self::assertCount(1, $certificates);
+        // 1010 with FODEC at 19 % is 191.900, 1201.900 in all, 1.5 % of it 18.0285 → 18.029; 200 at 7 % is 214.000, 3.210.
+        self::assertSame(
+            [['19', 1010000, 191900, 1201900, 18029, 1183871], ['7', 200000, 14000, 214000, 3210, 210790]],
+            array_map(static fn ($operation): array => [$operation->vatRate, $operation->amountNet, $operation->vatAmount, $operation->amountGross, $operation->withheld, $operation->netPaid], $certificates[0]->operations),
+        );
+        self::assertSame('21.239', $expense->getWithholdingAmount(), 'what the payment withheld is what the certificate declares');
+        self::assertSame(['amountNet' => 1210000, 'vatAmount' => 205900, 'amountGross' => 1415900, 'withheld' => 21239, 'netPaid' => 1394661], $certificates[0]->totals(), 'the stamp is in no operation');
+    }
+
     public function testTheInvoiceYearIsTheExpensesOwn(): void
     {
         $this->paid('1500', '2026-09-02', '1', TejOperationCode::Rs7_000002, '2025-12-30');
@@ -147,7 +177,7 @@ final class DeclareTejWithholdingsTest extends TestCase
     private function paid(string $net, string $paidOn, string $rate, ?TejOperationCode $code = null, string $date = '2026-09-01', string $today = '2026-09-20', Vendor|bool $vendor = true): Expense
     {
         $from = true === $vendor ? $this->sotumag : (false === $vendor ? null : $vendor);
-        $expense = Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable($date), 'Achat '.$net, $net, 'F-'.$net), $from, $this->purchases, $this->vat19, 3, $this->now);
+        $expense = Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable($date), 'Achat '.$net, 'F-'.$net), ExpenseAmounts::one($net, $this->vat19), $from, $this->purchases, 3, RoundingPoint::PerRateGroup, $this->now);
         $expense->record($this->now);
         $expense->pay(PaymentMethod::Transfer, new \DateTimeImmutable($paidOn), new \DateTimeImmutable($today), $this->now, $rate, 3, $code);
         self::assertSame(ExpenseStatus::Paid, $expense->getStatus());

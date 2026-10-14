@@ -52,7 +52,7 @@ final class ExpenseExportTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('expenses.csv', (string) $this->client->getResponse()->headers->get('Content-Disposition'));
         $header = array_map(strval(...), str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"), escape: ''));
-        self::assertSame(['date', 'reference', 'description', 'vendor', 'category', 'currency', 'amount_net', 'tax_amount', 'amount_gross', 'withholding_amount', 'amount_to_pay', 'status', 'due_date', 'paid_on', 'payment_method', 'notes'], $header);
+        self::assertSame(['date', 'reference', 'description', 'vendor', 'category', 'currency', 'amount_net', 'tax_amount', 'fixed_amount', 'amount_gross', 'withholding_amount', 'amount_to_pay', 'status', 'due_date', 'paid_on', 'payment_method', 'notes'], $header);
         self::assertCount(3, $lines, 'the header and the two expenses');
         $rows = array_column(array_map(static fn (string $line): array => array_combine($header, str_getcsv($line, escape: '')), \array_slice($lines, 1)), null, 'description');
         $fuel = $rows['Gasoil septembre'];
@@ -117,8 +117,7 @@ final class ExpenseExportTest extends ApiTestCase
             'description' => $description,
             'vendorId' => $this->vendorId,
             'categoryId' => $categoryId,
-            'amountNet' => $net,
-            'taxComponentId' => $tax,
+            'lines' => [['amountNet' => $net, 'taxComponentIds' => [$tax]]],
             'notes' => null,
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
