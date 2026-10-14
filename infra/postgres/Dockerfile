@@ -20,7 +20,7 @@ FROM postgres:18.6-trixie
 
 ARG PGBACKREST_VERSION=2.59.3-1.pgdg13+1
 ARG RESTIC_VERSION=0.18.0-1+b4
-ARG CURL_VERSION=8.14.1-2+deb13u5
+ARG CURL_VERSION=8.14.1-2+deb13u7
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends "pgbackrest=${PGBACKREST_VERSION}" "restic=${RESTIC_VERSION}" "curl=${CURL_VERSION}" ca-certificates \
