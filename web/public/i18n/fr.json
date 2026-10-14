@@ -2907,7 +2907,6 @@
     },
     "sections": {
       "expense": "Dépense",
-      "amounts": "Montants",
       "notes": "Notes",
       "payment": "Paiement",
       "tej": "Déclaration TEJ"
@@ -2920,7 +2919,6 @@
       "payee": "Payé à",
       "categoryId": "Catégorie",
       "amountNet": "Montant HT",
-      "taxComponentId": "Taxe",
       "taxAmount": "Taxe",
       "amountGross": "Total TTC",
       "dueDate": "Échéance",
@@ -2939,8 +2937,6 @@
       "payee_hint": "Quand aucun fournisseur enregistré ne convient : un parking, un notaire, une administration.",
       "no_category": "Aucune catégorie",
       "category_hint": "Seules les catégories actives sont proposées.",
-      "net_hint": "Hors taxes, sans plus de décimales que la devise n’en compte.",
-      "no_tax": "Aucune taxe",
       "notes_hint": "Pour votre équipe uniquement.",
       "withholding_hint": "Proposée à 1 % dès 1 000 TND TTC ; indiquez 0 pour un achat exclu ou un fournisseur exonéré, ou le taux qui s’applique au fournisseur.",
       "tej_hint": "Code de la plateforme TEJ, à indiquer pour déclarer cette retenue."

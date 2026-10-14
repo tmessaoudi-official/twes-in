@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { FormArray, FormControl, FormGroup, type ValidatorFn } from '@angular/forms';
 import type {
   FieldOption,
   FieldValue,
@@ -16,11 +17,13 @@ import {
   type ExpenseCategoryRow,
   type ExpenseInput,
   type ExpenseLine,
+  type PrintedTax,
   type ExpenseOptions,
   type ExpensePayment,
   type ExpenseRow,
   type ExpenseSearch,
   type ExpenseSortKey,
+  type ExpenseTax,
   type PaymentMethod,
   EXPENSE_STATUS_TONES,
 } from './expenses-types';
@@ -221,12 +224,6 @@ export function expenseForm(
   // The vendor is not here: a picker shows what the expense itself says, so nothing has to be added to its options.
   const chosen: Record<string, readonly [string | null, string]> = {
     categoryId: [current.categoryId, current.categoryName ?? current.categoryId ?? ''],
-    taxComponentId: [
-      current.lines[0]?.taxComponentIds[0] ?? null,
-      current.taxes[0]?.rate == null
-        ? (current.lines[0]?.taxComponentIds[0] ?? '')
-        : `${Number(current.taxes[0].rate)} %`,
-    ],
   };
   return {
     ...descriptor,
@@ -250,10 +247,13 @@ export function expenseForm(
 /** What an expense has chosen, named as it was when the expense was read. */
 export type ExpenseChoices = Pick<
   ExpenseRow,
-  'vendorId' | 'vendorName' | 'categoryId' | 'categoryName' | 'lines' | 'taxes'
+  'vendorId' | 'vendorName' | 'categoryId' | 'categoryName'
 >;
 
-/** The form over what the company offers today; a deactivated vendor or category is not among it. */
+/**
+ * The form over what the company offers today; a deactivated vendor or category is not among it. What the bill
+ * charges is not here: its lines are edited beside the form (`billGroup`).
+ */
 function offeredExpenseForm(options: ExpenseOptions, vendors: boolean): FormDescriptor {
   const none = (label: string): FieldOption => ({ value: '', label });
   return {
@@ -319,33 +319,6 @@ function offeredExpenseForm(options: ExpenseOptions, vendors: boolean): FormDesc
         ],
       },
       {
-        id: 'amounts',
-        title: 'expenses.sections.amounts',
-        fields: [
-          {
-            id: 'amountNet',
-            label: `${FIELDS}.amountNet`,
-            kind: 'decimal',
-            required: true,
-            maxLength: 16,
-            pattern: amountPattern(options.currencyScale),
-            hint: 'expenses.form.net_hint',
-          },
-          {
-            id: 'taxComponentId',
-            label: `${FIELDS}.taxComponentId`,
-            kind: 'select',
-            options: [
-              none('expenses.form.no_tax'),
-              ...options.taxes.map((tax) => ({
-                value: tax.id,
-                label: taxLabel(tax.name, tax.rate),
-              })),
-            ],
-          },
-        ],
-      },
-      {
         id: 'notes',
         title: 'expenses.sections.notes',
         fields: [
@@ -372,18 +345,22 @@ export function expenseValues(row: ExpenseRow | null, today: string): FormValues
     vendorId: row?.vendorId ?? '',
     payee: row?.payee ?? '',
     categoryId: row?.categoryId ?? '',
-    amountNet: row?.lines[0]?.amountNet ?? '',
-    taxComponentId: row?.lines[0]?.taxComponentIds[0] ?? '',
     notes: row?.notes ?? '',
   };
 }
 
+/** What an expense says besides its bill. */
+export type ExpenseHeader = Omit<ExpenseInput, keyof ExpenseBill>;
+
 /**
- * The form's values as the API takes them: trimmed, an empty field as no value, a decimal comma as a point. A form
- * with no vendor field (Vendors switched off) sends back the vendor the draft keeps; a payee goes only without a
- * vendor, since a hidden field keeps what was typed in it.
+ * The form's values as the API takes them: trimmed, an empty field as no value. A form with no vendor field (Vendors
+ * switched off) sends back the vendor the draft keeps; a payee goes only without a vendor, since a hidden field keeps
+ * what was typed in it.
  */
-export function expenseInput(values: FormValues, keptVendorId: string | null = null): ExpenseInput {
+export function expenseInput(
+  values: FormValues,
+  keptVendorId: string | null = null,
+): ExpenseHeader {
   const vendorId = 'vendorId' in values ? text(values['vendorId']) : keptVendorId;
   return {
     date: String(values['date'] ?? '').trim(),
@@ -392,19 +369,189 @@ export function expenseInput(values: FormValues, keptVendorId: string | null = n
     vendorId,
     payee: vendorId === null ? text(values['payee']) : null,
     categoryId: text(values['categoryId']),
-    lines: [lineOf(values)],
-    documentTaxComponentIds: [],
-    printedTaxes: [],
     notes: text(values['notes']),
   };
 }
 
-function lineOf(values: FormValues): ExpenseLine {
-  const tax = text(values['taxComponentId']);
-  return {
-    amountNet: String(values['amountNet'] ?? '').trim(),
-    taxComponentIds: tax === null ? [] : [tax],
+/** The supplier's bill as the API takes it: its lines, the fixed charges it carries, the amounts it prints. */
+export type ExpenseBill = Pick<ExpenseInput, 'lines' | 'documentTaxComponentIds' | 'printedTaxes'>;
+
+export interface BillLineControls {
+  amountNet: FormControl<string>;
+  taxComponentIds: FormControl<string[]>;
+}
+export type BillLineGroup = FormGroup<BillLineControls>;
+
+export interface BillControls {
+  lines: FormArray<BillLineGroup>;
+  /** The fixed charges ticked, such as the stamp. */
+  charges: FormControl<string[]>;
+  /** By a rated tax's code, the amount the bill prints for it; empty where it prints what twes-in works out. */
+  printed: FormGroup<Record<string, FormControl<string>>>;
+}
+export type BillGroup = FormGroup<BillControls>;
+export type BillValue = ReturnType<BillGroup['getRawValue']>;
+
+/** What a draft's bill holds, as the API answered it. */
+export type SavedBill = Pick<
+  ExpenseRow,
+  'lines' | 'documentTaxComponentIds' | 'printedTaxes' | 'taxes'
+>;
+
+/** The whole value matches, so a stray space around a number is not a mistake. */
+function matching(pattern: string): ValidatorFn {
+  const whole = new RegExp(`^(${pattern})$`);
+  return (control) => {
+    const value = String(control.value ?? '').trim();
+    return value === '' || whole.test(value) ? null : { pattern: true };
   };
+}
+
+const netGiven: ValidatorFn = (control) => {
+  const value = String(control.value ?? '').trim();
+  if (value === '') return { required: true };
+  return /^[0.]+$/.test(value) ? { positive: true } : null;
+};
+
+/** A line carries one VAT rate beside any levy taxed by it, as FODEC is: a bill at two rates has a line for each. */
+function oneVat(options: ExpenseOptions): ValidatorFn {
+  const vat = new Set(options.taxes.filter((tax) => !tax.entersVatBase).map((tax) => tax.id));
+  return (control) => {
+    const ids = (control.value ?? []) as readonly string[];
+    return ids.filter((id) => vat.has(id)).length > 1 ? { oneVat: true } : null;
+  };
+}
+
+/** One line of the bill at its values; a new one is a net to give, untaxed until a rate is chosen. */
+export function billLineGroup(line: ExpenseLine | null, options: ExpenseOptions): BillLineGroup {
+  return new FormGroup<BillLineControls>({
+    amountNet: new FormControl(line?.amountNet ?? '', {
+      nonNullable: true,
+      validators: [netGiven, matching(amountPattern(options.currencyScale))],
+    }),
+    taxComponentIds: new FormControl<string[]>([...(line?.taxComponentIds ?? [])], {
+      nonNullable: true,
+      validators: [oneVat(options)],
+    }),
+  });
+}
+
+/**
+ * The bill's controls at a draft's values. A new expense starts on one line with no fixed charge ticked: the stamp is
+ * on a bill or not, and nobody is told it is. A printed amount is asked for each rate the saved draft charges, since
+ * what it works out to is known only once the API has worked it out.
+ */
+export function billGroup(row: SavedBill | null, options: ExpenseOptions): BillGroup {
+  const lines = (row?.lines ?? []).map((line) => billLineGroup(line, options));
+  const given = new Map((row?.printedTaxes ?? []).map((tax) => [tax.code, tax.amount]));
+  const printed: Record<string, FormControl<string>> = {};
+  for (const tax of row?.taxes ?? []) {
+    if (tax.rate === null) continue;
+    printed[tax.code] = new FormControl(given.get(tax.code) ?? '', {
+      nonNullable: true,
+      validators: [matching(amountPattern(options.currencyScale))],
+    });
+  }
+  return new FormGroup<BillControls>({
+    lines: new FormArray(lines.length > 0 ? lines : [billLineGroup(null, options)]),
+    charges: new FormControl<string[]>([...(row?.documentTaxComponentIds ?? [])], {
+      nonNullable: true,
+    }),
+    printed: new FormGroup(printed),
+  });
+}
+
+/** Each rate's code by its id: the company's, and those a draft still carries though they are no longer offered. */
+function taxCodes(options: ExpenseOptions, row: SavedBill | null): Map<string, string> {
+  const codes = new Map<string, string>();
+  for (const line of row?.lines ?? []) {
+    line.taxComponentIds.forEach((id, at) => {
+      const code = line.taxCodes?.[at];
+      if (code !== undefined) codes.set(id, code);
+    });
+  }
+  for (const tax of options.taxes) codes.set(tax.id, tax.code);
+  return codes;
+}
+
+/**
+ * The bill as the API takes it: each net trimmed, and a printed amount only for a rate some line still carries, so
+ * one left behind by a removed line is not sent.
+ */
+export function billInput(
+  bill: BillValue,
+  options: ExpenseOptions,
+  row: SavedBill | null,
+): ExpenseBill {
+  const codes = taxCodes(options, row);
+  const carried = new Set(
+    bill.lines.flatMap((line) => line.taxComponentIds.map((id) => codes.get(id) ?? id)),
+  );
+  const printedTaxes: PrintedTax[] = Object.entries(bill.printed).flatMap(([code, amount]) => {
+    const given = amount.trim();
+    return given !== '' && carried.has(code) ? [{ code, amount: given }] : [];
+  });
+  return {
+    lines: bill.lines.map((line) => ({
+      amountNet: line.amountNet.trim(),
+      taxComponentIds: [...line.taxComponentIds],
+    })),
+    documentTaxComponentIds: [...bill.charges],
+    printedTaxes,
+  };
+}
+
+/** The rates a line may carry, named with their rate; one a draft carries stays offered so it can be taken off. */
+export function billTaxOptions(options: ExpenseOptions, row: SavedBill | null): FieldOption[] {
+  const offered = options.taxes.map((tax) => ({
+    value: tax.id,
+    label: taxLabel(tax.name, tax.rate),
+  }));
+  const known = new Set(offered.map((option) => option.value));
+  const rates = new Map((row?.taxes ?? []).map((tax) => [tax.code, tax.rate]));
+  const kept: FieldOption[] = [];
+  for (const [id, code] of taxCodes({ ...options, taxes: [] }, row)) {
+    if (known.has(id)) continue;
+    known.add(id);
+    const rate = rates.get(code);
+    kept.push({ value: id, label: rate == null ? code : taxLabel(code, rate) });
+  }
+  return [...offered, ...kept];
+}
+
+/** As many lines as the API takes on one bill. */
+export const BILL_LINES_MAX = 50;
+
+/** A tax the bill charges as the figures name it: a rate by its name and rate, a fixed charge by its name. */
+export function billTaxName(options: ExpenseOptions, tax: ExpenseTax): string {
+  if (tax.rate === null) {
+    return options.charges.find((charge) => charge.code === tax.code)?.name ?? tax.code;
+  }
+  const offered = options.taxes.find((each) => each.code === tax.code);
+  return taxLabel(offered?.name ?? tax.code, tax.rate);
+}
+
+/** A fixed charge a bill may carry, with what it charges; null for one no longer offered, whose amount is not known. */
+export interface BillChargeOption {
+  id: string;
+  label: string;
+  amount: string | null;
+}
+
+export function billChargeOptions(
+  options: ExpenseOptions,
+  row: SavedBill | null,
+): BillChargeOption[] {
+  const offered = options.charges.map((charge) => ({
+    id: charge.id,
+    label: charge.name,
+    amount: charge.amount,
+  }));
+  const known = new Set(offered.map((option) => option.id));
+  const kept = (row?.documentTaxComponentIds ?? [])
+    .filter((id) => !known.has(id))
+    .map((id) => ({ id, label: 'expenses.bill.charge_retired', amount: null }));
+  return [...offered, ...kept];
 }
 
 /** How and when a recorded expense was paid. */

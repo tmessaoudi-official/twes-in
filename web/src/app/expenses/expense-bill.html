@@ -1,0 +1,174 @@
+<section class="flex flex-col gap-4" data-testid="expense-bill">
+  <div class="flex flex-col gap-1">
+    <h2 class="text-xl font-semibold">{{ 'expenses.bill.title' | translate }}</h2>
+    @if (!readOnly()) {
+      <p class="text-sm text-on-surface-variant">{{ 'expenses.bill.hint' | translate }}</p>
+    }
+  </div>
+
+  @if (readOnly()) {
+    <ul class="flex flex-col gap-2">
+      @for (line of readLines(); track $index; let i = $index) {
+        <li
+          class="flex flex-wrap items-baseline justify-between gap-x-4"
+          [attr.data-testid]="'bill-line-' + i"
+        >
+          <span>{{ line.taxes || ('expenses.bill.untaxed' | translate) }}</span>
+          <span class="tabular-nums">
+            {{ line.amountNet | amount: options().currencyScale }} {{ options().currency }}
+          </span>
+        </li>
+      }
+    </ul>
+  } @else {
+    @for (line of lines(); track line; let i = $index) {
+      <fieldset
+        class="flex min-w-0 flex-col gap-2 rounded-xl border border-outline-variant p-4"
+        [formGroup]="line"
+        [attr.data-testid]="'bill-line-' + i"
+      >
+        <legend class="px-1 text-base font-semibold">
+          {{ 'expenses.bill.line' | translate: { position: i + 1 } }}
+        </legend>
+        <div class="grid items-start gap-x-4 gap-y-2 sm:grid-cols-3">
+          <div class="flex flex-col">
+            <mat-form-field>
+              <mat-label>{{ 'expenses.bill.net' | translate }}</mat-label>
+              <input
+                matInput
+                formControlName="amountNet"
+                appDecimal
+                required
+                autocomplete="off"
+                [attr.data-testid]="'bill-line-' + i + '-net'"
+              />
+              <mat-hint>{{
+                'expenses.bill.net_hint' | translate: { currency: options().currency }
+              }}</mat-hint>
+            </mat-form-field>
+            @if (netError(line); as key) {
+              <span
+                role="alert"
+                class="px-4 pt-1 pb-2 text-xs text-error"
+                [attr.data-testid]="'bill-line-' + i + '-net-error'"
+                >{{ key | translate }}</span
+              >
+            }
+          </div>
+          <div class="flex min-w-0 flex-col sm:col-span-2">
+            <app-select
+              [multiple]="true"
+              formControlName="taxComponentIds"
+              [options]="taxOptions()"
+              [label]="'expenses.bill.taxes' | translate"
+              [labelInside]="true"
+              [inputId]="'bill-line-' + i + '-taxes-input'"
+              [testId]="'bill-line-' + i + '-taxes'"
+              emptyLabel="expenses.bill.untaxed"
+            />
+            @if (taxesError(line); as key) {
+              <span
+                role="alert"
+                class="px-4 pb-2 text-xs text-error"
+                [attr.data-testid]="'bill-line-' + i + '-taxes-error'"
+                >{{ key | translate }}</span
+              >
+            }
+          </div>
+        </div>
+        @if (lines().length > 1) {
+          <div class="flex justify-end">
+            <button
+              mat-button
+              type="button"
+              (click)="remove(i)"
+              [attr.data-testid]="'bill-line-' + i + '-remove'"
+              [attr.aria-label]="'expenses.bill.remove' | translate: { position: i + 1 }"
+            >
+              {{ 'expenses.bill.remove_short' | translate }}
+            </button>
+          </div>
+        }
+      </fieldset>
+    }
+    <div>
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="add()"
+        [disabled]="full()"
+        data-testid="bill-add-line"
+      >
+        {{ 'expenses.bill.add_line' | translate }}
+      </button>
+    </div>
+
+    @if (charges().length > 0) {
+      <fieldset class="flex flex-col gap-1" data-testid="bill-charges">
+        <legend class="text-base font-semibold">{{ 'expenses.bill.charges' | translate }}</legend>
+        <p class="text-sm text-on-surface-variant">
+          {{ 'expenses.bill.charges_hint' | translate }}
+        </p>
+        @for (charge of charges(); track charge.id) {
+          <mat-checkbox
+            [checked]="ticked(charge.id)"
+            (change)="tick(charge.id, $event.checked)"
+            [attr.data-testid]="'bill-charge-' + charge.id"
+          >
+            {{ charge.label | translate }}
+            @if (charge.amount !== null) {
+              <span class="tabular-nums">
+                ({{ charge.amount | amount: options().currencyScale }} {{ options().currency }})
+              </span>
+            }
+          </mat-checkbox>
+        }
+      </fieldset>
+    }
+
+    @if (printed().length > 0) {
+      <fieldset
+        class="flex flex-col gap-2"
+        [formGroup]="bill().controls.printed"
+        data-testid="bill-printed"
+      >
+        <legend class="text-base font-semibold">{{ 'expenses.bill.printed' | translate }}</legend>
+        <p class="text-sm text-on-surface-variant">
+          {{ 'expenses.bill.printed_hint' | translate }}
+        </p>
+        <div class="grid items-start gap-x-4 gap-y-2 sm:grid-cols-3">
+          @for (tax of printed(); track tax.code) {
+            <div class="flex flex-col">
+              <mat-form-field>
+                <mat-label>{{ tax.name }}</mat-label>
+                <input
+                  matInput
+                  [formControlName]="tax.code"
+                  appDecimal
+                  autocomplete="off"
+                  [attr.data-testid]="'bill-printed-' + tax.code"
+                />
+                <mat-hint>{{
+                  'expenses.bill.worked_out'
+                    | translate: { amount: tax.workedOut | amount: options().currencyScale }
+                }}</mat-hint>
+              </mat-form-field>
+              @if (printedError(tax.code)) {
+                <span
+                  role="alert"
+                  class="px-4 pt-1 pb-2 text-xs text-error"
+                  [attr.data-testid]="'bill-printed-' + tax.code + '-error'"
+                  >{{ 'expenses.bill.net_pattern' | translate }}</span
+                >
+              }
+            </div>
+          }
+        </div>
+      </fieldset>
+    } @else if (printedLater()) {
+      <p class="text-sm text-on-surface-variant" data-testid="bill-printed-later">
+        {{ 'expenses.bill.printed_later' | translate }}
+      </p>
+    }
+  }
+</section>

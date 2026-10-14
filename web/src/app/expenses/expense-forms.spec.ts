@@ -3,6 +3,11 @@
 import { applyFilters } from '../shared/list/list-view';
 import {
   amountPattern,
+  billChargeOptions,
+  billGroup,
+  billInput,
+  billLineGroup,
+  billTaxOptions,
   categoryForm,
   categoryInput,
   categoryLabels,
@@ -153,15 +158,15 @@ describe('expense forms', () => {
     );
   });
 
-  // docs/SPEC.md § 7, 2026-09-19 21:55: the amount shows and takes the locale's decimal separator.
-  it('asks the net amount as a decimal', () => {
-    const fields = expenseForm(options).sections.flatMap((section) => section.fields);
-    expect(fields.filter((field) => field.kind === 'decimal').map((field) => field.id)).toEqual([
-      'amountNet',
-    ]);
+  it('asks no amount in its fields: the bill is edited beside them', () => {
+    const descriptor = expenseForm(options);
+    expect(descriptor.sections.map((section) => section.id)).toEqual(['expense', 'notes']);
+    const fields = descriptor.sections.flatMap((section) => section.fields);
+    expect(fields.some((field) => field.kind === 'decimal')).toBe(false);
+    expect(expenseValues(null, '2026-09-15')).not.toHaveProperty('amountNet');
   });
 
-  it('offers the categories and rates the company has, each optional, and asks the vendor', () => {
+  it('offers the categories the company has, each optional, and asks the vendor', () => {
     const fields = expenseForm(options).sections.flatMap((section) => section.fields);
     const byId = new Map(fields.map((field) => [field.id, field]));
     // A book of suppliers is not a dropdown: the vendor is asked for, so the descriptor carries no list of them.
@@ -173,20 +178,6 @@ describe('expense forms', () => {
       'Véhicules',
       'Véhicules › Carburant',
     ]);
-    expect(byId.get('taxComponentId')?.options?.[1]).toEqual({
-      value: 't1',
-      label: 'TVA (19\u00a0%)',
-    });
-    // A name that already says its rate is not told it twice: « TVA 19 % (19 %) » (sweep, row 244).
-    const named = expenseForm({
-      ...options,
-      taxes: [{ ...options.taxes[0]!, name: 'TVA 19\u00a0%' }],
-      charges: [],
-    })
-      .sections.flatMap((section) => section.fields)
-      .find((field) => field.id === 'taxComponentId');
-    expect(named?.options?.[1]?.label).toBe('TVA 19\u00a0%');
-    expect(byId.get('amountNet')?.pattern).toBe(amountPattern(3));
   });
 
   it('asks who was paid, in words, only while no vendor is picked', () => {
@@ -244,8 +235,6 @@ describe('expense forms', () => {
         description: ' Gasoil ',
         vendorId: '',
         categoryId: 'k2',
-        amountNet: ' 100.5 ',
-        taxComponentId: '',
         notes: '',
       }),
     ).toEqual({
@@ -255,9 +244,6 @@ describe('expense forms', () => {
       vendorId: null,
       payee: null,
       categoryId: 'k2',
-      lines: [{ amountNet: '100.5', taxComponentIds: [] }],
-      documentTaxComponentIds: [],
-      printedTaxes: [],
       notes: null,
     });
     expect(paymentInput({ paymentMethod: 'check', paidOn: '2026-09-12' })).toEqual({
@@ -358,7 +344,7 @@ describe('expense forms', () => {
     });
   });
 
-  it("still names an expense's category and tax once they are no longer offered", () => {
+  it("still names an expense's category once it is no longer offered", () => {
     const fields = (row: Parameters<typeof expenseForm>[1]) =>
       new Map(
         expenseForm(options, row)
@@ -370,33 +356,142 @@ describe('expense forms', () => {
       vendorName: 'Ancien fournisseur',
       categoryId: 'k9',
       categoryName: 'Péages',
-      lines: [{ amountNet: '10.000', taxComponentIds: ['t9'] }],
-      taxes: [
-        {
-          code: 'TVA7',
-          kind: 'percentage_line',
-          rate: '7.000',
-          base: '10.000',
-          workedOut: '0.700',
-          amount: '0.700',
-        },
-      ],
     });
     // The vendor is a picker: what the expense says is shown by the page, not added to a list of options here.
     expect(kept.get('vendorId')).toBeUndefined();
     expect(kept.get('categoryId')).toContainEqual(['k9', 'Péages']);
-    expect(kept.get('taxComponentId')).toContainEqual(['t9', '7 %']);
 
     const offered = fields({
       vendorId: 'v1',
       vendorName: 'Sotumag',
       categoryId: 'k2',
       categoryName: 'Carburant',
-      lines: [{ amountNet: '10.000', taxComponentIds: [] }],
-      taxes: [],
     });
     expect(offered.get('categoryId')).toHaveLength(3);
-    expect(offered.get('taxComponentId')).toHaveLength(2);
+  });
+});
+
+describe('the bill', () => {
+  const vat19 = { id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000', entersVatBase: false };
+  const vat7 = { id: 't7', code: 'TVA7', name: 'TVA', rate: '7.000', entersVatBase: false };
+  const fodec = { id: 'tf', code: 'FODEC', name: 'FODEC', rate: '1.000', entersVatBase: true };
+  const stamp = { id: 's1', code: 'TIMBRE', name: 'Timbre fiscal', amount: '1.000' };
+  const offered: ExpenseOptions = { ...options, taxes: [vat19, vat7, fodec], charges: [stamp] };
+  const tax = (code: string, rate: string | null, amount: string, workedOut = amount) => ({
+    code,
+    kind: rate === null ? ('fixed_document' as const) : ('percentage_line' as const),
+    rate,
+    base: rate === null ? null : '0.000',
+    workedOut,
+    amount,
+  });
+  // As TEJ's example prints it: 1000 at 19 % with FODEC, 200 at 7 %, and the stamp.
+  const printed: Pick<ExpenseRow, 'lines' | 'documentTaxComponentIds' | 'printedTaxes' | 'taxes'> =
+    {
+      lines: [
+        { amountNet: '1000.000', taxComponentIds: ['t1', 'tf'], taxCodes: ['TVA19', 'FODEC'] },
+        { amountNet: '200.000', taxComponentIds: ['t7'], taxCodes: ['TVA7'] },
+      ],
+      documentTaxComponentIds: ['s1'],
+      printedTaxes: [{ code: 'TVA7', amount: '14.001' }],
+      taxes: [
+        tax('TVA19', '19.000', '191.900'),
+        tax('FODEC', '1.000', '10.000'),
+        tax('TVA7', '7.000', '14.001', '14.000'),
+        tax('TIMBRE', null, '1.000'),
+      ],
+    };
+
+  it('starts a new expense on one empty line, with no fixed charge ticked and nothing printed to give', () => {
+    const bill = billGroup(null, offered);
+    expect(bill.getRawValue()).toEqual({
+      lines: [{ amountNet: '', taxComponentIds: [] }],
+      charges: [],
+      printed: {},
+    });
+    // A line is a net to give.
+    expect(bill.invalid).toBe(true);
+  });
+
+  it("holds the draft's lines and charges, and each rated tax's printed amount where the bill gave one", () => {
+    expect(billGroup(printed, offered).getRawValue()).toEqual({
+      lines: [
+        { amountNet: '1000.000', taxComponentIds: ['t1', 'tf'] },
+        { amountNet: '200.000', taxComponentIds: ['t7'] },
+      ],
+      charges: ['s1'],
+      // The stamp is fixed: there is nothing to round on it.
+      printed: { TVA19: '', FODEC: '', TVA7: '14.001' },
+    });
+  });
+
+  it('takes a net above zero at the currency scale, and one VAT rate a line beside any levy', () => {
+    const line = billLineGroup(null, offered);
+    for (const [net, valid] of [
+      ['12.5', true],
+      ['12.500', true],
+      ['12.5001', false],
+      ['0', false],
+      ['0.000', false],
+      ['', false],
+      ['douze', false],
+    ] as const) {
+      line.controls.amountNet.setValue(net);
+      expect([net, line.controls.amountNet.valid]).toEqual([net, valid]);
+    }
+    line.controls.taxComponentIds.setValue(['t1', 'tf']);
+    expect(line.controls.taxComponentIds.valid).toBe(true);
+    line.controls.taxComponentIds.setValue(['t1', 't7']);
+    expect(line.controls.taxComponentIds.hasError('oneVat')).toBe(true);
+    line.controls.taxComponentIds.setValue(['tf']);
+    expect(line.controls.taxComponentIds.valid).toBe(true);
+  });
+
+  it('sends the lines trimmed, the charges ticked, and a printed amount only for a rate the lines still carry', () => {
+    const bill = billGroup(printed, offered);
+    bill.controls.lines.at(0).controls.amountNet.setValue(' 1010 ');
+    bill.controls.printed.controls['TVA19']!.setValue(' 191.9 ');
+    expect(billInput(bill.getRawValue(), offered, printed)).toEqual({
+      lines: [
+        { amountNet: '1010', taxComponentIds: ['t1', 'tf'] },
+        { amountNet: '200.000', taxComponentIds: ['t7'] },
+      ],
+      documentTaxComponentIds: ['s1'],
+      printedTaxes: [
+        { code: 'TVA19', amount: '191.9' },
+        { code: 'TVA7', amount: '14.001' },
+      ],
+    });
+    // The 7 % line gone, what was printed at 7 % goes with it.
+    bill.controls.lines.removeAt(1);
+    expect(billInput(bill.getRawValue(), offered, printed).printedTaxes).toEqual([
+      { code: 'TVA19', amount: '191.9' },
+    ]);
+  });
+
+  it('offers each rate by its name and rate, and keeps naming one a draft carries after it stops being offered', () => {
+    expect(billTaxOptions(offered, null)).toEqual([
+      { value: 't1', label: 'TVA (19\u00a0%)' },
+      { value: 't7', label: 'TVA (7\u00a0%)' },
+      { value: 'tf', label: 'FODEC (1\u00a0%)' },
+    ]);
+    // A name that already says its rate is not told it twice: « TVA 19 % (19 %) » (sweep, row 244).
+    expect(
+      billTaxOptions({ ...offered, taxes: [{ ...vat19, name: 'TVA 19\u00a0%' }] }, null),
+    ).toEqual([{ value: 't1', label: 'TVA 19\u00a0%' }]);
+    expect(billTaxOptions({ ...offered, taxes: [vat19, fodec] }, printed)).toContainEqual({
+      value: 't7',
+      label: 'TVA7 (7\u00a0%)',
+    });
+  });
+
+  it('offers each fixed charge with its amount, and keeps one a draft carries after it stops being offered', () => {
+    expect(billChargeOptions(offered, null)).toEqual([
+      { id: 's1', label: 'Timbre fiscal', amount: '1.000' },
+    ]);
+    expect(billChargeOptions({ ...offered, charges: [] }, printed)).toEqual([
+      { id: 's1', label: 'expenses.bill.charge_retired', amount: null },
+    ]);
   });
 });
 

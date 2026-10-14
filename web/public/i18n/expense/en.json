@@ -1,0 +1,30 @@
+{
+  "expenses": {
+    "bill": {
+      "title": "Supplier’s bill",
+      "hint": "Copy the bill as it is printed: one line for each VAT rate, with its amount before tax and the taxes on it.",
+      "line": "Line {{position}}",
+      "net": "Amount before tax",
+      "net_hint": "In {{currency}}",
+      "taxes": "Taxes",
+      "untaxed": "No tax",
+      "add_line": "Add a line",
+      "remove_short": "Remove",
+      "remove": "Remove line {{position}}",
+      "charges": "Fixed amounts",
+      "charges_hint": "Tick those the bill carries, such as the revenue stamp.",
+      "charge_retired": "Fixed amount no longer offered",
+      "printed": "Tax amounts as printed",
+      "printed_hint": "Leave empty when the bill prints the amount worked out. A supplier’s rounding is accepted up to the currency’s smallest unit a line.",
+      "printed_later": "Once the expense is saved, you can enter the tax amounts as the bill prints them.",
+      "worked_out": "Worked out: {{amount}}",
+      "net_required": "Give the amount before tax.",
+      "net_positive": "The amount must be above zero.",
+      "net_pattern": "An amount, with no more decimals than the currency has.",
+      "one_vat": "A line carries one VAT rate: add a line for the other rate.",
+      "tax": "Tax",
+      "base": "Base",
+      "amount": "Amount"
+    }
+  }
+}

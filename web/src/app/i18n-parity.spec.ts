@@ -2,6 +2,8 @@
 import enAccount from '../../public/i18n/account/en.json';
 import frAccount from '../../public/i18n/account/fr.json';
 import en from '../../public/i18n/en.json';
+import enExpense from '../../public/i18n/expense/en.json';
+import frExpense from '../../public/i18n/expense/fr.json';
 import fr from '../../public/i18n/fr.json';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { SETTING_HINTS } from './shared/settings/setting-forms';
@@ -22,6 +24,7 @@ function keysOf(value: unknown, prefix = ''): string[] {
 /** The texts a page loads with itself (`textsPart`), beside the language's own file: checked as one with it. */
 const parts: Record<string, Record<string, unknown>> = {
   account: { fr: frAccount, en: enAccount },
+  expense: { fr: frExpense, en: enExpense },
 };
 
 /** Two files' texts as one, refusing a key both hold: the part would silently win where the page reads it. */

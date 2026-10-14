@@ -401,13 +401,17 @@ export const routes: Routes = [
       {
         path: 'expenses/new',
         title: 'titles.new_expense',
-        canActivate: [moduleGuard(EXPENSES_MODULE)],
+        // The bill's texts are read on this page only: they load with it (the screen texts budget).
+        providers: textsPart('expense').providers,
+        canActivate: [moduleGuard(EXPENSES_MODULE), ...(textsPart('expense').canActivate ?? [])],
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
       },
       {
         path: 'expenses/:expenseId',
         title: 'titles.expense',
-        canActivate: [moduleGuard(EXPENSES_MODULE)],
+        // The bill's texts are read on this page only: they load with it (the screen texts budget).
+        providers: textsPart('expense').providers,
+        canActivate: [moduleGuard(EXPENSES_MODULE), ...(textsPart('expense').canActivate ?? [])],
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
       },
       {
