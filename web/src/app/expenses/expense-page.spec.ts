@@ -21,6 +21,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
+import type { BillGroup } from './expense-forms';
 import { ExpensePage } from './expense-page';
 import { ExpensesFacade } from './expenses-facade';
 import type {
@@ -42,6 +43,7 @@ class StaticLoader implements TranslateLoader {
         saved: 'La dépense a été enregistrée.',
         withheld: 'Retenue à la source {{rate}} % : {{amount}} · versé {{paid}}',
         errors: { not_draft: 'Seule une dépense en brouillon peut être modifiée.' },
+        bill: { worked_out: 'Calculé\u00a0: {{amount}}' },
       },
     });
   }
@@ -173,6 +175,10 @@ describe('ExpensePage', () => {
       fixture.componentInstance as unknown as { classifyFormGroup: () => FormGroup | null }
     ).classifyFormGroup();
 
+  /** The bill beside the form: its lines, its fixed charges and the amounts it prints. */
+  const bill = (): BillGroup =>
+    (fixture.componentInstance as unknown as { bill: () => BillGroup }).bill();
+
   /** The payment form, which exists only once a recorded expense has been read. */
   const payment = (): FormGroup =>
     (
@@ -271,7 +277,7 @@ describe('ExpensePage', () => {
     expect(facade.loadExpense).toHaveBeenCalledWith('c1', null);
 
     type('field-description', 'Gasoil');
-    type('field-amountNet', '100,5');
+    type('bill-line-0-net', '100,5');
     await pick('field-vendorId', 'FRN-1 · Sotumag');
     expect(form().get('categoryId')!.value).toBe('k2');
     q('record-save')!.click();
@@ -299,7 +305,7 @@ describe('ExpensePage', () => {
     await open(undefined);
     expect(q('field-vendorId')).toBeNull();
     type('field-description', 'Stationnement');
-    type('field-amountNet', '4');
+    type('bill-line-0-net', '4');
     type('field-payee', 'Parking Lafayette');
     await settle();
     q('record-save')!.click();
@@ -312,7 +318,7 @@ describe('ExpensePage', () => {
     expense.set(draft);
     await open('e1');
     expect(q('expense-status')?.textContent).toContain('Sotumag');
-    type('field-amountNet', '120');
+    type('bill-line-0-net', '120');
     await settle();
     q('record-save')!.click();
     await settle();
@@ -334,7 +340,7 @@ describe('ExpensePage', () => {
     expect(form().get('categoryId')!.value).toBe('k1');
 
     type('field-description', 'Gasoil');
-    type('field-amountNet', '100.5555');
+    type('bill-line-0-net', '100.5555');
     await settle();
     q('record-save')!.click();
     await settle();
@@ -346,7 +352,7 @@ describe('ExpensePage', () => {
     await open('e1');
     expect(q('expense-gross')?.textContent).toContain('TND');
 
-    type('field-amountNet', '120');
+    type('bill-line-0-net', '120');
     q('expense-record')!.click();
     await settle();
     expect(facade.reviseExpense).toHaveBeenCalledWith(
@@ -589,5 +595,162 @@ describe('ExpensePage', () => {
     expect(q('expense-attach')).toBeNull();
     expect(q('expense-detach-recu.pdf')).toBeNull();
     expect(q('expense-attachment-open-recu.pdf')).not.toBeNull();
+  });
+
+  describe('the bill', () => {
+    const offered: ExpenseOptions = {
+      ...options,
+      taxes: [
+        { id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000', entersVatBase: false },
+        { id: 't7', code: 'TVA7', name: 'TVA', rate: '7.000', entersVatBase: false },
+        { id: 'tf', code: 'FODEC', name: 'FODEC', rate: '1.000', entersVatBase: true },
+      ],
+      charges: [{ id: 's1', code: 'TIMBRE', name: 'Timbre fiscal', amount: '1.000' }],
+    };
+
+    it('enters a bill at two rates with FODEC and the stamp, and saves the amount it prints', async () => {
+      optionsState.set(offered);
+      expense.set(draft);
+      await open('e1');
+
+      type('bill-line-0-net', '1000');
+      bill().controls.lines.at(0).controls.taxComponentIds.setValue(['t1', 'tf']);
+      q('bill-add-line')!.click();
+      await settle();
+      type('bill-line-1-net', '200');
+      bill().controls.lines.at(1).controls.taxComponentIds.setValue(['t7']);
+      (q('bill-charge-s1')?.querySelector('input') as HTMLInputElement).click();
+      type('bill-printed-TVA19', '191,9');
+      await settle();
+      // Each net, each line's rates, the line added, the stamp and the printed amount.
+      expect(q('record-changes')?.getAttribute('data-count')).toBe('6');
+
+      q('record-save')!.click();
+      await settle();
+      expect(facade.reviseExpense).toHaveBeenCalledWith(
+        'c1',
+        'e1',
+        expect.objectContaining({
+          lines: [
+            { amountNet: '1000', taxComponentIds: ['t1', 'tf'] },
+            { amountNet: '200', taxComponentIds: ['t7'] },
+          ],
+          documentTaxComponentIds: ['s1'],
+          printedTaxes: [{ code: 'TVA19', amount: '191.9' }],
+        }),
+      );
+    });
+
+    it('starts a new expense with the stamp unticked, and creates it with its lines', async () => {
+      optionsState.set(offered);
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      await open(undefined);
+      expect(bill().controls.charges.value).toEqual([]);
+      expect(q('bill-printed-TVA19')).toBeNull();
+
+      type('field-description', 'Fournitures');
+      type('bill-line-0-net', '50');
+      await settle();
+      q('record-save')!.click();
+      await settle();
+      expect(facade.createExpense).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({
+          lines: [{ amountNet: '50', taxComponentIds: [] }],
+          documentTaxComponentIds: [],
+          printedTaxes: [],
+        }),
+      );
+    });
+
+    it('refuses two VAT rates on one line, and a line removed, before asking the API', async () => {
+      optionsState.set(offered);
+      expense.set(draft);
+      await open('e1');
+      bill().controls.lines.at(0).controls.taxComponentIds.setValue(['t1', 't7']);
+      bill().controls.lines.at(0).controls.taxComponentIds.markAsTouched();
+      await settle();
+      expect(q('bill-line-0-taxes-error')?.textContent).toContain('expenses.bill.one_vat');
+
+      q('record-save')!.click();
+      await settle();
+      expect(facade.reviseExpense).not.toHaveBeenCalled();
+
+      // The last line stays: a bill is never left with none.
+      expect(q('bill-line-0-remove')).toBeNull();
+      q('bill-add-line')!.click();
+      await settle();
+      q('bill-line-1-remove')!.click();
+      await settle();
+      expect(bill().controls.lines.length).toBe(1);
+    });
+
+    it('puts the saved bill back on « Annuler les modifications »', async () => {
+      expense.set(draft);
+      await open('e1');
+      type('bill-line-0-net', '250');
+      await settle();
+      expect(q('record-changes')?.getAttribute('data-count')).toBe('1');
+
+      q('record-revert')!.click();
+      await settle();
+      expect((q('bill-line-0-net') as HTMLInputElement).value).toBe('100,000');
+      expect(q('record-changes')).toBeNull();
+    });
+
+    it('shows each tax the bill charges, and the amount worked out where the bill prints another', async () => {
+      optionsState.set(offered);
+      expense.set({
+        ...draft,
+        printedTaxes: [{ code: 'TVA19', amount: '19.001' }],
+        documentTaxComponentIds: ['s1'],
+        taxes: [
+          { ...draft.taxes[0]!, amount: '19.001' },
+          {
+            code: 'TIMBRE',
+            kind: 'fixed_document',
+            rate: null,
+            base: null,
+            workedOut: '1.000',
+            amount: '1.000',
+          },
+        ],
+      });
+      await open('e1');
+      const vat = q('expense-tax-TVA19')?.textContent?.replace(/\s/g, '');
+      expect(vat).toContain('19,001');
+      expect(vat).toContain('19,000');
+      expect(q('expense-tax-TIMBRE')?.textContent).toContain('Timbre fiscal');
+    });
+
+    it('takes the saved bill another person changed while nothing is typed here, and asks when both changed it', async () => {
+      expense.set(draft);
+      await open('e1');
+      facade.loadExpense.mockImplementation(async () => {
+        expense.set({ ...draft, lines: [{ ...draft.lines[0]!, amountNet: '150.000' }] });
+      });
+      await announceSaved('expense', 'e1');
+      await settle();
+      expect((q('bill-line-0-net') as HTMLInputElement).value).toBe('150,000');
+
+      type('bill-line-0-net', '175');
+      await settle();
+      facade.loadExpense.mockImplementation(async () => {
+        expense.set({ ...draft, lines: [{ ...draft.lines[0]!, amountNet: '160.000' }] });
+      });
+      await announceSaved('expense', 'e1');
+      await settle();
+      expect(q('field-conflict-bill')).not.toBeNull();
+      expect((q('bill-line-0-net') as HTMLInputElement).value).toBe('175');
+    });
+
+    it('shows a recorded bill as it reads, with nothing to change', async () => {
+      expense.set({ ...draft, status: 'recorded' });
+      await open('e1');
+      expect(q('bill-line-0-net')).toBeNull();
+      expect(q('bill-add-line')).toBeNull();
+      expect(q('bill-line-0')?.textContent).toContain('100,000');
+      expect(q('bill-line-0')?.textContent).toContain('TVA');
+    });
   });
 });

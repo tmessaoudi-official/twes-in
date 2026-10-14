@@ -27,6 +27,9 @@ import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { StatusBadge } from '../shared/ui/status-badge';
 import {
+  billGroup,
+  billInput,
+  billTaxName,
   expenseForm,
   expenseInput,
   expenseValues,
@@ -39,8 +42,11 @@ import { ExpensesFacade } from './expenses-facade';
 import {
   EXPENSE_STATUS_TONES,
   type ExpenseAttachment,
+  type ExpenseInput,
   type ExpenseVendorOption,
 } from './expenses-types';
+import { ExpenseBill } from './expense-bill';
+import { PartConflict } from '../shared/form/part-conflict';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
@@ -57,6 +63,8 @@ import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 @Component({
   selector: 'app-expense-page',
   imports: [
+    ExpenseBill,
+    PartConflict,
     FileDrop,
     MatButtonModule,
     MatCardModule,
@@ -131,6 +139,30 @@ export class ExpensePage {
     });
   });
 
+  protected readonly isBillConflict = (conflict: { field: string }): boolean =>
+    conflict.field === 'bill';
+  /** Bumped to show the saved bill again in place of the one shown. */
+  private readonly billVersion = signal(0);
+  /** The supplier's bill, edited beside the form and rebuilt with it; null until the expense has been read. */
+  protected readonly bill = computed(() => {
+    if (this.formKey() === null) return null;
+    this.billVersion();
+    return untracked(() => {
+      const options = this.options();
+      const current = this.current();
+      if (options === null || current === undefined) return null;
+      return billGroup(current, options);
+    });
+  });
+  /** The bill as it is saved, as the editor's values; a new expense's is the empty line it starts on. */
+  private readonly savedBill = computed(() => {
+    const options = this.options();
+    const current = this.current();
+    return options === null || current === undefined
+      ? null
+      : billGroup(current, options).getRawValue();
+  });
+
   /** The saved version the form stands on, and what another person's save changed in it. */
   protected readonly sync = liveRecord({
     kind: 'expense',
@@ -145,6 +177,18 @@ export class ExpensePage {
       const current = this.current();
       return current ? expenseValues(current, todayIn(this.company()?.timezone)) : null;
     },
+    // The bill is one field: a line is never merged with another person's.
+    parts: [
+      {
+        field: 'bill',
+        saved: () => {
+          const saved = this.savedBill();
+          return saved === null ? null : JSON.stringify(saved);
+        },
+        shown: () => JSON.stringify(this.bill()?.getRawValue() ?? null),
+        take: () => this.billVersion.update((version) => version + 1),
+      },
+    ],
   });
 
   /** What the form holds that the API has not been told yet; the bar beside the title shows it. */
@@ -152,13 +196,16 @@ export class ExpensePage {
     const current = this.current();
     return current ? expenseValues(current, todayIn(this.company()?.timezone)) : null;
   });
-  protected readonly changes = unsavedChanges(this.form, this.savedValues);
-  /** The rates the bill carries, as « 19 % · 7 % »; null when it carries none. */
-  protected readonly rates = computed(() => {
-    const rates = (this.current()?.taxes ?? []).flatMap((tax) =>
-      tax.rate === null ? [] : [`${Number(tax.rate)}\u00a0%`],
-    );
-    return rates.length === 0 ? null : rates.join(' · ');
+  private readonly headerChanges = unsavedChanges(this.form, this.savedValues);
+  private readonly billChanges = unsavedChanges(this.bill, this.savedBill);
+  protected readonly changes = computed(() => this.headerChanges() + this.billChanges());
+  /** Each tax the saved bill charges, named; the figures list them under the totals. */
+  protected readonly taxRows = computed(() => {
+    const options = this.options();
+    return (this.current()?.taxes ?? []).map((tax) => ({
+      ...tax,
+      name: options === null ? tax.code : billTaxName(options, tax),
+    }));
   });
   /**
    * Which vendor the form names, as the picker answered it. The form carries the id; this is what the box READS,
@@ -331,6 +378,7 @@ export class ExpensePage {
     if (form === null) return;
     if (form.invalid) {
       form.markAllAsTouched();
+      this.bill()?.markAllAsTouched();
       return;
     }
     void this.save(form.getRawValue());
@@ -340,12 +388,30 @@ export class ExpensePage {
     const form = this.form();
     const saved = this.savedValues();
     if (form !== null && saved !== null) revertToSaved(form, saved);
+    this.billVersion.update((version) => version + 1);
+  }
+
+  /** The expense as the API takes it: the form's fields and the bill; null while the bill is not as it may be sent. */
+  private inputOf(values: FormValues): ExpenseInput | null {
+    const bill = this.bill();
+    const options = this.options();
+    if (bill === null || options === null) return null;
+    if (bill.invalid) {
+      bill.markAllAsTouched();
+      return null;
+    }
+    const current = this.current() ?? null;
+    return {
+      ...expenseInput(values, current?.vendorId ?? null),
+      ...billInput(bill.getRawValue(), options, current),
+    };
   }
 
   protected async save(values: FormValues): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    const input = expenseInput(values, this.current()?.vendorId ?? null);
+    const input = this.inputOf(values);
+    if (input === null) return;
     const id = this.id();
     if (id === null) {
       const created = await this.facade.createExpense(companyId, input);
@@ -371,13 +437,8 @@ export class ExpensePage {
     if (!companyId || id === null || form === null || this.busy()) return;
     form.markAllAsTouched();
     if (form.invalid) return;
-    if (
-      (await this.facade.reviseExpense(
-        companyId,
-        id,
-        expenseInput(form.getRawValue(), this.current()?.vendorId ?? null),
-      )) === null
-    ) {
+    const input = this.inputOf(form.getRawValue());
+    if (input === null || (await this.facade.reviseExpense(companyId, id, input)) === null) {
       return;
     }
     await this.facade.recordExpense(companyId, id);

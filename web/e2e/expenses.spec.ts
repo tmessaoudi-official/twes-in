@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
-import { expectFacetCount } from './select';
+import { choose, expectFacetCount } from './select';
 import { wcagViolations } from './axe';
 
 // G9 through the real stack: in the seeded Tunisian company, the owner files a category, adds an expense under it with
@@ -64,10 +64,9 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await page.getByTestId('field-reference').fill(`F-${run}`);
     await page.getByTestId('field-categoryId').click();
     await page.getByRole('option', { name: category }).click();
-    await page.getByTestId('field-amountNet').fill('100');
-    await page.getByTestId('field-taxComponentId').click();
+    await page.getByTestId('bill-line-0-net').fill('100');
     // The rate is said once: « TVA 19 % », or « (19 %) » after a name that does not carry it.
-    await page.getByRole('option', { name: /19\s%\)?$/ }).click();
+    await choose(page, 'bill-line-0-taxes', /19\s%\)?$/);
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('record-save').click();
 
@@ -139,6 +138,54 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
   } finally {
     await retire(page, category);
   }
+});
+
+// A supplier's bill as TEJ's own example prints it: 1000 at 19 % with FODEC, 200 at 7 %, and the stamp. Entered as
+// printed, its taxes are listed rate by rate, and the supplier's rounding of one of them is kept beside what twes-in
+// works out. The draft is deleted at the end, so nothing is left in the shared company.
+test('a bill at 19 % with FODEC and at 7 %, with the stamp, is entered as it is printed', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const run = Date.now().toString(36).toUpperCase();
+  const figures = async (testId: string): Promise<string> =>
+    ((await page.getByTestId(testId).textContent()) ?? '').replace(/\s/g, '');
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/expenses/new');
+  await page.getByTestId('field-description').fill(`Quincaillerie ${run}`);
+  await page.getByTestId('bill-line-0-net').fill('1000');
+  await choose(page, 'bill-line-0-taxes', /TVA\s19/);
+  await choose(page, 'bill-line-0-taxes', /FODEC/);
+  await page.getByTestId('bill-add-line').click();
+  await page.getByTestId('bill-line-1-net').fill('200');
+  await choose(page, 'bill-line-1-taxes', /TVA\s7/);
+  await page
+    .getByTestId('bill-charges')
+    .getByRole('checkbox', { name: /timbre|stamp/i })
+    .check();
+  expect(await wcagViolations(page)).toEqual([]);
+  await page.getByTestId('record-save').click();
+
+  await expect(page).toHaveURL(/\/expenses\/[0-9a-f-]{36}$/);
+  // 1000 + FODEC 10 + VAT 19 % of 1010 + 200 + VAT 7 % of 200 + the stamp.
+  await expect(page.getByTestId('expense-gross')).toContainText('416,900');
+  expect(await figures('expense-tax-TVA19')).toContain('191,900');
+  expect(await figures('expense-tax-FODEC')).toContain('10,000');
+  expect(await figures('expense-tax-TVA7')).toContain('14,000');
+  expect(await figures('expense-tax-TIMBRE')).toContain('1,000');
+
+  // The supplier printed a millime more at 7 %: kept, and what twes-in works out is shown beside it.
+  await page.getByTestId('bill-printed-TVA7').fill('14,001');
+  await page.getByTestId('record-save').click();
+  await expect(page.getByTestId('expense-gross')).toContainText('416,901');
+  expect(await figures('expense-tax-TVA7')).toContain('14,001');
+  expect(await figures('expense-tax-TVA7')).toContain('14,000');
+  expect(await wcagViolations(page)).toEqual([]);
+
+  await page.getByTestId('expense-delete').click();
+  await page.getByTestId('expense-delete').click();
+  await expect(page).toHaveURL(/\/expenses$/);
 });
 
 // docs/SPEC.md § 7, 2026-09-26: Demo is Tunisian, so the list offers the month's TEJ file. What a past month holds

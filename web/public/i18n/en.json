@@ -2907,7 +2907,6 @@
     },
     "sections": {
       "expense": "Expense",
-      "amounts": "Amounts",
       "notes": "Notes",
       "payment": "Payment",
       "tej": "TEJ declaration"
@@ -2920,7 +2919,6 @@
       "payee": "Paid to",
       "categoryId": "Category",
       "amountNet": "Net amount",
-      "taxComponentId": "Tax",
       "taxAmount": "Tax",
       "amountGross": "Total",
       "dueDate": "Due",
@@ -2939,8 +2937,6 @@
       "payee_hint": "When no recorded vendor fits: a car park, a notary, a public office.",
       "no_category": "No category",
       "category_hint": "Only active categories are offered.",
-      "net_hint": "Before tax, with no more decimals than the currency has.",
-      "no_tax": "No tax",
       "notes_hint": "For your team only.",
       "withholding_hint": "Proposed at 1% from 1,000 TND including VAT; enter 0 for an excluded purchase or an exempt supplier, or the rate that applies to the supplier.",
       "tej_hint": "The TEJ platform code under which this withholding is declared."

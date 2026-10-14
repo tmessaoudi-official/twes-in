@@ -66,9 +66,6 @@
           <div>
             <dt class="text-sm text-on-surface-variant">
               {{ 'expenses.fields.taxAmount' | translate }}
-              @if (rates(); as shown) {
-                ({{ shown }})
-              }
             </dt>
             <dd class="tabular-nums" data-testid="expense-tax">
               {{ expense.taxAmount | amount: options()?.currencyScale }} {{ expense.currency }}
@@ -119,6 +116,45 @@
             }
           </div>
         </dl>
+        @if (taxRows().length > 0) {
+          <table class="mt-4 w-full text-sm" data-testid="expense-taxes">
+            <thead>
+              <tr class="text-on-surface-variant">
+                <th class="py-1 text-start font-normal" scope="col">
+                  {{ 'expenses.bill.tax' | translate }}
+                </th>
+                <th class="py-1 text-end font-normal" scope="col">
+                  {{ 'expenses.bill.base' | translate }}
+                </th>
+                <th class="py-1 text-end font-normal" scope="col">
+                  {{ 'expenses.bill.amount' | translate }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (tax of taxRows(); track tax.code) {
+                <tr [attr.data-testid]="'expense-tax-' + tax.code">
+                  <th class="py-1 text-start font-normal" scope="row">{{ tax.name }}</th>
+                  <td class="py-1 text-end tabular-nums">
+                    {{ tax.base === null ? '—' : (tax.base | amount: options()?.currencyScale) }}
+                  </td>
+                  <td class="py-1 text-end tabular-nums">
+                    {{ tax.amount | amount: options()?.currencyScale }}
+                    @if (tax.amount !== tax.workedOut) {
+                      <span class="block text-xs text-on-surface-variant">
+                        {{
+                          'expenses.bill.worked_out'
+                            | translate
+                              : { amount: tax.workedOut | amount: options()?.currencyScale }
+                        }}
+                      </span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
       </mat-card-content>
     </mat-card>
   }
@@ -144,39 +180,55 @@
             testId="expense-form"
             [readOnly]="!mayWrite() || !isDraft()"
             (submitted)="save($event)"
-          >
-            @if (mayWrite() && isDraft()) {
-              <div class="flex flex-wrap justify-end gap-2">
-                @if (current()) {
-                  <button
-                    mat-button
-                    type="button"
-                    (click)="remove()"
-                    [disabled]="busy()"
-                    data-testid="expense-delete"
-                  >
-                    {{
-                      (confirmingDelete()
-                        ? 'expenses.actions.delete_confirm'
-                        : 'expenses.actions.delete'
-                      ) | translate
-                    }}
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    (click)="record()"
-                    [disabled]="busy()"
-                    data-testid="expense-record"
-                  >
-                    {{ 'expenses.actions.record' | translate }}
-                  </button>
-                }
-              </div>
-            }
-          </app-descriptor-form>
+          />
         </mat-card-content>
       </mat-card>
+    }
+    @if (bill(); as edited) {
+      @if (options(); as offered) {
+        <mat-card>
+          <mat-card-content [class.twes-field-updated]="sync.updated().has('bill')">
+            @if (sync.conflicts().some(isBillConflict)) {
+              <app-part-conflict
+                field="bill"
+                message="live.lines_conflict"
+                (resolved)="sync.resolve(form, $event)"
+              />
+            }
+            <app-expense-bill
+              [bill]="edited"
+              [options]="offered"
+              [saved]="current() ?? null"
+              [readOnly]="!mayWrite() || !isDraft()"
+            />
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+    @if (mayWrite() && isDraft() && current()) {
+      <div class="flex flex-wrap justify-end gap-2">
+        <button
+          mat-button
+          type="button"
+          (click)="remove()"
+          [disabled]="busy()"
+          data-testid="expense-delete"
+        >
+          {{
+            (confirmingDelete() ? 'expenses.actions.delete_confirm' : 'expenses.actions.delete')
+              | translate
+          }}
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="record()"
+          [disabled]="busy()"
+          data-testid="expense-record"
+        >
+          {{ 'expenses.actions.record' | translate }}
+        </button>
+      </div>
     }
   }
 

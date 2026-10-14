@@ -1,0 +1,30 @@
+{
+  "expenses": {
+    "bill": {
+      "title": "Facture du fournisseur",
+      "hint": "Recopiez la facture telle qu’elle est imprimée : une ligne par taux de TVA, avec son montant hors taxes et les taxes qui s’y appliquent.",
+      "line": "Ligne {{position}}",
+      "net": "Montant hors taxes",
+      "net_hint": "En {{currency}}",
+      "taxes": "Taxes",
+      "untaxed": "Sans taxe",
+      "add_line": "Ajouter une ligne",
+      "remove_short": "Retirer",
+      "remove": "Retirer la ligne {{position}}",
+      "charges": "Montants fixes",
+      "charges_hint": "Cochez ceux que la facture porte, comme le timbre fiscal.",
+      "charge_retired": "Montant fixe qui n’est plus proposé",
+      "printed": "Montants de taxe imprimés",
+      "printed_hint": "Laissez vide quand la facture imprime le montant calculé. Un arrondi du fournisseur est accepté jusqu’à la plus petite unité de la devise par ligne.",
+      "printed_later": "Une fois la dépense enregistrée, vous pourrez saisir les montants de taxe tels que la facture les imprime.",
+      "worked_out": "Calculé : {{amount}}",
+      "net_required": "Indiquez le montant hors taxes.",
+      "net_positive": "Le montant doit être supérieur à zéro.",
+      "net_pattern": "Un montant, sans plus de décimales que la devise n’en compte.",
+      "one_vat": "Une ligne porte un seul taux de TVA : ajoutez une ligne pour l’autre taux.",
+      "tax": "Taxe",
+      "base": "Base",
+      "amount": "Montant"
+    }
+  }
+}
