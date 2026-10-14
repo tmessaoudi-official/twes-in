@@ -122,6 +122,15 @@ jobs:
       # Playwright and its Chromium run in the web-tools container on the host's network (docs/START.md § 1), so
       # 127.0.0.1:8090 is the stack's published port, as on a developer's machine.
       - run: make e2e E2E_ARGS=--shard=${{ matrix.shard }}/3
+      # WHY: a request once waited with no answer until its scenario timed out, and nothing said on what. A request
+      # held on a lock is still waiting when the job fails, so every connection's state, what it waits on and who
+      # blocks it, and the locks a request can hold across another's (the session's advisory lock, a row's
+      # transaction) are read here, while the stack is up.
+      - if: failure()
+        run: >-
+          docker compose exec -T postgres psql -U twes -d twes
+          -c "SELECT a.pid, a.application_name, a.state, date_trunc('second', now() - a.state_change) AS since, a.wait_event_type, a.wait_event, pg_blocking_pids(a.pid) AS blocked_by, left(a.query, 100) AS last_query FROM pg_stat_activity a WHERE a.datname = current_database() AND a.pid <> pg_backend_pid() ORDER BY a.pid"
+          -c "SELECT l.pid, l.locktype, l.mode, l.granted, l.relation::regclass AS relation FROM pg_locks l WHERE l.locktype IN ('advisory', 'transactionid', 'tuple') OR NOT l.granted ORDER BY l.pid"
       - if: failure()
         run: docker compose logs --no-color
       # WHY: the dot reporter CI uses writes no HTML report, so web/playwright-report alone uploaded nothing and a
