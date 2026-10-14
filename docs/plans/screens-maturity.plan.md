@@ -55,6 +55,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-14 21:54] AGREED: A credit note giving back only part of a final invoice that deducted a deposit carries no deposit line: only a credit note of the whole invoice gives the deposit back. The return is credited at its own net and taxes (200 net returned: 200 + TVA), the deposit stays deducted from what is kept, a return worth more than the final invoice still owes is refused on it, and the rest is corrected by a credit note of the deposit invoice (developer ruling, L-1097; TN.md § 2b, unvalidated).
 - [2026-10-14 23:11] AGREED: On a credit note giving back part of an invoice, a hint under « Droits et retenues du document » says the stamp is given back by the credit note completing the invoice (« Le droit de timbre est rendu par l'avoir qui complète la facture. »); the chip stays as it is (L-1101).
 - [2026-10-15 00:23] AGREED: L-1102: the preview answer says why a chosen fixed charge per document is left out of a credit note's figures (given back by the note completing the invoice, kept by the preset, or never charged by the invoice), and the hint under « Droits et retenues du document » shows only for the first.
+- [2026-10-15 01:32] AGREED: L-1103 and L-1104 next: both hints under « Droits et retenues du document » are tied to the field for screen readers, and the preview names the position each answered line was sent from so the editor places figures by it rather than inferring the dropped deposit lines.
 
 ## Formal Plan
 
