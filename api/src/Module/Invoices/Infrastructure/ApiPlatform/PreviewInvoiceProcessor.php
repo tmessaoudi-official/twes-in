@@ -53,6 +53,6 @@ final readonly class PreviewInvoiceProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return DocumentPreview::of($previewed->totals, $this->scales->of($company->getCurrency()), $previewed->titles);
+        return DocumentPreview::of($previewed->totals, $this->scales->of($company->getCurrency()), $previewed->titles, $previewed->chargesLeftOut);
     }
 }

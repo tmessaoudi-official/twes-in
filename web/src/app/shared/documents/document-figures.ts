@@ -30,6 +30,17 @@ export interface RatedFigure {
 }
 
 /**
+ * Why a credit note's figures leave out a fixed charge chosen on it, as the API says: the note completing its invoice
+ * gives it back, the country keeps it with the invoice, or the invoice never charged it.
+ */
+export type ChargeLeftOutReason = 'given_back_by_completing_note' | 'kept' | 'not_charged';
+
+export interface ChargeLeftOut {
+  readonly code: string;
+  readonly reason: ChargeLeftOutReason;
+}
+
+/**
  * What a document with lines comes to while it is typed, as the API's one calculator works it out. A line the preview
  * could not include yet, one still missing what it needs, is null at its position.
  */
@@ -47,6 +58,8 @@ export interface DocumentFigures {
   readonly withholdings: readonly RatedFigure[];
   /** The total less what is withheld at source. */
   readonly netToPay: string;
+  /** Each fixed charge chosen that the figures leave out, with why; only a credit note leaves one out. */
+  readonly chargesLeftOut: readonly ChargeLeftOut[];
 }
 
 /** What the API answers to a preview, before it is read: its OpenAPI type is named after each document. */
@@ -62,6 +75,7 @@ export interface PreviewBody {
   total?: string;
   withholdings?: RatedFigure[];
   netToPay?: string;
+  chargesLeftOut?: ChargeLeftOut[];
 }
 
 /**
@@ -113,6 +127,7 @@ export function toDocumentFigures(
     total: body.total ?? '0',
     withholdings: body.withholdings ?? [],
     netToPay: body.netToPay ?? '0',
+    chargesLeftOut: body.chargesLeftOut ?? [],
   };
 }
 

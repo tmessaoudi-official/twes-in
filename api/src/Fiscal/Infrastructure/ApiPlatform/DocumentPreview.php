@@ -18,6 +18,7 @@ use App\Fiscal\Domain\Calculation\LineTotals;
 use App\Fiscal\Domain\Calculation\SectionSubtotal;
 use App\Fiscal\Domain\Calculation\SectionSubtotals;
 use App\Fiscal\Domain\Calculation\TaxTotal;
+use App\Fiscal\Domain\ChargeLeftOut;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
@@ -90,8 +91,16 @@ final class DocumentPreview
     #[Groups([self::READ])]
     public array $sections = [];
 
-    /** @param list<string|null> $titles the title of the section each line opens, in order; none for a document without sections */
-    public static function of(DocumentTotals $totals, int $scale, array $titles = []): self
+    /** @var list<array{code: string, reason: string}> */
+    #[ApiProperty(description: 'Each fixed charge per document chosen on the document that its figures leave out, with why: `given_back_by_completing_note` (a credit note giving back part of its invoice; the one completing it gives the charge back), `kept` (the country keeps it with the invoice) or `not_charged` (the invoice charged none, or has none left to give back). Only a credit note leaves one out.', schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['code', 'reason'], 'properties' => ['code' => self::AMOUNT, 'reason' => ['type' => 'string', 'enum' => ['given_back_by_completing_note', 'kept', 'not_charged']]]]])]
+    #[Groups([self::READ])]
+    public array $chargesLeftOut = [];
+
+    /**
+     * @param list<string|null>            $titles         the title of the section each line opens, in order; none for a document without sections
+     * @param array<string, ChargeLeftOut> $chargesLeftOut why a chosen fixed charge is left out, by its code
+     */
+    public static function of(DocumentTotals $totals, int $scale, array $titles = [], array $chargesLeftOut = []): self
     {
         $at = static fn (string $value): string => Decimal::format(Decimal::of($value), $scale);
         $rated = static fn (TaxTotal $each): array => ['code' => $each->code, 'rate' => Decimal::format(Decimal::of($each->rate->percentage()), 3), 'base' => $at($each->base), 'amount' => $at($each->amount)];
@@ -115,6 +124,7 @@ final class DocumentPreview
         $withheld = Decimal::sum(array_map(static fn (TaxTotal $each) => Decimal::of($each->amount), $totals->withholdings));
         $preview->netToPay = Decimal::format(Decimal::of($totals->total)->sub($withheld), $scale);
         $preview->sections = self::sections(SectionSubtotals::of(array_map(static fn (array $line, int $index): array => [$titles[$index] ?? null, $line['net']], $preview->lines, array_keys($preview->lines)), $scale));
+        $preview->chargesLeftOut = array_map(static fn (string $code, ChargeLeftOut $why): array => ['code' => $code, 'reason' => $why->value], array_keys($chargesLeftOut), array_values($chargesLeftOut));
 
         return $preview;
     }

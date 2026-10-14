@@ -12,9 +12,11 @@ namespace App\Tests\Unit\Module\Invoices\Application;
 use App\Audit\Application\AuditEntry;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
+use App\Fiscal\Domain\ChargeLeftOut;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxFamily;
+use App\Fiscal\Infrastructure\Preset\YamlFiscalPresets;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
@@ -303,6 +305,32 @@ final class InvoiceWorkflowTest extends TestCase
         ], array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $credit->getDocumentTaxes()), $this->clock->now());
 
         self::assertSame([], new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())->of($credit)->withholdings);
+    }
+
+    /**
+     * A country whose rule keeps the stamp with the invoice says so on every credit note, the completing one included:
+     * the reason comes from the preset, never from which note it is.
+     */
+    public function testACreditNoteSaysAStampTheCountryKeepsIsKept(): void
+    {
+        $invoice = $this->workflow->issue($this->company, $this->withholdingDraft(['100'])->getId(), null);
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
+        self::assertSame([], new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())->chargesLeftOut($credit), 'the whole invoice gives its stamp back');
+
+        $presets = sys_get_temp_dir().'/fiscal-kept-'.bin2hex(random_bytes(4));
+        mkdir($presets);
+        try {
+            foreach (glob(\dirname(__DIR__, 5).'/config/fiscal/*.yaml') ?: [] as $file) {
+                $yaml = (string) file_get_contents($file);
+                file_put_contents($presets.'/'.basename($file), 'TN.yaml' === basename($file) ? str_replace('stamp: given_back_once', 'stamp: kept', $yaml) : $yaml);
+            }
+            $kept = new InvoiceTotals(new YamlFiscalPresets($presets), ShippedFiscalPresets::scales());
+            self::assertSame([], $kept->of($credit)->fixedCharges);
+            self::assertSame(['TIMBRE' => ChargeLeftOut::Kept], $kept->chargesLeftOut($credit));
+        } finally {
+            array_map(unlink(...), glob($presets.'/*') ?: []);
+            rmdir($presets);
+        }
     }
 
     public function testARequestThatReadTheDraftBeforeAnotherIssuedItIsRefusedOnceItHoldsTheInvoice(): void
