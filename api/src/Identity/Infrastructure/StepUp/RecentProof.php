@@ -15,10 +15,11 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * What an API Platform write on the step-up list asks before it runs (docs/SPEC.md § 7: the company's bank details, a
- * member added or removed, a role changed): a stolen session changing the IBAN so customers pay the attacker is the
- * attack the list exists for. A processor asks it last, after the company and the permission, so who may not act at all
- * is answered as before rather than told to prove who they are. The refusal leads its detail with a token, as the other
- * refusals of these resources do, and the screen asks for the password or a passkey and tries again.
+ * member added or removed, a role changed, the company's second-factor requirement turned off): a stolen session
+ * changing the IBAN so customers pay the attacker is the attack the list exists for. A processor asks it last, after
+ * the company and the permission, so who may not act at all is answered as before rather than told to prove who they
+ * are. The refusal leads its detail with a token, as the other refusals of these resources do, and the screen asks for
+ * the password or a passkey and tries again.
  */
 final readonly class RecentProof
 {

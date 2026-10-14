@@ -47,10 +47,19 @@ export class NotificationBell {
 
   constructor() {
     const auth = inject(AuthFacade);
-    const companyId = computed(() => auth.me()?.company?.id ?? null);
+    // Signed out reads as null, apart from a session with no company: a sign-out would otherwise reconnect and refresh
+    // on a session the API has just ended, and their 401s read to the shell as a session that expired on its own.
+    const companyId = computed(() => {
+      const me = auth.me();
+      return me === null ? null : (me.company?.id ?? '');
+    });
     effect(() => {
-      companyId();
+      const signedIn = companyId() !== null;
       untracked(() => {
+        if (!signedIn) {
+          this.facade.disconnect();
+          return;
+        }
         this.facade.connect();
         void this.facade.refresh();
       });

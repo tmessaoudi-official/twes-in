@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { StepUp } from '../shared/step-up/step-up';
 import {
   type CompanySecurity,
   CompanySecurityApi,
@@ -14,6 +15,7 @@ import {
 export class CompanySecurityFacade {
   private readonly api = inject(CompanySecurityApi);
   private readonly auth = inject(AuthFacade);
+  private readonly stepUp = inject(StepUp);
   private readonly securitySignal = signal<CompanySecurity | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<CompanySecurityError | null>(null);
@@ -42,7 +44,14 @@ export class CompanySecurityFacade {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      this.securitySignal.set(await this.api.requireSecondFactor(companyId, required));
+      // Turning it off waits for the person to prove who they are again; turning it on asks nothing.
+      this.securitySignal.set(
+        await this.stepUp.retrying(
+          () => this.api.requireSecondFactor(companyId, required),
+          (error) => error instanceof CompanySecurityRefused && error.code === 'step_up_required',
+          'step_up.intro_mfa_off',
+        ),
+      );
       // `refresh`, never `load`: the write succeeded, so a moment without the API afterwards must not sign
       // the person out of a session that is still perfectly valid (developer sweep, 2026-09-20).
       await this.auth.refresh();

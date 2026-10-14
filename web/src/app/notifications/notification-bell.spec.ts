@@ -186,6 +186,18 @@ describe('NotificationBell', () => {
     expect(facade.connect).toHaveBeenCalledTimes(2);
   });
 
+  it('asks nothing of the API once the session ends, and closes the connection', () => {
+    render();
+    vi.clearAllMocks();
+
+    me.set(null);
+    TestBed.tick();
+
+    expect(facade.connect).not.toHaveBeenCalled();
+    expect(facade.refresh).not.toHaveBeenCalled();
+    expect(facade.disconnect).toHaveBeenCalledOnce();
+  });
+
   it('closes the connection when it goes away', () => {
     const fixture = render();
 
