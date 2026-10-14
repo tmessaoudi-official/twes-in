@@ -12,6 +12,10 @@ L-603, P1; round 2's slice S8 waits for it).
 - [2026-10-14 19:42] ASSUMED (review): A revision's audit names the bill's fields as the API does: lines, documentTaxComponentIds, printedTaxes, field names only. Alternative: one internal 'amounts' field (names nothing a person sent).
 - [2026-10-14 19:42] ASSUMED (review): The demo data enters every fourth expense of a taxed vendor as a bill at two rates: in Tunisia 70 % at TVA 19 % with FODEC and 30 % at TVA 7 % plus the stamp, in France 60 % at TVA 20 % and 40 % at TVA 10 %. Alternative: one fixed sample bill (seen once, on one page).
 - [2026-10-14 19:42] ASSUMED (review): An expense list page reads its rows' lines and taxes in two statements whatever its size, so the page costs 14 statements (12 before); one join of both collections would multiply their rows. Alternative: leave the bill off the list rows (the list would answer a thinner row than the page).
+- [2026-10-14 20:29] AGREED: L-614 entry: a new expense asks its bill's amounts TTC; a one-line bill takes the receipt's total with the ticked fixed charges in it (12,900 with the stamp gives a net of 10,000); a bill at several rates takes each rate's TTC without the stamp; a switch « HT | TTC » goes back to nets, and a saved draft opens on its nets. The net is worked out exactly as the API rounds, and a total no net reaches is left to the printed amounts.
+- [2026-10-14 20:40] ASSUMED (review): L-614: adding or removing a line keeps every net and says each line's total again, so the stamp moves between the first line's total and the rates' amounts; re-working the nets from the totals as typed would change a net nobody touched. Alternative: re-derive the nets (a one-line receipt total of 12,900 would become a 19 % line of 11,900 minus nothing).
+- [2026-10-14 20:40] ASSUMED (review): L-614: a line whose rate or a ticked fixed charge is no longer offered cannot be worked out taxes included; its total is refused with « saisissez-la hors taxes », and the switch to HT edits it. Alternative: hide the TTC switch on such a draft.
+- [2026-10-14 20:40] ASSUMED (review): L-614: the switch reads « TTC, taxes comprises | HT, hors taxes » (en « Taxes included | Before tax »), the line's field « Total de la facture TTC » on a one-line bill and « Montant TTC » otherwise, with « Soit X TND HT » under it. Alternative: the bare « TTC | HT » of the ruling (shorter, less plain to a shopkeeper).
 
 ## Sources read
 
@@ -75,6 +79,7 @@ CI. Rollback: the migration's `down()` keeps the first line's tax.
 | 3 | Purchase entries, VAT summary and CSV per tax | M | done | d1eddad0 | api/src/Module/AccountingExport/** api/src/Module/Expenses/** |
 | 4 | Web form, list and detail; e2e | L | done | e57149ab | web/src/app/expenses/** web/e2e/** |
 | 5 | Docs and SPEC row | S | done | - | docs/** |
+| 6 | L-614: the bill typed taxes included, each net worked out | M | done | adcc1e3a | web/src/app/expenses/** web/e2e/** |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
