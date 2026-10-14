@@ -21,6 +21,14 @@ async function dangerColour(page: Page): Promise<string> {
   });
 }
 
+/** Whether a colour is the danger colour now, and the scheme has left the one whose danger colour was `before`. */
+async function inDanger(page: Page, colour: string, before: string): Promise<string> {
+  const danger = await dangerColour(page);
+  return colour === danger && danger !== before
+    ? 'in danger'
+    : `${colour} against ${danger}, before ${before}`;
+}
+
 /** What the eye sees of a button: its label's colour, and its fill when it has one. */
 async function drawn(button: Locator): Promise<{ label: string; fill: string }> {
   return button.evaluate((element) => {
@@ -67,9 +75,15 @@ test('a member deletes their own account behind a red button and a typed word, a
   await page.goto('/account');
   const remove = page.getByTestId('account-delete');
   await remove.scrollIntoViewIfNeeded();
+  // The page takes up the device's scheme a moment after it changes, so the danger colour is read on every poll beside
+  // the button's, and must differ from the scheme before: read once, both would still be light in the dark pass.
+  let before = '';
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
-    await expect.poll(async () => (await drawn(remove)).label).toBe(await dangerColour(page));
+    await expect
+      .poll(async () => inDanger(page, (await drawn(remove)).label, before))
+      .toBe('in danger');
+    before = await dangerColour(page);
   }
   await page.emulateMedia({ colorScheme: 'light' });
   await page.screenshot({ path: test.info().outputPath('account-delete-button.png') });
@@ -84,7 +98,7 @@ test('a member deletes their own account behind a red button and a typed word, a
   await expect(run).toBeDisabled();
   await typed.fill('supprimer');
   await expect(run).toBeEnabled();
-  await expect.poll(async () => (await drawn(run)).fill).toBe(await dangerColour(page));
+  await expect.poll(async () => inDanger(page, (await drawn(run)).fill, '')).toBe('in danger');
   await page.screenshot({ path: test.info().outputPath('account-delete-dialog.png') });
   await run.click();
 
