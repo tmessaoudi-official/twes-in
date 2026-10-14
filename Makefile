@@ -235,8 +235,8 @@ gate-web-checks: web-tools-image   # gate-web on the OpenAPI document already ex
 test-api: tools-image
 	docker compose up -d --wait postgres
 	$(TOOLS) make --no-print-directory in-test-api
-in-test-api:
-	cd api && vendor/bin/phpunit
+in-test-api:   # composer test: the test database migrated, then the suite on paratest, a database copy a worker (api/tests/parallel.php)
+	cd api && composer test
 
 test-web: web-tools-image
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx ng test --watch=false'
