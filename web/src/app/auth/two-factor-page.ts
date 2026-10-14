@@ -183,8 +183,7 @@ export class TwoFactorPage {
   }
 
   protected async signOut(): Promise<void> {
-    await this.auth.logout();
-    await this.router.navigateByUrl('/login');
+    if (await this.auth.logout()) await this.router.navigateByUrl('/login');
   }
 
   private async begin(): Promise<void> {

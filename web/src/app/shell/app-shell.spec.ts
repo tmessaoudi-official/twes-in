@@ -198,7 +198,7 @@ describe('AppShell', () => {
     me: me.asReadonly(),
     subscription: computed(() => me()?.company?.subscription ?? null),
     access: computed(() => me()?.company?.access ?? 'full'),
-    logout: vi.fn(async () => undefined),
+    logout: vi.fn(async () => true),
     sessionEnded: vi.fn(),
     hasPermission: (permission: string) => permissions().includes(permission),
     hasModule: (module: string) => modules().includes(module),
@@ -1649,6 +1649,18 @@ describe('AppShell', () => {
 
     expect(auth.logout).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith('/login');
+  });
+
+  it('stays on the page when the person chooses to keep what they typed rather than sign out', async () => {
+    const { click } = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    auth.logout.mockResolvedValueOnce(false);
+
+    await click('user-menu');
+    await click('logout');
+
+    expect(auth.logout).toHaveBeenCalledTimes(1);
+    expect(navigate).not.toHaveBeenCalledWith('/login');
   });
 
   it('switches to compact density from the account menu', async () => {

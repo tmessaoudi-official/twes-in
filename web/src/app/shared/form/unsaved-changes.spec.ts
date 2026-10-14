@@ -97,6 +97,39 @@ describe('UnsavedChanges', () => {
     expect([await leaving(), asked]).toEqual([false, 1]);
   });
 
+  it('asks once before signing out takes the page down, and a yes also answers the navigation that follows', async () => {
+    // Signing out ends the session before it navigates, and the page still counts what was typed when the navigation
+    // asks: without this, the person who said « Quitter » is asked the same thing again.
+    const page = TestBed.createComponent(Page);
+    page.componentInstance.changes.set(2);
+    page.detectChanges();
+    const beforeNavigating = () =>
+      new Promise<boolean>((resolve) =>
+        service().confirmLeaveBeforeNavigating().subscribe(resolve),
+      );
+
+    expect([await beforeNavigating(), asked]).toEqual([true, 1]);
+    expect([await leaving(), asked]).toEqual([true, 1]);
+
+    answer = false;
+    expect([await leaving(), asked]).toEqual([false, 2]);
+  });
+
+  it('answers nothing for later when the person stays', async () => {
+    const page = TestBed.createComponent(Page);
+    page.componentInstance.changes.set(2);
+    page.detectChanges();
+    answer = false;
+
+    expect(
+      await new Promise<boolean>((resolve) =>
+        service().confirmLeaveBeforeNavigating().subscribe(resolve),
+      ),
+    ).toBe(false);
+    answer = true;
+    expect([await leaving(), asked]).toEqual([true, 2]);
+  });
+
   it('stops asking once the page has been saved', async () => {
     const page = TestBed.createComponent(Page);
     page.componentInstance.changes.set(2);

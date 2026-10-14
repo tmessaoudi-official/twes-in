@@ -24,7 +24,6 @@ export class AwaitingApprovalPage {
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
 
   protected async signOut(): Promise<void> {
-    await this.auth.logout();
-    await this.router.navigateByUrl('/login');
+    if (await this.auth.logout()) await this.router.navigateByUrl('/login');
   }
 }
