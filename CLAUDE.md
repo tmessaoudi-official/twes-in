@@ -505,3 +505,9 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - The API suite runs on paratest (`api/tests/parallel.php`). The rate limiters' pool is `cache.app`, under `%kernel.share_dir%`
   (`APP_SHARE_DIR=var/share`), not the cache dir: a per-worker cache dir alone left eight workers sharing it, and thirteen limiter
   tests failed. A worker's container keeps the paths it was compiled with: after changing them, delete `api/var/cache/paratest-*` (2026-10-14).
+- An expected value written `.toBe(await x(page))` beside `expect.poll` is read ONCE, before the poll starts. After `emulateMedia`
+  the page takes the scheme up a moment later (`ThemeFacade` hears `matchMedia`), so the dark pass compared light with light and
+  went red only when the switch fell between the two reads. Read both sides inside the poll and require the state to have moved;
+  sabotage a style under `make up` only after `docker compose restart web` and a `curl` of the served CSS (2026-10-14).
+- `make gate-api` and `make gate-web` side by side (as ruled) can race on `api/var/cache`: the web gate exports the OpenAPI document
+  through the api's console. « Cannot rename … de~ already exists » is that race, not the change: rerun the red half alone (2026-10-14).
