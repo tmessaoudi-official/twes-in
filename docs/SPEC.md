@@ -5084,6 +5084,11 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-14 12:57] AGREED: screens-maturity round 1, L-600 fix-now: a vendor's default expense category is shown and edited on the vendor record and saved with it, and the vendor export carries its column, so export then import keeps it (developer).
 - [2026-10-14 12:57] AGREED: screens-maturity round 1, L-400 fix-now: a count line keeps the location it was scanned at; the count sheet groups lines by location and recording books each at its own; scanning another shelf's label starts that shelf's group (developer).
 - [2026-10-14 12:57] AGREED: screens-maturity round 1, L-401 fix-now: a scanner burst ending in Enter into a quantity or price field is taken as a scan, never typing (the field keeps its value, the scan goes where scans go, said in a toast), amending the 2026-09-23 01:10 ruling for number fields only; and a quantity or price far above what is usual for that product asks before it is saved (developer).
+- [2026-10-14 15:13] AGREED: Gates stay side by side as ruled 2026-10-08 22:34: a « Cannot rename … de~ already exists » red is the race on api/var/cache, and the red half is rerun alone (the CLAUDE.md lesson).
+- [2026-10-14 15:13] AGREED: L-1080 is sourced first: the timbre on a credit note and the document discount on a partial return are researched with citations into docs/fiscal/TN.md, then fixed with tests, and the test's hand removal of the stamp goes; no rule is invented in code.
+- [2026-10-14 15:13] AGREED: Q1–Q21, the maturity rubric and the twelve feelings families are ruled on one private marking page, read back into SPEC § 7, before round 2's instruments and three waves.
+- [2026-10-14 15:14] AGREED: Fix-now before round 2: L-1000 (sign-out asks before typed work is lost), L-425 (the lent phone says « Envoyé » only once the API answered, and keeps an unsent scan) and L-820; L-603 (an expense with several taxes) gets its own plan, sourced first, and round 2's slice S8 waits for it to land.
+- [2026-10-14 15:14] AGREED: L-820: turning the company's two-factor requirement off asks for a step-up proof and joins the step-up list; turning it on asks nothing. The module-switch half of Q14 stays on the marking page.
 
 ## 8. Status
 
