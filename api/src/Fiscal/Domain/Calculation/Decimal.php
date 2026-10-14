@@ -75,7 +75,9 @@ final class Decimal
     /**
      * Splits a rounded total into shares that add up to it exactly: floor each exact share to the scale, then hand
      * the shortfall out one smallest unit at a time to the largest floored-away remainders, ties to the earliest.
-     * Flooring first is what keeps the shares from ever exceeding the total.
+     * Flooring first is what keeps the shares from ever exceeding the total. A total given rather than rounded, such
+     * as what is left of a tax, can lie below the floors or more than a unit a share above them: every share then moves
+     * by the same whole units first, and the rest goes by remainder as before.
      *
      * A negative total is split as the negative of its positive mirror, so a credit note's shares are its invoice's,
      * signed: flooring a negative share would push it away from zero and hand the shortfall to another line, moving a
@@ -93,17 +95,24 @@ final class Decimal
                 self::allocate(self::zero()->sub($total), array_map(static fn (Number $share): Number => self::zero()->sub($share), $exact), $scale),
             );
         }
+        if ([] === $exact) {
+            return [];
+        }
         $unit = (new Number(1))->div(self::factor($scale), $scale);
         $floors = array_map(static fn (Number $share): Number => self::floor($share, $scale), $exact);
         $remainders = array_map(static fn (Number $share, Number $floor): Number => $share->sub($floor), $exact, $floors);
         $units = (int) (string) $total->sub(self::sum($floors))->div($unit, 0);
+        $count = \count($exact);
+        $each = intdiv($units, $count) - ($units % $count < 0 ? 1 : 0);
+        $rest = $units - $each * $count;
 
         $order = array_keys($exact);
         usort($order, static fn (int $a, int $b): int => $remainders[$b]->compare($remainders[$a]) ?: $a <=> $b);
-        $topped = array_flip(\array_slice($order, 0, max(0, $units)));
+        $topped = array_flip(\array_slice($order, 0, $rest));
+        $moved = $unit->mul($each);
 
         return array_map(
-            static fn (Number $floor, int $i): Number => isset($topped[$i]) ? $floor->add($unit) : $floor,
+            static fn (Number $floor, int $i): Number => $floor->add($moved)->add(isset($topped[$i]) ? $unit : 0),
             $floors,
             array_keys($floors),
         );

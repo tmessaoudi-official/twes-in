@@ -135,8 +135,48 @@ final readonly class InvoiceTotals
         $siblings = self::issuedSiblings($corrected, $invoice);
         $base = $this->calculate($invoice, null)->subtotalNet;
         $completes = self::completes($corrected, $siblings, $base);
+        $discount = $this->documentDiscountGivenBack($corrected, $siblings, $base, $completes);
+        $totals = $this->calculate($invoice, $discount, $completes);
+        $left = $completes ? $this->taxesLeft($corrected, $siblings, $totals) : [];
 
-        return $this->calculate($invoice, $this->documentDiscountGivenBack($corrected, $siblings, $base, $completes), $completes);
+        return [] === $left ? $totals : $this->calculate($invoice, $discount, $completes, $left);
+    }
+
+    /**
+     * What is left of each percentage tax its invoice charged, for the credit note completing it: the invoice rounded
+     * each tax once over its lines and each credit note rounds its own, so taken alone the credit notes can come to a
+     * unit more or less than the invoice charged. Only where the difference is what that rounding can make, one unit a
+     * credit note at most, so a note crediting other figures is never bent to the invoice's.
+     *
+     * @param list<Invoice> $siblings
+     *
+     * @return array<string, string>
+     */
+    private function taxesLeft(Invoice $corrected, array $siblings, DocumentTotals $totals): array
+    {
+        $scale = $this->scales->of($corrected->getCompany()->getCurrency());
+        $left = [];
+        foreach ($corrected->getIssuedFigures()->taxes ?? [] as $tax) {
+            $left[$tax['code']] = ($left[$tax['code']] ?? Decimal::zero())->add(Decimal::absolute(Decimal::of($tax['amount'])));
+        }
+        foreach ($siblings as $sibling) {
+            foreach ($sibling->getIssuedFigures()->taxes ?? [] as $tax) {
+                if (isset($left[$tax['code']])) {
+                    $left[$tax['code']] = $left[$tax['code']]->sub(Decimal::absolute(Decimal::of($tax['amount'])));
+                }
+            }
+        }
+        $reach = Decimal::of((string) (\count($siblings) + 1))->div((new Number(10))->pow($scale), $scale);
+        $given = [];
+        foreach ($totals->taxes as $tax) {
+            $amount = $left[$tax->code] ?? null;
+            $gap = null === $amount ? null : Decimal::absolute(Decimal::absolute(Decimal::of($tax->amount))->sub($amount));
+            if (null !== $gap && 0 !== $gap->compare(0) && $gap->compare($reach) <= 0 && $amount->compare(0) >= 0) {
+                $given[$tax->code] = Decimal::format($amount, $scale);
+            }
+        }
+
+        return $given;
     }
 
     /**
@@ -305,7 +345,8 @@ final readonly class InvoiceTotals
         return array_map(static fn (Number $amount): string => Decimal::format($amount, 3), array_filter($left, static fn (Number $amount): bool => $amount->compare(0) > 0));
     }
 
-    private function calculate(Invoice $invoice, ?string $documentDiscount, bool $completes = false): DocumentTotals
+    /** @param array<string, string> $taxesLeft */
+    private function calculate(Invoice $invoice, ?string $documentDiscount, bool $completes = false, array $taxesLeft = []): DocumentTotals
     {
         $company = $invoice->getCompany();
         $lines = array_map(static fn (InvoiceLine $line): LineInput => new LineInput(
@@ -351,6 +392,7 @@ final readonly class InvoiceTotals
             $lines,
             $documentDiscount,
             $documentTaxes,
+            $taxesLeft,
         ));
     }
 

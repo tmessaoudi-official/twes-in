@@ -143,6 +143,27 @@ final class DocumentCalculatorTest extends TestCase
         self::assertSame('0.000', Decimal::format(new Number('-0.0004'), 3));
     }
 
+    /**
+     * A correction completing its document takes what is left of each percentage tax, so its corrections add up to what
+     * the document charged rather than each rounding alone; spread over its lines as a rate group is.
+     */
+    public function testACorrectionCompletingItsDocumentTakesWhatIsLeftOfATax(): void
+    {
+        $line = new LineInput('1', '33.335', null, [$this->vat('19')]);
+        $alone = (new DocumentCalculator())->calculate(new DocumentInput(3, true, TaxBasis::Exclusive, RoundingPoint::PerRateGroup, [$line]));
+        self::assertSame('-6.334', $alone->taxes[0]->amount);
+
+        $left = (new DocumentCalculator())->calculate(new DocumentInput(3, true, TaxBasis::Exclusive, RoundingPoint::PerRateGroup, [$line, $line], taxesLeft: ['TVA' => '12.666']));
+        self::assertSame(['-12.666', '-79.336'], [$left->taxes[0]->amount, $left->amountDue]);
+        self::assertSame(['-6.333', '-6.333'], array_map(static fn ($each) => $each->taxes[0]->amount, $left->lines));
+    }
+
+    public function testWhatIsLeftOfATaxIsRefusedOnADocumentEnteredTaxIncluded(): void
+    {
+        $this->expectException(\LogicException::class);
+        (new DocumentCalculator())->calculate(new DocumentInput(3, true, TaxBasis::Inclusive, RoundingPoint::PerRateGroup, [new LineInput('1', '39.669', null, [$this->vat('19')])], taxesLeft: ['TVA' => '6.333']));
+    }
+
     private function vat(string $rate): TaxInput
     {
         return TaxInput::percentage('TVA', Rate::fromPercentage($rate));
