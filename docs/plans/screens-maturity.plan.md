@@ -42,6 +42,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-14 15:14] AGREED: L-820: turning the company's two-factor requirement off asks for a step-up proof and joins the step-up list; turning it on asks nothing. The module-switch half of Q14 stays on the marking page.
 - [2026-10-14 15:19] AGREED: The fix-now batch (L-820, L-1000, L-425) is treated as Large: each item gets its own full plan and a hard stop for the developer's go before any code.
 - [2026-10-14 15:19] AGREED: After the fix-now batch: the L-1080 sourcing into docs/fiscal/TN.md, then L-603's own plan for approval; the marking page is read back whenever the developer finishes it.
+- [2026-10-14 15:23] AGREED: L-820 go as planned; the step-up dialog says « Pour ne plus exiger la vérification en deux étapes, saisissez votre mot de passe ou utilisez une clé d’accès. » (en « To stop requiring two-step verification, enter your password or use a passkey. »).
 
 ## Formal Plan
 
@@ -125,7 +126,8 @@ Known before round 1:
   kind across them).
 - « Textes »: editable screen texts, as ruled below.
 
-**Fix-now L-820** (plan for the developer's go; each fix-now item gets its own plan and stop): turning the company's
+**Fix-now L-820** (done, 70e48091, SPEC § 8 row 280; its e2e also found and fixed L-1091, a sign-out told as an
+expired session): turning the company's
 two-factor requirement off waits for a recent proof; turning it on, or saying what is already so, asks nothing.
 - API: `RequireSecondFactorProcessor` calls `RecentProof::demand` after the company and permission checks, only when
   the company requires a second factor and the request says it should not. `RecentProof`'s docblock lists it.
