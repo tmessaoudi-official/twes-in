@@ -17,6 +17,10 @@ import {
   expenseSearch,
   expenseValues,
   EXPENSES_LIST,
+  grossFromNet,
+  grossOfLine,
+  netOfLine,
+  netFromGross,
   EXPENSE_CATEGORIES_LIST,
   classifyForm,
   tejMonths,
@@ -503,5 +507,69 @@ describe('the expense categories list', () => {
         (row) => row.id,
       ),
     ).toEqual([diesel.id]);
+  });
+});
+
+describe('netFromGross', () => {
+  const vat = (rate: string) => ({ rate, entersVatBase: false });
+  const levy = (rate: string) => ({ rate, entersVatBase: true });
+
+  it('works the net out of what a line comes to with its taxes, as the API rounds them', () => {
+    // 1000 with FODEC 10, and VAT 19 % on 1010: 1201.900.
+    expect(netFromGross('1201.900', [vat('19.000'), levy('1.000')], 3)).toEqual({
+      net: '1000.000',
+      exact: true,
+    });
+    expect(netFromGross('214', [vat('7.000')], 3)).toEqual({ net: '200.000', exact: true });
+    expect(netFromGross('120.00', [vat('20.000')], 2)).toEqual({ net: '100.00', exact: true });
+    expect(netFromGross('50', [], 3)).toEqual({ net: '50.000', exact: true });
+  });
+
+  it('picks the net whose taxes, rounded, give back the very figure typed', () => {
+    // 1.000 / 1.19 = 0.8403: 0.840 and its VAT 0.160 make 1.000 again.
+    expect(netFromGross('1.000', [vat('19.000')], 3)).toEqual({ net: '0.840', exact: true });
+    // 0.003 is no net plus its VAT at 19 %: the nearest is given, and said not to be exact.
+    expect(netFromGross('0.003', [vat('19.000')], 3)).toEqual({ net: '0.003', exact: false });
+  });
+
+  it('gives nothing for what is not an amount above zero at the currency scale', () => {
+    for (const typed of ['', 'abc', '0', '0.000', '12.3456', '-5']) {
+      expect([typed, netFromGross(typed, [vat('19.000')], 3)]).toEqual([typed, null]);
+    }
+  });
+});
+
+describe('grossFromNet', () => {
+  it('says what a net comes to with its taxes, rounded as the API rounds them, and gives it back to netFromGross', () => {
+    const rates = [
+      { rate: '19.000', entersVatBase: false },
+      { rate: '1.000', entersVatBase: true },
+    ];
+    expect(grossFromNet('1000.000', rates, 3)).toBe('1201.900');
+    expect(grossFromNet('0.840', [rates[0]!], 3)).toBe('1.000');
+    expect(grossFromNet('100', [], 2)).toBe('100.00');
+    // Half a millime of tax, exactly: rounded away from zero, as the API rounds it.
+    const one = [{ rate: '1.000', entersVatBase: false }];
+    expect(grossFromNet('0.050', one, 3)).toBe('0.051');
+    expect(netFromGross('0.051', one, 3)).toEqual({ net: '0.050', exact: true });
+    expect(netFromGross(grossFromNet('733.217', rates, 3)!, rates, 3)?.net).toBe('733.217');
+    expect(grossFromNet('', rates, 3)).toBeNull();
+    expect(grossFromNet('1.5', [{ rate: 'x', entersVatBase: false }], 3)).toBeNull();
+  });
+});
+
+describe('a line typed with its taxes', () => {
+  const vat = [{ rate: '19.000', entersVatBase: false }];
+
+  it('takes the fixed charges ticked out of a receipt total before working the net out, and puts them back', () => {
+    expect(netOfLine('12.900', vat, ['1.000'], 3)).toEqual({ net: '10.000', exact: true });
+    expect(grossOfLine('10.000', vat, ['1.000'], 3)).toBe('12.900');
+    expect(netOfLine('1201.9', [], [], 3)).toEqual({ net: '1201.900', exact: true });
+  });
+
+  it('works nothing out of a total the charges alone reach', () => {
+    expect(netOfLine('1.000', vat, ['1.000'], 3)).toBeNull();
+    expect(netOfLine('0.500', vat, ['1.000'], 3)).toBeNull();
+    expect(netOfLine('12.9', vat, ['x'], 3)).toBeNull();
   });
 });

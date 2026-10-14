@@ -2,7 +2,9 @@
   <div class="flex flex-col gap-1">
     <h2 class="text-xl font-semibold">{{ 'expenses.bill.title' | translate }}</h2>
     @if (!readOnly()) {
-      <p class="text-sm text-on-surface-variant">{{ 'expenses.bill.hint' | translate }}</p>
+      <p class="text-sm text-on-surface-variant" data-testid="bill-hint">
+        {{ (mode() === 'gross' ? 'expenses.bill.hint_gross' : 'expenses.bill.hint') | translate }}
+      </p>
     }
   </div>
 
@@ -21,6 +23,21 @@
       }
     </ul>
   } @else {
+    <mat-radio-group
+      class="flex flex-wrap gap-x-4"
+      [value]="mode()"
+      (change)="choose($event.value)"
+      [attr.aria-label]="'expenses.bill.mode' | translate"
+      [attr.data-mode]="mode()"
+      data-testid="bill-mode"
+    >
+      <mat-radio-button value="gross" data-testid="bill-mode-gross">{{
+        'expenses.bill.mode_gross' | translate
+      }}</mat-radio-button>
+      <mat-radio-button value="net" data-testid="bill-mode-net">{{
+        'expenses.bill.mode_net' | translate
+      }}</mat-radio-button>
+    </mat-radio-group>
     @for (line of lines(); track line; let i = $index) {
       <fieldset
         class="flex min-w-0 flex-col gap-2 rounded-xl border border-outline-variant p-4"
@@ -32,27 +49,63 @@
         </legend>
         <div class="grid items-start gap-x-4 gap-y-2 sm:grid-cols-3">
           <div class="flex flex-col">
-            <mat-form-field>
-              <mat-label>{{ 'expenses.bill.net' | translate }}</mat-label>
-              <input
-                matInput
-                formControlName="amountNet"
-                appDecimal
-                required
-                autocomplete="off"
-                [attr.data-testid]="'bill-line-' + i + '-net'"
-              />
-              <mat-hint>{{
-                'expenses.bill.net_hint' | translate: { currency: options().currency }
-              }}</mat-hint>
-            </mat-form-field>
-            @if (netError(line); as key) {
-              <span
-                role="alert"
-                class="px-4 pt-1 pb-2 text-xs text-error"
-                [attr.data-testid]="'bill-line-' + i + '-net-error'"
-                >{{ key | translate }}</span
-              >
+            @if (mode() === 'gross') {
+              <mat-form-field>
+                <mat-label>{{ grossLabel() | translate }}</mat-label>
+                <input
+                  matInput
+                  [formControl]="grossOf(line)"
+                  appDecimal
+                  required
+                  autocomplete="off"
+                  [attr.data-testid]="'bill-line-' + i + '-gross'"
+                />
+                @if (grossHint(line); as hint) {
+                  <mat-hint [attr.data-testid]="'bill-line-' + i + '-gross-hint'">{{
+                    hint.key
+                      | translate
+                        : {
+                            net: hint.net | amount: options().currencyScale,
+                            currency: options().currency,
+                          }
+                  }}</mat-hint>
+                } @else {
+                  <mat-hint>{{
+                    'expenses.bill.net_hint' | translate: { currency: options().currency }
+                  }}</mat-hint>
+                }
+              </mat-form-field>
+              @if (grossError(line); as key) {
+                <span
+                  role="alert"
+                  class="px-4 pt-1 pb-2 text-xs text-error"
+                  [attr.data-testid]="'bill-line-' + i + '-gross-error'"
+                  >{{ key | translate }}</span
+                >
+              }
+            } @else {
+              <mat-form-field>
+                <mat-label>{{ 'expenses.bill.net' | translate }}</mat-label>
+                <input
+                  matInput
+                  formControlName="amountNet"
+                  appDecimal
+                  required
+                  autocomplete="off"
+                  [attr.data-testid]="'bill-line-' + i + '-net'"
+                />
+                <mat-hint>{{
+                  'expenses.bill.net_hint' | translate: { currency: options().currency }
+                }}</mat-hint>
+              </mat-form-field>
+              @if (netError(line); as key) {
+                <span
+                  role="alert"
+                  class="px-4 pt-1 pb-2 text-xs text-error"
+                  [attr.data-testid]="'bill-line-' + i + '-net-error'"
+                  >{{ key | translate }}</span
+                >
+              }
             }
           </div>
           <div class="flex min-w-0 flex-col sm:col-span-2">

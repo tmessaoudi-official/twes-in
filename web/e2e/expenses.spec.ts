@@ -81,7 +81,8 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await page.getByTestId('field-reference').fill(`F-${run}`);
     await page.getByTestId('field-categoryId').click();
     await page.getByRole('option', { name: category }).click();
-    await page.getByTestId('bill-line-0-net').fill('100');
+    // A new expense is typed as the receipt shows it, taxes included: 119 at 19 % is 100 before tax.
+    await page.getByTestId('bill-line-0-gross').fill('119');
     // The rate is said once: « TVA 19 % », or « (19 %) » after a name that does not carry it.
     await choose(page, 'bill-line-0-taxes', /19\s%\)?$/);
     expect(await wcagViolations(page)).toEqual([]);
@@ -158,7 +159,7 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
 });
 
 // A supplier's bill as TEJ's own example prints it: 1000 at 19 % with FODEC, 200 at 7 %, and the stamp. Entered as
-// printed, its taxes are listed rate by rate, and the supplier's rounding of one of them is kept beside what twes-in
+// printed, each rate's amount taxes included and the stamp apart, its taxes are listed rate by rate, and the supplier's rounding of one of them is kept beside what twes-in
 // works out. The draft is deleted at the end, so nothing is left in the shared company.
 test('a bill at 19 % with FODEC and at 7 %, with the stamp, is entered as it is printed', async ({
   page,
@@ -173,11 +174,11 @@ test('a bill at 19 % with FODEC and at 7 %, with the stamp, is entered as it is 
   let created: string | null = null;
   try {
     await page.getByTestId('field-description').fill(`Quincaillerie ${run}`);
-    await page.getByTestId('bill-line-0-net').fill('1000');
+    await page.getByTestId('bill-line-0-gross').fill('1201,9');
     await choose(page, 'bill-line-0-taxes', /TVA\s19/);
     await choose(page, 'bill-line-0-taxes', /FODEC/);
     await page.getByTestId('bill-add-line').click();
-    await page.getByTestId('bill-line-1-net').fill('200');
+    await page.getByTestId('bill-line-1-gross').fill('214');
     await choose(page, 'bill-line-1-taxes', /TVA\s7/);
     await page
       .getByTestId('bill-charges')
@@ -209,6 +210,38 @@ test('a bill at 19 % with FODEC and at 7 %, with the stamp, is entered as it is 
     created = null;
   } finally {
     // A failure partway leaves the draft: it is deleted here, so nothing stays in the shared company.
+    if (created !== null) await removeExpense(page, created);
+  }
+});
+
+// A café receipt shows one total, the stamp in it: 12,900 at 19 % with the stamp is 10 before tax. Saved, the draft opens
+// on that net, and is deleted at the end.
+test('a receipt is entered by its total, the stamp in it, and its net worked out', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/expenses/new');
+  let created: string | null = null;
+  try {
+    await page.getByTestId('field-description').fill(`Café ${run}`);
+    await page.getByTestId('bill-line-0-gross').fill('12,9');
+    await choose(page, 'bill-line-0-taxes', /TVA\s19/);
+    await page
+      .getByTestId('bill-charges')
+      .getByRole('checkbox', { name: /timbre|stamp/i })
+      .check();
+    await expect(page.getByTestId('bill-line-0-gross-hint')).toContainText('10,000');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('record-save').click();
+
+    await expect(page).toHaveURL(/\/expenses\/[0-9a-f-]{36}$/);
+    created = page.url().split('/').at(-1) ?? null;
+    await expect(page.getByTestId('expense-gross')).toContainText('12,900');
+    await expect(page.getByTestId('bill-mode')).toHaveAttribute('data-mode', 'net');
+    await expect(page.getByTestId('bill-line-0-net')).toHaveValue('10,000');
+  } finally {
     if (created !== null) await removeExpense(page, created);
   }
 });
