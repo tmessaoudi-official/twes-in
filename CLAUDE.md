@@ -510,8 +510,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   went red only when the switch fell between the two reads. Read both sides inside the poll and require the state to have moved;
   sabotage a style under `make up` only after `docker compose restart web` and a `curl` of the served CSS (2026-10-14).
 - `make gate-api` and `make gate-web` side by side (as ruled) can race on `api/var/cache`: the web gate exports the OpenAPI document
-  through the api's console. « Cannot rename … de~ already exists » is that race, not the change: rerun the red half alone (2026-10-14).
-- An effect keyed on `auth.me()?.company?.id ?? null` fires again when the person signs out, and an API call from it then
-  answers 401, which the shell reads as a session that expired: « Se déconnecter » landed on « Votre session a pris fin ».
-  Treat signed-out as its own state and ask nothing then (`NotificationBell`, 2026-10-14). The race on `api/var/cache` also
-  shows as `assets:install` KO in the web gate's OpenAPI export: the same race, rerun that half alone.
+  through the api's console. « Cannot rename … de~ already exists », or `assets:install` KO in the web gate's
+  export, is that race, not the change: rerun the red half alone (2026-10-14).
+- An effect keyed on `auth.me()?.company?.id ?? null` fires again when the person signs out, and its call answers 401:
+  « Se déconnecter » landed on « Votre session a pris fin ». Treat signed-out as its own state and ask nothing then
+  (`NotificationBell`); `RequestActivity` takes no 401 for an ended session once nobody is signed in (2026-10-14).
