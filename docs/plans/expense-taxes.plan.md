@@ -4,6 +4,9 @@ An expense records a supplier's bill as the paper shows it: several VAT rates, F
 L-603, P1; round 2's slice S8 waits for it).
 
 ## Decisions Log
+- [2026-10-14 19:19] AGREED: L-603 plan approved as written (docs/plans/expense-taxes.plan.md): an expense has amount lines (a net and its percentage taxes, a VAT rate and FODEC) and the bill's fixed charges, worked out by the invoices' DocumentCalculator; TEJ declares one operation per VAT rate with the withholding taken on each rate's own TTC; the exports go per rate; L-614 follows on the same form.
+- [2026-10-14 19:19] AGREED: An expense's tax amounts are computed and shown; the person may type the amount printed on the bill instead, accepted within 0.001 per tax line and recorded as typed, so the expense, the VAT summary and TEJ say what the bill says when its supplier rounded differently.
+- [2026-10-14 19:19] AGREED: A new expense offers the company's fixed charges (the stamp) unticked: the person ticks the stamp when the bill shows it, so no receipt is charged a stamp it does not carry.
 
 ## Sources read
 
@@ -20,7 +23,7 @@ L-603, P1; round 2's slice S8 waits for it).
 FODEC, or with the stamp, cannot be entered as printed, so its gross, the withholding, the amount paid, the VAT
 summary's deductible VAT and the TEJ figures all differ from the paper.
 
-## Formal Plan (proposed, not approved)
+## Formal Plan (approved 2026-10-14 19:19)
 
 The expense takes the invoice's shape for its money, through the same `DocumentCalculator`, so a tax kind, a rate,
 FODEC entering the VAT base and the stamp mean the same on both sides (country support stays data).
@@ -70,7 +73,6 @@ CI. Rollback: the migration's `down()` keeps the first line's tax.
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
-- Approval of this plan and the questions put with it (2026-10-14).
 ### Needs research
 - Accountant: FODEC inside `MontantHT` on TEJ; the stamp left out of TEJ and of the withholding base.
 ### Fragile
