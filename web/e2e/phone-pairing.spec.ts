@@ -4,7 +4,7 @@ import { wcagViolations } from './axe';
 import { aProduct, forget, gtin, withCodes } from './catalogue';
 import { inACompany, signIn } from './session';
 
-// docs/SPEC.md § 7, 2026-09-23 09:45, slice 4: a phone lent to a computer tab as a scanner. The phone is another
+// A phone lent to a computer tab as a scanner. The phone is another
 // browser with no session at all; it claims the link the computer shows, and each code it sends acts once on the
 // computer. The computer's echo reaches the phone through Centrifugo, so the whole path — the public API, the
 // realtime channels in both directions and the choices sent back — is exercised.
@@ -52,7 +52,7 @@ test('a phone scans for the computer with no sign-in, sees what it did, and its 
     await expect(screen.getByTestId('phone-echo')).toContainText('1,000');
     expect(await wcagViolations(screen)).toEqual([]);
 
-    // A short drop (the bad-network standard, docs/SPEC.md § 7): a scan the network lost is kept and said unsent,
+    // A short drop (the bad-network standard): a scan the network lost is kept and said unsent,
     // never « Envoyé », and goes with « Renvoyer » once the API answers again, counted once on the computer.
     const scans = '**/api/scan-pairings/*/scans';
     await screen.route(scans, (route) => route.abort('internetdisconnected'));
@@ -81,7 +81,7 @@ test('a phone scans for the computer with no sign-in, sees what it did, and its 
     await screen.getByTestId('phone-send').click();
     await expect(page.getByTestId('product-scan-none')).toBeVisible();
     await screen.getByTestId('phone-choice-create').click();
-    // The sale on the computer holds a scanned line, so leaving it for the new product asks there first (RCH-01).
+    // The sale on the computer holds a scanned line, so leaving it for the new product asks there first.
     await page.getByTestId('confirm-run').click();
     await expect(page).toHaveURL(new RegExp(`/products/new\\?barcode=${unknown}`));
 
