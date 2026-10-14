@@ -454,16 +454,20 @@ export class InvoicePage {
   });
 
   /**
-   * Whether a credit note's figures leave out the stamp chosen on it: the stamp is given back once, by the credit note
-   * completing its invoice, so a part shows it chosen and charges none. Read from what the API answered, never decided here.
+   * Whether a credit note's figures leave out the stamp chosen on it because the credit note completing its invoice
+   * gives it back, as the API says: a stamp the country keeps, or the invoice never charged, is not promised back.
    */
   protected readonly stampHeldBack = computed(() => {
-    const totals = this.isCreditNote() ? this.shownTotals() : null;
-    if (totals === null || !totals.live) return false;
-    const charged = new Set(totals.fixedTaxes.map((tax) => tax.code));
+    const totals = this.isCreditNote() && this.editable() ? this.figures() : null;
+    if (totals === null) return false;
+    const awaited = new Set(
+      totals.chargesLeftOut
+        .filter((charge) => charge.reason === 'given_back_by_completing_note')
+        .map((charge) => charge.code),
+    );
     const chosen = this.documentTaxes();
     return this.documentTaxChoices().some(
-      (tax) => tax.family === 'stamp' && chosen.includes(tax.id) && !charged.has(tax.code),
+      (tax) => tax.family === 'stamp' && chosen.includes(tax.id) && awaited.has(tax.code),
     );
   });
 

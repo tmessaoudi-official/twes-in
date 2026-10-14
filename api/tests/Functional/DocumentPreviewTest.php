@@ -128,6 +128,37 @@ final class DocumentPreviewTest extends ApiTestCase
         self::assertSame('-100.000', $this->json()['totalNet'], 'the draft keeps what was saved');
     }
 
+    /**
+     * A chosen stamp a credit note's figures leave out is named with why, so the screen says only what holds: a part
+     * leaves it to the note completing the invoice, and a note of an invoice that charged none has none to give back.
+     */
+    public function testACreditNoteSaysWhyItsFiguresLeaveAChosenStampOut(): void
+    {
+        $this->signedIn(self::WRITER);
+        $line = ['description' => 'Pose', 'quantity' => '2', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '50', 'taxComponentIds' => [$this->taxId('TVA19')]];
+        $stamped = ['documentTaxComponentIds' => [$this->taxId('TIMBRE')]] + $this->invoiceBody([$line]);
+        $creditId = $this->creditNoteOf($stamped);
+        $this->postJson($this->companyPath().'/invoices/'.$creditId.'/preview', ['documentTaxComponentIds' => [$this->taxId('TIMBRE')]] + $this->invoiceBody([[...$line, 'quantity' => '1']]));
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['fixedTaxes']);
+        self::assertSame([['code' => 'TIMBRE', 'reason' => 'given_back_by_completing_note']], $this->json()['chargesLeftOut']);
+
+        $this->postJson($this->companyPath().'/invoices/'.$creditId.'/preview', $stamped);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['TIMBRE'], array_column($this->rows($this->json(), 'fixedTaxes'), 'code'), 'the note completing the invoice gives it back');
+        self::assertSame([], $this->json()['chargesLeftOut']);
+
+        // An invoice issued with no stamp, its credit note given one by hand: there is nothing to give back, ever.
+        $unstampedCredit = $this->creditNoteOf($this->invoiceBody([$line]));
+        $this->postJson($this->companyPath().'/invoices/'.$unstampedCredit.'/preview', $stamped);
+        self::assertResponseIsSuccessful();
+        self::assertSame([['code' => 'TIMBRE', 'reason' => 'not_charged']], $this->json()['chargesLeftOut']);
+
+        $this->postJson($this->companyPath().'/invoices/preview', $stamped);
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['chargesLeftOut'], 'an invoice charges what it is given');
+    }
+
     public function testWhatASaveWouldRefuseIsRefusedWithItsField(): void
     {
         $this->signedIn(self::WRITER);
@@ -294,6 +325,22 @@ final class DocumentPreviewTest extends ApiTestCase
     }
 
     /** What the request's own unit of work holds: a preview leaves nothing to write, not even a changed field. */
+    /**
+     * A draft credit note of the invoice the body makes, issued first.
+     *
+     * @param array<string, mixed> $invoice
+     */
+    private function creditNoteOf(array $invoice): string
+    {
+        $this->postJson($this->companyPath().'/invoices', $invoice);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->companyPath().'/invoices/'.$id.'/issue', []);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->companyPath().'/invoices/'.$id.'/credit-notes', ['creditNoteReason' => 'Retour']);
+
+        return $this->stringAt($this->json(), 'id');
+    }
+
     private function assertNothingPending(): void
     {
         $unitOfWork = static::getContainer()->get(EntityManagerInterface::class)->getUnitOfWork();

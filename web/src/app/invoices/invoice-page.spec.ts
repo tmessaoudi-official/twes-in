@@ -24,7 +24,11 @@ import {
 import { InvoicePage } from './invoice-page';
 import { FileSaver } from '../shared/files/save-file';
 import { InvoicesFacade } from './invoices-facade';
-import { PREVIEW_DELAY, type PreviewBody } from '../shared/documents/document-figures';
+import {
+  type ChargeLeftOutReason,
+  PREVIEW_DELAY,
+  type PreviewBody,
+} from '../shared/documents/document-figures';
 import { InventoryFacade } from '../inventory/inventory-facade';
 import { ProductScans } from '../products/product-scans';
 import { ScanBus } from '../shared/scan/scan-bus';
@@ -2294,7 +2298,12 @@ describe('InvoicePage', () => {
     });
 
     it('says on a credit note leaving the stamp out that the note completing the invoice gives it back', async () => {
-      const unstamped: PreviewBody = { ...twice, fixedTaxes: [] };
+      const leftOut = (reason: ChargeLeftOutReason, code = 'TIMBRE'): PreviewBody => ({
+        ...twice,
+        fixedTaxes: [],
+        chargesLeftOut: [{ code, reason }],
+      });
+      const unstamped = leftOut('given_back_by_completing_note');
       // A withholding chosen beside it is never a fixed charge, and holds nothing back.
       invoice.set({
         ...draft,
@@ -2313,6 +2322,23 @@ describe('InvoicePage', () => {
       // The note completing the invoice: the stamp is in its figures, nothing to say.
       facade.preview.mockResolvedValue(twice);
       type('line-0-quantity', '2');
+      await rested();
+      expect(q('document-taxes-stamp-held-back')).toBeNull();
+
+      // The API says why it is left out: kept by the country, or never charged by the invoice, nothing comes back.
+      for (const [reason, quantity] of [
+        ['kept', '3'],
+        ['not_charged', '4'],
+      ] as const) {
+        facade.preview.mockResolvedValue(leftOut(reason));
+        type('line-0-quantity', quantity);
+        await rested();
+        expect(q('document-taxes-stamp-held-back')).toBeNull();
+      }
+
+      // Only the stamp's own reason speaks for the stamp.
+      facade.preview.mockResolvedValue(leftOut('given_back_by_completing_note', 'RS1'));
+      type('line-0-quantity', '5');
       await rested();
       expect(q('document-taxes-stamp-held-back')).toBeNull();
 

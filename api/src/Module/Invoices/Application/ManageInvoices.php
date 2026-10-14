@@ -275,7 +275,7 @@ final readonly class ManageInvoices
             ? Invoice::create($company, $establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now())
             : $current->previewOf($establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
 
-        return new SectionedTotals($this->totals->checked($draft), array_map(static fn (InvoiceLine $line): ?string => $line->getSection(), $draft->getLines()));
+        return new SectionedTotals($this->totals->checked($draft), array_map(static fn (InvoiceLine $line): ?string => $line->getSection(), $draft->getLines()), $this->totals->chargesLeftOut($draft));
     }
 
     /**

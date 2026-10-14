@@ -21,6 +21,7 @@ use App\Fiscal\Domain\Calculation\Rate;
 use App\Fiscal\Domain\Calculation\TaxBasis;
 use App\Fiscal\Domain\Calculation\TaxInput;
 use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
+use App\Fiscal\Domain\ChargeLeftOut;
 use App\Fiscal\Domain\StampOnCorrection;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Invoices\Domain\InvalidInvoice;
@@ -330,11 +331,60 @@ final readonly class InvoiceTotals
         if (!$completes || StampOnCorrection::GivenBackOnce !== $this->presets->get($corrected->getCompany()->getFiscalPreset())->stampOnCorrection) {
             return [];
         }
+
+        return self::stampsLeft($corrected, self::issuedSiblings($corrected, $correction));
+    }
+
+    /**
+     * Why a credit note's figures leave out each fixed charge per document chosen on it, by code: the screen says what
+     * holds rather than guessing it from a charge missing. None on an invoice, which charges what it is given.
+     *
+     * @return array<string, ChargeLeftOut>
+     */
+    public function chargesLeftOut(Invoice $invoice): array
+    {
+        $corrected = InvoiceType::CreditNote === $invoice->getType() ? $invoice->getCorrectedInvoice() : null;
+        if (null === $corrected) {
+            return [];
+        }
+        $siblings = self::issuedSiblings($corrected, $invoice);
+        $completes = self::completes($corrected, $siblings, $this->calculate($invoice, null)->subtotalNet);
+        $kept = StampOnCorrection::Kept === $this->presets->get($corrected->getCompany()->getFiscalPreset())->stampOnCorrection;
+        $left = self::stampsLeft($corrected, $siblings);
+        $out = [];
+        foreach ($invoice->getDocumentTaxes() as $tax) {
+            if (TaxKind::FixedDocument !== $tax->getKind()) {
+                continue;
+            }
+            $why = match (true) {
+                $kept => ChargeLeftOut::Kept,
+                !isset($left[$tax->getCode()]) => ChargeLeftOut::NotCharged,
+                !$completes => ChargeLeftOut::GivenBackByCompletingNote,
+                default => null,
+            };
+            if (null !== $why) {
+                $out[$tax->getCode()] = $why;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * What is left to give back of each stamp the invoice charged, by code, once its credit notes already issued gave
+     * theirs: none for a code it never charged.
+     *
+     * @param list<Invoice> $siblings
+     *
+     * @return array<string, string>
+     */
+    private static function stampsLeft(Invoice $corrected, array $siblings): array
+    {
         $left = [];
         foreach ($corrected->getIssuedFigures()->fixedTaxes ?? [] as $charge) {
             $left[$charge['code']] = ($left[$charge['code']] ?? Decimal::zero())->add(Decimal::absolute(Decimal::of($charge['amount'])));
         }
-        foreach (self::issuedSiblings($corrected, $correction) as $sibling) {
+        foreach ($siblings as $sibling) {
             foreach ($sibling->getIssuedFigures()->fixedTaxes ?? [] as $charge) {
                 if (isset($left[$charge['code']])) {
                     $left[$charge['code']] = $left[$charge['code']]->sub(Decimal::absolute(Decimal::of($charge['amount'])));
