@@ -31,8 +31,7 @@ const BACKGROUND = () => new HttpContext().set(SILENT, true);
 const KEY_HEADER = 'X-Pairing-Key';
 
 /**
- * The phone pairing's API (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4): the computer tab's side, signed in under a
- * company, and the phone's, with its key and no session. Heartbeats and echoes run in the background: they are not
+ * The phone pairing's API: the computer tab's side, signed in under a company, and the phone's, with its key and no session. Heartbeats and echoes run in the background: they are not
  * something the person did, so the activity bar does not show them.
  */
 @Injectable({ providedIn: 'root' })

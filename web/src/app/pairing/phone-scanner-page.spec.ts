@@ -221,7 +221,7 @@ describe('PhoneScannerPage', () => {
     expect(api.choose).toHaveBeenCalledWith('p-1', 'k'.repeat(64), ECHO, 'create');
   });
 
-  // docs/SPEC.md § 7, 2026-09-25 10:13: « Ajouter à ART-007 » names the product on the computer's screen.
+  // « Ajouter à ART-007 » names the product on the computer's screen.
   it("words a choice with the echo's own parameters", async () => {
     await open();
     TestBed.inject(TranslateService).setTranslation('fr', {
@@ -402,6 +402,8 @@ describe('PhoneScannerPage', () => {
         expect(q('phone-unsent')?.textContent).toContain('scan.phone.page.unsent_photo'),
       );
       expect(q('phone-photo-refused')).toBeNull();
+      // The camera is free again: what was lost waits in the list, not in « Envoi… ».
+      expect(q('phone-photo-sending')).toBeNull();
       resend();
       await shows(() => expect(successToasts()).toContain('scan.phone.page.photo_sent'));
       expect(q('phone-unsent')).toBeNull();

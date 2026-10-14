@@ -85,7 +85,7 @@ test('the responses carry the security headers', async ({ request }) => {
 
 /**
  * A translation file carried no Cache-Control, so a browser kept the one it had by its own guess and showed a new key
- * raw after a deploy ("inventory.plan.not_saved" on the board, 2026-09-22). It is revalidated on every load now; its
+ * raw after a deploy ("inventory.plan.not_saved" on the board). It is revalidated on every load now; its
  * ETag keeps that to a 304 when nothing changed.
  */
 test('a translation file is revalidated on every load, and the API keeps its own caching', async ({
@@ -102,7 +102,7 @@ test('a translation file is revalidated on every load, and the API keeps its own
 
 /**
  * A file whose name carries its content hash never changes under that name, so a browser may keep it for a year
- * without asking again; without a header each visit revalidated the 3.8 MB icon font and every bundle (PF-09). A
+ * without asking again; without a header each visit revalidated the 3.8 MB icon font and every bundle. A
  * file whose name stays the same across releases (a vendored font, the icons of the web manifest) keeps no such
  * promise.
  */
