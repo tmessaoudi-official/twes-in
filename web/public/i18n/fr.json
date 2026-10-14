@@ -1514,7 +1514,8 @@
       "price_list": "Tarif : {{name}}",
       "gives_back": "Acompte déduit",
       "discount_in_rate": "Remise en %",
-      "discount_in_amount": "Remise en {{unit}}"
+      "discount_in_amount": "Remise en {{unit}}",
+      "discount_share": "Part de la remise de la ligne facturée"
     },
     "document_taxes": {
       "title": "Droits et retenues du document",

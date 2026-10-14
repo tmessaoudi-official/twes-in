@@ -13,6 +13,10 @@ rounding:
     vat_point: per_rate_group
     tax_basis: exclusive
 
+# What a credit note does with a fixed charge per document its invoice charged (docs/fiscal/FR.md § 7a).
+corrections:
+    stamp: given_back_once
+
 identifiers:
     - key: siren
       label_key: fiscal.identifier.fr.siren

@@ -352,8 +352,9 @@ class Invoice implements CompanyOwned
 
     /**
      * A credit note drafted for an issued invoice: the invoice's establishment, customer,
-     * header, lines and document taxes, each tax charged as the invoice charged it. Its figures are the negative of
-     * what it copies until it is revised.
+     * header but its discount, lines and document taxes, each tax charged as the invoice charged it. Its figures are the
+     * negative of what it copies until it is revised, less what earlier credit notes already gave back of the
+     * invoice's discounts and stamp.
      *
      * It states why, as EN 16931 asks a correction to (BG-3 names the invoice it corrects; the reason is required when
      * it is created).
@@ -382,8 +383,11 @@ class Invoice implements CompanyOwned
         $invoice->corrections->add($credit);
         $credit->establishment = $invoice->establishment;
         $credit->customer = $invoice->customer;
-        $credit->apply($invoice->getHeader());
-        // The lot sold is the lot credited; a duplicate, a new sale, names none.
+        // The document discount is the invoice's: each credit note gives back its share of it, worked out by its totals.
+        $header = $invoice->getHeader();
+        $credit->apply(new InvoiceHeader($header->supplyDate, $header->paymentTermsDays, $header->customerReference, $header->notesPrinted, $header->notesInternal, null, $header->operationCategory));
+        // The lot sold is the lot credited; a duplicate, a new sale, names none. Each line names the one it gives back,
+        // but a deposit given back, whose lines are the deposit's.
         $credit->writeLines(array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
             $line->getProduct(),
             $line->getDescription(),
@@ -397,6 +401,7 @@ class Invoice implements CompanyOwned
             deduction: $line->getDeduction(),
             discountAmount: $line->getDiscountAmount(),
             section: $line->getSection(),
+            creditedLineId: null === $line->getDeduction() ? $line->getId() : null,
         ), $invoice->getLines()));
         $credit->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
         $credit->retakeTaxes();
@@ -416,6 +421,7 @@ class Invoice implements CompanyOwned
     public function revise(Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $documentTaxes, \DateTimeImmutable $now): array
     {
         $this->assertDraft('changes');
+        $this->assertOwnDiscount($header);
         [$establishment, $customer, $lines, $documentTaxes] = $this->checkedRevision($establishment, $customer, $lines, $documentTaxes);
 
         $changed = [];
@@ -469,6 +475,7 @@ class Invoice implements CompanyOwned
     public function previewOf(Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $documentTaxes, \DateTimeImmutable $now): self
     {
         $this->assertDraft('changes');
+        $this->assertOwnDiscount($header);
         [$establishment, $customer, $lines, $documentTaxes] = $this->checkedRevision($establishment, $customer, $lines, $documentTaxes);
         $preview = new self($this->company, $now);
         $preview->documentType = $this->documentType;
@@ -485,6 +492,37 @@ class Invoice implements CompanyOwned
         }
 
         return $preview;
+    }
+
+    /**
+     * A credit note gives back its share of its invoice's document discount, worked out by its totals: it takes none of
+     * its own.
+     *
+     * @throws InvalidInvoice
+     */
+    private function assertOwnDiscount(InvoiceHeader $header): void
+    {
+        if (null !== $this->correctsInvoice && null !== $header->discountAmount) {
+            throw new InvalidInvoice('discountAmount', 'A credit note gives back its share of its invoice\'s discount: it takes none of its own.');
+        }
+    }
+
+    /**
+     * Writes on this draft credit note what each of its lines gives back of the discount of the invoice line it names,
+     * worked out from the invoice and the credit notes already issued, in place of what was typed.
+     *
+     * @param array<string, string> $amounts by this draft's line id
+     *
+     * @throws InvoiceNotDraft
+     */
+    public function giveBackLineDiscounts(array $amounts): void
+    {
+        $this->assertDraft('changes');
+        foreach ($this->getLines() as $line) {
+            if (isset($amounts[$line->getId()->toRfc4122()])) {
+                $line->giveBackDiscount($amounts[$line->getId()->toRfc4122()]);
+            }
+        }
     }
 
     /**
@@ -593,6 +631,7 @@ class Invoice implements CompanyOwned
             $line->getDeduction(),
             $line->getDiscountAmount(),
             $line->getSection(),
+            $line->getCreditedLineId(),
         );
     }
 
@@ -1282,6 +1321,9 @@ class Invoice implements CompanyOwned
         foreach ($lines as $index => $line) {
             if ($line->returned && InvoiceType::CreditNote !== $this->documentType) {
                 throw new InvalidInvoice("lines[$index].returned", 'Only a credit note returns goods to stock.');
+            }
+            if (null !== $line->creditedLineId && !\in_array($line->creditedLineId->toRfc4122(), array_map(static fn (InvoiceLine $credited): string => $credited->getId()->toRfc4122(), $this->correctsInvoice?->getLines() ?? []), true)) {
+                throw new InvalidInvoice("lines[$index].creditedLineId", 'A credit note\'s line gives back a line of the invoice it corrects.');
             }
             $source = $line->sourceDeliveryNoteLineId?->toRfc4122();
             if (null !== $source && isset($sources[$source])) {

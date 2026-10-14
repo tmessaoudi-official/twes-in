@@ -252,13 +252,13 @@ final class InvoiceWorkflowTest extends TestCase
         self::assertSame(['1191.000', '11.900', '1179.100'], [$invoice->getIssuedFigures()?->total, $invoice->getIssuedFigures()?->withholdingAmount, $invoice->getIssuedFigures()?->amountDue]);
 
         // 595 of its own is under the threshold; the credit note withholds because its invoice did.
-        $first = $this->workflow->issue($this->company, $this->creditKeeping($invoice, 0, true)->getId(), null);
-        self::assertSame([[['RS1', '-5.950']], '-590.050'], [array_map(static fn (array $held): array => [$held['code'], $held['amount']], $first->getIssuedFigures()->withholdings ?? []), $first->getIssuedFigures()?->amountDue]);
-        self::assertSame([InvoiceStatus::PartiallyPaid, '589.050'], [$invoice->getStatus(), $invoice->getIssuedFigures()?->amountDue]);
+        $first = $this->workflow->issue($this->company, $this->creditOf($invoice, 0)->getId(), null);
+        // It completes nothing, so it keeps the stamp, which the credit note completing the invoice gives back once.
+        self::assertSame([[['RS1', '-5.950']], '-589.050'], [array_map(static fn (array $held): array => [$held['code'], $held['amount']], $first->getIssuedFigures()->withholdings ?? []), $first->getIssuedFigures()?->amountDue]);
+        self::assertSame([InvoiceStatus::PartiallyPaid, '590.050'], [$invoice->getStatus(), $invoice->getIssuedFigures()?->amountDue]);
 
-        // The second leaves the stamp out, which every partial credit note copies (docs/SPEC.md § 8, known issues).
-        $second = $this->workflow->issue($this->company, $this->creditKeeping($invoice, 1, false)->getId(), null);
-        self::assertSame('-589.050', $second->getIssuedFigures()?->amountDue);
+        $second = $this->workflow->issue($this->company, $this->creditOf($invoice, 1)->getId(), null);
+        self::assertSame('-590.050', $second->getIssuedFigures()?->amountDue);
         self::assertSame([InvoiceStatus::Paid, '0.000'], [$invoice->getStatus(), $invoice->getIssuedFigures()?->amountDue], 'a credit note of every line closes the invoice');
     }
 
@@ -268,13 +268,14 @@ final class InvoiceWorkflowTest extends TestCase
         $invoice = $this->workflow->issue($this->company, $this->withholdingDraft(['505', '505'])->getId(), null);
         self::assertSame('1190.881', $invoice->getIssuedFigures()?->amountDue);
 
-        // The first leaves part of the invoice's base uncredited, so it rounds its own share away, as any does.
-        $first = $this->workflow->issue($this->company, $this->creditKeeping($invoice, 0, true)->getId(), null);
-        self::assertSame([[['RS1', '-6.010']], '-595.940'], [$this->held($first), $first->getIssuedFigures()?->amountDue]);
+        // The first leaves part of the invoice's base uncredited, so it rounds its own share away, as any does, and keeps
+        // the stamp, which the second gives back.
+        $first = $this->workflow->issue($this->company, $this->creditOf($invoice, 0)->getId(), null);
+        self::assertSame([[['RS1', '-6.010']], '-594.940'], [$this->held($first), $first->getIssuedFigures()?->amountDue]);
 
         // The second completes that base, so it withholds what is left of the invoice's 12.019, not 1 % of itself.
-        $second = $this->workflow->issue($this->company, $this->creditKeeping($invoice, 1, false)->getId(), null);
-        self::assertSame([[['RS1', '-6.009']], '-594.941'], [$this->held($second), $second->getIssuedFigures()?->amountDue]);
+        $second = $this->workflow->issue($this->company, $this->creditOf($invoice, 1)->getId(), null);
+        self::assertSame([[['RS1', '-6.009']], '-595.941'], [$this->held($second), $second->getIssuedFigures()?->amountDue]);
 
         self::assertSame([InvoiceStatus::Paid, '0.000', '1190.881'], [$invoice->getStatus(), $invoice->getIssuedFigures()->amountDue, $invoice->getIssuedFigures()->amountCredited], 'the credit notes of a withheld invoice add up to it exactly');
     }
@@ -456,14 +457,12 @@ final class InvoiceWorkflowTest extends TestCase
     }
 
     /** A draft credit note of one of its invoice's lines, keeping the stamp or leaving it out. */
-    private function creditKeeping(Invoice $invoice, int $index, bool $stamp): Invoice
+    /** A credit note of the line at `$index` alone, with the document taxes its invoice charged. */
+    private function creditOf(Invoice $invoice, int $index): Invoice
     {
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $line = $invoice->getLines()[$index];
-        $taxes = array_values(array_filter(
-            array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $credit->getDocumentTaxes()),
-            static fn (TaxComponent $tax): bool => $stamp || 'TIMBRE' !== $tax->getCode(),
-        ));
+        $taxes = array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $credit->getDocumentTaxes());
         $credit->revise($credit->getEstablishment(), $credit->getCustomer(), $credit->getHeader(), [
             new InvoiceLineDetails($line->getProduct(), $line->getDescription(), $line->getQuantity(), $line->getUnit(), $line->getUnitPriceNet(), $line->getDiscountRate(), array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes())),
         ], $taxes, $this->clock->now());

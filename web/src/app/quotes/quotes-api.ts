@@ -418,6 +418,7 @@ function toQuote(raw: QuoteQuoteRead | QuoteJsonldQuoteRead): QuoteRow {
       returned: false,
       deductsInvoiceId: null,
       section: null,
+      creditedLineId: null,
       net: line.net ?? '',
     })),
     subtotalNet: raw.subtotalNet ?? '0',

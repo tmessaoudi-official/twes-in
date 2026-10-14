@@ -20,6 +20,7 @@ use App\Fiscal\Application\Preset\PresetUnit;
 use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\Calculation\TaxBasis;
 use App\Fiscal\Domain\IdentifierCheck;
+use App\Fiscal\Domain\StampOnCorrection;
 use App\Fiscal\Domain\TaxFamily;
 use App\Fiscal\Domain\TaxKind;
 use App\Tenancy\Domain\Establishment;
@@ -89,6 +90,7 @@ final readonly class PresetReader
             $this->units($this->node($config, 'units', 'units')),
             $this->establishment($this->node($config, 'establishment', 'establishment')),
             $this->int($config, 'retention_years', 'retention_years'),
+            StampOnCorrection::from($this->string($this->node($config, 'corrections', 'corrections'), 'stamp', 'corrections.stamp')),
             $this->settings($config),
             $this->invoiceFields($config),
         );

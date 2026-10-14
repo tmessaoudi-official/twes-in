@@ -200,6 +200,13 @@ EN 16931 BR-CO-17 computes the VAT of each category on the category's taxable am
 sum of rounded line amounts [9]. The preset rounds half-up to the cent, once per rate group (`per_rate_group`).
 Unvalidated.
 
+## 7a. A stamp on a credit note
+
+The preset ships no stamp component: no stamp duty on French invoices was found to model. A company may still add a
+fixed charge per document of its own, so the preset states what a credit note does with such a charge: `given_back_once`,
+the credit note completing the invoice gives it back once, as the Tunisian preset does (docs/fiscal/TN.md § 4a). No
+French text was looked for, as no French stamp is modelled; this is the preset's choice. Unvalidated.
+
 ## 8. Numbering and languages
 
 - One or more chronological continuous series, with no gaps (242 nonies A) [6]. The preset's defaults are one

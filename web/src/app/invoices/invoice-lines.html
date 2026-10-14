@@ -237,6 +237,7 @@
                     matInput
                     formControlName="discountAmount"
                     appDecimal
+                    [readonly]="givesBackDiscount(line)"
                     [attr.data-testid]="'line-' + i + '-discount'"
                   />
                   <button
@@ -244,6 +245,7 @@
                     mat-button
                     type="button"
                     class="me-1"
+                    [disabled]="givesBackDiscount(line)"
                     [appLabel]="
                       'invoices.lines.discount_by_rate' | translate: { unit: options().currency }
                     "
@@ -252,6 +254,11 @@
                   >
                     {{ options().currency }}
                   </button>
+                  @if (givesBackDiscount(line)) {
+                    <mat-hint [attr.data-testid]="'line-' + i + '-discount-share'">{{
+                      'invoices.lines.discount_share' | translate
+                    }}</mat-hint>
+                  }
                 </mat-form-field>
               } @else {
                 <mat-form-field>

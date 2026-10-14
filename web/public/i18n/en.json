@@ -1514,7 +1514,8 @@
       "price_list": "Price list: {{name}}",
       "gives_back": "Deposit given back",
       "discount_in_rate": "Discount in %",
-      "discount_in_amount": "Discount in {{unit}}"
+      "discount_in_amount": "Discount in {{unit}}",
+      "discount_share": "Share of the invoiced line's discount"
     },
     "document_taxes": {
       "title": "Document charges and withholdings",

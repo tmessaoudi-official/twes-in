@@ -330,8 +330,11 @@ final class InvoiceTest extends TestCase
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
 
         self::assertSame([InvoiceType::CreditNote, InvoiceStatus::Draft, null, $invoice, $invoice->getCustomer(), $invoice->getEstablishment()], [$credit->getType(), $credit->getStatus(), $credit->getNumber(), $credit->getCorrectedInvoice(), $credit->getCustomer(), $credit->getEstablishment()]);
-        self::assertEquals($invoice->getHeader(), $credit->getHeader());
-        self::assertSame(array_map(static fn ($line): array => $line->values(), $invoice->getLines()), array_map(static fn ($line): array => $line->values(), $credit->getLines()));
+        // All but the document discount, which a credit note gives back in shares rather than takes as its own.
+        $header = $invoice->getHeader();
+        self::assertEquals(new InvoiceHeader($header->supplyDate, $header->paymentTermsDays, $header->customerReference, $header->notesPrinted, $header->notesInternal, null, $header->operationCategory), $credit->getHeader());
+        // Each line as its invoice's, naming the invoice line it gives back.
+        self::assertSame(array_map(static fn ($line): array => [...\array_slice($line->values(), 0, -1), $line->getId()->toRfc4122()], $invoice->getLines()), array_map(static fn ($line): array => $line->values(), $credit->getLines()));
         self::assertSame([['FODEC', '1.000'], ['TVA19', '19.000']], $this->rates($credit)[0], 'the VAT its invoice charged, not the rate changed since');
         self::assertSame(['TIMBRE', 'RS1'], array_map(static fn (InvoiceTax $tax): string => $tax->getCode(), $credit->getDocumentTaxes()));
         self::assertNull($credit->getIssuedFigures());

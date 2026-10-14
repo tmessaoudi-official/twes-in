@@ -156,6 +156,95 @@ test('a line is discounted by an amount, worked out as it is typed and kept as a
   }
 });
 
+test('a credit note gives back its share of a line discount, shown and not typed, and takes no discount of its own', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-INVC-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    // Ten screws at 100 with 50 off the line, issued; then a credit note of it, drafted whole.
+    const credit = await page.evaluate(
+      async ([csrf, wanted]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+        const base = `/api/companies/${me.company.id}`;
+        const send = async (path: string, body: unknown): Promise<{ id: string }> => {
+          const response = await fetch(`${base}${path}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+            body: JSON.stringify(body),
+          });
+          if (!response.ok) throw new Error(`POST ${path} answered ${response.status}`);
+          return (await response.json()) as { id: string };
+        };
+        const listed = (await (
+          await fetch(`${base}/customers?q=${encodeURIComponent(wanted)}`)
+        ).json()) as { member: { id: string; number: string }[] };
+        const customer = listed.member.find((row) => row.number === wanted);
+        const options = (await (await fetch(`${base}/invoice-options`)).json()) as {
+          units: { id: string; code: string }[];
+        };
+        const unit = options.units.find((each) => each.code === 'C62') ?? options.units[0];
+        const invoice = await send('/invoices', {
+          customerId: customer?.id,
+          establishmentId: null,
+          documentTaxComponentIds: [],
+          lines: [
+            {
+              description: 'Vis',
+              quantity: '10',
+              unitId: unit?.id,
+              unitPriceNet: '100',
+              discountAmount: '50',
+              taxComponentIds: [],
+            },
+          ],
+        });
+        await send(`/invoices/${invoice.id}/issue`, null);
+        return (await send(`/invoices/${invoice.id}/credit-notes`, { creditNoteReason: 'Retour' }))
+          .id;
+      },
+      [CSRF, customerNumber] as const,
+    );
+
+    await page.goto(`/invoices/${credit}`);
+    await expect(page.getByTestId('line-0-discount')).toHaveValue('50,000');
+    await expect(page.getByTestId('line-0-discount')).not.toBeEditable();
+    await expect(page.getByTestId('line-0-discount-kind')).toBeDisabled();
+    await expect(page.getByTestId('line-0-discount-share')).toHaveText(
+      'Part de la remise de la ligne facturée',
+    );
+    await expect(page.getByTestId('field-discountAmount')).toHaveCount(0);
+
+    // Three of the ten come back: the API gives back three tenths of the 50, whatever the field held.
+    await page.getByTestId('line-0-quantity').fill('3');
+    await page.getByTestId('document-action-save').click();
+    await expect(page.getByTestId('line-0-discount')).toHaveValue('15,000');
+    await expect(page.getByTestId('line-0-net')).toHaveText('-285,000');
+    await page.getByTestId('line-0-discount-share').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: test.info().outputPath('credit-note-line-discount-share.png') });
+    expect(await wcagViolations(page)).toEqual([]);
+
+    // The draft is not kept: the run leaves nothing to credit in the shared company.
+    await page.evaluate(
+      async ([csrf, id]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+        const response = await fetch(`/api/companies/${me.company.id}/invoices/${id}/cancel`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: 'null',
+        });
+        if (!response.ok) throw new Error(`cancelling the credit note answered ${response.status}`);
+      },
+      [CSRF, credit] as const,
+    );
+  } finally {
+    await retire(page, customerNumber);
+  }
+});
+
 test('a line says what is on hand where the invoice is made, and what the invoice would leave', async ({
   page,
 }) => {

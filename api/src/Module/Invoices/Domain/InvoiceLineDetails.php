@@ -24,7 +24,8 @@ use Symfony\Component\Uid\Uuid;
  * line, each at most once. A line drafted from a delivery note names the delivery note line it invoices. On a credit
  * note, a line with a product may say its goods came back to stock. A line giving a deposit invoice back names no
  * product, counts one, takes no discount and states what the deposit charged of each of its taxes. A line may open a
- * section of the document under a title, which runs to the next titled line.
+ * section of the document under a title, which runs to the next titled line. A credit note's line may name the line of
+ * its invoice it gives back, which its document checks.
  */
 final readonly class InvoiceLineDetails
 {
@@ -62,10 +63,11 @@ final readonly class InvoiceLineDetails
      * @param Deduction|null     $deduction                the deposit invoice this line gives back; its document checks whose it is
      * @param string|null        $discountAmount           the line's whole discount as an amount, in place of a rate; blank or null for none
      * @param string|null        $section                  the title of the section the line opens; blank or null for none
+     * @param Uuid|null          $creditedLineId           on a credit note, the line of its invoice it gives back; null for none
      *
      * @throws InvalidInvoice
      */
-    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null, public bool $returned = false, public ?Deduction $deduction = null, ?string $discountAmount = null, ?string $section = null)
+    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null, public bool $returned = false, public ?Deduction $deduction = null, ?string $discountAmount = null, ?string $section = null, public ?Uuid $creditedLineId = null)
     {
         if ($returned && null === $product) {
             throw new InvalidInvoice('returned', 'A line returns goods to stock only when it names a product.');
@@ -105,7 +107,7 @@ final readonly class InvoiceLineDetails
     /** @throws InvalidInvoice */
     private function assertGivesBack(Deduction $deduction): void
     {
-        if (null !== $this->product || null !== $this->discountRate || null !== $this->discountAmount || null !== $this->lotCode || $this->returned || null !== $this->sourceDeliveryNoteLineId || '1.000' !== $this->quantity) {
+        if (null !== $this->product || null !== $this->discountRate || null !== $this->discountAmount || null !== $this->lotCode || $this->returned || null !== $this->sourceDeliveryNoteLineId || null !== $this->creditedLineId || '1.000' !== $this->quantity) {
             throw new InvalidInvoice('deductsInvoiceId', 'A line giving a deposit back counts one, names no product, lot or delivery note and takes no discount.');
         }
         $codes = array_map(static fn (TaxComponent $tax): string => $tax->getCode(), $this->taxes);
@@ -117,7 +119,7 @@ final readonly class InvoiceLineDetails
         }
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null, string|null} what two lines are compared on */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null, string|null, string|null} what two lines are compared on */
     public function values(): array
     {
         return [
@@ -134,6 +136,7 @@ final readonly class InvoiceLineDetails
             $this->deduction?->values(),
             $this->discountAmount,
             $this->section,
+            $this->creditedLineId?->toRfc4122(),
         ];
     }
 
@@ -144,7 +147,18 @@ final readonly class InvoiceLineDetails
      */
     public function opening(?string $section): self
     {
-        return new self($this->product, $this->description, $this->quantity, $this->unit, $this->unitPriceNet, $this->discountRate, $this->taxes, $this->sourceDeliveryNoteLineId, $this->lotCode, $this->returned, $this->deduction, $this->discountAmount, $section);
+        return new self($this->product, $this->description, $this->quantity, $this->unit, $this->unitPriceNet, $this->discountRate, $this->taxes, $this->sourceDeliveryNoteLineId, $this->lotCode, $this->returned, $this->deduction, $this->discountAmount, $section, $this->creditedLineId);
+    }
+
+    /**
+     * The same line of a credit note giving back `$amount` of the discount of the invoice line it names, in place of
+     * what it said.
+     *
+     * @throws InvalidInvoice
+     */
+    public function givingBack(string $amount): self
+    {
+        return new self($this->product, $this->description, $this->quantity, $this->unit, $this->unitPriceNet, null, $this->taxes, $this->sourceDeliveryNoteLineId, $this->lotCode, $this->returned, $this->deduction, $amount, $this->section, $this->creditedLineId);
     }
 
     /** @throws InvalidInvoice */

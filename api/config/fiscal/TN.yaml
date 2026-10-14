@@ -13,6 +13,10 @@ rounding:
     vat_point: per_rate_group
     tax_basis: exclusive
 
+# What a credit note does with a fixed charge per document its invoice charged, the stamp (docs/fiscal/TN.md § 4a).
+corrections:
+    stamp: given_back_once
+
 identifiers:
     - key: matricule_fiscal
       label_key: fiscal.identifier.tn.matricule_fiscal

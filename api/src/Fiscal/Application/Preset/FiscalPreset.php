@@ -11,6 +11,7 @@ namespace App\Fiscal\Application\Preset;
 
 use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\Calculation\TaxBasis;
+use App\Fiscal\Domain\StampOnCorrection;
 
 /**
  * One country's fiscal rules as read from its validated file. A company copies the tax components and units at
@@ -30,6 +31,7 @@ final readonly class FiscalPreset
      * @param list<PresetUnit>               $units
      * @param PresetEstablishment            $establishment      how the country codes a company's establishments
      * @param int                            $retentionYears     how many years every record is kept
+     * @param StampOnCorrection              $stampOnCorrection  what a credit note does with the stamp its invoice charged
      * @param array<string, mixed>           $settings           the defaults the country gives settings, by key
      * @param PresetInvoiceFields            $invoiceFields      what the country's law adds to an invoice
      */
@@ -49,6 +51,7 @@ final readonly class FiscalPreset
         public array $units,
         public PresetEstablishment $establishment,
         public int $retentionYears,
+        public StampOnCorrection $stampOnCorrection,
         public array $settings = [],
         public PresetInvoiceFields $invoiceFields = new PresetInvoiceFields(),
     ) {

@@ -149,6 +149,11 @@ export interface InvoiceLine {
   deductsInvoiceId: string | null;
   /** The title of the section of the document this line opens, which runs to the next titled line; null for none. */
   section: string | null;
+  /**
+   * On a credit note's line: the invoice line it gives back. Discounted by an amount, that line's discount is given
+   * back in shares by quantity, worked out by the API whatever is sent. Null on any other line.
+   */
+  creditedLineId: string | null;
   /** The line after its own discount, at the currency's scale, worked out by the API. */
   net: string;
 }

@@ -227,6 +227,7 @@ final readonly class ManageInvoices
     {
         return $this->transactions->run(function () use ($company, $invoiceId, $reason, $actorUserId): Invoice {
             $credit = Invoice::creditNoteFor($this->get($company, $invoiceId), $reason, $this->clock->now());
+            $this->totals->settleLineDiscounts($credit);
             $this->totals->checked($credit);
             $this->invoices->save($credit);
             $this->record($company, $credit->getId(), self::CREATED, ['correctsInvoiceId' => $invoiceId->toRfc4122()], $actorUserId);
@@ -360,6 +361,12 @@ final readonly class ManageInvoices
                     throw $refused->within("lines[$at]");
                 }
             }
+        }
+
+        // A credit note's line gives back its share of the discount of the invoice line it names, whatever was typed.
+        if (null !== $current && InvoiceType::CreditNote === $current->getType()) {
+            $amounts = $this->totals->lineDiscountsGivenBack($current, array_map(static fn (InvoiceLineDetails $line): array => [$line->creditedLineId, $line->quantity, $line->unitPriceNet], $lines));
+            $lines = array_map(static fn (int $position, InvoiceLineDetails $line): InvoiceLineDetails => isset($amounts[$position]) ? $line->givingBack($amounts[$position]) : $line, array_keys($lines), $lines);
         }
 
         return [$establishment, $customer, $lines, $this->documentTaxes($company, $customer, $input->documentTaxComponentIds, $kept['documentTaxes'])];
@@ -503,7 +510,7 @@ final readonly class ManageInvoices
             ?? throw new InvalidInvoice('unitPriceNet', 'A line without a product states its price.');
         $description = null === $line->description || '' === trim($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
-        return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned, discountAmount: $line->discountAmount, section: $line->section);
+        return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned, discountAmount: $line->discountAmount, section: $line->section, creditedLineId: $line->creditedLineId);
     }
 
     /**

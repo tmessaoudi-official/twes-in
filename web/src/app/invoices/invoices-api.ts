@@ -613,6 +613,7 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
       returned: line.returned ?? false,
       deductsInvoiceId: line.deductsInvoiceId ?? null,
       section: line.section ?? null,
+      creditedLineId: line.creditedLineId ?? null,
       net: line.net ?? '',
     })),
     subtotalNet: raw.subtotalNet ?? '0',

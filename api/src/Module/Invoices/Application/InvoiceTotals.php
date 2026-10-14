@@ -21,6 +21,7 @@ use App\Fiscal\Domain\Calculation\Rate;
 use App\Fiscal\Domain\Calculation\TaxBasis;
 use App\Fiscal\Domain\Calculation\TaxInput;
 use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
+use App\Fiscal\Domain\StampOnCorrection;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
@@ -28,12 +29,15 @@ use App\Module\Invoices\Domain\InvoiceFigures;
 use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceType;
+use BcMath\Number;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * What an invoice or a credit note comes to, worked out by the calculator every document shares: prices net of tax,
  * each line's discount, the document discount spread over the lines, the line taxes at the rates the document keeps,
  * then its fixed charges and its withholdings, rounded where the company's fiscal preset rounds VAT and at its
- * currency's scale. A credit note's figures are negative.
+ * currency's scale. A credit note's figures are negative, and it gives back its share of its invoice's discounts and
+ * withholdings, and its stamp as the preset says.
  */
 final readonly class InvoiceTotals
 {
@@ -123,10 +127,185 @@ final readonly class InvoiceTotals
      */
     public function of(Invoice $invoice): DocumentTotals
     {
-        return $this->calculate($invoice, $invoice->getHeader()->discountAmount);
+        $corrected = InvoiceType::CreditNote === $invoice->getType() ? $invoice->getCorrectedInvoice() : null;
+        if (null === $corrected) {
+            return $this->calculate($invoice, $invoice->getHeader()->discountAmount);
+        }
+        // What a credit note gives back of its invoice's discount and stamp follows from what its lines come to.
+        $siblings = self::issuedSiblings($corrected, $invoice);
+        $base = $this->calculate($invoice, null)->subtotalNet;
+        $completes = self::completes($corrected, $siblings, $base);
+
+        return $this->calculate($invoice, $this->documentDiscountGivenBack($corrected, $siblings, $base, $completes), $completes);
     }
 
-    private function calculate(Invoice $invoice, ?string $documentDiscount): DocumentTotals
+    /**
+     * What each line of a credit note gives back of the discount of the invoice line it names, when that line was
+     * discounted by an amount: its share by quantity, never more than what the credit notes already issued left of it,
+     * and all that is left once the line is credited in full (docs/fiscal/TN.md § 4a), so the credit notes of a line
+     * add up to its discount exactly. Lines naming none, or a line discounted by a rate, keep what they say.
+     *
+     * @param list<array{0: Uuid|null, 1: string, 2: string}> $lines each line's credited line, quantity and unit price
+     *
+     * @return array<int, string> by the line's position
+     */
+    public function lineDiscountsGivenBack(Invoice $correction, array $lines): array
+    {
+        $corrected = $correction->getCorrectedInvoice();
+        if (InvoiceType::CreditNote !== $correction->getType() || null === $corrected) {
+            return [];
+        }
+        $scale = $this->scales->of($corrected->getCompany()->getCurrency());
+        $credited = [];
+        foreach ($corrected->getLines() as $line) {
+            $credited[$line->getId()->toRfc4122()] = $line;
+        }
+        // What the credit notes already issued took of each line, then what this one takes, line after line.
+        $taken = [];
+        foreach (self::issuedSiblings($corrected, $correction) as $sibling) {
+            foreach ($sibling->getLines() as $line) {
+                $id = $line->getCreditedLineId()?->toRfc4122();
+                if (null !== $id) {
+                    $taken[$id] = [
+                        ($taken[$id][0] ?? Decimal::zero())->add(Decimal::of($line->getQuantity())),
+                        ($taken[$id][1] ?? Decimal::zero())->add(Decimal::of($line->getDiscountAmount() ?? '0')),
+                    ];
+                }
+            }
+        }
+
+        $amounts = [];
+        foreach ($lines as $position => [$creditedLineId, $quantity, $unitPrice]) {
+            $line = $credited[$creditedLineId?->toRfc4122() ?? ''] ?? null;
+            $discount = $line?->getDiscountAmount();
+            if (null === $line || null === $discount) {
+                continue;
+            }
+            $id = $line->getId()->toRfc4122();
+            [$quantityTaken, $discountTaken] = $taken[$id] ?? [Decimal::zero(), Decimal::zero()];
+            $left = Decimal::of($discount)->sub($discountTaken);
+            $left = $left->compare(0) > 0 ? $left : Decimal::zero();
+            $whole = Decimal::of($line->getQuantity());
+            $share = $quantityTaken->add(Decimal::of($quantity))->compare($whole) >= 0
+                ? $left
+                : self::least(Decimal::round(Decimal::of($discount)->mul(Decimal::of($quantity), Decimal::WORKING_SCALE)->div($whole, Decimal::WORKING_SCALE), $scale), $left);
+            $share = self::least($share, Decimal::round(Decimal::of($quantity)->mul(Decimal::of($unitPrice), Decimal::WORKING_SCALE), $scale));
+            $amounts[$position] = Decimal::format($share, 3);
+            $taken[$id] = [$quantityTaken->add(Decimal::of($quantity)), $discountTaken->add($share)];
+        }
+
+        return $amounts;
+    }
+
+    /**
+     * Writes on a draft credit note what its lines give back of their invoice lines' discounts, as they stand now: a
+     * credit note issued since it was last saved may have taken some of them.
+     */
+    public function settleLineDiscounts(Invoice $correction): void
+    {
+        $lines = $correction->getLines();
+        $amounts = $this->lineDiscountsGivenBack($correction, array_map(static fn (InvoiceLine $line): array => [$line->getCreditedLineId(), $line->getQuantity(), $line->getUnitPriceNet()], $lines));
+        if ([] === $amounts) {
+            return;
+        }
+        $byId = [];
+        foreach ($amounts as $position => $amount) {
+            $byId[$lines[$position]->getId()->toRfc4122()] = $amount;
+        }
+        $correction->giveBackLineDiscounts($byId);
+    }
+
+    /**
+     * The credit notes of an invoice already issued, but the one being worked out: a draft has taken nothing.
+     *
+     * @return list<Invoice>
+     */
+    private static function issuedSiblings(Invoice $corrected, Invoice $correction): array
+    {
+        return array_values(array_filter(
+            $corrected->getCorrections(),
+            static fn (Invoice $sibling): bool => !$sibling->getId()->equals($correction->getId()) && null !== $sibling->getIssuedFigures(),
+        ));
+    }
+
+    /**
+     * Whether a credit note whose lines come to `$base` completes its invoice: it credits at least what the lines of the
+     * invoice came to, less what its credit notes already issued credited.
+     *
+     * @param list<Invoice> $siblings
+     */
+    private static function completes(Invoice $corrected, array $siblings, string $base): bool
+    {
+        $left = Decimal::absolute(Decimal::of($corrected->getIssuedFigures()->subtotalNet ?? '0'));
+        foreach ($siblings as $sibling) {
+            $left = $left->sub(Decimal::absolute(Decimal::of($sibling->getIssuedFigures()->subtotalNet ?? '0')));
+        }
+
+        return Decimal::absolute(Decimal::of($base))->compare($left) >= 0;
+    }
+
+    /**
+     * What a credit note gives back of its invoice's document discount, spread over the lines by their base as the
+     * calculator spreads it: its share by its base, never more than what the credit notes already issued left, and
+     * all that is left from the credit note completing the invoice (docs/fiscal/TN.md § 4a). Null when there is none.
+     *
+     * @param list<Invoice> $siblings
+     */
+    private function documentDiscountGivenBack(Invoice $corrected, array $siblings, string $base, bool $completes): ?string
+    {
+        $figures = $corrected->getIssuedFigures();
+        $discount = Decimal::absolute(Decimal::of($figures->documentDiscount ?? '0'));
+        if ($discount->compare(0) <= 0) {
+            return null;
+        }
+        $left = $discount;
+        foreach ($siblings as $sibling) {
+            $left = $left->sub(Decimal::absolute(Decimal::of($sibling->getIssuedFigures()->documentDiscount ?? '0')));
+        }
+        $base = Decimal::absolute(Decimal::of($base));
+        $invoiceBase = Decimal::absolute(Decimal::of($figures->subtotalNet ?? '0'));
+        if ($left->compare(0) <= 0 || $invoiceBase->compare(0) <= 0) {
+            return null;
+        }
+        $scale = $this->scales->of($corrected->getCompany()->getCurrency());
+        $share = $completes ? $left : self::least(Decimal::round($discount->mul($base, Decimal::WORKING_SCALE)->div($invoiceBase, Decimal::WORKING_SCALE), $scale), $left);
+        $share = self::least($share, $base);
+
+        return $share->compare(0) > 0 ? Decimal::format($share, $scale) : null;
+    }
+
+    private static function least(Number $one, Number $other): Number
+    {
+        return $one->compare($other) <= 0 ? $one : $other;
+    }
+
+    /**
+     * What a credit note gives back of the stamp its invoice charged, by code: per the company's fiscal preset, once,
+     * all of it from the credit note completing the invoice (docs/fiscal/TN.md § 4a), or never.
+     *
+     * @return array<string, string>
+     */
+    private function stampsGivenBack(Invoice $corrected, Invoice $correction, bool $completes): array
+    {
+        if (!$completes || StampOnCorrection::GivenBackOnce !== $this->presets->get($corrected->getCompany()->getFiscalPreset())->stampOnCorrection) {
+            return [];
+        }
+        $left = [];
+        foreach ($corrected->getIssuedFigures()->fixedTaxes ?? [] as $charge) {
+            $left[$charge['code']] = ($left[$charge['code']] ?? Decimal::zero())->add(Decimal::absolute(Decimal::of($charge['amount'])));
+        }
+        foreach (self::issuedSiblings($corrected, $correction) as $sibling) {
+            foreach ($sibling->getIssuedFigures()->fixedTaxes ?? [] as $charge) {
+                if (isset($left[$charge['code']])) {
+                    $left[$charge['code']] = $left[$charge['code']]->sub(Decimal::absolute(Decimal::of($charge['amount'])));
+                }
+            }
+        }
+
+        return array_map(static fn (Number $amount): string => Decimal::format($amount, 3), array_filter($left, static fn (Number $amount): bool => $amount->compare(0) > 0));
+    }
+
+    private function calculate(Invoice $invoice, ?string $documentDiscount, bool $completes = false): DocumentTotals
     {
         $company = $invoice->getCompany();
         $lines = array_map(static fn (InvoiceLine $line): LineInput => new LineInput(
@@ -140,10 +319,16 @@ final readonly class InvoiceTotals
         ), $invoice->getLines());
         $corrected = InvoiceType::CreditNote === $invoice->getType() ? $invoice->getCorrectedInvoice() : null;
         $remaining = null === $corrected ? null : $this->remainingWithholdings($corrected, $invoice);
+        $stamps = null === $corrected ? null : $this->stampsGivenBack($corrected, $invoice, $completes);
         $documentTaxes = [];
         foreach ($invoice->getDocumentTaxes() as $tax) {
             if (TaxKind::FixedDocument === $tax->getKind()) {
-                $documentTaxes[] = TaxInput::fixed($tax->getCode(), $tax->getAmount() ?? '0');
+                if (null === $stamps) {
+                    $documentTaxes[] = TaxInput::fixed($tax->getCode(), $tax->getAmount() ?? '0');
+                } elseif (isset($stamps[$tax->getCode()])) {
+                    // A stamp is charged once, on the invoice: a credit note gives back only what it charged, once.
+                    $documentTaxes[] = TaxInput::fixed($tax->getCode(), $stamps[$tax->getCode()]);
+                }
                 continue;
             }
             $rate = Rate::fromPercentage($tax->getRate() ?? '0');
