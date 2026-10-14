@@ -135,9 +135,10 @@ what it pays for goods, equipment and services from 1000 TND VAT included, and h
 |---|---|---|---|
 | Paying a supplier 1000 TND or more, VAT included, withholds 1 % | an expense's payment withholds the preset's one active `withholding_total` component (`RS1`, rate 1, threshold 1000.000) when its gross reaches the threshold; `withholding_rate`, `withholding_amount` and the amount paid are kept on the expense | art. 52-I; LF 2021 art. 14 [4] [11] | unvalidated |
 | The rate depends on the SUPPLIER: 1 % for one whose profits bear the 15 % corporate tax, 1.5 % in the article's general case, 0.5 % for one at the 10 % rate or with the two-thirds deduction | the payment says its own rate, which replaces the default; "0" withholds nothing (an excluded purchase, an exempt supplier) | [11]; the 0.5 / 1 / 1.5 split is also reported by [16] | unvalidated |
-| The threshold is compared with the amount VAT included, and the withholding is taken on it | the gross of the expense (net plus its VAT) | "y compris la taxe sur la valeur ajoutée" [11]; one secondary source [16] says the base is the amount before VAT, contradicting the article's text | unvalidated |
+| The threshold is compared with the amount VAT included, and the withholding is taken on it | the gross of the expense (its lines, their FODEC and their VAT) less its fixed charges: the stamp is in neither the threshold nor the base | "y compris la taxe sur la valeur ajoutée" [11]; one secondary source [16] says the base is the amount before VAT, contradicting the article's text; the stamp's place is not found in a text (accountant question) | unvalidated |
+| A bill at several VAT rates is withheld rate by rate | the payment withholds on each VAT rate's part taxes included (its base, FODEC inside it, plus its VAT) and rounds each part; the expense's withholding is their sum, and its TEJ certificate carries one operation a rate | TEJ cahier des charges, September 2026 § 7.3.2.4: one `TauxTVA` an operation, `MontantRS = MontantTTC × TauxRS` [22] | unvalidated |
 | Other natures: fees 3 %, commercial rents 15 %, and others | **not modelled**: an expense does not say its nature; the rate is said on the payment | [16], not checked against the code | unvalidated |
-| The certificate of withholding given to the supplier, and the monthly declaration | **not modelled** here: printed and declared output, row 91 | — | — |
+| The certificate of withholding given to the supplier, and the monthly declaration | the month's TEJ file (`DeclareTejWithholdings`), one certificate a payment and one operation a VAT rate of its bill; the stamp has no place in it, so what the supplier is handed exceeds the declared net served by the stamp | TEJ cahier des charges, September 2026 [22]; FODEC inside `MontantHT` and the stamp left out are an accountant question | unvalidated |
 
 ## 6. VAT withholding by public buyers (art. 19 bis): deferred
 
@@ -206,7 +207,7 @@ comes after the POC (docs/SPEC.md § 2).
 - LF 2026 stamp brackets for large retail (§ 4), not modelled.
 - Tax-inclusive entry with FODEC and VAT on one line, refused by the calculator (ruling of 2026-09-13).
 - Withholding exclusions and reduced rates (§ 5), not modelled.
-- On supplier payments (§ 5a): the withholding by nature (fees, rents), the certificate and the declaration, not modelled.
+- On supplier payments (§ 5a): the withholding by nature (fees, rents), not modelled; whether FODEC belongs in a TEJ operation's `MontantHT` and the stamp outside every operation and the withholding base, not found in a text.
 - The monthly declaration itself and its forms (§ 2a), not produced; the declaration of a régime forfaitaire, not researched.
 - Matricule check letter (§ 8), not verified.
 - Regime mention wording (§ 7, § 9), unsourced.
@@ -236,3 +237,4 @@ comes after the POC (docs/SPEC.md § 2).
 19. Code de l'IRPP et de l'IS, art. 62, 9anoun mirror: https://9anoun.tn/fr/kb/codes/code-impot-sur-revenu-personnes-physiques-impot-sur-les-societes/code-impot-sur-revenu-personnes-physiques-impot-sur-les-societes-article-62 (read through docs/research/tax-data-tunisia.md § 3).
 20. Note commune n° 6/2004 (Texte DGI 2004/07, Bulletin officiel des douanes et des impôts n° 2004/01/05), commenting arts. 76 and 77 of LF 2003-80, read from an audit firm's copy: https://www.exacomaudit.com/docs/notes-communes-tunisie/2004/Note-Commune-N-06-2004.pdf
 21. Code des droits d'enregistrement et de timbre, DGELF edition of 2025 (arts. 74, 117-I 6°, 118-13°, 119-I 7°, 129): https://jibaya.tn/wp-content/uploads/2025/04/Code-des-Droits-dEnregistrement-et-de-Timbre-2025.pdf
+22. Cahier des charges des certificats de retenue à la source TEJ, September 2026, § 7.3.2.4: https://jibaya.tn/wp-content/uploads/2026/09/cahier%20des%20chargesRS_TEJ_09_26.pdf (read through docs/research/tax-data-tunisia.md § 2.2).
