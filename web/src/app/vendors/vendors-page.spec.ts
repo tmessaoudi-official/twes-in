@@ -54,6 +54,7 @@ const sotumag: VendorRow = {
   paymentTermsDays: 30,
   notes: null,
   isActive: false,
+  defaultExpenseCategoryId: null,
 };
 
 describe('VendorsPage', () => {

@@ -13,6 +13,8 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Identity\Domain\UserRepository;
+use App\Module\Vendors\Application\ExpenseCategoryDirectory;
+use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -20,11 +22,16 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 /** @implements ProviderInterface<VendorOptionsResource> */
 final readonly class VendorOptionsProvider implements ProviderInterface
 {
+    /** The expenses module's key: vendors name no class of it, which depends on them and not the reverse. */
+    private const string EXPENSES = 'expenses';
+
     public function __construct(
         private CompanyGuard $guard,
         private FiscalPresets $presets,
         private UserRepository $users,
         private TranslatorInterface $translator,
+        private ModuleStates $modules,
+        private ExpenseCategoryDirectory $expenseCategories,
     ) {
     }
 
@@ -41,6 +48,12 @@ final readonly class VendorOptionsProvider implements ProviderInterface
                 $this->translator->trans($identifier->labelKey, [], 'fiscal', $locale),
                 $identifier->patternFor(''),
             );
+        }
+        if ($this->modules->isEnabled($company->getId(), self::EXPENSES)) {
+            $options->expenseCategories = [];
+            foreach ($this->expenseCategories->categoriesInCompany($company->getId()) as $id => $category) {
+                $options->expenseCategories[] = ['id' => $id, 'name' => $category['name'], 'active' => $category['active']];
+            }
         }
 
         return $options;

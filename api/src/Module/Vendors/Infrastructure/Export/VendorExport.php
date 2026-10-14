@@ -11,6 +11,7 @@ namespace App\Module\Vendors\Infrastructure\Export;
 
 use App\ImportExport\Application\DeclaresExport;
 use App\ImportExport\Application\ExportQuery;
+use App\Module\Vendors\Application\ExpenseCategoryDirectory;
 use App\Module\Vendors\Application\ManageVendors;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorSearch;
@@ -23,15 +24,14 @@ use App\Tenancy\Domain\Company;
 
 /**
  * The vendors list as a file, under the columns the import reads (docs/SPEC.md § 7, row 60), so what a company exports
- * it can correct in a spreadsheet and bring back. The vendor's usual expense category is left out: the expenses module
- * names it, a vendor only holds its id, and an import keeps what a vendor has when that column is absent.
+ * it can correct in a spreadsheet and bring back. The vendor's usual expense category is written by its name, which is
+ * what the import reads, archived or not: the import keeps a vendor's own category under its name.
  */
 final readonly class VendorExport implements DeclaresExport
 {
     private const int BATCH = 200;
-    private const array OMITTED = ['expense_category'];
 
-    public function __construct(private VendorImport $columns, private ManageVendors $manage)
+    public function __construct(private VendorImport $columns, private ManageVendors $manage, private ExpenseCategoryDirectory $expenseCategories)
     {
     }
 
@@ -52,18 +52,19 @@ final readonly class VendorExport implements DeclaresExport
 
     public function columns(Company $company): array
     {
-        return array_values(array_diff($this->columns->subjectFor($company)->keys(), self::OMITTED));
+        return $this->columns->subjectFor($company)->keys();
     }
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
         $search = VendorSearchReader::read($query->parameters(), $query->text(), $query->order(VendorSearch::SORTS), $company);
         $columns = $this->columns($company);
+        $categories = array_map(static fn (array $category): string => $category['name'], $this->expenseCategories->categoriesInCompany($company->getId()));
 
         for ($page = 1;; ++$page) {
             $answer = $this->manage->search($company, $search, new PageRequest($page, self::BATCH));
             foreach ($answer->items as $vendor) {
-                yield array_map(static fn (string $column): string => self::cell($vendor, $column), $columns);
+                yield array_map(static fn (string $column): string => self::cell($vendor, $column, $categories), $columns);
             }
             if ($page * self::BATCH >= $answer->total || [] === $answer->items) {
                 return;
@@ -71,7 +72,8 @@ final readonly class VendorExport implements DeclaresExport
         }
     }
 
-    private static function cell(Vendor $vendor, string $column): string
+    /** @param array<string, string> $categories */
+    private static function cell(Vendor $vendor, string $column, array $categories): string
     {
         $profile = $vendor->getProfile();
         $address = $profile->address;
@@ -91,6 +93,7 @@ final readonly class VendorExport implements DeclaresExport
             'iban' => $profile->iban ?? '',
             'bic' => $profile->bic ?? '',
             'payment_terms_days' => null === $profile->paymentTermsDays ? '' : (string) $profile->paymentTermsDays,
+            'expense_category' => null === $profile->defaultExpenseCategoryId ? '' : ($categories[$profile->defaultExpenseCategoryId->toRfc4122()] ?? ''),
             'notes' => $profile->notes ?? '',
             'active' => $vendor->isActive() ? 'yes' : 'no',
             default => $profile->identifiers[$column] ?? '',

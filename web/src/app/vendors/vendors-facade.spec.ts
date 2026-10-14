@@ -29,9 +29,10 @@ const input: VendorInput = {
   paymentTermsDays: null,
   notes: null,
   isActive: true,
+  defaultExpenseCategoryId: null,
 };
 const sotumag: VendorRow = { ...input, id: 'v1' };
-const options: VendorOptions = { countryCode: 'TN', identifiers: [] };
+const options: VendorOptions = { countryCode: 'TN', identifiers: [], expenseCategories: null };
 
 // The proof dialog is answered by the test; `retrying` itself is StepUp's own.
 const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {

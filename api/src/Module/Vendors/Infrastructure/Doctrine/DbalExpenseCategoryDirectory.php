@@ -37,4 +37,16 @@ final readonly class DbalExpenseCategoryDirectory implements ExpenseCategoryDire
 
         return \is_string($id) ? Uuid::fromString($id) : null;
     }
+
+    public function categoriesInCompany(Uuid $companyId): array
+    {
+        $categories = [];
+        foreach ($this->connection->fetchAllAssociative('SELECT id, name, is_active FROM expense_category WHERE company_id = ? ORDER BY name', [$companyId->toRfc4122()]) as $row) {
+            if (\is_string($row['id']) && \is_string($row['name']) && \is_bool($row['is_active'])) {
+                $categories[$row['id']] = ['name' => $row['name'], 'active' => $row['is_active']];
+            }
+        }
+
+        return $categories;
+    }
 }

@@ -132,6 +132,38 @@ final class VendorImportTest extends ApiTestCase
         self::assertSame('Fournitures', $this->categoryName($updated));
     }
 
+    public function testWhatTheExportWritesTheImportTakesBackWithTheUsualExpenseCategoryArchivedSince(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->import($this->twoVendors());
+        self::assertResponseIsSuccessful();
+        $category = $this->em()->getRepository(ExpenseCategory::class)->findOneBy(['name' => 'Fournitures']);
+        self::assertInstanceOf(ExpenseCategory::class, $category);
+        $category->revise('Fournitures', null, false, new \DateTimeImmutable());
+        $this->em()->flush();
+
+        $this->client->request('GET', $this->companyPath().'/exports/vendors.csv');
+        self::assertResponseIsSuccessful();
+        $exported = $this->client->getInternalResponse()->getContent();
+        $lines = array_values(array_filter(explode("\n", $exported), static fn (string $line): bool => '' !== trim($line)));
+        $header = array_map(strval(...), str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"), escape: ''));
+        $rows = array_column(array_map(static fn (string $line): array => array_combine($header, str_getcsv($line, escape: '')), \array_slice($lines, 1)), null, 'number');
+        self::assertSame(['Fournitures', ''], [$rows['FRN-0001']['expense_category'] ?? null, $rows['FRN-0002']['expense_category'] ?? null]);
+
+        // The vendor's own category is kept under its name though it is archived now, as the vendor form keeps it.
+        $this->import($exported, mode: 'upsert');
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['rejected'] ?? null);
+        $this->em()->clear();
+        self::assertSame('Fournitures', $this->categoryName($this->vendor('FRN-0001')));
+
+        // Another vendor cannot be given an archived category by its name.
+        $this->import("number,name,expense_category\nFRN-0002,Outillage Pro,Fournitures\n", mode: 'upsert');
+        $refused = $this->arrayAt($this->json(), 'rejected');
+        self::assertIsArray($refused[0] ?? null);
+        self::assertSame('unknown_expense_category', $refused[0]['code'] ?? null);
+    }
+
     public function testSomebodyWhoCannotWriteVendorsIsAnsweredAsAStranger(): void
     {
         $this->signedIn(['vendor.read']);

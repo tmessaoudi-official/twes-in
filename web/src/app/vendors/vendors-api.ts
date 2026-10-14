@@ -159,6 +159,7 @@ function toVendor(raw: VendorVendorRead | VendorJsonldVendorRead): VendorRow {
     paymentTermsDays: raw.paymentTermsDays ?? null,
     notes: raw.notes ?? null,
     isActive: raw.isActive ?? true,
+    defaultExpenseCategoryId: raw.defaultExpenseCategoryId ?? null,
   };
 }
 
@@ -183,5 +184,7 @@ function toOptions(raw: VendorOptionsVendorOptionsRead): VendorOptions {
       label: identifier.label,
       pattern: identifier.pattern,
     })),
+    expenseCategories:
+      raw.expenseCategories?.map(({ id, name, active }) => ({ id, name, active })) ?? null,
   };
 }

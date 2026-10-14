@@ -2852,6 +2852,7 @@
       "iban": "IBAN",
       "bic": "BIC",
       "paymentTermsDays": "Payment terms (days)",
+      "defaultExpenseCategoryId": "Usual expense category",
       "notes": "Notes",
       "createdAt": "Created on"
     },

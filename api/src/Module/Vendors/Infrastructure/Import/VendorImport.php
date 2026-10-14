@@ -211,8 +211,13 @@ final readonly class VendorImport implements DeclaresImport
     private function expenseCategoryId(Company $company, ImportRecord $record, ?VendorProfile $held): ?Uuid
     {
         $name = $record->value('expense_category');
+        $heldId = $held?->defaultExpenseCategoryId;
         if (null === $name) {
-            return $held?->defaultExpenseCategoryId;
+            return $heldId;
+        }
+        // The vendor's own category under its own name stays, though archived since: what an export wrote comes back.
+        if (null !== $heldId && $name === ($this->expenseCategories->categoriesInCompany($company->getId())[$heldId->toRfc4122()]['name'] ?? null)) {
+            return $heldId;
         }
 
         return $this->expenseCategories->idOfActiveNameInCompany($name, $company->getId())
