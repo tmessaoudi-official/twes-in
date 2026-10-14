@@ -270,6 +270,7 @@ test('an accepted quote takes a deposit invoice, which its final invoice gives b
     await expect(page.getByTestId('invoice-totals')).toContainText('500,000');
     // A part gives no stamp back either, and the screen says which note will.
     await expect(page.getByTestId('document-taxes-stamp-held-back')).toBeVisible();
+    expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('nav-invoices').click();
     await expect(page).toHaveURL(/\/invoices$/);
     await expect(page.getByTestId('confirm-title')).toHaveCount(0);
