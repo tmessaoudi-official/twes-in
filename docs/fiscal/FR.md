@@ -30,6 +30,7 @@ Unvalidated.
 | Intermediate rate 10 % | component `TVA10` | CGI art. 279 [3] | unvalidated |
 | Reduced rate 5.5 % | component `TVA5_5` | CGI art. 278-0 bis [2] | unvalidated |
 | Special rate 2.1 % | component `TVA2_1` | CGI art. 281 quater to 281 nonies [3] | unvalidated |
+| A supplier's invoice states the VAT by rate, so a receipt may carry several | an expense is entered as its bill prints it: a line a rate, each rate's base and amount kept, a printed amount within a cent a line of the worked-out one kept as printed; the VAT summary adds the purchases rate by rate | CGI annexe II art. 242 nonies A (« le taux et le montant de la taxe » by rate) [6] | unvalidated |
 
 **Recodification.** Ordonnance n° 2025-1247 du 17 décembre 2025 moves the VAT rules from the CGI into the Code des
 impositions sur les biens et services (CIBS, book II, from art. L. 211-1). It was to apply on 1 September 2026;
