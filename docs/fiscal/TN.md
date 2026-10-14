@@ -77,9 +77,31 @@ scanned PDF. The rate and base above agree across every source read.
 | Rule | Preset | Source | Status |
 |---|---|---|---|
 | 1.000 TND per invoice, since 1 January 2023 (was 0.600) | component `TIMBRE`, `fixed_document`, amount 1.000, default | Code des droits d'enregistrement et de timbre art. 117 n° 6, as amended by décret-loi n° 2022-79 (LF 2023) art. 69; Note commune DGELF n° 02/2023 du 14 février 2023 [3] | unvalidated |
-| The stamp is outside every tax base and untouched by every discount | calculator rule, pinned by pricing vectors | follows from its nature as a per-document duty; no explicit text found | unvalidated |
+| The stamp is outside every tax base and untouched by every discount | calculator rule, pinned by pricing vectors | follows from its nature as a per-document duty; no explicit text found, and the VAT code's art. 6-I counts « tous frais, droits et taxes » in the base (VAT aside) [17], which could be read to take the stamp in: an accountant question | unvalidated |
 | Large retail outlets pay 1.5 TND on invoices of 50 to 100 TND and 2 TND above | **not modelled** (ruled 2026-09-13; amount editable per company) | LF 2026 art. 20 [5] | unvalidated |
 | Large retail (grandes surfaces, multi-department stores, franchises; in practice DGE/DME enterprises) pay **0.100 TND on each till receipt** (ticket de caisse), issued in a continuous series | a component of its own for the till, opt-in per company and **never an invoice default** (ruled 2026-10-04); built with the till module, not yet modelled | LF 2022 art. 54, new art. 135 bis of the Code des droits d'enregistrement et de timbre, in force 1 February 2022; press summaries only (Gnet, Tunisie Numérique, tustex, Tekiano) and the ministry's Note commune n° 15, not opened; a 50 TND threshold appeared in one draft-stage article and is not confirmed | unvalidated |
+
+## 4a. Correcting an invoice: the stamp and a discount on a credit note
+
+| Rule | Preset | Source | Status |
+|---|---|---|---|
+| A credit note (facture d'avoir) is itself an invoice subject to the stamp of art. 117-I 6°: « le droit de timbre couvre : toutes les factures y compris les factures partielles ainsi que les factures d'avoir » | **not modelled**: today a credit note copies its invoice's stamp with the credit note's sign, a refund of it (L-1080); the treatment waits for a ruling | Note commune n° 6/2004 [20], commenting art. 76 of LF 2003-80, the text the 2025 code still cites as the source of n° 6's wording [21]; the duty was 0.200 then, 1.000 now (§ 4) | unvalidated |
+| The invoice's stamp falls due when the invoice is issued, so a later credit note does not undo it; no text found provides for giving it back through a credit note | as above | Code des droits d'enregistrement et de timbre art. 119-I 7° « à l'émission pour les factures » [21] | unvalidated |
+| Who bears the stamp on a credit note is not settled by a text: art. 129 makes everyone who drew up a stamped writing jointly liable, and says nothing of passing it on | as above | art. 129-I [21] | unvalidated |
+| A discount on the whole document leaves the base of the lines it was shared over; a credit note of part of the lines gives back their share, not the whole discount, because the base is the price actually charged | **not modelled**: today a credit note copies the document discount and each line's discount amount whole, whatever it keeps of the lines (L-1080) | Code de la TVA art. 6-I, the base is « le prix des marchandises, des travaux ou des services » [17]; the sharing itself is the calculator's (§ 10), not a text's | unvalidated |
+
+**What the 2004 note covers.** Its scope sentence reads « Le droit de timbre fixé à 0.200 dinars prévu par le n° 6 du
+paragraphe I de l'article 117 … s'applique aux factures et documents en tenant lieu utilisés par les professions
+libérales ainsi que par les entrepreneurs de bâtiments et de travaux », and the list that follows opens with « toutes les
+factures y compris les factures partielles ainsi que les factures d'avoir » before the documents of those professions.
+It is read here as covering every invoice, the professions' documents being added to them; an accountant should confirm
+that reading.
+
+**Two readings left open.** Art. 118-13° exempts « les factures des commerçants non acceptées par les débiteurs ou non
+acquittées par ces derniers » [21]: read literally it would free an invoice the customer refuses or never pays, against
+art. 119-I 7°, which makes the duty due at issue. Art. 74, which makes duties « devenus restituables suite à la survenance
+d'un événement postérieur » restituable, sits in the registration part of the same code [21]; whether it reaches a stamp
+paid on an invoice later credited was not found. Nothing is built on either.
 
 ## 5. Withholding on payments (retenue à la source)
 
@@ -179,6 +201,7 @@ comes after the POC (docs/SPEC.md § 2).
 - The monthly declaration itself and its forms (§ 2a), not produced; the declaration of a régime forfaitaire, not researched.
 - Matricule check letter (§ 8), not verified.
 - Regime mention wording (§ 7, § 9), unsourced.
+- Credit notes (§ 4a): who bears a credit note's own stamp, whether a refused or fully credited invoice's stamp is ever given back (art. 118-13°, art. 74), and whether art. 6-I's « droits et taxes » takes the stamp into the VAT base (§ 4).
 - Advances (§ 2b): VAT shown on a goods advance, the stamp on a deposit invoice and FODEC on an advance, not found in a text; an untaxed goods advance (art. 5-2) is not offered.
 
 ## Sources
@@ -199,6 +222,8 @@ comes after the POC (docs/SPEC.md § 2).
 14. EN 16931-1:2017, business rule BR-CO-17 (VAT category tax amount).
 15. Note commune n° 6/2025 (LF 2025 art. 68, 3 % withheld by delivery services from sellers without a tax card, not modelled): https://jibaya.tn/wp-content/uploads/2025/03/Note-Commune-N%C2%B006.pdf
 16. Hesabi, « Taux de retenue à la source en Tunisie 2026 » (secondary): https://hesabi.tn/actualites/taux-retenue-source-tunisie-2026
-17. Code de la TVA, art. 5 (fait générateur), read from the 2024 consolidated code: https://alliance-tunisie.com/wp-content/uploads/2024/06/CODE-DE-LA-TVA-2024.pdf ; and from the ministry's edition « mis à jour au 1er janvier 2023 » (art. 5 and 18-II): https://jibaya.tn/wp-content/uploads/2024/02/Code-de-la-taxe-sur-la-valeur-ajoutee-2023_compressed.pdf
+17. Code de la TVA, art. 5 (fait générateur) and art. 6-I (base), read from the 2024 consolidated code: https://alliance-tunisie.com/wp-content/uploads/2024/06/CODE-DE-LA-TVA-2024.pdf ; and from the ministry's edition « mis à jour au 1er janvier 2023 » (art. 5 and 18-II): https://jibaya.tn/wp-content/uploads/2024/02/Code-de-la-taxe-sur-la-valeur-ajoutee-2023_compressed.pdf
 18. Ministère des Finances, FAQ « Quel est le fait générateur de la TVA en cas de vente de marchandises (cas des commandes successives) ? »: https://www.finances.gov.tn/fr/node/895
 19. Code de l'IRPP et de l'IS, art. 62, 9anoun mirror: https://9anoun.tn/fr/kb/codes/code-impot-sur-revenu-personnes-physiques-impot-sur-les-societes/code-impot-sur-revenu-personnes-physiques-impot-sur-les-societes-article-62 (read through docs/research/tax-data-tunisia.md § 3).
+20. Note commune n° 6/2004 (Texte DGI 2004/07, Bulletin officiel des douanes et des impôts n° 2004/01/05), commenting arts. 76 and 77 of LF 2003-80, read from an audit firm's copy: https://www.exacomaudit.com/docs/notes-communes-tunisie/2004/Note-Commune-N-06-2004.pdf
+21. Code des droits d'enregistrement et de timbre, DGELF edition of 2025 (arts. 74, 117-I 6°, 118-13°, 119-I 7°, 129): https://jibaya.tn/wp-content/uploads/2025/04/Code-des-Droits-dEnregistrement-et-de-Timbre-2025.pdf
