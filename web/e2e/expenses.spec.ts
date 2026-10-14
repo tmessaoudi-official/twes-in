@@ -40,6 +40,23 @@ async function retire(page: Page, name: string): Promise<void> {
   );
 }
 
+/** Deletes a draft the run left behind, saying so if the API refuses. */
+async function removeExpense(page: Page, id: string): Promise<void> {
+  await page.evaluate(
+    async ([csrf, expenseId]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const gone = await fetch(`/api/companies/${me.company.id}/expenses/${expenseId}`, {
+        method: 'DELETE',
+        headers: { 'csrf-token': csrf },
+      });
+      if (!gone.ok && gone.status !== 404) {
+        throw new Error(`deleting the expense answered ${gone.status}`);
+      }
+    },
+    [CSRF, id] as const,
+  );
+}
+
 test('an expense is filed with its VAT and receipt, recorded, then paid', async ({ page }) => {
   // The whole life of an expense, three accessibility scans and the list's filters: more than the default 30 s.
   test.setTimeout(60_000);
@@ -153,39 +170,47 @@ test('a bill at 19 % with FODEC and at 7 %, with the stamp, is entered as it is 
   await signIn(page);
   await inACompany(page, CSRF);
   await page.goto('/expenses/new');
-  await page.getByTestId('field-description').fill(`Quincaillerie ${run}`);
-  await page.getByTestId('bill-line-0-net').fill('1000');
-  await choose(page, 'bill-line-0-taxes', /TVA\s19/);
-  await choose(page, 'bill-line-0-taxes', /FODEC/);
-  await page.getByTestId('bill-add-line').click();
-  await page.getByTestId('bill-line-1-net').fill('200');
-  await choose(page, 'bill-line-1-taxes', /TVA\s7/);
-  await page
-    .getByTestId('bill-charges')
-    .getByRole('checkbox', { name: /timbre|stamp/i })
-    .check();
-  expect(await wcagViolations(page)).toEqual([]);
-  await page.getByTestId('record-save').click();
+  let created: string | null = null;
+  try {
+    await page.getByTestId('field-description').fill(`Quincaillerie ${run}`);
+    await page.getByTestId('bill-line-0-net').fill('1000');
+    await choose(page, 'bill-line-0-taxes', /TVA\s19/);
+    await choose(page, 'bill-line-0-taxes', /FODEC/);
+    await page.getByTestId('bill-add-line').click();
+    await page.getByTestId('bill-line-1-net').fill('200');
+    await choose(page, 'bill-line-1-taxes', /TVA\s7/);
+    await page
+      .getByTestId('bill-charges')
+      .getByRole('checkbox', { name: /timbre|stamp/i })
+      .check();
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('record-save').click();
 
-  await expect(page).toHaveURL(/\/expenses\/[0-9a-f-]{36}$/);
-  // 1000 + FODEC 10 + VAT 19 % of 1010 + 200 + VAT 7 % of 200 + the stamp.
-  await expect(page.getByTestId('expense-gross')).toContainText('416,900');
-  expect(await figures('expense-tax-TVA19')).toContain('191,900');
-  expect(await figures('expense-tax-FODEC')).toContain('10,000');
-  expect(await figures('expense-tax-TVA7')).toContain('14,000');
-  expect(await figures('expense-tax-TIMBRE')).toContain('1,000');
+    await expect(page).toHaveURL(/\/expenses\/[0-9a-f-]{36}$/);
+    created = page.url().split('/').at(-1) ?? null;
+    // 1000 + FODEC 10 + VAT 19 % of 1010 + 200 + VAT 7 % of 200 + the stamp.
+    await expect(page.getByTestId('expense-gross')).toContainText('416,900');
+    expect(await figures('expense-tax-TVA19')).toContain('191,900');
+    expect(await figures('expense-tax-FODEC')).toContain('10,000');
+    expect(await figures('expense-tax-TVA7')).toContain('14,000');
+    expect(await figures('expense-tax-TIMBRE')).toContain('1,000');
 
-  // The supplier printed a millime more at 7 %: kept, and what twes-in works out is shown beside it.
-  await page.getByTestId('bill-printed-TVA7').fill('14,001');
-  await page.getByTestId('record-save').click();
-  await expect(page.getByTestId('expense-gross')).toContainText('416,901');
-  expect(await figures('expense-tax-TVA7')).toContain('14,001');
-  expect(await figures('expense-tax-TVA7')).toContain('14,000');
-  expect(await wcagViolations(page)).toEqual([]);
+    // The supplier printed a millime more at 7 %: kept, and what twes-in works out is shown beside it.
+    await page.getByTestId('bill-printed-TVA7').fill('14,001');
+    await page.getByTestId('record-save').click();
+    await expect(page.getByTestId('expense-gross')).toContainText('416,901');
+    expect(await figures('expense-tax-TVA7')).toContain('14,001');
+    expect(await figures('expense-tax-TVA7')).toContain('14,000');
+    expect(await wcagViolations(page)).toEqual([]);
 
-  await page.getByTestId('expense-delete').click();
-  await page.getByTestId('expense-delete').click();
-  await expect(page).toHaveURL(/\/expenses$/);
+    await page.getByTestId('expense-delete').click();
+    await page.getByTestId('expense-delete').click();
+    await expect(page).toHaveURL(/\/expenses$/);
+    created = null;
+  } finally {
+    // A failure partway leaves the draft: it is deleted here, so nothing stays in the shared company.
+    if (created !== null) await removeExpense(page, created);
+  }
 });
 
 // docs/SPEC.md § 7, 2026-09-26: Demo is Tunisian, so the list offers the month's TEJ file. What a past month holds
