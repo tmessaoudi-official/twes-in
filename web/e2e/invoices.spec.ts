@@ -919,6 +919,9 @@ test('the invoices selected are cashed at once, each for what it owes, and those
     await expect(rows.locator('li')).toHaveCount(2);
     await expect(page.getByTestId('invoice-bulk-pay-total')).toContainText('Total encaissé');
     await expect(page.getByTestId('invoice-bulk-pay-go')).toHaveText('Encaisser les 2 factures');
+    // The dialog puts the cursor in its first field, the day, once it has finished opening; filling the reference
+    // before that sent it into the day on a slow runner, and the invalid day held the cashing back.
+    await expect(page.getByTestId('field-date')).toBeFocused();
     await page.getByTestId('field-reference').fill('VIR-E2E');
     expect(await wcagViolations(page)).toEqual([]);
 

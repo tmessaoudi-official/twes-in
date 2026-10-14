@@ -213,6 +213,9 @@ test('an accepted quote takes a deposit invoice, which its final invoice gives b
     await page.getByTestId('document-action-deposit').click();
     await expect(page.getByTestId('quote-deposit-value')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);
+    // The dialog puts the cursor on its first control, the percentage, once it has finished opening: a value typed
+    // before that is typed into the choice instead, so the scan above taking long enough is not relied on.
+    await expect(page.getByTestId('quote-deposit-by').locator('input:focus')).toHaveCount(1);
     await page.getByTestId('quote-deposit-value').fill('30');
     await page.getByTestId('quote-deposit-confirm').click();
     await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
