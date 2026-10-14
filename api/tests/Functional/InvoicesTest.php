@@ -2010,6 +2010,47 @@ final class InvoicesTest extends ApiTestCase
     }
 
     /**
+     * The invoice rounds its VAT once per rate and each credit note rounds its own, so the credit notes of its lines one
+     * by one can come to a millime more than it charged: the note completing the invoice takes what is left of each tax.
+     */
+    public function testTheCreditNotesOfAnInvoiceLineByLineComeToWhatItCharged(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $line = ['description' => 'Vis', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '33.335', 'taxComponentIds' => [$this->taxId('TVA19')]];
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [$line, $line, $line]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $lines = array_column($this->arrayAt($this->json(), 'lines'), 'id');
+        $this->postJson($this->path($id).'/issue', null);
+        // 100.005 and 19 % of it, 19.00095, rounded once.
+        self::assertSame(['119.006', '19.001'], [$this->json()['amountDue'], $this->json()['totalTax']]);
+
+        $taxes = [];
+        foreach ([['-39.669', '-6.334'], ['-39.669', '-6.334'], ['-39.668', '-6.333']] as $at => [$due, $tax]) {
+            $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
+            $creditId = $this->stringAt($this->json(), 'id');
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'creditedLineId' => $lines[$at]]]]));
+            $this->postJson($this->path($creditId).'/issue', null);
+            self::assertResponseStatusCodeSame(Response::HTTP_OK, 'the last credit note fits what is left');
+            $taxes[] = [$this->json()['amountDue'], $this->json()['totalTax']];
+        }
+        self::assertSame([['-39.669', '-6.334'], ['-39.669', '-6.334'], ['-39.668', '-6.333']], $taxes);
+        $this->getJson($this->path($id));
+        self::assertSame(['paid', '0.000'], [$this->json()['status'], $this->json()['amountDue']]);
+
+        // Only rounding is taken up: a credit note taxing what the invoice did not tax keeps its own VAT, and is refused.
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'unitPriceNet' => '50'], [...$line, 'unitPriceNet' => '50', 'taxComponentIds' => []]]]));
+        $half = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($half).'/issue', null);
+        self::assertSame('109.500', $this->json()['amountDue']);
+        $this->postJson($this->path($half).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        $creditId = $this->stringAt($this->json(), 'id');
+        $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'unitPriceNet' => '100']]]));
+        $this->postJson($this->path($creditId).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('109.500', (string) $this->client->getResponse()->getContent());
+    }
+
+    /**
      * @param array<string, mixed> $changes
      *
      * @return array<string, mixed>

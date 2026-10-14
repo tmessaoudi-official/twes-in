@@ -222,7 +222,11 @@ final class DocumentCalculator
                     $exact[] = $bases[$k]->mul($rate, Decimal::WORKING_SCALE);
                 }
             }
-            if (RoundingPoint::PerLine === $document->roundingPoint) {
+            $left = $document->taxesLeft[$tax->code] ?? null;
+            if (null !== $left && \count($exact) === \count($carriers)) {
+                // What is left of the tax, spread over the lines as a rate group is; a deduction's amount is its deposit's.
+                $shares = Decimal::allocate(Decimal::of($left)->mul($document->credit ? -1 : 1), $exact, $scale);
+            } elseif (RoundingPoint::PerLine === $document->roundingPoint) {
                 $shares = array_map(static fn (Number $share) => Decimal::round($share, $scale), $exact);
             } else {
                 $shares = Decimal::allocate(Decimal::round(Decimal::sum($exact), $scale), $exact, $scale);
@@ -371,6 +375,9 @@ final class DocumentCalculator
     {
         if ($document->scale < 0 || $document->scale > 4) {
             throw new InvalidDocument('A currency has between 0 and 4 decimals.');
+        }
+        if ([] !== $document->taxesLeft && TaxBasis::Inclusive === $document->basis) {
+            throw new \LogicException('What is left of a tax is given to a correction entered net of tax only.');
         }
         $seen = [];
         foreach ($document->lines as $i => $line) {
