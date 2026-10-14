@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of, Subject } from 'rxjs';
 import { type ApiStatus, HealthApi } from '../health/health-api';
+import { Session, type SessionState } from '../session/session';
 import { Feedback } from './feedback';
 import { BUSY_AFTER_MS, RequestActivity, RETRY_DELAYS_S, SLOW_AFTER_MS } from './request-activity';
 
@@ -10,15 +12,18 @@ describe('RequestActivity', () => {
   let health: Subject<ApiStatus>;
   let checks: number;
   const feedback = { success: vi.fn(), failure: vi.fn() };
+  const me = signal<SessionState | null>(null);
 
   beforeEach(() => {
     vi.useFakeTimers();
     feedback.success.mockReset();
+    me.set({ user: { id: 'u1' }, company: null });
     checks = 0;
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         { provide: Feedback, useValue: feedback },
+        { provide: Session, useValue: { me: me.asReadonly() } },
         {
           provide: HealthApi,
           useValue: {
@@ -112,6 +117,7 @@ describe('RequestActivity', () => {
       TestBed.configureTestingModule({
         providers: [
           { provide: Feedback, useValue: feedback },
+          { provide: Session, useValue: { me: me.asReadonly() } },
           { provide: HealthApi, useValue: { status: () => of('ok') } },
         ],
       });
@@ -122,6 +128,7 @@ describe('RequestActivity', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: Feedback, useValue: feedback },
+        { provide: Session, useValue: { me: me.asReadonly() } },
         { provide: HealthApi, useValue: { status: () => of('ok') } },
       ],
     });
@@ -164,6 +171,14 @@ describe('RequestActivity', () => {
     activity().failed(401, '/api/companies/c1/customers');
     expect(activity().sessionExpired()).toBe(true);
     activity().acknowledgeExpiry();
+    expect(activity().sessionExpired()).toBe(false);
+  });
+
+  it('takes a refusal that arrives once nobody is signed in for the sign-out it follows, not for a session that ended', () => {
+    me.set(null);
+
+    activity().failed(401, '/api/me/notifications');
+
     expect(activity().sessionExpired()).toBe(false);
   });
 });
