@@ -3,8 +3,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from '../e2e/axe';
 import { forgetPresentationChoices } from '../e2e/presentation';
-import { signInWithCode } from '../e2e/session';
+import { CODES_OPERATOR_EMAIL, OPERATOR_PASSWORD, signInWithCode } from '../e2e/session';
 import { auditScreen, type Finding } from './audit';
+import { focusFacts, type FocusFacts } from './focus';
 
 // Every screen as it is, for a design review (see playwright.gallery.config.ts): each route at desktop and phone
 // width, in the light and the dark scheme. The scheme follows the device, as it does for anyone who never chose
@@ -165,6 +166,9 @@ const SCHEMES = (process.env['GALLERY_SCHEMES'] ?? 'light,dark').split(',');
 const AXE = process.env['GALLERY_AXE'] === '1';
 // `GALLERY_ONLY=invoice,home` pictures those screens alone, to check one change without the whole run.
 const ONLY = (process.env['GALLERY_ONLY'] ?? '').split(',').filter((key) => key !== '');
+// `GALLERY_FOCUS=1` runs the focus pass instead of the pictures: where the focus is on every screen and step, written
+// to `focus.json` (the review's lens 53, focus and typing flow). Desktop, light, no picture.
+const FOCUS = process.env['GALLERY_FOCUS'] === '1';
 // The tallest picture: a long list is pictured to this height, its foot left out.
 const TALLEST = 6000;
 
@@ -410,6 +414,7 @@ async function rightToLeft(page: Page): Promise<void> {
 }
 
 test('every screen, desktop and phone, light and dark', async ({ browser, page }) => {
+  test.skip(FOCUS, 'the focus pass runs instead');
   const unknown = [
     ...WIDTHS.filter((name) => !ALL_VIEWPORTS.some((viewport) => viewport.name === name)),
     ...(AS === 'operator' || TESTERS.includes(AS) ? [] : [AS]),
@@ -445,4 +450,214 @@ test('every screen, desktop and phone, light and dark', async ({ browser, page }
     `${OUT}/manifest.json`,
     JSON.stringify({ as: AS, language: LANGUAGE, company: COMPANY, shots, missed }, null, 2),
   );
+});
+
+/** A screen reached one way: loaded afresh, or from inside the app as people move between screens. */
+interface Arrival {
+  key: string;
+  path: string;
+  /** `load`; `menu`, the shell's entry clicked; `row`, a list's row link clicked; `router`, the address pushed. */
+  arrival: string;
+  landed: string;
+  facts: FocusFacts;
+}
+
+/** A step within a screen: a form refused, a step shown in place, a dialog opened or closed. */
+interface Moment {
+  flow: string;
+  moment: string;
+  facts: FocusFacts;
+}
+
+/**
+ * Two frames and a moment after the page settled: focus moved by a component's own code lands after its render, and a
+ * Material dialog moves it only once its opening animation has ended.
+ */
+async function steady(page: Page): Promise<void> {
+  await page.waitForFunction(() => document.querySelector('.mdc-dialog--opening') === null, null, {
+    timeout: 5_000,
+  });
+  await page.evaluate(
+    () =>
+      new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))),
+  );
+  await page.waitForTimeout(300);
+}
+
+/**
+ * Reaches a screen from the home page as a person does: its menu entry when the shell shows one, else the router
+ * following an address pushed into the history; a record page through its list's first row. An HTML `autofocus` is
+ * honoured about once a document, so this arrival, not a fresh load, is what people meet.
+ */
+async function arriveInApp(page: Page, screen: Screen): Promise<string> {
+  const target = screen.firstRowOf ?? screen.path;
+  const entry = page.locator(`app-root a[href="${target}"]:visible`).first();
+  let how = 'router';
+  if ((await entry.count()) > 0) {
+    await entry.click();
+    how = 'menu';
+  } else {
+    await page.evaluate((path) => {
+      history.pushState(null, '', path);
+      dispatchEvent(new PopStateEvent('popstate', { state: null }));
+    }, target);
+  }
+  await page.waitForURL((url) => url.pathname === target, { timeout: 15_000 });
+  await settle(page);
+  if (screen.firstRowOf !== undefined) {
+    const row = page.locator('a[data-testid^="list-link-"]').first();
+    await row.click();
+    await page.waitForURL((url) => url.pathname !== target || url.search !== '', {
+      timeout: 15_000,
+    });
+    await settle(page);
+    how = `${how}+row`;
+  }
+  return how;
+}
+
+test('where the focus is on every screen and step', async ({ browser, page }) => {
+  test.skip(!FOCUS, 'GALLERY_FOCUS=1 runs the focus pass');
+  mkdirSync(OUT, { recursive: true });
+  page.setDefaultNavigationTimeout(20_000);
+  const arrivals: Arrival[] = [];
+  const moments: Moment[] = [];
+  // Every write a dialog probe let through, which must stay empty: the probes open and cancel, never confirm.
+  const writes: string[] = [];
+  const missedHere: string[] = [];
+  const save = (): void =>
+    writeFileSync(
+      `${OUT}/focus.json`,
+      JSON.stringify(
+        { as: AS, company: COMPANY, arrivals, moments, writes, missed: missedHere },
+        null,
+        2,
+      ),
+    );
+  const landed = (on: Page): string => {
+    const url = new URL(on.url());
+    return url.pathname + url.search;
+  };
+
+  // Signed out: each screen as it loads, then the sign-in's steps as the operator who signs in with a code.
+  const context = await browser.newContext({ locale: 'fr-FR', timezoneId: 'Africa/Tunis' });
+  const signedOut = await context.newPage();
+  for (const screen of SIGNED_OUT) {
+    await signedOut.goto(screen.path);
+    await settle(signedOut);
+    await steady(signedOut);
+    arrivals.push({
+      key: screen.key,
+      path: screen.path,
+      arrival: 'load',
+      landed: landed(signedOut),
+      facts: await focusFacts(signedOut),
+    });
+  }
+  await signedOut.goto('/login');
+  await settle(signedOut);
+  // An empty form is refused in the browser: nothing is sent.
+  await signedOut.getByTestId('submit').click();
+  await steady(signedOut);
+  moments.push({
+    flow: 'sign-in',
+    moment: 'empty form refused',
+    facts: await focusFacts(signedOut),
+  });
+  await signedOut.getByTestId('email').fill(CODES_OPERATOR_EMAIL);
+  await signedOut.getByTestId('password').fill(OPERATOR_PASSWORD);
+  await signedOut.getByTestId('submit').click();
+  const code = signedOut.getByTestId('mfa-code');
+  await expect(code).toBeVisible();
+  await steady(signedOut);
+  moments.push({ flow: 'sign-in', moment: 'code step shown', facts: await focusFacts(signedOut) });
+  // The probe's own check, from the page's side: it sees a focused field, and sees it go. The code is never sent.
+  await code.evaluate((input: HTMLElement) => input.focus());
+  expect((await focusFacts(signedOut)).focused).toContain('mfa-code');
+  await code.evaluate((input: HTMLElement) => input.blur());
+  expect((await focusFacts(signedOut)).focused).toBe('body');
+  await context.close();
+  save();
+
+  await signInAs(page, AS);
+  await workIn(page, COMPANY);
+  await forgetPresentationChoices(page);
+  for (const screen of SIGNED_IN.filter((each) => ONLY.length === 0 || ONLY.includes(each.key))) {
+    try {
+      if (!(await open(page, screen))) {
+        missedHere.push(`${screen.key}: no row to open`);
+        continue;
+      }
+      await settle(page);
+      await steady(page);
+      const path = screen.path || `${screen.firstRowOf}/…`;
+      arrivals.push({
+        key: screen.key,
+        path,
+        arrival: 'load',
+        landed: landed(page),
+        facts: await focusFacts(page),
+      });
+      if (screen.path !== '/') {
+        await page.goto('/');
+        await settle(page);
+        const how = await arriveInApp(page, screen);
+        await steady(page);
+        arrivals.push({
+          key: screen.key,
+          path,
+          arrival: how,
+          landed: landed(page),
+          facts: await focusFacts(page),
+        });
+      }
+    } catch (error) {
+      missedHere.push(`${screen.key}: ${String(error).split('\n')[0]}`);
+    }
+    save();
+  }
+
+  // Two dialogs, opened and cancelled with every write held back: the step-up, which « Effacer des données » asks for
+  // before anything is sent, and the typed confirmation of deleting one's account.
+  await page.route('**/api/**', (route) => {
+    if (route.request().method() === 'GET') return route.fallback();
+    writes.push(`${route.request().method()} ${new URL(route.request().url()).pathname}`);
+    return route.abort();
+  });
+  const dialogs = [
+    {
+      flow: 'step-up',
+      path: '/company/data-erasure',
+      opener: 'erasure-confirm',
+      field: 'step-up-password',
+      cancel: 'step-up-cancel',
+    },
+    {
+      flow: 'account deletion',
+      path: '/account?tab=security',
+      opener: 'account-delete',
+      field: 'confirm-typed',
+      cancel: 'confirm-keep',
+    },
+  ];
+  for (const dialog of dialogs) {
+    try {
+      await page.goto(dialog.path);
+      await settle(page);
+      await page.getByTestId(dialog.opener).click();
+      await expect(page.getByTestId(dialog.field)).toBeVisible();
+      await steady(page);
+      moments.push({ flow: dialog.flow, moment: 'opened', facts: await focusFacts(page) });
+      await page.getByTestId(dialog.cancel).click();
+      await page.locator('mat-dialog-container').waitFor({ state: 'detached', timeout: 10_000 });
+      await steady(page);
+      moments.push({ flow: dialog.flow, moment: 'closed', facts: await focusFacts(page) });
+    } catch (error) {
+      missedHere.push(`${dialog.flow}: ${String(error).split('\n')[0]}`);
+    }
+    save();
+  }
+  await page.unroute('**/api/**');
+  save();
+  expect(writes).toEqual([]);
 });

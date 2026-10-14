@@ -251,6 +251,7 @@ services:
       GALLERY_AXE:
       GALLERY_COMPANY:
       GALLERY_DIR:
+      GALLERY_FOCUS:
       GALLERY_LANG:
       GALLERY_ONLY:
       GALLERY_SCHEMES:
