@@ -31,6 +31,10 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-13 23:57] AGREED: Order after the step-up work (landed, CI green at 1a5f5e8a): the paratest trial first (API suite timings before and after, kept only if faster and green), then round 1 on the frozen commit; changed-only runs and one-container sabotage after round 1 (developer).
 - [2026-10-14 11:55] AGREED: Lens 53, first focus: reaching a screen or a step with something to type (a route, a dialog, the sign-in's authenticator code step) puts the focus in the field typed first, so typing never goes nowhere; checked on every screen, measured by the gallery where a route lands and read in the code for in-screen steps and dialogs (developer).
 - [2026-10-14 12:05] AGREED: Lens 53 widened from first focus to the whole family, focus and typing flow, the sign-in's code step being one worked example to generalise from: focus on arrival (route, in-place step, dialog, tab, sheet); after a refusal, on the first field in error; returned to the opener when a dialog, menu or sheet closes; on the next row after one is removed, on the new line after one is added; kept across saves and live reloads, never stolen by a toast; Enter submits and Escape cancels where expected; tab order follows the visual order, right to left too; focus always visible; one-time-code and numeric fields take paste and the right phone keyboard; on a phone, whether arrival focus opens the keyboard is ruled with the rubric; the sign-in fix waits for the kind fix after the ruling (developer).
+- [2026-10-14 12:57] AGREED: L-200 fix-now: « Émettre » saves what is typed first, then the confirmation quotes the number, total and customer the API answered, then issues; cancelling leaves the typed changes saved on the draft (developer).
+- [2026-10-14 12:57] AGREED: L-600 fix-now: a vendor's default expense category is shown and edited on the vendor record and saved with it, and the vendor export carries its column, so export then import keeps it (developer).
+- [2026-10-14 12:57] AGREED: L-400 fix-now: a count line keeps the location it was scanned at; the count sheet groups lines by location and recording books each at its own; scanning another shelf's label starts that shelf's group (developer).
+- [2026-10-14 12:57] AGREED: L-401 fix-now: a scanner burst ending in Enter into a quantity or price field is taken as a scan, never typing (the field keeps its value, the scan goes where scans go, said in a toast), amending the 2026-09-23 01:10 ruling for number fields only; and a quantity or price far above what is usual for that product asks before it is saved (developer).
 
 ## Formal Plan
 
@@ -54,6 +58,9 @@ Stop rule: a round that adds no new category and under about 5 % new findings; a
   timed on `make scale-data`; axe on every screen; a route × role matrix. Coverage = cells answered with evidence.
 - **Rounds** judge that evidence cell by cell (screen × role × device × lens), each given every finding so far with a
   stable id and asked for new ones only; data loss, security and wrong money are fixed on master at once and marked.
+- **Round 1** (product frozen at 68f607f3): 173 new findings, 1,076 of 4,323 cells assessed, so coverage is partial;
+  `var/claude/maturity/round1/round-1.md`. Fix-now L-200, L-400 and L-600 are fixed on master; L-401 has its own plan.
+  Round 2 judges the commit that carries those fixes, not 68f607f3.
   After round 1 the developer rules the feelings' looks and wordings and the rubric; at apparent saturation one blind
   round without the list (over 5 % new: continue). Then the developer rules, and fixes go by kind: a shared component,
   a gate, a lint rule or a test, and the lesson in the expertise pack. A finding is closed when its kind is.
