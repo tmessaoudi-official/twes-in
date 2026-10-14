@@ -22,8 +22,9 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 /** @implements ProviderInterface<VendorOptionsResource> */
 final readonly class VendorOptionsProvider implements ProviderInterface
 {
-    /** The expenses module's key: vendors name no class of it, which depends on them and not the reverse. */
+    /** The expenses module's key and its read: vendors name no class of it, which depends on them and not the reverse. */
     private const string EXPENSES = 'expenses';
+    private const string EXPENSES_READ = 'expense.read';
 
     public function __construct(
         private CompanyGuard $guard,
@@ -49,7 +50,8 @@ final readonly class VendorOptionsProvider implements ProviderInterface
                 $identifier->patternFor(''),
             );
         }
-        if ($this->modules->isEnabled($company->getId(), self::EXPENSES)) {
+        // Named only to whoever may read them on their own page, while their module is on.
+        if ($this->modules->isEnabled($company->getId(), self::EXPENSES) && $this->guard->may($company, self::EXPENSES_READ)) {
             $options->expenseCategories = [];
             foreach ($this->expenseCategories->categoriesInCompany($company->getId()) as $id => $category) {
                 $options->expenseCategories[] = ['id' => $id, 'name' => $category['name'], 'active' => $category['active']];

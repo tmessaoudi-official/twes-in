@@ -83,10 +83,12 @@ export class VendorPage {
    * content, and must not rebuild the form over what is being typed; another vendor or other fields must.
    */
   private readonly formKey = computed(() => {
-    const descriptor = this.descriptor();
+    const options = this.facade.options();
     const current = this.current();
-    if (descriptor === null || current === undefined) return null;
-    return `${current?.id ?? 'new'}|${JSON.stringify(descriptor)}`;
+    if (options === null || current === undefined) return null;
+    // Without the category the vendor holds: another person's save that moves it off an archived one changes the
+    // choices offered, not the fields, and is merged as a change like any other.
+    return `${current?.id ?? 'new'}|${JSON.stringify(vendorForm(options))}`;
   });
   protected readonly form = computed(() => {
     if (this.formKey() === null) return null;

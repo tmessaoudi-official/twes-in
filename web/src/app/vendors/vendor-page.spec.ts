@@ -262,7 +262,7 @@ describe('VendorPage', () => {
     expect(q('vendor-error')?.textContent).toContain('Un autre fournisseur porte déjà ce numéro.');
   });
 
-  // Screens-maturity round 1, L-600: a save sent no category, and the PUT cleared the one the vendor had.
+  // A save once sent no category, and the PUT cleared the one the vendor had.
   it('keeps the usual expense category on a save while the expenses module is off, and shows it while it is on', async () => {
     vendor.set({ ...sotumag, defaultExpenseCategoryId: 'k2' });
     await open('v1');
@@ -304,6 +304,29 @@ describe('VendorPage', () => {
     expect((q('field-name') as HTMLInputElement).value).toBe('Sotumag & fils');
     expect(q('record-changed')).not.toBeNull();
     expect(q('field-conflict-name')).not.toBeNull();
+  });
+
+  it('keeps what is typed when another person moves the vendor off an archived category', async () => {
+    optionsShown.set({
+      ...options,
+      expenseCategories: [
+        { id: 'k1', name: 'Fournitures', active: true },
+        { id: 'k2', name: 'Loyer', active: false },
+      ],
+    });
+    vendor.set({ ...sotumag, defaultExpenseCategoryId: 'k2' });
+    await open('v1');
+    type('field-name', 'Sotumag & fils');
+    facade.loadVendor.mockImplementation(async () => {
+      vendor.set({ ...sotumag, defaultExpenseCategoryId: 'k1' });
+    });
+
+    await announceSaved('vendor', 'v1');
+    await settle();
+
+    // The archived choice leaves the list, and the form is not rebuilt over what was being typed.
+    expect((q('field-name') as HTMLInputElement).value).toBe('Sotumag & fils');
+    expect(q('record-changed')).not.toBeNull();
   });
 
   it('shows a reader the vendor without a way to save it', async () => {

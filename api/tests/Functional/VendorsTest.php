@@ -45,7 +45,7 @@ final class VendorsTest extends ApiTestCase
 
     public function testTheFormIsOfferedTheExpenseCategoriesWhileTheExpensesModuleIsOn(): void
     {
-        $this->signedIn(['vendor.read']);
+        $this->signedIn(['vendor.read', 'expense.read']);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
         $supplies = ExpenseCategory::create($company, 'Fournitures', null, new \DateTimeImmutable());
@@ -62,6 +62,14 @@ final class VendorsTest extends ApiTestCase
             ['id' => $supplies->getId()->toRfc4122(), 'name' => 'Fournitures', 'active' => true],
             ['id' => $rent->getId()->toRfc4122(), 'name' => 'Loyer', 'active' => false],
         ], $offered, 'the archived one named, for the vendor that still holds it');
+
+        // Whoever may not read the expense categories is not told their names here either.
+        $this->createUser('reader@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()), ['vendor.read'], 'reader');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->getJson($this->companyPath().'/vendor-options');
+        self::assertResponseIsSuccessful();
+        self::assertNull($this->json()['expenseCategories'] ?? null, 'no category is offered without expense.read');
+        $this->login('buyer@twes.local', 'password-1234');
 
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);

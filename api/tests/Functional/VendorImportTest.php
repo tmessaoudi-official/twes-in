@@ -134,7 +134,7 @@ final class VendorImportTest extends ApiTestCase
 
     public function testWhatTheExportWritesTheImportTakesBackWithTheUsualExpenseCategoryArchivedSince(): void
     {
-        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->signedIn(['vendor.read', 'vendor.write', 'expense.read']);
         $this->import($this->twoVendors());
         self::assertResponseIsSuccessful();
         $category = $this->em()->getRepository(ExpenseCategory::class)->findOneBy(['name' => 'Fournitures']);
@@ -162,6 +162,24 @@ final class VendorImportTest extends ApiTestCase
         $refused = $this->arrayAt($this->json(), 'rejected');
         self::assertIsArray($refused[0] ?? null);
         self::assertSame('unknown_expense_category', $refused[0]['code'] ?? null);
+    }
+
+    public function testTheFileNamesNoExpenseCategoryToWhoeverMayNotReadThem(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->import($this->twoVendors());
+        self::assertResponseIsSuccessful();
+
+        $this->client->request('GET', $this->companyPath().'/exports/vendors.csv');
+        self::assertResponseIsSuccessful();
+        $exported = $this->client->getInternalResponse()->getContent();
+        self::assertStringNotContainsString('Fournitures', $exported);
+
+        // The empty cell keeps what the vendor has, so the file still comes back whole.
+        $this->import($exported, mode: 'upsert');
+        self::assertResponseIsSuccessful();
+        $this->em()->clear();
+        self::assertSame('Fournitures', $this->categoryName($this->vendor('FRN-0001')));
     }
 
     public function testSomebodyWhoCannotWriteVendorsIsAnsweredAsAStranger(): void
