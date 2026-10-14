@@ -191,8 +191,8 @@ All prices read on tuntrust.tn (the site's certificate chain is incomplete; read
     accepted in this phase), `ReferenceDeclaration`, then `AjouterCertificats` / `ModifierCertificats` /
     `AnnulerCertificats`. A certificate carries `Beneficiaire` (identifier, name, address, activity, contact),
     `DatePayement`, `Ref_certif_chez_declarant` (the payer's own reference), `ListeOperations/Operation`
-    (`@IdTypeOperation`, `AnneeFacturation`, `MontantHT`, `TauxRS`, `TauxTVA` (decimal 0–100; a `TypeTauxTVA` enumeration 7/13/19 also exists, which one
-    applies is unchecked), `MontantTVA`,
+    (`@IdTypeOperation`, `AnneeFacturation`, `MontantHT`, `TauxRS`, `TauxTVA` (decimal 0–100 in the element; the cahier lists 0, 7, 13 and 19 and says the list may grow, and the
+    `TypeTauxTVA` enumeration of 7/13/19 is not used by it: see « A bill with several taxes » below), `MontantTVA`,
     `MontantTTC`, `MontantRS`, optional `TaxeAdditionnelle`, `MontantNetServi`, optional `Devise` with exchange
     rate) and `TotalPayement`. `MontantHT` is an integer in millimes ("sans partie décimale"); the other amounts
     likely the same [Inferred: read on `MontantHT` only].
@@ -210,6 +210,22 @@ All prices read on tuntrust.tn (the site's certificate chain is incomplete; read
 
     [Verified: the codes and labels, `TEJRSCodesOperations_v1.0.xsd`; Inferred: the rate column, which the XSD does
     not carry — it is TN.md §5a's split matched by label].
+- **A bill with several taxes** (read for screens-maturity L-603) [Verified: cahier des charges Sept 2026 § 7.3.2.4
+  and the `Operation` element pages, pp. 32–51; `TEJDeclarationRS_v1.0.xsd`, `TypeOperation`]:
+  - a certificate carries **one or more** `Operation` elements (`ListeOperations`, `maxOccurs="unbounded"`), and the
+    `TotalPayement` sums them;
+  - each operation has **one** `TauxTVA`, from « [0%, 7%, 13%, 19%] », a list the cahier says « peut s'élargir selon
+    les législations fiscales en vigueur » (the XSD element takes any decimal 0–100; a separate `TypeTauxTVA`
+    enumeration of 7/13/19 is defined and not used by the element);
+  - `MontantTVA = MontantHT * TauxTVA` and `MontantTTC = MontantHT + MontantTVA`, `MontantTTC >= MontantHT`: the
+    operation has no place for a FODEC amount or a stamp;
+  - `TaxeAdditionnelle` (`Code` RSTVA100 or RSTVA25, `Taux`) is the **VAT withholding** of Code TVA art. 19 / 19 bis,
+    not a further tax on the bill;
+  - `MontantRS = MontantTTC * TauxRS`, `MontantRS < MontantTTC`, `MontantRS < MontantHT`: each operation's withholding
+    is worked out on its own TTC, and the certificate's `TotalMontantRS` is their sum.
+  So a bill at two VAT rates is declared as two operations. Where a bill's FODEC goes (inside `MontantHT`, which keeps
+  `MontantTVA = MontantHT * TauxTVA` true since FODEC enters the VAT base, docs/fiscal/TN.md § 3) and whether the
+  stamp is left out of the declared amounts are not said anywhere in the cahier [Unverified: an accountant question].
 - **So the "certificat de retenue à la source" is no longer a document twes-in prints:** the platform issues it;
   the app's deliverable is the XML (or the data to type in). The beneficiary can check on TEJ whether its customer
   must use it [Verified: TEJ page, `https://tej.finances.gov.tn/tax-file`].
