@@ -287,6 +287,20 @@ final class DepositInvoicesTest extends ApiTestCase
         $this->sendJson('PUT', $this->companyPath().'/invoices/'.$noteId, [...$this->editable($note), 'lines' => [[...$copied[2], 'section' => 'Acomptes'], $copied[3], $copied[1]]]);
         self::assertResponseIsSuccessful();
         self::assertSame([['Pose', 'Acomptes']], array_map(static fn (array $line): array => [$line['description'], $line['section']], $this->rows($this->json(), 'lines')));
+
+        // The way out the refusal leaves: the labour credited, the deposit invoice is corrected by a credit note of its
+        // own though the final invoice gives it back, and a machine is then credited on the final within what it owes.
+        $this->issue($noteId);
+        $this->postJson($this->companyPath().'/invoices/'.$depositId.'/credit-notes', ['creditNoteReason' => 'Retour des machines']);
+        self::assertResponseIsSuccessful();
+        $this->issue($this->stringAt($this->json(), 'id'));
+        $this->postJson($this->companyPath().'/invoices/'.$finalId.'/credit-notes', ['creditNoteReason' => 'Retour d’une machine']);
+        self::assertResponseIsSuccessful();
+        $second = $this->json();
+        $one = $this->rows($second, 'lines')[0];
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$this->stringAt($second, 'id'), [...$this->editable($second), 'lines' => [[...$one, 'quantity' => '1']]]);
+        self::assertResponseIsSuccessful();
+        $this->issue($this->stringAt($second, 'id'));
     }
 
     public function testADepositIsAShareOrAnAmountTheQuoteLeaves(): void
