@@ -94,6 +94,7 @@ function fold(text: string): string {
       [attr.aria-expanded]="open()"
       [attr.aria-controls]="open() ? listId : null"
       [attr.aria-labelledby]="ownLabel() ? ownLabel() + ' ' + valueId : null"
+      [attr.aria-describedby]="describedBy() || null"
       [attr.aria-required]="required() || null"
       [attr.data-testid]="testId() || null"
       [disabled]="disabled()"
@@ -250,6 +251,8 @@ export class Select implements ControlValueAccessor {
   readonly options = input.required<readonly SelectOption[]>();
   readonly multiple = input(false);
   readonly labelledBy = input('');
+  /** The ids of what explains the field, space-separated, read after its name and value. */
+  readonly describedBy = input('');
   /** The label drawn on the control's top edge, as a Material outlined field does, for a row of such fields. */
   readonly label = input('');
   readonly labelInside = input(false);
