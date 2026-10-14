@@ -31,4 +31,17 @@ final class InMemoryExpenseCategoryDirectory implements ExpenseCategoryDirectory
 
         return null === $id ? null : Uuid::fromString($id);
     }
+
+    public function categoriesInCompany(Uuid $companyId): array
+    {
+        $categories = [];
+        foreach ($this->named as $key => $id) {
+            [$company, $name] = explode(' ', $key, 2);
+            if ($company === $companyId->toRfc4122()) {
+                $categories[$id] = ['name' => $name, 'active' => true];
+            }
+        }
+
+        return $categories;
+    }
 }

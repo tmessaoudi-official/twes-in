@@ -24,4 +24,12 @@ interface ExpenseCategoryDirectory
      * a person reads, never an id (docs/SPEC.md § 8 row 59).
      */
     public function idOfActiveNameInCompany(string $name, Uuid $companyId): ?Uuid;
+
+    /**
+     * Every category of the company by id, archived ones too, with its name and whether it is active: a file and the
+     * vendor form name a vendor's usual category as a person reads it, and one archived since stays the vendor's own.
+     *
+     * @return array<string, array{name: string, active: bool}>
+     */
+    public function categoriesInCompany(Uuid $companyId): array;
 }

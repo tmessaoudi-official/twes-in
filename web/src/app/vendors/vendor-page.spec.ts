@@ -46,6 +46,7 @@ const options: VendorOptions = {
       pattern: '^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$',
     },
   ],
+  expenseCategories: null,
 };
 const sotumag: VendorRow = {
   id: 'v1',
@@ -62,13 +63,15 @@ const sotumag: VendorRow = {
   paymentTermsDays: 30,
   notes: null,
   isActive: true,
+  defaultExpenseCategoryId: null,
 };
 
 describe('VendorPage', () => {
   const error = signal<VendorsError | null>(null);
   const vendor = signal<VendorRow | null>(null);
+  const optionsShown = signal<VendorOptions | null>(options);
   const facade = {
-    options: signal<VendorOptions | null>(options).asReadonly(),
+    options: optionsShown.asReadonly(),
     vendor: vendor.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
@@ -117,6 +120,7 @@ describe('VendorPage', () => {
   beforeEach(() => {
     error.set(null);
     vendor.set(null);
+    optionsShown.set(options);
     facade.loadVendor.mockReset().mockResolvedValue(undefined);
     facade.createVendor.mockReset().mockResolvedValue({ ...sotumag, id: 'v9' });
     facade.reviseVendor.mockReset().mockResolvedValue(sotumag);
@@ -256,6 +260,32 @@ describe('VendorPage', () => {
     await settle();
     expect(successToasts()).toEqual(['vendors.saved']);
     expect(q('vendor-error')?.textContent).toContain('Un autre fournisseur porte déjà ce numéro.');
+  });
+
+  // Screens-maturity round 1, L-600: a save sent no category, and the PUT cleared the one the vendor had.
+  it('keeps the usual expense category on a save while the expenses module is off, and shows it while it is on', async () => {
+    vendor.set({ ...sotumag, defaultExpenseCategoryId: 'k2' });
+    await open('v1');
+    expect(q('field-defaultExpenseCategoryId')).toBeNull();
+    type('field-email', 'compta@sotumag.tn');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseVendor).toHaveBeenCalledWith(
+      'c1',
+      'v1',
+      expect.objectContaining({ defaultExpenseCategoryId: 'k2' }),
+    );
+
+    fixture.destroy();
+    optionsShown.set({
+      ...options,
+      expenseCategories: [{ id: 'k1', name: 'Fournitures', active: true }],
+    });
+    await open('v1');
+    expect(q('field-defaultExpenseCategoryId')).not.toBeNull();
+    // The vendor's own category, archived since, is still what the form shows: opening it is no change.
+    expect(q('record-save')?.hasAttribute('disabled')).toBe(true);
   });
 
   it('takes what another person saved into the open vendor, and keeps what is typed', async () => {

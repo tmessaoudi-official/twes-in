@@ -48,6 +48,8 @@ export interface VendorRow {
   paymentTermsDays: number | null;
   notes: string | null;
   isActive: boolean;
+  /** The expense category this vendor's expenses usually go to, archived since or not. */
+  defaultExpenseCategoryId: string | null;
 }
 
 export type VendorInput = Omit<VendorRow, 'id'>;
@@ -59,8 +61,17 @@ export interface VendorIdentifierOption {
   pattern: string;
 }
 
+/** One of the company's expense categories, as the vendor form names it. */
+export interface VendorExpenseCategory {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
 /** What the vendor form offers: the company's country and the registration numbers its preset knows. */
 export interface VendorOptions {
   countryCode: string;
   identifiers: VendorIdentifierOption[];
+  /** Null while the expenses module is off: the form then has no category field. */
+  expenseCategories: VendorExpenseCategory[] | null;
 }

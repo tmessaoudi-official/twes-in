@@ -10,8 +10,10 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Module\Expenses\Domain\ExpenseCategory;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorProfile;
+use App\ModuleRegistry\Domain\ModuleState;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
@@ -39,6 +41,35 @@ final class VendorsTest extends ApiTestCase
         $identifier = $this->arrayAt($options, 'identifiers')[0];
         self::assertIsArray($identifier);
         self::assertSame(['matricule_fiscal', '^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$'], [$identifier['key'], $identifier['pattern']]);
+    }
+
+    public function testTheFormIsOfferedTheExpenseCategoriesWhileTheExpensesModuleIsOn(): void
+    {
+        $this->signedIn(['vendor.read']);
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+        $supplies = ExpenseCategory::create($company, 'Fournitures', null, new \DateTimeImmutable());
+        $rent = ExpenseCategory::create($company, 'Loyer', null, new \DateTimeImmutable());
+        $rent->revise('Loyer', null, false, new \DateTimeImmutable());
+        $this->em()->persist($supplies);
+        $this->em()->persist($rent);
+        $this->em()->flush();
+
+        $this->getJson($this->companyPath().'/vendor-options');
+        self::assertResponseIsSuccessful();
+        $offered = $this->arrayAt($this->json(), 'expenseCategories');
+        self::assertSame([
+            ['id' => $supplies->getId()->toRfc4122(), 'name' => 'Fournitures', 'active' => true],
+            ['id' => $rent->getId()->toRfc4122(), 'name' => 'Loyer', 'active' => false],
+        ], $offered, 'the archived one named, for the vendor that still holds it');
+
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+        $this->em()->persist(ModuleState::of($company, 'expenses', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->getJson($this->companyPath().'/vendor-options');
+        self::assertResponseIsSuccessful();
+        self::assertNull($this->json()['expenseCategories'] ?? null, 'no category is offered while the module is off');
     }
 
     public function testAWriterAddsAVendorWithoutRegistrationNumbers(): void

@@ -12,6 +12,16 @@ const options: VendorOptions = {
       pattern: '^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$',
     },
   ],
+  expenseCategories: null,
+};
+
+/** The expenses module on: Loyer is archived, offered only to a vendor that still holds it. */
+const withCategories: VendorOptions = {
+  ...options,
+  expenseCategories: [
+    { id: 'k1', name: 'Fournitures', active: true },
+    { id: 'k2', name: 'Loyer', active: false },
+  ],
 };
 
 const sotumag: VendorRow = {
@@ -35,7 +45,13 @@ const sotumag: VendorRow = {
   paymentTermsDays: 0,
   notes: null,
   isActive: false,
+  defaultExpenseCategoryId: 'k2',
 };
+
+const categoryField = (descriptor: ReturnType<typeof vendorForm>) =>
+  descriptor.sections
+    .flatMap((section) => section.fields)
+    .find((field) => field.id === 'defaultExpenseCategoryId');
 
 describe('vendor forms', () => {
   it('asks the API for the page, words, status and sort the list shows, and sorts only by what it sorts', () => {
@@ -112,7 +128,9 @@ describe('vendor forms', () => {
       '^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$',
     ]);
     expect(
-      vendorForm({ countryCode: 'TN', identifiers: [] }).sections.map((s) => s.id),
+      vendorForm({ countryCode: 'TN', identifiers: [], expenseCategories: null }).sections.map(
+        (s) => s.id,
+      ),
     ).not.toContain('identifiers');
   });
 
@@ -156,5 +174,36 @@ describe('vendor forms', () => {
       address: { line1: null, line2: null, postalCode: null, city: null, countryCode: 'FR' },
     });
     expect(vendorInput(vendorValues(null, options), options).paymentTermsDays).toBeNull();
+  });
+
+  // Screens-maturity round 1, L-600: the vendor's usual expense category is shown and edited on its record.
+  it("offers the usual expense category while the expenses module is on, the vendor's own archived one too", () => {
+    expect(categoryField(vendorForm(options))).toBeUndefined();
+    expect(categoryField(vendorForm(withCategories))?.options).toEqual([
+      { value: '', label: 'expenses.form.no_category' },
+      { value: 'k1', label: 'Fournitures' },
+    ]);
+    expect(
+      categoryField(vendorForm(withCategories, 'k2'))?.options?.map((option) => option.value),
+    ).toEqual(['', 'k1', 'k2']);
+  });
+
+  it('sends the category chosen, and keeps the one held when the form does not show it', () => {
+    // Off: no control holds it, so it is never an unsaved change, and a save sends back what the vendor has.
+    expect(vendorValues(sotumag, options)).not.toHaveProperty('defaultExpenseCategoryId');
+    expect(
+      vendorInput(vendorValues(sotumag, options), options, 'k2').defaultExpenseCategoryId,
+    ).toBe('k2');
+
+    expect(vendorValues(sotumag, withCategories)['defaultExpenseCategoryId']).toBe('k2');
+    const values = vendorValues(sotumag, withCategories);
+    expect(
+      vendorInput({ ...values, defaultExpenseCategoryId: 'k1' }, withCategories, 'k2')
+        .defaultExpenseCategoryId,
+    ).toBe('k1');
+    expect(
+      vendorInput({ ...values, defaultExpenseCategoryId: '' }, withCategories, 'k2')
+        .defaultExpenseCategoryId,
+    ).toBeNull();
   });
 });

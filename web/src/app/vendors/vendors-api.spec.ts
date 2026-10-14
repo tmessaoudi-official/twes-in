@@ -35,6 +35,7 @@ const sotumag: VendorInput = {
   paymentTermsDays: 30,
   notes: null,
   isActive: true,
+  defaultExpenseCategoryId: 'k2',
 };
 
 describe('VendorsApi', () => {
@@ -79,6 +80,7 @@ describe('VendorsApi', () => {
       iban: 'TN5910006035183598478831',
       paymentTermsDays: 30,
       isActive: true,
+      defaultExpenseCategoryId: 'k2',
     });
 
     expect(await pending).toEqual({ ...sotumag, id: 'v 1' });
@@ -124,6 +126,7 @@ describe('VendorsApi', () => {
       city: 'Ben Arous',
       countryCode: 'TN',
       paymentTermsDays: 30,
+      defaultExpenseCategoryId: 'k2',
     });
     expect(request.request.body).not.toHaveProperty('address');
     request.flush({ ...sotumag, id: 'v1' });
@@ -149,12 +152,21 @@ describe('VendorsApi', () => {
     http.expectOne('/api/companies/c1/vendor-options').flush({
       countryCode: 'TN',
       identifiers: [{ key: 'matricule_fiscal', label: 'Matricule fiscal', pattern: '^x$' }],
+      expenseCategories: [{ id: 'k1', name: 'Fournitures', active: true }],
     });
 
     expect(await pending).toEqual({
       countryCode: 'TN',
       identifiers: [{ key: 'matricule_fiscal', label: 'Matricule fiscal', pattern: '^x$' }],
+      expenseCategories: [{ id: 'k1', name: 'Fournitures', active: true }],
     });
+
+    // The expenses module off: no category is offered, and the form has no such field.
+    const off = api.options('c1');
+    http
+      .expectOne('/api/companies/c1/vendor-options')
+      .flush({ countryCode: 'TN', identifiers: [] });
+    expect((await off).expenseCategories).toBeNull();
   });
 
   // docs/SPEC.md § 7, the step-up list: API Platform leads the 403 with the token.

@@ -74,7 +74,9 @@ export class VendorPage {
   });
   protected readonly descriptor = computed(() => {
     const options = this.facade.options();
-    return options === null ? null : vendorForm(options);
+    return options === null
+      ? null
+      : vendorForm(options, this.current()?.defaultExpenseCategoryId ?? null);
   });
   /**
    * What the form is of: the vendor and the fields shown. Reading the vendor again yields new objects with the same
@@ -189,7 +191,7 @@ export class VendorPage {
     const companyId = this.company()?.id;
     const options = this.facade.options();
     if (!companyId || options === null || this.busy()) return;
-    const input = vendorInput(values, options);
+    const input = vendorInput(values, options, this.current()?.defaultExpenseCategoryId ?? null);
     const id = this.id();
     if (id === null) {
       const created = await this.facade.createVendor(companyId, input);

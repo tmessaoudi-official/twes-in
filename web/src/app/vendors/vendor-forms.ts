@@ -131,9 +131,10 @@ const section = (id: string, fields: FormField[]): FormSection => ({
 
 /**
  * The vendor form, from what the company's preset offers: its registration numbers, none of them required of a
- * vendor, each in its shape. The API checks everything again.
+ * vendor, each in its shape. While the expenses module is on, the vendor's usual expense category among the active
+ * ones, and the one it holds though archived since, which the API keeps. The API checks everything again.
  */
-export function vendorForm(options: VendorOptions): FormDescriptor {
+export function vendorForm(options: VendorOptions, held: string | null = null): FormDescriptor {
   const identifiers: FormField[] = options.identifiers.map((identifier) => ({
     id: IDENTIFIER_PREFIX + identifier.key,
     label: identifier.label,
@@ -241,6 +242,22 @@ export function vendorForm(options: VendorOptions): FormDescriptor {
           pattern: '[0-9]{1,3}',
           hint: 'vendors.form.terms_hint',
         },
+        ...(options.expenseCategories === null
+          ? []
+          : [
+              {
+                id: 'defaultExpenseCategoryId',
+                label: `${FIELDS}.defaultExpenseCategoryId`,
+                kind: 'select' as const,
+                options: [
+                  { value: '', label: 'expenses.form.no_category' },
+                  ...options.expenseCategories
+                    .filter((category) => category.active || category.id === held)
+                    .map((category) => ({ value: category.id, label: category.name })),
+                ],
+                hint: 'expenses.form.category_hint',
+              },
+            ]),
       ]),
       section('notes', [
         {
@@ -280,11 +297,22 @@ export function vendorValues(row: VendorRow | null, options: VendorOptions): For
   for (const identifier of options.identifiers) {
     values[IDENTIFIER_PREFIX + identifier.key] = row?.identifiers[identifier.key] ?? '';
   }
+  // Only where the form shows it: a saved value with no field would read as an unsaved change forever.
+  if (options.expenseCategories !== null) {
+    values['defaultExpenseCategoryId'] = row?.defaultExpenseCategoryId ?? '';
+  }
   return values;
 }
 
-/** The form's values as the API takes them: trimmed, an empty field as no value, the terms as a number of days. */
-export function vendorInput(values: FormValues, options: VendorOptions): VendorInput {
+/**
+ * The form's values as the API takes them: trimmed, an empty field as no value, the terms as a number of days. The
+ * API replaces the whole vendor, so a category the form does not show is sent back as `held`, the one it has.
+ */
+export function vendorInput(
+  values: FormValues,
+  options: VendorOptions,
+  held: string | null = null,
+): VendorInput {
   const identifiers: Record<string, string> = {};
   for (const identifier of options.identifiers) {
     const value = text(values[IDENTIFIER_PREFIX + identifier.key]);
@@ -315,6 +343,8 @@ export function vendorInput(values: FormValues, options: VendorOptions): VendorI
     paymentTermsDays: days === null ? null : Number(days),
     notes: text(values['notes']),
     isActive: values['isActive'] === true,
+    defaultExpenseCategoryId:
+      options.expenseCategories === null ? held : text(values['defaultExpenseCategoryId']),
   };
 }
 
