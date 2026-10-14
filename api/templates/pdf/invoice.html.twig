@@ -129,7 +129,7 @@
 
   <table class="totals">
     <tr><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ figures.subtotalNet|decimal(scale, locale, page.numberFormat) }}</td></tr>
-    {%- if header.discountAmount %}
+    {%- if figures.hasDocumentDiscount() %}
       <tr><td>{{ 'totals.document_discount'|trans({}, t, locale) }}</td><td class="number">{{ figures.documentDiscount|deduction(scale, locale, page.numberFormat) }}</td></tr>
       <tr><td>{{ 'totals.total_net'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalNet|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- endif %}

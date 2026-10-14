@@ -147,6 +147,25 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         self::assertMatchesRegularExpression('#<td class="number">12,50</td>#u', $html, 'an amount as money is written');
     }
 
+    public function testACreditNotePrintsTheDocumentDiscountItGivesBackThoughItTakesNoneOfItsOwn(): void
+    {
+        self::bootKernel();
+        self::assertStringNotContainsString('<td>Remise</td>', $this->html(new DocumentDesign(), [], []), 'a document with no discount prints no discount row');
+        $now = new \DateTimeImmutable('2026-10-07 09:00:00');
+        $line = $this->invoice->getLines()[0];
+        $invoice = Invoice::create($this->invoice->getCompany(), $this->invoice->getEstablishment(), $this->invoice->getCustomer(), new InvoiceHeader(discountAmount: '30'), [
+            new InvoiceLineDetails(null, 'Réglage du tour', '2', $line->getUnit(), '150', null, [$line->getTaxes()[0]->getTaxComponent()]),
+        ], [], $now);
+        $invoice->issue(new InvoiceIssue('FAC-2026-00001', $now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing): InvoiceFigures => $this->totals->issued($issuing), $now);
+        $this->invoice = Invoice::creditNoteFor($invoice, 'Retour', $now);
+        self::assertNull($this->invoice->getHeader()->discountAmount, 'the credit note has no discount of its own');
+
+        $html = $this->html(new DocumentDesign(), [], []);
+
+        self::assertMatchesRegularExpression('#<td>Remise</td><td class="number">30,00</td>#u', $html, 'what it gives back of the invoice\'s discount is printed, against its negative lines as on the screen');
+        self::assertMatchesRegularExpression('#<td>Total HT après remise</td><td class="number">-270,00</td>#u', $html, 'and what the lines come to after it, the base its VAT is worked on');
+    }
+
     public function testWhatTheDiscountsSaveIsPrintedUnderTheTotalsOnlyWhenGiven(): void
     {
         self::bootKernel();

@@ -76,6 +76,12 @@ final readonly class InvoiceFigures
      * « Net à payer »: the total less what is withheld at source, the figure the paid, credited and left amounts add up
      * to. Read after `atScale`: a difference of two amounts keeps their decimals.
      */
+    /** Whether the document took a discount off its lines: a credit note gives one back without typing any. */
+    public function hasDocumentDiscount(): bool
+    {
+        return 0 !== Decimal::of($this->documentDiscount)->compare(0);
+    }
+
     public function netToPay(): string
     {
         return (string) Decimal::of($this->total)->sub(Decimal::of($this->withholdingAmount));
