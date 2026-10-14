@@ -45,6 +45,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-14 15:23] AGREED: L-820 go as planned; the step-up dialog says « Pour ne plus exiger la vérification en deux étapes, saisissez votre mot de passe ou utilisez une clé d’accès. » (en « To stop requiring two-step verification, enter your password or use a passkey. »).
 - [2026-10-14 16:18] AGREED: L-1000 go as planned: signing out asks the existing leave question (« Quitter sans enregistrer ? ») when something typed is unsaved, from AuthFacade.logout so every way out takes part; nothing unsaved, nothing asked.
 - [2026-10-14 16:27] AGREED: The leave question (« Quitter sans enregistrer ? ») names its kind « Définitif » (typed work that is not saved cannot be got back), so « Quitter » takes the danger colour; it becomes a typed ActionConfirm, so no confirmation can lose its kind again (found with L-1000: it showed « actions.kind.undefined »).
+- [2026-10-14 16:43] AGREED: L-425 go as planned: the lent phone says « Envoi… », then « Envoyé : <code> » only once the API answered; a scan, photo or choice lost to a drop stays « Non envoyé » with « Renvoyer », resent with its first id by hand or when the phone is back online; kept in memory (en Sending… / Sent / Not sent / Send again).
 
 ## Formal Plan
 
@@ -154,6 +155,19 @@ is unsaved, as switching company does; nothing unsaved, nothing asked.
   stays put when the facade answers false; one mutant each (the question removed, the navigation unconditional).
   An e2e: a customer form typed, « Se déconnecter », « Rester » keeps the value, then « Quitter » reaches `/login`.
 - Gates (api untouched: web and licences), the touched e2e, one commit; a SPEC § 8 row; L-1000 closed in the ledger.
+
+**Fix-now L-425** (done, 0043cd2c, SPEC § 8 row 283): the lent phone says a send went only once the API answered, and keeps
+what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52). The class is the phone's three sends.
+- Web, `phone-scanner-page`: each scan, photo and choice is kept with the id it was first sent with, shown « Envoi… »
+  until the API answers, then « Envoyé : <code> »; on a lost network it stays listed « Non envoyé » with « Renvoyer »,
+  and everything unsent is sent again, in order, when the phone is back online. A refusal other than the network keeps
+  today's behaviour (the pairing ends, or the photo is refused).
+- Safe to resend: the tab acts once per scan or photo id (`phone-pairing.ts` `seen`) and once per offered choice.
+- Kept in memory: it survives a drop, not a reload of the phone's page (the ruling asks for a short drop).
+- Tests first: the page spec (sent only after the answer; a network failure kept and shown unsent; « Renvoyer » and
+  coming back online resend with the same id; a pairing refusal still ends it), one mutant each; the pairing e2e with
+  the network cut by `page.route` for one scan, then restored.
+- New words in fr/en (fr.json has 1,067 B left), gates, one commit, a SPEC § 8 row, L-425 closed in the ledger.
 
 ## Status
 <!-- progress-block v1 -->
