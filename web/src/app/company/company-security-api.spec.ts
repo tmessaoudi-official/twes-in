@@ -46,4 +46,21 @@ describe('CompanySecurityApi', () => {
     http.expectOne('/api/companies/c1/security').error(new ProgressEvent('error'));
     await expect(unreachable).rejects.toEqual(new CompanySecurityRefused('network'));
   });
+
+  it('tells a change held back for the proof from any other refusal', async () => {
+    const held = api.requireSecondFactor('c1', false);
+    http
+      .expectOne('/api/companies/c1/security')
+      .flush(
+        { detail: 'step_up_required: confirm the password or a passkey again before this change.' },
+        { status: 403, statusText: 'Forbidden' },
+      );
+    await expect(held).rejects.toEqual(new CompanySecurityRefused('step_up_required'));
+
+    const refused = api.requireSecondFactor('c1', false);
+    http
+      .expectOne('/api/companies/c1/security')
+      .flush({ detail: 'Access denied.' }, { status: 403, statusText: 'Forbidden' });
+    await expect(refused).rejects.toEqual(new CompanySecurityRefused('invalid'));
+  });
 });

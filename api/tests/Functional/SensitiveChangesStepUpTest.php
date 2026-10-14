@@ -168,6 +168,36 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
     }
 
     /** The proof is asked last: who may not act at all is answered as before, never told to prove who they are. */
+    public function testTurningTheSecondFactorRequirementOffWaitsForTheProofAndKeepsItOn(): void
+    {
+        $this->signedInWhereASecondFactorIsRequired();
+
+        $this->sendJson('PUT', $this->path('security'), ['mfaRequired' => false]);
+
+        $this->assertStepUpRequired();
+        $this->em()->clear();
+        self::assertTrue($this->companyNow()->isMfaRequired());
+        self::assertSame(0, $this->rows("SELECT COUNT(*) FROM audit_log WHERE action = 'company.mfa_required_changed'"));
+
+        $this->stepUp(self::PASSWORD);
+        $this->sendJson('PUT', $this->path('security'), ['mfaRequired' => false]);
+        self::assertResponseIsSuccessful();
+        $this->em()->clear();
+        self::assertFalse($this->companyNow()->isMfaRequired());
+    }
+
+    public function testTurningItOnOrSayingItIsAlreadyOffAsksNothing(): void
+    {
+        // Requiring a second factor only adds protection, and saying what is already so changes nothing.
+        $this->sendJson('PUT', $this->path('security'), ['mfaRequired' => false]);
+        self::assertResponseIsSuccessful();
+
+        $this->sendJson('PUT', $this->path('security'), ['mfaRequired' => true]);
+        self::assertResponseIsSuccessful();
+        $this->em()->clear();
+        self::assertTrue($this->companyNow()->isMfaRequired());
+    }
+
     public function testAStrangerAndAMemberWithoutTheRightAreAnsweredAsBefore(): void
     {
         $this->createUser('member@twes.local', self::PASSWORD, $this->company, ['company.read'], Role::MEMBER);
@@ -187,6 +217,25 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
     {
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
         self::assertStringStartsWith('step_up_required:', $this->stringAt($this->json(), 'detail'));
+    }
+
+    /**
+     * An owner with an authenticator, signed in to a company that requires a second factor: one without a factor would
+     * be held back before reaching the endpoint at all. Signing in proves nothing for the step-up.
+     */
+    private function signedInWhereASecondFactorIsRequired(): void
+    {
+        $this->company->requireMfa(true);
+        $this->createUser('guarded@twes.local', self::PASSWORD, $this->company, ['*'], 'guardian', authenticator: true);
+        $this->login('guarded@twes.local', self::PASSWORD);
+    }
+
+    private function companyNow(): Company
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+
+        return $company;
     }
 
     /** The few minutes a proof holds (app.step_up.valid_for) have passed. */

@@ -7,6 +7,7 @@ import type {
   CompanySecurityCompanySecurityRead,
   CompanySecurityCompanySecurityWrite,
 } from '../api/types.gen';
+import { stepUpAsked } from '../shared/step-up/step-up-api';
 
 /** Whether the company requires a second factor of its members, and whether the caller may change that. */
 export interface CompanySecurity {
@@ -15,7 +16,7 @@ export interface CompanySecurity {
 }
 
 /** Why the API refused, as the page translates it. */
-export type CompanySecurityError = 'network' | 'not_found' | 'invalid';
+export type CompanySecurityError = 'network' | 'not_found' | 'invalid' | 'step_up_required';
 
 /** Thrown when the API refuses; carries the code the page translates. */
 export class CompanySecurityRefused extends Error {
@@ -64,5 +65,6 @@ function codeOf(error: unknown): CompanySecurityError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
   }
+  if (stepUpAsked(error)) return 'step_up_required';
   return error.status === 404 ? 'not_found' : 'invalid';
 }

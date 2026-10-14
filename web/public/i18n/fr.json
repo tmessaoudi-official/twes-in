@@ -485,7 +485,8 @@
       "errors": {
         "network": "Impossible de joindre le serveur. Réessayez.",
         "not_found": "Cette entreprise est introuvable.",
-        "invalid": "La modification a été refusée."
+        "invalid": "La modification a été refusée.",
+        "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
       }
     },
     "closing": {
@@ -3806,7 +3807,8 @@
     "intro_erasure": "Pour ouvrir « Effacer des données », saisissez votre mot de passe ou utilisez une clé d’accès.",
     "intro_factors": "Pour changer vos moyens de vérification, saisissez votre mot de passe ou utilisez une clé d’accès.",
     "intro_sensitive": "Pour changer les coordonnées bancaires, les membres ou les rôles, saisissez votre mot de passe ou utilisez une clé d’accès.",
-    "intro_change": "Pour faire ce changement, saisissez votre mot de passe ou utilisez une clé d’accès."
+    "intro_change": "Pour faire ce changement, saisissez votre mot de passe ou utilisez une clé d’accès.",
+    "intro_mfa_off": "Pour ne plus exiger la vérification en deux étapes, saisissez votre mot de passe ou utilisez une clé d’accès."
   },
   "customer_display": {
     "title": "Affichage client",

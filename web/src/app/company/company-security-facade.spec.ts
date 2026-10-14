@@ -3,8 +3,14 @@
 import { TestBed } from '@angular/core/testing';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { StepUp } from '../shared/step-up/step-up';
 import { CompanySecurityApi, CompanySecurityRefused } from './company-security-api';
 import { CompanySecurityFacade } from './company-security-facade';
+
+// The proof dialog is answered by the test; `retrying` itself is StepUp's own.
+const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
+  request: vi.fn<(intro?: string) => Promise<boolean>>(),
+});
 
 describe('CompanySecurityFacade', () => {
   const api = { read: vi.fn(), requireSecondFactor: vi.fn() };
@@ -20,6 +26,7 @@ describe('CompanySecurityFacade', () => {
         { provide: CompanySecurityApi, useValue: api },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
+        { provide: StepUp, useValue: stepUp },
       ],
     });
     facade = TestBed.inject(CompanySecurityFacade);
@@ -54,6 +61,34 @@ describe('CompanySecurityFacade', () => {
 
     expect(facade.error()).toBe('not_found');
     expect(facade.security()).toEqual({ mfaRequired: false, writable: true });
+    expect(auth.refresh).not.toHaveBeenCalled();
+  });
+
+  it('asks for the proof the API wants before the requirement is turned off, then turns it off', async () => {
+    stepUp.request.mockReset().mockResolvedValue(true);
+    api.requireSecondFactor
+      .mockRejectedValueOnce(new CompanySecurityRefused('step_up_required'))
+      .mockResolvedValueOnce({ mfaRequired: false, writable: true });
+
+    expect(await facade.requireSecondFactor('c1', false)).toBe(true);
+
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_mfa_off');
+    expect(api.requireSecondFactor).toHaveBeenCalledTimes(2);
+    expect(facade.security()).toEqual({ mfaRequired: false, writable: true });
+    expect(facade.error()).toBeNull();
+  });
+
+  it('keeps the requirement and says why when the person does not give the proof', async () => {
+    api.read.mockResolvedValue({ mfaRequired: true, writable: true });
+    await facade.load('c1');
+    stepUp.request.mockReset().mockResolvedValue(false);
+    api.requireSecondFactor.mockRejectedValue(new CompanySecurityRefused('step_up_required'));
+
+    expect(await facade.requireSecondFactor('c1', false)).toBe(false);
+
+    expect(api.requireSecondFactor).toHaveBeenCalledTimes(1);
+    expect(facade.error()).toBe('step_up_required');
+    expect(facade.security()).toEqual({ mfaRequired: true, writable: true });
     expect(auth.refresh).not.toHaveBeenCalled();
   });
 });

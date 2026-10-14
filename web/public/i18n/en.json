@@ -485,7 +485,8 @@
       "errors": {
         "network": "The server could not be reached. Try again.",
         "not_found": "This company could not be found.",
-        "invalid": "The change was refused."
+        "invalid": "The change was refused.",
+        "step_up_required": "Nothing changed: confirm it is you to make this change."
       }
     },
     "closing": {
@@ -3806,7 +3807,8 @@
     "intro_erasure": "To open « Erase data », enter your password or use a passkey.",
     "intro_factors": "To change how you verify it is you, enter your password or use a passkey.",
     "intro_sensitive": "To change the bank details, the members or the roles, enter your password or use a passkey.",
-    "intro_change": "To make this change, enter your password or use a passkey."
+    "intro_change": "To make this change, enter your password or use a passkey.",
+    "intro_mfa_off": "To stop requiring two-step verification, enter your password or use a passkey."
   },
   "customer_display": {
     "title": "Customer display",

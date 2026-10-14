@@ -157,7 +157,7 @@ test('a company that requires two-step verification sends its owner to set it up
   page,
   request,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   const owner = `mfa-owner-${Date.now()}@twes.local`;
   const name = `Secure ${Date.now()}`;
 
@@ -217,4 +217,23 @@ test('a company that requires two-step verification sends its owner to set it up
   await expect(page.getByTestId('two-factor-recovery-codes').locator('li')).toHaveCount(10);
   await page.getByTestId('two-factor-continue').click();
   await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
+
+  // Turning the requirement off weakens every member's sign-in, so it waits for a proof, which a sign-in never
+  // carries: a fresh sign-in is asked, and the switch stays on until the proof is given.
+  await signOut(page);
+  await signIn(page, owner, NEW_PASSWORD);
+  await nextStep(page);
+  await page.getByTestId('mfa-code').fill(totp(secret));
+  await page.getByTestId('mfa-submit').click();
+  await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
+  await page.goto('/company/security');
+  await expect(requirement).toHaveAttribute('aria-checked', 'true');
+  await requirement.click();
+  await expect(page.getByTestId('step-up-intro')).toContainText('ne plus exiger');
+  await page.getByTestId('step-up-cancel').click();
+  await expect(page.getByTestId('step-up-title')).toHaveCount(0);
+  await expect(requirement).toHaveAttribute('aria-checked', 'true');
+  await requirement.click();
+  await prove(page, NEW_PASSWORD);
+  await expect(requirement).toHaveAttribute('aria-checked', 'false');
 });
