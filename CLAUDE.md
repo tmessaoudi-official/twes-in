@@ -502,3 +502,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - An e2e never proves who is at the screen in advance: the scenarios share the operator's session and the step-up limiter counts
   every attempt, five in five minutes, so eleven advance proofs ended in 429. Send API writes through `sendProving` and follow an
   on-screen write with `proveIfHeldBack` (`web/e2e/step-up.ts`); a fresh session's write may fill the dialog directly (2026-10-13).
+- The API suite runs on paratest (`api/tests/parallel.php`). The rate limiters' pool is `cache.app`, under `%kernel.share_dir%`
+  (`APP_SHARE_DIR=var/share`), not the cache dir: a per-worker cache dir alone left eight workers sharing it, and thirteen limiter
+  tests failed. A worker's container keeps the paths it was compiled with: after changing them, delete `api/var/cache/paratest-*` (2026-10-14).
