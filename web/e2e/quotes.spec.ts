@@ -268,6 +268,8 @@ test('an accepted quote takes a deposit invoice, which its final invoice gives b
     await page.getByTestId('document-action-save').click();
     await expect(page.getByTestId('line-1-gives-back')).toHaveCount(0);
     await expect(page.getByTestId('invoice-totals')).toContainText('500,000');
+    // A part gives no stamp back either, and the screen says which note will.
+    await expect(page.getByTestId('document-taxes-stamp-held-back')).toBeVisible();
     await page.getByTestId('nav-invoices').click();
     await expect(page).toHaveURL(/\/invoices$/);
     await expect(page.getByTestId('confirm-title')).toHaveCount(0);
@@ -277,6 +279,7 @@ test('an accepted quote takes a deposit invoice, which its final invoice gives b
     await page.getByTestId('document-action-save').click();
     await expect(page.getByTestId('line-1-gives-back')).toBeVisible();
     await expect(page.getByTestId('invoice-totals')).toContainText('700,000');
+    await expect(page.getByTestId('document-taxes-stamp-held-back')).toHaveCount(0);
 
     // The list names a deposit as one, as the accountant's file does: its VAT fell due when it was paid.
     await page.goto('/invoices');

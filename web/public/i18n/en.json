@@ -1519,7 +1519,8 @@
     },
     "document_taxes": {
       "title": "Document charges and withholdings",
-      "hint": "Suggested from the company and the customer; each applies once, to the whole document."
+      "hint": "Suggested from the company and the customer; each applies once, to the whole document.",
+      "stamp_held_back": "The stamp duty is given back by the credit note completing the invoice."
     },
     "totals": {
       "title": "Totals",

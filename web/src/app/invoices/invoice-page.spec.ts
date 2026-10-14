@@ -2293,6 +2293,50 @@ describe('InvoicePage', () => {
       expect(totals).not.toMatch(/[−-]\s*(10|21,330)/);
     });
 
+    it('says on a credit note leaving the stamp out that the note completing the invoice gives it back', async () => {
+      const unstamped: PreviewBody = { ...twice, fixedTaxes: [] };
+      // A withholding chosen beside it is never a fixed charge, and holds nothing back.
+      invoice.set({
+        ...draft,
+        type: 'credit_note',
+        correctsInvoiceId: 'i0',
+        documentTaxComponentIds: ['s1', 'w1'],
+      });
+      await open('i1');
+      facade.preview.mockResolvedValue(unstamped);
+      type('line-0-quantity', '1');
+      await rested();
+      expect(text('document-taxes-stamp-held-back')).toContain(
+        'invoices.document_taxes.stamp_held_back',
+      );
+
+      // The note completing the invoice: the stamp is in its figures, nothing to say.
+      facade.preview.mockResolvedValue(twice);
+      type('line-0-quantity', '2');
+      await rested();
+      expect(q('document-taxes-stamp-held-back')).toBeNull();
+
+      // A credit note with no stamp chosen holds none back.
+      invoice.set({
+        ...draft,
+        type: 'credit_note',
+        correctsInvoiceId: 'i0',
+        documentTaxComponentIds: [],
+      });
+      await open('i1');
+      facade.preview.mockResolvedValue(unstamped);
+      type('line-0-quantity', '3');
+      await rested();
+      expect(q('document-taxes-stamp-held-back')).toBeNull();
+
+      // Nor does an invoice, whatever its figures say: it is giving nothing back.
+      invoice.set(draft);
+      await open('i1');
+      type('line-0-quantity', '4');
+      await rested();
+      expect(q('document-taxes-stamp-held-back')).toBeNull();
+    });
+
     it('says what the discounts save as it is typed, and nothing when none is given', async () => {
       invoice.set(draft);
       await open('i1');
