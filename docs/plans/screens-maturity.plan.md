@@ -43,6 +43,8 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-14 15:19] AGREED: The fix-now batch (L-820, L-1000, L-425) is treated as Large: each item gets its own full plan and a hard stop for the developer's go before any code.
 - [2026-10-14 15:19] AGREED: After the fix-now batch: the L-1080 sourcing into docs/fiscal/TN.md, then L-603's own plan for approval; the marking page is read back whenever the developer finishes it.
 - [2026-10-14 15:23] AGREED: L-820 go as planned; the step-up dialog says « Pour ne plus exiger la vérification en deux étapes, saisissez votre mot de passe ou utilisez une clé d’accès. » (en « To stop requiring two-step verification, enter your password or use a passkey. »).
+- [2026-10-14 16:18] AGREED: L-1000 go as planned: signing out asks the existing leave question (« Quitter sans enregistrer ? ») when something typed is unsaved, from AuthFacade.logout so every way out takes part; nothing unsaved, nothing asked.
+- [2026-10-14 16:27] AGREED: The leave question (« Quitter sans enregistrer ? ») names its kind « Définitif » (typed work that is not saved cannot be got back), so « Quitter » takes the danger colour; it becomes a typed ActionConfirm, so no confirmation can lose its kind again (found with L-1000: it showed « actions.kind.undefined »).
 
 ## Formal Plan
 
@@ -139,6 +141,19 @@ two-factor requirement off waits for a recent proof; turning it on, or saying wh
   e2e in `two-factor.spec.ts` signs the owner in again (a sign-in carries no proof), turns it off, meets the dialog,
   proves, and reads the switch off.
 - Gates in turn, the licence gate for fr.json's budget, the touched e2e; one commit; a new SPEC § 8 row.
+
+**Fix-now L-1000** (done, 1a6fb8b0, SPEC § 8 row 281; with it L-1094, the leave question's kind, ccd809a5, row 282):
+« Se déconnecter » asks the leave question first when something typed
+is unsaved, as switching company does; nothing unsaved, nothing asked.
+- Web: `AuthFacade.logout()` asks `UnsavedChanges.confirmLeave()` before it ends the session and answers whether it did
+  (`Promise<boolean>`, as `CompanyFacade.switchTo` does); the shell navigates to `/login` only on true, so « Rester »
+  keeps the page and what was typed. The question lives in the facade, so every way out (the shell's menu, the
+  awaiting-approval, two-factor and locked-subscription pages) takes part, and a later one too. The words are the
+  existing `form.leave.*` (« Quitter sans enregistrer ? »), no new text.
+- Tests first: the auth facade asks and stays signed in on « Rester », asks nothing with nothing unsaved; the shell
+  stays put when the facade answers false; one mutant each (the question removed, the navigation unconditional).
+  An e2e: a customer form typed, « Se déconnecter », « Rester » keeps the value, then « Quitter » reaches `/login`.
+- Gates (api untouched: web and licences), the touched e2e, one commit; a SPEC § 8 row; L-1000 closed in the ledger.
 
 ## Status
 <!-- progress-block v1 -->
