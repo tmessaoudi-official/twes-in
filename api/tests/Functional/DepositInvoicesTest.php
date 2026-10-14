@@ -303,6 +303,42 @@ final class DepositInvoicesTest extends ApiTestCase
         $this->issue($this->stringAt($second, 'id'));
     }
 
+    /**
+     * Two credit notes each giving back part of a final invoice never give back more than it charged together: the
+     * one bringing the rest of the goods carries no deposit either, so it is refused, for the deposit invoice to correct.
+     */
+    public function testPartsOfAFinalInvoiceCreditedInTurnNeverGiveBackMoreThanItCharged(): void
+    {
+        $this->signedIn(self::WRITER);
+        $quoteId = $this->accepted();
+        $depositId = $this->deposit($quoteId, ['depositPercentage' => '30', 'depositAmount' => null]);
+        $this->issue($depositId);
+        $this->postJson($this->quotePath($quoteId).'/invoice', null);
+        $finalId = $this->stringAt($this->json(), 'invoiceId');
+        $this->issue($finalId);
+        $charged = $this->stringAt($this->invoice($finalId), 'total');
+
+        $this->postJson($this->companyPath().'/invoices/'.$finalId.'/credit-notes', ['creditNoteReason' => 'Retour d’une machine']);
+        self::assertResponseIsSuccessful();
+        $first = $this->json();
+        $lines = $this->rows($first, 'lines');
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$this->stringAt($first, 'id'), [...$this->editable($first), 'lines' => [[...$lines[0], 'quantity' => '1']]]);
+        self::assertResponseIsSuccessful();
+        $this->issue($this->stringAt($first, 'id'));
+        $given = $this->stringAt($this->invoice($this->stringAt($first, 'id')), 'total');
+
+        // The other machine and the labour: every line's quantity is now back, but on two notes, the deposit on neither.
+        $this->postJson($this->companyPath().'/invoices/'.$finalId.'/credit-notes', ['creditNoteReason' => 'Retour du reste']);
+        self::assertResponseIsSuccessful();
+        $rest = $this->json();
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$this->stringAt($rest, 'id'), [...$this->editable($rest), 'lines' => [[...$lines[0], 'quantity' => '1'], $lines[1]]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([null, null], array_column($this->rows($this->json(), 'lines'), 'deductsInvoiceId'));
+        $this->postJson($this->companyPath().'/invoices/'.$this->stringAt($rest, 'id').'/issue', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, \sprintf('the final invoice charged %s and %s is already given back', $charged, $given));
+        self::assertStringContainsString('at most', $this->stringAt($this->json(), 'detail'));
+    }
+
     public function testADepositIsAShareOrAnAmountTheQuoteLeaves(): void
     {
         $this->signedIn(self::WRITER);
