@@ -107,7 +107,8 @@ paid on an invoice later credited was not found. Nothing is built on either.
 **What twes-in does, until an accountant reads this section.** The preset says `corrections.stamp: given_back_once`: a
 credit note gives the invoice's stamp back once at most, all of it on the credit note completing the invoice (the one
 crediting at least what the invoice's lines came to, less what its credit notes already issued credited), and none on a
-partial one, whose editor says under the charges that the completing credit note gives it back. That keeps the full
+partial one, whose editor says under the charges that the completing credit note gives it back (the preview names
+why a chosen stamp is left out, so a note of an invoice that charged none promises nothing). That keeps the full
 refund the product made before, bounded so the stamp is never given back twice; the
 other value, `kept`, never gives it back. A credit note gives back its share of the document discount by its lines'
 base, and each line naming the invoice line it credits gives back its share of that line's discount amount by quantity;
