@@ -59,7 +59,8 @@ Stop rule: a round that adds no new category and under about 5 % new findings; a
 - **Rounds** judge that evidence cell by cell (screen × role × device × lens), each given every finding so far with a
   stable id and asked for new ones only; data loss, security and wrong money are fixed on master at once and marked.
 - **Round 1** (product frozen at 68f607f3): 173 new findings, 1,076 of 4,323 cells assessed, so coverage is partial;
-  `var/claude/maturity/round1/round-1.md`. Fix-now L-200, L-400 and L-600 are fixed on master; L-401 has its own plan.
+  `var/claude/maturity/round1/round-1.md`. Fix-now L-200, L-400 and L-600 are fixed on master (d1efa0e6, 4d677106 and ead9f589, 155cae41 and 2a10c0bf);
+  L-401 has its own plan. Found while fixing: L-1088 (a select's hint never drawn), L-1089 (« rubrique » against « catégorie »).
   Round 2 judges the commit that carries those fixes, not 68f607f3.
   After round 1 the developer rules the feelings' looks and wordings and the rubric; at apparent saturation one blind
   round without the list (over 5 % new: continue). Then the developer rules, and fixes go by kind: a shared component,
