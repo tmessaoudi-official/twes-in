@@ -2318,12 +2318,21 @@ describe('InvoicePage', () => {
       expect(text('document-taxes-stamp-held-back')).toContain(
         'invoices.document_taxes.stamp_held_back',
       );
+      // A screen reader on the field hears both lines, the one above it and the one that just appeared.
+      const describedBy = (q('document-taxes')!.getAttribute('aria-describedby') ?? '').split(' ');
+      expect(describedBy.map((id) => document.getElementById(id)?.dataset['testid'])).toEqual([
+        'document-taxes-hint',
+        'document-taxes-stamp-held-back',
+      ]);
 
       // The note completing the invoice: the stamp is in its figures, nothing to say.
       facade.preview.mockResolvedValue(twice);
       type('line-0-quantity', '2');
       await rested();
       expect(q('document-taxes-stamp-held-back')).toBeNull();
+      expect(q('document-taxes')!.getAttribute('aria-describedby')).toBe(
+        q('document-taxes-hint')!.id,
+      );
 
       // The API says why it is left out: kept by the country, or never charged by the invoice, nothing comes back.
       for (const [reason, quantity] of [

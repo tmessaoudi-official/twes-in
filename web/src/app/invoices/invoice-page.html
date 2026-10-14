@@ -244,7 +244,11 @@
       <mat-card-content>
         <div class="flex flex-col gap-2">
           <h2 class="text-xl font-semibold">{{ 'invoices.document_taxes.title' | translate }}</h2>
-          <p class="text-sm text-on-surface-variant">
+          <p
+            id="invoice-document-taxes-hint"
+            class="text-sm text-on-surface-variant"
+            data-testid="document-taxes-hint"
+          >
             {{ 'invoices.document_taxes.hint' | translate }}
           </p>
           <div class="max-w-md">
@@ -257,10 +261,19 @@
               [label]="'invoices.document_taxes.title' | translate"
               [labelInside]="true"
               testId="document-taxes"
+              [describedBy]="
+                stampHeldBack()
+                  ? 'invoice-document-taxes-hint invoice-document-taxes-held-back'
+                  : 'invoice-document-taxes-hint'
+              "
             />
           </div>
           @if (stampHeldBack()) {
-            <p class="text-sm text-on-surface-variant" data-testid="document-taxes-stamp-held-back">
+            <p
+              id="invoice-document-taxes-held-back"
+              class="text-sm text-on-surface-variant"
+              data-testid="document-taxes-stamp-held-back"
+            >
               {{ 'invoices.document_taxes.stamp_held_back' | translate }}
             </p>
           }

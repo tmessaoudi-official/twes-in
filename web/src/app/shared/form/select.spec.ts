@@ -43,8 +43,10 @@ const many: SelectOption[] = [
       [options]="options()"
       [multiple]="multiple()"
       labelledBy="lbl"
+      [describedBy]="describedBy()"
       testId="sel"
     />
+    <p id="hint">Applies once.</p>
   `,
 })
 class Host {
@@ -54,6 +56,7 @@ class Host {
   readonly label = signal('');
   readonly labelInside = signal(false);
   readonly translateLabels = signal(false);
+  readonly describedBy = signal('');
 }
 
 class StaticLoader implements TranslateLoader {
@@ -124,6 +127,16 @@ describe('Select', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(trigger.getAttribute('aria-labelledby')).toContain('lbl');
     expect(trigger.textContent).toContain('Choose');
+  });
+
+  it('is described by the hints it is given, and by nothing when it is given none', async () => {
+    expect(q('sel')!.hasAttribute('aria-describedby')).toBe(false);
+
+    fixture.componentInstance.describedBy.set('hint');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(q('sel')!.getAttribute('aria-describedby')).toBe('hint');
   });
 
   it('lists its options in a listbox when opened', async () => {
