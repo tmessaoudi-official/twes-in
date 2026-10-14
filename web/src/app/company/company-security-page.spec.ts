@@ -136,6 +136,26 @@ describe('CompanySecurityPage', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  // Turning the requirement off waits for a proof of who is at the screen: until it is saved, it is still required.
+  it('reads what is so while the change waits, and what was saved once it is', async () => {
+    security.set({ mfaRequired: true, writable: true });
+    let answer!: (saved: boolean) => void;
+    facade.requireSecondFactor.mockImplementation(
+      () => new Promise<boolean>((resolve) => (answer = resolve)),
+    );
+    await open();
+
+    theSwitch().click();
+    await settle();
+    expect(facade.requireSecondFactor).toHaveBeenCalledWith('c1', false);
+    expect(theSwitch().getAttribute('aria-checked')).toBe('true');
+
+    security.set({ mfaRequired: false, writable: true });
+    answer(true);
+    await settle();
+    expect(theSwitch().getAttribute('aria-checked')).toBe('false');
+  });
+
   it('a refused change says why and puts the switch back', async () => {
     facade.requireSecondFactor.mockImplementation(async () => {
       error.set('not_found');

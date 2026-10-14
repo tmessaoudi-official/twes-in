@@ -49,15 +49,11 @@ export class CompanySecurityPage implements OnInit {
 
   protected async toggle(change: MatSlideToggleChange): Promise<void> {
     const companyId = this.company()?.id;
-    const current = this.security()?.mfaRequired ?? false;
-    if (!companyId || this.busy()) {
-      change.source.checked = current;
-      return;
-    }
-    if (!(await this.facade.requireSecondFactor(companyId, change.checked))) {
-      change.source.checked = current;
-      return;
-    }
+    // The switch says what is so until the change is saved, which may first wait for a proof of who is at the screen;
+    // the saved value then moves it.
+    change.source.checked = this.security()?.mfaRequired ?? false;
+    if (!companyId || this.busy()) return;
+    if (!(await this.facade.requireSecondFactor(companyId, change.checked))) return;
     if (this.auth.needsEnrolment()) {
       await this.router.navigateByUrl('/two-factor');
       return;
