@@ -14,6 +14,7 @@ use App\Fiscal\Application\Preset\UnknownFiscalPreset;
 use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\Calculation\TaxBasis;
 use App\Fiscal\Domain\IdentifierCheck;
+use App\Fiscal\Domain\StampOnCorrection;
 use App\Fiscal\Domain\TaxFamily;
 use App\Fiscal\Domain\TaxKind;
 use App\Fiscal\Infrastructure\Preset\InvalidFiscalPreset;
@@ -68,6 +69,7 @@ final class YamlFiscalPresetsTest extends TestCase
         self::assertSame('FODEC 1 %', $fodec->names['fr']);
         self::assertSame('1.000', $tn->component('TIMBRE')->amount);
         self::assertSame('1000.000', $tn->component('RS1')->threshold);
+        self::assertSame(StampOnCorrection::GivenBackOnce, $tn->stampOnCorrection, 'what a credit note does with the stamp is the country\'s');
         self::assertSame(
             ['standard', 'exempt', 'suspended', 'export'],
             array_map(static fn (PresetRegime $regime) => $regime->code, $tn->customerTaxRegimes),
@@ -185,6 +187,8 @@ final class YamlFiscalPresetsTest extends TestCase
         yield 'a unit with more decimals than a quantity holds' => ['units.0.decimals', 4, 'decimals'];
         yield 'a unit code used twice' => ['units.1.code', 'C62', 'C62'];
         yield 'a rounding point that does not exist' => ['rounding.vat_point', 'per_document', 'vat_point'];
+        yield 'a stamp rule on corrections that does not exist' => ['corrections.stamp', 'refunded', 'stamp'];
+        yield 'no stamp rule on corrections' => ['corrections', self::REMOVE, 'corrections'];
         yield 'a document language the product does not speak' => ['document_languages', ['ar'], 'document_languages'];
         yield 'a numbering format without its sequence' => ['numbering.invoice.format', 'FAC-{YYYY}', 'format'];
         yield 'a numbering format with a token the product does not know' => ['numbering.invoice.format', 'FAC-{DD}-{SEQ}', 'format'];

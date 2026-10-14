@@ -159,6 +159,7 @@ describe('QuotesApi', () => {
       returned: false,
       deductsInvoiceId: null,
       section: null,
+      creditedLineId: null,
       net: '2250.000',
     });
   });

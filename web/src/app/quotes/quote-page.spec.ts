@@ -130,6 +130,7 @@ const draft: QuoteRow = {
       returned: false,
       deductsInvoiceId: null,
       section: null,
+      creditedLineId: null,
       net: '500.000',
     },
   ],

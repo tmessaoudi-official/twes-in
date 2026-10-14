@@ -356,6 +356,18 @@ describe('invoice forms', () => {
     );
   });
 
+  it('asks no document discount on a credit note, which gives back its share of its invoice’s', () => {
+    const ids = (row: Parameters<typeof invoiceForm>[1]) =>
+      invoiceForm(options, row).sections.flatMap((section) =>
+        section.fields.map((field) => field.id),
+      );
+    expect(ids(invoice())).toContain('discountAmount');
+    expect(ids(invoice({ type: 'credit_note' }))).not.toContain('discountAmount');
+    const values = invoiceValues(invoice({ type: 'credit_note' }), options);
+    delete values['discountAmount'];
+    expect(invoiceInput(values, linesArray([], options, null), [], 'k1').discountAmount).toBeNull();
+  });
+
   it('is told apart from another form by what it is of, which a picker would have made impossible', () => {
     // The descriptor is stringified to key the form; a search function in it could not be.
     expect(() => JSON.stringify(invoiceForm(options, invoice()))).not.toThrow();
@@ -554,6 +566,7 @@ describe('invoice forms', () => {
             returned: false,
             deductsInvoiceId: null,
             section: null,
+            creditedLineId: null,
             net: '62.500',
           },
         ],
@@ -584,6 +597,7 @@ describe('invoice forms', () => {
         returned: false,
         deductsInvoiceId: null,
         section: 'Démontage',
+        creditedLineId: null,
         net: '10.500',
       };
       const lines = linesArray([read, { ...read, section: null }], options, null);
@@ -594,6 +608,38 @@ describe('invoice forms', () => {
           (line) => line.section,
         ),
       ).toEqual(['Démontage', null, null]);
+    });
+
+    it('sends back the invoice line a credit line gives back, so its share of the discount follows it', () => {
+      const read = {
+        productId: null,
+        description: 'Vis',
+        quantity: '3.000',
+        unitId: 'u1',
+        unitPriceNet: '100.0000',
+        discountRate: null,
+        discountAmount: '15.000',
+        taxComponentIds: [],
+        sourceDeliveryNoteLineId: null,
+        sourceLeft: null,
+        productReference: null,
+        productName: null,
+        productTracking: null,
+        lotCode: null,
+        returned: false,
+        deductsInvoiceId: null,
+        section: null,
+        creditedLineId: 'l1',
+        net: '285.000',
+      };
+      const lines = linesArray([read, { ...read, creditedLineId: null }], options, null);
+      lines.push(lineGroup(null, options, null));
+
+      expect(
+        invoiceInput(invoiceValues(null, options), lines, [], 'k1').lines.map(
+          (line) => line.creditedLineId,
+        ),
+      ).toEqual(['l1', null, null]);
     });
 
     it('says what is on hand of a line’s product and what the document leaves of it, in exact decimals', () => {
@@ -691,6 +737,7 @@ describe('invoice forms', () => {
             returned: false,
             deductsInvoiceId: null,
             section: null,
+            creditedLineId: null,
             net: '70.000',
           },
         ],
@@ -728,6 +775,7 @@ describe('invoice forms', () => {
             returned: false,
             deductsInvoiceId: null,
             section: null,
+            creditedLineId: null,
             net: '210.000',
           },
         ],

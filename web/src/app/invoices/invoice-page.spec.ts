@@ -200,6 +200,7 @@ const draft: InvoiceRow = {
       returned: false,
       deductsInvoiceId: null,
       section: null,
+      creditedLineId: null,
       net: '1800.000',
     },
   ],
@@ -501,6 +502,7 @@ describe('InvoicePage', () => {
             returned: false,
             deductsInvoiceId: null,
             section: null,
+            creditedLineId: null,
           },
         ],
       }),
@@ -835,6 +837,30 @@ describe('InvoicePage', () => {
     await open('i1');
     await settle();
     expect(q('line-0-stock')).not.toBeNull();
+  });
+
+  it('shows the share a credit line gives back of its invoice line’s discount, which nobody types', async () => {
+    const line = { ...draft.lines[0], discountAmount: '50.000', creditedLineId: 'l0' };
+    invoice.set({ ...draft, type: 'credit_note', correctsInvoiceId: 'i0', lines: [line] });
+    await open('i1');
+    await settle();
+
+    expect((q('line-0-discount') as HTMLInputElement).readOnly).toBe(true);
+    expect((q('line-0-discount-kind') as HTMLButtonElement).disabled).toBe(true);
+    expect(q('line-0-discount-share')).not.toBeNull();
+    expect(q('field-discountAmount')).toBeNull();
+
+    // A line of its own, naming no invoice line, is discounted as any line is.
+    invoice.set({
+      ...draft,
+      type: 'credit_note',
+      correctsInvoiceId: 'i0',
+      lines: [{ ...line, creditedLineId: null }],
+    });
+    await open('i1');
+    await settle();
+    expect((q('line-0-discount') as HTMLInputElement).readOnly).toBe(false);
+    expect(q('line-0-discount-share')).toBeNull();
   });
 
   it('says nothing of stock to somebody who may not read it', async () => {

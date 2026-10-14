@@ -29,6 +29,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_invoice_line_unit', columns: ['unit_id'])]
 #[ORM\Index(name: 'idx_invoice_line_source_delivery_note_line', columns: ['source_delivery_note_line_id'])]
 #[ORM\Index(name: 'idx_invoice_line_deducts_invoice', columns: ['deducts_invoice_id'])]
+#[ORM\Index(name: 'idx_invoice_line_credited_line', columns: ['credited_line_id'])]
 class InvoiceLine implements CompanyOwned
 {
     #[ORM\Id]
@@ -103,6 +104,13 @@ class InvoiceLine implements CompanyOwned
     #[ORM\Column(length: InvoiceLineDetails::SECTION_MAX, nullable: true)]
     private ?string $section;
 
+    /**
+     * On a credit note, the line of its invoice this line gives back, so what that line was discounted by is given back
+     * in shares; an id rather than an association, as a credit note's lines are written again on every revision.
+     */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $creditedLineId;
+
     /** The deposit invoice this line gives back; null for any other line. */
     #[ORM\ManyToOne(targetEntity: Invoice::class)]
     #[ORM\JoinColumn(name: 'deducts_invoice_id', nullable: true)]
@@ -131,6 +139,7 @@ class InvoiceLine implements CompanyOwned
         $this->lotCode = $details->lotCode;
         $this->returned = $details->returned;
         $this->section = $details->section;
+        $this->creditedLineId = $details->creditedLineId;
         $this->deductsInvoice = $details->deduction?->deposit;
         $this->taxes = new ArrayCollection();
         foreach ($details->taxes as $index => $tax) {
@@ -168,7 +177,7 @@ class InvoiceLine implements CompanyOwned
         return ['net' => $this->lineNet, 'tax' => $this->lineTax, 'gross' => $this->lineGross];
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null, string|null} compared the way InvoiceLineDetails::values() is */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null, string|null, string|null} compared the way InvoiceLineDetails::values() is */
     public function values(): array
     {
         return [
@@ -185,7 +194,24 @@ class InvoiceLine implements CompanyOwned
             $this->getDeduction()?->values(),
             $this->discountAmount,
             $this->section,
+            $this->creditedLineId?->toRfc4122(),
         ];
+    }
+
+    /**
+     * @internal a credit note's draft takes its share of the discount of the line it gives back, worked out from its
+     * invoice and the credit notes already issued, in place of what was typed
+     */
+    public function giveBackDiscount(string $amount): void
+    {
+        $this->discountRate = null;
+        $this->discountAmount = $amount;
+    }
+
+    /** On a credit note, the line of its invoice this line gives back; null for none. */
+    public function getCreditedLineId(): ?Uuid
+    {
+        return $this->creditedLineId;
     }
 
     /** The title of the section this line opens; null when it opens none. */

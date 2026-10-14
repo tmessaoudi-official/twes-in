@@ -33,6 +33,7 @@ const input: InvoiceInput = {
       returned: false,
       deductsInvoiceId: null,
       section: null,
+      creditedLineId: null,
     },
   ],
 };

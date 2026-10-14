@@ -63,6 +63,7 @@ type CheckedField = keyof Omit<
   | 'productTracking'
   | 'taxComponentIds'
   | 'sourceDeliveryNoteLineId'
+  | 'creditedLineId'
   | 'discountKind'
 >;
 
@@ -374,6 +375,17 @@ export class InvoiceLines {
   protected byAmount(line: LineGroup): boolean {
     this.revision();
     return line.controls.discountKind.value === 'amount';
+  }
+
+  /**
+   * A credit note's line naming the invoice line it gives back, discounted by an amount: its discount is that line's
+   * share, which the API works out from the quantity credited, so it is shown and not typed.
+   */
+  protected givesBackDiscount(line: LineGroup): boolean {
+    this.revision();
+    return (
+      line.controls.creditedLineId.value !== '' && line.controls.discountKind.value === 'amount'
+    );
   }
 
   /**

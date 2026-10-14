@@ -777,13 +777,14 @@ final class InvoicesTest extends ApiTestCase
         // 1010 net, VAT 191.900: RS1 withholds 1 % of 1201.900, which is 12.019, and the stamp adds 1.000 outside it.
         self::assertSame(['1202.900', '1190.881'], [$this->json()['total'], $this->json()['amountDue']]);
 
-        // The second credit note leaves the stamp out, which every partial credit note copies (docs/SPEC.md § 8).
-        // Each half comes to 6.0095 of its own: the first rounds that away, the second takes the 6.009 still left.
-        foreach ([[$taxes, '-595.940'], [[$this->taxId('RS1')], '-594.941']] as [$documentTaxes, $due]) {
+        // The stamp is given back once, by the credit note completing the invoice (docs/fiscal/TN.md § 4a), so both
+        // halves keep it and only the second gives it back. Each half comes to 6.0095 withheld of its own: the first
+        // rounds that away, the second takes the 6.009 still left.
+        foreach (['-594.940', '-595.941'] as $due) {
             $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
             $creditId = $this->stringAt($this->json(), 'id');
-            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => $documentTaxes, 'lines' => [$line()]]));
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => $taxes, 'lines' => [$line()]]));
             self::assertResponseIsSuccessful();
             $this->postJson($this->path($creditId).'/issue', null);
             self::assertResponseStatusCodeSame(Response::HTTP_OK);
@@ -1895,6 +1896,117 @@ final class InvoicesTest extends ApiTestCase
         $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
         $credit = $this->json();
         self::assertSame([['100.000', '-900.000']], array_map(null, array_column($this->arrayAt($credit, 'lines'), 'discountAmount'), array_column($this->arrayAt($credit, 'lines'), 'net')), 'a credit note gives it back with the line');
+    }
+
+    /**
+     * A document discount is shared over the lines by their base, so a credit note of some of them gives back their
+     * share, and the one completing the invoice takes what is left: the credit notes add up to the invoice exactly,
+     * never to more. The discount is the invoice's, so a credit note takes none typed of its own.
+     */
+    public function testPartialCreditNotesGiveTheDocumentDiscountBackInShares(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $line = ['description' => 'Conseil', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '100', 'taxComponentIds' => []];
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'discountAmount' => '0.004', 'lines' => [$line, $line, $line]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertSame('299.996', $this->json()['amountDue']);
+
+        // A third of 0.004 is 0.001333: the first two round it to 0.001, the third takes the 0.002 left.
+        foreach ([['-0.001', '-99.999'], ['-0.001', '-99.999'], ['-0.002', '-99.998']] as [$discount, $due]) {
+            $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
+            $creditId = $this->stringAt($this->json(), 'id');
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [$line]]));
+            self::assertResponseIsSuccessful();
+            self::assertSame($discount, $this->json()['documentDiscount']);
+            $this->postJson($this->path($creditId).'/issue', null);
+            self::assertResponseStatusCodeSame(Response::HTTP_OK);
+            self::assertSame($due, $this->json()['amountDue']);
+        }
+        $this->getJson($this->path($id));
+        self::assertSame(['paid', '0.000'], [$this->json()['status'], $this->json()['amountDue']], 'the shares add up to the discount');
+
+        // A sixth of 0.009 rounds up to 0.002, so four credit notes take 0.008: the fifth, which does not complete the
+        // invoice, takes the 0.001 left rather than its rounded share, and the credit notes never give back more.
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'discountAmount' => '0.009', 'lines' => array_fill(0, 6, $line)]));
+        $sixths = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($sixths).'/issue', null);
+        foreach (['-99.998', '-99.998', '-99.998', '-99.998', '-99.999', '-100.000'] as $due) {
+            $this->postJson($this->path($sixths).'/credit-notes', ['creditNoteReason' => 'Retour']);
+            $creditId = $this->stringAt($this->json(), 'id');
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [$line]]));
+            $this->postJson($this->path($creditId).'/issue', null);
+            self::assertResponseStatusCodeSame(Response::HTTP_OK);
+            self::assertSame($due, $this->json()['amountDue']);
+        }
+        $this->getJson($this->path($sixths));
+        self::assertSame(['paid', '0.000'], [$this->json()['status'], $this->json()['amountDue']], 'never more than the discount');
+
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [$line]]));
+        $other = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($other).'/issue', null);
+        $this->postJson($this->path($other).'/credit-notes', ['creditNoteReason' => 'Geste']);
+        $this->sendJson('PUT', $this->path($this->stringAt($this->json(), 'id')), $this->invoice(['documentTaxComponentIds' => [], 'discountAmount' => '10', 'lines' => [$line]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note takes no discount of its own');
+        self::assertStringContainsString('discountAmount', (string) $this->client->getResponse()->getContent());
+    }
+
+    /**
+     * A credit line names the invoice line it gives back, so a line discount given as an amount is given back in
+     * proportion to the quantity credited, and the credit note completing the line takes what is left of it.
+     */
+    public function testAPartialCreditOfALineGivesBackItsShareOfTheLineDiscount(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $line = ['description' => 'Vis', 'quantity' => '10', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '100', 'taxComponentIds' => [], 'discountAmount' => '50'];
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [$line]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $invoiceLine = array_column($this->arrayAt($this->json(), 'lines'), 'id')[0] ?? null;
+        self::assertIsString($invoiceLine, 'a line answers its id');
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertSame('950.000', $this->json()['amountDue']);
+
+        foreach ([['3', '15.000', '-285.000'], ['7', '35.000', '-665.000']] as [$quantity, $discount, $due]) {
+            $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
+            $creditId = $this->stringAt($this->json(), 'id');
+            self::assertSame([$invoiceLine], array_column($this->arrayAt($this->json(), 'lines'), 'creditedLineId'), 'a credit line names the line it gives back');
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'quantity' => $quantity, 'creditedLineId' => $invoiceLine]]]));
+            self::assertResponseIsSuccessful();
+            $lines = $this->arrayAt($this->json(), 'lines');
+            self::assertSame([[$discount], [$invoiceLine]], [array_column($lines, 'discountAmount'), array_column($lines, 'creditedLineId')], 'the share of the discount, the link kept');
+            $this->postJson($this->path($creditId).'/issue', null);
+            self::assertResponseStatusCodeSame(Response::HTTP_OK);
+            self::assertSame($due, $this->json()['amountDue']);
+        }
+        $this->getJson($this->path($id));
+        self::assertSame(['paid', '0.000'], [$this->json()['status'], $this->json()['amountDue']]);
+
+        // A quarter of 0.002 rounds up to 0.001: the third credit of one unit, which does not complete the line, takes
+        // none rather than its rounded share, as the two before it took the whole discount.
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'quantity' => '4', 'discountAmount' => '0.002']]]));
+        $quartered = $this->stringAt($this->json(), 'id');
+        $quarteredLine = array_column($this->arrayAt($this->json(), 'lines'), 'id')[0] ?? null;
+        self::assertIsString($quarteredLine);
+        $this->postJson($this->path($quartered).'/issue', null);
+        foreach (['-99.999', '-99.999', '-100.000', '-100.000'] as $due) {
+            $this->postJson($this->path($quartered).'/credit-notes', ['creditNoteReason' => 'Retour']);
+            $creditId = $this->stringAt($this->json(), 'id');
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'quantity' => '1', 'creditedLineId' => $quarteredLine]]]));
+            $this->postJson($this->path($creditId).'/issue', null);
+            self::assertResponseStatusCodeSame(Response::HTTP_OK);
+            self::assertSame($due, $this->json()['amountDue']);
+        }
+        $this->getJson($this->path($quartered));
+        self::assertSame(['paid', '0.000'], [$this->json()['status'], $this->json()['amountDue']], 'never more than the discount');
+
+        // A credit line gives back a line of the invoice it corrects, and an invoice's line gives back none.
+        $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        $this->sendJson('PUT', $this->path($this->stringAt($this->json(), 'id')), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'creditedLineId' => $quarteredLine]]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('lines[0].creditedLineId', (string) $this->client->getResponse()->getContent());
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'creditedLineId' => $invoiceLine]]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('lines[0].creditedLineId', (string) $this->client->getResponse()->getContent());
     }
 
     /**

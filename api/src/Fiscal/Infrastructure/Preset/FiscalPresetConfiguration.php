@@ -12,6 +12,7 @@ namespace App\Fiscal\Infrastructure\Preset;
 use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\Calculation\TaxBasis;
 use App\Fiscal\Domain\IdentifierCheck;
+use App\Fiscal\Domain\StampOnCorrection;
 use App\Fiscal\Domain\TaxFamily;
 use App\Fiscal\Domain\TaxKind;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
@@ -40,6 +41,11 @@ final class FiscalPresetConfiguration implements ConfigurationInterface
                     ->enumNode('mode')->isRequired()->values(['half_up'])->end()
                     ->enumNode('vat_point')->isRequired()->values(array_map(static fn (RoundingPoint $point) => $point->value, RoundingPoint::cases()))->end()
                     ->enumNode('tax_basis')->isRequired()->values(array_map(static fn (TaxBasis $basis) => $basis->value, TaxBasis::cases()))->end()
+                ->end()
+            ->end()
+            ->arrayNode('corrections')->isRequired()
+                ->children()
+                    ->enumNode('stamp')->isRequired()->values(array_map(static fn (StampOnCorrection $rule) => $rule->value, StampOnCorrection::cases()))->end()
                 ->end()
             ->end()
             ->arrayNode('identifiers')

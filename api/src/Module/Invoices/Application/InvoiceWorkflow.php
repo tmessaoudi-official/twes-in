@@ -118,6 +118,8 @@ final readonly class InvoiceWorkflow
             if (InvoiceType::CreditNote === $type) {
                 $correctedId = $invoice->getCorrectedInvoice()?->getId() ?? throw new \LogicException('A credit note corrects an invoice.');
                 $corrected = $this->invoices->lockedOfIdInCompany($correctedId, $company->getId()) ?? throw new \LogicException('A credit note corrects an invoice of its own company.');
+                // A credit note issued since this one was saved may have taken some of what it gives back.
+                $this->totals->settleLineDiscounts($invoice);
             }
 
             $terms = $invoice->getHeader()->paymentTermsDays ?? $this->settings->value($context, 'document.payment_terms_days');

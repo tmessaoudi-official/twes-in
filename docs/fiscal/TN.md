@@ -103,6 +103,15 @@ art. 119-I 7°, which makes the duty due at issue. Art. 74, which makes duties �
 d'un événement postérieur » restituable, sits in the registration part of the same code [21]; whether it reaches a stamp
 paid on an invoice later credited was not found. Nothing is built on either.
 
+**What twes-in does, until an accountant reads this section.** The preset says `corrections.stamp: given_back_once`: a
+credit note gives the invoice's stamp back once at most, all of it on the credit note completing the invoice (the one
+crediting at least what the invoice's lines came to, less what its credit notes already issued credited), and none on a
+partial one. That keeps the full refund the product made before, bounded so the stamp is never given back twice; the
+other value, `kept`, never gives it back. A credit note gives back its share of the document discount by its lines'
+base, and each line naming the invoice line it credits gives back its share of that line's discount amount by quantity;
+the credit note completing the invoice, or the line, takes what is left, so the credit notes add up to the invoice's
+discount exactly and never to more. A credit note takes no document discount of its own. Developer ruling, unvalidated.
+
 ## 5. Withholding on payments (retenue à la source)
 
 | Rule | Preset | Source | Status |

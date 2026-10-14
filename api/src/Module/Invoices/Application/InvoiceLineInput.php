@@ -27,6 +27,7 @@ final readonly class InvoiceLineInput
      * @param Uuid|null       $deductsInvoiceId         a deposit invoice of the customer, given back on this document
      * @param string|null     $discountAmount           the line's whole discount as an amount, in place of a rate
      * @param string|null     $section                  the title of the section the line opens; null for none
+     * @param Uuid|null       $creditedLineId           on a credit note, the line of its invoice it gives back
      */
     public function __construct(
         public ?Uuid $productId,
@@ -42,6 +43,7 @@ final readonly class InvoiceLineInput
         public ?Uuid $deductsInvoiceId = null,
         public ?string $discountAmount = null,
         public ?string $section = null,
+        public ?Uuid $creditedLineId = null,
     ) {
     }
 }

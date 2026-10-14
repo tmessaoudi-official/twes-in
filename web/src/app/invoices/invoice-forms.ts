@@ -315,14 +315,19 @@ export function invoiceForm(
           pattern: '(0|[1-9][0-9]?|[12][0-9]{2}|3[0-5][0-9]|36[0-5])',
           hint: 'invoices.form.terms_hint',
         },
-        {
-          id: 'discountAmount',
-          label: `${FIELDS}.discountAmount`,
-          kind: 'decimal',
-          maxLength: 16,
-          pattern: AMOUNT_PATTERN,
-          hint: 'invoices.form.discount_hint',
-        },
+        // A credit note takes no discount of its own: it gives back its share of its invoice's, which the API works out.
+        ...(current?.type === 'credit_note'
+          ? []
+          : [
+              {
+                id: 'discountAmount',
+                label: `${FIELDS}.discountAmount`,
+                kind: 'decimal' as const,
+                maxLength: 16,
+                pattern: AMOUNT_PATTERN,
+                hint: 'invoices.form.discount_hint',
+              },
+            ]),
         // What the operations are, where the law asks (France): « from the lines » leaves it to the products sold.
         ...(options.operationCategory
           ? [
@@ -440,6 +445,11 @@ export interface LineControls {
   discountKind: FormControl<DiscountKind>;
   taxComponentIds: FormControl<string[]>;
   sourceDeliveryNoteLineId: FormControl<string>;
+  /**
+   * On a credit note, the invoice line it gives back, which the API names on each line it copies; '' for none. A line
+   * naming one discounted by an amount gives back its share of that discount, worked out by the API.
+   */
+  creditedLineId: FormControl<string>;
   /** The lot or serial sold; asked only for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5). */
   lotCode: FormControl<string>;
   /** On a credit note: whether the line's goods come back to stock when it is issued. */
@@ -656,6 +666,7 @@ export function lineGroup(
       sourceDeliveryNoteLineId: new FormControl(line?.sourceDeliveryNoteLineId ?? '', {
         nonNullable: true,
       }),
+      creditedLineId: new FormControl(line?.creditedLineId ?? '', { nonNullable: true }),
       lotCode: new FormControl(line?.lotCode ?? '', {
         nonNullable: true,
         validators: [matches(LOT_CODE_PATTERN)],
@@ -831,6 +842,7 @@ export function invoiceInput(
       returned: line.returned && line.productId !== '',
       deductsInvoiceId: line.deductsInvoiceId === '' ? null : line.deductsInvoiceId,
       section: text(line.section),
+      creditedLineId: line.creditedLineId === '' ? null : line.creditedLineId,
     })),
   };
 }
