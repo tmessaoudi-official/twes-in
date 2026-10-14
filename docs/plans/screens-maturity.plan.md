@@ -28,6 +28,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-13 19:17] ASSUMED (review): L-066 (the ruled step-up list, 2026-09-21 19:05) is checked where a person acts, in the API processors after the company and permission checks: changing the company's IBAN or BIC, inviting or removing a member, creating, revising or deleting a role; the use cases stay callable by the fixtures and the platform. A revision asks only when the bank details differ from what is stored; a role revision asks whatever it changes. Alternatives: in the use cases (breaks the fixtures and the platform's owner invitation); a role rename without a proof.
 - [2026-10-13 19:17] ASSUMED (review): A vendor's IBAN is outside the ruling's words (the company's own bank details) and is not given a step-up; asked of the developer with the round-0 security questions. Alternatives: include it now.
 - [2026-10-13 20:25] AGREED: Order: round 0 to its end (gallery role passes, measured API matrix, large-data timings), then L-066 and the five step-up rulings of 20:21 land on master under the 16:57 fix-now ruling, then round 1 on that frozen commit (developer).
+- [2026-10-13 23:57] AGREED: Order after the step-up work (landed, CI green at 1a5f5e8a): the paratest trial first (API suite timings before and after, kept only if faster and green), then round 1 on the frozen commit; changed-only runs and one-container sabotage after round 1 (developer).
 
 ## Formal Plan
 
