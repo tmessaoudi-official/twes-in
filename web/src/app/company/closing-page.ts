@@ -25,6 +25,7 @@ import { DayPipe } from '../shared/i18n/format-pipes';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
+import type { ActionConfirm } from '../shared/actions/screen-action';
 import { ClosingApi, type ClosingError, ClosingRefused, type CompanyClosing } from './closing-api';
 
 /**
@@ -94,7 +95,12 @@ export class ClosingPage implements OnInit {
         },
       },
       (confirm) =>
-        this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+        this.dialog
+          .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+            data: confirm,
+            autoFocus: 'dialog',
+          })
+          .afterClosed(),
     );
   }
 

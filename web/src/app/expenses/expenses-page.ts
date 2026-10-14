@@ -180,7 +180,12 @@ export class ExpensesPage implements OnInit {
       })),
     };
     const downloaded = await firstValueFrom(
-      this.dialog.open(TejFileDialog, { data, autoFocus: 'first-tabbable' }).afterClosed(),
+      this.dialog
+        .open<TejFileDialog, TejFileDialogData, boolean>(TejFileDialog, {
+          data,
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
     );
     if (downloaded === true) this.feedback.success('expenses.tej_file.downloaded');
   }

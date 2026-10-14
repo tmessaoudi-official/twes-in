@@ -9,6 +9,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { runAction } from '../shared/actions/run-action';
 import { TourGuide } from '../shared/tour/tour-guide';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
+import type { ActionConfirm } from '../shared/actions/screen-action';
 import { COMMAND_GROUPS, type Command, matchCommands } from './commands';
 
 export interface CommandPaletteData {
@@ -104,7 +105,12 @@ export class CommandPalette {
       return;
     }
     runAction(action, (confirm) =>
-      this.confirm.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+      this.confirm
+        .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+          data: confirm,
+          autoFocus: 'dialog',
+        })
+        .afterClosed(),
     );
   }
 }

@@ -49,7 +49,7 @@ import {
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
 import type { StockMovementSearch } from './inventory-types';
-import { ReceiptCostDialog } from './receipt-cost-dialog';
+import { ReceiptCostDialog, type ReceiptCostDialogData } from './receipt-cost-dialog';
 import { LossFilesDialog, type LossFilesDialogData } from './loss-files-dialog';
 
 /**
@@ -172,7 +172,7 @@ export class StockMovementsPage {
     const group = buildFormGroup(descriptor, receiptCostValues());
     const values = await firstValueFrom(
       this.dialog
-        .open(ReceiptCostDialog, {
+        .open<ReceiptCostDialog, ReceiptCostDialogData>(ReceiptCostDialog, {
           data: { descriptor, group, product },
           autoFocus: 'first-tabbable',
         })
@@ -200,7 +200,10 @@ export class StockMovementsPage {
       product: row.productLabel,
       mayWrite: this.auth.hasPermission('stock.write'),
     };
-    this.dialog.open(LossFilesDialog, { data, autoFocus: 'dialog' });
+    this.dialog.open<LossFilesDialog, LossFilesDialogData>(LossFilesDialog, {
+      data,
+      autoFocus: 'dialog',
+    });
   }
 
   /** Opens the movements of the lot or serial number typed into the search. */

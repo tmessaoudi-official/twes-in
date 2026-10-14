@@ -88,6 +88,22 @@ module.exports = defineConfig([
       ],
     },
   },
+  // A dialog's data is a contract: named at the open, a field added to the dialog is asked of every caller.
+  {
+    files: ['src/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.property.name='open']:not([typeArguments])[arguments.1.type='ObjectExpression']:has(Property[key.name='data'])",
+          message:
+            'A dialog opened with data names its types, open<Dialog, Data, Result>, so a field the dialog adds is asked for.',
+        },
+      ],
+    },
+  },
   {
     files: ['src/app/shared/**/*-api.ts', 'src/app/shared/**/*.spec.ts'],
     rules: { 'no-restricted-imports': ['error', { patterns: [SHARED_IMPORTS_NO_FEATURE] }] },

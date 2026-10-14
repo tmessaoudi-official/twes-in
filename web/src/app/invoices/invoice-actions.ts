@@ -18,8 +18,8 @@ import { Feedback } from '../shared/feedback/feedback';
 import { FileSaver } from '../shared/files/save-file';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { todayIn } from '../shared/i18n/format';
-import { CreditNoteDialog } from './credit-note-dialog';
-import { FacturXRefusalDialog } from './factur-x-refusal-dialog';
+import { CreditNoteDialog, type CreditNoteDialogData } from './credit-note-dialog';
+import { FacturXRefusalDialog, type FacturXRefusal } from './factur-x-refusal-dialog';
 import {
   creditNoteForm,
   paidInFull,
@@ -30,9 +30,9 @@ import {
 } from './invoice-forms';
 import { InvoicesFacade } from './invoices-facade';
 import { FACTUR_X_COUNTRIES, type FacturXFormat, type InvoiceRow } from './invoices-types';
-import { OverpaymentDialog } from './overpayment-dialog';
+import { OverpaymentDialog, type OverpaymentDialogData } from './overpayment-dialog';
 import { overpaymentForm, overpaymentInput, overpaymentValues } from './overpayment-form';
-import { PaymentDialog } from './payment-dialog';
+import { PaymentDialog, type PaymentDialogData } from './payment-dialog';
 
 /** What the person working may do to invoices, and what the company has switched on: all the guards read besides the document. */
 export interface InvoiceRights {
@@ -300,7 +300,12 @@ export class InvoiceActions {
       group: buildFormGroup(paymentForm(), paymentValues(this.today(), invoice.amountDue)),
     };
     const values = await firstValueFrom(
-      this.dialog.open(PaymentDialog, { data, autoFocus: 'first-tabbable' }).afterClosed(),
+      this.dialog
+        .open<PaymentDialog, PaymentDialogData>(PaymentDialog, {
+          data,
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
     );
     if (values && (await this.facade.recordPayment(companyId, invoice.id, paymentInput(values)))) {
       this.feedback.success('invoices.payments.recorded');
@@ -331,7 +336,7 @@ export class InvoiceActions {
     const descriptor = overpaymentForm();
     const values = await firstValueFrom(
       this.dialog
-        .open(OverpaymentDialog, {
+        .open<OverpaymentDialog, OverpaymentDialogData>(OverpaymentDialog, {
           data: { descriptor, group: buildFormGroup(descriptor, overpaymentValues(this.today())) },
           autoFocus: 'first-tabbable',
         })
@@ -353,7 +358,10 @@ export class InvoiceActions {
       this.saver.save(answer.file, answer.filename);
       return;
     }
-    this.dialog.open(FacturXRefusalDialog, { data: answer, autoFocus: 'first-tabbable' });
+    this.dialog.open<FacturXRefusalDialog, FacturXRefusal>(FacturXRefusalDialog, {
+      data: answer,
+      autoFocus: 'first-tabbable',
+    });
   }
 
   /** A copy of the document as a new draft, which is where the person then continues. */
@@ -374,7 +382,12 @@ export class InvoiceActions {
     const descriptor = makeRecurringForm(this.today());
     const data: MakeRecurringData = { descriptor, group: buildFormGroup(descriptor, {}) };
     const values = await firstValueFrom(
-      this.dialog.open(MakeRecurringDialog, { data, autoFocus: 'first-tabbable' }).afterClosed(),
+      this.dialog
+        .open<MakeRecurringDialog, MakeRecurringData>(MakeRecurringDialog, {
+          data,
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
     );
     if (!values) return;
     try {
@@ -401,7 +414,12 @@ export class InvoiceActions {
       group: buildFormGroup(creditNoteForm(), { reason: '' }),
     };
     const reason = await firstValueFrom(
-      this.dialog.open(CreditNoteDialog, { data, autoFocus: 'first-tabbable' }).afterClosed(),
+      this.dialog
+        .open<CreditNoteDialog, CreditNoteDialogData, string | null>(CreditNoteDialog, {
+          data,
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
     );
     if (!reason) return;
     const credit = await this.facade.creditNote(companyId, invoice.id, reason);

@@ -92,6 +92,7 @@ import {
 import { menuOrder } from '../actions/record-action';
 import { runAction } from '../actions/run-action';
 import { ConfirmDialog } from '../ui/confirm-dialog';
+import type { ActionConfirm } from '../actions/screen-action';
 import { WINDOW_CLASS } from '../ui/window-class';
 
 /** `<ng-template appDataListCell="columnId" let-row>`: how one column's cell renders instead of its plain value. */
@@ -442,7 +443,12 @@ export class DataList<Row> implements OnInit {
         confirm: action.confirm?.(row),
       },
       (confirm) =>
-        this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+        this.dialog
+          .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+            data: confirm,
+            autoFocus: 'dialog',
+          })
+          .afterClosed(),
     );
   }
   protected readonly chooser = computed(() =>
