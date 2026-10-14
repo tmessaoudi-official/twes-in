@@ -219,7 +219,7 @@ test('a company that requires two-step verification sends its owner to set it up
   await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
 
   // Turning the requirement off weakens every member's sign-in, so it waits for a proof, which a sign-in never
-  // carries: a fresh sign-in is asked, and the switch stays on until the proof is given.
+  // carries: a fresh sign-in is asked, a declined proof leaves the requirement on, and a given one turns it off.
   await signOut(page);
   await signIn(page, owner, NEW_PASSWORD);
   await nextStep(page);

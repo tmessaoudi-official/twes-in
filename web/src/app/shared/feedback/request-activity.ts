@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { computed, DestroyRef, DOCUMENT, inject, Injectable, signal } from '@angular/core';
+import {
+  computed,
+  DestroyRef,
+  DOCUMENT,
+  inject,
+  Injectable,
+  Injector,
+  signal,
+} from '@angular/core';
 import { type Subscription, take } from 'rxjs';
 import { HealthApi } from '../health/health-api';
+import { Session } from '../session/session';
 import { Feedback } from './feedback';
 
 /** A request answered sooner than this shows nothing, so a fast page never flickers. */
@@ -26,6 +35,8 @@ const AUTH_PATHS = /^\/api\/auth\//;
 export class RequestActivity {
   private readonly health = inject(HealthApi);
   private readonly feedback = inject(Feedback);
+  // Read when a refusal arrives, not at construction: the session's own requests pass through here.
+  private readonly injector = inject(Injector);
 
   private inFlight = 0;
   private busyTimer: ReturnType<typeof setTimeout> | null = null;
@@ -117,7 +128,8 @@ export class RequestActivity {
       return;
     }
     this.reached();
-    if (status === 401 && !AUTH_PATHS.test(url)) this.sessionExpiredSignal.set(true);
+    if (status === 401 && !AUTH_PATHS.test(url) && this.signedIn())
+      this.sessionExpiredSignal.set(true);
   }
 
   retryNow(): void {
@@ -134,6 +146,14 @@ export class RequestActivity {
           this.waitForNextCheck();
         }
       });
+  }
+
+  /**
+   * A refusal that arrives once nobody is signed in follows the person's own sign-out, a request that was still on its
+   * way: taken for an ended session, it would say so on the sign-in page, or send the next sign-in straight back there.
+   */
+  private signedIn(): boolean {
+    return this.injector.get(Session, null)?.me() !== null;
   }
 
   /** The shell has sent the person back to sign in. */
