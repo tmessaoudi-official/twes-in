@@ -12,9 +12,9 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\StepUp\RecentProof;
+use App\Shared\Infrastructure\ApiPlatform\DomainRule;
 use App\Tenancy\Application\Company\InvalidCompanyProfile;
 use App\Tenancy\Application\Company\ReviseCompanyProfile;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<CompanyProfileResource, CompanyProfileResource> */
 final readonly class ReviseCompanyProfileProcessor implements ProcessorInterface
@@ -39,7 +39,7 @@ final readonly class ReviseCompanyProfileProcessor implements ProcessorInterface
         try {
             $this->revise->handle($company, $profile, $this->guard->account()->getId());
         } catch (InvalidCompanyProfile $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return $this->representation->of($company);

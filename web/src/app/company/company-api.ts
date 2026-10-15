@@ -27,11 +27,16 @@ import {
   type NumberingChanges,
   type NumberingSeriesRow,
 } from './company-types';
+import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CompanyRefused extends Error {
-  constructor(readonly code: CompanyError) {
+  constructor(
+    readonly code: CompanyError,
+    /** Each field a profile revision was refused on, when the API named them. */
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -151,18 +156,19 @@ export class CompanyApi {
       ...changes,
       identifiers: { ...changes.identifiers },
     };
-    return this.guard(
-      async () =>
-        toProfile(
-          await firstValueFrom(
-            this.http.put<CompanyProfileCompanyProfileRead>(
-              `/api/companies/${encodeURIComponent(companyId)}/profile`,
-              body,
-            ),
+    try {
+      return toProfile(
+        await firstValueFrom(
+          this.http.put<CompanyProfileCompanyProfileRead>(
+            `/api/companies/${encodeURIComponent(companyId)}/profile`,
+            body,
           ),
         ),
-      profileCodeOf,
-    );
+      );
+    } catch (error) {
+      // Only a revision names its fields: the other calls' refusals are about the row as a whole.
+      throw new CompanyRefused(profileCodeOf(error), refusalsOf(error));
+    }
   }
 
   /** The company's establishments, the default first, each carrying the shape of a code. */
@@ -414,4 +420,9 @@ function codeOf(error: unknown): CompanyError {
     default:
       return 'invalid';
   }
+}
+
+/** The fields a profile revision was refused on, read from a 422's body only. */
+function refusalsOf(error: unknown): readonly FieldRefusal[] {
+  return error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
 }

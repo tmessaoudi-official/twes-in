@@ -91,3 +91,22 @@ test("the owner fills the company's profile with the identifier its preset requi
     }
   }
 });
+
+test('an e-mail the browser takes and the API refuses is said under the profile field, in the words a file is refused with', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/company/profile');
+  await page.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
+  // An address with no dot in its domain: the browser's rule takes it, the API's does not. The save is refused, so
+  // nothing is written to the shared company's profile.
+  await page.getByTestId('field-email').fill('compta@carthage');
+  await page.getByTestId('record-save').click();
+
+  await expect(page.getByTestId('field-error-email')).toHaveText('E-mail refusé.');
+  await expect(page.getByTestId('field-email')).toBeFocused();
+
+  await page.getByTestId('field-email').fill('compta@carthage.tn');
+  await expect(page.getByTestId('field-error-email')).toHaveCount(0);
+});
