@@ -56,6 +56,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-14 23:11] AGREED: On a credit note giving back part of an invoice, a hint under « Droits et retenues du document » says the stamp is given back by the credit note completing the invoice (« Le droit de timbre est rendu par l'avoir qui complète la facture. »); the chip stays as it is (L-1101).
 - [2026-10-15 00:23] AGREED: L-1102: the preview answer says why a chosen fixed charge per document is left out of a credit note's figures (given back by the note completing the invoice, kept by the preset, or never charged by the invoice), and the hint under « Droits et retenues du document » shows only for the first.
 - [2026-10-15 01:32] AGREED: L-1103 and L-1104 next: both hints under « Droits et retenues du document » are tied to the field for screen readers, and the preview names the position each answered line was sent from so the editor places figures by it rather than inferring the dropped deposit lines.
+- [2026-10-15 02:48] AGREED: L-1105 next: the line under « Droits et retenues du document » saying the completing note gives the stamp back announces itself as it appears (role="status"), so a screen reader typing a quantity is told.
 
 ## Formal Plan
 
