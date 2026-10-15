@@ -179,6 +179,7 @@ describe('InvoiceActions', () => {
       'print-current:rare',
       'record-overpayment:rare',
       'make-recurring:rare',
+      'credit-note:rare',
     ]);
     expect(onPage(abandoned)).toEqual([
       'pdf:frequent',
@@ -192,6 +193,21 @@ describe('InvoiceActions', () => {
       'print-duplicate:rare',
       'print-current:rare',
     ]);
+  });
+
+  it('offers a credit note while the invoice has something left to credit, paid or not, as the API takes one', () => {
+    const credits = (invoice: InvoiceRow) => onPage(invoice).includes('credit-note:rare');
+    // Goods returned after the invoice was paid in full are credited: the excess dialog says where the money goes.
+    expect(credits(paid)).toBe(true);
+    expect(credits({ ...paid, amountCredited: '100.000' })).toBe(true);
+    // Credited down to its net to pay, it has nothing left, withheld at source or not.
+    expect(credits({ ...paid, amountCredited: '119.000' })).toBe(false);
+    expect(
+      credits({ ...paid, total: '119.000', netToPay: '117.810', amountCredited: '117.810' }),
+    ).toBe(false);
+    expect(
+      credits({ ...paid, total: '119.000', netToPay: '117.810', amountCredited: '117.800' }),
+    ).toBe(true);
   });
 
   it('offers nothing a person may not do', () => {

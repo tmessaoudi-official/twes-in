@@ -18,6 +18,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { FileSaver } from '../shared/files/save-file';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { todayIn } from '../shared/i18n/format';
+import { versus } from '../shared/ui/versus';
 import { CreditNoteDialog, type CreditNoteDialogData } from './credit-note-dialog';
 import { FacturXRefusalDialog, type FacturXRefusal } from './factur-x-refusal-dialog';
 import {
@@ -79,9 +80,15 @@ export const invoiceMay = {
   pay: (invoice: InvoiceRow, rights: InvoiceRights) => stillOwed(invoice) && rights.pay,
   /** Money paid beyond an invoice is kept to the customer's credit once the invoice is paid in full, never before. */
   overpay: (invoice: InvoiceRow, rights: InvoiceRights) => paidInFull(invoice) && rights.pay,
-  /** A credit note takes off at most what is still due, so an invoice with nothing due offers none. */
+  /**
+   * A credit note takes at most what the invoice asked to be paid less its earlier credit notes, as the API counts it:
+   * paid in full, goods returned are still credited, and what was paid beyond is the customer's again.
+   */
   credit: (invoice: InvoiceRow, rights: InvoiceRights) =>
-    !isCreditNote(invoice) && isOpen(invoice) && rights.credit && !isZero(invoice.amountDue),
+    !isCreditNote(invoice) &&
+    isOpen(invoice) &&
+    rights.credit &&
+    versus(invoice.netToPay, invoice.amountCredited).kind === 'up',
   /** An invoice of the company is made recurring, never a credit note nor a deposit, while the module is on. */
   makeRecurring: (invoice: InvoiceRow, rights: InvoiceRights) =>
     rights.write && rights.recurring && invoice.type === 'invoice' && !invoice.deposit,
