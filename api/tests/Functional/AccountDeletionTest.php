@@ -129,6 +129,21 @@ final class AccountDeletionTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED, 'the session that asked is over too');
     }
 
+    public function testTheMailWritesTheFinalDayInThePersonsOwnOrder(): void
+    {
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext(userId: $this->leaving->getId()), 'presentation.date-format', SettingLevel::User, 'mdy', $this->leaving->getId());
+        $this->login(self::LEAVING, self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+
+        $this->sendJson('DELETE', '/api/auth/account');
+
+        self::assertResponseIsSuccessful();
+        $finalAt = new \DateTimeImmutable($this->stringAt($this->json(), 'finalAt'));
+        $mail = array_values(array_filter(self::getMailerMessages(), static fn ($mail): bool => $mail instanceof MimeEmail))[0] ?? null;
+        self::assertInstanceOf(MimeEmail::class, $mail);
+        self::assertStringContainsString($finalAt->format('m/d/Y'), (string) $mail->getHtmlBody());
+    }
+
     public function testSigningInAgainWithinTheDaysCancelsIt(): void
     {
         $this->askToGo();

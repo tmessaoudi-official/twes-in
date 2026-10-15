@@ -49,6 +49,9 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'subscription.payment_declared',
   'subscription.payment_decided',
   'module.arrived',
+  'support_access.granted',
+  'support_access.ended',
+  'data.check_failed',
 ] as const;
 
 /** "membership.added" → "notifications.types.membership_added"; an unknown type → the generic key. */
@@ -73,6 +76,10 @@ export interface NotificationRecord {
   readonly permission: string | null;
   /** the payload's amounts, which the words write as the screen writes amounts, at the payload's `scale` */
   readonly amounts?: readonly string[];
+  /** the payload's quantities, sent at their column's decimals, which the words write without the zeros that say nothing */
+  readonly quantities?: readonly string[];
+  /** the payload's moments, sent as the company's `YYYY-MM-DD HH:mm`, which the words write in the screen's order of a day */
+  readonly moments?: readonly string[];
 }
 
 // The money and document events (invoice paid, overdue, payment recorded, delivery note delivered) add their rows here.
@@ -111,11 +118,24 @@ const RECORDS = new Map<string, NotificationRecord>([
   // reorder point leads to the stock it is reordered from.
   [
     'stock.count_difference',
-    { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+    {
+      icon: 'inventory_2',
+      route: '/stock/movements',
+      permission: 'stock.read',
+      quantities: ['difference'],
+    },
   ],
   // A file whose counts found differences leads to the movements too, where each count it wrote reads as the import's.
   ['stock.imported', { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' }],
-  ['stock.low', { icon: 'inventory_2', route: '/stock', permission: 'stock.read' }],
+  [
+    'stock.low',
+    {
+      icon: 'inventory_2',
+      route: '/stock',
+      permission: 'stock.read',
+      quantities: ['on_hand', 'point'],
+    },
+  ],
   // An invoice that took a customer past their credit limit leads to the invoices, where the account is read.
   [
     'invoice.credit_limit_passed',
@@ -191,6 +211,22 @@ const RECORDS = new Map<string, NotificationRecord>([
     'module.arrived',
     { icon: 'extension', route: '/company/modules', permission: 'company.settings' },
   ],
+  // Another owner opened or closed « Accès du support »: the page where it is seen, and closed.
+  [
+    'support_access.granted',
+    {
+      icon: 'support_agent',
+      route: '/company/support-access',
+      permission: 'company.settings',
+      moments: ['until'],
+    },
+  ],
+  [
+    'support_access.ended',
+    { icon: 'support_agent', route: '/company/support-access', permission: 'company.settings' },
+  ],
+  // An operator's, about a company not theirs: the mail says it all, and there is nothing here to open.
+  ['data.check_failed', { icon: 'notifications', route: null, permission: null }],
 ]);
 
 export function notificationRecord(type: string): NotificationRecord {

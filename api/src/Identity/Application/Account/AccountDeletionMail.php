@@ -17,6 +17,8 @@ final readonly class AccountDeletionMail
         public string $locale,
         public int $days,
         public \DateTimeImmutable $finalAt,
+        /** The person's order of a day (`presentation.date-format`), `auto` for their language's. */
+        public string $dateFormat = 'auto',
     ) {
     }
 }

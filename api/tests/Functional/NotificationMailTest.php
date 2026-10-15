@@ -14,6 +14,9 @@ use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Inbox\Application\NotificationPreferences;
 use App\Inbox\Infrastructure\Mail\NotificationToMail;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\SettingLevel;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Tenancy\Domain\Company;
@@ -95,6 +98,73 @@ final class NotificationMailTest extends ApiTestCase
         $mail = self::getMailerMessage();
         self::assertInstanceOf(MimeEmail::class, $mail);
         self::assertStringContainsString('Atlas, 1500.5 TND, a 12 jours', (string) $mail->getHtmlBody());
+    }
+
+    public function testAQuantityIsWrittenAsItsReadersLanguageWritesNumbersWithNoTrailingZero(): void
+    {
+        $lea = $this->member('lea@twes.local', 'fr', 'keeper');
+        $this->tell($this->keeper, 'stock.low', ['on_hand' => '3.500', 'point' => '1250.000'] + self::PRODUCT);
+        $this->tell($lea, 'stock.count_difference', ['product' => 'Vis M6', 'reference' => 'VIS-6', 'location' => 'A1', 'difference' => '-2.000']);
+        self::assertSame(2, $this->deliverQueued());
+
+        $bodies = $this->bodiesTo();
+        self::assertStringContainsString('Vis M6 (VIS-6) is down to 3.5 at Siège, at or under its reorder point of 1,250.', $bodies['keeper@twes.local']);
+        self::assertStringContainsString('à A1 a trouvé un écart de -2.', $bodies['lea@twes.local']);
+    }
+
+    public function testADayAndAMomentAreWrittenAsTheReaderChoseAndEachReaderInTurnGetsTheirOwn(): void
+    {
+        $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);
+        $other = $this->member('other@twes.local', 'en', Role::OWNER, null);
+        $clerk = $this->member('clerk@twes.local', 'fr', 'clerk', ['expense.write', 'expense.read', 'company.read']);
+        $this->choose($owner, 'presentation.date-format', 'mdy');
+        $this->choose($clerk, 'presentation.date-format', 'dmy-dots');
+        $granted = ['company' => 'Acme', 'by' => 'Léa', 'until' => '2027-01-29 18:30'];
+        $this->tell($owner, 'support_access.granted', $granted);
+        $this->tell($other, 'support_access.granted', $granted);
+        $this->tell($clerk, 'expense.recurring_drafted', ['description' => 'Loyer', 'dueOn' => '2027-02-01', 'expenseId' => Uuid::v7()->toRfc4122()]);
+        self::assertSame(3, $this->deliverQueued());
+
+        $bodies = $this->bodiesTo();
+        self::assertStringContainsString('en lecture seule, jusqu’au 01/29/2027 18:30.', $bodies['owner@twes.local']);
+        // The next reader is not written with the one before's choice: the language's own order.
+        self::assertStringContainsString('read-only, until 29/01/2027 18:30.', $bodies['other@twes.local']);
+        self::assertStringContainsString('un brouillon du 01.02.2027 attend', $bodies['clerk@twes.local']);
+    }
+
+    public function testTheReadersNumberFormatWinsOverTheLanguageForAmountsAndQuantities(): void
+    {
+        $lea = $this->member('lea@twes.local', 'fr', 'invoicer', ['invoice.issue', 'invoice.read', 'stock.read', 'stock.write', 'company.read']);
+        $this->choose($lea, 'presentation.number-format', 'comma-dot');
+        $this->tell($lea, 'invoice.credit_limit_passed', ['customer' => 'Atlas', 'number' => 'F-7', 'owed' => '1234.5', 'limit' => '1000', 'currency' => 'EUR', 'scale' => 2]);
+        $this->tell($lea, 'stock.low', ['on_hand' => '1234.5', 'point' => '2000.000'] + self::PRODUCT);
+        self::assertSame(2, $this->deliverQueued());
+
+        // Both went to Léa: read them together.
+        $bodies = implode("\n", array_map(static fn (MimeEmail $mail): string => (string) $mail->getHtmlBody(), array_filter(self::getMailerMessages(), static fn ($mail): bool => $mail instanceof MimeEmail)));
+        self::assertStringContainsString("crédit\u{a0}: 1,234.50 EUR dus pour 1,000.00 après la facture F-7.", $bodies);
+        self::assertStringContainsString('est tombé à 1,234.5 à Siège, au niveau ou sous son seuil de réapprovisionnement de 2,000.', $bodies);
+    }
+
+    public function testTheCompanysFormatReachesAReaderWhoChoseNoneOfTheirOwn(): void
+    {
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->acme), 'presentation.number-format', SettingLevel::Company, 'dot-comma', null);
+        $this->tell($this->keeper, 'stock.low', ['on_hand' => '1234.5', 'point' => '2000'] + self::PRODUCT);
+        self::assertSame(1, $this->deliverQueued());
+
+        self::assertStringContainsString('is down to 1.234,5 at Siège, at or under its reorder point of 2.000.', $this->bodiesTo()['keeper@twes.local']);
+    }
+
+    public function testAnOlderNoticeWhoseDayOrQuantityIsNotOneIsKeptAsSent(): void
+    {
+        $this->tell($this->keeper, 'stock.low', ['on_hand' => 'about 3', 'point' => '10'] + self::PRODUCT);
+        $owner = $this->member('owner@twes.local', 'en', Role::OWNER, ['*']);
+        $this->tell($owner, 'support_access.granted', ['company' => 'Acme', 'by' => 'Léa', 'until' => 'Friday']);
+        self::assertSame(2, $this->deliverQueued());
+
+        $bodies = $this->bodiesTo();
+        self::assertStringContainsString('is down to about 3 at Siège, at or under its reorder point of 10.', $bodies['keeper@twes.local']);
+        self::assertStringContainsString('read-only, until Friday.', $bodies['owner@twes.local']);
     }
 
     public function testNoMailIsSentForAKindWhoseMailWasTurnedOffBeforeTheWorkerSendsIt(): void
@@ -261,6 +331,25 @@ final class NotificationMailTest extends ApiTestCase
         $em->flush();
 
         return $user;
+    }
+
+    /** @return array<string, string> each mail's body, by the address it went to */
+    private function bodiesTo(): array
+    {
+        $bodies = [];
+        foreach (self::getMailerMessages() as $mail) {
+            if ($mail instanceof MimeEmail) {
+                $bodies[$mail->getTo()[0]->getAddress()] = (string) $mail->getHtmlBody();
+            }
+        }
+
+        return $bodies;
+    }
+
+    /** The person's own choice of a presentation key, as « Mon compte » writes it. */
+    private function choose(User $user, string $key, string $value): void
+    {
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->acme, userId: $user->getId()), $key, SettingLevel::User, $value, $user->getId());
     }
 
     private static function stopLinkIn(string $body): string

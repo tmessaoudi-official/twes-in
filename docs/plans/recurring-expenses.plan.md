@@ -53,6 +53,9 @@ SPEC § 8 row 179 (size L). Rulings: SPEC § 7 2026-10-11 01:24, 2026-10-15 17:3
 ### Blocked
 ### Needs input
 - Copy rules, anchor set and wording (slice 3 batch).
+- Slice 5 (move or skip one occurrence, without changing the series): build, drop or park as its own row? It rests on
+  the unratified 17:46 reading of « date-flexible »; asked in chat at 23:43 (the question tool was refused by the
+  unattended window). Row 179 stays doing until answered.
 ### Needs research
 ### Fragile
 - fr.json screen texts: 340 B left of 61,440 B gzipped (61,100 B at 6fe36b37); first page 999.35 kB of 1 MB (6fe36b37):

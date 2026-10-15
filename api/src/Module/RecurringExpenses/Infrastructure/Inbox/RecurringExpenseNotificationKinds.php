@@ -21,7 +21,7 @@ final readonly class RecurringExpenseNotificationKinds implements DeclaresNotifi
     public function notificationKinds(): array
     {
         return [
-            new NotificationKind(RunRecurringExpenses::DRAFTED, NotificationAudience::Company, RecurringExpensesModule::KEY, RunRecurringExpenses::PERMISSION),
+            new NotificationKind(RunRecurringExpenses::DRAFTED, NotificationAudience::Company, RecurringExpensesModule::KEY, RunRecurringExpenses::PERMISSION, days: ['dueOn']),
             new NotificationKind(RunRecurringExpenses::STOPPED, NotificationAudience::Company, RecurringExpensesModule::KEY, RunRecurringExpenses::PERMISSION),
         ];
     }

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Inbox\Application;
 
 use App\Identity\Domain\UserRepository;
+use App\Settings\Application\ReaderFormats;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -25,6 +26,7 @@ final readonly class MailNotification
         private NotificationPreferences $preferences,
         private MailStopTokens $tokens,
         private NotificationMailer $mailer,
+        private ReaderFormats $formats,
     ) {
     }
 
@@ -43,6 +45,7 @@ final readonly class MailNotification
             return;
         }
 
+        $formats = $this->formats->of($userId, $companyId);
         $this->mailer->send(new NotificationMail(
             $user->getEmail()->value,
             $user->getLocale(),
@@ -50,6 +53,8 @@ final readonly class MailNotification
             $choice->companyName,
             $payload,
             $this->tokens->issue(new MailStop($userId, $companyId, $type)),
+            $formats['dateFormat'],
+            $formats['numberFormat'],
         ));
     }
 }

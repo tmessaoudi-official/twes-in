@@ -114,7 +114,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `DataFixtures/Scale/` is the large-data generator (`make scale-data`, docs/START.md § 4): it clones the demo company's
   invoice graph in SQL, and `ScaleGenerator::unaccounted` fails when a new table reaching that graph is not classified.
 - `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity`, `Tenancy`, `Audit`, `Inbox` (the notification
-  centre behind the `Notifications` port), `Fiscal`, `Settings` (the settings engine: declarations collected from every
+  centre behind the `Notifications` port; a `NotificationKind` names its payload's amounts, quantities, days and moments,
+  which a mail writes through `Shared/Infrastructure/Mail/MailFigures` in its reader's formats, `Settings/Application/
+  ReaderFormats`, and the bell through its `notificationRecord`; `NotificationFieldsTest` reds on a word's field left unnamed), `Fiscal`, `Settings` (the settings engine: declarations collected from every
   `DeclaresSettings` service, the three chains, `ReadSetting`), `ModuleRegistry` (the catalogue collected from every
   `DeclaresModule` service and the planned ones in `PlannedModules`, `module_state`, `module_interest` (« Me prévenir », told at start by `app:modules:announce-arrivals`, which `infra/api/docker-entrypoint.sh` runs after the migrations), the 404 guard for a switched-off module's resources and plain controllers),
   `CustomFields`, `Files` (the `file` table and the `FileStorage` port on Flysystem, on whichever filesystem

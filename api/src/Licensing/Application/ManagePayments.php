@@ -22,6 +22,7 @@ use App\Licensing\Domain\PaymentDeclarationRepository;
 use App\Licensing\Domain\PaymentNotFound;
 use App\Licensing\Domain\SubscriptionNotManaged;
 use App\Licensing\Domain\SubscriptionRepository;
+use App\Settings\Application\ReaderFormats;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;
@@ -62,6 +63,7 @@ final readonly class ManagePayments
         private ClockInterface $clock,
         private Transactions $transactions,
         private CurrencyScales $scales,
+        private ReaderFormats $formats,
         #[Autowire(param: 'app.signup.login_url')]
         private string $loginUrl,
         #[Autowire(param: 'app.platform_url')]
@@ -145,6 +147,7 @@ final readonly class ManagePayments
                     'declaration_id' => $declaration->getId()->toRfc4122(),
                 ],
             ));
+            $formats = $this->formats->of($operator->getId(), null);
             $this->mailer->paymentDeclared(new PaymentDeclaredMail(
                 $operator->getEmail()->value,
                 $operator->getLocale(),
@@ -156,6 +159,8 @@ final readonly class ManagePayments
                 $declaration->getPaidOn()->format('Y-m-d'),
                 $declaration->getReference(),
                 $this->platformUrl,
+                $formats['dateFormat'],
+                $formats['numberFormat'],
             ));
         }
     }
@@ -181,6 +186,7 @@ final readonly class ManagePayments
                 ],
                 $company->getId()->toRfc4122(),
             ));
+            $formats = $this->formats->of($owner->getId(), $company->getId());
             $this->mailer->paymentDecided(new PaymentDecidedMail(
                 $owner->getEmail()->value,
                 $owner->getLocale(),
@@ -192,6 +198,8 @@ final readonly class ManagePayments
                 $paidThrough?->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'),
                 $declaration->getDecisionNote(),
                 $this->loginUrl,
+                $formats['dateFormat'],
+                $formats['numberFormat'],
             ));
         }
     }
