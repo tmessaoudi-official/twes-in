@@ -27,9 +27,7 @@
       <ng-template appDataListCell="model" let-row>
         {{ row.modelNumber ?? ('recurring.model_draft' | translate) }}
       </ng-template>
-      <ng-template appDataListCell="frequency" let-row>
-        {{ 'recurring.frequencies.' + row.frequency | translate }}
-      </ng-template>
+      <ng-template appDataListCell="schedule" let-row>{{ sentence(row) }}</ng-template>
       <ng-template appDataListCell="nextOn" let-row>
         @if (row.nextOn; as day) {
           {{ day | day }}

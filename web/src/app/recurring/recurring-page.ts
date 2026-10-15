@@ -9,24 +9,21 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { DayPipe } from '../shared/i18n/format-pipes';
+import { LanguageFacade } from '../shared/i18n/language-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { SCHEDULE_UNITS, scheduleSentence } from '../shared/schedule/schedule';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { RecurringApi, RecurringRefused } from './recurring-api';
 import { RECURRING_TABS } from './recurring-nav';
-import {
-  RECURRING_FREQUENCIES,
-  recurringState,
-  type RecurringError,
-  type RecurringInvoiceRow,
-} from './recurring-types';
+import { recurringState, type RecurringError, type RecurringInvoiceRow } from './recurring-types';
 
 const STATE_TONES: Record<ReturnType<typeof recurringState>, StatusTone> = {
   active: 'success',
@@ -51,6 +48,8 @@ export class RecurringPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageFacade);
 
   protected readonly tabs = RECURRING_TABS;
   protected readonly rows = signal<readonly RecurringInvoiceRow[]>([]);
@@ -63,6 +62,21 @@ export class RecurringPage implements OnInit {
   protected readonly tone = (row: RecurringInvoiceRow): StatusTone =>
     STATE_TONES[recurringState(row)];
   protected readonly rowTestId = (row: RecurringInvoiceRow): string => `recurring-${row.id}`;
+
+  /** When each one recurs, in a sentence of the screen's language, read again when the language changes. */
+  private readonly sentences = computed(() => {
+    const language = this.language.current();
+    const say = (key: string, params?: Record<string, unknown>): string =>
+      this.translate.instant(key, params) as string;
+    return new Map(
+      this.rows().map((row) => [
+        row.id,
+        scheduleSentence(row.schedule, row.startsOn, say, language),
+      ]),
+    );
+  });
+  protected readonly sentence = (row: RecurringInvoiceRow): string =>
+    this.sentences().get(row.id) ?? '';
 
   protected readonly list = computed<ListDescriptor<RecurringInvoiceRow>>(() => ({
     id: 'recurring-invoices',
@@ -88,11 +102,12 @@ export class RecurringPage implements OnInit {
         filterable: true,
       },
       {
-        id: 'frequency',
-        label: 'recurring.columns.frequency',
-        value: (row) => RECURRING_FREQUENCIES.indexOf(row.frequency),
+        id: 'schedule',
+        label: 'recurring.columns.schedule',
+        value: (row) => SCHEDULE_UNITS.indexOf(row.schedule.unit) * 100 + row.schedule.every,
         sortable: true,
-        width: 150,
+        // The sentence is what the column is read for: room for « Tous les 3 mois, le dernier vendredi ».
+        width: 300,
       },
       {
         id: 'nextOn',
@@ -203,7 +218,7 @@ export class RecurringPage implements OnInit {
     this.busy.set(true);
     try {
       const saved = await this.api.revise(companyId, row.id, {
-        frequency: row.frequency,
+        schedule: row.schedule,
         endsOn: row.endsOn,
         paused,
       });

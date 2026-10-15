@@ -4807,22 +4807,16 @@
   "recurring": {
     "tab": "Récurrentes",
     "title": "Factures récurrentes",
-    "intro": "Une facture qui revient chaque semaine, chaque mois, chaque trimestre ou chaque année. À chaque échéance, une copie est préparée en brouillon pour qu’une personne la vérifie et l’émette : rien ne part seul. On en crée une depuis une facture, avec « Rendre récurrente ».",
+    "intro": "Une facture qui revient à intervalle régulier : toutes les semaines, tous les deux mois, le dernier vendredi du trimestre, chaque année le 31 octobre. À chaque échéance, une copie est préparée en brouillon pour qu’une personne la vérifie et l’émette : rien ne part seul. On en crée une depuis une facture, avec « Rendre récurrente ».",
     "no_company": "Choisissez une entreprise pour voir ses factures récurrentes.",
     "none": "Aucune facture récurrente. Ouvrez une facture et choisissez « Rendre récurrente » dans « ⋮ ».",
     "columns": {
       "customer": "Client",
       "model": "Facture copiée",
-      "frequency": "Fréquence",
+      "schedule": "Quand",
       "next_on": "Prochain brouillon",
       "drafted": "Brouillons faits",
       "state": "État"
-    },
-    "frequencies": {
-      "weekly": "Chaque semaine",
-      "monthly": "Chaque mois",
-      "quarterly": "Chaque trimestre",
-      "yearly": "Chaque année"
     },
     "states": {
       "active": "Active",
@@ -4830,9 +4824,8 @@
       "ended": "Terminée"
     },
     "fields": {
-      "frequency": "Fréquence",
-      "starts_on": "Premier brouillon le",
-      "starts_on_hint": "Aujourd’hui ou plus tard ; les suivants gardent le même jour du mois.",
+      "starts_on": "Premier brouillon au plus tôt le",
+      "starts_on_hint": "Aujourd’hui ou plus tard.",
       "ends_on": "Dernier jour",
       "ends_on_hint": "Laissez vide pour qu’elle continue."
     },
@@ -4861,10 +4854,9 @@
       "invalid": "La facture récurrente n’a pas pu être enregistrée.",
       "not_found": "Cette facture récurrente n’existe plus.",
       "network": "Le serveur ne répond pas. Réessayez dans un instant.",
-      "model_invoice_id": "Un avoir ou une facture d’acompte ne se rend pas récurrent.",
-      "frequency": "Choisissez une fréquence.",
-      "starts_on": "Le premier brouillon se fait aujourd’hui ou plus tard, jamais un jour passé.",
-      "ends_on": "Le dernier jour vient le jour du premier brouillon ou après."
+      "modelInvoiceId": "Un avoir ou une facture d’acompte ne se rend pas récurrent.",
+      "startsOn": "Le premier brouillon se fait aujourd’hui ou plus tard, jamais un jour passé.",
+      "endsOn": "Le dernier jour vient le jour du premier brouillon ou après."
     }
   },
   "notification_stop": {

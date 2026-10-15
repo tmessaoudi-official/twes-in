@@ -8,6 +8,8 @@ import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthFacade } from '../auth/auth-facade';
 import { RecurringApi } from '../recurring/recurring-api';
+import { LanguageFacade } from '../shared/i18n/language-facade';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { onRecord, onRows } from '../shared/actions/record-action';
 import { FileSaver } from '../shared/files/save-file';
 import { rareOn } from '../shared/list/list-types';
@@ -146,6 +148,8 @@ describe('InvoiceActions', () => {
         { provide: MatDialog, useValue: dialog },
         { provide: FileSaver, useValue: { save: vi.fn() } },
         { provide: RecurringApi, useValue: { create: vi.fn() } },
+        { provide: LanguageFacade, useValue: { current: () => 'fr' } },
+        { provide: TextsParts, useValue: { open: () => Promise.resolve() } },
       ],
     });
   });

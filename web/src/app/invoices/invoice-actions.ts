@@ -9,6 +9,7 @@ import {
   MakeRecurringDialog,
   makeRecurringForm,
   recurringDraft,
+  recurringFailure,
   type MakeRecurringData,
 } from '../recurring/make-recurring';
 import { RecurringApi, RecurringRefused } from '../recurring/recurring-api';
@@ -18,6 +19,9 @@ import { Feedback } from '../shared/feedback/feedback';
 import { FileSaver } from '../shared/files/save-file';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { todayIn } from '../shared/i18n/format';
+import { LanguageFacade } from '../shared/i18n/language-facade';
+import { TextsParts } from '../shared/i18n/texts-part';
+import { SCHEDULE_TEXTS } from '../shared/schedule/schedule-texts';
 import { versus } from '../shared/ui/versus';
 import { CreditNoteDialog, type CreditNoteDialogData } from './credit-note-dialog';
 import { FacturXRefusalDialog, type FacturXRefusal } from './factur-x-refusal-dialog';
@@ -121,6 +125,8 @@ export class InvoiceActions {
   private readonly feedback = inject(Feedback);
   private readonly saver = inject(FileSaver);
   private readonly recurring = inject(RecurringApi);
+  private readonly language = inject(LanguageFacade);
+  private readonly texts = inject(TextsParts);
 
   rights(): InvoiceRights {
     const country = this.auth.me()?.company?.countryCode;
@@ -386,7 +392,9 @@ export class InvoiceActions {
   private async makeRecurring(invoice: InvoiceRow): Promise<void> {
     const companyId = this.companyId();
     if (!companyId || this.facade.busy()) return;
-    const descriptor = makeRecurringForm(this.today());
+    // The schedule's words, read in the dialog wherever the invoice is shown.
+    await this.texts.open(SCHEDULE_TEXTS);
+    const descriptor = makeRecurringForm(this.language.current(), this.today());
     const data: MakeRecurringData = { descriptor, group: buildFormGroup(descriptor, {}) };
     const values = await firstValueFrom(
       this.dialog
@@ -405,9 +413,8 @@ export class InvoiceActions {
         { key: 'recurring.open', run: () => void this.router.navigate(['/invoices/recurring']) },
       );
     } catch (error) {
-      const field = error instanceof RecurringRefused ? error.field : null;
       this.feedback.failure(
-        field === null ? 'recurring.errors.invalid' : `recurring.errors.${field}`,
+        recurringFailure(error instanceof RecurringRefused ? error.field : null),
       );
     }
   }

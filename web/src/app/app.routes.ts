@@ -23,7 +23,8 @@ import { VENDORS_MODULE } from './vendors/vendors-nav';
 import { guardUnsaved } from './shared/form/unsaved-changes';
 import { customerScreenLock } from './customer-screen/customer-screen-lock';
 import { moduleGuard } from './shell/module-guard';
-import { textsPart } from './shared/i18n/texts-part';
+import { textsOpened, textsPart } from './shared/i18n/texts-part';
+import { SCHEDULE_TEXTS } from './shared/schedule/schedule-texts';
 
 export const routes: Routes = [
   {
@@ -257,7 +258,8 @@ export const routes: Routes = [
       {
         path: 'invoices/recurring',
         title: 'recurring.title',
-        canActivate: [moduleGuard(RECURRING_MODULE)],
+        // The schedule's words load with the recurring lists and the dialog that makes one (the screen texts budget).
+        canActivate: [moduleGuard(RECURRING_MODULE), textsOpened(SCHEDULE_TEXTS)],
         loadComponent: () => import('./recurring/recurring-page').then((m) => m.RecurringPage),
       },
       {
@@ -402,11 +404,13 @@ export const routes: Routes = [
         // Before ':expenseId', which would otherwise take "recurring" for an identifier.
         path: 'expenses/recurring',
         title: 'modules.recurring_expenses',
-        // Its texts and the schedule's are read on the expense pages only: they load with them (the screen texts budget).
+        // Its texts are read on the expense pages only, the schedule's on every recurring list: both load with it (the
+        // screen texts budget).
         providers: textsPart('expense').providers,
         canActivate: [
           moduleGuard(RECURRING_EXPENSES_MODULE),
           ...(textsPart('expense').canActivate ?? []),
+          textsOpened(SCHEDULE_TEXTS),
         ],
         loadComponent: () =>
           import('./recurring-expenses/recurring-expenses-page').then(

@@ -37,6 +37,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import { TextsApi } from '../shared/i18n/texts-api';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -275,6 +276,7 @@ describe('ExpensePage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ExpensesFacade, useValue: facade },
         { provide: RecurringExpensesApi, useValue: recurring },
+        { provide: TextsApi, useValue: { part: () => Promise.resolve({}) } },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -1044,10 +1046,15 @@ describe('ExpensePage', () => {
 
     // A button beside the bar on a wide screen; the bar folds it into its « ⋮ » on a phone.
     q('record-make-recurring')!.click();
-    await settle();
-    (
-      document.body.querySelector('[data-testid="recurring-expense-dialog-confirm"]') as HTMLElement
-    ).click();
+    // The schedule's words are opened before the dialog: it waits for them.
+    const confirm = await vi.waitFor(() => {
+      const button = document.body.querySelector<HTMLElement>(
+        '[data-testid="recurring-expense-dialog-confirm"]',
+      );
+      expect(button).not.toBeNull();
+      return button!;
+    });
+    confirm.click();
     await settle();
 
     await vi.waitFor(() => expect(recurring.create).toHaveBeenCalled());

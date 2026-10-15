@@ -27,9 +27,11 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Recurring\Application\ManageRecurringInvoices;
-use App\Module\Recurring\Domain\RecurringFrequency;
 use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
+use App\Shared\Domain\Schedule;
+use App\Shared\Domain\ScheduleAnchor;
+use App\Shared\Domain\ScheduleUnit;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
 use App\Tests\Unit\Files\Application\AttachmentsTest;
@@ -354,7 +356,7 @@ final class DataErasureTest extends ApiTestCase
 
         $model = $this->invoice();
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('the company vanished');
-        static::getContainer()->get(ManageRecurringInvoices::class)->create($company, Uuid::fromString($model), RecurringFrequency::Monthly, new \DateTimeImmutable('first day of next month'), null, null);
+        static::getContainer()->get(ManageRecurringInvoices::class)->create($company, Uuid::fromString($model), new Schedule(ScheduleUnit::Month, 1, ScheduleAnchor::Date, 1), new \DateTimeImmutable('first day of next month'), null, null);
 
         $gone = $this->quote();
         $kept = $this->quote();

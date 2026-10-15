@@ -142,7 +142,7 @@ test('an invoice made recurring is listed under « Récurrentes », paused there
       .getByTestId('recurring-table')
       .locator('[data-testid^="recurring-"]', { hasText: `Client ${number}` });
     await expect(row).toHaveCount(1);
-    await expect(row.locator('[data-column="frequency"]')).toContainText('Chaque mois');
+    await expect(row.locator('[data-column="schedule"]')).toContainText('Chaque mois');
     await expect(row.locator('[data-column="state"]')).toContainText('Active');
     expect(await wcagViolations(page)).toEqual([]);
 

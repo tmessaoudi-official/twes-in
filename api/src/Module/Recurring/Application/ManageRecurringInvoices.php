@@ -12,10 +12,11 @@ namespace App\Module\Recurring\Application;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Module\Recurring\Domain\InvalidRecurringInvoice;
-use App\Module\Recurring\Domain\RecurringFrequency;
 use App\Module\Recurring\Domain\RecurringInvoice;
 use App\Module\Recurring\Domain\RecurringInvoiceRepository;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\InvalidSchedule;
+use App\Shared\Domain\Schedule;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -70,16 +71,19 @@ final readonly class ManageRecurringInvoices
         return $this->models->describeAll($company, array_values($ids));
     }
 
-    /** @throws InvalidRecurringInvoice */
-    public function create(Company $company, Uuid $modelInvoiceId, RecurringFrequency $frequency, \DateTimeImmutable $startsOn, ?\DateTimeImmutable $endsOn, ?Uuid $actorUserId): RecurringInvoice
+    /**
+     * @throws InvalidRecurringInvoice
+     * @throws InvalidSchedule
+     */
+    public function create(Company $company, Uuid $modelInvoiceId, Schedule $schedule, \DateTimeImmutable $startsOn, ?\DateTimeImmutable $endsOn, ?Uuid $actorUserId): RecurringInvoice
     {
-        return $this->transactions->run(function () use ($company, $modelInvoiceId, $frequency, $startsOn, $endsOn, $actorUserId): RecurringInvoice {
+        return $this->transactions->run(function () use ($company, $modelInvoiceId, $schedule, $startsOn, $endsOn, $actorUserId): RecurringInvoice {
             $model = $this->models->describe($company, $modelInvoiceId)
-                ?? throw new InvalidRecurringInvoice('modelInvoiceId', 'No invoice of this company has this id.');
+                ?? throw new InvalidRecurringInvoice('modelInvoiceId', 'No invoice of this company has this id.', 'unknown_choice');
             if (!$model->copiable) {
-                throw new InvalidRecurringInvoice('modelInvoiceId', 'A credit note or a deposit invoice is not made recurring.');
+                throw new InvalidRecurringInvoice('modelInvoiceId', 'A credit note, a deposit invoice or a cancelled invoice is not made recurring.', 'not_copiable');
             }
-            $recurring = new RecurringInvoice($company, $modelInvoiceId, $frequency, $startsOn, $endsOn, $this->today($company), $this->clock->now());
+            $recurring = new RecurringInvoice($company, $modelInvoiceId, $schedule, $startsOn, $endsOn, $this->today($company), $this->clock->now());
             $this->recurring->save($recurring);
             $this->record($company, $recurring->getId(), self::CREATED, ['modelInvoiceId' => $modelInvoiceId->toRfc4122()], $actorUserId);
 
@@ -89,13 +93,13 @@ final readonly class ManageRecurringInvoices
 
     /**
      * @throws RecurringInvoiceNotFound
-     * @throws InvalidRecurringInvoice
+     * @throws InvalidSchedule
      */
-    public function revise(Company $company, Uuid $id, RecurringFrequency $frequency, ?\DateTimeImmutable $endsOn, bool $paused, ?Uuid $actorUserId): RecurringInvoice
+    public function revise(Company $company, Uuid $id, Schedule $schedule, ?\DateTimeImmutable $endsOn, bool $paused, ?Uuid $actorUserId): RecurringInvoice
     {
-        return $this->transactions->run(function () use ($company, $id, $frequency, $endsOn, $paused, $actorUserId): RecurringInvoice {
+        return $this->transactions->run(function () use ($company, $id, $schedule, $endsOn, $paused, $actorUserId): RecurringInvoice {
             $recurring = $this->recurring->lockedOfIdInCompany($id, $company->getId()) ?? throw new RecurringInvoiceNotFound();
-            $changed = $recurring->revise($frequency, $endsOn, $paused, $this->today($company), $this->clock->now());
+            $changed = $recurring->revise($schedule, $endsOn, $paused, $this->today($company), $this->clock->now());
             if ([] !== $changed) {
                 $this->recurring->save($recurring);
                 $this->record($company, $recurring->getId(), self::REVISED, ['fields' => $changed], $actorUserId);

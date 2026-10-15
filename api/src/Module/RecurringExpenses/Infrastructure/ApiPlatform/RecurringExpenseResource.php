@@ -18,8 +18,8 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use App\Module\RecurringExpenses\Application\RecurringExpenseModel;
 use App\Module\RecurringExpenses\Domain\RecurringExpense;
-use App\Shared\Domain\ScheduleAnchor;
-use App\Shared\Domain\ScheduleUnit;
+use App\Shared\Infrastructure\ApiPlatform\RequestedSchedule;
+use App\Shared\Infrastructure\ApiPlatform\ScheduleRequest;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -69,7 +69,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
     ],
 )]
-final class RecurringExpenseResource
+final class RecurringExpenseResource implements ScheduleRequest
 {
     public const string READ = 'recurring_expense:read';
     public const string CREATE = 'recurring_expense:create';
@@ -106,7 +106,7 @@ final class RecurringExpenseResource
 
     /** One of day, week, month, year. */
     #[Assert\NotBlank(groups: [self::CREATE, self::REVISE], payload: ['reason' => 'value_required'])]
-    #[Assert\Choice(callback: [self::class, 'units'], groups: [self::CREATE, self::REVISE], payload: ['reason' => 'invalid_value'])]
+    #[Assert\Choice(callback: [RequestedSchedule::class, 'units'], groups: [self::CREATE, self::REVISE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::READ, self::CREATE, self::REVISE])]
     public string $unit = '';
 
@@ -115,7 +115,7 @@ final class RecurringExpenseResource
     public int $every = 1;
 
     /** A month's or a year's day: date, last_day, weekday or last_weekday; null for a day or a week. */
-    #[Assert\Choice(callback: [self::class, 'anchors'], groups: [self::CREATE, self::REVISE], payload: ['reason' => 'invalid_value'])]
+    #[Assert\Choice(callback: [RequestedSchedule::class, 'anchors'], groups: [self::CREATE, self::REVISE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::READ, self::CREATE, self::REVISE])]
     public ?string $anchor = null;
 
@@ -161,18 +161,6 @@ final class RecurringExpenseResource
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
     public ?string $lastExpenseId = null;
-
-    /** @return list<string> */
-    public static function units(): array
-    {
-        return array_map(static fn (ScheduleUnit $unit): string => $unit->value, ScheduleUnit::cases());
-    }
-
-    /** @return list<string> */
-    public static function anchors(): array
-    {
-        return array_map(static fn (ScheduleAnchor $anchor): string => $anchor->value, ScheduleAnchor::cases());
-    }
 
     public static function of(RecurringExpense $recurring, ?RecurringExpenseModel $model): self
     {

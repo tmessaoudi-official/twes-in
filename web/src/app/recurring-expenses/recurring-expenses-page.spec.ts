@@ -277,7 +277,8 @@ describe('RecurringExpensesPage', () => {
   });
 
   it('names a refused field in its own words, and the rest in the general line', () => {
-    expect(recurringExpenseFailure('monthDay')).toBe('expenses.recurring.errors.monthDay');
+    expect(recurringExpenseFailure('monthDay')).toBe('schedule.errors.monthDay');
+    expect(recurringExpenseFailure('startsOn')).toBe('expenses.recurring.errors.startsOn');
     expect(recurringExpenseFailure('unit')).toBe('expenses.recurring.errors.invalid');
     expect(recurringExpenseFailure(null)).toBe('expenses.recurring.errors.invalid');
   });

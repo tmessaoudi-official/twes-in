@@ -14,12 +14,12 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
 use App\Module\Recurring\Application\ManageRecurringInvoices;
 use App\Module\Recurring\Application\RecurringInvoiceNotFound;
-use App\Module\Recurring\Domain\InvalidRecurringInvoice;
-use App\Module\Recurring\Domain\RecurringFrequency;
+use App\Shared\Domain\InvalidSchedule;
+use App\Shared\Infrastructure\ApiPlatform\DomainRule;
+use App\Shared\Infrastructure\ApiPlatform\RequestedSchedule;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<RecurringInvoiceResource, RecurringInvoiceResource> */
 final readonly class ReviseRecurringInvoiceProcessor implements ProcessorInterface
@@ -36,15 +36,15 @@ final readonly class ReviseRecurringInvoiceProcessor implements ProcessorInterfa
             $recurring = $this->manage->revise(
                 $company,
                 CompanyPath::identifier($uriVariables, 'recurringInvoiceId'),
-                RecurringFrequency::from($data->frequency),
-                RequestedDay::orNull('endsOn', $data->endsOn),
+                RequestedSchedule::of($data),
+                RequestedSchedule::dayOrNull($data->endsOn),
                 $data->paused,
                 $this->guard->account()->getId(),
             );
         } catch (RecurringInvoiceNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
-        } catch (InvalidRecurringInvoice $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+        } catch (InvalidSchedule $refused) {
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, previous: $refused);
         }
 
         return RecurringInvoiceResource::of($recurring, $this->manage->models($company, [$recurring])[$recurring->getModelInvoiceId()->toRfc4122()] ?? null);

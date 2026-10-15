@@ -8,13 +8,19 @@ import type {
   RecurringInvoiceRecurringInvoiceRead,
   RecurringInvoiceRecurringInvoiceReviseValidationRecurringInvoiceRevise as RecurringInvoiceRevise,
 } from '../api/types.gen';
+import { refusalsIn } from '../shared/form/field-refusals';
 import {
-  RECURRING_FREQUENCIES,
-  type RecurringError,
-  type RecurringFrequency,
-  type RecurringInvoiceDraft,
-  type RecurringInvoiceRevision,
-  type RecurringInvoiceRow,
+  SCHEDULE_ANCHORS,
+  SCHEDULE_UNITS,
+  type Schedule,
+  type ScheduleAnchor,
+  type ScheduleUnit,
+} from '../shared/schedule/schedule';
+import type {
+  RecurringError,
+  RecurringInvoiceDraft,
+  RecurringInvoiceRevision,
+  RecurringInvoiceRow,
 } from './recurring-types';
 
 /** Thrown when the API refuses; carries the code the screen translates and, for a 422, the field it was about. */
@@ -46,7 +52,12 @@ export class RecurringApi {
 
   /** Makes an invoice recurring: from its first day on, each occurrence drafts a copy of it. */
   async create(companyId: string, draft: RecurringInvoiceDraft): Promise<RecurringInvoiceRow> {
-    const body: RecurringInvoiceCreate = { ...draft };
+    const body: RecurringInvoiceCreate = {
+      modelInvoiceId: draft.modelInvoiceId,
+      ...flat(draft.schedule),
+      startsOn: draft.startsOn,
+      endsOn: draft.endsOn,
+    };
     try {
       return toRow(
         await firstValueFrom(
@@ -63,7 +74,11 @@ export class RecurringApi {
     id: string,
     revision: RecurringInvoiceRevision,
   ): Promise<RecurringInvoiceRow> {
-    const body: RecurringInvoiceRevise = { ...revision };
+    const body: RecurringInvoiceRevise = {
+      ...flat(revision.schedule),
+      endsOn: revision.endsOn,
+      paused: revision.paused,
+    };
     try {
       return toRow(
         await firstValueFrom(
@@ -91,13 +106,38 @@ export class RecurringApi {
 const path = (companyId: string): string =>
   `/api/companies/${encodeURIComponent(companyId)}/recurring-invoices`;
 
+/** The schedule as the API writes it, flat; a day or a week sends no anchor at all. */
+function flat(
+  schedule: Schedule,
+): Pick<RecurringInvoiceCreate, 'unit' | 'every' | 'anchor' | 'monthDay' | 'ordinal' | 'weekday'> {
+  return {
+    unit: schedule.unit,
+    every: schedule.every,
+    ...(schedule.anchor === null ? {} : { anchor: schedule.anchor }),
+    monthDay: schedule.monthDay,
+    ordinal: schedule.ordinal,
+    weekday: schedule.weekday,
+  };
+}
+
 function toRow(raw: RecurringInvoiceRecurringInvoiceRead): RecurringInvoiceRow {
   return {
     id: raw.id ?? '',
     modelInvoiceId: raw.modelInvoiceId ?? '',
     modelNumber: raw.modelNumber ?? null,
     customerName: raw.customerName ?? '',
-    frequency: frequencyOf(raw.frequency),
+    schedule: {
+      unit: (SCHEDULE_UNITS as readonly string[]).includes(raw.unit ?? '')
+        ? (raw.unit as ScheduleUnit)
+        : 'month',
+      every: raw.every ?? 1,
+      anchor: (SCHEDULE_ANCHORS as readonly string[]).includes(raw.anchor ?? '')
+        ? (raw.anchor as ScheduleAnchor)
+        : null,
+      monthDay: raw.monthDay ?? null,
+      ordinal: raw.ordinal ?? null,
+      weekday: raw.weekday ?? null,
+    },
     startsOn: raw.startsOn ?? '',
     endsOn: raw.endsOn ?? null,
     paused: raw.paused === true,
@@ -107,21 +147,7 @@ function toRow(raw: RecurringInvoiceRecurringInvoiceRead): RecurringInvoiceRow {
   };
 }
 
-function frequencyOf(value: string | undefined): RecurringFrequency {
-  return (RECURRING_FREQUENCIES as readonly string[]).includes(value ?? '')
-    ? (value as RecurringFrequency)
-    : 'monthly';
-}
-
-/** The fields a 422 may be about, as the screens name them in their messages. */
-const FIELDS: Readonly<Record<string, string>> = {
-  modelInvoiceId: 'model_invoice_id',
-  frequency: 'frequency',
-  startsOn: 'starts_on',
-  endsOn: 'ends_on',
-};
-
-/** A 422's detail starts with the field it is about: « startsOn: … »; a field this screen has no words for is none. */
+/** A 422 names its field as the form does (`startsOn`, `monthDay`); a refusal naming none is the form's as a whole. */
 function refused(error: unknown): RecurringRefused {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return new RecurringRefused('network');
@@ -129,7 +155,6 @@ function refused(error: unknown): RecurringRefused {
   if (error.status === 404) {
     return new RecurringRefused('not_found');
   }
-  const detail: unknown = (error.error as { detail?: unknown } | null)?.detail;
-  const named = typeof detail === 'string' ? /^(\w+):/.exec(detail)?.[1] : undefined;
-  return new RecurringRefused('invalid', named === undefined ? null : (FIELDS[named] ?? null));
+  const [first] = refusalsIn(error.error);
+  return new RecurringRefused('invalid', first?.field ?? null);
 }

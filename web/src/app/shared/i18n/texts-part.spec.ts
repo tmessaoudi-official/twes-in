@@ -18,7 +18,7 @@ import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { LanguageFacade } from './language-facade';
 import { PluralCompiler } from './plural-compiler';
-import { textsPart } from './texts-part';
+import { TextsParts, textsOpened, textsPart } from './texts-part';
 
 @Component({
   imports: [TranslatePipe],
@@ -29,9 +29,20 @@ import { textsPart } from './texts-part';
 })
 class PartPage {}
 
+@Component({
+  imports: [TranslatePipe],
+  template: `<p>{{ 'often.every' | translate: { every: 2 } }} · {{ 'shared.yes' | translate }}</p>`,
+})
+class SharedPartPage {}
+
 const ROOT = {
   fr: { shared: { yes: 'Oui' } },
   en: { shared: { yes: 'Yes' } },
+};
+/** Texts several screens and the dialogs over any of them read: a schedule's words, say. */
+const OPENED = {
+  fr: { often: { every: '{every, plural, =1 {Chaque mois} other {Tous les {{every}} mois}}' } },
+  en: { often: { every: '{every, plural, =1 {Every month} other {Every {{every}} months}}' } },
 };
 const PART = {
   fr: {
@@ -72,7 +83,10 @@ describe('textsPart', () => {
           loader: provideTranslateHttpLoader({ prefix: '/i18n/', suffix: '.json' }),
           compiler: provideTranslateCompiler(PluralCompiler),
         }),
-        provideRouter([{ path: 'part', ...textsPart('part'), component: PartPage }]),
+        provideRouter([
+          { path: 'part', ...textsPart('part'), component: PartPage },
+          { path: 'shared', canActivate: [textsOpened('shared-part')], component: SharedPartPage },
+        ]),
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: Session, useValue: { me: () => null } },
@@ -155,5 +169,45 @@ describe('textsPart', () => {
 
   it('does not load the page’s texts while the page is not opened', () => {
     http.expectNone('/i18n/part/fr.json');
+    http.expectNone('/i18n/shared-part/fr.json');
+  });
+
+  it('opens texts several screens read into the root, once, before what reads them shows', async () => {
+    const parts = TestBed.inject(TextsParts);
+    const root = TestBed.inject(TranslateService);
+    const first = parts.open('shared-part');
+    const again = parts.open('shared-part');
+    await settled();
+    http.expectOne('/i18n/shared-part/fr.json').flush(OPENED.fr);
+    await Promise.all([first, again]);
+
+    // A dialog over any screen translates through the root.
+    expect(root.instant('often.every', { every: 2 })).toBe('Tous les 2 mois');
+
+    // A route that reads them waits for them; already open, nothing is fetched again.
+    await TestBed.inject(Router).navigateByUrl('/shared');
+    harness.detectChanges();
+    expect(text()).toBe('Tous les 2 mois · Oui');
+  });
+
+  it('has the opened texts in the new language once the language changes', async () => {
+    const navigation = TestBed.inject(Router).navigateByUrl('/shared');
+    await settled();
+    await settled();
+    http.expectOne('/i18n/shared-part/fr.json').flush(OPENED.fr);
+    await navigation;
+    harness.detectChanges();
+
+    const switching = TestBed.inject(LanguageFacade).use('en');
+    for (const url of ['/i18n/shared-part/en.json', '/i18n/en.json']) {
+      await settled();
+      for (const request of http.match(url)) {
+        request.flush(url === '/i18n/en.json' ? ROOT.en : OPENED.en);
+      }
+    }
+    await switching;
+    harness.detectChanges();
+
+    expect(text()).toBe('Every 2 months · Yes');
   });
 });
