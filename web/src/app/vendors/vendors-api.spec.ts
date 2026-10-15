@@ -145,6 +145,18 @@ describe('VendorsApi', () => {
       .expectOne('/api/companies/c1/vendors')
       .flush(null, { status: 422, statusText: 'Unprocessable Content' });
     await expect(refused).rejects.toEqual(new VendorsRefused('invalid'));
+
+    const named = api.createVendor('c1', sotumag);
+    http.expectOne('/api/companies/c1/vendors').flush(
+      {
+        violations: [{ propertyPath: 'iban', message: 'x', payload: { reason: 'invalid_iban' } }],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(named).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'iban', reason: 'invalid_iban', params: {} }],
+    });
   });
 
   it("reads the form's options", async () => {

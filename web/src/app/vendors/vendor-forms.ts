@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import type {
   FieldValue,
   FormDescriptor,
@@ -18,7 +19,8 @@ import type {
 } from './vendors-types';
 
 const FIELDS = 'vendors.fields';
-const IDENTIFIER_PREFIX = 'identifier__';
+/** A registration number's field, where a refusal of it is said too. */
+const IDENTIFIER_PREFIX = IDENTIFIER_FIELD_PREFIX;
 
 export const VENDORS_LIST: ListDescriptor<VendorRow> = {
   id: 'vendors',

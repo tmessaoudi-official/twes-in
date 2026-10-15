@@ -204,6 +204,17 @@ describe('CustomersFacade', () => {
     expect(facade.error()).toBe('number_taken');
   });
 
+  it('keeps the fields a save was refused on until the next save', async () => {
+    const email = { field: 'email', reason: 'invalid_email', params: {} };
+    api.reviseCustomer.mockRejectedValueOnce(new CustomersRefused('invalid', [email]));
+    expect(await facade.reviseCustomer('c1', 'k1', input)).toBeNull();
+    expect(facade.refusals()).toEqual([email]);
+
+    api.reviseCustomer.mockResolvedValueOnce(amel);
+    await facade.reviseCustomer('c1', 'k1', input);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it('reads the groups again after deleting one, and keeps a group still in use', async () => {
     api.deleteGroup.mockResolvedValueOnce(undefined);
     api.groups.mockResolvedValue([]);

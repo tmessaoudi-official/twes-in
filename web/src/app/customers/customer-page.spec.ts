@@ -6,6 +6,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter, Router } from '@angular/router';
 import {
@@ -59,6 +60,13 @@ class StaticLoader implements TranslateLoader {
         contacts: { remove_message: '{{name}} sera retiré de ce client.' },
       },
       live: { changed_by: '{{name}} a modifié cette fiche pendant votre saisie.' },
+      import: {
+        rejections: {
+          invalid_email: 'E-mail refusé.',
+          identifier_checksum: 'Ce numéro d’immatriculation est mal formé.',
+          invalid_value: 'Valeur refusée.',
+        },
+      },
     });
   }
 }
@@ -108,6 +116,7 @@ const leila: ContactRow = {
 
 describe('CustomerPage', () => {
   const error = signal<CustomersError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const customer = signal<CustomerRow | null>(null);
   const customFields = signal<readonly CustomFieldDefinition[]>([]);
   const optionsSignal = signal<CustomerOptions | null>(options);
@@ -118,6 +127,7 @@ describe('CustomerPage', () => {
     contacts: signal<readonly ContactRow[]>([leila]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadCustomer: vi.fn(),
     createCustomer: vi.fn(),
     reviseCustomer: vi.fn(),
@@ -236,6 +246,7 @@ describe('CustomerPage', () => {
   beforeEach(() => {
     heard = [];
     error.set(null);
+    refusals.set([]);
     customer.set(null);
     customFields.set([]);
     optionsSignal.set(options);
@@ -706,6 +717,28 @@ describe('CustomerPage', () => {
     await settle();
 
     expect((q('field-email') as HTMLInputElement).value).toBe('contact@hannibal.tn');
+  });
+
+  it('says each field the API refused on that field, and puts the person on the first', async () => {
+    customer.set(carthage);
+    await open('k1');
+    facade.reviseCustomer.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'identifier__matricule_fiscal', reason: 'identifier_checksum', params: {} },
+        { field: 'email', reason: 'invalid_email', params: {} },
+      ]);
+      return null;
+    });
+
+    type('field-email', 'nobody@nowhere');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(q('field-error-identifier__matricule_fiscal')?.textContent).toContain('mal formé');
+    expect(q('field-error-email')?.textContent).toContain('E-mail refusé.');
+    expect(document.activeElement).toBe(q('field-identifier__matricule_fiscal'));
   });
 
   it('says why the API refused', async () => {

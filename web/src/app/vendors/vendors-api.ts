@@ -13,6 +13,7 @@ import type {
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
+import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import type {
   VendorInput,
   VendorOptions,
@@ -24,7 +25,11 @@ import { stepUpAsked } from '../shared/step-up/step-up-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class VendorsRefused extends Error {
-  constructor(readonly code: VendorsError) {
+  constructor(
+    readonly code: VendorsError,
+    /** Each field a save was refused on, when the API named them. */
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -101,7 +106,7 @@ export class VendorsApi {
     try {
       return await call();
     } catch (error) {
-      throw new VendorsRefused(codeOf(error));
+      throw new VendorsRefused(codeOf(error), refusalsOf(error));
     }
   }
 }
@@ -187,4 +192,9 @@ function toOptions(raw: VendorOptionsVendorOptionsRead): VendorOptions {
     expenseCategories:
       raw.expenseCategories?.map(({ id, name, active }) => ({ id, name, active })) ?? null,
   };
+}
+
+/** The fields a save was refused on, read from a 422's body only. */
+function refusalsOf(error: unknown): readonly FieldRefusal[] {
+  return error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
 }

@@ -111,6 +111,17 @@ describe('VendorsFacade', () => {
     expect([facade.error(), facade.vendor()]).toEqual([null, sotumag]);
   });
 
+  it('keeps the fields a save was refused on until the next save', async () => {
+    const iban = { field: 'iban', reason: 'invalid_iban', params: {} };
+    api.reviseVendor.mockRejectedValueOnce(new VendorsRefused('invalid', [iban]));
+    expect(await facade.reviseVendor('c1', 'v1', input)).toBeNull();
+    expect(facade.refusals()).toEqual([iban]);
+
+    api.reviseVendor.mockResolvedValueOnce(sotumag);
+    await facade.reviseVendor('c1', 'v1', input);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   // docs/SPEC.md § 7, the step-up list: where a vendor's bank details are paid to changes, the API waits for the proof.
   it('asks for the proof the API wants, then keeps the vendor with its new bank details', async () => {
     stepUp.request.mockReset().mockResolvedValue(true);

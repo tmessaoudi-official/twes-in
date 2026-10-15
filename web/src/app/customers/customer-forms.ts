@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import {
   customFieldInput,
   customFieldValues,
@@ -34,7 +35,8 @@ import {
 } from './customers-types';
 
 const FIELDS = 'customers.fields';
-const IDENTIFIER_PREFIX = 'identifier__';
+/** A registration number's field, where a refusal of it is said too. */
+const IDENTIFIER_PREFIX = IDENTIFIER_FIELD_PREFIX;
 const PHONE_PATTERN = '\\+?[0-9 ().\\-]{3,40}';
 
 /** A customer as the list shows it: with the name of its group rather than the group's id. */

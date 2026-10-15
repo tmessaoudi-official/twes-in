@@ -125,6 +125,33 @@ test("a customer in a group inherits the group's payment terms and gets a contac
 });
 
 // docs/SPEC.md § 7, 2026-09-26, row 139: a customer just created offers its next step, a new invoice naming them.
+test('an e-mail the browser takes and the API refuses is said under the field, in the words a file is refused with', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const number = `E2E-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  try {
+    await page.goto('/customers/new');
+    await page.getByTestId('field-number').fill(number);
+    await page.getByTestId('field-name').fill(`Refus ${run}`);
+    await page.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
+    // An address with no dot in its domain: the browser's rule takes it, the API's does not.
+    await page.getByTestId('field-email').fill('compta@carthage');
+    await page.getByTestId('record-save').click();
+
+    await expect(page.getByTestId('field-error-email')).toHaveText('E-mail refusé.');
+    await expect(page.getByTestId('field-email')).toBeFocused();
+    await expect(page).toHaveURL(/\/customers\/new$/);
+
+    await page.getByTestId('field-email').fill('compta@carthage.tn');
+    await expect(page.getByTestId('field-error-email')).toHaveCount(0);
+  } finally {
+    await retire(page, number, `no group ${run}`);
+  }
+});
+
 test('« Facturer ce client » from a customer just created opens a new invoice for them', async ({
   page,
 }) => {

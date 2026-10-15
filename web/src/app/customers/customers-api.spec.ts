@@ -116,7 +116,33 @@ describe('CustomersApi', () => {
     const request = http.expectOne('/api/companies/c1/customers/k1');
     expect(request.request.method).toBe('PUT');
     request.flush({ detail: 'taxRegime: no' }, { status: 422, statusText: 'Unprocessable' });
-    await expect(refused).rejects.toMatchObject({ code: 'invalid' });
+    await expect(refused).rejects.toMatchObject({ code: 'invalid', refusals: [] });
+  });
+
+  it('carries each field a save was refused on, as the API named it', async () => {
+    const refused = api.createCustomer('c1', carthage);
+    http.expectOne('/api/companies/c1/customers').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'identifiers.matricule_fiscal',
+            message: 'This matricule_fiscal fails its check digits.',
+            payload: { reason: 'identifier_checksum', params: { identifier: 'matricule_fiscal' } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [
+        {
+          field: 'identifier__matricule_fiscal',
+          reason: 'identifier_checksum',
+          params: { identifier: 'matricule_fiscal' },
+        },
+      ],
+    });
   });
 
   it('names the file of what the list shows, with its words, choices and order and no page', () => {
