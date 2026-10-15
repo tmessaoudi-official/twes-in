@@ -15,6 +15,7 @@ import type { LoginError } from './auth-types';
 import { PasskeyClient } from './passkey-client';
 import { SignedOutLayout } from './signed-out-layout';
 import { PasswordToggle } from '../shared/form/password-toggle';
+import { returnAddress } from '../shared/session/return-to';
 
 @Component({
   selector: 'app-login-page',
@@ -49,6 +50,8 @@ export class LoginPage {
   });
   /** `?expired=1`: the shell sent the person here because their session ended while a page was open. */
   readonly expired = input<string>();
+  /** `?returnTo=`: the page to open once signed in, kept only when it is a page of this app. */
+  readonly returnTo = input<string>();
   protected readonly step = signal<'password' | 'code'>('password');
   protected readonly submitting = signal(false);
   protected readonly error = signal<LoginError | null>(null);
@@ -73,7 +76,7 @@ export class LoginPage {
     const outcome = await this.auth.login(this.form.getRawValue());
     this.submitting.set(false);
     if (outcome.status === 'signed_in') {
-      await this.router.navigateByUrl('/');
+      await this.router.navigateByUrl(returnAddress(this.returnTo()) ?? '/');
       return;
     }
     this.form.controls.password.reset();
@@ -95,7 +98,7 @@ export class LoginPage {
     const outcome = await this.auth.verifySecondFactor(this.codeForm.controls.code.value.trim());
     this.submitting.set(false);
     if (outcome.status === 'signed_in') {
-      await this.router.navigateByUrl('/');
+      await this.router.navigateByUrl(returnAddress(this.returnTo()) ?? '/');
       return;
     }
     this.codeForm.reset();
@@ -118,7 +121,7 @@ export class LoginPage {
     const outcome = await this.auth.signInWithPasskey();
     this.submitting.set(false);
     if (outcome.status === 'signed_in') {
-      await this.router.navigateByUrl('/');
+      await this.router.navigateByUrl(returnAddress(this.returnTo()) ?? '/');
       return;
     }
     if (outcome.status === 'refused') {

@@ -19,16 +19,19 @@ test('an unauthenticated visitor is sent to the login page', async ({ page }) =>
 
 test('login, hello page, logout', async ({ page }) => {
   test.setTimeout(90_000);
-  await page.goto('/login');
+  // A page asked for before signing in is the one signing in opens, as a mailed link to a record would be.
+  await page.goto('/customers');
+  await expect(page).toHaveURL(/\/login\?returnTo=%2Fcustomers$/);
   // The second operator: its code leaves the shared one's five in five minutes to the proofs (session.ts).
   await page.getByTestId('email').fill(CODES_OPERATOR_EMAIL);
   await page.getByTestId('password').fill(PASSWORD);
   await page.getByTestId('submit').click();
   // An operator must carry a second factor, so the password alone leads to the code step.
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/login\?returnTo=%2Fcustomers$/);
   await enterOperatorCode(page);
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/customers$/);
+  await page.goto('/');
   await expect(page.getByTestId('greeting')).toContainText('Bonjour, Operator');
   await expect(page.getByTestId('company-name')).toHaveText('Demo');
   await expect(page.getByTestId('company-line')).toContainText('propriétaire');

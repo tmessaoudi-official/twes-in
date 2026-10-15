@@ -11,6 +11,7 @@ import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { type StepUpOutcome, StepUpProof } from './step-up-proof';
 import { PasswordToggle } from '../form/password-toggle';
+import { signInAddress } from '../session/return-to';
 
 /** What the dialog is opened with: the translation key of the sentence saying why it asks. */
 export interface StepUpReason {
@@ -120,7 +121,7 @@ export class StepUpDialog {
       else if (outcome === 'signed_out') {
         // The session is over: what the dialog guarded is gone with it, so the sign-in says why.
         this.ref.close(false);
-        void this.router.navigateByUrl('/login?expired=1');
+        void this.router.navigateByUrl(signInAddress(this.router.url, true));
       } else this.problem.set(outcome);
     } finally {
       this.busy.set(false);

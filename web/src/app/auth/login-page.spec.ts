@@ -215,6 +215,27 @@ describe('LoginPage', () => {
     expect(query('login-error')).toBeNull();
   });
 
+  it.each([
+    ['/invoices/i1?tab=lines', '/invoices/i1?tab=lines'],
+    ['//evil.example', '/'],
+    ['https://evil.example', '/'],
+  ])(
+    'returns to %s as %s: the page the person was sent from, home for anything outside the app',
+    async (returnTo, landing) => {
+      const { fixture, http, query } = await render();
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      fixture.componentRef.setInput('returnTo', returnTo);
+      type(query<HTMLInputElement>('email')!, 'owner@example.test');
+      type(query<HTMLInputElement>('password')!, 'pw');
+      query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
+      await fixture.whenStable();
+      http.expectOne('/api/auth/login').flush(me);
+      await settle(fixture);
+
+      expect(navigate).toHaveBeenCalledWith(landing);
+    },
+  );
+
   it('shows the API refusal and clears the password', async () => {
     const { fixture, http, query } = await render();
     type(query<HTMLInputElement>('email')!, 'owner@example.test');
