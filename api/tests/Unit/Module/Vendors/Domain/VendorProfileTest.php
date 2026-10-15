@@ -39,16 +39,20 @@ final class VendorProfileTest extends TestCase
                 new VendorProfile('Sotumag', paymentTermsDays: $days);
                 self::fail("$days days were accepted");
             } catch (InvalidVendor $refused) {
-                self::assertSame('paymentTermsDays', $refused->field);
+                self::assertSame(['paymentTermsDays', 'invalid_payment_terms'], [$refused->field, $refused->reason]);
             }
         }
     }
 
     public function testAVendorIsNamed(): void
     {
-        $this->expectExceptionObject(new InvalidVendor('name', 'A vendor is named in 1 to 200 characters.'));
-
-        new VendorProfile('   ');
+        try {
+            new VendorProfile('   ');
+            self::fail('a vendor with no name was accepted');
+        } catch (InvalidVendor $refused) {
+            self::assertSame(['name', 'A vendor is named in 1 to 200 characters.'], [$refused->field, $refused->getMessage()]);
+            self::assertSame(['invalid_text', ['min' => 1, 'max' => VendorProfile::NAME_MAX]], [$refused->reason, $refused->params], 'said as the import says a text it refuses');
+        }
     }
 
     public function testDifferencesNameTheFieldsInDeclarationOrder(): void

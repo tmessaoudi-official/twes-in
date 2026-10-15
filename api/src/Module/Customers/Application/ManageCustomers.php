@@ -159,7 +159,7 @@ final readonly class ManageCustomers
                 throw new InvalidCustomer('defaultTaxComponentIds', \sprintf('No active tax of this company has the id %s.', $taxId->toRfc4122()), 'unknown_tax', ['id' => $taxId->toRfc4122()]);
             }
             if (\in_array($tax->getFamily(), $regime->getExcludedFamilies(), true)) {
-                throw new InvalidCustomer('defaultTaxComponentIds', \sprintf('The %s regime does not charge %s.', $regime->getCode(), $tax->getCode()), 'regime_excludes_tax', ['regime' => $regime->getCode(), 'tax' => $tax->getCode()]);
+                throw new InvalidCustomer('defaultTaxComponentIds', \sprintf('The %s regime does not charge %s.', $regime->getCode(), $tax->getCode()), 'regime_excludes_tax', ['tax' => $tax->getName()]);
             }
         }
 

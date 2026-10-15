@@ -3671,7 +3671,7 @@
       "unknown_tax_regime": "Unknown regime: pick one from the list.",
       "unknown_group_id": "This group no longer exists: pick another one.",
       "unknown_tax": "This tax no longer exists, or is no longer active.",
-      "regime_excludes_tax": "The {{regime}} regime does not charge {{tax}}."
+      "regime_excludes_tax": "This regime does not charge the « {{tax}} » tax."
     },
     "action": "Import",
     "notes_title": "Good to know",
