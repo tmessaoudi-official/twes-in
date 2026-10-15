@@ -320,3 +320,7 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
 - No gate checks that a template's `'…' | translate` literal names a key that exists: the stock map's repeat panel
   translated a bare `cancel` and showed the word « cancel » (fixed with the « Annuler » wording; a sweep found no
   other). A gate for the class is deferred.
+- A quote classé sans suite keeps the title « Devis en brouillon » beside its « Classé sans suite » chip, and its
+  read-only line (`quote-fixed`) was not seen in the capture right after classing it (`var/claude/annuler/
+  quote-classed.png`; it may sit under the toast). Not caused by the wording change; no spec renders the line for a
+  voided quote. « Classé sans suite » on a phone card is not checked either.
