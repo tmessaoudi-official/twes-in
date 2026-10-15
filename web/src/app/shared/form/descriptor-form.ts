@@ -18,6 +18,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { type Subscription, take } from 'rxjs';
 import { FormatFacade } from '../i18n/format-facade';
 import { DecimalInput } from './decimal-input';
 import { ColourField } from './colour-field';
@@ -239,10 +240,22 @@ export class DescriptorForm {
       control.setErrors({ refused: error });
       control.markAsTouched();
     }
+    // A refusal is often mended in another field (the regime, for taxes it does not charge): the first change
+    // anywhere lets the next save ask the API again rather than holding it on what it last said.
+    this.refusalsCleared?.unsubscribe();
+    this.refusalsCleared = form.valueChanges.pipe(take(1)).subscribe(() => {
+      for (const control of Object.values(form.controls)) {
+        if (control.hasError('refused')) control.updateValueAndValidity();
+      }
+      this.revision.update((revision) => revision + 1);
+    });
     this.revision.update((revision) => revision + 1);
     this.focusFirstInvalid();
     return unplaced;
   }
+
+  /** Drops what the API last refused at the form's next change. */
+  private refusalsCleared: Subscription | null = null;
 
   private focusFirstInvalid(): void {
     const first = this.descriptor()
