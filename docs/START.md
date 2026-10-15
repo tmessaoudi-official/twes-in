@@ -432,6 +432,19 @@ make check FIX=1      # the same, php-cs-fixer, prettier and eslint rewriting wh
   Vitest skipped or a PHPUnit that ran nothing fails it, though the tool exited 0. Like a bare `ng test`, it needs the
   icon font generated once on a fresh clone (below).
 
+`make mutants SPEC=<file>` asks whether a test notices its guarantee broken (`scripts/mutants/mutants.sh`, whose header
+says how a spec reads: a name, the file, the test, the text and its replacement). Each mutant is written in, its test
+run, and the file put back byte for byte; the summary says which were killed, survived, did not land, or were invalid.
+
+- A mutant is killed only when a test case failed. One that does not parse (`php -l`, `bash -n`), or whose test died
+  before its tally (a TypeScript error, a fatal), tested nothing and is INVALID; a PHPUnit error is told apart from a
+  failure. Every test runs once unmutated first, and a red one refuses the run.
+- The spec lives in the tree (under `var/`, say), the only place both toolchains see. Until a file is back, its copy
+  waits in `var/mutants/`: a run killed from outside leaves it there, and the next run prints the line restoring it.
+- Never run it beside a gate or `make check`, which read the files it mutates. Under `make up` the live stack serves
+  each mutant while it is in place: use neither the app nor `make e2e` during a run. A mutated migration mutates its
+  `down()` too: migrate the test database down first, by hand.
+
 - **Stage new files before running the gates** (`git add`): the SPDX and executable-bit gates read `git ls-files`.
 - After changing an API resource, run `make tools CMD='cd api && bin/console cache:clear && bin/console cache:pool:clear --all'`
   before `make gate-web`, or the OpenAPI export is stale.

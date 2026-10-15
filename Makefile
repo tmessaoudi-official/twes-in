@@ -31,7 +31,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -140,6 +140,10 @@ check: tools-image web-tools-image
 	@# scripts/check/check.sh says which tool takes which file; a toolchain with nothing to check is not started.
 	@CHECK_TOOLS='$(TOOLS)' CHECK_WEB_TOOLS='$(WEB_TOOLS)' CHECK_NPM_INSTALL='$(NPM_INSTALL)' bash scripts/check/check.sh host $(if $(FIX),--fix) $(FILES)
 
+mutants:       ## SPEC=<file in the tree>: each mutant written in, its test run, the file put back byte for byte (scripts/mutants/mutants.sh says how a spec reads); never beside a gate or make check
+mutants: tools-image web-tools-image
+	@MUTANTS_TOOLS='$(TOOLS)' MUTANTS_WEB_TOOLS='$(WEB_TOOLS)' MUTANTS_NPM_INSTALL='$(NPM_INSTALL)' bash scripts/mutants/mutants.sh host $(SPEC)
+
 gate:          ## everything CI checks except e2e: the api half, the web half, then the licences
 	@# One after the other: side by side, each suite taking every processor, 41 web specs timed out at a load of 15 on 8
 	@# processors; given half each, one still did, and the whole took as long as in turn (about 15 minutes either way).
@@ -186,6 +190,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/live-reload.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/stored-items.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/check.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/mutants.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh

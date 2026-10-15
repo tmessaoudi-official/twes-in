@@ -242,6 +242,7 @@ those three is needed. Run them through `make`, which hands compose the uid, the
 |---|---|---|
 | `make gate` (`gate-licences`, `gate-api`, `gate-web`) | `tools`, `web-tools` | `make gate` on host PHP and Node |
 | `make check` (`FILES=…`, `FIX=1`) | `tools`, `web-tools` | running php-cs-fixer, PHPStan, PHPUnit, prettier, eslint or `ng test` by hand on the files just changed; `make gate` stays the authority |
+| `make mutants SPEC=…` | `tools`, `web-tools` | applying a sabotage by hand, running its test and restoring the file; it reads each tool's tally, so a mutant that does not compile is INVALID, not killed |
 | `make gate-licences` | `tools` | the gate chain's `php` and `bash` lines, with `logrotate`, `jq`, `perl`, `python3`, `docker` |
 | `make gate-stamps` | `tools` | `bash scripts/gates/decision-stamps.sh` alone; CI's `decision-stamps` workflow runs it on a push touching `docs/SPEC.md`, which `ci.yml` skips |
 | `make gate-api`, `make test-api` | `tools` (+ compose `postgres`) | `cd api && composer gate`, `vendor/bin/phpunit` |
