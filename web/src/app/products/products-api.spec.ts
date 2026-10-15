@@ -443,9 +443,13 @@ describe('ProductsApi', () => {
       },
       { status: 422, statusText: 'Unprocessable' },
     );
-    await expect(kept).rejects.toMatchObject({ code: 'tracking_kept' });
+    // The field says why; the form's own line is the one every refused field shares.
+    await expect(kept).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'tracking', reason: 'tracking_kept_by_stock', params: {} }],
+    });
 
-    // A service is never tracked: refused on the same field, it is not stock that keeps it.
+    // A service is never tracked: refused on the same field for another reason.
     const service = api.createProduct('c1', { ...laptop, kind: 'service', tracking: 'lot' });
     http.expectOne('/api/companies/c1/products').flush(
       {

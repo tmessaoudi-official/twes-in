@@ -2057,8 +2057,7 @@
       "name_taken": "Another category already has this name.",
       "in_use": "The category still holds subcategories or products.",
       "invalid": "The change was refused. Check the unit, the prices and the taxes.",
-      "barcode_taken": "This code already belongs to another article.",
-      "tracking_kept": "Stock of this article has already moved: it keeps the tracking it moved under."
+      "barcode_taken": "This code already belongs to another article."
     },
     "categories": {
       "title": "Product categories",
@@ -3652,6 +3651,7 @@
       "identifier_required": "This registration number is required under this regime.",
       "identifier_shape": "This registration number is not of the expected shape.",
       "identifier_checksum": "This registration number is misshapen: its check digit does not come out.",
+      "unknown_identifier": "This country has no “{{identifier}}” number.",
       "barcode_taken": "This barcode is already “{{reference}}”’s: a code names one product only.",
       "unit_kept_by_stock": "Stock of this product already moved in “{{unit}}”: it keeps that unit.",
       "kind_kept_by_stock": "Stock of this product already moved: it stays goods.",

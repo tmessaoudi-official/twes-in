@@ -493,10 +493,7 @@ function codeOf(error: unknown, conflict: ProductsError): ProductsError {
     case 409:
       return conflict;
     default:
-      // Stock that has moved keeps a product's tracking: the screen says so as a whole, not under the field.
-      return refusalsIn(error.error).some(({ reason }) => reason === 'tracking_kept_by_stock')
-        ? 'tracking_kept'
-        : 'invalid';
+      return 'invalid';
   }
 }
 
