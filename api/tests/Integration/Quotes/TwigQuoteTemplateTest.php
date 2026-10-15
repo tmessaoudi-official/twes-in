@@ -85,4 +85,40 @@ final class TwigQuoteTemplateTest extends KernelTestCase
         self::assertMatchesRegularExpression('#<p data-testid="savings">Vous économisez 42,50 HT grâce aux remises\.</p>#u', $html);
         self::assertMatchesRegularExpression('#data-testid="quantities">Quantités\x{00A0}: 3 pièce</p>#u', $html);
     }
+
+    /** The customer's exemption is stated with the article the company gives, and not at all while it gives none. */
+    public function testTheCustomersExemptionMentionPrintsWithItsReference(): void
+    {
+        self::bootKernel();
+        $now = new \DateTimeImmutable('2026-10-07 09:00:00');
+        $units = new InMemoryUnits();
+        $taxes = new InMemoryTaxComponents();
+        $establishments = new InMemoryEstablishments();
+        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new MockClock($now))->handle($company);
+        $customer = Customer::create($company, 'CLI-0008', new CustomerProfile(CustomerKind::Company, 'Clinique Pasteur'), null, new CustomerTaxRegime('FR', 'exempt', 'fiscal.regime.exempt', [], 'fiscal.mention.fr.exempt', 0, $now), [], $now);
+        $unit = $units->ofCodeInCompany('C62', $company->getId());
+        self::assertNotNull($unit);
+        $quote = Quote::create($company, $establishments->ofCompany($company->getId())[0], $customer, new QuoteHeader(), [
+            new QuoteLineDetails(null, 'Soins', '1', $unit, '80', null, []),
+        ], $now);
+        $totals = new QuoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
+        $page = static fn (?string $reference): QuotePage => new QuotePage(
+            $quote,
+            $totals->of($quote),
+            CustomerSnapshot::of($customer),
+            SellerSnapshot::of($company, $quote->getEstablishment()),
+            QuotePage::DRAFT,
+            'fr',
+            '',
+            false,
+            exemptionReference: $reference,
+        );
+        $template = static::getContainer()->get(QuoteTemplate::class);
+
+        self::assertStringContainsString('<p class="mention">Exonération de TVA, article 261-4-1° du CGI.</p>', $template->html($page('article 261-4-1° du CGI')));
+        $without = $template->html($page(null));
+        self::assertStringNotContainsString('Exonération de TVA', $without);
+        self::assertStringNotContainsString('%reference%', $without);
+    }
 }

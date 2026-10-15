@@ -26,7 +26,7 @@ final readonly class DeliveryNotePrint
     ) {
     }
 
-    /** @return array<string, string|bool> */
+    /** @return array<string, string|bool|null> */
     public function toArray(): array
     {
         return ['language' => $this->language, 'showPrices' => $this->showPrices, 'receptionBlock' => $this->receptionBlock] + $this->print->toArray();

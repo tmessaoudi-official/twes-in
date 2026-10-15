@@ -49,6 +49,8 @@ final readonly class DeliveryNotePage
         /** The layout and accent it prints in: as validation kept them, or the company's today for a draft. */
         public DocumentDesign $design = new DocumentDesign(),
         public array $quantities = [],
+        /** What fills the customer's exemption mention, `%reference%`; null leaves a mention that needs it unprinted. */
+        public ?string $exemptionReference = null,
     ) {
     }
 }

@@ -19,7 +19,7 @@ final class PrintSettingsTest extends TestCase
 {
     public function testEveryChoiceSurvivesBeingStoredAndRead(): void
     {
-        $print = new PrintSettings('Merci', 'ymd', 'dot-comma', true, true, new DocumentDesign(DocumentLayout::Compact, '#2da44e'), true);
+        $print = new PrintSettings('Merci', 'ymd', 'dot-comma', true, true, new DocumentDesign(DocumentLayout::Compact, '#2da44e'), true, 'article 261-4-1° du CGI');
 
         self::assertEquals($print, PrintSettings::fromArray($print->toArray()));
     }
@@ -30,14 +30,15 @@ final class PrintSettingsTest extends TestCase
 
         self::assertFalse(PrintSettings::fromArray($older)->howToPay);
         self::assertFalse(PrintSettings::fromArray($older)->savingsLine);
+        self::assertNull(PrintSettings::fromArray($older)->exemptionReference, 'a quote sent before it was kept states no exemption it cannot fill');
         self::assertEquals(new DocumentDesign(), PrintSettings::fromArray($older)->design, 'and printed the classic way');
     }
 
     public function testADeliveryNoteDropsTheBlockAndKeepsTheRest(): void
     {
-        $print = new PrintSettings('Merci', 'ymd', 'dot-comma', true, true, new DocumentDesign(DocumentLayout::Modern, '#1f6feb'), true);
+        $print = new PrintSettings('Merci', 'ymd', 'dot-comma', true, true, new DocumentDesign(DocumentLayout::Modern, '#1f6feb'), true, 'article 5');
 
-        self::assertEquals(new PrintSettings('Merci', 'ymd', 'dot-comma', true, false, new DocumentDesign(DocumentLayout::Modern, '#1f6feb'), true), $print->withoutHowToPay());
+        self::assertEquals(new PrintSettings('Merci', 'ymd', 'dot-comma', true, false, new DocumentDesign(DocumentLayout::Modern, '#1f6feb'), true, 'article 5'), $print->withoutHowToPay());
     }
 
     public function testWhatTheDiscountsSaveIsPrintedOnlyWhenAskedAndSomethingIsTakenOff(): void
