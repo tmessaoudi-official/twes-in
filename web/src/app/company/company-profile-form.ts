@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import type { FormDescriptor, FormField, FormSection, FormValues } from '../shared/form/form-types';
 import type { CompanyProfile, CompanyProfileChanges } from './company-types';
 
@@ -20,7 +21,8 @@ const TEXT_FIELDS = [
   'latePenaltyText',
 ] as const;
 
-const IDENTIFIER_PREFIX = 'identifier__';
+/** A registration number's field, where a refusal of it is said too. */
+const IDENTIFIER_PREFIX = IDENTIFIER_FIELD_PREFIX;
 const IDENTIFIER_MAX_LENGTH = 64;
 
 const label = (id: string): string => `company.profile.fields.${id}`;

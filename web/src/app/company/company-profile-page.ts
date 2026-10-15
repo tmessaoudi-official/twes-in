@@ -191,6 +191,10 @@ export class CompanyProfilePage implements OnInit {
     if (await this.facade.save(companyId, profileChanges(profile, values))) {
       this.revision.update((revision) => revision + 1);
       this.feedback.success('company.profile.saved');
+    } else {
+      // Each field the API refused said on that field; the line above the form stays for what it says as a whole.
+      const refused = this.facade.refusals();
+      if (refused.length > 0) this.mainForm()?.showRefused(refused);
     }
   }
 }

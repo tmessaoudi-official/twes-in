@@ -125,6 +125,28 @@ final class CompanyProfileTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
+    /** The form's rules and the preset's answer one shape, under the reasons a file is refused with. */
+    public function testARefusalNamesItsFieldAndAReasonTheScreenTranslates(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+
+        foreach ([
+            'email' => [['email' => 'nobody@nowhere'], 'invalid_email', []],
+            'legalName' => [['legalName' => str_repeat('a', 201)], 'invalid_legal_name', []],
+            'addressLine1' => [['addressLine1' => str_repeat('a', 201)], 'invalid_text', ['max' => 200]],
+            'invoiceFooterText' => [['invoiceFooterText' => str_repeat('a', 2001)], 'invalid_text', ['max' => 2000]],
+            'iban' => [['iban' => 'TN00 1234'], 'invalid_iban', []],
+            'identifiers[matricule_fiscal]' => [['identifiers' => ['matricule_fiscal' => str_repeat('1', 65)]], 'identifier_shape', []],
+            'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '1234567']], 'identifier_shape', ['identifier' => 'matricule_fiscal']],
+            'vatRegime' => [['vatRegime' => 'franchise'], 'unknown_tax_regime', ['code' => 'franchise']],
+        ] as $field => [$change, $reason, $params]) {
+            $this->sendJson('PUT', $this->path(), $this->profile($change));
+
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals(), $field);
+        }
+    }
+
     public function testAReaderMayNotReviseTheProfile(): void
     {
         $this->signedIn(['company.read']);

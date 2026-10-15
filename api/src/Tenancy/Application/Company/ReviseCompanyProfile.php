@@ -46,7 +46,7 @@ final readonly class ReviseCompanyProfile
         $preset = $this->presets->get($company->getFiscalPreset());
 
         if (!\in_array($profile->vatRegime, array_map(static fn ($regime): string => $regime->code, $preset->companyVatRegimes), true)) {
-            throw new InvalidCompanyProfile('vatRegime', \sprintf('The %s preset offers companies no VAT regime "%s".', $preset->country, $profile->vatRegime));
+            throw new InvalidCompanyProfile('vatRegime', \sprintf('The %s preset offers companies no VAT regime "%s".', $preset->country, $profile->vatRegime), 'unknown_tax_regime', ['code' => $profile->vatRegime]);
         }
 
         if ($profile->vatOnDebits && !$preset->invoiceFields->offersVatOnDebits()) {
@@ -55,7 +55,7 @@ final readonly class ReviseCompanyProfile
 
         $refusal = IdentifierRules::refusal($preset, $profile->identifiers, IdentifierRules::COMPANY);
         if (null !== $refusal) {
-            throw new InvalidCompanyProfile($refusal->field, $refusal->message);
+            throw new InvalidCompanyProfile($refusal->field, $refusal->message, $refusal->reason, $refusal->params);
         }
 
         return $this->transactions->run(function () use ($company, $profile, $actorUserId): Company {

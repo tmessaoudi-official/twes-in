@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { Session } from '../shared/session/session';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { CompanyProfileFacade } from './company-profile-facade';
@@ -20,7 +21,15 @@ import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({ company: { profile: { title: 'Profil', saved: 'Enregistré' } } });
+    return of({
+      company: { profile: { title: 'Profil', saved: 'Enregistré' } },
+      import: {
+        rejections: {
+          invalid_email: 'E-mail refusé.',
+          identifier_shape: 'Ce numéro d’immatriculation n’a pas la forme attendue.',
+        },
+      },
+    });
   }
 }
 
@@ -59,10 +68,13 @@ const profile: CompanyProfile = {
 
 describe('CompanyProfilePage', () => {
   const profileSignal = signal<CompanyProfile | null>(profile);
+  const error = signal<CompanyError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const facade = {
     profile: profileSignal.asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal<CompanyError | null>(null).asReadonly(),
+    error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     save: vi.fn(),
@@ -108,6 +120,8 @@ describe('CompanyProfilePage', () => {
 
   beforeEach(() => {
     profileSignal.set(profile);
+    error.set(null);
+    refusals.set([]);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.save.mockReset().mockResolvedValue(true);
     facade.uploadLogo.mockReset().mockResolvedValue(true);
@@ -205,6 +219,30 @@ describe('CompanyProfilePage', () => {
     // Its error is shown and is what is said with it.
     expect(focused.classList).toContain('ng-invalid');
     expect(focused.getAttribute('aria-describedby')).toMatch(/mat-mdc-error/);
+  });
+
+  it('says each field the API refused on that field, and puts the person on the first', async () => {
+    await open();
+    facade.save.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'identifier__matricule_fiscal', reason: 'identifier_shape', params: {} },
+        { field: 'email', reason: 'invalid_email', params: {} },
+      ]);
+      return false;
+    });
+    const email = q('field-email') as HTMLInputElement;
+    email.value = 'compta@carthage';
+    email.dispatchEvent(new Event('input'));
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(q('field-error-identifier__matricule_fiscal')?.textContent).toContain(
+      'Ce numéro d’immatriculation n’a pas la forme attendue.',
+    );
+    expect(q('field-error-email')?.textContent).toContain('E-mail refusé.');
+    expect(document.activeElement).toBe(q('field-identifier__matricule_fiscal'));
   });
 
   it('saves what the form holds', async () => {

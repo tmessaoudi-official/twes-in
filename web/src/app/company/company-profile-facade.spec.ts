@@ -90,6 +90,17 @@ describe('CompanyProfileFacade', () => {
     expect(facade.profile()).toEqual(saved);
   });
 
+  it('keeps the fields a save was refused on until the next save', async () => {
+    const email = { field: 'email', reason: 'invalid_email', params: {} };
+    api.reviseProfile.mockRejectedValueOnce(new CompanyRefused('invalid', [email]));
+    expect(await facade.save('c1', changes)).toBe(false);
+    expect(facade.refusals()).toEqual([email]);
+
+    api.reviseProfile.mockResolvedValueOnce(saved);
+    await facade.save('c1', changes);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it('names the new logo on the profile it holds, and none once it is removed', async () => {
     api.profile.mockResolvedValue(saved);
     await facade.load('c1');

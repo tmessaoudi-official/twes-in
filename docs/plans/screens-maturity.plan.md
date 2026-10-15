@@ -73,6 +73,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-15 10:35] AGREED: L-605b: a tax the regime does not charge is refused as « Ce régime ne facture pas la taxe « {{tax}} ». » / « This regime does not charge the « {{tax}} » tax. », the tax named as the company named it; supersedes the 10:16 « Le régime {{regime}} ne facture pas {{tax}}. », which the API filled with codes (« exempt », « TVA19 »).
 - [2026-10-15 10:35] AGREED: L-605b: a vendor's number, name and payment terms refuse with the import's existing texts (invalid_number, invalid_text with its max, invalid_payment_terms); an unknown expense category stays « Valeur refusée. » until it has words of its own.
 - [2026-10-15 10:35] AGREED: L-605b slice 2 (products, expenses, company profile) is Large: explored first, then a full plan with any new texts, and no code before the developer's go.
+- [2026-10-15 10:50] AGREED: L-605b slice 2 plan approved: per-field refusals on the company profile, then products, then expenses, one commit per form; every new word comes to the developer as one batch before it is written, with how an expense line's refusal is said.
 
 ## Formal Plan
 
@@ -210,7 +211,7 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
 - Tests first: API functional (each path's payload), web specs (reader, error, page), one e2e (an e-mail the browser takes
   and the API refuses, shown under the field), one mutant per guarantee. Slice 2: products, expenses, company profile.
 
-**L-605b slice 2 (proposed 2026-10-15, awaiting the developer's go).** The same shape on the three remaining forms.
+**L-605b slice 2 (approved 2026-10-15).** The same shape on the three remaining forms.
 - Inventory: `ProductResource` 12 constraints, `ExpenseResource` 27, `CompanyProfileResource` 18, none with a reason;
   domain throws `InvalidProduct` 34 (2 with a reason), `InvalidExpense` 27 and `InvalidCompanyProfile` 3 (neither takes a
   reason yet); five processors answer `"field: message"`. Product barcodes are out: their own endpoint already refuses

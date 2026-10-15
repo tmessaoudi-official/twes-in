@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, CompanyProfile, CompanyProfileChanges } from './company-types';
@@ -13,10 +14,13 @@ export class CompanyProfileFacade {
   private readonly profileSignal = signal<CompanyProfile | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<CompanyError | null>(null);
+  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
 
   readonly profile = this.profileSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
+  /** The fields the last save was refused on, each with the reason the screens translate. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
     this.busySignal.set(true);
@@ -34,6 +38,7 @@ export class CompanyProfileFacade {
   async save(companyId: string, changes: CompanyProfileChanges): Promise<boolean> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
+    this.refusalsSignal.set([]);
     try {
       // New bank details wait for the person to prove who they are again; the rest of the profile asks nothing.
       this.profileSignal.set(
@@ -46,6 +51,7 @@ export class CompanyProfileFacade {
       return true;
     } catch (error) {
       this.errorSignal.set(codeOf(error));
+      this.refusalsSignal.set(error instanceof CompanyRefused ? error.refusals : []);
       return false;
     } finally {
       this.busySignal.set(false);

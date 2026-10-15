@@ -73,6 +73,35 @@ describe('CompanyApi, the profile', () => {
 
     await expect(revising).rejects.toEqual(new CompanyRefused('invalid'));
   });
+
+  it('names each field a revision was refused on, a registration number on its own field', async () => {
+    const revising = api.reviseProfile('c1', changes);
+    http.expectOne({ method: 'PUT', url: '/api/companies/c1/profile' }).flush(
+      {
+        violations: [
+          {
+            propertyPath: 'identifiers.matricule_fiscal',
+            message: 'x',
+            payload: { reason: 'identifier_shape', params: { identifier: 'matricule_fiscal' } },
+          },
+          { propertyPath: 'email', message: 'x', payload: { reason: 'invalid_email' } },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+
+    await expect(revising).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [
+        {
+          field: 'identifier__matricule_fiscal',
+          reason: 'identifier_shape',
+          params: { identifier: 'matricule_fiscal' },
+        },
+        { field: 'email', reason: 'invalid_email', params: {} },
+      ],
+    });
+  });
 });
 
 describe('CompanyApi, the members', () => {
