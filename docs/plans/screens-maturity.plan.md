@@ -137,6 +137,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-16 00:35] ASSUMED (review): D1/D2 start with the two fully ruled promises every screen shares: the rows-per-page chooser always reachable and remembered (§ 7 2026-09-21 14:35) and the browser-level unsaved-work guard (2026-09-21 18:20). Basis: the ruled order puts D1/D2 after L-1115; neither needs round 2's grades, being ruled to the letter; the parked round-2 placement is not preempted for any screen-specific work. Alternatives: start with the switcher's single number (row 157) or a quote's « Classer sans suite ».
 - [2026-10-16 00:35] ASSUMED (review): presentation.page-size is an Enum, auto (each list's own first size) then 10, 25, 50, 100, 200, on the company, role and person levels like presentation.stock-map-view; a list not offering the size chosen shows its own first. Basis: only a JSON setting may default to nothing, and a default of 25 would have changed the lists whose first size is 10 or 50 for everyone. Alternatives: an Int defaulting to 25, a JSON number.
 - [2026-10-16 00:35] ASSUMED (review): The address leaves out size only when it equals the person's own opening size, so a link carries any size the person changed to; a link without one opens at its reader's own. The e2e suite answers the browser's « leave the page? » by leaving, in signIn (leaveWhenAsked), as the ruling asked it be taught. Basis: the 14:35 ruling keeps the URL parameter so a shared link carries its size; the 18:20 ruling names the e2e cost. Alternatives: always write size; a listener per spec.
+- [2026-10-16 01:01] ASSUMED (review): « Annuler » ruling (§ 7 2026-10-11 08:26) applied to the quote as the invoice slice 53df9fd0 did: action « Classer sans suite… », confirm « Classer sans suite », status, toast and read-only line « classé sans suite », activity « a classé le devis sans suite »; English « Close as not pursued… », status « Not pursued » (no clash with Draft/Sent/Expired/Accepted/Refused, one root word across action, status and toast; advisor agreed). Every « Annuler » that closes a panel or dialog says « Fermer » (each handler read: all close, none keeps the panel open), the overpayment dialog's too; the document design's discard reads form.revert « Rétablir ». Alternatives: « Abandonner le devis », « Dropped », a keep word per dialog.
 
 ## Formal Plan
 
@@ -308,6 +309,14 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
 ### Needs input
 - Where round 2 goes now that its rubric and grades are ruled (2026-10-15 20:00, 20:02): after L-1115 (recommended,
   so the D1/D2 screens are built against its grades), right now, or after D1/D2. Asked in chat at 23:43.
+- A quote classé sans suite still prints the shared « ANNULÉ » watermark (`api/translations/pdf.*.yaml`
+  `watermark.cancelled`, shared by invoice, quote and delivery note templates; the invoice slice kept it too): a
+  watermark per document type, or the word as it is?
 ### Needs research
+- Whether the law names voiding a delivery note « annuler » (the 08:26 ruling keeps « Annuler le bon » only if
+  so): `docs/fiscal/TN.md` and `FR.md` say nothing on it, so every `delivery_notes.*` « annul » text stays as is.
 ### Fragile
 ### Known issues
+- No gate checks that a template's `'…' | translate` literal names a key that exists: the stock map's repeat panel
+  translated a bare `cancel` and showed the word « cancel » (fixed with the « Annuler » wording; a sweep found no
+  other). A gate for the class is deferred.
