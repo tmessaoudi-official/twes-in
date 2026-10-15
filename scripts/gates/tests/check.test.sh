@@ -88,6 +88,9 @@ out=$(host "$g")
 check "with no files named, it takes what changed against HEAD and the untracked" $? 0 "$out" "api-test tests/Unit/NewTest.php"
 check "…the changed web file too" 0 0 "$out" "web-lint src/app/x/lonely.ts"
 absent "…not the deleted one" "$out" "Sum.php"
+echo y > "$g/docs/Résumé.md"; out=$(host "$g")
+check "an accented name arrives as written, not quoted by git" $? 0 "$out" "unchecked docs/Résumé.md"
+rm "$g/docs/Résumé.md"
 (cd "$g" && git checkout -q -- . && rm api/tests/Unit/NewTest.php)
 out=$(host "$g")
 check "nothing changed checks nothing" $? 0 "$out" "nothing changed"
