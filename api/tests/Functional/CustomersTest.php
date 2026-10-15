@@ -111,7 +111,7 @@ final class CustomersTest extends ApiTestCase
             'billingAddressLine1' => [['billingAddressLine1' => str_repeat('a', 201)], 'invalid_text', ['max' => 200]],
             'billingCountryCode' => [['billingCountryCode' => 'XX'], 'invalid_country', []],
             'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '123']], 'identifier_shape', ['identifier' => 'matricule_fiscal']],
-            'defaultTaxComponentIds' => [['taxRegime' => 'exempt', 'defaultTaxComponentIds' => [$this->taxId('TVA19')]], 'regime_excludes_tax', ['regime' => 'exempt', 'tax' => 'TVA19']],
+            'defaultTaxComponentIds' => [['taxRegime' => 'exempt', 'defaultTaxComponentIds' => [$this->taxId('TVA19')]], 'regime_excludes_tax', ['tax' => 'TVA 19 %']],
         ] as $field => [$change, $reason, $params]) {
             $this->postJson($this->path(), $this->customer($change));
 

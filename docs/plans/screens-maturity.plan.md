@@ -70,6 +70,9 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-15 10:16] AGREED: L-605b words: invalid_customer_number is said « Numéro refusé. » and invalid_length « Texte refusé : {{max}} caractères au plus. » (the import's own texts); invalid_rate « Remise refusée : un pourcentage de 0 à 100, trois décimales au plus. », unknown_tax_regime « Régime inconnu : choisissez-en un dans la liste. », unknown_group_id « Ce groupe n’existe plus : choisissez-en un autre. », unknown_tax « Cette taxe n’existe plus, ou n’est plus active. » and regime_excludes_tax « Le régime {{regime}} ne facture pas {{tax}}. » join import.rejections, with their English pairs.
 - [2026-10-15 10:16] AGREED: L-605b: a tax the regime does not charge stays refused on the taxes field, where the API names it; changing the regime or the taxes clears it.
 - [2026-10-15 10:16] AGREED: Next after L-605b slice 1: slice 2, the same per-field refusals on products, expenses and the company profile.
+- [2026-10-15 10:35] AGREED: L-605b: a tax the regime does not charge is refused as « Ce régime ne facture pas la taxe « {{tax}} ». » / « This regime does not charge the « {{tax}} » tax. », the tax named as the company named it; supersedes the 10:16 « Le régime {{regime}} ne facture pas {{tax}}. », which the API filled with codes (« exempt », « TVA19 »).
+- [2026-10-15 10:35] AGREED: L-605b: a vendor's number, name and payment terms refuse with the import's existing texts (invalid_number, invalid_text with its max, invalid_payment_terms); an unknown expense category stays « Valeur refusée. » until it has words of its own.
+- [2026-10-15 10:35] AGREED: L-605b slice 2 (products, expenses, company profile) is Large: explored first, then a full plan with any new texts, and no code before the developer's go.
 
 ## Formal Plan
 
@@ -206,6 +209,25 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
   first; the « Vérifiez… » line stays for what names no field.
 - Tests first: API functional (each path's payload), web specs (reader, error, page), one e2e (an e-mail the browser takes
   and the API refuses, shown under the field), one mutant per guarantee. Slice 2: products, expenses, company profile.
+
+**L-605b slice 2 (proposed 2026-10-15, awaiting the developer's go).** The same shape on the three remaining forms.
+- Inventory: `ProductResource` 12 constraints, `ExpenseResource` 27, `CompanyProfileResource` 18, none with a reason;
+  domain throws `InvalidProduct` 34 (2 with a reason), `InvalidExpense` 27 and `InvalidCompanyProfile` 3 (neither takes a
+  reason yet); five processors answer `"field: message"`. Product barcodes are out: their own endpoint already refuses
+  per row (`BarcodesRefused`).
+- API, per form, test first: payloads on the resource constraints (existing import codes where one fits); `InvalidExpense`
+  and `InvalidCompanyProfile` gain `reason`/`params` like `InvalidCustomer`; each throw site names its reason; the five
+  processors answer through `DomainRule::refused`; `ProductImport::REFUSAL_OF` reads the refusal's own reason first, as
+  today, so a file and a form keep one text; `RefusalReasonsTest` scans the three contexts.
+- Words: most refusals reuse existing texts (`invalid_text` with its max, `invalid_reference`, `invalid_price`,
+  `value_required`, `unknown_tax`, `unknown_tax_regime`, the identifier ones). The rest need new words, shown to the
+  developer as one batch before they are written; the budget (fr.json about 0.7 kB of gzip left) argues for a few shared
+  texts (one for « this choice no longer exists ») over one per field.
+- Web: `ExpensesRefused`, `ProductsRefused` and `CompanyRefused` carry `refusals` (422 only), the facades a `refusals`
+  signal, the three pages call `showRefused`; an expense line's refusal (`lines[1].amountNet`) is not a form field, so
+  `showRefused` hands it back and the page says it another way (to be ruled with the words).
+- Evidence: functional cases per form (each path's payload), page specs, one e2e per form where the browser lets a value
+  through that the API refuses, one mutant per guarantee, the three gates, CI.
 
 ## Status
 <!-- progress-block v1 -->

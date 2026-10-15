@@ -168,7 +168,7 @@ class Vendor implements CompanyOwned
     {
         $number = trim($number);
         if (1 !== preg_match(self::NUMBER, $number)) {
-            throw new InvalidVendor('number', \sprintf('"%s" is not a vendor number: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $number));
+            throw new InvalidVendor('number', \sprintf('"%s" is not a vendor number: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $number), 'invalid_number', ['max' => 32]);
         }
 
         return $number;

@@ -58,7 +58,7 @@ final readonly class VendorProfile
     ) {
         $name = trim($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidVendor('name', \sprintf('A vendor is named in 1 to %d characters.', self::NAME_MAX));
+            throw new InvalidVendor('name', \sprintf('A vendor is named in 1 to %d characters.', self::NAME_MAX), 'invalid_text', ['min' => 1, 'max' => self::NAME_MAX]);
         }
         $this->name = $name;
         $this->legalName = self::text($legalName);
@@ -77,7 +77,7 @@ final readonly class VendorProfile
         $this->iban = self::code($iban);
         $this->bic = self::code($bic);
         if (null !== $paymentTermsDays && ($paymentTermsDays < 0 || $paymentTermsDays > self::PAYMENT_TERMS_MAX)) {
-            throw new InvalidVendor('paymentTermsDays', \sprintf('Payment terms run from 0 to %d days.', self::PAYMENT_TERMS_MAX));
+            throw new InvalidVendor('paymentTermsDays', \sprintf('Payment terms run from 0 to %d days.', self::PAYMENT_TERMS_MAX), 'invalid_payment_terms', ['max' => self::PAYMENT_TERMS_MAX]);
         }
         $this->paymentTermsDays = $paymentTermsDays;
         $this->notes = self::text($notes);
