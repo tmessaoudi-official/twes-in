@@ -5135,6 +5135,7 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-15 10:35] AGREED: L-605b: a tax the regime does not charge is refused as « Ce régime ne facture pas la taxe « {{tax}} ». » / « This regime does not charge the « {{tax}} » tax. », the tax named as the company named it; supersedes the 10:16 « Le régime {{regime}} ne facture pas {{tax}}. », which the API filled with codes (« exempt », « TVA19 »).
 - [2026-10-15 10:35] AGREED: L-605b: a vendor's number, name and payment terms refuse with the import's existing texts (invalid_number, invalid_text with its max, invalid_payment_terms); an unknown expense category stays « Valeur refusée. » until it has words of its own.
 - [2026-10-15 10:35] AGREED: L-605b slice 2 (products, expenses, company profile) is Large: explored first, then a full plan with any new texts, and no code before the developer's go.
+- [2026-10-15 10:50] AGREED: L-605b slice 2 plan approved: per-field refusals on the company profile, then products, then expenses, one commit per form; every new word comes to the developer as one batch before it is written, with how an expense line's refusal is said.
 
 ## 8. Status
 
@@ -5464,6 +5465,7 @@ verdict: https://claude.ai/artifact/2AUhf7V1Nuro3kqR1RKdN6 (sources in `var/clau
 | 304 | A refused customer or vendor field is said on that field (§ 7 2026-10-15 06:51, 07:23, screens-maturity L-605b slice 1): the 422 carries each field's reason in its violation payload, from a resource constraint or a domain rule alike, the import reads the same reasons, and the form shows the import's text under the field until it changes | M | done | 98b21a9c | api/src/Module/Customers/**, api/src/Module/Vendors/**, api/src/Shared/Infrastructure/ApiPlatform/**, api/src/ImportExport/**, web/src/app/shared/form/**, web/src/app/customers/**, web/src/app/vendors/**, web/e2e/** |
 | 305 | Every refusal a customer or vendor form can meet has its own words (§ 7 2026-10-15 10:16, screens-maturity L-605b): the number and the name refuse with the import's reasons, five new rejection texts in fr and en, and a guard that no domain refusal of a customer, a vendor or a preset identifier lacks its screen text | S | done | 05c45d90 | api/src/Module/Customers/**, api/tests/Architecture/**, web/public/i18n/** |
 | 306 | A regime's refused tax is named as the company named it, and a vendor's number, name and payment terms refuse with the import's reasons (§ 7 2026-10-15 10:35, screens-maturity L-605b): « Ce régime ne facture pas la taxe « TVA 19 % ». » replaces the codes, and the reasons guard also reads the custom fields' refusals | S | done | 0cd8e67d | api/src/Module/Customers/**, api/src/Module/Vendors/**, api/tests/**, web/public/i18n/** |
+| 307 | A refused company profile field is said on that field (§ 7 2026-10-15, screens-maturity L-605b slice 2): the profile's constraints and the preset's refusals carry the import's reasons, the page puts each under its field, and only a revision carries refusals | M | done | 52087d7b | api/src/Tenancy/**, api/tests/**, web/src/app/company/**, web/e2e/** |
 <!-- /progress-block -->
 
 ### Delivered
