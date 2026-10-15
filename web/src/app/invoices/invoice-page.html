@@ -267,18 +267,19 @@
                   : 'invoice-document-taxes-hint'
               "
             />
-          </div>
-          <!-- On the page before its line, or a screen reader is not told when the line appears. -->
-          <div role="status" data-testid="document-taxes-stamp-status">
-            @if (stampHeldBack()) {
-              <p
-                id="invoice-document-taxes-held-back"
-                class="text-sm text-on-surface-variant"
-                data-testid="document-taxes-stamp-held-back"
-              >
-                {{ 'invoices.document_taxes.stamp_held_back' | translate }}
-              </p>
-            }
+            <!-- On the page before its line, or a screen reader is not told when the line appears; inside the field's
+                 block, so that empty it takes no room in the card's column. -->
+            <div role="status" data-testid="document-taxes-stamp-status">
+              @if (stampHeldBack()) {
+                <p
+                  id="invoice-document-taxes-held-back"
+                  class="mt-2 text-sm text-on-surface-variant"
+                  data-testid="document-taxes-stamp-held-back"
+                >
+                  {{ 'invoices.document_taxes.stamp_held_back' | translate }}
+                </p>
+              }
+            </div>
           </div>
         </div>
       </mat-card-content>
