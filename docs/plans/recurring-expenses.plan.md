@@ -40,7 +40,7 @@ SPEC § 8 row 179 (size L). Rulings: SPEC § 7 2026-10-11 01:24, 2026-10-15 17:3
 |---|------|------|-------|----------|-------|
 | 1 | Shared Schedule + Recurrence | M | done | 3b7dfd9a | api/src/Shared/Domain/** |
 | 2 | Recurring expenses API | L | done | 15d3a9db | api/src/Module/RecurringExpenses/**, api/src/Module/Expenses/** |
-| 3 | Recurring expenses web | L | doing | - | web/src/app/recurring-expenses/**, web/src/app/shared/schedule/** |
+| 3 | Recurring expenses web | L | done | 9b919fde | web/src/app/recurring-expenses/**, web/src/app/shared/schedule/** |
 | 4 | Recurring invoices widened | M | todo | - | api/src/Module/Recurring/**, web/src/app/recurring/** |
 | 5 | Move or skip one occurrence | M | todo | - | - |
 <!-- /progress-block -->
@@ -49,5 +49,7 @@ SPEC § 8 row 179 (size L). Rulings: SPEC § 7 2026-10-11 01:24, 2026-10-15 17:3
 - Copy rules, anchor set and wording (slice 3 batch).
 ### Needs research
 ### Fragile
-- fr.json screen texts: 466 B left of 61,440 B gzipped; first page about 998 kB of 1 MB.
+- fr.json screen texts: 298 B left of 61,440 B gzipped (61,142 B at 9b919fde); first page about 998 kB of 1 MB.
+- The schedule's words (`schedule.*`) live in the expense texts part (`web/public/i18n/expense/`): slice 4's recurring
+  invoices need them too, either moved to the global file (which has no room) or read through a second part.
 ### Known issues
