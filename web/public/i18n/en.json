@@ -3675,7 +3675,10 @@
       "unknown_choice": "This choice is no longer offered: pick another.",
       "tax_on_document": "{{tax}} is charged on the document, not on a line.",
       "tracking_kept_by_stock": "Stock of this product has already moved: it keeps its tracking.",
-      "service_untracked": "A service holds no stock: it is tracked neither by lot nor by serial number."
+      "service_untracked": "A service holds no stock: it is tracked neither by lot nor by serial number.",
+      "invalid_amount": "Amount refused: a number above 0, with at most {{decimals}} decimals.",
+      "one_vat_rate": "A line carries one VAT rate: for two rates, make two lines.",
+      "printed_tax_off": "This amount is more than {{tolerance}} away from what the rate gives."
     },
     "action": "Import",
     "notes_title": "Good to know",

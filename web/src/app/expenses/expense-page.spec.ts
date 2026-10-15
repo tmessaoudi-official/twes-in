@@ -35,6 +35,7 @@ import type { PickAsked } from '../shared/form/pick-api';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -44,6 +45,15 @@ class StaticLoader implements TranslateLoader {
         withheld: 'Retenue à la source {{rate}} % : {{amount}} · versé {{paid}}',
         errors: { not_draft: 'Seule une dépense en brouillon peut être modifiée.' },
         bill: { worked_out: 'Calculé\u00a0: {{amount}}' },
+      },
+      import: {
+        rejections: {
+          value_required: 'Cette case doit être remplie.',
+          invalid_amount:
+            'Montant refusé\u00a0: un nombre au-dessus de 0, {{decimals}} décimales au plus.',
+          one_vat_rate:
+            'Une ligne porte un seul taux de TVA\u00a0: pour deux taux, faites deux lignes.',
+        },
       },
     });
   }
@@ -125,6 +135,7 @@ const receipt: ExpenseAttachment = {
 
 describe('ExpensePage', () => {
   const error = signal<ExpensesError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const expense = signal<ExpenseRow | null>(null);
   const attachments = signal<readonly ExpenseAttachment[]>([]);
   const optionsState = signal<ExpenseOptions | null>(options);
@@ -134,6 +145,7 @@ describe('ExpensePage', () => {
     attachments: attachments.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     pickVendors: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? vendors.filter((each) => asked.ids.includes(each.id)) : vendors,
     ),
@@ -224,6 +236,7 @@ describe('ExpensePage', () => {
 
   beforeEach(() => {
     error.set(null);
+    refusals.set([]);
     expense.set(null);
     attachments.set([]);
     optionsState.set(options);
@@ -592,6 +605,74 @@ describe('ExpensePage', () => {
 
     expect(facade.loadExpense).toHaveBeenLastCalledWith('c1', 'e1');
     expect((q('field-description') as HTMLInputElement).value).toBe('Gasoil et péage');
+  });
+
+  it('says on its line what the bill was refused for, puts the person on it, and lets a new value be sent', async () => {
+    expense.set(draft);
+    await open('e1');
+    facade.reviseExpense.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'lines[0].amountNet', reason: 'invalid_amount', params: { decimals: 3 } },
+      ]);
+      return null;
+    });
+    type('bill-line-0-net', '120.5');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(q('bill-line-0-net-error')?.textContent).toContain(
+      'Montant refusé\u00a0: un nombre au-dessus de 0, 3 décimales au plus.',
+    );
+    expect(document.activeElement).toBe(q('bill-line-0-net'));
+
+    type('bill-line-0-net', '121');
+    await settle();
+    expect(q('bill-line-0-net-error')).toBeNull();
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseExpense).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets a bill refused on one field be sent again once anything on it changes', async () => {
+    expense.set(draft);
+    await open('e1');
+    facade.reviseExpense.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'lines[0].taxComponentIds', reason: 'one_vat_rate', params: {} }]);
+      return null;
+    });
+    type('bill-line-0-net', '120');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+    expect(q('bill-line-0-taxes-error')?.textContent).toContain('un seul taux de TVA');
+
+    // The rate stays as it was; the net beside it changes, and that is enough to ask the API again.
+    type('bill-line-0-net', '121');
+    await settle();
+    expect(q('bill-line-0-taxes-error')).toBeNull();
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseExpense).toHaveBeenCalledTimes(2);
+  });
+
+  it('says on its field that recording needs a category', async () => {
+    expense.set(draft);
+    await open('e1');
+    facade.recordExpense.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'categoryId', reason: 'value_required', params: {} }]);
+      return null;
+    });
+    q('expense-record')!.click();
+    // Saved first, then recorded: two answers come back before the refusal is said.
+    await settle();
+    await settle();
+
+    expect(facade.recordExpense).toHaveBeenCalled();
+    expect(q('field-error-categoryId')?.textContent).toContain('Cette case doit être remplie.');
   });
 
   it('says why a change was refused', async () => {

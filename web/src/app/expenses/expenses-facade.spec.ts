@@ -241,6 +241,17 @@ describe('ExpensesFacade', () => {
     expect(facade.error()).toBe('network');
   });
 
+  it('keeps the fields a save or a recording was refused on until the next one', async () => {
+    const line = { field: 'lines[0].amountNet', reason: 'invalid_amount', params: { decimals: 3 } };
+    api.createExpense.mockRejectedValueOnce(new ExpensesRefused('invalid', [line]));
+    expect(await facade.createExpense('c1', input)).toBeNull();
+    expect(facade.refusals()).toEqual([line]);
+
+    api.recordExpense.mockResolvedValueOnce({ ...draft, status: 'recorded' });
+    await facade.recordExpense('c1', 'e1');
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it('forgets a deleted expense and reads the categories again after a change', async () => {
     api.expense.mockResolvedValue(draft);
     api.options.mockResolvedValue(options);

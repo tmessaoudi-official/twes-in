@@ -246,6 +246,33 @@ test('a receipt is entered by its total, the stamp in it, and its net worked out
   }
 });
 
+// A refused recording is said on the field it was refused on: a draft is saved without a category, and recorded
+// only under one, which the form cannot know before the API answers.
+test('a draft recorded without a category says so on its category', async ({ page }) => {
+  const run = Date.now().toString(36).toUpperCase();
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/expenses/new');
+  let created: string | null = null;
+  try {
+    await page.getByTestId('field-description').fill(`Parking ${run}`);
+    await page.getByTestId('bill-line-0-gross').fill('5');
+    await page.getByTestId('record-save').click();
+    await expect(page).toHaveURL(/\/expenses\/[0-9a-f-]{36}$/);
+    created = page.url().split('/').at(-1) ?? null;
+
+    await page.getByTestId('expense-record').click();
+    await expect(page.getByTestId('field-error-categoryId')).toContainText(
+      'Cette case doit être remplie.',
+    );
+    await expect(page.getByTestId('field-categoryId')).toBeFocused();
+    await expect(page.getByTestId('expense-fixed')).toHaveCount(0);
+    expect(await wcagViolations(page)).toEqual([]);
+  } finally {
+    if (created !== null) await removeExpense(page, created);
+  }
+});
+
 // docs/SPEC.md § 7, 2026-09-26: Demo is Tunisian, so the list offers the month's TEJ file. What a past month holds
 // depends on the data this database has seen, so either answer is taken — each held to its own shape.
 test('the month’s TEJ file is downloaded, or the page says in words what holds the month back', async ({

@@ -206,6 +206,45 @@ final class ExpensesTest extends ApiTestCase
         self::assertCount(0, $this->jsonList());
     }
 
+    /** The form's rules and the bill's answer one shape, under the reasons a file is refused with. */
+    public function testARefusalNamesItsFieldAndAReasonTheScreenTranslates(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        [$vat, $reduced, $stamp] = [$this->taxId('TVA19'), $this->taxId('TVA7'), $this->taxId('TIMBRE')];
+        $stampName = $this->em()->getConnection()->fetchOne('SELECT name FROM tax_component WHERE id = ?', [$stamp]);
+        self::assertIsString($stampName);
+        $absent = '01920000-0000-7000-8000-000000000000';
+
+        foreach ([
+            'description' => [['description' => ''], 'value_required', []],
+            'description ' => [['description' => str_repeat('a', 201)], 'invalid_text', ['max' => 200]],
+            'reference' => [['reference' => str_repeat('x', 65)], 'invalid_text', ['max' => 64]],
+            'payee' => [['vendorId' => null, 'payee' => str_repeat('x', 161)], 'invalid_text', ['max' => 160]],
+            'date' => [['date' => '15/09/2026'], 'not_a_date', []],
+            'lines[0].amountNet' => [['lines' => $this->line('1.2345')], 'invalid_amount', ['decimals' => 3]],
+            'lines[0].amountNet ' => [['lines' => $this->line('0')], 'invalid_amount', ['decimals' => 3]],
+            'lines[0].taxComponentIds' => [['lines' => [['amountNet' => '100', 'taxComponentIds' => [$stamp]]]], 'tax_on_document', ['tax' => $stampName]],
+            'lines[1].taxComponentIds' => [['lines' => [['amountNet' => '100', 'taxComponentIds' => [$vat]], ['amountNet' => '50', 'taxComponentIds' => [$vat, $reduced]]]], 'one_vat_rate', []],
+            'lines[0].taxComponentIds ' => [['lines' => [['amountNet' => '100', 'taxComponentIds' => [$absent]]]], 'unknown_tax', []],
+            'documentTaxComponentIds' => [['documentTaxComponentIds' => [$absent]], 'unknown_tax', []],
+            'printedTaxes' => [['printedTaxes' => [['code' => 'TVA19', 'amount' => '19.100']]], 'printed_tax_off', ['code' => 'TVA19', 'tolerance' => '0.001']],
+            'categoryId' => [['categoryId' => $absent], 'unknown_choice', []],
+            'vendorId' => [['vendorId' => $absent], 'unknown_choice', []],
+        ] as $field => [$change, $reason, $params]) {
+            $this->postJson($this->path(), $this->expense($change));
+
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertSame([['propertyPath' => trim($field), 'reason' => $reason, 'params' => $params]], $this->refusals(), $field);
+        }
+
+        // A revision answers the same way.
+        $this->postJson($this->path(), $this->expense());
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->sendJson('PUT', $this->path($this->stringAt($this->json(), 'id')), $this->expense(['categoryId' => $absent]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'categoryId', 'reason' => 'unknown_choice', 'params' => []]], $this->refusals());
+    }
+
     public function testRecordingNeedsACategoryAndFreezesTheExpenseWhichIsThenPaidOnADayThatHappened(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);
@@ -215,7 +254,7 @@ final class ExpensesTest extends ApiTestCase
 
         $this->postJson($this->path($id).'/record', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('categoryId', (string) $this->client->getResponse()->getContent());
+        self::assertSame([['propertyPath' => 'categoryId', 'reason' => 'value_required', 'params' => []]], $this->refusals());
         $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'cash', 'paidOn' => $today->format('Y-m-d')]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not paid');
 

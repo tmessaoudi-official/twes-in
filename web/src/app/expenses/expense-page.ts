@@ -375,6 +375,8 @@ export class ExpensePage {
 
   /** The record's own form, which shows what a save from the bar refused and puts the person on it. */
   private readonly mainForm = viewChild<DescriptorForm>('mainForm');
+  /** The bill beside it, which says a line's refusal under that line. */
+  private readonly billView = viewChild(ExpenseBill);
 
   /** From the bar beside the title, which holds no form of its own. */
   protected saveFromBar(): void {
@@ -427,12 +429,28 @@ export class ExpensePage {
         // typed and the record holds what the API answered (row 45's leave guard, 2026-09-20).
         this.unsaved.savedAndLeaving();
         await this.router.navigate(['/expenses', created.id], { replaceUrl: true });
+      } else {
+        this.showRefused();
       }
     } else if ((await this.facade.reviseExpense(companyId, id, input)) !== null) {
       const form = this.form();
       if (form !== null) this.sync.savedHere(form);
       this.feedback.success('expenses.saved');
+    } else {
+      this.showRefused();
     }
+  }
+
+  /**
+   * Each field the API refused said on that field, a line's under that line of the bill, and the person put on the
+   * first; the line above the form stays for what names no field.
+   */
+  private showRefused(): void {
+    const refused = this.facade.refusals();
+    if (refused.length === 0) return;
+    const form = this.mainForm();
+    const left = form === undefined ? refused : form.showRefused(refused);
+    this.billView()?.showRefused(left, left.length === refused.length);
   }
 
   /** Saves what the form shows first, so what is recorded is what was read on screen. */
@@ -444,10 +462,13 @@ export class ExpensePage {
     form.markAllAsTouched();
     if (form.invalid) return;
     const input = this.inputOf(form.getRawValue());
-    if (input === null || (await this.facade.reviseExpense(companyId, id, input)) === null) {
-      return;
+    if (input === null) return;
+    if (
+      (await this.facade.reviseExpense(companyId, id, input)) === null ||
+      (await this.facade.recordExpense(companyId, id)) === null
+    ) {
+      this.showRefused();
     }
-    await this.facade.recordExpense(companyId, id);
   }
 
   protected async pay(values: FormValues): Promise<void> {

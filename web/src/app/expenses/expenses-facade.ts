@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { ExpensesApi, ExpensesRefused } from './expenses-api';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { PickAsked } from '../shared/form/pick-api';
 import type { ExportFormat } from '../shared/list/export-address';
 import type {
@@ -38,6 +39,7 @@ export class ExpensesFacade {
   private readonly busySignal = signal(false);
   private reads = 0;
   private readonly errorSignal = signal<ExpensesError | null>(null);
+  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
 
   readonly expenses = this.expensesSignal.asReadonly();
   /** How many expenses the last search found in all, the page shown being one part of them. */
@@ -52,6 +54,8 @@ export class ExpensesFacade {
   readonly categories = this.categoriesSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
+  /** The fields the last save or recording was refused on, for the form and the bill to say under each. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   exportUrl(companyId: string, search: ExpenseSearch, format: ExportFormat): string {
     return this.api.exportUrl(companyId, search, format);
@@ -277,12 +281,14 @@ export class ExpensesFacade {
   private async save(call: () => Promise<ExpenseRow>): Promise<ExpenseRow | null> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
+    this.refusalsSignal.set([]);
     try {
       const expense = await call();
       this.expenseSignal.set(expense);
       return expense;
     } catch (error) {
       this.errorSignal.set(codeOf(error));
+      this.refusalsSignal.set(error instanceof ExpensesRefused ? error.refusals : []);
       return null;
     } finally {
       this.busySignal.set(false);

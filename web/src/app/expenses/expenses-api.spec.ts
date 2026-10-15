@@ -452,6 +452,47 @@ describe('ExpensesApi', () => {
     await expect(restoreRecorded).rejects.toEqual(new ExpensesRefused('not_draft'));
   });
 
+  it('names each field a save or a recording was refused on, a line by its place', async () => {
+    const violations = (path: string, reason: string, params?: Record<string, unknown>) => ({
+      violations: [{ propertyPath: path, message: 'x', payload: { reason, params } }],
+    });
+    const unprocessable = { status: 422, statusText: 'Unprocessable Content' };
+
+    const created = api.createExpense('c1', fuel);
+    http
+      .expectOne('/api/companies/c1/expenses')
+      .flush(violations('lines[1].amountNet', 'invalid_amount', { decimals: 3 }), unprocessable);
+    await expect(created).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [
+        { field: 'lines[1].amountNet', reason: 'invalid_amount', params: { decimals: 3 } },
+      ],
+    });
+
+    const revised = api.reviseExpense('c1', 'e1', fuel);
+    http
+      .expectOne('/api/companies/c1/expenses/e1')
+      .flush(violations('categoryId', 'unknown_choice'), unprocessable);
+    await expect(revised).rejects.toMatchObject({
+      refusals: [{ field: 'categoryId', reason: 'unknown_choice', params: {} }],
+    });
+
+    const recorded = api.recordExpense('c1', 'e1');
+    http
+      .expectOne('/api/companies/c1/expenses/e1/record')
+      .flush(violations('categoryId', 'value_required'), unprocessable);
+    await expect(recorded).rejects.toMatchObject({
+      refusals: [{ field: 'categoryId', reason: 'value_required', params: {} }],
+    });
+
+    // A category's and a file's refusals are about the row as a whole.
+    const category = api.createCategory('c1', { name: 'x', parentId: null, isActive: true });
+    http
+      .expectOne('/api/companies/c1/expense-categories')
+      .flush(violations('name', 'invalid_text'), unprocessable);
+    await expect(category).rejects.toMatchObject({ code: 'invalid', refusals: [] });
+  });
+
   it('uploads a file as one multipart part named file, and opens it at a same-origin address', async () => {
     const file = new File(['%PDF-1.4'], 'reçu.pdf', { type: 'application/pdf' });
     const pending = api.attach('c1', 'e1', file);

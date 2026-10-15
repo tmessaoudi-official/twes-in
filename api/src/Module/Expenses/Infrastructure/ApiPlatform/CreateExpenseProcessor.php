@@ -14,9 +14,9 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Fiscal\Application\CurrencyScales;
 use App\Module\Expenses\Application\ManageExpenses;
 use App\Module\Expenses\Domain\InvalidExpense;
+use App\Shared\Infrastructure\ApiPlatform\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<ExpenseResource, ExpenseResource> */
 final readonly class CreateExpenseProcessor implements ProcessorInterface
@@ -32,7 +32,7 @@ final readonly class CreateExpenseProcessor implements ProcessorInterface
         try {
             $expense = $this->manage->create($company, $data->input(), $this->guard->account()->getId());
         } catch (InvalidExpense $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return ExpenseResource::of($expense, $this->scales->of($company->getCurrency()), 0);

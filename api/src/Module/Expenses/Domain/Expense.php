@@ -191,7 +191,7 @@ class Expense implements CompanyOwned
     {
         $this->assertDraft('recorded');
         if (null === $this->category) {
-            throw new InvalidExpense('categoryId', 'An expense is recorded under a category.');
+            throw new InvalidExpense('categoryId', 'An expense is recorded under a category.', 'value_required');
         }
         $this->status = ExpenseStatus::Recorded;
         $this->updatedAt = $now;
@@ -297,13 +297,13 @@ class Expense implements CompanyOwned
     private function apply(ExpenseDetails $details, ExpenseAmounts $amounts, ?Vendor $vendor, ?ExpenseCategory $category, int $currencyScale, RoundingPoint $rounding): void
     {
         if (null !== $vendor && (!$vendor->getCompany()->getId()->equals($this->company->getId()) || (!$vendor->isActive() && $vendor !== $this->vendor))) {
-            throw new InvalidExpense('vendorId', 'An expense names an active vendor of its company.');
+            throw new InvalidExpense('vendorId', 'An expense names an active vendor of its company.', 'unknown_choice');
         }
         if (null !== $vendor && null !== $details->payee) {
             throw new InvalidExpense('payee', 'A vendor already names who was paid.');
         }
         if (null !== $category && (!$category->getCompany()->getId()->equals($this->company->getId()) || (!$category->isActive() && $category !== $this->category))) {
-            throw new InvalidExpense('categoryId', 'An expense is filed under an active category of its company.');
+            throw new InvalidExpense('categoryId', 'An expense is filed under an active category of its company.', 'unknown_choice');
         }
         $figures = $this->figures($amounts, $currencyScale, $rounding);
 
@@ -347,16 +347,22 @@ class Expense implements CompanyOwned
         foreach ($amounts->lines as $at => $line) {
             $net = Decimal::of($line->amountNet);
             if (0 !== Decimal::round($net, $currencyScale)->compare($net)) {
-                throw (new InvalidExpense('amountNet', \sprintf('A net amount carries at most %d decimals, the currency\'s.', $currencyScale)))->within("lines[$at]");
+                throw (new InvalidExpense('amountNet', \sprintf('A net amount carries at most %d decimals, the currency\'s.', $currencyScale), 'invalid_amount', ['decimals' => $currencyScale]))->within("lines[$at]");
             }
             $taxes = [];
             $outsideVatBase = 0;
             foreach ($line->taxes as $tax) {
-                if (!$this->ownedAndActive($tax, $kept) || TaxKind::PercentageLine !== $tax->getKind() || isset($taxes[$tax->getCode()])) {
-                    throw (new InvalidExpense('taxComponentIds', 'A line is taxed by active rates on the net of its company, each once.'))->within("lines[$at]");
+                if (!$this->ownedAndActive($tax, $kept)) {
+                    throw (new InvalidExpense('taxComponentIds', 'A line is taxed by active rates of its company.', 'unknown_tax'))->within("lines[$at]");
+                }
+                if (TaxKind::FixedDocument === $tax->getKind()) {
+                    throw (new InvalidExpense('taxComponentIds', 'A fixed charge is carried by the bill, not by a line.', 'tax_on_document', ['tax' => $tax->getName()]))->within("lines[$at]");
+                }
+                if (TaxKind::PercentageLine !== $tax->getKind() || isset($taxes[$tax->getCode()])) {
+                    throw (new InvalidExpense('taxComponentIds', 'A line is taxed by rates on the net, each once.'))->within("lines[$at]");
                 }
                 if (!$tax->entersVatBase() && ++$outsideVatBase > 1) {
-                    throw (new InvalidExpense('taxComponentIds', 'A line carries one VAT rate: a bill at two rates has a line for each.'))->within("lines[$at]");
+                    throw (new InvalidExpense('taxComponentIds', 'A line carries one VAT rate: a bill at two rates has a line for each.', 'one_vat_rate'))->within("lines[$at]");
                 }
                 $taxes[$tax->getCode()] = TaxInput::percentage($tax->getCode(), Rate::fromPercentage($tax->getRate() ?? '0'), $tax->entersVatBase());
                 $components[$tax->getCode()] = $tax;
@@ -367,7 +373,7 @@ class Expense implements CompanyOwned
         $charges = [];
         foreach ($amounts->charges as $charge) {
             if (!$this->ownedAndActive($charge, $kept) || TaxKind::FixedDocument !== $charge->getKind() || isset($charges[$charge->getCode()])) {
-                throw new InvalidExpense('documentTaxComponentIds', 'A bill carries active fixed charges of its company, each once.');
+                throw new InvalidExpense('documentTaxComponentIds', 'A bill carries active fixed charges of its company, each once.', $this->ownedAndActive($charge, $kept) ? null : 'unknown_tax');
             }
             $charges[$charge->getCode()] = TaxInput::fixed($charge->getCode(), $charge->getAmount() ?? '0');
             $components[$charge->getCode()] = $charge;
@@ -385,7 +391,7 @@ class Expense implements CompanyOwned
             $printed = trim($amount);
             if (null === $worked || 1 !== preg_match('/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/', $printed) || 0 !== Decimal::round(Decimal::of($printed), $currencyScale)->compare(Decimal::of($printed))
                 || Decimal::absolute(Decimal::of($printed)->sub(Decimal::of($worked->amount)))->compare($unit->mul($carriers[$code])) > 0) {
-                throw new InvalidExpense('printedTaxes', \sprintf('A printed amount is a rate of this bill, at most %s a line from what it works out to.', Decimal::format($unit, $currencyScale)));
+                throw new InvalidExpense('printedTaxes', \sprintf('A printed amount is a rate of this bill, at most %s a line from what it works out to.', Decimal::format($unit, $currencyScale)), 'printed_tax_off', ['code' => (string) $code, 'tolerance' => Decimal::format($unit, $currencyScale)]);
             }
         }
 

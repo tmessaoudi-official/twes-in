@@ -4,20 +4,26 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
+  ElementRef,
+  inject,
   input,
   linkedSignal,
   signal,
   untracked,
 } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { type AbstractControl, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { type Subscription, take } from 'rxjs';
 import { DecimalInput } from '../shared/form/decimal-input';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { FieldError } from '../shared/form/form-builder';
 import { Select } from '../shared/form/select';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import {
@@ -71,6 +77,10 @@ export class ExpenseBill {
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the bill. */
   private readonly revision = signal(0);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly translate = inject(TranslateService);
+  /** Drops what the API last refused at the bill's next change. */
+  private refusalsCleared: Subscription | null = null;
 
   /** Kept across a bill rebuilt by a save or another person's change; chosen once, by whether the draft is saved. */
   readonly mode = linkedSignal<BillGroup, BillMode>({
@@ -126,6 +136,7 @@ export class ExpenseBill {
   });
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.refusalsCleared?.unsubscribe());
     effect((onCleanup) => {
       const bill = this.bill();
       let seen = shape(bill);
@@ -147,6 +158,68 @@ export class ExpenseBill {
       });
       onCleanup(() => subscription.unsubscribe());
     });
+  }
+
+  /**
+   * What the API refused on the bill, each under its own field in the text a file is refused with: a line's net or
+   * rates (`lines[1].amountNet`), and a printed amount by its tax's code. The person is put on the first when asked.
+   * A refusal holds the save until the bill changes. Hands back what no field of the bill can carry.
+   */
+  showRefused(refusals: readonly FieldRefusal[], focus = true): readonly FieldRefusal[] {
+    if (this.readOnly()) return refusals;
+    const unplaced: FieldRefusal[] = [];
+    let first: string | null = null;
+    for (const refusal of refusals) {
+      const placed = this.place(refusal);
+      if (placed === null) {
+        unplaced.push(refusal);
+        continue;
+      }
+      const key = `import.rejections.${refusal.reason ?? ''}`;
+      const known = refusal.reason !== null && this.translate.instant(key) !== key;
+      const error: FieldError = {
+        key: known ? key : 'import.rejections.invalid_value',
+        params: refusal.params,
+      };
+      placed.control.setErrors({ refused: error });
+      placed.control.markAsTouched();
+      first ??= placed.selector;
+    }
+    if (first === null) return unplaced;
+    // A refusal is often mended elsewhere on the bill (a rate taken off another line): its first change lets the next
+    // save ask the API again rather than holding it on what it last said.
+    const bill = this.bill();
+    this.refusalsCleared?.unsubscribe();
+    this.refusalsCleared = bill.valueChanges.pipe(take(1)).subscribe(() => {
+      for (const control of refusedControls(bill)) control.updateValueAndValidity();
+      this.revision.update((revision) => revision + 1);
+    });
+    this.revision.update((revision) => revision + 1);
+    if (focus) this.host.nativeElement.querySelector<HTMLElement>(first)?.focus();
+    return unplaced;
+  }
+
+  /** The control a refusal is about and where the person types it, when the bill shows it. */
+  private place(refusal: FieldRefusal): { control: AbstractControl; selector: string } | null {
+    const bill = this.bill();
+    const line = /^lines\[(\d+)\]\.(amountNet|taxComponentIds)$/.exec(refusal.field);
+    if (line !== null) {
+      const at = Number(line[1]);
+      const group = bill.controls.lines.controls[at];
+      if (group === undefined) return null;
+      return line[2] === 'amountNet'
+        ? {
+            control: group.controls.amountNet,
+            selector: `[data-testid="bill-line-${at}-${this.mode() === 'gross' ? 'gross' : 'net'}"]`,
+          }
+        : { control: group.controls.taxComponentIds, selector: `#bill-line-${at}-taxes-input` };
+    }
+    const code = refusal.params['code'];
+    if (refusal.field !== 'printedTaxes' || typeof code !== 'string') return null;
+    const control = bill.controls.printed.controls[code];
+    return control === undefined || !this.printed().some((tax) => tax.code === code)
+      ? null
+      : { control, selector: `[data-testid="bill-printed-${CSS.escape(code)}"]` };
   }
 
   protected choose(mode: BillMode): void {
@@ -180,42 +253,55 @@ export class ExpenseBill {
     };
   }
 
-  protected grossError(line: BillLineGroup): string | null {
+  protected grossError(line: BillLineGroup): FieldError | null {
     this.revision();
     const control = this.grosses.get(line);
     const net = line.controls.amountNet;
     if (control === undefined || net.valid || !(control.touched || net.touched)) return null;
+    const refused = refusedOf(net);
+    if (refused !== null) return refused;
     const typed = control.value.trim();
-    if (typed === '') return 'expenses.bill.gross_required';
+    if (typed === '') return { key: 'expenses.bill.gross_required' };
     if (!new RegExp(`^${amountPattern(this.options().currencyScale)}$`).test(typed)) {
-      return 'expenses.bill.net_pattern';
+      return { key: 'expenses.bill.net_pattern' };
     }
-    if (/^[0.]+$/.test(typed)) return 'expenses.bill.net_positive';
-    return this.ratesOf(line) === null || this.chargesFor() === null
-      ? 'expenses.bill.gross_unknown'
-      : 'expenses.bill.gross_charges';
+    if (/^[0.]+$/.test(typed)) return { key: 'expenses.bill.net_positive' };
+    return {
+      key:
+        this.ratesOf(line) === null || this.chargesFor() === null
+          ? 'expenses.bill.gross_unknown'
+          : 'expenses.bill.gross_charges',
+    };
   }
 
-  protected netError(line: BillLineGroup): string | null {
+  protected netError(line: BillLineGroup): FieldError | null {
     this.revision();
     const control = line.controls.amountNet;
     if (!control.touched || control.valid) return null;
-    if (control.hasError('required')) return 'expenses.bill.net_required';
-    return control.hasError('positive')
-      ? 'expenses.bill.net_positive'
-      : 'expenses.bill.net_pattern';
+    const refused = refusedOf(control);
+    if (refused !== null) return refused;
+    if (control.hasError('required')) return { key: 'expenses.bill.net_required' };
+    return {
+      key: control.hasError('positive')
+        ? 'expenses.bill.net_positive'
+        : 'expenses.bill.net_pattern',
+    };
   }
 
-  protected taxesError(line: BillLineGroup): string | null {
+  protected taxesError(line: BillLineGroup): FieldError | null {
     this.revision();
     const control = line.controls.taxComponentIds;
-    return control.touched && control.hasError('oneVat') ? 'expenses.bill.one_vat' : null;
+    if (!control.touched) return null;
+    return (
+      refusedOf(control) ?? (control.hasError('oneVat') ? { key: 'expenses.bill.one_vat' } : null)
+    );
   }
 
-  protected printedError(code: string): boolean {
+  protected printedError(code: string): FieldError | null {
     this.revision();
     const control = this.bill().controls.printed.controls[code];
-    return control !== undefined && control.touched && control.invalid;
+    if (control === undefined || !control.touched || control.valid) return null;
+    return refusedOf(control) ?? { key: 'expenses.bill.net_pattern' };
   }
 
   protected ticked(id: string): boolean {
@@ -318,4 +404,20 @@ function shape(bill: BillGroup): { count: number; charges: string; rates: string
     charges: bill.controls.charges.value.join(),
     rates: lines.map((line) => line.controls.taxComponentIds.value.join()),
   };
+}
+
+/** What the API last refused on a control, as its error says it. */
+function refusedOf(control: AbstractControl): FieldError | null {
+  return (control.getError('refused') as FieldError | null | undefined) ?? null;
+}
+
+/** Every control of the bill still holding what the API last refused. */
+function refusedControls(bill: BillGroup): AbstractControl[] {
+  return [
+    ...bill.controls.lines.controls.flatMap((line) => [
+      line.controls.amountNet,
+      line.controls.taxComponentIds,
+    ]),
+    ...Object.values(bill.controls.printed.controls),
+  ].filter((control) => control.hasError('refused'));
 }

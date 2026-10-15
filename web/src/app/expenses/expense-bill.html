@@ -75,12 +75,12 @@
                   }}</mat-hint>
                 }
               </mat-form-field>
-              @if (grossError(line); as key) {
+              @if (grossError(line); as error) {
                 <span
                   role="alert"
                   class="px-4 pt-1 pb-2 text-xs text-error"
                   [attr.data-testid]="'bill-line-' + i + '-gross-error'"
-                  >{{ key | translate }}</span
+                  >{{ error.key | translate: error.params }}</span
                 >
               }
             } @else {
@@ -98,12 +98,12 @@
                   'expenses.bill.net_hint' | translate: { currency: options().currency }
                 }}</mat-hint>
               </mat-form-field>
-              @if (netError(line); as key) {
+              @if (netError(line); as error) {
                 <span
                   role="alert"
                   class="px-4 pt-1 pb-2 text-xs text-error"
                   [attr.data-testid]="'bill-line-' + i + '-net-error'"
-                  >{{ key | translate }}</span
+                  >{{ error.key | translate: error.params }}</span
                 >
               }
             }
@@ -119,12 +119,12 @@
               [testId]="'bill-line-' + i + '-taxes'"
               emptyLabel="expenses.bill.untaxed"
             />
-            @if (taxesError(line); as key) {
+            @if (taxesError(line); as error) {
               <span
                 role="alert"
                 class="px-4 pb-2 text-xs text-error"
                 [attr.data-testid]="'bill-line-' + i + '-taxes-error'"
-                >{{ key | translate }}</span
+                >{{ error.key | translate: error.params }}</span
               >
             }
           </div>
@@ -206,12 +206,12 @@
                     | translate: { amount: tax.workedOut | amount: options().currencyScale }
                 }}</mat-hint>
               </mat-form-field>
-              @if (printedError(tax.code)) {
+              @if (printedError(tax.code); as error) {
                 <span
                   role="alert"
                   class="px-4 pt-1 pb-2 text-xs text-error"
                   [attr.data-testid]="'bill-printed-' + tax.code + '-error'"
-                  >{{ 'expenses.bill.net_pattern' | translate }}</span
+                  >{{ error.key | translate: error.params }}</span
                 >
               }
             </div>
