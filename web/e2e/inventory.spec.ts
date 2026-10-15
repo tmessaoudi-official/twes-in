@@ -402,6 +402,8 @@ test('stock received at a location leaves with a validated delivery note and ret
     );
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('loss-files-close').click();
+    // The closed dialog leaves only once its animation ends: reopened before that, two dialogs hold the same buttons.
+    await expect(page.getByTestId('loss-files-close')).toHaveCount(0);
     await expect(page.getByTestId('movement-files')).toContainText('1 fichier joint');
     await page.locator('[data-testid^="row-action-loss-files-"]').click();
     await page.getByTestId('loss-file-remove-carton.png').click();
