@@ -511,8 +511,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   sabotage a style under `make up` only after `docker compose restart web` and a `curl` of the served CSS (2026-10-14).
 - `make gate-api` and `make gate-web` side by side (as ruled) can race on `api/var/cache`: the web gate exports the OpenAPI document
   through the api's console. « Cannot rename … de~ already exists », or `assets:install` KO in the web gate's
-  export, is that race, not the change: rerun the red half alone (2026-10-14). Run `make gate` instead: it exports once, then
-  runs the api half beside `gate-web-checks`, which does not export again; the three halves by hand cost a third more (2026-10-15).
+  export, is that race, not the change: rerun the red half alone (2026-10-14). Run `make gate`: it exports once and runs the halves
+  in turn, which took as long as side by side here (about 15 min) and times nothing out; side by side, the suites starved (2026-10-15).
 - An effect keyed on `auth.me()?.company?.id ?? null` fires again when the person signs out, and its call answers 401:
   « Se déconnecter » landed on « Votre session a pris fin ». Treat signed-out as its own state and ask nothing then
   (`NotificationBell`); `RequestActivity` takes no 401 for an ended session once nobody is signed in (2026-10-14).
