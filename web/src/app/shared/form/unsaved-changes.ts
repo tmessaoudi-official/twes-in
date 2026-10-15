@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { computed, DestroyRef, inject, Injectable, type Signal, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import {
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  Injectable,
+  type Signal,
+  signal,
+} from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import type { CanDeactivateFn, Route } from '@angular/router';
 import { from, map, type Observable, of, switchMap, tap } from 'rxjs';
@@ -22,6 +31,18 @@ export class UnsavedChanges {
   readonly count: Signal<number> = computed(() =>
     this.sources().reduce((total, source) => total + source(), 0),
   );
+
+  constructor() {
+    // Closing or reloading the tab takes the page down with no navigation to guard: the browser's own question holds
+    // it, registered only while something is unsaved, so a clean page never asks. Its words are the browser's.
+    const view = inject(DOCUMENT).defaultView;
+    effect((onCleanup) => {
+      if (view === null || this.count() === 0) return;
+      const hold = (event: BeforeUnloadEvent) => event.preventDefault();
+      view.addEventListener('beforeunload', hold);
+      onCleanup(() => view.removeEventListener('beforeunload', hold));
+    });
+  }
 
   /** Must be called from an injection context: the count lives exactly as long as the page that counts it. */
   declare(source: Signal<number>): void {

@@ -47,7 +47,13 @@ import { ActivatedRoute, type Params, Router, RouterLink } from '@angular/router
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FormatFacade } from '../i18n/format-facade';
 import { SettingsFacade } from '../settings/settings-facade';
-import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
+import {
+  listPreferencesSetting,
+  listViewsSetting,
+  PAGE_SIZE_CHOICES,
+  type PageSizeChoice,
+  PRESENTATION,
+} from '../settings/settings-registry';
 import type {
   ListColumn,
   ListDescriptor,
@@ -247,7 +253,14 @@ export class DataList<Row> implements OnInit {
   protected readonly pickNames = signal<Readonly<Record<string, string>>>({});
   protected readonly viewName = signal('');
   protected readonly pageIndex = signal(0);
-  protected readonly pageSize = linkedSignal(() => this.descriptor().pageSizes[0] ?? 25);
+  private readonly chosenPageSize = this.settings.value(PRESENTATION.pageSize);
+  /** The size a list opens at: the one the person chose for every list where this one offers it, else its own first. */
+  private readonly openingPageSize = computed(() => {
+    const sizes = this.descriptor().pageSizes;
+    const chosen = Number(this.chosenPageSize());
+    return sizes.includes(chosen) ? chosen : (sizes[0] ?? 25);
+  });
+  protected readonly pageSize = linkedSignal(() => this.openingPageSize());
   protected readonly chooserOpen = signal(false);
   private readonly liveWidth = signal<{ id: string; width: number } | null>(null);
   private readonly tableBox = viewChild<ElementRef<HTMLElement>>('tableBox');
@@ -532,9 +545,12 @@ export class DataList<Row> implements OnInit {
     const shown = sortRows(filterRows(narrowed, columns, this.query()), columns, this.sort());
     return paginate(shown, this.pageIndex(), this.pageSize());
   });
-  protected readonly paged = computed(
-    () => this.page().total > (this.descriptor().pageSizes[0] ?? Infinity),
-  );
+  /** Whenever a list can be paged at all: the rows-per-page chooser stays reachable even when every row fits. */
+  protected readonly paged = computed(() => {
+    const sizes = this.descriptor().pageSizes;
+    const total = this.page().total;
+    return total > 0 && (sizes.length > 1 || total > (sizes[0] ?? Infinity));
+  });
   /** Nothing to show because there is nothing at all, not because of what a person asked for. */
   protected readonly empty = computed(
     () =>
@@ -773,7 +789,7 @@ export class DataList<Row> implements OnInit {
       ),
       sort: sorted,
       page: query.pageIndex === 0 ? null : String(query.pageIndex + 1),
-      size: query.pageSize === descriptor.pageSizes[0] ? null : String(query.pageSize),
+      size: query.pageSize === this.openingPageSize() ? null : String(query.pageSize),
     };
     const current = this.route.snapshot.queryParamMap;
     if (Object.entries(queryParams).every(([key, value]) => current.get(key) === value)) return;
@@ -1159,6 +1175,12 @@ export class DataList<Row> implements OnInit {
 
   protected onPage(event: PageEvent): void {
     this.pageIndex.set(event.pageIndex);
+    if (event.pageSize !== this.pageSize()) {
+      const choice = String(event.pageSize);
+      if ((PAGE_SIZE_CHOICES as readonly string[]).includes(choice)) {
+        this.settings.set(PRESENTATION.pageSize, choice as PageSizeChoice);
+      }
+    }
     this.pageSize.set(event.pageSize);
   }
 

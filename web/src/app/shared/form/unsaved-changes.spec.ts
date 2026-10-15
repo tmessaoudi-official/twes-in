@@ -165,6 +165,34 @@ describe('UnsavedChanges', () => {
     expect(await leaving()).toBe(true);
   });
 
+  // Closing or reloading the tab is held at the browser's own question, only while something is unsaved: a clean page
+  // never asks, the same principle as the question a navigation asks.
+  it('holds closing or reloading the tab only while something is unsaved', () => {
+    const unloading = () => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    const page = TestBed.createComponent(Page);
+    page.detectChanges();
+    TestBed.tick();
+    expect(unloading()).toBe(false);
+
+    page.componentInstance.changes.set(1);
+    TestBed.tick();
+    expect(unloading()).toBe(true);
+
+    page.componentInstance.changes.set(0);
+    TestBed.tick();
+    expect(unloading()).toBe(false);
+
+    page.componentInstance.changes.set(2);
+    TestBed.tick();
+    page.destroy();
+    TestBed.tick();
+    expect(unloading()).toBe(false);
+  });
+
   it('counts every form on the page, not just the first', () => {
     const one = TestBed.createComponent(Page);
     const two = TestBed.createComponent(Page);

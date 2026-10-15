@@ -1021,7 +1021,8 @@
       "shortcuts": "Keyboard shortcuts",
       "folded_sections": "Folded menu sections",
       "settings_list": "Settings list",
-      "stock_map_view": "Stock map view"
+      "stock_map_view": "Stock map view",
+      "page_size": "Rows per page"
     },
     "choices": {
       "stock": {
@@ -1097,6 +1098,14 @@
         "stock-map-view": {
           "plan": "2D plan",
           "volume": "3D volume"
+        },
+        "page-size": {
+          "auto": "As the list offers",
+          "10": "10",
+          "25": "25",
+          "50": "50",
+          "100": "100",
+          "200": "200"
         }
       }
     },

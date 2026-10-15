@@ -40,6 +40,9 @@ final readonly class PresentationSettings implements DeclaresSettings
         // Whether the stock map opens on its plan or its volume, which is for looking only: the plan until a person, a role
         // or the company chooses.
         yield new SettingDefinition('presentation.stock-map-view', SettingType::Enum, 'plan', $chain, $shared, 'settings.presentation.stock_map_view', self::MODULE, choices: ['plan', 'volume']);
+        // How many rows a list shows per page, one choice for every list: `auto` is each list's own first size, and a list
+        // that does not offer the size chosen shows its own first too.
+        yield new SettingDefinition('presentation.page-size', SettingType::Enum, 'auto', $chain, $shared, 'settings.presentation.page_size', self::MODULE, choices: ['auto', '10', '25', '50', '100', '200']);
         yield new SettingDefinition('presentation.language', SettingType::Enum, 'fr', $chain, $shared, 'settings.presentation.language', self::MODULE, choices: ['fr', 'en']);
         // « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. The
         // company may hide them for everyone; a member for themself.
