@@ -103,17 +103,17 @@ final class ProductResource
     #[Groups([self::READ, self::WRITE])]
     public string $reference = '';
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Length(max: ProductDetails::NAME_MAX, groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: ProductDetails::NAME_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ProductDetails::NAME_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public string $name = '';
 
-    #[Assert\Length(max: ProductDetails::DESCRIPTION_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: ProductDetails::DESCRIPTION_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ProductDetails::DESCRIPTION_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $description = null;
 
     #[ApiProperty(schema: ['type' => 'string', 'enum' => ['goods', 'service']])]
-    #[Assert\Choice(choices: ['goods', 'service'], groups: [self::WRITE])]
+    #[Assert\Choice(choices: ['goods', 'service'], groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::READ, self::WRITE])]
     public string $kind = 'goods';
 
@@ -122,19 +122,19 @@ final class ProductResource
      * for a service. Left out of a write, it is kept.
      */
     #[ApiProperty(schema: ['type' => 'string', 'enum' => ['none', 'lot', 'serial']])]
-    #[Assert\Choice(choices: ['none', 'lot', 'serial'], groups: [self::WRITE])]
+    #[Assert\Choice(choices: ['none', 'lot', 'serial'], groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $tracking = null;
 
     /** One of the company's units (GET .../units); a retired one stays with the products that have it. */
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::READ, self::WRITE])]
     public string $unitId = '';
 
     /** The net price of one unit, a decimal string with at most four decimals. */
     #[ApiProperty(schema: ['type' => 'string', 'pattern' => self::PRICE_SCHEMA_PATTERN, 'example' => '1250.5000'])]
-    #[Assert\NotBlank(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
     #[Groups([self::READ, self::WRITE])]
     public string $unitPriceNet = '';
 
@@ -146,7 +146,7 @@ final class ProductResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $costPrice = null;
 
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $categoryId = null;
 
@@ -154,7 +154,7 @@ final class ProductResource
      * The group of products that replace one another, as its name; the other members are this one's substitutes
      * (GET .../substitutes). Null for none.
      */
-    #[Assert\Length(max: ProductDetails::GROUP_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: ProductDetails::GROUP_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ProductDetails::GROUP_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $substitutionGroup = null;
 
@@ -169,8 +169,8 @@ final class ProductResource
     public array $barcodes = [];
 
     /** @var list<string> the ids of the company's line taxes a new line for this product starts with */
-    #[Assert\Type('list', groups: [self::WRITE])]
-    #[Assert\All([new Assert\Uuid()], groups: [self::WRITE])]
+    #[Assert\Type('list', groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
+    #[Assert\All([new Assert\Uuid(payload: ['reason' => 'invalid_value'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $defaultTaxComponentIds = [];
 

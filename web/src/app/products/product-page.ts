@@ -457,11 +457,21 @@ export class ProductPage {
             ? { replaceUrl: true }
             : { replaceUrl: true, queryParams: { tab: 'codes', add: barcode } },
         );
+      } else {
+        this.showRefused();
       }
     } else if ((await this.facade.reviseProduct(companyId, id, typed)) !== null) {
       const form = this.form();
       if (form !== null) this.sync.savedHere(form);
       this.feedback.success('products.saved');
+    } else {
+      this.showRefused();
     }
+  }
+
+  /** Each field the API refused said on that field; the line above the form stays for what it says as a whole. */
+  private showRefused(): void {
+    const refused = this.facade.refusals();
+    if (refused.length > 0) this.mainForm()?.showRefused(refused);
   }
 }

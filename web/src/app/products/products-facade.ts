@@ -3,6 +3,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingsApi } from '../shared/settings/settings-api';
 import type { SettingRow } from '../shared/settings/settings-types';
 import type { ExportFormat } from '../shared/list/export-address';
@@ -40,6 +41,7 @@ export class ProductsFacade {
   private readonly busySignal = signal(false);
   private reads = 0;
   private readonly errorSignal = signal<ProductsError | null>(null);
+  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
 
   readonly products = this.productsSignal.asReadonly();
   /** How many products the last search found in all, the page shown being one part of them. */
@@ -57,6 +59,8 @@ export class ProductsFacade {
   readonly defaultTracking = this.defaultTrackingSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
+  /** The fields the last save was refused on, for the form to say under each. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   /** What the list screen needs besides its page: the categories and units its rows name, and the custom fields it adds columns for. */
   async loadListContext(companyId: string): Promise<void> {
@@ -221,12 +225,14 @@ export class ProductsFacade {
   private async save(call: () => Promise<ProductRow>): Promise<ProductRow | null> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
+    this.refusalsSignal.set([]);
     try {
       const product = await call();
       this.productSignal.set(product);
       return product;
     } catch (error) {
       this.errorSignal.set(codeOf(error));
+      this.refusalsSignal.set(error instanceof ProductsRefused ? error.refusals : []);
       return null;
     } finally {
       this.busySignal.set(false);

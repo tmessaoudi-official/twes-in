@@ -278,26 +278,26 @@ final readonly class ManageProducts
     private function checked(Company $company, ProductInput $input, ?Product $current): array
     {
         $unit = $this->units->ofIdInCompany($input->unitId, $company->getId())
-            ?? throw new InvalidProduct('unitId', 'No unit of this company has this id.');
+            ?? throw new InvalidProduct('unitId', 'No unit of this company has this id.', 'unknown_choice');
         if (!$unit->isActive() && !(null !== $current && $current->getUnit()->getId()->equals($unit->getId()))) {
-            throw new InvalidProduct('unitId', \sprintf('The unit %s is retired.', $unit->getCode()));
+            throw new InvalidProduct('unitId', \sprintf('The unit %s is retired.', $unit->getCode()), 'unknown_choice');
         }
 
         $category = null;
         if (null !== $input->categoryId) {
             $category = $this->categories->ofIdInCompany($input->categoryId, $company->getId())
-                ?? throw new InvalidProduct('categoryId', 'No product category of this company has this id.');
+                ?? throw new InvalidProduct('categoryId', 'No product category of this company has this id.', 'unknown_choice');
         }
 
         $kept = $current?->getDefaultTaxComponentIds() ?? [];
         foreach ($input->defaultTaxComponentIds as $taxId) {
             $tax = $this->taxes->ofIdInCompany($taxId, $company->getId())
-                ?? throw new InvalidProduct('defaultTaxComponentIds', \sprintf('No tax of this company has the id %s.', $taxId->toRfc4122()));
+                ?? throw new InvalidProduct('defaultTaxComponentIds', \sprintf('No tax of this company has the id %s.', $taxId->toRfc4122()), 'unknown_tax');
             if (!$tax->isActive() && !\in_array($taxId->toRfc4122(), $kept, true)) {
-                throw new InvalidProduct('defaultTaxComponentIds', \sprintf('The tax %s is retired.', $tax->getCode()));
+                throw new InvalidProduct('defaultTaxComponentIds', \sprintf('The tax %s is retired.', $tax->getCode()), 'unknown_tax');
             }
             if (TaxKind::PercentageLine !== $tax->getKind()) {
-                throw new InvalidProduct('defaultTaxComponentIds', \sprintf('%s is charged on a document, not on a line.', $tax->getCode()));
+                throw new InvalidProduct('defaultTaxComponentIds', \sprintf('%s is charged on a document, not on a line.', $tax->getCode()), 'tax_on_document', ['tax' => $tax->getName()]);
             }
         }
 
@@ -344,7 +344,7 @@ final readonly class ManageProducts
     private function trackingKeptByStock(Company $company, Product $product, ProductTracking $tracking): ProductTracking
     {
         if ($tracking !== $product->getTracking() && $this->stockHistory->hasMovements($product->getId(), $company->getId())) {
-            throw new InvalidProduct('tracking', \sprintf('Stock of %s was moved %s, so it stays that way.', $product->getReference(), ProductTracking::None === $product->getTracking() ? 'without lots' : 'by '.$product->getTracking()->value));
+            throw new InvalidProduct('tracking', \sprintf('Stock of %s was moved %s, so it stays that way.', $product->getReference(), ProductTracking::None === $product->getTracking() ? 'without lots' : 'by '.$product->getTracking()->value), 'tracking_kept_by_stock');
         }
 
         return $tracking;

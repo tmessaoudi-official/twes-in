@@ -17,11 +17,11 @@ use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Application\ProductPhotos;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\InvalidProduct;
+use App\Shared\Infrastructure\ApiPlatform\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<ProductResource, ProductResource> */
 final readonly class ReviseProductProcessor implements ProcessorInterface
@@ -42,7 +42,7 @@ final readonly class ReviseProductProcessor implements ProcessorInterface
         } catch (ProductReferenceTaken|ProductBarcodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidProduct $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return ProductResource::of($product, $seesCosts, $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null);

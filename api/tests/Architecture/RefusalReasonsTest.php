@@ -63,7 +63,7 @@ final class RefusalReasonsTest extends KernelTestCase
     }
 
     /**
-     * A domain refusal of a customer's, a vendor's or the company's own field, or of a custom field, reaches the form the same way: every reason one is written
+     * A domain refusal of a customer's, a vendor's, a product's or the company's own field, or of a custom field, reaches the form the same way: every reason one is written
      * with has its screen text. A reason is the snake_case literal of the refusal's statement (fields, parameters and
      * messages are not snake_case).
      */
@@ -75,12 +75,12 @@ final class RefusalReasonsTest extends KernelTestCase
         $translated = self::translated();
         $statements = 0;
         $untranslated = [];
-        foreach (['src/Module/Customers', 'src/Module/Vendors', 'src/Fiscal/Application/Preset', 'src/CustomFields', 'src/Tenancy/Application/Company'] as $directory) {
+        foreach (['src/Module/Customers', 'src/Module/Vendors', 'src/Fiscal/Application/Preset', 'src/CustomFields', 'src/Tenancy/Application/Company', 'src/Module/Products'] as $directory) {
             $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator("$root/$directory", \FilesystemIterator::SKIP_DOTS));
             foreach ($files as $file) {
                 \assert($file instanceof \SplFileInfo);
                 $source = (string) file_get_contents($file->getPathname());
-                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile)\((.*?)\);/s', $source, $found);
+                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct)\((.*?)\);/s', $source, $found);
                 // A custom field's refusals go through its helper, one per arm of a match.
                 preg_match_all('/self::refuse\((.*?)\),$/m', $source, $helped);
                 foreach ([...$found[1], ...$helped[1]] as $arguments) {
@@ -95,7 +95,7 @@ final class RefusalReasonsTest extends KernelTestCase
             }
         }
 
-        self::assertGreaterThan(28, $statements, 'the domain refusals are found');
+        self::assertGreaterThan(62, $statements, 'the domain refusals are found');
         self::assertSame([], $untranslated);
     }
 

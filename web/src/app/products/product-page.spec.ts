@@ -15,6 +15,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
   PageMemoryStorage,
@@ -43,6 +44,7 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       products: { errors: { reference_taken: 'Un autre produit porte déjà cette référence.' } },
+      import: { rejections: { invalid_text: 'Texte refusé : {{max}} caractères au plus.' } },
     });
   }
 }
@@ -76,6 +78,7 @@ const laptop: ProductRow = {
 
 describe('ProductPage', () => {
   const error = signal<ProductsError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const product = signal<ProductRow | null>(null);
   const optionsSignal = signal<ProductOptions | null>(options);
   const categories = signal<readonly ProductCategoryRow[]>([]);
@@ -86,6 +89,7 @@ describe('ProductPage', () => {
     product: product.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     defaultUnitCode: signal<string | null>('C62').asReadonly(),
     defaultTracking: signal<'none' | 'lot' | 'serial'>('none').asReadonly(),
     loadProduct: vi.fn(),
@@ -148,6 +152,7 @@ describe('ProductPage', () => {
 
   beforeEach(() => {
     error.set(null);
+    refusals.set([]);
     product.set(null);
     optionsSignal.set(options);
     facade.loadProduct.mockReset().mockResolvedValue(undefined);
@@ -469,6 +474,44 @@ describe('ProductPage', () => {
     // The defaults are their own panel, in their own tab, with their own save.
     await openTab('products.tabs.defaults');
     expect(q('article-defaults')).not.toBeNull();
+  });
+
+  it('says on its field what a save was refused for, and puts the person on it', async () => {
+    product.set(laptop);
+    await open('p1');
+    facade.reviseProduct.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'name', reason: 'invalid_text', params: { max: 200 } }]);
+      return null;
+    });
+    type('field-name', 'Portable 15"');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.reviseProduct).toHaveBeenCalled();
+    expect(q('field-error-name')?.textContent).toContain('Texte refusé : 200 caractères au plus.');
+    expect(document.activeElement).toBe(q('field-name'));
+    expect(successToasts()).not.toContain('products.saved');
+  });
+
+  it('says on its field what the creation of a product was refused for', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    facade.createProduct.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'name', reason: 'invalid_text', params: { max: 200 } }]);
+      return null;
+    });
+    type('field-reference', 'ART-009');
+    type('field-name', 'Souris');
+    type('field-unitPriceNet', '25.5');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(q('field-error-name')?.textContent).toContain('Texte refusé : 200 caractères au plus.');
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   // docs/SPEC.md § 7, 2026-09-25 10:13: the scan card offers a code nobody holds to the product on view.

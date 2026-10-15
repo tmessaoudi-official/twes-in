@@ -27,6 +27,7 @@ use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductCategory;
+use App\Module\Products\Domain\ProductDetails;
 use App\ModuleRegistry\Domain\ModuleState;
 use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
@@ -138,6 +139,19 @@ final class ProductImportTest extends ApiTestCase
             [7, 'active', 'not_yes_or_no', []],
             [8, 'reference', 'duplicate_in_file', ['line' => 3]],
         ], $rejected);
+    }
+
+    /** A file and the form say a text too long the same way, with its maximum. */
+    public function testATooLongNameIsRefusedAsTheFormRefusesIt(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import("reference,name,unit_code,unit_price_net\nART-1,".str_repeat('a', ProductDetails::NAME_MAX + 1).",H87,1.000\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        $rejected = $this->arrayAt($this->json(), 'rejected');
+        self::assertIsArray($rejected[0] ?? null);
+        self::assertSame(['name', 'invalid_text', ['min' => 1, 'max' => ProductDetails::NAME_MAX]], [$rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null, $rejected[0]['params'] ?? null]);
     }
 
     /** A row without a reference is given the next of the company's format, and told so (docs/SPEC.md § 7, 2026-09-17 (3)). */

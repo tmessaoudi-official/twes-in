@@ -113,6 +113,38 @@ final class ProductsTest extends ApiTestCase
         self::assertSame([], $this->jsonList());
     }
 
+    /** The form's rules and the domain's answer one shape, under the reasons a product file is refused with. */
+    public function testARefusalNamesItsFieldAndAReasonTheScreenTranslates(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $absent = '0192c3a4-0000-7000-8000-000000000000';
+
+        foreach ([
+            'reference' => [['reference' => 'ART 001'], 'invalid_reference', ['max' => 32]],
+            'name' => [['name' => ''], 'value_required', []],
+            'description' => [['description' => str_repeat('a', ProductDetails::DESCRIPTION_MAX + 1)], 'invalid_text', ['max' => ProductDetails::DESCRIPTION_MAX]],
+            'substitutionGroup' => [['substitutionGroup' => str_repeat('a', ProductDetails::GROUP_MAX + 1)], 'invalid_text', ['max' => ProductDetails::GROUP_MAX]],
+            'kind' => [['kind' => 'robot'], 'invalid_value', []],
+            'tracking' => [['kind' => 'service', 'tracking' => 'lot'], 'service_untracked', []],
+            'unitPriceNet' => [['unitPriceNet' => '12,5'], 'invalid_price', []],
+            'costPrice' => [['costPrice' => '-3'], 'invalid_price', []],
+            'unitId' => [['unitId' => $absent], 'unknown_choice', []],
+            'categoryId' => [['categoryId' => $absent], 'unknown_choice', []],
+            'defaultTaxComponentIds' => [['defaultTaxComponentIds' => [$this->taxId('TIMBRE')]], 'tax_on_document', ['tax' => 'Droit de timbre']],
+        ] as $field => [$change, $reason, $params]) {
+            $this->postJson($this->path(), $this->product($change));
+
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals(), $field);
+        }
+
+        // A revision refuses in the same shape.
+        $id = $this->created($this->product());
+        $this->sendJson('PUT', $this->path($id), $this->product(['unitId' => $absent]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'unitId', 'reason' => 'unknown_choice', 'params' => []]], $this->refusals());
+    }
+
     /** A product left without a reference is given the next free one of its company's format (docs/SPEC.md § 7, 2026-09-17 (3)). */
     public function testANewProductLeftWithoutAReferenceIsGivenTheOneThePreviewSaid(): void
     {
