@@ -12,7 +12,7 @@ namespace App\Inbox\Infrastructure\Mail;
 use App\Inbox\Application\NotificationKinds;
 use App\Inbox\Application\NotificationMail;
 use App\Inbox\Application\NotificationMailer;
-use App\Shared\Infrastructure\Twig\DecimalExtension;
+use App\Shared\Infrastructure\Mail\MailFigures;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -21,8 +21,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * A notification as a mail, in its reader's language: the kind's short name (and its company) as the subject, the
- * sentence the bell says as the body, its amounts written as the reader's language writes them (as a printed document does,
- * from the decimal string and never through a float). Its stop link, also given as List-Unsubscribe, opens the page whose button turns
+ * sentence the bell says as the body, its amounts, quantities, days and moments written as the reader writes them (as a
+ * printed document does, from the decimal string and never through a float). Its stop link, also given as List-Unsubscribe, opens the page whose button turns
  * that kind's mail off; it decides nothing by itself, since mail clients and scanners open links on their own.
  */
 #[AsAlias(NotificationMailer::class)]
@@ -32,7 +32,7 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
         private MailerInterface $mailer,
         private TranslatorInterface $translator,
         private NotificationKinds $kinds,
-        private DecimalExtension $decimals,
+        private MailFigures $figures,
         #[Autowire(param: 'app.mail.sender')]
         private string $sender,
         #[Autowire(param: 'app.product_name')]
@@ -57,7 +57,7 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
             ->locale($mail->locale)
             ->context([
                 'kind' => $kind,
-                'sentence' => $this->translator->trans("notification.types.$key", $this->parameters($mail->type, $mail->payload, $mail->locale), 'emails', $mail->locale),
+                'sentence' => $this->translator->trans("notification.types.$key", $this->parameters($mail), 'emails', $mail->locale),
                 'companyName' => $mail->companyName,
                 'openUrl' => $this->openUrl,
                 'stopUrl' => $stopUrl,
@@ -70,30 +70,32 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
     }
 
     /**
-     * @param array<string, scalar|null> $payload
-     *
      * @return array<string, string> each value under its %name%, as the sentence reads it; a thing named by its
      *                               translation key (`label_key`, as the screen reads it) is named in the mail's language as %label%;
-     *                               an amount its kind names is written at the payload's `scale`, and kept as sent by an older
-     *                               notice that has none
+     *                               an amount, a quantity, a day or a moment its kind names is written as the reader writes it, an
+     *                               amount at the payload's `scale` and kept as sent by an older notice that has none
      */
-    private function parameters(string $type, array $payload, string $locale): array
+    private function parameters(NotificationMail $mail): array
     {
+        $payload = $mail->payload;
+        $kind = $this->kinds->get($mail->type);
         $scale = $payload['scale'] ?? null;
-        $amounts = \is_int($scale) ? ($this->kinds->get($type)->amounts ?? []) : [];
-        $language = strtok($locale, '_-') ?: $locale;
         $parameters = [];
         foreach ($payload as $name => $value) {
             $parameters['%'.$name.'%'] = match (true) {
                 null === $value => '',
                 \is_bool($value) => $value ? '1' : '0',
-                \is_string($value) && \is_int($scale) && \in_array($name, $amounts, true) => $this->decimals->format($value, $scale, $language),
-                default => (string) $value,
+                !\is_string($value) || null === $kind => (string) $value,
+                \is_int($scale) && \in_array($name, $kind->amounts, true) => $this->figures->amount($value, $scale, $mail->locale, $mail->numberFormat),
+                \in_array($name, $kind->quantities, true) => $this->figures->quantity($value, $mail->locale, $mail->numberFormat),
+                \in_array($name, $kind->days, true) => $this->figures->day($value, $mail->locale, $mail->dateFormat),
+                \in_array($name, $kind->moments, true) => $this->figures->moment($value, $mail->locale, $mail->dateFormat),
+                default => $value,
             };
         }
 
         if (\is_string($payload['label_key'] ?? null)) {
-            $parameters['%label%'] = $this->translator->trans($payload['label_key'], [], 'emails', $locale);
+            $parameters['%label%'] = $this->translator->trans($payload['label_key'], [], 'emails', $mail->locale);
         }
 
         return $parameters;

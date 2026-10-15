@@ -21,7 +21,7 @@ final readonly class SupportAccessNotificationKinds implements DeclaresNotificat
     public function notificationKinds(): array
     {
         return [
-            new NotificationKind(ManageSupportAccess::GRANTED, NotificationAudience::Company, role: Role::OWNER),
+            new NotificationKind(ManageSupportAccess::GRANTED, NotificationAudience::Company, role: Role::OWNER, moments: ['until']),
             new NotificationKind(ManageSupportAccess::ENDED, NotificationAudience::Company, role: Role::OWNER),
         ];
     }

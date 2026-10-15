@@ -9,10 +9,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Licensing\Domain\PaymentMethod;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Role;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mime\Email as MimeEmail;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Cash payments (docs/SPEC.md § 7, 2026-09-17): the company declares what it paid, which keeps it open for the hold
@@ -255,6 +261,48 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         self::assertStringContainsString('Payment of 1,234.50 EUR confirmed', (string) $confirmed->getHtmlBody());
     }
 
+    public function testEachPaymentMailWritesItsDayAndAmountAsItsOwnReaderChose(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('owner@twes.local', 'password-1234', $company);
+        $this->em()->getConnection()->executeStatement('UPDATE "user" SET locale = ? WHERE email = ?', ['en', 'owner@twes.local']);
+        // The operator exists before the declaration, which is mailed to every operator; they sign in only to confirm.
+        $this->createUser('op@twes.local', 'password-1234', operator: true);
+        $this->operatorCreated = true;
+        $this->choose('op@twes.local', $company, 'presentation.date-format', 'mdy');
+        $this->choose('op@twes.local', $company, 'presentation.number-format', 'comma-dot');
+        $this->choose('owner@twes.local', $company, 'presentation.date-format', 'dmy-dots');
+        $this->subscribe($company, ['paidThrough' => $this->day(-30), 'graceDays' => 0, 'price' => '1234.50', 'currency' => 'EUR']);
+        $this->login('owner@twes.local', 'password-1234');
+        $paidOn = $this->day(-1);
+        $this->postJson($this->paymentsOf($company), $this->payment(['amount' => '1234.50', 'currency' => 'EUR', 'method' => 'transfer', 'paidOn' => $paidOn]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $declarationId = $this->stringAt($this->json(), 'id');
+        $declared = $this->mailTo('op@twes.local');
+        self::assertStringContainsString('Acme a déclaré 1,234.50 EUR réglés le '.new \DateTimeImmutable($paidOn)->format('m/d/Y').'.', $declared);
+        self::assertStringContainsString("Moyen\u{a0}: virement.", $declared);
+
+        $this->signInOperator();
+        $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/confirm', []);
+        self::assertResponseIsSuccessful();
+        $paidUntil = $this->em()->getConnection()->fetchOne('SELECT paid_until FROM subscription WHERE company_id = ?', [$company->getId()->toRfc4122()]);
+        self::assertIsString($paidUntil);
+        $through = new \DateTimeImmutable($paidUntil);
+        $day = $through->setTimezone(new \DateTimeZone($company->getTimezone()))->format('d.m.Y');
+        self::assertStringContainsString("Acme is paid through $day.", $this->mailTo('owner@twes.local'));
+    }
+
+    public function testEveryPaymentMethodIsNamedInEveryMailLanguage(): void
+    {
+        $translator = static::getContainer()->get(TranslatorInterface::class);
+        foreach (PaymentMethod::cases() as $method) {
+            foreach (['fr', 'en'] as $language) {
+                $key = 'payment_declared.methods.'.$method->value;
+                self::assertNotSame($key, $translator->trans($key, [], 'emails', $language), "$method->value in $language");
+            }
+        }
+    }
+
     public function testACompanyWithoutASubscriptionHasNothingToDeclare(): void
     {
         $company = $this->createCompany('Globex');
@@ -345,6 +393,29 @@ final class SubscriptionPaymentsTest extends ApiTestCase
             ...$terms,
         ]);
         self::assertResponseIsSuccessful();
+    }
+
+    /** The person's own choice of a presentation key, as « Mon compte » writes it. */
+    private function choose(string $email, Company $company, string $key, string $value): void
+    {
+        $id = $this->em()->getConnection()->fetchOne('SELECT id FROM "user" WHERE email = ?', [$email]);
+        self::assertIsString($id);
+        $id = Uuid::fromString($id);
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($company, userId: $id), $key, SettingLevel::User, $value, $id);
+    }
+
+    /** The body of the last mail sent to that address. */
+    private function mailTo(string $address): string
+    {
+        $found = null;
+        foreach (self::getMailerMessages() as $mail) {
+            if ($mail instanceof MimeEmail && $address === $mail->getTo()[0]->getAddress()) {
+                $found = (string) $mail->getHtmlBody();
+            }
+        }
+        self::assertIsString($found, "a mail went to $address");
+
+        return $found;
     }
 
     private function signInOperator(): void

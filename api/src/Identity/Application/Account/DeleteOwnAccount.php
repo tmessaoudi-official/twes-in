@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Domain\UserRepository;
+use App\Settings\Application\ReaderFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;
@@ -40,6 +41,7 @@ final readonly class DeleteOwnAccount
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private ReaderFormats $formats,
     ) {
     }
 
@@ -70,7 +72,7 @@ final readonly class DeleteOwnAccount
 
             return [$user, $now->modify(\sprintf('+%d days', $days))];
         });
-        $this->mailer->send(new AccountDeletionMail($user->getEmail()->value, $user->getLocale(), $days, $finalAt));
+        $this->mailer->send(new AccountDeletionMail($user->getEmail()->value, $user->getLocale(), $days, $finalAt, $this->formats->of($userId, null)['dateFormat']));
 
         return $finalAt;
     }

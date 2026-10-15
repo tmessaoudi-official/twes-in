@@ -18,7 +18,12 @@ import { AuthFacade } from '../auth/auth-facade';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { groupByDay, relativeTime } from './notification-days';
 import { NotificationsFacade } from './notifications-facade';
-import { type InboxEntry, notificationKey, notificationRecord } from './notifications-types';
+import {
+  type InboxEntry,
+  notificationKey,
+  notificationRecord,
+  type NotificationRecord,
+} from './notifications-types';
 import { Label } from '../shared/a11y/label';
 
 type Filter = 'all' | 'unread';
@@ -75,7 +80,7 @@ export class NotificationPanel {
           entry,
           icon: record.icon,
           textKey: notificationKey(entry.type),
-          params: this.params(entry, record.amounts ?? []),
+          params: this.params(entry, record),
           route: allowed ? record.route : null,
           ago: relativeTime(entry.createdAt, now, locale),
           at: this.format.moment(entry.createdAt, timeZone),
@@ -91,18 +96,32 @@ export class NotificationPanel {
 
   /**
    * The words' parameters: the payload as the API sent it, each amount written as the screen writes amounts (at the
-   * payload's `scale`, or as sent when an older one has none), and, when it names something by its translation key
-   * (`label_key`, such as the module that arrived), that thing's name in the screen's language as `label`.
+   * payload's `scale`, or as sent when an older one has none), each quantity without the zeros that say nothing, each
+   * moment in the screen's order of a day, and, when it names something by its translation key (`label_key`, such as
+   * the module that arrived), that thing's name in the screen's language as `label`. A value that is not what it should
+   * be is written as it came.
    */
-  private params(entry: InboxEntry, amounts: readonly string[]): Record<string, unknown> {
+  private params(entry: InboxEntry, record: NotificationRecord): Record<string, unknown> {
     const scale = entry.payload['scale'];
     const params: Record<string, unknown> = { ...entry.payload };
-    for (const key of amounts) {
-      const value = entry.payload[key];
-      if (typeof value === 'string') {
-        params[key] = this.format.amount(value, typeof scale === 'number' ? scale : null);
+    const write = (keys: readonly string[] | undefined, as: (value: string) => string) => {
+      for (const key of keys ?? []) {
+        const value = entry.payload[key];
+        if (typeof value === 'string') {
+          params[key] = as(value);
+        }
       }
-    }
+    };
+    write(record.amounts, (value) =>
+      this.format.amount(value, typeof scale === 'number' ? scale : null),
+    );
+    write(record.quantities, (value) =>
+      this.format.amount(value.includes('.') ? value.replace(/\.?0+$/, '') : value, null),
+    );
+    write(record.moments, (value) => {
+      const [, day, time] = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/.exec(value) ?? [];
+      return day === undefined ? value : `${this.format.day(day)} ${time}`;
+    });
     const labelKey = entry.payload['label_key'];
     if (typeof labelKey === 'string') {
       params['label'] = this.translate.instant(labelKey) as string;

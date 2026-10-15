@@ -25,6 +25,9 @@ final readonly class PaymentDecidedMail
         public ?string $paidThrough,
         public ?string $note,
         public string $loginUrl,
+        /** The reader's order of a day and way of writing a number (`presentation.*-format`), `auto` for their language's. */
+        public string $dateFormat = 'auto',
+        public string $numberFormat = 'auto',
     ) {
     }
 }

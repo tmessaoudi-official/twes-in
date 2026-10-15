@@ -41,6 +41,8 @@ class StaticLoader implements TranslateLoader {
           unknown: 'Nouvelle notification',
           module_arrived: '« {{label}} » est arrivé pour {{company}}',
           invoice_credit_limit_passed: '{{customer}} doit {{owed}} {{currency}} pour {{limit}}',
+          stock_low: '{{product}} est tombé à {{on_hand}}, seuil {{point}}',
+          support_access_granted: 'Support ouvert jusqu’au {{until}}',
         },
       },
       modules: { quotes: 'Devis et commandes' },
@@ -412,6 +414,46 @@ describe('NotificationBell', () => {
     expect(all('notification-text').map((item) => text(item))).toEqual([
       'Durand doit 1 200,00 EUR pour 1 000,00',
       'Carthage doit 1 200,000 TND pour 1 000,000',
+    ]);
+  });
+
+  // The API sends a quantity at its column's three decimals and a moment as the company's day and hour: the bell writes
+  // the quantity without the zeros that say nothing and the day in the screen's order, and anything else as it came.
+  it('writes the quantities and moments it says as the screen writes them', async () => {
+    items.set([
+      {
+        ...unreadEntry,
+        id: 'n6',
+        type: 'stock.low',
+        payload: { product: 'Vis', on_hand: '1234.500', point: '2000.000' },
+      },
+      {
+        ...unreadEntry,
+        id: 'n7',
+        type: 'support_access.granted',
+        payload: { until: '2026-10-20 14:30' },
+      },
+      {
+        ...unreadEntry,
+        id: 'n8',
+        type: 'stock.low',
+        payload: { product: 'Clou', on_hand: 'beaucoup', point: '100' },
+      },
+      {
+        ...unreadEntry,
+        id: 'n9',
+        type: 'support_access.granted',
+        payload: { until: 'demain' },
+      },
+    ]);
+    const fixture = render();
+    await open(fixture);
+
+    expect(all('notification-text').map((item) => text(item))).toEqual([
+      'Vis est tombé à 1 234,5, seuil 2 000',
+      'Support ouvert jusqu’au 20/10/2026 14:30',
+      'Clou est tombé à beaucoup, seuil 100',
+      'Support ouvert jusqu’au demain',
     ]);
   });
 

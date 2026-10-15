@@ -17,6 +17,18 @@ describe('notificationKey', () => {
   });
 });
 
+describe('KNOWN_NOTIFICATION_TYPES', () => {
+  // A kind the API tells and the words say, but the bell does not know, reads « Nouvelle notification » instead.
+  it('holds every kind the words say, in both languages', () => {
+    const known = KNOWN_NOTIFICATION_TYPES.map((type) => type.replaceAll('.', '_'));
+    for (const words of [fr, en]) {
+      for (const key of Object.keys(words.notifications.types).filter((key) => key !== 'unknown')) {
+        expect(known, key).toContain(key);
+      }
+    }
+  });
+});
+
 describe('notificationKindKey', () => {
   it('names each known kind in a few words, apart from the sentence that tells one, and anything newer generically', () => {
     for (const type of KNOWN_NOTIFICATION_TYPES) {
@@ -48,7 +60,7 @@ describe('stock notifications', () => {
       'stock.imported',
     ]) {
       expect(notificationKey(type)).toBe(`notifications.types.${type.replace('.', '_')}`);
-      expect(notificationRecord(type)).toEqual({
+      expect(notificationRecord(type)).toMatchObject({
         icon: 'inventory_2',
         route: '/stock/movements',
         permission: 'stock.read',
@@ -64,6 +76,7 @@ describe('stock alerts', () => {
       icon: 'inventory_2',
       route: '/stock',
       permission: 'stock.read',
+      quantities: ['on_hand', 'point'],
     });
   });
 });
@@ -140,6 +153,31 @@ describe('amounts in a notification', () => {
     expect(notificationRecord('subscription.payment_declared').amounts).toEqual(['amount']);
     expect(notificationRecord('subscription.payment_decided').amounts).toEqual(['amount']);
     expect(notificationRecord('stock.low').amounts).toBeUndefined();
+  });
+});
+
+// A quantity and a moment are written as the screen writes them too; a count (`counted`, `differences`) is not one.
+describe('quantities and moments in a notification', () => {
+  it('are named by each type that says one', () => {
+    expect(notificationRecord('stock.count_difference').quantities).toEqual(['difference']);
+    expect(notificationRecord('stock.imported').quantities).toBeUndefined();
+    expect(notificationRecord('support_access.granted').moments).toEqual(['until']);
+  });
+});
+
+describe('support access and data check notifications', () => {
+  it('have words, and lead an owner to « Accès du support »', () => {
+    for (const type of ['support_access.granted', 'support_access.ended']) {
+      expect(notificationKey(type)).toBe(`notifications.types.${type.replace('.', '_')}`);
+      expect(notificationRecord(type)).toMatchObject({
+        icon: 'support_agent',
+        route: '/company/support-access',
+        permission: 'company.settings',
+      });
+    }
+    // An operator's, about a company not theirs: told by the mail, with nothing here to open.
+    expect(notificationKey('data.check_failed')).toBe('notifications.types.data_check_failed');
+    expect(notificationRecord('data.check_failed').route).toBeNull();
   });
 });
 

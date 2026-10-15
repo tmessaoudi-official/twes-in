@@ -133,6 +133,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-15 20:00] AGREED: Round 1 rubric: the five levels (0 absent or wrong, 1 works, 2 clear, 3 guided, 4 exemplary), one meaning in every dimension, and the ten dimensions A–J holding the 53 lenses once each (A access and permission, B clarity and words, C finding and flow, D business and fiscal correctness, E robustness and the data, F scale and time, G accessibility, language and focus, H feelings and the design system, I proof and operations, J place and device), agreed for now; the developer asks for more and more critical levels, to be proposed and asked (developer, round-1 marking page)
 - [2026-10-15 20:00] AGREED: Round 1 feelings: the twelve families F1–F12 (danger, consequence and the way back, attention, working, done, failed, not allowed or not yet, money, people, trust and protection, where am I, welcome and guidance), each with the tone, icon, place and sentence pattern the marking page proposed, are agreed as the vocabulary fixes go by (developer, round-1 marking page)
 - [2026-10-15 20:02] AGREED: Round 2 grades every screen on eight levels (offered as « seven », the set as described): −1 harmful (wrong money or tax, data lost or leaked, a legal breach, a screen that lies; stop-ship, fixed at once), 0 absent, 1 works, 2 clear, 2½ consistent (the same word, look and place as every screen of its kind, the North star's one canon), 3 guided, 4 exemplary, 5 proven in use (the two pilot businesses do it unaided, timed, on their own device); round 1's level-0 findings are re-sorted between −1 and 0 (developer)
+- [2026-10-16 00:01] ASSUMED (review): L-1115: the invitation mail keeps its d/m/Y H:i in the company's time zone and its language's order, because the invitee may have no account and so no date format of their own to read. Basis: ReaderFormats reads a person's chain, which an address alone does not have. Alternatives: the inviter's format, or the company's.
 
 ## Formal Plan
 
@@ -302,6 +303,8 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
+- Where round 2 goes now that its rubric and grades are ruled (2026-10-15 20:00, 20:02): after L-1115 (recommended,
+  so the D1/D2 screens are built against its grades), right now, or after D1/D2. Asked in chat at 23:43.
 ### Needs research
 ### Fragile
 ### Known issues

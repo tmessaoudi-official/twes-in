@@ -25,6 +25,9 @@ final readonly class PaymentDeclaredMail
         public ?string $reference,
         /** Where the operator decides on it. */
         public string $platformUrl,
+        /** The reader's order of a day and way of writing a number (`presentation.*-format`), `auto` for their language's. */
+        public string $dateFormat = 'auto',
+        public string $numberFormat = 'auto',
     ) {
     }
 }
