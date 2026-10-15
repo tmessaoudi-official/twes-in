@@ -268,15 +268,18 @@
               "
             />
           </div>
-          @if (stampHeldBack()) {
-            <p
-              id="invoice-document-taxes-held-back"
-              class="text-sm text-on-surface-variant"
-              data-testid="document-taxes-stamp-held-back"
-            >
-              {{ 'invoices.document_taxes.stamp_held_back' | translate }}
-            </p>
-          }
+          <!-- On the page before its line, or a screen reader is not told when the line appears. -->
+          <div role="status" data-testid="document-taxes-stamp-status">
+            @if (stampHeldBack()) {
+              <p
+                id="invoice-document-taxes-held-back"
+                class="text-sm text-on-surface-variant"
+                data-testid="document-taxes-stamp-held-back"
+              >
+                {{ 'invoices.document_taxes.stamp_held_back' | translate }}
+              </p>
+            }
+          </div>
         </div>
       </mat-card-content>
     </mat-card>

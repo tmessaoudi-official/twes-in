@@ -2314,12 +2314,18 @@ describe('InvoicePage', () => {
         documentTaxComponentIds: ['s1', 'w1'],
       });
       await open('i1');
+      // Said as it appears: the line arrives in a live region already on the page, empty until then.
+      const announced = q('document-taxes-stamp-status')!;
+      expect(announced.getAttribute('role')).toBe('status');
+      expect(announced.textContent?.trim()).toBe('');
       facade.preview.mockResolvedValue(unstamped);
       type('line-0-quantity', '1');
       await rested();
       expect(text('document-taxes-stamp-held-back')).toContain(
         'invoices.document_taxes.stamp_held_back',
       );
+      expect(q('document-taxes-stamp-status')).toBe(announced);
+      expect(announced.contains(q('document-taxes-stamp-held-back'))).toBe(true);
       // A screen reader on the field hears both lines, the one above it and the one that just appeared.
       const describedBy = (q('document-taxes')!.getAttribute('aria-describedby') ?? '').split(' ');
       expect(describedBy.map((id) => document.getElementById(id)?.dataset['testid'])).toEqual([
