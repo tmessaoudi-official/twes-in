@@ -447,6 +447,7 @@ function toExpense(raw: ExpenseExpenseRead | ExpenseJsonldExpenseRead): ExpenseR
     suggestedWithholdingRate: raw.suggestedWithholdingRate ?? null,
     notes: raw.notes ?? null,
     attachmentCount: raw.attachmentCount ?? 0,
+    amountToCheck: raw.amountToCheck === true,
   };
 }
 

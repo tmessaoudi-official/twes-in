@@ -13,7 +13,7 @@ import { CUSTOMERS_MODULE } from './customers/customers-nav';
 import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
 import { QUOTES_MODULE } from './quotes/quotes-nav';
 import { INVOICES_MODULE } from './invoices/invoices-nav';
-import { EXPENSES_MODULE } from './expenses/expenses-nav';
+import { EXPENSES_MODULE, RECURRING_EXPENSES_MODULE } from './expenses/expenses-nav';
 import { ACCOUNTING_EXPORT_MODULE } from './accounting-export/accounting-export-nav';
 import { RECURRING_MODULE } from './recurring/recurring-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
@@ -397,6 +397,21 @@ export const routes: Routes = [
         canActivate: [moduleGuard(EXPENSES_MODULE)],
         loadComponent: () =>
           import('./expenses/expense-categories-page').then((m) => m.ExpenseCategoriesPage),
+      },
+      {
+        // Before ':expenseId', which would otherwise take "recurring" for an identifier.
+        path: 'expenses/recurring',
+        title: 'modules.recurring_expenses',
+        // Its texts and the schedule's are read on the expense pages only: they load with them (the screen texts budget).
+        providers: textsPart('expense').providers,
+        canActivate: [
+          moduleGuard(RECURRING_EXPENSES_MODULE),
+          ...(textsPart('expense').canActivate ?? []),
+        ],
+        loadComponent: () =>
+          import('./recurring-expenses/recurring-expenses-page').then(
+            (m) => m.RecurringExpensesPage,
+          ),
       },
       {
         path: 'expenses/new',

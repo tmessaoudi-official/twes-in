@@ -1,14 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { DescriptorFormGroup } from './form-builder';
-import type { FormDescriptor, FormField, FormValues } from './form-types';
+import type { FieldCondition, FormDescriptor, FormField, FormValues } from './form-types';
 
 /** Whether a field applies given the form's current values: always, unless its condition says otherwise. */
 export function fieldApplies(field: FormField, values: FormValues): boolean {
-  const condition = field.visibleWhen;
-  if (condition === undefined) return true;
+  return field.visibleWhen === undefined || holds(field.visibleWhen, values);
+}
+
+function holds(condition: FieldCondition, values: FormValues): boolean {
   const value = values[condition.field];
-  return value !== null && value !== undefined && condition.oneOf.includes(String(value));
+  return (
+    value !== null &&
+    value !== undefined &&
+    condition.oneOf.includes(String(value)) &&
+    (condition.and === undefined || holds(condition.and, values))
+  );
 }
 
 /**

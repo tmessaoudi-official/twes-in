@@ -22,6 +22,11 @@
           <app-status-badge [tone]="tones[expense.status]">
             {{ 'expenses.statuses.' + expense.status | translate }}
           </app-status-badge>
+          @if (expense.amountToCheck) {
+            <app-status-badge tone="warning" data-testid="expense-amount-to-check">
+              {{ 'expenses.amount_to_check' | translate }}
+            </app-status-badge>
+          }
           · {{ expense.date | day }}
           @if (expense.vendorName ?? expense.payee; as paidTo) {
             · {{ paidTo }}
@@ -44,6 +49,11 @@
     @if (expense.status !== 'draft') {
       <p data-testid="expense-fixed">{{ 'expenses.fixed_notes.' + expense.status | translate }}</p>
     }
+  }
+  @if (current()?.amountToCheck) {
+    <p class="max-w-prose" data-testid="expense-amount-to-check-hint">
+      {{ 'expenses.amount_to_check_hint' | translate }}
+    </p>
   }
   @if (error(); as code) {
     <p role="alert" data-testid="expense-error" class="text-error">

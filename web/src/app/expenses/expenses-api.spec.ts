@@ -93,6 +93,7 @@ describe('ExpensesApi', () => {
       paidOn: null,
       notes: null,
       attachmentCount: 2,
+      amountToCheck: false,
       withholdingRate: null,
       withholdingAmount: null,
       withholdingOperationCode: null,

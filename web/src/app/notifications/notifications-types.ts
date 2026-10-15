@@ -44,6 +44,8 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'invoice.late_fee_drafted',
   'invoice.recurring_drafted',
   'invoice.recurring_stopped',
+  'expense.recurring_drafted',
+  'expense.recurring_stopped',
   'subscription.payment_declared',
   'subscription.payment_decided',
   'module.arrived',
@@ -153,6 +155,16 @@ const RECORDS = new Map<string, NotificationRecord>([
   [
     'invoice.recurring_stopped',
     { icon: 'event_repeat', route: '/invoices/recurring', permission: 'invoice.read' },
+  ],
+  // A recurring expense drafted its copy, which waits among the expenses to be checked and recorded; or it paused
+  // itself because the expense it copies can no longer be copied, which the recurring expenses show.
+  [
+    'expense.recurring_drafted',
+    { icon: 'event_repeat', route: '/expenses', permission: 'expense.read' },
+  ],
+  [
+    'expense.recurring_stopped',
+    { icon: 'event_repeat', route: '/expenses/recurring', permission: 'expense.read' },
   ],
   // An operator's: the company that declared it is not one of theirs, so it leads to the platform queue.
   [

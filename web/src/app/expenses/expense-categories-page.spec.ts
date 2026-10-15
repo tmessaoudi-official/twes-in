@@ -58,6 +58,7 @@ describe('ExpenseCategoriesPage', () => {
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
+    hasModule: () => true,
   };
   let fixture: ComponentFixture<ExpenseCategoriesPage>;
 

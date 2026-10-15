@@ -116,12 +116,13 @@ export function buildFormGroup(
     }
   }
   for (const field of descriptor.sections.flatMap((section) => section.fields)) {
-    const condition = field.visibleWhen;
-    if (condition !== undefined && !Object.hasOwn(controls, condition.field)) {
-      throw new InvalidFormField(
-        field.id,
-        `its condition names "${condition.field}", which this form does not declare`,
-      );
+    for (let condition = field.visibleWhen; condition !== undefined; condition = condition.and) {
+      if (!Object.hasOwn(controls, condition.field)) {
+        throw new InvalidFormField(
+          field.id,
+          `its condition names "${condition.field}", which this form does not declare`,
+        );
+      }
     }
   }
   return new FormGroup(controls);

@@ -40,6 +40,21 @@ import {
   paymentValues,
 } from './expense-forms';
 import { ExpensesFacade } from './expenses-facade';
+import { RECURRING_EXPENSES_MODULE } from './expenses-nav';
+import {
+  RecurringExpenseDialog,
+  type RecurringExpenseDialogData,
+  recurringExpenseDraft,
+  recurringExpenseFailure,
+  recurringExpenseForm,
+} from '../recurring-expenses/recurring-expense-form';
+import {
+  RecurringExpenseRefused,
+  RecurringExpensesApi,
+} from '../recurring-expenses/recurring-expenses-api';
+import { LanguageFacade } from '../shared/i18n/language-facade';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
 import {
   EXPENSE_STATUS_TONES,
   type ExpenseAttachment,
@@ -90,6 +105,9 @@ export class ExpensePage {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly recurring = inject(RecurringExpensesApi);
+  private readonly language = inject(LanguageFacade);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `expenses/new`. */
   readonly expenseId = input<string | undefined>(undefined);
@@ -370,8 +388,59 @@ export class ExpensePage {
         run: () => this.revert(),
         shown: may && changes > 0,
       },
+      {
+        id: 'make-recurring',
+        label: 'expenses.recurring.make.action',
+        icon: 'event_repeat',
+        rare: true,
+        disabled: busy,
+        run: () => void this.makeRecurring(),
+        // Any expense the company kept, whatever its state, may be the model: each draft is a copy, never the model.
+        shown:
+          this.mayWrite() &&
+          this.current() != null &&
+          this.auth.hasModule(RECURRING_EXPENSES_MODULE),
+      },
     ];
   });
+
+  /** Asks when, makes it, and offers the recurring expenses in the toast that says so. */
+  private async makeRecurring(): Promise<void> {
+    const company = this.company();
+    const current = this.current();
+    if (!company || !current) return;
+    const descriptor = recurringExpenseForm(this.language.current(), todayIn(company.timezone));
+    const data: RecurringExpenseDialogData = {
+      descriptor,
+      group: buildFormGroup(descriptor, {}),
+      title: 'expenses.recurring.make.action',
+      confirm: 'expenses.recurring.make.confirm',
+    };
+    const values = await firstValueFrom(
+      this.dialog
+        .open<RecurringExpenseDialog, RecurringExpenseDialogData>(RecurringExpenseDialog, {
+          data,
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
+    );
+    if (!values) return;
+    try {
+      await this.recurring.create(company.id, recurringExpenseDraft(current.id, values));
+      this.feedback.success(
+        'expenses.recurring.made',
+        {},
+        {
+          key: 'expenses.recurring.open',
+          run: () => void this.router.navigate(['/expenses/recurring']),
+        },
+      );
+    } catch (error) {
+      this.feedback.failure(
+        recurringExpenseFailure(error instanceof RecurringExpenseRefused ? error.field : null),
+      );
+    }
+  }
 
   /** The record's own form, which shows what a save from the bar refused and puts the person on it. */
   private readonly mainForm = viewChild<DescriptorForm>('mainForm');

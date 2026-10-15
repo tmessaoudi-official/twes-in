@@ -39,7 +39,9 @@
                   {{ field.label | translate }}
                 </mat-checkbox>
                 @if (field.hint) {
-                  <span class="px-2 text-xs opacity-70">{{ field.hint | translate }}</span>
+                  <span class="px-2 text-xs text-on-surface-variant">{{
+                    field.hint | translate
+                  }}</span>
                 }
                 @if (errorFor(field); as error) {
                   <span

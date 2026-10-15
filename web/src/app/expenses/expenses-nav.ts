@@ -21,15 +21,32 @@ export const EXPENSES_NAV: readonly NavEntry[] = [
   },
 ];
 
-/** The expenses and their categories as tabs, one sidebar entry between them. */
-export const EXPENSES_TABS: readonly PageTab[] = [
-  { labelKey: 'nav.expenses', route: '/expenses', testId: 'expenses-tab' },
-  {
-    labelKey: 'nav.expense_categories',
-    route: '/expenses/categories',
-    testId: 'expense-categories-link',
-  },
-];
+/** The key the API's module registry knows the recurring expenses by: a module of their own, beside the expenses. */
+export const RECURRING_EXPENSES_MODULE = 'recurring_expenses';
+
+/**
+ * The expenses, their recurring ones while the company has them, and their categories as tabs, one sidebar entry
+ * between them: a recurring expense is a model that makes expenses, never a menu entry of its own (docs/SPEC.md § 7).
+ */
+export function expensesTabs(recurring: boolean): readonly PageTab[] {
+  return [
+    { labelKey: 'nav.expenses', route: '/expenses', testId: 'expenses-tab' },
+    ...(recurring
+      ? [
+          {
+            labelKey: 'recurring.tab',
+            route: '/expenses/recurring',
+            testId: 'recurring-expenses-tab',
+          },
+        ]
+      : []),
+    {
+      labelKey: 'nav.expense_categories',
+      route: '/expenses/categories',
+      testId: 'expense-categories-link',
+    },
+  ];
+}
 
 /** What the module adds to the command palette (Ctrl K): creating one, for whoever may. */
 export const EXPENSES_COMMANDS: readonly NavigateCommand[] = [

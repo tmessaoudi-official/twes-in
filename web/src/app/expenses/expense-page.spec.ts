@@ -24,6 +24,7 @@ import {
 import type { BillGroup } from './expense-forms';
 import { ExpensePage } from './expense-page';
 import { ExpensesFacade } from './expenses-facade';
+import { RecurringExpensesApi } from '../recurring-expenses/recurring-expenses-api';
 import type {
   ExpenseAttachment,
   ExpenseOptions,
@@ -128,6 +129,7 @@ const draft: ExpenseRow = {
   amountPaid: '0.000',
   suggestedWithholdingRate: null,
   attachmentCount: 1,
+  amountToCheck: false,
 };
 const receipt: ExpenseAttachment = {
   id: 'a1',
@@ -176,6 +178,7 @@ describe('ExpensePage', () => {
     hasPermission: vi.fn(),
     hasModule: vi.fn(),
   };
+  const recurring = { create: vi.fn() };
   let fixture: ComponentFixture<ExpensePage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -256,6 +259,7 @@ describe('ExpensePage', () => {
     facade.restoreAttachment.mockReset().mockResolvedValue(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
     auth.hasModule.mockReset().mockReturnValue(true);
+    recurring.create.mockReset().mockResolvedValue({ id: 'r1' });
     TestBed.configureTestingModule({
       imports: [ExpensePage],
       providers: [
@@ -270,6 +274,7 @@ describe('ExpensePage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ExpensesFacade, useValue: facade },
+        { provide: RecurringExpensesApi, useValue: recurring },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -1016,5 +1021,69 @@ describe('ExpensePage', () => {
       expect(q('bill-line-0')?.textContent).toContain('100,000');
       expect(q('bill-line-0')?.textContent).toContain('TVA');
     });
+  });
+
+  // docs/SPEC.md § 7, 2026-10-15 17:46: a variable one drafts flagged « montant à vérifier » until someone records it.
+  it('flags a draft whose amount is to check against the bill, and says what to do with it', async () => {
+    expense.set({ ...draft, amountToCheck: true });
+    await open('e1');
+
+    expect(q('expense-amount-to-check')?.textContent).toContain('expenses.amount_to_check');
+    expect(q('expense-amount-to-check-hint')?.textContent).toContain(
+      'expenses.amount_to_check_hint',
+    );
+
+    expense.set({ ...draft, amountToCheck: false });
+    await settle();
+    expect(q('expense-amount-to-check')).toBeNull();
+  });
+
+  it('makes an expense recurring from its bar, each month on its first day’s date unless told otherwise', async () => {
+    expense.set({ ...draft, status: 'recorded' });
+    await open('e1');
+
+    // A button beside the bar on a wide screen; the bar folds it into its « ⋮ » on a phone.
+    q('record-make-recurring')!.click();
+    await settle();
+    (
+      document.body.querySelector('[data-testid="recurring-expense-dialog-confirm"]') as HTMLElement
+    ).click();
+    await settle();
+
+    await vi.waitFor(() => expect(recurring.create).toHaveBeenCalled());
+    const [companyId, made] = recurring.create.mock.calls[0] as [string, Record<string, unknown>];
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(
+      new Date(),
+    );
+    expect(companyId).toBe('c1');
+    expect(made).toEqual({
+      modelExpenseId: 'e1',
+      schedule: {
+        unit: 'month',
+        every: 1,
+        anchor: 'date',
+        monthDay: Number(today.slice(8, 10)),
+        ordinal: null,
+        weekday: null,
+      },
+      startsOn: today,
+      endsOn: null,
+      variableAmount: false,
+    });
+    await vi.waitFor(() => expect(successToasts()).toContain('expenses.recurring.made'));
+  });
+
+  it('offers no « Rendre récurrente » while the company has no recurring expenses, nor to a reader', async () => {
+    auth.hasModule.mockImplementation((module: string) => module !== 'recurring_expenses');
+    expense.set(draft);
+    await open('e1');
+
+    expect(q('record-make-recurring')).toBeNull();
+
+    auth.hasModule.mockReturnValue(true);
+    auth.hasPermission.mockReturnValue(false);
+    fixture.destroy();
+    await open('e1');
+    expect(q('record-make-recurring')).toBeNull();
   });
 });

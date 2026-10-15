@@ -113,6 +113,21 @@ describe('reminder notifications', () => {
     });
     expect(notificationRecord('invoice.recurring_stopped')?.route).toBe('/invoices/recurring');
   });
+
+  it('say when a recurring expense drafted its copy, or paused itself, and lead to where each is', () => {
+    expect(notificationKey('expense.recurring_drafted')).toBe(
+      'notifications.types.expense_recurring_drafted',
+    );
+    expect(notificationKindKey('expense.recurring_stopped')).toBe(
+      'notifications.kinds.expense_recurring_stopped',
+    );
+    expect(notificationRecord('expense.recurring_drafted')).toEqual({
+      icon: 'event_repeat',
+      route: '/expenses',
+      permission: 'expense.read',
+    });
+    expect(notificationRecord('expense.recurring_stopped')?.route).toBe('/expenses/recurring');
+  });
 });
 
 // What a notification says in money is written as the screen writes amounts: each type names its amounts.

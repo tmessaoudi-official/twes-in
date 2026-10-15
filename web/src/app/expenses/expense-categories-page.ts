@@ -31,7 +31,7 @@ import {
   type ExpenseCategoryListRow,
 } from './expense-forms';
 import { ExpensesFacade } from './expenses-facade';
-import { EXPENSES_TABS } from './expenses-nav';
+import { expensesTabs, RECURRING_EXPENSES_MODULE } from './expenses-nav';
 import type { ExpenseCategoryRow } from './expenses-types';
 import { Feedback } from '../shared/feedback/feedback';
 
@@ -54,7 +54,10 @@ import { Feedback } from '../shared/feedback/feedback';
 export class ExpenseCategoriesPage implements OnInit {
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
-  protected readonly tabs = EXPENSES_TABS;
+  /** Récurrentes sits between them while the company has the module. */
+  protected readonly tabs = computed(() =>
+    expensesTabs(this.auth.hasModule(RECURRING_EXPENSES_MODULE)),
+  );
   private readonly facade = inject(ExpensesFacade);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
