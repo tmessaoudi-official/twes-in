@@ -49,7 +49,7 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await expect(row).toContainText(reference);
     expect(await wcagViolations(page)).toEqual([]);
 
-    // The form stays open for the next receipt, and the buttons that open one are not on screen until « Annuler » closes it.
+    // The form stays open for the next receipt, and the buttons that open one are not on screen until « Fermer » closes it.
     await page.getByTestId('stock-movement-cancel').click();
     // A GS1 label scanned on an open receipt fills the product, its lot and the day it is used by.
     await page.getByTestId('stock-receive').click();

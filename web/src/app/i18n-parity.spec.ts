@@ -59,11 +59,23 @@ const paidStatus = [
   en.auth.scene.paid,
 ];
 
+// A quote voided, in both languages: the word its status says.
+const quoteVoided = { fr: fr.quotes.statuses.cancelled, en: en.quotes.statuses.cancelled };
+
 // The home's VAT tile, in both languages.
 const homeVat = [fr.invoices.home.vat, en.invoices.home.vat];
 
 function load(lang: string): unknown {
   return files[lang];
+}
+
+/** Every text with the dotted key it sits at. */
+function entriesOf(value: unknown, prefix = ''): [string, string][] {
+  if (typeof value === 'string') return [[prefix, value]];
+  if (typeof value !== 'object' || value === null) return [];
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
+    entriesOf(child, prefix ? `${prefix}.${key}` : key),
+  );
 }
 
 function textsOf(value: unknown): string[] {
@@ -153,6 +165,30 @@ describe('translation files', () => {
   it('no message asks for a decimal point', () => {
     expect(JSON.stringify(load('fr'))).not.toMatch(/décimales et un point/);
     expect(JSON.stringify(load('en'))).not.toMatch(/decimals and a point/);
+  });
+
+  // docs/SPEC.md § 7, 2026-10-11 08:26: « Annuler » is only the toast's undo. Closing without acting is « Fermer »
+  // or a named keep word, a form's changes are undone by « Rétablir », an invoice draft is abandoned and a quote
+  // classé sans suite. Only the delivery note may keep « Annuler le bon », and only if the law names it so.
+  it('says « Annuler » only to take back what was just done', () => {
+    for (const lang of ['fr', 'en']) {
+      const word = lang === 'fr' ? 'Annuler' : 'Cancel';
+      const elsewhere = entriesOf(load(lang)).filter(
+        ([key, text]) => text === word && !key.endsWith('undo'),
+      );
+      expect(elsewhere.map(([key]) => key)).toEqual([]);
+    }
+  });
+
+  it('abandons an invoice draft and classes a quote sans suite, never cancels either', () => {
+    const voided = entriesOf(load('fr')).filter(
+      ([key, text]) =>
+        /^(invoices|quotes|recurring|activity\.actions\.(invoice|quote))\./.test(key) &&
+        !key.endsWith('undo') &&
+        /[Aa]nnul/.test(text),
+    );
+    expect(voided.map(([key]) => key)).toEqual([]);
+    expect([quoteVoided.fr, quoteVoided.en]).toEqual(['Classé sans suite', 'Not pursued']);
   });
 
   it('an invoice with nothing left due reads settled, not paid', () => {

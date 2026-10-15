@@ -170,7 +170,7 @@ function fromThousandths(value: bigint): string {
         (click)="ref.close(null)"
         data-testid="invoice-bulk-pay-cancel"
       >
-        {{ 'invoices.bulk.cancel' | translate }}
+        {{ 'invoices.bulk.close' | translate }}
       </button>
       <button
         mat-flat-button

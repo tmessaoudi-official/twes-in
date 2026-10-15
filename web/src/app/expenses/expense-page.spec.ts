@@ -956,7 +956,7 @@ describe('ExpensePage', () => {
       expect(bill().controls.lines.length).toBe(1);
     });
 
-    it('puts the saved bill back on « Annuler les modifications »', async () => {
+    it('puts the saved bill back on « Rétablir »', async () => {
       expense.set(draft);
       await open('e1');
       type('bill-line-0-net', '250');
