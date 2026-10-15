@@ -5,6 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { filenameOf } from '../shared/files/save-file';
 import { isPeriodClosed } from '../shared/documents/period-closed';
+import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import type {
   ApiCompaniesCompanyIdexpensesGetCollectionResponse,
   ExpenseAttachmentExpenseAttachmentRead,
@@ -43,7 +44,11 @@ import type {
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ExpensesRefused extends Error {
-  constructor(readonly code: ExpensesError) {
+  constructor(
+    readonly code: ExpensesError,
+    /** Each field an expense's save or recording was refused on, a line's as `lines[i].amountNet`. */
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -165,7 +170,7 @@ export class ExpensesApi {
 
   /** 422 naming the field the API refused. */
   async createExpense(companyId: string, input: ExpenseInput): Promise<ExpenseRow> {
-    return this.guard(EXPENSE, async () =>
+    return this.saving(async () =>
       toExpense(
         await firstValueFrom(
           this.http.post<ExpenseExpenseRead>(path(companyId, 'expenses'), toExpenseBody(input)),
@@ -176,7 +181,7 @@ export class ExpensesApi {
 
   /** 409 once the expense is no longer a draft. */
   async reviseExpense(companyId: string, id: string, input: ExpenseInput): Promise<ExpenseRow> {
-    return this.guard(EXPENSE, async () =>
+    return this.saving(async () =>
       toExpense(
         await firstValueFrom(
           this.http.put<ExpenseExpenseRead>(path(companyId, 'expenses', id), toExpenseBody(input)),
@@ -193,7 +198,7 @@ export class ExpensesApi {
 
   /** 422 while the expense has no category. */
   async recordExpense(companyId: string, id: string): Promise<ExpenseRow> {
-    return this.guard(EXPENSE, async () =>
+    return this.saving(async () =>
       toExpense(
         await firstValueFrom(
           this.http.post<ExpenseExpenseRead>(`${path(companyId, 'expenses', id)}/record`, null),
@@ -370,6 +375,17 @@ export class ExpensesApi {
       return await call();
     } catch (error) {
       throw new ExpensesRefused(codeOf(error, refusals));
+    }
+  }
+
+  /** An expense's save or recording, the only calls whose refusals name the fields of the form and the bill. */
+  private async saving<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      const refusals =
+        error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
+      throw new ExpensesRefused(codeOf(error, EXPENSE), refusals);
     }
   }
 }

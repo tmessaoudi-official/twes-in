@@ -155,22 +155,22 @@ final class ExpenseResource
     public string $status = 'draft';
 
     /** The day of the expense, YYYY-MM-DD. */
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Date(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Date(groups: [self::WRITE], payload: ['reason' => 'not_a_date'])]
     #[Groups([self::READ, self::WRITE])]
     public string $date = '';
 
     /** The vendor's own reference, such as its invoice number. */
-    #[Assert\Length(max: ExpenseDetails::REFERENCE_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: ExpenseDetails::REFERENCE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ExpenseDetails::REFERENCE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $reference = null;
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Length(max: ExpenseDetails::DESCRIPTION_MAX, groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: ExpenseDetails::DESCRIPTION_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ExpenseDetails::DESCRIPTION_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public string $description = '';
 
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $vendorId = null;
 
@@ -179,11 +179,11 @@ final class ExpenseResource
     public ?string $vendorName = null;
 
     /** Who was paid, in words, when no vendor record names them: a car park, a notary. Never beside a vendor. */
-    #[Assert\Length(max: ExpenseDetails::PAYEE_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: ExpenseDetails::PAYEE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ExpenseDetails::PAYEE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $payee = null;
 
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $categoryId = null;
 
@@ -212,8 +212,8 @@ final class ExpenseResource
             ],
         ],
     ])]
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Type('list', groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Type('list', groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Assert\All([new Assert\Collection(fields: [
         'amountNet' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'taxComponentIds' => new Assert\Optional([
@@ -356,7 +356,7 @@ final class ExpenseResource
     #[Groups([self::READ])]
     public ?string $suggestedWithholdingRate = null;
 
-    #[Assert\Length(max: ExpenseDetails::NOTES_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: ExpenseDetails::NOTES_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ExpenseDetails::NOTES_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notes = null;
 

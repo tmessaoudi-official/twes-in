@@ -32,12 +32,12 @@ final readonly class ExpenseAmountLine
     {
         $amount = trim($amountNet);
         if (1 !== preg_match(self::AMOUNT, $amount)) {
-            throw new InvalidExpense('amountNet', 'A net amount is above 0 with at most three decimals.');
+            throw new InvalidExpense('amountNet', 'A net amount is above 0 with at most three decimals.', 'invalid_amount', ['decimals' => 3]);
         }
         [$units, $decimals] = [...explode('.', $amount), ''];
         $amount = $units.'.'.str_pad($decimals, 3, '0');
         if ('0.000' === $amount) {
-            throw new InvalidExpense('amountNet', 'A net amount is above 0 with at most three decimals.');
+            throw new InvalidExpense('amountNet', 'A net amount is above 0 with at most three decimals.', 'invalid_amount', ['decimals' => 3]);
         }
         $this->amountNet = $amount;
     }

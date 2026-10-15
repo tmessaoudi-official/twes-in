@@ -384,12 +384,12 @@ final readonly class ManageExpenses
             throw new InvalidExpense('vendorId', 'Vendors is switched off: an expense names no vendor it did not already.');
         }
 
-        return $this->vendors->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense('vendorId', 'No vendor of this company has this id.');
+        return $this->vendors->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense('vendorId', 'No vendor of this company has this id.', 'unknown_choice');
     }
 
     private function category(Company $company, ?Uuid $id): ?ExpenseCategory
     {
-        return null === $id ? null : ($this->categories->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense('categoryId', 'No expense category of this company has this id.'));
+        return null === $id ? null : ($this->categories->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense('categoryId', 'No expense category of this company has this id.', 'unknown_choice'));
     }
 
     /**
@@ -414,7 +414,7 @@ final readonly class ManageExpenses
     /** @throws InvalidExpense */
     private function tax(Company $company, Uuid $id, string $field): TaxComponent
     {
-        return $this->taxes->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense($field, 'No tax of this company has this id.');
+        return $this->taxes->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense($field, 'No tax of this company has this id.', 'unknown_tax');
     }
 
     /** @param array<string, mixed> $changes */
