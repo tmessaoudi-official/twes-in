@@ -41,6 +41,22 @@ const party: FormDescriptor = {
         { id: 'email', label: 'p.email', kind: 'email' },
         { id: 'city', label: 'p.city', kind: 'text' },
         { id: 'website', label: 'p.website', kind: 'text' },
+        {
+          id: 'taxRegime',
+          label: 'p.regime',
+          kind: 'select',
+          defaultValue: 'standard',
+          options: [
+            { value: 'standard', label: 'p.standard' },
+            { value: 'exempt', label: 'p.exempt' },
+          ],
+        },
+        {
+          id: 'taxes',
+          label: 'p.taxes',
+          kind: 'multiselect',
+          options: [{ value: 't1', label: 'p.vat' }],
+        },
       ],
     },
   ],
@@ -67,6 +83,7 @@ class StaticLoader implements TranslateLoader {
           invalid_email: 'E-mail refused.',
           invalid_text: 'Text refused: {{max}} characters at most.',
           invalid_value: 'Value refused.',
+          regime_excludes_tax: 'This regime does not charge that tax.',
         },
       },
     });
@@ -130,6 +147,36 @@ describe('DescriptorForm, a save the API refused', () => {
 
     expect(unplaced.map((refusal) => refusal.field)).toEqual(['identifier__siren', 'nowhere']);
     expect(document.activeElement).toBe(q('field-email'));
+  });
+
+  it('says a refusal under a select and a multiselect too', async () => {
+    fixture.componentInstance.shown().showRefused([
+      { field: 'taxRegime', reason: 'invalid_value', params: {} },
+      { field: 'taxes', reason: 'regime_excludes_tax', params: {} },
+    ]);
+    await settle();
+
+    expect(text('field-error-taxRegime')).toBe('Value refused.');
+    expect(text('field-error-taxes')).toBe('This regime does not charge that tax.');
+  });
+
+  // A refusal is often mended in another field (the regime, for taxes it does not charge): holding the save until
+  // the refused field itself changed would leave the person no way to send the mended record.
+  it('drops every refusal once anything in the form changes, wherever it was mended', async () => {
+    const form = fixture.componentInstance.form;
+    fixture.componentInstance.shown().showRefused([
+      { field: 'taxes', reason: 'regime_excludes_tax', params: {} },
+      { field: 'city', reason: 'invalid_text', params: { max: 120 } },
+    ]);
+    await settle();
+    expect(form.invalid).toBe(true);
+
+    form.controls['taxRegime']!.setValue('exempt');
+    await settle();
+
+    expect(q('field-error-taxes')).toBeNull();
+    expect(q('field-error-city')).toBeNull();
+    expect(form.valid).toBe(true);
   });
 
   it('holds the save until the refused field changes, and drops the refusal once it does', async () => {
