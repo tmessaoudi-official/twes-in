@@ -53,6 +53,7 @@ class StaticLoader implements TranslateLoader {
             'Montant refusé\u00a0: un nombre au-dessus de 0, {{decimals}} décimales au plus.',
           one_vat_rate:
             'Une ligne porte un seul taux de TVA\u00a0: pour deux taux, faites deux lignes.',
+          printed_tax_off: 'Ce montant s’écarte de plus de {{tolerance}} de ce que donne le taux.',
         },
       },
     });
@@ -709,6 +710,32 @@ describe('ExpensePage', () => {
       ],
       charges: [{ id: 's1', code: 'TIMBRE', name: 'Timbre fiscal', amount: '1.000' }],
     };
+
+    it('says a printed amount refused under it, its tolerance as the screen writes amounts', async () => {
+      optionsState.set(offered);
+      expense.set(draft);
+      await open('e1');
+      facade.reviseExpense.mockImplementationOnce(async () => {
+        error.set('invalid');
+        refusals.set([
+          {
+            field: 'printedTaxes',
+            reason: 'printed_tax_off',
+            params: { code: 'TVA19', tolerance: '0.002' },
+          },
+        ]);
+        return null;
+      });
+      type('bill-printed-TVA19', '29');
+      await settle();
+      q('record-save')!.click();
+      await settle();
+
+      expect(q('bill-printed-TVA19-error')?.textContent).toContain(
+        'Ce montant s’écarte de plus de 0,002 de ce que donne le taux.',
+      );
+      expect(document.activeElement).toBe(q('bill-printed-TVA19'));
+    });
 
     it('enters a bill at two rates with FODEC and the stamp, and saves the amount it prints', async () => {
       optionsState.set(offered);
