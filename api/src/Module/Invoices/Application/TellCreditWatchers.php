@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Application;
 
+use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceType;
@@ -27,7 +28,7 @@ final readonly class TellCreditWatchers
     public const string PERMISSION = 'invoice.issue';
     public const string LIMIT_PASSED = 'invoice.credit_limit_passed';
 
-    public function __construct(private RunningAccount $account, private MembershipRepository $memberships, private Notifications $notifications)
+    public function __construct(private RunningAccount $account, private MembershipRepository $memberships, private Notifications $notifications, private CurrencyScales $scales)
     {
     }
 
@@ -56,6 +57,7 @@ final readonly class TellCreditWatchers
                     'owed' => $owed->value,
                     'limit' => $limit->add('0.000')->value,
                     'currency' => $company->getCurrency(),
+                    'scale' => $this->scales->of($company->getCurrency()),
                     'company' => $company->getName(),
                 ], $company->getId()->toRfc4122()));
             }

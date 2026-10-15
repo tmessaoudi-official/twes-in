@@ -11,6 +11,7 @@ namespace App\Licensing\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Fiscal\Application\CurrencyScales;
 use App\Identity\Domain\UserRepository;
 use App\Licensing\Domain\DeclarationStatus;
 use App\Licensing\Domain\DeclaredPayment;
@@ -60,6 +61,7 @@ final readonly class ManagePayments
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private CurrencyScales $scales,
         #[Autowire(param: 'app.signup.login_url')]
         private string $loginUrl,
         #[Autowire(param: 'app.platform_url')]
@@ -139,6 +141,7 @@ final readonly class ManagePayments
                     'company' => $company->getName(),
                     'amount' => $declaration->getAmount(),
                     'currency' => $declaration->getCurrency(),
+                    'scale' => $this->scales->of($declaration->getCurrency()),
                     'declaration_id' => $declaration->getId()->toRfc4122(),
                 ],
             ));
@@ -173,6 +176,7 @@ final readonly class ManagePayments
                     'confirmed' => $confirmed,
                     'amount' => $declaration->getAmount(),
                     'currency' => $declaration->getCurrency(),
+                    'scale' => $this->scales->of($declaration->getCurrency()),
                 ],
                 $company->getId()->toRfc4122(),
             ));

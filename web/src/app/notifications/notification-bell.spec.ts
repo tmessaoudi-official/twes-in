@@ -13,7 +13,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { SignedInState } from '../auth/auth-types';
-import { formatDay, formatMoment } from '../shared/i18n/format';
+import { formatAmount, formatDay, formatMoment } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { NotificationBell } from './notification-bell';
 import { NotificationsFacade } from './notifications-facade';
@@ -40,6 +40,7 @@ class StaticLoader implements TranslateLoader {
           invitation_accepted: '{{display_name}} a rejoint l’entreprise',
           unknown: 'Nouvelle notification',
           module_arrived: '« {{label}} » est arrivé pour {{company}}',
+          invoice_credit_limit_passed: '{{customer}} doit {{owed}} {{currency}} pour {{limit}}',
         },
       },
       modules: { quotes: 'Devis et commandes' },
@@ -119,6 +120,7 @@ describe('NotificationBell', () => {
           provide: FormatFacade,
           useValue: {
             locale: signal('fr-TN').asReadonly(),
+            amount: (value: string, scale: number | null) => formatAmount(value, scale, 'fr-TN'),
             day: (value: string) => formatDay(value, 'fr-TN'),
             moment: (value: string, timeZone?: string) => formatMoment(value, 'fr-TN', timeZone),
           },
@@ -380,6 +382,37 @@ describe('NotificationBell', () => {
     expect(text(all('notification-item')[0])).toContain(
       '« Devis et commandes » est arrivé pour Acme',
     );
+  });
+
+  // The API writes an amount with a point, and the limit always with three decimals: the bell writes both with the
+  // screen's separator and the currency's decimals, and an older one sent without them as it came.
+  it('writes the amounts it says as the screen writes amounts', async () => {
+    const passed = {
+      ...unreadEntry,
+      type: 'invoice.credit_limit_passed',
+      payload: {
+        customer: 'Durand',
+        owed: '1200.00',
+        limit: '1000.000',
+        currency: 'EUR',
+        scale: 2,
+      },
+    };
+    items.set([
+      { ...passed, id: 'n4' },
+      {
+        ...passed,
+        id: 'n5',
+        payload: { customer: 'Carthage', owed: '1200.000', limit: '1000.000', currency: 'TND' },
+      },
+    ]);
+    const fixture = render();
+    await open(fixture);
+
+    expect(all('notification-text').map((item) => text(item))).toEqual([
+      'Durand doit 1 200,00 EUR pour 1 000,00',
+      'Carthage doit 1 200,000 TND pour 1 000,000',
+    ]);
   });
 
   it('does not link a record the person may not open', async () => {

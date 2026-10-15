@@ -101,6 +101,7 @@ final readonly class RemindLateInvoices
                 'days_late' => $daysLate,
                 'amount_due' => Decimal::format(Decimal::of($row['amountDue']), $scale),
                 'currency' => $company->getCurrency(),
+                'scale' => $scale,
                 'company' => $company->getName(),
             ];
             $fee = isset($fees[$row['invoiceId']->toRfc4122()]) ? null : $this->lateFees->handle($company, $row['invoiceId'], $stage, $daysLate, $row['amountDue']);

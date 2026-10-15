@@ -69,6 +69,8 @@ export interface NotificationRecord {
   /** null when there is nothing in this company to open */
   readonly route: string | null;
   readonly permission: string | null;
+  /** the payload's amounts, which the words write as the screen writes amounts, at the payload's `scale` */
+  readonly amounts?: readonly string[];
 }
 
 // The money and document events (invoice paid, overdue, payment recorded, delivery note delivered) add their rows here.
@@ -115,17 +117,32 @@ const RECORDS = new Map<string, NotificationRecord>([
   // An invoice that took a customer past their credit limit leads to the invoices, where the account is read.
   [
     'invoice.credit_limit_passed',
-    { icon: 'credit_score', route: '/invoices', permission: 'invoice.read' },
+    {
+      icon: 'credit_score',
+      route: '/invoices',
+      permission: 'invoice.read',
+      amounts: ['owed', 'limit'],
+    },
   ],
   // A late invoice reached a stage of the reminder calendar: the overdue invoices are where it is chased.
   [
     'invoice.reminder_due',
-    { icon: 'notifications_active', route: '/invoices', permission: 'invoice.read' },
+    {
+      icon: 'notifications_active',
+      route: '/invoices',
+      permission: 'invoice.read',
+      amounts: ['amount_due'],
+    },
   ],
   // The same, with the late fee the stage charged drafted among the invoices, for a person to issue or cancel.
   [
     'invoice.late_fee_drafted',
-    { icon: 'notifications_active', route: '/invoices', permission: 'invoice.read' },
+    {
+      icon: 'notifications_active',
+      route: '/invoices',
+      permission: 'invoice.read',
+      amounts: ['amount_due', 'late_fee'],
+    },
   ],
   // A recurring invoice drafted its copy, which waits among the invoices to be issued; or it paused itself because
   // the invoice it copies can no longer be copied, which the recurring invoices show.
@@ -140,12 +157,22 @@ const RECORDS = new Map<string, NotificationRecord>([
   // An operator's: the company that declared it is not one of theirs, so it leads to the platform queue.
   [
     'subscription.payment_declared',
-    { icon: 'payments', route: '/platform', permission: 'platform.licensing.manage' },
+    {
+      icon: 'payments',
+      route: '/platform',
+      permission: 'platform.licensing.manage',
+      amounts: ['amount'],
+    },
   ],
   // An owner's: what the operator answered about the payment their own company declared.
   [
     'subscription.payment_decided',
-    { icon: 'payments', route: '/company/subscription', permission: 'subscription.read' },
+    {
+      icon: 'payments',
+      route: '/company/subscription',
+      permission: 'subscription.read',
+      amounts: ['amount'],
+    },
   ],
   // A module the company asked « Me prévenir » for has arrived: switched on from the modules page.
   [

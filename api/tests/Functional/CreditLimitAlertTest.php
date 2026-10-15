@@ -60,7 +60,8 @@ final class CreditLimitAlertTest extends ApiTestCase
         self::assertIsString($raw);
         $payload = json_decode($raw, true);
         self::assertIsArray($payload);
-        self::assertSame([$this->customerId, '1200.000', '1000.000'], [$payload['customer_id'], $payload['owed'], $payload['limit']]);
+        // The currency's decimals ride along, so the bell writes both amounts as the screen writes amounts.
+        self::assertSame([$this->customerId, '1200.000', '1000.000', 3], [$payload['customer_id'], $payload['owed'], $payload['limit'], $payload['scale'] ?? null]);
 
         $this->issue('100');
         self::assertCount(1, $this->told(), 'already past it: no second alert');
