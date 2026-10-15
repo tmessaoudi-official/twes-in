@@ -208,12 +208,14 @@ final class SubscriptionPaymentsTest extends ApiTestCase
     {
         $company = $this->createCompany('Acme');
         $this->createUser('owner@twes.local', 'password-1234', $company);
+        // The owner reads English, the operator French: each mail is written in its own reader's language.
+        $this->em()->getConnection()->executeStatement('UPDATE "user" SET locale = ? WHERE email = ?', ['en', 'owner@twes.local']);
         $this->subscribe($company, ['paidThrough' => $this->day(-30), 'graceDays' => 0, 'unpaidMode' => 'read_only', 'price' => '1234.50', 'currency' => 'EUR']);
         $this->login('owner@twes.local', 'password-1234');
         $this->postJson($this->paymentsOf($company), $this->payment(['amount' => '1234.50', 'currency' => 'EUR']));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $declarationId = $this->stringAt($this->json(), 'id');
-        // Both mails write it as their reader's language does (French here): a no-break space between thousands, a comma.
+        // French groups thousands with a no-break space and writes a decimal comma; English, a comma and a decimal point.
         $declared = self::getMailerMessage();
         self::assertInstanceOf(MimeEmail::class, $declared);
         self::assertSame("Acme a déclaré un règlement de 1\u{a0}234,50 EUR", $declared->getSubject());
@@ -221,10 +223,9 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         $this->signInOperator();
         $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/reject', ['note' => 'rien reçu']);
         self::assertResponseIsSuccessful();
-        $decided = self::getMailerMessage();
-        self::assertInstanceOf(MimeEmail::class, $decided);
-        self::assertStringContainsString("Règlement de 1\u{a0}234,50 EUR non confirmé", (string) $decided->getHtmlBody());
-
+        $rejected = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $rejected);
+        self::assertStringContainsString('Payment of 1,234.50 EUR not confirmed', (string) $rejected->getHtmlBody());
         foreach (['subscription.payment_declared', 'subscription.payment_decided'] as $type) {
             $raw = $this->em()->getConnection()->fetchOne('SELECT payload FROM inbox_item WHERE type = ?', [$type]);
             self::assertIsString($raw, $type);
@@ -232,6 +233,26 @@ final class SubscriptionPaymentsTest extends ApiTestCase
             self::assertIsArray($payload, $type);
             self::assertSame(['EUR', 2], [$payload['currency'] ?? null, $payload['scale'] ?? null], $type);
         }
+    }
+
+    public function testAConfirmedPaymentsMailWritesItsAmountAsItsReadersLanguageDoes(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('owner@twes.local', 'password-1234', $company);
+        $this->em()->getConnection()->executeStatement('UPDATE "user" SET locale = ? WHERE email = ?', ['en', 'owner@twes.local']);
+        $this->subscribe($company, ['paidThrough' => $this->day(-30), 'graceDays' => 0, 'price' => '1234.50', 'currency' => 'EUR']);
+        $this->login('owner@twes.local', 'password-1234');
+        $this->postJson($this->paymentsOf($company), $this->payment(['amount' => '1234.50', 'currency' => 'EUR']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $declarationId = $this->stringAt($this->json(), 'id');
+
+        $this->signInOperator();
+        $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/confirm', []);
+        self::assertResponseIsSuccessful();
+        $confirmed = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $confirmed);
+        self::assertSame('owner@twes.local', $confirmed->getTo()[0]->getAddress());
+        self::assertStringContainsString('Payment of 1,234.50 EUR confirmed', (string) $confirmed->getHtmlBody());
     }
 
     public function testACompanyWithoutASubscriptionHasNothingToDeclare(): void

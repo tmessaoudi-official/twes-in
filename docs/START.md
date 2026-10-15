@@ -444,6 +444,8 @@ run, and the file put back byte for byte; the summary says which were killed, su
 - Never run it beside a gate or `make check`, which read the files it mutates. Under `make up` the live stack serves
   each mutant while it is in place: use neither the app nor `make e2e` during a run. A mutated migration mutates its
   `down()` too: migrate the test database down first, by hand.
+- Both start the shared database when a PHP test is in play, and `compose.yaml` names the project: from a linked
+  worktree they would recreate the main tree's `postgres` over the worktree's files. Run them from the main tree.
 
 - **Stage new files before running the gates** (`git add`): the SPDX and executable-bit gates read `git ls-files`.
 - After changing an API resource, run `make tools CMD='cd api && bin/console cache:clear && bin/console cache:pool:clear --all'`

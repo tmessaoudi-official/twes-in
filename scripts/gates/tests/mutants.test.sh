@@ -95,7 +95,7 @@ EOF
 out=$(run "$d" run all spec.txt)
 check "a mutant the test notices is killed" $? 1 "$out" "killed    kills"
 check "a mutant it does not notice survives, and the run fails" 0 0 "$out" "SURVIVED  survives"
-check "a survivor's log is named" 0 0 "$out" "var/mutants/logs/2-survives.log"
+check "a survivor's log is named" 0 0 "$out" "var/mutants/logs/all/2-survives.log"
 same "the file is back, byte for byte" "$d/lib/a.sh" "$d/expected/pristine"
 [[ ! -e "$d/var/mutants/pending" ]]; check "nothing is left pending" $? 0 "" ""
 
@@ -217,8 +217,10 @@ check "a spec that does not compile is invalid" 0 0 "$out" "INVALID   a spec tha
 out=$(run "$d" run api spec.txt)
 check "the PHP toolchain runs only what it can" $? 1 "$out" "killed    a PHPUnit error only"
 absent "…not the web mutants" "$out" "Vitest"
+log=$(grep -o 'var/mutants/logs/[^ ]*\.log' <<<"$out" | head -n 1)
 out=$(run "$d" run web spec.txt)
 absent "the web toolchain does not run PHPUnit" "$out" "PHPUnit"
+[[ -n "$log" && -e "$d/$log" ]]; check "the web run leaves the PHP run's logs, which its summary named" $? 0 "$log" "var/mutants/logs/"
 
 # host: which toolchain starts. The Makefile hands the commands in; here each one only says it ran.
 host() { local d=$1; shift; (cd "$d" && MUTANTS_TOOLS='echo TOOLS' MUTANTS_WEB_TOOLS='echo WEB' MUTANTS_NPM_INSTALL=true MUTANTS_POSTGRES='echo POSTGRES' \
@@ -239,6 +241,14 @@ out=$(host "$d" spec.txt)
 check "a gate test runs in the PHP toolchain" $? 0 "$out" "TOOLS bash scripts/mutants/mutants.sh run api spec.txt"
 absent "…without the database" "$out" "POSTGRES"
 absent "…or the web toolchain" "$out" "WEB"
+
+# The tests run under their caller's locale, not the C the replacement takes.
+d=$(tree)
+printf '%s\n' '#!/usr/bin/env bash' '[[ "${LC_ALL:-}" == C.UTF-8 ]] && grep -q GOOD lib/a.sh && { echo "l: 1 passed, 0 failed"; exit 0; }' \
+  'echo "l: 0 passed, 1 failed"; exit 1' > "$d/scripts/locale.test.sh"
+printf '## kills\nfile: lib/a.sh\ntest: scripts/locale.test.sh\nold:\nx="GOOD"\nnew:\nx="BAD"\n' > "$d/spec.txt"
+out=$(cd "$d" && LC_ALL=C.UTF-8 bash scripts/mutants/mutants.sh run all spec.txt 2>&1)
+check "a test runs under its caller's locale" $? 0 "$out" "killed    kills"
 
 # Refusals, before anything is touched.
 d=$(tree); spec "$d" <<'EOF'
