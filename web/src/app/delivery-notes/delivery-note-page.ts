@@ -555,7 +555,8 @@ export class DeliveryNotePage {
       return { kind: 'refused', key: 'scan.serial_present', params: { name: product.name } };
     const line = lines.at(placed.index);
     this.linesEditor()?.scanned(line, product);
-    // The customer sees the line the scan went onto, at the price they pay for one (docs/SPEC.md § 7, slice 6).
+    // The customer sees the line the scan went onto at the product's shelf price with taxes, which the display labels
+    // as such: the line's own price, after a list or a discount, is not worked out yet when the scan lands.
     this.display.show({
       name: product.name,
       quantity: placed.quantity,
