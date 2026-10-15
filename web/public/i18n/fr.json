@@ -375,7 +375,8 @@
         "invalid": "La numérotation a été refusée. Vérifiez le format et le numéro de reprise.",
         "not_found": "Série de numérotation introuvable.",
         "network": "Le serveur est injoignable.",
-        "forbidden": "Votre rôle dans cette entreprise ne le permet pas."
+        "forbidden": "Votre rôle dans cette entreprise ne le permet pas.",
+        "code_taken": "Une autre série de ce document pourrait imprimer les mêmes numéros : ajoutez {EST} au format, ou un texte que l’autre n’imprime pas."
       }
     },
     "custom_fields": {

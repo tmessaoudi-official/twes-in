@@ -137,6 +137,33 @@ final class NumberingSeriesTest extends ApiTestCase
         self::assertMatchesRegularExpression('/^BL-\d{2}-00002$/', $this->stringAt($this->json(), 'preview'));
     }
 
+    /**
+     * Two series of one document type never print the same number: a format that could print another establishment's
+     * numbers is refused when it is written, naming that establishment, not at the issue its number would collide on.
+     */
+    public function testAFormatThatCouldPrintTheNumbersOfAnotherSeriesOfItsDocumentIsAConflict(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/establishments', ['code' => '001', 'name' => 'Agence de Sfax']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $branch = $this->idOf('invoice', '001');
+
+        foreach (['FAC-{YYYY}-{MM}-{SEQ:5}', 'FAC-{YYYY}-{MM}-1{SEQ:4}'] as $format) {
+            $this->sendJson('PUT', $this->path().'/'.$branch, ['format' => $format, 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+            self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, $format);
+            self::assertStringContainsString('000', $this->stringAt($this->json(), 'detail'));
+        }
+
+        // Its own numbers kept apart, by a prefix; another document's format is its own, as its numbers are.
+        $this->sendJson('PUT', $this->path().'/'.$branch, ['format' => 'SFX-{YYYY}-{MM}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->path().'/'.$this->idOf('credit_note', '001'), ['format' => 'FAC-{YYYY}-{MM}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+        self::assertResponseIsSuccessful();
+        // A series is never in conflict with itself.
+        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'FAC-{YYYY}-{MM}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+        self::assertResponseIsSuccessful();
+    }
+
     /** What a first numbered document leaves behind: the period it was numbered in, and the sequence moved on. */
     private function numberedOnce(string $documentType): void
     {
@@ -159,11 +186,11 @@ final class NumberingSeriesTest extends ApiTestCase
         return '/api/companies/'.$this->company->getId()->toRfc4122().'/numbering-series';
     }
 
-    private function idOf(string $documentType): string
+    private function idOf(string $documentType, string $establishmentCode = '000'): string
     {
         $this->getJson($this->path());
         foreach ($this->jsonList() as $row) {
-            if ($row['documentType'] === $documentType) {
+            if ($row['documentType'] === $documentType && $row['establishmentCode'] === $establishmentCode) {
                 return $this->stringAt($row, 'id');
             }
         }

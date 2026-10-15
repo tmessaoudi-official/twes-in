@@ -13,7 +13,9 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Tenancy\Application\Numbering\ManageNumberingSeries;
 use App\Tenancy\Application\Numbering\NumberingSeriesNotFound;
+use App\Tenancy\Application\Numbering\NumberingSeriesOverlap;
 use App\Tenancy\Domain\InvalidNumbering;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
@@ -32,6 +34,8 @@ final readonly class ReviseNumberingSeriesProcessor implements ProcessorInterfac
             $series = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'seriesId'), $data->changes(), $this->guard->account()->getId());
         } catch (NumberingSeriesNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);
+        } catch (NumberingSeriesOverlap $shared) {
+            throw new ConflictHttpException($shared->getMessage(), $shared);
         } catch (InvalidNumbering $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }

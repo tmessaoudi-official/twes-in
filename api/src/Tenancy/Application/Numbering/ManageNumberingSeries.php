@@ -50,6 +50,7 @@ final readonly class ManageNumberingSeries
     /**
      * @throws NumberingSeriesNotFound for a series that does not exist or belongs to another company
      * @throws InvalidNumbering
+     * @throws NumberingSeriesOverlap  for a format that could print a number another series of the document prints
      */
     public function revise(Company $company, Uuid $seriesId, NumberingChanges $changes, ?Uuid $actorUserId): NumberingSeries
     {
@@ -58,7 +59,19 @@ final readonly class ManageNumberingSeries
             $reset = ResetPeriod::tryFrom($changes->resetPeriod)
                 ?? throw new InvalidNumbering('resetPeriod', \sprintf('"%s" is not a reset period: %s.', $changes->resetPeriod, implode(', ', array_map(static fn (ResetPeriod $p): string => $p->value, ResetPeriod::cases()))));
 
-            if ($series->revise(new NumberFormat($changes->format), $reset, $changes->nextNumber, $this->clock->now())) {
+            $format = new NumberFormat($changes->format);
+            // One document type's numbers are one company's, whichever establishment issues them: the refusal comes
+            // here, where the format is written, and not at the issue its number would collide on.
+            foreach ($this->series->ofCompany($company->getId()) as $other) {
+                if ($other->getDocumentType() !== $series->getDocumentType() || $other->getId()->equals($series->getId())) {
+                    continue;
+                }
+                $code = $other->getEstablishment()->getCode();
+                if ($format->mayPrintAsOf(new NumberFormat($other->getFormat()), $series->getEstablishment()->getCode(), $code)) {
+                    throw new NumberingSeriesOverlap(\sprintf('Numbers of this format could be those of the %s series of establishment %s (%s): give one of them {EST}, or text the other never prints.', $other->getDocumentType(), $code, $other->getFormat()));
+                }
+            }
+            if ($series->revise($format, $reset, $changes->nextNumber, $this->clock->now())) {
                 $this->series->save($series);
                 $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $series->getId(), self::REVISED, $actorUserId, ['format' => $series->getFormat(), 'next_number' => $series->getNextNumber(), 'reset_period' => $series->getResetPeriod()->value], $company->getId()));
             }
