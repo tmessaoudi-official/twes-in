@@ -43,6 +43,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_expense_company_date', columns: ['company_id', 'expense_date'])]
 #[ORM\Index(name: 'idx_expense_vendor', columns: ['vendor_id'])]
 #[ORM\Index(name: 'idx_expense_category', columns: ['category_id'])]
+#[ORM\Index(name: 'idx_expense_amount_to_check', columns: ['company_id', 'expense_date'], options: ['where' => 'amount_to_check'])]
 class Expense implements CompanyOwned
 {
     private const string WITHHOLDING_RATE = '/^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$/';
@@ -131,6 +132,10 @@ class Expense implements CompanyOwned
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notes = null;
 
+    /** A draft whose amount a person has yet to check against the bill, as a recurring expense of variable amount drafts it. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $amountToCheck = false;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -194,7 +199,20 @@ class Expense implements CompanyOwned
             throw new InvalidExpense('categoryId', 'An expense is recorded under a category.', 'value_required');
         }
         $this->status = ExpenseStatus::Recorded;
+        $this->amountToCheck = false;
         $this->updatedAt = $now;
+    }
+
+    /** Its amount is to be checked against the bill before it is recorded: recording it is the check. */
+    public function askAmountChecked(): void
+    {
+        $this->assertDraft('flagged');
+        $this->amountToCheck = true;
+    }
+
+    public function isAmountToCheck(): bool
+    {
+        return $this->amountToCheck;
     }
 
     /**

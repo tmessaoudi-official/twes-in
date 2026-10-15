@@ -364,6 +364,11 @@ final class ExpenseResource
     #[Groups([self::READ])]
     public int $attachmentCount = 0;
 
+    /** A draft whose amount is to be checked against the bill before it is recorded (« montant à vérifier »). */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $amountToCheck = false;
+
     public static function of(Expense $expense, int $currencyScale, int $attachmentCount, ?string $suggestedWithholdingRate = null): self
     {
         $amount = static fn (string $stored): string => Decimal::format(Decimal::of($stored), $currencyScale);
@@ -409,6 +414,7 @@ final class ExpenseResource
         $resource->suggestedWithholdingRate = $suggestedWithholdingRate;
         $resource->notes = $expense->getNotes();
         $resource->attachmentCount = $attachmentCount;
+        $resource->amountToCheck = $expense->isAmountToCheck();
 
         return $resource;
     }

@@ -7,6 +7,10 @@ SPEC § 8 row 179 (size L). Rulings: SPEC § 7 2026-10-11 01:24, 2026-10-15 17:3
 - [2026-10-15 18:08] ASSUMED (review): a schedule stores its anchor with its own parameters (a day of the month 1–31 kept and clamped to shorter months, the month's last day, the nth weekday 1–4, the last weekday), so revising from a clamped day keeps the 31st — because deriving it from the first day lost month-end after a revise from the 28th of February. Alternatives: derive the anchor from the first day (today's behaviour, loses the 31st).
 - [2026-10-15 18:08] ASSUMED (review): a recurring expense's draft copies the model's description, payee, vendor, category, lines with their taxes, charges, printed taxes and notes, dated on the occurrence's day; it drops the supplier's reference, the attachments and the payment — because each bill carries its own reference and receipt. Alternatives: copy the reference too; copy nothing but the amounts.
 - [2026-10-15 18:08] ASSUMED (review): the shared Schedule and Recurrence come first and recurring invoices move onto them only in slice 4 with their migration — because their raw SQL, index and CHECKs name bare columns, and a shipped feature should not move before expenses ship. Alternatives: move both at once.
+- [2026-10-15 20:27] ASSUMED (review): A model that names a vendor while Vendors is switched off is not copied: the schedule pauses and whoever writes expenses is told once (expense.recurring_stopped), as for a deleted model — because a new expense may name no vendor while Vendors is off, and copying it without its vendor would draft a bill from nobody. Alternatives: copy it without the vendor, its name kept as the payee in words; or keep drafting and skip only that field.
+- [2026-10-15 20:27] ASSUMED (review): Slice 2 (API) is committed locally and pushed together with slice 3 (web), whose screen texts name the module, the bell's two kinds and the « À surveiller » row — because pushed alone, the Modules page and the bell would show raw keys on master and staging. Alternatives: push slice 2 with stub texts now.
+- [2026-10-15 20:34] ASSUMED (review): The « Récurrentes » form offers all four anchors for a month or a year (« le 5 », « le dernier jour », « le 2e mardi », « le dernier vendredi »), the second choice shown only once a month or a year is picked; weekday and ordinal names come from Intl, not from screen texts — because the 17:46 ruling asks for flexible dates, the API accepts all four, and advisor() agreed (confident pick, unattended window). Alternatives: date and last day only; date only.
+- [2026-10-15 20:34] ASSUMED (review): Screen wording taken from the rulings: module « Dépenses récurrentes » (§ 7 2026-10-11 01:24), tab « Récurrentes » and flag « Montant à vérifier » (§ 7 2026-10-15 17:46), action « Rendre récurrente » as the recurring invoices say it (one canon) — an objective pick, the rulings dictate it. Alternatives: « À vérifier » alone.
 
 ## Formal Plan
 
@@ -34,8 +38,8 @@ SPEC § 8 row 179 (size L). Rulings: SPEC § 7 2026-10-11 01:24, 2026-10-15 17:3
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | Shared Schedule + Recurrence | M | doing | - | api/src/Shared/Domain/** |
-| 2 | Recurring expenses API | L | todo | - | api/src/Module/RecurringExpenses/**, api/src/Module/Expenses/** |
+| 1 | Shared Schedule + Recurrence | M | done | 3b7dfd9a | api/src/Shared/Domain/** |
+| 2 | Recurring expenses API | L | doing | - | api/src/Module/RecurringExpenses/**, api/src/Module/Expenses/** |
 | 3 | Recurring expenses web | L | todo | - | web/src/app/recurring-expenses/**, web/src/app/shared/schedule/** |
 | 4 | Recurring invoices widened | M | todo | - | api/src/Module/Recurring/**, web/src/app/recurring/** |
 | 5 | Move or skip one occurrence | M | todo | - | - |

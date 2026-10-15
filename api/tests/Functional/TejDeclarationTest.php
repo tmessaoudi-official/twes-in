@@ -119,6 +119,7 @@ final class TejDeclarationTest extends ApiTestCase
         $this->client->request('GET', $this->declarationPath($globex));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company’s month');
 
+        $this->sendJson('PUT', $this->companyPath().'/modules/recurring_expenses', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/expenses', ['enabled' => false]);
         self::assertResponseIsSuccessful();
         $this->client->request('GET', $this->declarationPath());

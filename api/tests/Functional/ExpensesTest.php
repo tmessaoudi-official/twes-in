@@ -623,6 +623,7 @@ final class ExpensesTest extends ApiTestCase
         $this->uploadFile($this->path($theirId).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a file attached to another company’s expense');
 
+        $this->sendJson('PUT', $this->companyPath().'/modules/recurring_expenses', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/expenses', ['enabled' => false]);
         self::assertResponseIsSuccessful();
         foreach (['', '/'.$id, '/'.$id.'/attachments', '/'.$id.'/attachments/'.$attachment.'/content'] as $hidden) {

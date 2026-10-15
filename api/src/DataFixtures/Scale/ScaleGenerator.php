@@ -82,6 +82,7 @@ final class ScaleGenerator
         'quote' => 'quotes: a follow-up slice',
         'quote_line' => 'quotes: a follow-up slice',
         'quote_line_tax' => 'quotes: a follow-up slice',
+        'recurring_expense' => 'a schedule copying a model expense: expenses are not cloned, so it has none to copy',
         'recurring_invoice' => 'a schedule copying a model invoice: a clone drafts nothing by itself',
         'stock_movement' => 'stock movements: a follow-up slice',
         'support_grant' => 'the windows an owner opened to support: a clone opened none',

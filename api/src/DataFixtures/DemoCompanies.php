@@ -54,6 +54,8 @@ use App\Module\Quotes\Application\QuoteInvoices;
 use App\Module\Quotes\Application\QuoteLineInput;
 use App\Module\Quotes\Application\QuoteWorkflow;
 use App\Module\Quotes\Domain\QuoteHeader;
+use App\Module\RecurringExpenses\Application\ManageRecurringExpenses;
+use App\Module\RecurringExpenses\Application\RunRecurringExpenses;
 use App\Module\Vendors\Application\ManageVendors;
 use App\Module\Vendors\Application\VendorInput;
 use App\Module\Vendors\Domain\VendorProfile;
@@ -62,6 +64,9 @@ use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingLevel;
 use App\Shared\Domain\PaymentMethod;
 use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\Schedule;
+use App\Shared\Domain\ScheduleAnchor;
+use App\Shared\Domain\ScheduleUnit;
 use App\Tenancy\Application\Company\ReviseCompanyProfile;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
 use App\Tenancy\Application\Invitation\AcceptInvitation;
@@ -148,6 +153,8 @@ final class DemoCompanies extends Fixture
         private readonly ManageExpenseCategories $expenseCategories,
         private readonly ManageVendors $vendors,
         private readonly ManageExpenses $expenses,
+        private readonly ManageRecurringExpenses $recurringExpenses,
+        private readonly RunRecurringExpenses $runRecurringExpenses,
         private readonly ManageDeliveryNotes $deliveryNotes,
         private readonly DeliveryNoteWorkflow $deliveryNoteWorkflow,
         private readonly InvoiceDeliveryNotes $invoiceDeliveryNotes,
@@ -213,6 +220,7 @@ final class DemoCompanies extends Fixture
         [$sellable, $goods, $tracked] = $this->writeProducts($demo, $company, $unit, $tax, $vendors, $actor, $settle);
 
         $this->planExpenses($demo, $timeline, $company, $vendors, $tax, $actor);
+        $this->planRecurringExpense($demo, $timeline, $company, $vendors[0], $tax, $actor);
         $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $tracked, $actor);
         $this->planQuotes($timeline, $company, $customerIds, $sellable, $actor);
         $this->planInvoices($demo, $timeline, $company, $customerIds, $sellable, $actor);
@@ -473,6 +481,34 @@ final class DemoCompanies extends Fixture
                 }
             });
         }
+    }
+
+    /**
+     * A monthly bill whose amount varies, made recurring forty days ago on the day it came: the worker's pass today drafts
+     * the occurrences due since, each flagged for its amount to be checked against the bill.
+     *
+     * @param \Closure(): Company                                                                  $company
+     * @param array{id: Uuid, category: Uuid, amount: numeric-string, untaxed: bool, name: string} $vendor
+     * @param \Closure(string): Uuid                                                               $tax
+     */
+    private function planRecurringExpense(DemoCompany $demo, Timeline $timeline, \Closure $company, array $vendor, \Closure $tax, Uuid $actor): void
+    {
+        $first = -40;
+        $timeline->at($first, function () use ($demo, $timeline, $company, $vendor, $tax, $actor, $first): void {
+            $date = $timeline->day($first);
+            $model = $this->expenses->create($company(), new ExpenseInput(
+                new ExpenseDetails($date, $vendor['name'], \sprintf('F-%s-%04d', $date->format('Y'), 400)),
+                ExpenseInput::oneLine($vendor['amount'], $vendor['untaxed'] ? null : $tax($demo->vatCode)),
+                $vendor['id'],
+                $vendor['category'],
+            ), $actor);
+            $this->expenses->recordInBooks($company(), $model->getId(), $actor);
+            $schedule = new Schedule(ScheduleUnit::Month, 1, ScheduleAnchor::Date, (int) $date->format('j'));
+            $this->recurringExpenses->create($company(), $model->getId(), $schedule, $date, null, true, $actor);
+        });
+        $timeline->at(0, function () use ($company): void {
+            $this->runRecurringExpenses->handle($company());
+        });
     }
 
     /**

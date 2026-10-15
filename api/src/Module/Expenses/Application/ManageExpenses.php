@@ -134,12 +134,26 @@ final readonly class ManageExpenses
     /** @throws InvalidExpense */
     public function create(Company $company, ExpenseInput $input, ?Uuid $actorUserId): Expense
     {
-        return $this->transactions->run(function () use ($company, $input, $actorUserId): Expense {
-            $expense = Expense::create($company, $input->details, $this->amounts($company, $input), $this->vendor($company, $input->vendorId, null), $this->category($company, $input->categoryId), $this->scales->of($company->getCurrency()), $this->presets->get($company->getFiscalPreset())->vatRoundingPoint, $this->clock->now());
-            $this->expenses->save($expense);
-            $this->record($company, $expense->getId(), self::CREATED, [], $actorUserId);
+        return $this->transactions->run(fn (): Expense => $this->made($company, $input, $actorUserId, [], false));
+    }
 
-            return $expense;
+    /**
+     * A new draft copied from one of the company's expenses and dated on `$day`, as a recurring expense makes it: written
+     * by no one, it records where it came from in its audit entry. It goes through the same checks as one typed, so a
+     * rate, a category or a vendor that may no longer be named refuses the copy.
+     *
+     * @param bool                 $amountToCheck whether its amount is to be checked against the bill before it is recorded
+     * @param array<string, mixed> $origin        what made it, kept with its creation
+     *
+     * @throws ExpenseNotFound
+     * @throws InvalidExpense
+     */
+    public function draftFromModel(Company $company, Uuid $modelId, \DateTimeImmutable $day, bool $amountToCheck, array $origin): Expense
+    {
+        return $this->transactions->run(function () use ($company, $modelId, $day, $amountToCheck, $origin): Expense {
+            $input = ExpenseInput::copyOf($this->get($company, $modelId), $day, $this->scales->of($company->getCurrency()));
+
+            return $this->made($company, $input, null, $origin, $amountToCheck);
         });
     }
 
@@ -416,6 +430,23 @@ final readonly class ManageExpenses
     private function tax(Company $company, Uuid $id, string $field): TaxComponent
     {
         return $this->taxes->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense($field, 'No tax of this company has this id.', 'unknown_tax');
+    }
+
+    /**
+     * @param array<string, mixed> $origin
+     *
+     * @throws InvalidExpense
+     */
+    private function made(Company $company, ExpenseInput $input, ?Uuid $actorUserId, array $origin, bool $amountToCheck): Expense
+    {
+        $expense = Expense::create($company, $input->details, $this->amounts($company, $input), $this->vendor($company, $input->vendorId, null), $this->category($company, $input->categoryId), $this->scales->of($company->getCurrency()), $this->presets->get($company->getFiscalPreset())->vatRoundingPoint, $this->clock->now());
+        if ($amountToCheck) {
+            $expense->askAmountChecked();
+        }
+        $this->expenses->save($expense);
+        $this->record($company, $expense->getId(), self::CREATED, $origin, $actorUserId);
+
+        return $expense;
     }
 
     /** @param array<string, mixed> $changes */

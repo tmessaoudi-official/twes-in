@@ -17,6 +17,7 @@ use App\Identity\Infrastructure\Scheduler\FinalizeAccountDeletionsEveryNight;
 use App\Inbox\Infrastructure\Mail\NotificationToMailHandler;
 use App\Module\Invoices\Infrastructure\Scheduler\RemindLateInvoicesEveryHour;
 use App\Module\Recurring\Infrastructure\Scheduler\RunRecurringInvoicesEveryHour;
+use App\Module\RecurringExpenses\Infrastructure\Scheduler\RunRecurringExpensesEveryHour;
 use App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos;
 use App\Tenancy\Infrastructure\Invitation\InvitationToMailHandler;
 use App\Tenancy\Infrastructure\Scheduler\RemoveClosedCompaniesEveryNight;
@@ -45,6 +46,7 @@ final class BackgroundWorkScopeTest extends TestCase
         PurgeFailedSignInAddressesEveryNight::class => 'every company at once, on purpose: a failed sign-in is purged by its age alone, and it names no company',
         RemoveClosedCompaniesEveryNight::class => 'each closed company whose retention has ended, by its own id, removed whole in its own transaction',
         RemindLateInvoicesEveryHour::class => 'each active company with the invoices module on, handed to the use case one at a time',
+        RunRecurringExpensesEveryHour::class => 'each active company with the recurring expenses module on, handed to the use case one at a time',
         RunRecurringInvoicesEveryHour::class => 'each active company with the recurring module on, handed to the use case one at a time',
         SignupAskedHandler::class => 'an address, no company: the company is made only when the link is used',
     ];
