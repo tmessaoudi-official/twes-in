@@ -228,6 +228,8 @@ final class ExpensesTest extends ApiTestCase
             'lines[0].taxComponentIds ' => [['lines' => [['amountNet' => '100', 'taxComponentIds' => [$absent]]]], 'unknown_tax', []],
             'documentTaxComponentIds' => [['documentTaxComponentIds' => [$absent]], 'unknown_tax', []],
             'printedTaxes' => [['printedTaxes' => [['code' => 'TVA19', 'amount' => '19.100']]], 'printed_tax_off', ['code' => 'TVA19', 'tolerance' => '0.001']],
+            // A rate on two lines may print one unit of the last decimal off per line: the text says the bound checked.
+            'printedTaxes ' => [['lines' => [['amountNet' => '100', 'taxComponentIds' => [$vat]], ['amountNet' => '50', 'taxComponentIds' => [$vat]]], 'printedTaxes' => [['code' => 'TVA19', 'amount' => '29.000']]], 'printed_tax_off', ['code' => 'TVA19', 'tolerance' => '0.002']],
             'categoryId' => [['categoryId' => $absent], 'unknown_choice', []],
             'vendorId' => [['vendorId' => $absent], 'unknown_choice', []],
         ] as $field => [$change, $reason, $params]) {

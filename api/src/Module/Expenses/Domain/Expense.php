@@ -389,9 +389,11 @@ class Expense implements CompanyOwned
         foreach ($amounts->printed as $code => $amount) {
             $worked = array_find($totals->taxes, static fn ($tax): bool => $tax->code === $code);
             $printed = trim($amount);
+            // One unit of the last decimal off per line carrying the rate, each line having rounded on its own.
+            $tolerance = $unit->mul($carriers[$code] ?? 1);
             if (null === $worked || 1 !== preg_match('/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/', $printed) || 0 !== Decimal::round(Decimal::of($printed), $currencyScale)->compare(Decimal::of($printed))
-                || Decimal::absolute(Decimal::of($printed)->sub(Decimal::of($worked->amount)))->compare($unit->mul($carriers[$code])) > 0) {
-                throw new InvalidExpense('printedTaxes', \sprintf('A printed amount is a rate of this bill, at most %s a line from what it works out to.', Decimal::format($unit, $currencyScale)), 'printed_tax_off', ['code' => (string) $code, 'tolerance' => Decimal::format($unit, $currencyScale)]);
+                || Decimal::absolute(Decimal::of($printed)->sub(Decimal::of($worked->amount)))->compare($tolerance) > 0) {
+                throw new InvalidExpense('printedTaxes', \sprintf('A printed amount is a rate of this bill, at most %s from what it works out to.', Decimal::format($tolerance, $currencyScale)), 'printed_tax_off', ['code' => (string) $code, 'tolerance' => Decimal::format($tolerance, $currencyScale)]);
             }
         }
 

@@ -25,6 +25,7 @@ import { DecimalInput } from '../shared/form/decimal-input';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { FieldError } from '../shared/form/form-builder';
 import { Select } from '../shared/form/select';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import {
   amountPattern,
@@ -79,6 +80,7 @@ export class ExpenseBill {
   private readonly revision = signal(0);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly translate = inject(TranslateService);
+  private readonly format = inject(FormatFacade);
   /** Drops what the API last refused at the bill's next change. */
   private refusalsCleared: Subscription | null = null;
 
@@ -179,7 +181,7 @@ export class ExpenseBill {
       const known = refusal.reason !== null && this.translate.instant(key) !== key;
       const error: FieldError = {
         key: known ? key : 'import.rejections.invalid_value',
-        params: refusal.params,
+        params: this.written(refusal.params),
       };
       placed.control.setErrors({ refused: error });
       placed.control.markAsTouched();
@@ -197,6 +199,14 @@ export class ExpenseBill {
     this.revision.update((revision) => revision + 1);
     if (focus) this.host.nativeElement.querySelector<HTMLElement>(first)?.focus();
     return unplaced;
+  }
+
+  /** A refusal's values as the screen writes them: the API sends an amount, such as a tolerance, with a point. */
+  private written(params: FieldRefusal['params']): Readonly<Record<string, number | string>> {
+    const tolerance = params['tolerance'];
+    return typeof tolerance === 'string'
+      ? { ...params, tolerance: this.format.amount(tolerance, this.options().currencyScale) }
+      : params;
   }
 
   /** The control a refusal is about and where the person types it, when the bill shows it. */
