@@ -21,7 +21,6 @@
 #        mutants.sh run <api|web|all> <spec>  inside a toolchain: api runs the PHPUnit and bash tests, web the specs
 #        mutants.sh list <spec>               the mutants as read, one per line
 set -uo pipefail
-export LC_ALL=C
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$root" || exit 2
 state=var/mutants; pending=$state/pending
@@ -125,6 +124,15 @@ trap 'on_signal terminated 143' TERM
 trap 'on_signal interrupted 130' INT
 trap 'put_back' EXIT
 
+# land <file> <old> <new>: how often old occurs, in found, and the file with it replaced, in mutated. Byte for byte, in
+# the C locale here alone: the tests keep their caller's, as the gate runs them.
+land() {
+  local LC_ALL=C content rest
+  IFS= read -rd '' content < "$1"
+  rest=$content; found=0; while [[ "$rest" == *"$2"* ]]; do found=$((found+1)); rest=${rest#*"$2"}; done
+  mutated=${content/"$2"/"$3"}
+}
+
 slug() { local s=${1,,}; s=${s//[^a-z0-9]/-}; printf '%s' "$s"; }
 
 run() {
@@ -140,31 +148,30 @@ run() {
   local -a mine=(); local i
   for i in "${!names[@]}"; do belongs "$group" "${tests[$i]%% *}" && mine+=("$i"); done
   ((${#mine[@]})) || { echo "mutants: nothing in $spec for the $group toolchain"; return 0; }
-  rm -rf -- "$state/logs"; mkdir -p "$state/logs" "$state/backup"
+  # Each toolchain its own logs, so a spec run by both keeps the first one's beside the second's.
+  local logs=$state/logs/$group; rm -rf -- "$logs"; mkdir -p "$logs" "$state/backup"
 
   local -A seen=(); local t log v status needs_db=0
   for i in "${mine[@]}"; do [[ "$(kind "${tests[$i]}")" == phpunit ]] && needs_db=1; done
   if ((needs_db)); then
     # As composer test prepares it: the tests connect as the application role, granted after the migrations.
     (cd api && bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test \
-      && bin/console app:database:app-role --no-interaction --env=test) > "$state/logs/database.log" 2>&1 \
-      || { echo "mutants: the test database could not be prepared ($state/logs/database.log)" >&2; return 2; }
+      && bin/console app:database:app-role --no-interaction --env=test) > "$logs/database.log" 2>&1 \
+      || { echo "mutants: the test database could not be prepared ($logs/database.log)" >&2; return 2; }
   fi
   local n=0
   for i in "${mine[@]}"; do
     t=${tests[$i]}; [[ -z "${seen[$t]:-}" ]] || continue; seen[$t]=1; n=$((n+1))
-    log=$state/logs/baseline-$n.log; run_test "$t" "$log"; status=$?
+    log=$logs/baseline-$n.log; run_test "$t" "$log"; status=$?
     v=$(verdict "$(kind "$t")" "$status" "$log")
     [[ "$v" == pass ]] || { echo "mutants: red before any mutant: $t (exit $status, $log)" >&2; return 2; }
   done
 
-  local killed=0 survived=0 invalid=0 missed=0 file old new content rest found mutated
+  local killed=0 survived=0 invalid=0 missed=0 file old new found mutated
   for i in "${mine[@]}"; do
-    file=${files[$i]}; old=${olds[$i]}; new=${news[$i]}; log=$state/logs/$((i+1))-$(slug "${names[$i]}").log
-    IFS= read -rd '' content < "$file"
-    rest=$content; found=0; while [[ "$rest" == *"$old"* ]]; do found=$((found+1)); rest=${rest#*"$old"}; done
+    file=${files[$i]}; old=${olds[$i]}; new=${news[$i]}; log=$logs/$((i+1))-$(slug "${names[$i]}").log
+    land "$file" "$old" "$new"
     if ((found != 1)); then echo "NOT LANDED  ${names[$i]} (found $found times)"; missed=$((missed+1)); continue; fi
-    mutated=${content/"$old"/"$new"}
     active_backup=$state/backup/${file//\//__}
     cp -- "$file" "$active_backup" && cmp -s -- "$file" "$active_backup" || { echo "mutants: could not copy $file" >&2; return 2; }
     printf '%s\t%s\n' "$file" "$active_backup" > "$pending"; active_file=$file
