@@ -251,7 +251,7 @@ class Customer implements CompanyOwned
     {
         $number = trim($number);
         if (1 !== preg_match(self::NUMBER, $number)) {
-            throw new InvalidCustomer('number', \sprintf('"%s" is not a customer number: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $number), 'invalid_customer_number', ['max' => 32]);
+            throw new InvalidCustomer('number', \sprintf('"%s" is not a customer number: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $number), 'invalid_number', ['max' => 32]);
         }
 
         return $number;

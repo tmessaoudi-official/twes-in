@@ -56,7 +56,7 @@ final readonly class CustomerProfile
     ) {
         $name = trim($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidCustomer('name', \sprintf('A customer is named in 1 to %d characters.', self::NAME_MAX), 'invalid_length', ['min' => 1, 'max' => self::NAME_MAX]);
+            throw new InvalidCustomer('name', \sprintf('A customer is named in 1 to %d characters.', self::NAME_MAX), 'invalid_text', ['min' => 1, 'max' => self::NAME_MAX]);
         }
         $this->name = $name;
         $this->legalName = self::text($legalName);
