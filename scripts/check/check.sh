@@ -63,7 +63,7 @@ bucket() { sed -n "s/^$2 //p" <<<"$1"; }
 host() {
   local fix=; [[ "${1:-}" == --fix ]] && { fix=' --fix'; shift; }
   local -a files=("$@")
-  ((${#files[@]})) || mapfile -t files < <({ git diff --name-only HEAD; git ls-files --others --exclude-standard; } | LC_ALL=C sort -u)
+  ((${#files[@]})) || mapfile -t files < <({ git -c core.quotePath=false diff --name-only HEAD; git -c core.quotePath=false ls-files --others --exclude-standard; } | LC_ALL=C sort -u)
   local p; p=$(plan "${files[@]}") || return 2
   [[ -n "$p" ]] || { echo "check: nothing changed against HEAD, nothing to check"; return 0; }
   local f; local -a kept=(); for f in "${files[@]}"; do [[ -f "$f" ]] && kept+=("$f"); done; files=("${kept[@]}")
