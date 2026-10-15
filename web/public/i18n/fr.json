@@ -3666,7 +3666,12 @@
       "moved_since_count": "Des articles sont entrés ou sortis à {{location}} depuis le dernier comptage : cochez « Recompter » pour compter à nouveau.",
       "unknown_barcode": "Aucun produit de l’entreprise n’a le code-barres unitaire « {{code}} ».",
       "barcode_not_the_reference": "Le code-barres « {{code}} » n’est pas celui de « {{reference}} ».",
-      "location_needed": "L’entreprise a plusieurs établissements : indiquez le code de l’emplacement où va cette quantité."
+      "location_needed": "L’entreprise a plusieurs établissements : indiquez le code de l’emplacement où va cette quantité.",
+      "invalid_rate": "Remise refusée : un pourcentage de 0 à 100, trois décimales au plus.",
+      "unknown_tax_regime": "Régime inconnu : choisissez-en un dans la liste.",
+      "unknown_group_id": "Ce groupe n’existe plus : choisissez-en un autre.",
+      "unknown_tax": "Cette taxe n’existe plus, ou n’est plus active.",
+      "regime_excludes_tax": "Le régime {{regime}} ne facture pas {{tax}}."
     },
     "action": "Importer",
     "notes_title": "À savoir",

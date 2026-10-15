@@ -97,6 +97,8 @@ final class CustomerTest extends TestCase
             self::fail('A nameless customer was accepted.');
         } catch (InvalidCustomer $refused) {
             self::assertSame('name', $refused->field);
+            // Said as the import says a text it refuses, under its maximum.
+            self::assertSame(['invalid_text', ['min' => 1, 'max' => CustomerProfile::NAME_MAX]], [$refused->reason, $refused->params]);
         }
     }
 
@@ -116,6 +118,7 @@ final class CustomerTest extends TestCase
             self::fail("The number \"$number\" was accepted.");
         } catch (InvalidCustomer $refused) {
             self::assertSame('number', $refused->field);
+            self::assertSame('invalid_number', $refused->reason, 'said as the import says a number it refuses');
         }
     }
 

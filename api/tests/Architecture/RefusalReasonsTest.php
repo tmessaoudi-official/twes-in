@@ -29,11 +29,7 @@ final class RefusalReasonsTest extends KernelTestCase
         self::bootKernel();
         $container = static::getContainer();
         $validator = $container->get(ValidatorInterface::class);
-        $texts = json_decode((string) file_get_contents(\dirname(__DIR__, 3).'/web/public/i18n/fr.json'), true, 512, \JSON_THROW_ON_ERROR);
-        self::assertIsArray($texts);
-        self::assertIsArray($texts['import'] ?? null);
-        $translated = $texts['import']['rejections'] ?? null;
-        self::assertIsArray($translated);
+        $translated = self::translated();
 
         $wrong = [];
         $reasons = 0;
@@ -64,6 +60,53 @@ final class RefusalReasonsTest extends KernelTestCase
 
         self::assertGreaterThan(30, $reasons, 'the resources give their refusals a reason');
         self::assertSame([], $wrong);
+    }
+
+    /**
+     * A domain refusal of a customer's or a vendor's field reaches the form the same way: every reason one is written
+     * with has its screen text. A reason is the snake_case literal of the refusal's statement (fields, parameters and
+     * messages are not snake_case).
+     */
+    public function testEveryReasonADomainRefusesAFieldWithIsTranslated(): void
+    {
+        // No form reaches it: a form offers only the identifiers its preset declares, and its words are not ruled yet.
+        $unreachable = ['unknown_identifier'];
+        $root = \dirname(__DIR__, 2);
+        $translated = self::translated();
+        $statements = 0;
+        $untranslated = [];
+        foreach (['src/Module/Customers', 'src/Module/Vendors', 'src/Fiscal/Application/Preset'] as $directory) {
+            $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator("$root/$directory", \FilesystemIterator::SKIP_DOTS));
+            foreach ($files as $file) {
+                \assert($file instanceof \SplFileInfo);
+                $source = (string) file_get_contents($file->getPathname());
+                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal)\((.*?)\);/s', $source, $found);
+                foreach ($found[1] as $arguments) {
+                    ++$statements;
+                    preg_match_all("/'([a-z]+(?:_[a-z]+)+)'/", $arguments, $reasons);
+                    foreach ($reasons[1] ?: ['invalid_value'] as $reason) {
+                        if (!\array_key_exists($reason, $translated) && !\in_array($reason, $unreachable, true)) {
+                            $untranslated[] = "$reason in {$file->getFilename()}";
+                        }
+                    }
+                }
+            }
+        }
+
+        self::assertGreaterThan(15, $statements, 'the domain refusals are found');
+        self::assertSame([], $untranslated);
+    }
+
+    /** @return array<mixed> the screens' texts for a refusal, by reason */
+    private static function translated(): array
+    {
+        $texts = json_decode((string) file_get_contents(\dirname(__DIR__, 3).'/web/public/i18n/fr.json'), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($texts);
+        self::assertIsArray($texts['import'] ?? null);
+        $translated = $texts['import']['rejections'] ?? null;
+        self::assertIsArray($translated);
+
+        return $translated;
     }
 
     /**

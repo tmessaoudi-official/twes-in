@@ -3666,7 +3666,12 @@
       "moved_since_count": "Goods came in or went out at {{location}} since the last count: tick “Count again” to count it again.",
       "unknown_barcode": "No product of the company has the unit barcode “{{code}}”.",
       "barcode_not_the_reference": "The barcode “{{code}}” is not the one of “{{reference}}”.",
-      "location_needed": "The company has several establishments: give the code of the location this quantity goes to."
+      "location_needed": "The company has several establishments: give the code of the location this quantity goes to.",
+      "invalid_rate": "Discount refused: a percentage from 0 to 100, three decimals at most.",
+      "unknown_tax_regime": "Unknown regime: pick one from the list.",
+      "unknown_group_id": "This group no longer exists: pick another one.",
+      "unknown_tax": "This tax no longer exists, or is no longer active.",
+      "regime_excludes_tax": "The {{regime}} regime does not charge {{tax}}."
     },
     "action": "Import",
     "notes_title": "Good to know",
