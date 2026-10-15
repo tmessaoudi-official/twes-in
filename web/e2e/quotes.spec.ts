@@ -265,6 +265,10 @@ test('an accepted quote takes a deposit invoice, which its final invoice gives b
     const creditUrl = page.url();
     await expect(page.getByTestId('line-1-gives-back')).toBeVisible();
     await page.getByTestId('line-0-price').fill('500');
+    // Worked out as typed: the API leaves the deposit line out of a part and says which row each line it kept came
+    // from, so the figures as typed land on the machining, and the deposit row keeps only the net it was saved with.
+    await expect(page.getByTestId('line-0-total')).toContainText(/595,000/);
+    await expect(page.getByTestId('line-1-toggle')).toHaveCount(0);
     await page.getByTestId('document-action-save').click();
     await expect(page.getByTestId('line-1-gives-back')).toHaveCount(0);
     await expect(page.getByTestId('invoice-totals')).toContainText('500,000');
