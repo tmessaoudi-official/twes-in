@@ -74,6 +74,10 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-15 10:35] AGREED: L-605b: a vendor's number, name and payment terms refuse with the import's existing texts (invalid_number, invalid_text with its max, invalid_payment_terms); an unknown expense category stays « Valeur refusée. » until it has words of its own.
 - [2026-10-15 10:35] AGREED: L-605b slice 2 (products, expenses, company profile) is Large: explored first, then a full plan with any new texts, and no code before the developer's go.
 - [2026-10-15 10:50] AGREED: L-605b slice 2 plan approved: per-field refusals on the company profile, then products, then expenses, one commit per form; every new word comes to the developer as one batch before it is written, with how an expense line's refusal is said.
+- [2026-10-15 11:18] AGREED: L-605b slice 2 words: seven texts join import.rejections in fr and en as drafted — unknown_choice « Ce choix n’est plus proposé : choisissez-en un autre. », tax_on_document « {{tax}} se compte sur le document, pas sur une ligne. », tracking_kept_by_stock « Du stock de ce produit a déjà bougé : il garde son suivi. », service_untracked « Un service n’a pas de stock : il n’est suivi ni par lot ni par numéro de série. », invalid_amount « Montant refusé : un nombre au-dessus de 0, {{decimals}} décimales au plus. », one_vat_rate « Une ligne porte un seul taux de TVA : pour deux taux, faites deux lignes. », printed_tax_off « Ce montant s’écarte de plus de {{tolerance}} de ce que donne le taux. »
+- [2026-10-15 11:18] AGREED: L-605b slice 2: an expense line's refusal is said under that line's own field in the bill, and the person lands on it.
+- [2026-10-15 11:18] AGREED: L-605b slice 2: a product's name, description and substitution group refuse as « Texte refusé : {{max}} caractères au plus. » on the form and in the file, as a customer's name does.
+- [2026-10-15 11:18] AGREED: L-605b slice 2 leaves the expense payment dialog (paid on, withholding, TEJ code) out; it goes to the ledger as a follow-up.
 
 ## Formal Plan
 
