@@ -127,6 +127,29 @@ final class VendorsTest extends ApiTestCase
         self::assertCount(0, $this->jsonList());
     }
 
+    /** The form's rules and the domain's answer one shape, under the reasons a vendor file is refused with. */
+    public function testARefusalNamesItsFieldAndAReasonTheScreenTranslates(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+
+        foreach ([
+            'number' => [['number' => '-FRN'], 'invalid_number', []],
+            'name' => [['name' => ''], 'value_required', []],
+            'email' => [['email' => 'nobody@nowhere'], 'invalid_email', []],
+            'addressLine1' => [['addressLine1' => str_repeat('a', 201)], 'invalid_text', ['max' => 200]],
+            'countryCode' => [['countryCode' => 'XX'], 'invalid_country', []],
+            'iban' => [['iban' => 'TN00 1234'], 'invalid_iban', []],
+            'bic' => [['bic' => 'NOPE'], 'invalid_bic', []],
+            'paymentTermsDays' => [['paymentTermsDays' => 400], 'invalid_payment_terms', []],
+            'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '123']], 'identifier_shape', ['identifier' => 'matricule_fiscal']],
+        ] as $field => [$change, $reason, $params]) {
+            $this->postJson($this->path(), $this->vendor($change));
+
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals(), $field);
+        }
+    }
+
     public function testANumberAnotherVendorHasAnswersConflict(): void
     {
         $this->signedIn(['vendor.read', 'vendor.write']);

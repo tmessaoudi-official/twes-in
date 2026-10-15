@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace App\ImportExport\Infrastructure\Validation;
 
 use App\ImportExport\Application\RowRejected;
-use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
@@ -26,14 +25,15 @@ final readonly class ResourceRules
     }
 
     /**
-     * @param class-string                                                         $resource
-     * @param array<string, array{column: string, value: ?string, reason: string}> $cells    by the property each fills
+     * @param class-string                                         $resource
+     * @param array<string, array{column: string, value: ?string}> $cells    by the property each fills
      *
-     * @throws RowRejected naming the first cell refused, under its column's code and, for a length, its maximum
+     * @throws RowRejected naming the first cell refused, under the reason its constraint gives a screen and that text's
+     *                     parameters, so a file and a form say the same refusal
      */
     public function hold(string $resource, string $group, array $cells): void
     {
-        foreach ($cells as $property => ['column' => $column, 'value' => $value, 'reason' => $reason]) {
+        foreach ($cells as $property => ['column' => $column, 'value' => $value]) {
             if (null === $value) {
                 continue;
             }
@@ -42,10 +42,24 @@ final readonly class ResourceRules
                 continue;
             }
             $violation = $violations->get(0);
-            $constraint = $violation->getConstraint();
-            $params = $constraint instanceof Length && null !== $constraint->max ? ['max' => $constraint->max] : [];
+            $payload = $violation->getConstraint()?->payload;
+            $payload = \is_array($payload) ? $payload : [];
+            $reason = $payload['reason'] ?? null;
 
-            throw new RowRejected($column, (string) $violation->getMessage(), $reason, $params);
+            throw new RowRejected($column, (string) $violation->getMessage(), \is_string($reason) ? $reason : 'invalid_value', self::params($payload['params'] ?? null));
         }
+    }
+
+    /** @return array<string, string|int> */
+    private static function params(mixed $params): array
+    {
+        $kept = [];
+        foreach (\is_array($params) ? $params : [] as $name => $value) {
+            if (\is_string($name) && (\is_string($value) || \is_int($value))) {
+                $kept[$name] = $value;
+            }
+        }
+
+        return $kept;
     }
 }

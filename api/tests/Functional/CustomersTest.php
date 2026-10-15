@@ -97,6 +97,29 @@ final class CustomersTest extends ApiTestCase
         self::assertStringContainsString('defaultTaxComponentIds', (string) $this->client->getResponse()->getContent());
     }
 
+    /**
+     * A form's rules and the domain's refuse in one shape: each violation names its property and carries the reason a
+     * screen translates, the import's own codes, with what that text needs (a length's maximum).
+     */
+    public function testARefusalNamesItsFieldAndAReasonTheScreenTranslates(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        foreach ([
+            'email' => [['email' => 'nobody@nowhere'], 'invalid_email', []],
+            'legalName' => [['legalName' => str_repeat('a', 201)], 'invalid_legal_name', []],
+            'billingAddressLine1' => [['billingAddressLine1' => str_repeat('a', 201)], 'invalid_text', ['max' => 200]],
+            'billingCountryCode' => [['billingCountryCode' => 'XX'], 'invalid_country', []],
+            'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '123']], 'identifier_shape', ['identifier' => 'matricule_fiscal']],
+            'defaultTaxComponentIds' => [['taxRegime' => 'exempt', 'defaultTaxComponentIds' => [$this->taxId('TVA19')]], 'regime_excludes_tax', ['regime' => 'exempt', 'tax' => 'TVA19']],
+        ] as $field => [$change, $reason, $params]) {
+            $this->postJson($this->path(), $this->customer($change));
+
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals(), $field);
+        }
+    }
+
     public function testANumberAnotherCustomerHasAnswersConflict(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);

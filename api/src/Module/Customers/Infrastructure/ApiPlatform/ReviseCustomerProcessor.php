@@ -15,11 +15,11 @@ use App\Module\Customers\Application\CustomerNotFound;
 use App\Module\Customers\Application\CustomerNumberTaken;
 use App\Module\Customers\Application\ManageCustomers;
 use App\Module\Customers\Domain\InvalidCustomer;
+use App\Shared\Infrastructure\ApiPlatform\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<CustomerResource, CustomerResource> */
 final readonly class ReviseCustomerProcessor implements ProcessorInterface
@@ -39,7 +39,7 @@ final readonly class ReviseCustomerProcessor implements ProcessorInterface
         } catch (CustomerNumberTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidCustomer $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return CustomerResource::of($customer);

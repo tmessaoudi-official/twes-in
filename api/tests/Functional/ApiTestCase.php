@@ -376,6 +376,25 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
+     * What a 422 refused, as a screen reads it: each violation's property, the reason it translates and that text's
+     * parameters (none when the payload carries none).
+     *
+     * @return list<array{propertyPath: mixed, reason: mixed, params: mixed}>
+     */
+    protected function refusals(): array
+    {
+        $refusals = [];
+        foreach ($this->arrayAt($this->json(), 'violations') as $violation) {
+            self::assertIsArray($violation);
+            $payload = $violation['payload'] ?? [];
+            self::assertIsArray($payload, 'a payload is an object');
+            $refusals[] = ['propertyPath' => $violation['propertyPath'] ?? null, 'reason' => $payload['reason'] ?? null, 'params' => $payload['params'] ?? []];
+        }
+
+        return $refusals;
+    }
+
+    /**
      * Scalars out of a JSON body, asserted to be what they are. PHPStan runs at max here, so a test that
      * indexes straight into a decoded body is indexing into `mixed`.
      *
