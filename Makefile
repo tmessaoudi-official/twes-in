@@ -26,7 +26,8 @@ export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES COMPOSE_FILE
 # WEB_ and API_BUILD_VERSION and _COMMIT for the images' build arguments, worked out only where an image is built.
 BUILD_ENV = $(shell bash scripts/build-version.sh --env)
 # A directory of the host's own for the toolchain's temporary files, made here as this user or Docker makes it as root.
-TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T tools
+# A worker count handed in (`make test-api PARATEST_PROCESSES=4`) reaches the suite that reads it (api/tests/parallel.php).
+TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T $(if $(PARATEST_PROCESSES),-e PARATEST_PROCESSES=$(PARATEST_PROCESSES)) tools
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
@@ -134,10 +135,13 @@ in-versions:
 logs:
 	docker compose logs -f --tail=100
 
-gate:          ## everything CI checks except e2e: the api and web halves side by side, then the licences
-	@# The OpenAPI document first and once: gate-web would export it again, its composer install racing gate-api's.
+gate:          ## everything CI checks except e2e: the api half, the web half, then the licences
+	@# One after the other: side by side, each suite taking every processor, 41 web specs timed out at a load of 15 on 8
+	@# processors; given half each, one still did, and the whole took as long as in turn (about 15 minutes either way).
+	@# The OpenAPI document first and once, which gate-web-checks reads without exporting it again.
 	$(MAKE) --no-print-directory api-openapi
-	$(MAKE) --no-print-directory -j2 --output-sync=target gate-api gate-web-checks
+	$(MAKE) --no-print-directory gate-api
+	$(MAKE) --no-print-directory gate-web-checks
 	$(MAKE) --no-print-directory gate-licences
 
 gate-licences: tools-image
