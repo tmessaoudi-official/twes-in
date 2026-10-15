@@ -35,7 +35,7 @@ final class VendorExportTest extends ApiTestCase
             null,
             null,
             new PostalAddress('12 rue de la Fonderie', null, '2033', 'Megrine', 'TN'),
-            'TN5904018104003691000123',
+            'TN5910006035183598478831',
             null,
             30,
         ), $now));
@@ -62,7 +62,7 @@ final class VendorExportTest extends ApiTestCase
         self::assertCount(3, $lines, 'the header and the two vendors');
         $rows = array_column(array_map(static fn (string $line): array => array_combine($header, str_getcsv($line, escape: '')), \array_slice($lines, 1)), null, 'number');
         self::assertSame(
-            ['Aciers du Sud', 'Aciers du Sud SARL', '1234567A/B/M/000', 'compta@aciers.tn', '12 rue de la Fonderie', '2033', 'Megrine', 'TN', 'TN5904018104003691000123', '30', 'yes'],
+            ['Aciers du Sud', 'Aciers du Sud SARL', '1234567A/B/M/000', 'compta@aciers.tn', '12 rue de la Fonderie', '2033', 'Megrine', 'TN', 'TN5910006035183598478831', '30', 'yes'],
             [$rows['FRN-0001']['name'], $rows['FRN-0001']['legal_name'], $rows['FRN-0001']['matricule_fiscal'], $rows['FRN-0001']['email'], $rows['FRN-0001']['line1'], $rows['FRN-0001']['postal_code'], $rows['FRN-0001']['city'], $rows['FRN-0001']['country_code'], $rows['FRN-0001']['iban'], $rows['FRN-0001']['payment_terms_days'], $rows['FRN-0001']['active']],
         );
         self::assertSame(['Sotumag', '', 'no'], [$rows['FRN-0002']['name'], $rows['FRN-0002']['payment_terms_days'], $rows['FRN-0002']['active']]);

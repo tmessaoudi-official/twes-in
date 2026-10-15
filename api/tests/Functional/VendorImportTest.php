@@ -49,7 +49,7 @@ final class VendorImportTest extends ApiTestCase
         self::assertSame('Aciers du Sud', $supplier->getProfile()->name);
         self::assertSame('Aciers du Sud SARL', $supplier->getProfile()->legalName);
         self::assertSame(['matricule_fiscal' => self::MATRICULE], $supplier->getProfile()->identifiers);
-        self::assertSame('TN5904018104003691000123', $supplier->getProfile()->iban);
+        self::assertSame('TN5910006035183598478831', $supplier->getProfile()->iban);
         self::assertSame(30, $supplier->getProfile()->paymentTermsDays);
         self::assertSame('Fournitures', $this->categoryName($supplier));
         self::assertFalse($supplier->isActive());
@@ -85,6 +85,44 @@ final class VendorImportTest extends ApiTestCase
             [5, 'active', 'not_yes_or_no', []],
             [6, 'number', 'duplicate_in_file', ['line' => 3]],
         ], $rejected);
+    }
+
+    /**
+     * A file is held to the vendor form's own rules for what the domain does not check: bank details, contact details,
+     * the country and every length. A country the column cannot hold was a server error on the preview.
+     */
+    public function testAFileIsHeldToTheFormsRulesForBankAndContactDetails(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+
+        $this->import(
+            "number,name,email,phone,website,country_code,iban,bic,notes\n"
+            ."FRN-0010,Courriel,pas-un-courriel,,,,,,\n"
+            ."FRN-0011,Téléphone,,appeler le standard,,,,,\n"
+            ."FRN-0012,Site,,,pas un site,,,,\n"
+            ."FRN-0013,Pays,,,,Tunisie,,,\n"
+            ."FRN-0014,Compte,,,,,TN00 1234,,\n"
+            ."FRN-0015,Banque,,,,,,PASUNBIC,\n"
+            .'FRN-0016,Notes,,,,,,,'.str_repeat('x', 5001)."\n"
+            ."FRN-0017,Minuscules,compta@aciers.tn,+216 71 000 000,https://aciers.tn,tn,,,\n",
+            dryRun: true,
+        );
+
+        self::assertResponseIsSuccessful();
+        $rejected = array_map(
+            static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null, $row['params'] ?? null] : [],
+            $this->arrayAt($this->json(), 'rejected'),
+        );
+        self::assertSame([
+            [2, 'email', 'invalid_email', []],
+            [3, 'phone', 'invalid_phone', []],
+            [4, 'website', 'invalid_website', []],
+            [5, 'country_code', 'invalid_country', []],
+            [6, 'iban', 'invalid_iban', []],
+            [7, 'bic', 'invalid_bic', []],
+            [8, 'notes', 'invalid_text', ['max' => 5000]],
+        ], $rejected);
+        self::assertSame([9], $this->arrayAt($this->json(), 'created'), 'a country written in small letters is the same country');
     }
 
     /**
@@ -194,7 +232,7 @@ final class VendorImportTest extends ApiTestCase
     private function twoVendors(): string
     {
         return self::HEADER
-            ."\nFRN-0001,Aciers du Sud,Aciers du Sud SARL,".self::MATRICULE.',compta@aciers.tn,TN5904018104003691000123,BIATTNTT,30,Fournitures,non'
+            ."\nFRN-0001,Aciers du Sud,Aciers du Sud SARL,".self::MATRICULE.',compta@aciers.tn,TN5910006035183598478831,BIATTNTT,30,Fournitures,non'
             ."\nFRN-0002,Outillage Pro,,".self::MATRICULE.",,,,,,\n";
     }
 

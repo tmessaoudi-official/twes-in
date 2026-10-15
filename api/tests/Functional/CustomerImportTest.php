@@ -177,6 +177,43 @@ final class CustomerImportTest extends ApiTestCase
         ], $rejected);
     }
 
+    /**
+     * A file is held to the customer form's own rules for what the domain does not check: an address, a telephone, a
+     * website, a country and every length. A country the column cannot hold was a server error on the preview, with no
+     * line named.
+     */
+    public function testAFileIsHeldToTheFormsRulesForContactDetailsAndAddresses(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import(
+            "number,name,kind,email,phone,website,billing_country_code,billing_city,shipping_postal_code\n"
+            ."CLI-0010,Courriel,individual,pas-un-courriel,,,,,\n"
+            ."CLI-0011,Téléphone,individual,,appeler le standard,,,,\n"
+            ."CLI-0012,Site,individual,,,pas un site,,,\n"
+            ."CLI-0013,Pays,individual,,,,France,,\n"
+            .'CLI-0014,Ville,individual,,,,TN,'.str_repeat('x', 121).",\n"
+            ."CLI-0015,Livraison,individual,,,,,,123456789012345678901\n"
+            ."CLI-0016,Minuscules,individual,compta@exemple.tn,+216 71 000 000,https://exemple.tn,tn,Tunis,\n",
+            dryRun: true,
+        );
+
+        self::assertResponseIsSuccessful();
+        $rejected = array_map(
+            static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null, $row['params'] ?? null] : [],
+            $this->arrayAt($this->json(), 'rejected'),
+        );
+        self::assertSame([
+            [2, 'email', 'invalid_email', []],
+            [3, 'phone', 'invalid_phone', []],
+            [4, 'website', 'invalid_website', []],
+            [5, 'billing_country_code', 'invalid_country', []],
+            [6, 'billing_city', 'invalid_text', ['max' => 120]],
+            [7, 'shipping_postal_code', 'invalid_text', ['max' => 20]],
+        ], $rejected);
+        self::assertSame([8], $this->arrayAt($this->json(), 'created'), 'a country written in small letters is the same country');
+    }
+
     public function testCreateModeRefusesAKnownNumberAndUpsertFillsInOnlyTheCellsTheRowHas(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);
