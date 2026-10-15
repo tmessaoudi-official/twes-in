@@ -39,8 +39,10 @@ final readonly class DocumentFormats
     {
         $notes = $settings->value($atCustomer, 'document.printed_notes');
         $formats = self::of($settings, $company);
+        $reference = $settings->value($atCustomer, 'document.exemption_reference');
+        $reference = \is_string($reference) ? trim($reference) : '';
 
-        return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat'], true === $settings->value($atCustomer, 'document.amount_in_words'), true === $settings->value($atCustomer, 'document.how_to_pay'), self::design($settings, $company), true === $settings->value($atCustomer, 'document.savings_line'));
+        return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat'], true === $settings->value($atCustomer, 'document.amount_in_words'), true === $settings->value($atCustomer, 'document.how_to_pay'), self::design($settings, $company), true === $settings->value($atCustomer, 'document.savings_line'), '' === $reference ? null : $reference);
     }
 
     /** The company's layout, accent and logo size, which every document it prints takes. */

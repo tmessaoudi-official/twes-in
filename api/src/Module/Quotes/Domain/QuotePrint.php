@@ -24,7 +24,7 @@ final readonly class QuotePrint
     ) {
     }
 
-    /** @return array<string, string|bool> */
+    /** @return array<string, string|bool|null> */
     public function toArray(): array
     {
         return ['language' => $this->language, 'signatureBlock' => $this->signatureBlock] + $this->print->toArray();

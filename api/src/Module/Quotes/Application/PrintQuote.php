@@ -67,6 +67,7 @@ final readonly class PrintQuote
             $printing->print->design,
             $printing->print->savingsPrinted($totals->savings()),
             QuantityTotals::ofUnits(array_map(static fn (QuoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $quote->getLines())),
+            $printing->print->exemptionReference,
         ))));
     }
 

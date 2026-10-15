@@ -31,6 +31,8 @@ final readonly class PrintSettings
         public DocumentDesign $design = new DocumentDesign(),
         /** Whether what the discounts took off is printed under the totals; a document issued before the setting existed has none. */
         public bool $savingsLine = false,
+        /** The article an exemption mention names, from the customer's chain; null where none is given or it predates the setting. */
+        public ?string $exemptionReference = null,
     ) {
     }
 
@@ -51,19 +53,19 @@ final readonly class PrintSettings
     /** A delivery note asks for no payment: it carries goods, not a bill. */
     public function withoutHowToPay(): self
     {
-        return new self($this->printedNotes, $this->dateFormat, $this->numberFormat, $this->amountInWords, false, $this->design, $this->savingsLine);
+        return new self($this->printedNotes, $this->dateFormat, $this->numberFormat, $this->amountInWords, false, $this->design, $this->savingsLine, $this->exemptionReference);
     }
 
-    /** @return array{printedNotes: string, dateFormat: string, numberFormat: string, amountInWords: bool, howToPay: bool, savingsLine: bool, layout: string, accent: string} */
+    /** @return array{printedNotes: string, dateFormat: string, numberFormat: string, amountInWords: bool, howToPay: bool, savingsLine: bool, exemptionReference: ?string, layout: string, accent: string} */
     public function toArray(): array
     {
-        return ['printedNotes' => $this->printedNotes, 'dateFormat' => $this->dateFormat, 'numberFormat' => $this->numberFormat, 'amountInWords' => $this->amountInWords, 'howToPay' => $this->howToPay, 'savingsLine' => $this->savingsLine, ...$this->design->toArray()];
+        return ['printedNotes' => $this->printedNotes, 'dateFormat' => $this->dateFormat, 'numberFormat' => $this->numberFormat, 'amountInWords' => $this->amountInWords, 'howToPay' => $this->howToPay, 'savingsLine' => $this->savingsLine, 'exemptionReference' => $this->exemptionReference, ...$this->design->toArray()];
     }
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self
     {
-        return new self(self::text($data, 'printedNotes'), self::text($data, 'dateFormat'), self::text($data, 'numberFormat'), true === ($data['amountInWords'] ?? false), true === ($data['howToPay'] ?? false), DocumentDesign::fromArray($data), true === ($data['savingsLine'] ?? false));
+        return new self(self::text($data, 'printedNotes'), self::text($data, 'dateFormat'), self::text($data, 'numberFormat'), true === ($data['amountInWords'] ?? false), true === ($data['howToPay'] ?? false), DocumentDesign::fromArray($data), true === ($data['savingsLine'] ?? false), \is_string($data['exemptionReference'] ?? null) ? $data['exemptionReference'] : null);
     }
 
     /** @param array<string, mixed> $data */

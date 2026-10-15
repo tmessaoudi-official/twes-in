@@ -50,6 +50,8 @@ final readonly class QuotePage
         /** What the discounts take off, printed as « Vous économisez … »; null where the company keeps it off or nothing is taken off. */
         public ?string $savings = null,
         public array $quantities = [],
+        /** What fills the customer's exemption mention, `%reference%`; null leaves a mention that needs it unprinted. */
+        public ?string $exemptionReference = null,
     ) {
     }
 }

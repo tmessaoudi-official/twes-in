@@ -131,10 +131,26 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
     }
 
     /**
+     * The customer's exemption is stated with the article the company gives, a percent sign in it included, and not at
+     * all while it gives none.
+     */
+    public function testTheCustomersExemptionMentionPrintsWithItsReference(): void
+    {
+        $now = new \DateTimeImmutable('2026-09-15 09:00:00');
+        $exempt = CustomerSnapshot::of(Customer::create(new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris'), 'CLI-0008', new CustomerProfile(CustomerKind::Company, 'Clinique Pasteur'), null, new CustomerTaxRegime('FR', 'exempt', 'fiscal.regime.exempt', [], 'fiscal.mention.fr.exempt', 0, $now), [], $now));
+
+        self::assertStringContainsString('<p class="mention">Exonération de TVA, article 261-4-1° du CGI.</p>', $this->html(null, false, 'fr', '', customer: $exempt, exemptionReference: 'article 261-4-1° du CGI'));
+        self::assertStringContainsString('<p class="mention">Exonération de TVA, article 5 (taux 0 %).</p>', $this->html(null, false, 'fr', '', customer: $exempt, exemptionReference: 'article 5 (taux 0 %)'));
+        $without = $this->html(null, false, 'fr', '', customer: $exempt);
+        self::assertStringNotContainsString('Exonération de TVA', $without);
+        self::assertStringNotContainsString('%reference%', $without);
+    }
+
+    /**
      * @param DeliveryNotePage::DRAFT|DeliveryNotePage::CANCELLED|null $watermark
      * @param list<QuantityTotal>                                      $quantities
      */
-    private function html(?string $watermark, bool $showPrices, string $language, string $printedNotes, bool $receptionBlock = true, string $dateFormat = 'auto', string $numberFormat = 'auto', array $quantities = []): string
+    private function html(?string $watermark, bool $showPrices, string $language, string $printedNotes, bool $receptionBlock = true, string $dateFormat = 'auto', string $numberFormat = 'auto', array $quantities = [], ?CustomerSnapshot $customer = null, ?string $exemptionReference = null): string
     {
         self::bootKernel();
         $template = static::getContainer()->get(DeliveryNoteTemplate::class);
@@ -144,6 +160,6 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         $seller = $this->note->getSellerSnapshot();
         self::assertInstanceOf(SellerSnapshot::class, $seller);
 
-        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $snapshot, $seller, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat, quantities: $quantities));
+        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $customer ?? $snapshot, $seller, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat, quantities: $quantities, exemptionReference: $exemptionReference));
     }
 }

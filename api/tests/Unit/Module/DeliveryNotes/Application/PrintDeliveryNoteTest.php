@@ -180,6 +180,17 @@ final class PrintDeliveryNoteTest extends TestCase
         self::assertFalse($this->template->pages[1]->receptionBlock);
     }
 
+    /** The article an exemption mention names comes from the customer's chain, as an invoice's does; blank names none. */
+    public function testTheExemptionReferenceComesFromTheCustomersSettings(): void
+    {
+        $this->print->pdf($this->company, $this->draft()->getId());
+        $atCustomer = new SettingContext($this->company, customerId: $this->customer->getId());
+        $this->change->change($atCustomer, 'document.exemption_reference', SettingLevel::Customer, '  article 10 du code de la TVA ', null);
+        $this->print->pdf($this->company, $this->draft()->getId());
+
+        self::assertSame([null, 'article 10 du code de la TVA'], [$this->template->pages[0]->exemptionReference, $this->template->pages[1]->exemptionReference]);
+    }
+
     // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: a printed note follows the company's formats, never the person printing it.
     public function testANotePrintsTheCompanysDateAndNumberFormatNotAPersonsOwn(): void
     {

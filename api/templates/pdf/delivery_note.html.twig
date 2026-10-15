@@ -118,9 +118,9 @@
   {%- endif %}
 
   {%- if customer.taxMentionKey %}
-    {%- set mention = customer.taxMentionKey|trans({}, 'fiscal', locale) %}
+    {%- set mention = customer.taxMentionKey|trans(page.exemptionReference is null ? {} : {'%reference%': page.exemptionReference}, 'fiscal', locale) %}
     {#- A mention still waiting for its parameters (a legal reference) is not printed half-written. #}
-    {%- if '%' not in mention %}
+    {%- if not (mention matches '/%[a-z_]+%/') %}
       <p class="mention">{{ mention }}</p>
     {%- endif %}
   {%- endif %}
