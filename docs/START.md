@@ -415,6 +415,23 @@ make gate-stamps      # the Decisions Log stamps alone, as the decision-stamps w
 make e2e              # Playwright against the running stack (make up first)
 ```
 
+`make check` is the quick look before them, in seconds rather than the gate's quarter of an hour: each tool is given
+only the files changed against HEAD and the untracked ones (`FILES='api/src/… web/src/…'` names others), within the
+scope the gate gives it, and a toolchain with nothing to check is not started (`scripts/check/check.sh`).
+
+```sh
+make check            # php-cs-fixer, PHPStan (the whole tree, from its cache), and PHPUnit on the test files named;
+                      # prettier, eslint on web/src, and ng test on the specs named or beside a changed source
+make check FIX=1      # the same, php-cs-fixer, prettier and eslint rewriting what they can
+```
+
+- It answers for what it was given, and says the rest aloud: a changed PHP source with no test named runs no PHPUnit,
+  a browser scenario is formatted but not run, and a file no tool here checks is listed as `unchecked`. `make gate`
+  stays the authority before a commit.
+- Never run it beside a gate: both clear and warm `api/var/cache`. It reads its own tools' tallies, so a spec that
+  Vitest skipped or a PHPUnit that ran nothing fails it, though the tool exited 0. Like a bare `ng test`, it needs the
+  icon font generated once on a fresh clone (below).
+
 - **Stage new files before running the gates** (`git add`): the SPDX and executable-bit gates read `git ls-files`.
 - After changing an API resource, run `make tools CMD='cd api && bin/console cache:clear && bin/console cache:pool:clear --all'`
   before `make gate-web`, or the OpenAPI export is stale.

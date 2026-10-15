@@ -31,7 +31,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -135,6 +135,11 @@ in-versions:
 logs:
 	docker compose logs -f --tail=100
 
+check:         ## the quick look before the gate: each tool on what changed against HEAD and the untracked files (FILES='a b' names others), FIX=1 rewrites the format; never beside a gate, both use api/var/cache
+check: tools-image web-tools-image
+	@# scripts/check/check.sh says which tool takes which file; a toolchain with nothing to check is not started.
+	@CHECK_TOOLS='$(TOOLS)' CHECK_WEB_TOOLS='$(WEB_TOOLS)' CHECK_NPM_INSTALL='$(NPM_INSTALL)' bash scripts/check/check.sh host $(if $(FIX),--fix) $(FILES)
+
 gate:          ## everything CI checks except e2e: the api half, the web half, then the licences
 	@# One after the other: side by side, each suite taking every processor, 41 web specs timed out at a load of 15 on 8
 	@# processors; given half each, one still did, and the whole took as long as in turn (about 15 minutes either way).
@@ -180,6 +185,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/coming-gated.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/live-reload.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/stored-items.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/check.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
