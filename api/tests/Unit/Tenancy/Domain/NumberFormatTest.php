@@ -33,6 +33,29 @@ final class NumberFormatTest extends TestCase
         self::assertSame('FAC-001-004', new NumberFormat('FAC-{EST}-{SEQ:3}')->render(4, new \DateTimeImmutable('2026-09-13'), '001'));
     }
 
+    /**
+     * @return iterable<string, array{string, string, string, string, bool}>
+     */
+    public static function pairs(): iterable
+    {
+        yield 'the same format, set apart by each establishment\'s code' => ['{EST}-FAC-{SEQ:5}', '000', '{EST}-FAC-{SEQ:5}', '001', false];
+        yield 'the same format, nothing setting it apart' => ['FAC-{YYYY}-{SEQ:5}', '000', 'FAC-{YYYY}-{SEQ:5}', '001', true];
+        yield 'one prints the other\'s numbers from 10 000 on' => ['FAC-{YYYY}-{SEQ:5}', '000', 'FAC-{YYYY}-1{SEQ:4}', '001', true];
+        yield 'a sequence growing into another\'s prefix' => ['F{SEQ}', '000', 'F1{SEQ}', '001', true];
+        yield 'a short year beside a long one' => ['F{YY}{SEQ:3}', '000', 'F{YYYY}{SEQ:3}', '001', true];
+        yield 'the head office without its code, the branch with it' => ['FAC-{YYYY}-{MM}-{SEQ:5}', '000', 'FAC-{EST}-{YYYY}-{MM}-{SEQ:5}', '001', false];
+        yield 'two prefixes' => ['A{SEQ}', '000', 'B{SEQ}', '001', false];
+        yield 'a code as literal text where the other prints its own' => ['F001-{SEQ:3}', '000', 'F{EST}-{SEQ:3}', '001', true];
+    }
+
+    /** Whether two formats could ever print the same number, whatever their sequences, days and codes come to. */
+    #[DataProvider('pairs')]
+    public function testTwoFormatsMayPrintTheSameNumberOrNever(string $one, string $oneCode, string $other, string $otherCode, bool $shared): void
+    {
+        self::assertSame($shared, new NumberFormat($one)->mayPrintAsOf(new NumberFormat($other), $oneCode, $otherCode));
+        self::assertSame($shared, new NumberFormat($other)->mayPrintAsOf(new NumberFormat($one), $otherCode, $oneCode));
+    }
+
     public function testASequenceWiderThanItsPaddingIsNeverCut(): void
     {
         self::assertSame('AV-123456', new NumberFormat('AV-{SEQ:5}')->render(123456, new \DateTimeImmutable('2026-09-13'), '000'));
