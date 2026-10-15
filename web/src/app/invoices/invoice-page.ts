@@ -10,6 +10,7 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -137,6 +138,7 @@ export class InvoicePage {
   private readonly router = inject(Router);
   private readonly productScans = inject(ProductScans);
   private readonly display = inject(CustomerDisplay);
+  private readonly linesEditor = viewChild(InvoiceLines);
   /** Set once the sale was created and is opened at its own address, which the customer display keeps showing. */
   private handedOver = false;
 
@@ -685,6 +687,8 @@ export class InvoicePage {
     );
     if (placed.repeated === true)
       return { kind: 'refused', key: 'scan.serial_present', params: { name: product.name } };
+    const line = lines.at(placed.index);
+    this.linesEditor()?.scanned(line, product);
     // The customer sees the line the scan went onto, at the price they pay for one (docs/SPEC.md § 7, slice 6).
     this.display.show({
       name: product.name,
@@ -697,6 +701,8 @@ export class InvoicePage {
         ...placed,
         undo: () => {
           placed.undo();
+          // A count taken back may fall below the list's quantity break the scan reached.
+          if (!placed.added) this.linesEditor()?.scanned(line, product);
           this.display.clear();
         },
       },
@@ -724,7 +730,7 @@ export class InvoicePage {
     });
     const scans = inject(ScanBus);
     scans.handle((scan) => this.scanned(scan));
-    // What the sale comes to, each time it is read as saved; the display shows it only after a scan of this tab's.
+    // What the customer has to their credit, read again each time the document is.
     effect(() => {
       const companyId = this.company()?.id;
       const current = this.current();
@@ -738,8 +744,10 @@ export class InvoicePage {
         );
       });
     });
+    // What the sale comes to as typed while the draft is edited, so the counter never shows the customer an
+    // older total; the display shows it only after a scan of this tab's.
     effect(() => {
-      const total = this.current()?.total;
+      const total = this.shownTotals()?.total;
       if (total !== undefined) untracked(() => this.display.total(total));
     });
     inject(DestroyRef).onDestroy(() => {

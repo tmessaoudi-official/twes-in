@@ -10,6 +10,7 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -116,6 +117,7 @@ export class DeliveryNotePage {
   private readonly router = inject(Router);
   private readonly productScans = inject(ProductScans);
   private readonly display = inject(CustomerDisplay);
+  private readonly linesEditor = viewChild(DeliveryNoteLines);
   /** Set once the note was created and is opened at its own address, which the customer display keeps showing. */
   private handedOver = false;
 
@@ -551,6 +553,8 @@ export class DeliveryNotePage {
     );
     if (placed.repeated === true)
       return { kind: 'refused', key: 'scan.serial_present', params: { name: product.name } };
+    const line = lines.at(placed.index);
+    this.linesEditor()?.scanned(line, product);
     // The customer sees the line the scan went onto, at the price they pay for one (docs/SPEC.md § 7, slice 6).
     this.display.show({
       name: product.name,
@@ -563,6 +567,8 @@ export class DeliveryNotePage {
         ...placed,
         undo: () => {
           placed.undo();
+          // A count taken back may fall below the list's quantity break the scan reached.
+          if (!placed.added) this.linesEditor()?.scanned(line, product);
           this.display.clear();
         },
       },

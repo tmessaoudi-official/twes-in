@@ -2069,6 +2069,40 @@ describe('InvoicePage', () => {
       expect(display.total).toHaveBeenLastCalledWith('2.380');
     });
 
+    // A scanned line is priced as a picked one: the customer's list, for the quantity the scans have reached.
+    it('starts a scanned line at the customer’s list price, and asks again when a scan adds to it', async () => {
+      modulesOn.add('price_lists');
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '1700.0000', priceListName: 'Gros' });
+      invoice.set({ ...draft, lines: [] });
+      await open('i1');
+      facade.pickProducts.mockResolvedValue(products);
+      scans.named.mockResolvedValue(coffee);
+
+      await scanned('3017620422003');
+      await settle();
+      expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '1');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1700,000');
+      expect(q('line-0-price-list')?.textContent).toContain('invoices.lines.price_list');
+
+      await scanned('3017620422003');
+      await settle();
+      expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '2');
+    });
+
+    it('shows the customer display what the sale comes to as typed, not as last saved', async () => {
+      invoice.set(draft);
+      await open('i1');
+      scans.named.mockResolvedValue(coffee);
+      facade.preview.mockResolvedValue({ lines: [], total: '3599.000', netToPay: '3599.000' });
+
+      await scanned('3017620422003');
+      await settle();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await settle();
+
+      expect(display.total).toHaveBeenLastCalledWith('3599.000');
+    });
+
     it('empties the customer display when a scan is taken back, and when the sale leaves the screen', async () => {
       invoice.set(draft);
       await open('i1');

@@ -451,6 +451,15 @@ export class InvoiceLines {
     void this.reprice(line);
   }
 
+  /**
+   * A scan put this product on the line, as a pick would: the line is priced from the customer's list for the quantity
+   * the scans have reached, a price somebody typed on it staying theirs.
+   */
+  scanned(line: LineGroup, product: ProductOption): void {
+    this.known.set(product.id, product);
+    void this.reprice(line);
+  }
+
   /** Whether the line's price is one its list could not be asked about, while it is still on the line. */
   protected priceUnchecked(line: LineGroup): boolean {
     this.revision();
