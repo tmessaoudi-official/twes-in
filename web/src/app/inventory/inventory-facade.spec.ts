@@ -256,6 +256,18 @@ describe('InventoryFacade', () => {
     expect(api.levels).not.toHaveBeenCalled();
   });
 
+  it('finds a receipt still waiting for its cost among that product’s, and nothing once it no longer waits', async () => {
+    const receipt = { id: 'm2', productId: 'p1' };
+    api.movements.mockResolvedValue({ rows: [{ id: 'm1' }, receipt], total: 2 });
+
+    expect(await facade.receiptToComplete('c1', 'p1', 'm2')).toBe(receipt);
+    expect(api.movements).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ productIds: ['p1'], costToComplete: 'yes', q: '' }),
+    );
+    expect(await facade.receiptToComplete('c1', 'p1', 'm9')).toBeNull();
+  });
+
   it('reads the movements page in hand again, and does nothing before the list has asked for one', async () => {
     api.movements.mockResolvedValue({ rows: [], total: 0 });
 
