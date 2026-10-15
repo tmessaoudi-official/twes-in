@@ -84,6 +84,12 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-15 12:58] AGREED: unknown_identifier's text: FR « Ce pays ne prévoit pas de numéro « {{identifier}} ». », EN "This country has no “{{identifier}}” number." (developer).
 - [2026-10-15 12:58] AGREED: Order: slice 2's tail (L-1112, unknown_identifier text), L-1111, L-1113, L-605c, then the held rulings one batch at a time (developer).
 - [2026-10-15 12:59] AGREED: L-1113: each publisher of an amount-bearing notification adds the currency's scale beside currency; each notification type lists its amount keys, which the bell formats with the screen's separator; an older notification without a scale keeps the decimals it was sent with (developer).
+- [2026-10-15 14:03] AGREED: L-1113: the bell's text in a browser is named not certified by execution; no credit-limit e2e (developer).
+- [2026-10-15 14:03] AGREED: Before L-605c: all four tooling speed-ups (parallel gates, a fast pre-gate check, a mutation runner, tidying the noise), each challenged and re-asked before it is built (developer).
+- [2026-10-15 14:10] AGREED: Tooling #2: PHPStan's result cache kept in api/var/cache/phpstan and a make check FILES=… quick filter (php-cs-fixer, Prettier, cached PHPStan in one container); make gate stays the authority; a gate is timed before and after (developer).
+- [2026-10-15 14:10] AGREED: Tooling #3: our own small mutation runner (a list of chosen mutants, one container, landed and tally checks, plain-cp restore, cmp), tested in CI; not Infection or Stryker (developer).
+- [2026-10-15 14:10] AGREED: Tooling #4: the vitest ESM warning and the Prettier two-pass check only; the skipped schema tests and colour-free logs dropped (developer).
+- [2026-10-15 14:10] AGREED: Order: make gate from now on, then #4, #2, #3, then L-605c; a status check of the maturity rounds was asked first (developer).
 
 ## Formal Plan
 

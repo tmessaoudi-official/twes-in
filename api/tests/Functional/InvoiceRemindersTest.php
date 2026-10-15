@@ -68,9 +68,9 @@ final class InvoiceRemindersTest extends ApiTestCase
         $told = $this->toldTo($this->userId);
         self::assertCount(1, $told);
         self::assertSame('invoice.reminder_due', $told[0]['type']);
-        $said = array_intersect_key($told[0]['payload'], array_flip(['amount_due', 'currency', 'customer', 'days_late', 'stage']));
+        $said = array_intersect_key($told[0]['payload'], array_flip(['amount_due', 'currency', 'customer', 'days_late', 'scale', 'stage']));
         ksort($said);
-        self::assertSame(['amount_due' => '100.000', 'currency' => 'TND', 'customer' => 'Carthage Conseil', 'days_late' => 8, 'stage' => 1], $said);
+        self::assertSame(['amount_due' => '100.000', 'currency' => 'TND', 'customer' => 'Carthage Conseil', 'days_late' => 8, 'scale' => 3, 'stage' => 1], $said);
 
         $this->runAt('10:00');
         self::assertCount(1, $this->reminders(), 'the same stage is never recorded twice');
@@ -182,7 +182,7 @@ final class InvoiceRemindersTest extends ApiTestCase
 
         $told = $this->toldTo($this->userId);
         self::assertSame(['invoice.late_fee_drafted'], array_column($told, 'type'), 'one notice, saying the fee is drafted');
-        self::assertSame(['10.000', $drafts[0], 2], [$told[0]['payload']['late_fee'] ?? null, $told[0]['payload']['late_fee_invoice_id'] ?? null, $told[0]['payload']['stage'] ?? null]);
+        self::assertSame(['10.000', $drafts[0], 2, 3], [$told[0]['payload']['late_fee'] ?? null, $told[0]['payload']['late_fee_invoice_id'] ?? null, $told[0]['payload']['stage'] ?? null, $told[0]['payload']['scale'] ?? null]);
 
         $this->getJson($this->companyPath().'/invoices/'.$invoice.'/reminders');
         self::assertResponseIsSuccessful();

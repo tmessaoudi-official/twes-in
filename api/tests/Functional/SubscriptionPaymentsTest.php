@@ -203,6 +203,29 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
+    /** A payment's notices carry its currency's decimals, so the bell writes its amount as the screen writes amounts. */
+    public function testAPaymentsNoticesCarryTheDecimalsOfItsCurrency(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('owner@twes.local', 'password-1234', $company);
+        $this->subscribe($company, ['paidThrough' => $this->day(-30), 'graceDays' => 0, 'unpaidMode' => 'read_only', 'price' => '600.00', 'currency' => 'EUR']);
+        $this->login('owner@twes.local', 'password-1234');
+        $this->postJson($this->paymentsOf($company), $this->payment(['amount' => '600.00', 'currency' => 'EUR']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $declarationId = $this->stringAt($this->json(), 'id');
+        $this->signInOperator();
+        $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/reject', ['note' => 'rien reçu']);
+        self::assertResponseIsSuccessful();
+
+        foreach (['subscription.payment_declared', 'subscription.payment_decided'] as $type) {
+            $raw = $this->em()->getConnection()->fetchOne('SELECT payload FROM inbox_item WHERE type = ?', [$type]);
+            self::assertIsString($raw, $type);
+            $payload = json_decode($raw, true);
+            self::assertIsArray($payload, $type);
+            self::assertSame(['EUR', 2], [$payload['currency'] ?? null, $payload['scale'] ?? null], $type);
+        }
+    }
+
     public function testACompanyWithoutASubscriptionHasNothingToDeclare(): void
     {
         $company = $this->createCompany('Globex');

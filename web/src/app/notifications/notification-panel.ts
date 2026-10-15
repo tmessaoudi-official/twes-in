@@ -75,7 +75,7 @@ export class NotificationPanel {
           entry,
           icon: record.icon,
           textKey: notificationKey(entry.type),
-          params: this.params(entry),
+          params: this.params(entry, record.amounts ?? []),
           route: allowed ? record.route : null,
           ago: relativeTime(entry.createdAt, now, locale),
           at: this.format.moment(entry.createdAt, timeZone),
@@ -90,14 +90,24 @@ export class NotificationPanel {
   }
 
   /**
-   * The words' parameters: the payload as the API sent it, and, when it names something by its translation key
+   * The words' parameters: the payload as the API sent it, each amount written as the screen writes amounts (at the
+   * payload's `scale`, or as sent when an older one has none), and, when it names something by its translation key
    * (`label_key`, such as the module that arrived), that thing's name in the screen's language as `label`.
    */
-  private params(entry: InboxEntry): Record<string, unknown> {
+  private params(entry: InboxEntry, amounts: readonly string[]): Record<string, unknown> {
+    const scale = entry.payload['scale'];
+    const params: Record<string, unknown> = { ...entry.payload };
+    for (const key of amounts) {
+      const value = entry.payload[key];
+      if (typeof value === 'string') {
+        params[key] = this.format.amount(value, typeof scale === 'number' ? scale : null);
+      }
+    }
     const labelKey = entry.payload['label_key'];
-    return typeof labelKey === 'string'
-      ? { ...entry.payload, label: this.translate.instant(labelKey) as string }
-      : entry.payload;
+    if (typeof labelKey === 'string') {
+      params['label'] = this.translate.instant(labelKey) as string;
+    }
+    return params;
   }
 
   protected read(entry: InboxEntry): void {

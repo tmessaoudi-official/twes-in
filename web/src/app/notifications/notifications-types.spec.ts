@@ -77,6 +77,7 @@ describe('credit limit notifications', () => {
       icon: 'credit_score',
       route: '/invoices',
       permission: 'invoice.read',
+      amounts: ['owed', 'limit'],
     });
   });
 });
@@ -90,6 +91,7 @@ describe('reminder notifications', () => {
       icon: 'notifications_active',
       route: '/invoices',
       permission: 'invoice.read',
+      amounts: ['amount_due'],
     });
   });
 
@@ -110,6 +112,19 @@ describe('reminder notifications', () => {
       permission: 'invoice.read',
     });
     expect(notificationRecord('invoice.recurring_stopped')?.route).toBe('/invoices/recurring');
+  });
+});
+
+// What a notification says in money is written as the screen writes amounts: each type names its amounts.
+describe('amounts in a notification', () => {
+  it('are named by each type that says one', () => {
+    expect(notificationRecord('invoice.late_fee_drafted').amounts).toEqual([
+      'amount_due',
+      'late_fee',
+    ]);
+    expect(notificationRecord('subscription.payment_declared').amounts).toEqual(['amount']);
+    expect(notificationRecord('subscription.payment_decided').amounts).toEqual(['amount']);
+    expect(notificationRecord('stock.low').amounts).toBeUndefined();
   });
 });
 
