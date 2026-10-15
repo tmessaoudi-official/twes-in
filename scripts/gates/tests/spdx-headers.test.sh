@@ -11,5 +11,6 @@ d=$(repo); out=$(bash "$GATE" --root "$d" 2>&1); check "a headed file and the Fl
 d=$(repo); printf 'export const x = 1;\n' > "$d/src/new.ts"; out=$(bash "$GATE" --root "$d" 2>&1); check "an UNTRACKED file without the identifier is caught and named" $? 1 "$out" "src/new.ts"
 d=$(repo); printf '#!/usr/bin/env bash\necho hi\n' > "$d/x.sh"; git -C "$d" add -A; out=$(bash "$GATE" --root "$d" 2>&1); check "a tracked shell file without the identifier is caught" $? 1 "$out" "x.sh"
 d=$(repo); printf '1\n2\n3\n4\n5\n6\n// SPDX-License-Identifier: AGPL-3.0-or-later\n' > "$d/src/late.ts"; out=$(bash "$GATE" --root "$d" 2>&1); check "an identifier after line six does not count" $? 1 "$out" "src/late.ts"
+d=$(repo); printf 'export default {};\n' > "$d/vitest.config.mts"; out=$(bash "$GATE" --root "$d" 2>&1); check "a TypeScript module (.mts) without the identifier is caught" $? 1 "$out" "vitest.config.mts"
 d=$(repo); printf 'x\n' > "$d/notes.md"; out=$(bash "$GATE" --root "$d" 2>&1); check "other file types are not checked" $? 0 "$out" "OK"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

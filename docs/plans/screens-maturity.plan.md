@@ -93,6 +93,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-15 14:14] AGREED: Back to screens as maturity: the never-built promises (D1, D2) are built screen by screen, each screen closing its open ledger items by kind; round 2 runs once the marking page is ruled (developer).
 - [2026-10-15 14:14] AGREED: The ruled tooling (#4, #2, #3) comes before the next screen (developer).
 - [2026-10-15 14:14] AGREED: L-1114: the API's mails write amounts in the recipient's language through PHP intl, a test per mail, done with the tooling (developer).
+- [2026-10-15 14:42] ASSUMED (review): make gate side by side timed out 41 web tests at load 15 on 8 cores (paratest one worker a core beside vitest's own): the gate is kept parallel only if, with the cores split between the halves, it is green and faster than the halves run one after another (measured); otherwise make gate runs them in turn on this machine. Alternatives: run the halves in turn without trying the split; raise vitest's 5 s timeout (refused: a bandaid over load).
 
 ## Formal Plan
 

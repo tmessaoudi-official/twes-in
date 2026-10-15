@@ -14,7 +14,7 @@ while IFS= read -r f; do
   [[ "$f" =~ $EXEMPT ]] && continue
   checked=$((checked+1))
   head -n 6 "$root/$f" | grep -qF "$IDENT" || missing+=("$f")
-done < <(git -C "$root" ls-files --cached --others --exclude-standard -- '*.php' '*.ts' '*.sh')
+done < <(git -C "$root" ls-files --cached --others --exclude-standard -- '*.php' '*.ts' '*.mts' '*.sh')
 if ((${#missing[@]})); then
   printf 'spdx-headers: FAIL — %d file(s) without "%s" in their first six lines:\n' "${#missing[@]}" "$IDENT"
   printf '  %s\n' "${missing[@]}"
