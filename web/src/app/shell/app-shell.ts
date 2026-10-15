@@ -104,6 +104,7 @@ import {
   withComing,
 } from './nav-manifest';
 import { comingEntries, plannedCommands } from './planned-nav';
+import { signInAddress } from '../shared/session/return-to';
 import { Immersive } from '../shared/ui/immersive';
 import { SETTINGS_BESIDE_WINDOW, WINDOW_CLASS } from '../shared/ui/window-class';
 
@@ -443,7 +444,7 @@ export class AppShell {
       untracked(() => {
         this.activity.acknowledgeExpiry();
         this.auth.sessionEnded();
-        void this.router.navigateByUrl('/login?expired=1');
+        void this.router.navigateByUrl(signInAddress(this.router.url, true));
       });
     });
   }

@@ -2,6 +2,7 @@
 
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { signInAddress } from '../shared/session/return-to';
 import { AuthFacade } from './auth-facade';
 
 async function resolveStatus(auth: AuthFacade): Promise<boolean> {
@@ -12,14 +13,15 @@ async function resolveStatus(auth: AuthFacade): Promise<boolean> {
 }
 
 /**
- * Signed-in pages: anyone else is sent to the login page, and an account a company requires to enrol is sent
- * to set up its second factor first, because the API refuses it everything else until then.
+ * Signed-in pages: anyone else is sent to the login page, which returns to the page asked for once signed in, and an
+ * account a company requires to enrol is sent to set up its second factor first, because the API refuses it everything
+ * else until then.
  */
-export const authGuard: CanActivateFn = async () => {
+export const authGuard: CanActivateFn = async (_route, state) => {
   const auth = inject(AuthFacade);
   const router = inject(Router);
   if (!(await resolveStatus(auth))) {
-    return router.createUrlTree(['/login']);
+    return router.parseUrl(signInAddress(state.url));
   }
   if (auth.needsEnrolment()) {
     return router.createUrlTree(['/two-factor']);

@@ -40,7 +40,11 @@ function facade(
 }
 
 /** Runs a guard against a fake facade and answers true, or the address it redirects to. */
-async function run(guard: CanActivateFn, fake: ReturnType<typeof facade>): Promise<true | string> {
+async function run(
+  guard: CanActivateFn,
+  fake: ReturnType<typeof facade>,
+  url?: string,
+): Promise<true | string> {
   // Each call stands alone, so one test can compare several accounts.
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -51,7 +55,7 @@ async function run(guard: CanActivateFn, fake: ReturnType<typeof facade>): Promi
     ],
   });
   const result = await TestBed.runInInjectionContext(() =>
-    guard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
+    guard({} as ActivatedRouteSnapshot, { url } as RouterStateSnapshot),
   );
   return result instanceof UrlTree ? TestBed.inject(Router).serializeUrl(result) : (result as true);
 }
@@ -59,6 +63,13 @@ async function run(guard: CanActivateFn, fake: ReturnType<typeof facade>): Promi
 describe('auth guards', () => {
   it('sends anybody not signed in from a signed-in page to the login page', async () => {
     expect(await run(authGuard, facade('anonymous'))).toBe('/login');
+  });
+
+  it('keeps the page asked for, so signing in returns to it, but never one that leaves the app', async () => {
+    expect(await run(authGuard, facade('anonymous'), '/invoices/i1?tab=lines')).toBe(
+      '/login?returnTo=%2Finvoices%2Fi1%3Ftab%3Dlines',
+    );
+    expect(await run(authGuard, facade('anonymous'), '/')).toBe('/login');
   });
 
   it('sends an account that must enrol to the two-step verification page before anything else', async () => {

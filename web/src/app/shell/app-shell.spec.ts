@@ -1622,6 +1622,18 @@ describe('AppShell', () => {
     expect(sessionExpired()).toBe(false);
   });
 
+  it('keeps the page the session ended on, so signing in again returns to it', async () => {
+    const { fixture } = await render();
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/invoices/i1');
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+
+    sessionExpired.set(true);
+    await fixture.whenStable();
+
+    expect(navigate).toHaveBeenCalledWith('/login?expired=1&returnTo=%2Finvoices%2Fi1');
+  });
+
   it('forgets a session end that arrived after the last redirect, so a fresh sign-in is not sent straight back', async () => {
     // Several requests refused at once: the first sends the person away, a later one lands once the shell is gone.
     sessionExpired.set(true);
