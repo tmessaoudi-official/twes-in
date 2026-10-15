@@ -72,6 +72,16 @@ const OPEN_PRODUCT: RowAction<WatchRowView> = {
   shown: (view) => view.row.subjectId !== null,
 };
 
+/** The draft itself, where its amount is checked against the bill and the expense recorded. */
+const OPEN_EXPENSE: RowAction<WatchRowView> = {
+  id: 'open-expense',
+  label: 'watch.actions.open_expense',
+  labelParams: (view) => ({ name: String(view.cells['description'] ?? '') }),
+  icon: 'receipt_long',
+  link: (view) => ['/expenses', view.row.subjectId],
+  shown: (view) => view.row.subjectId !== null,
+};
+
 /** The movements page, where a cost reader enters the cost of a receipt left « à compléter ». */
 const ENTER_RECEIPT_COST: RowAction<WatchRowView> = {
   id: 'enter-cost',
@@ -221,6 +231,24 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       cell('expiresOn', { width: 140 }),
       daysColumn('in_days', 'in_days', (days) => days),
     ]),
+  },
+  // A draft a recurring expense of variable amount made: its amount is checked on the draft, then it is recorded.
+  'expenses.amount_to_check': {
+    icon: 'receipt_long',
+    list: {
+      id: 'watch-amount-to-check',
+      rowId: (view) => view.id,
+      pageSizes: PAGE_SIZES,
+      link: (view) => ['/expenses', view.row.subjectId],
+      linkColumn: 'description',
+      columns: [
+        cell('description', { hideable: false }),
+        cell('payee'),
+        cell('amount', { align: 'end', width: 170 }),
+        cell('date', { width: 140 }),
+      ],
+      actions: [OPEN_EXPENSE],
+    },
   },
 };
 

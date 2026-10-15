@@ -35,6 +35,8 @@ export interface FieldOption {
 export interface FieldCondition {
   field: string;
   oneOf: string[];
+  /** A second condition that must hold too: a choice hidden by its own condition keeps its value, not its say. */
+  and?: FieldCondition;
 }
 
 /**

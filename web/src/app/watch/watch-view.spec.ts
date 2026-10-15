@@ -33,6 +33,29 @@ describe('watchRowView', () => {
     expect(view.cells['days']).toBe(40);
   });
 
+  it('writes a draft whose amount is to check with what it is, who is paid, its amount and its date', () => {
+    const view = watchRowView(
+      {
+        kind: 'expenses.amount_to_check',
+        subjectId: 'e1',
+        params: {
+          description: 'Électricité',
+          payee: 'STEG',
+          amount: '180.500',
+          currency: 'TND',
+          date: '2026-10-31',
+        },
+      },
+      0,
+      figures,
+    );
+
+    expect(view.cells['description']).toBe('Électricité');
+    expect(view.cells['payee']).toBe('STEG');
+    expect(String(view.cells['amount']).replace(/\s/g, '')).toBe('180,500TND');
+    expect(view.cells['date']).toBe('31/10/2026');
+  });
+
   it('writes a lot quantity as a person counts it and its date in the locale', () => {
     const view = watchRowView(
       {

@@ -33,7 +33,7 @@ import { StatusBadge } from '../shared/ui/status-badge';
 import { EXPENSES_LIST, expenseSearch, tejMonths } from './expense-forms';
 import { TejFileDialog, type TejFileDialogData } from './tej-file-dialog';
 import { ExpensesFacade } from './expenses-facade';
-import { EXPENSES_TABS } from './expenses-nav';
+import { expensesTabs, RECURRING_EXPENSES_MODULE } from './expenses-nav';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import {
   EXPENSE_STATUS_TONES,
@@ -69,7 +69,10 @@ export class ExpensesPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
 
-  protected readonly tabs = EXPENSES_TABS;
+  /** Récurrentes sits between them while the company has the module. */
+  protected readonly tabs = computed(() =>
+    expensesTabs(this.auth.hasModule(RECURRING_EXPENSES_MODULE)),
+  );
   /** A list cell's row is untyped, so the tone is looked up through a typed function. */
   protected readonly toneOf = (status: ExpenseStatus): StatusTone => EXPENSE_STATUS_TONES[status];
   protected readonly list = EXPENSES_LIST;

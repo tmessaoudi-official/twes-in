@@ -38,6 +38,7 @@ const draft: ExpenseRow = {
   amountPaid: '0.000',
   suggestedWithholdingRate: null,
   attachmentCount: 0,
+  amountToCheck: false,
 };
 const receipt: ExpenseAttachment = {
   id: 'a1',

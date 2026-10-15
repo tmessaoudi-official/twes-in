@@ -46,6 +46,8 @@ export function watchRowView(
     'bank',
     'location',
     'email',
+    'description',
+    'payee',
   ] as const) {
     if (name in params) cells[name] = text(params, name);
   }
@@ -69,6 +71,7 @@ export function watchRowView(
   if ('expiresOn' in params) cells['expiresOn'] = figures.day(text(params, 'expiresOn'));
   if ('receivedOn' in params) cells['receivedOn'] = figures.day(text(params, 'receivedOn'));
   if ('invitedOn' in params) cells['invitedOn'] = figures.day(text(params, 'invitedOn'));
+  if ('date' in params) cells['date'] = figures.day(text(params, 'date'));
   if ('days' in params) cells['days'] = Number(params['days']);
   return { id: String(index), row, cells };
 }

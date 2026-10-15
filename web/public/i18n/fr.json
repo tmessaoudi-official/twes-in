@@ -692,6 +692,8 @@
       "invoice_reminder_due": "Relance {{stage}} à faire : la facture {{number}} de {{customer}}, {{amount_due}} {{currency}}, a {{days_late}} jours de retard.",
       "invoice_recurring_drafted": "Facture récurrente de {{customer}} : un brouillon copié de la facture {{number}} attend d’être émis.",
       "invoice_recurring_stopped": "Facture récurrente de {{customer}} mise en pause : la facture {{number}} qu’elle copie ne peut plus l’être.",
+      "expense_recurring_drafted": "Dépense récurrente « {{description}} » : un brouillon attend d’être vérifié et enregistré.",
+      "expense_recurring_stopped": "Dépense récurrente « {{description}} » mise en pause : la dépense qu’elle copie ne peut plus l’être.",
       "stock_imported": "Un import de stock a trouvé {{differences}} {differences, plural, one {écart} other {écarts}} sur {{counted}} {counted, plural, one {ligne comptée} other {lignes comptées}}."
     },
     "kinds": {
@@ -711,6 +713,8 @@
       "invoice_late_fee_drafted": "Frais de retard préparés",
       "invoice_recurring_drafted": "Facture récurrente prête à émettre",
       "invoice_recurring_stopped": "Facture récurrente mise en pause",
+      "expense_recurring_drafted": "Dépense récurrente à vérifier",
+      "expense_recurring_stopped": "Dépense récurrente mise en pause",
       "subscription_payment_declared": "Règlement déclaré par une société",
       "subscription_payment_decided": "Réponse à votre règlement",
       "module_arrived": "Module arrivé",
@@ -3895,6 +3899,12 @@
           "title": "Invitations non envoyées",
           "hint": "Des invitations dont le mail n’est pas parti, même après plusieurs essais : la personne n’a reçu aucun lien. Invitez-la de nouveau depuis Membres."
         }
+      },
+      "expenses": {
+        "amount_to_check": {
+          "title": "Montants à vérifier",
+          "hint": "Des brouillons préparés par une dépense récurrente au montant variable. Vérifiez chaque montant sur la facture, puis enregistrez la dépense."
+        }
       }
     },
     "columns": {
@@ -3923,13 +3933,17 @@
       "receivedOn": "Reçue le",
       "email": "Adresse",
       "role": "Rôle",
-      "invitedOn": "Invitée le"
+      "invitedOn": "Invitée le",
+      "description": "Description",
+      "payee": "Payé à",
+      "date": "Date"
     },
     "actions": {
       "see_invoices": "Voir les factures en retard de {{name}}",
       "open_product": "Ouvrir {{name}}",
       "open_invoice": "Ouvrir {{name}}",
-      "enter_cost": "Saisir le coût de {{name}}"
+      "enter_cost": "Saisir le coût de {{name}}",
+      "open_expense": "Ouvrir {{name}}"
     }
   },
   "coming": {

@@ -120,6 +120,8 @@ export interface ExpenseRow {
   suggestedWithholdingRate: string | null;
   notes: string | null;
   attachmentCount: number;
+  /** A draft a recurring expense of variable amount made: its amount is checked on the bill before it is recorded. */
+  amountToCheck: boolean;
 }
 
 /** One block of a supplier's bill: a net and the rates on it. */

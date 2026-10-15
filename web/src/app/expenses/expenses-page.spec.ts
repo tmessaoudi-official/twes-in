@@ -77,6 +77,7 @@ const fuel: ExpenseRow = {
   amountPaid: '0.000',
   suggestedWithholdingRate: null,
   attachmentCount: 1,
+  amountToCheck: false,
 };
 
 describe('ExpensesPage', () => {
@@ -102,6 +103,7 @@ describe('ExpensesPage', () => {
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
+    hasModule: vi.fn(),
   };
   let fixture: ComponentFixture<ExpensesPage>;
 
@@ -122,6 +124,7 @@ describe('ExpensesPage', () => {
     statusCounts.set(null);
     options.set(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    auth.hasModule.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [ExpensesPage],
       providers: [
@@ -154,6 +157,17 @@ describe('ExpensesPage', () => {
     expect(row).toContain('Comptabilisée');
     expect(q('list-link-e1')?.getAttribute('href')).toBe('/expenses/e1');
     expect(q('expense-add')?.getAttribute('href')).toBe('/expenses/new');
+  });
+
+  it('offers « Récurrentes » as a tab only while the company has the recurring expenses', async () => {
+    await create();
+    expect(q('recurring-expenses-tab')?.getAttribute('href')).toBe('/expenses/recurring');
+
+    fixture.destroy();
+    auth.hasModule.mockImplementation((key: string) => key !== 'recurring_expenses');
+    await create();
+    expect(q('recurring-expenses-tab')).toBeNull();
+    expect(q('expenses-tab')).not.toBeNull();
   });
 
   it('offers what the list shows as a CSV or an Excel file', async () => {

@@ -122,6 +122,46 @@ describe('form visibility', () => {
     expect(form.controls['amount'].disabled).toBe(true);
   });
 
+  it('applies a field under two conditions only while both hold, so a hidden choice cannot show its own field', () => {
+    const day = {
+      id: 'monthDay',
+      label: 't.day',
+      kind: 'number' as const,
+      visibleWhen: {
+        field: 'anchor',
+        oneOf: ['date'],
+        and: { field: 'unit', oneOf: ['month', 'year'] },
+      },
+    };
+
+    expect(fieldApplies(day, { unit: 'month', anchor: 'date' })).toBe(true);
+    expect(fieldApplies(day, { unit: 'week', anchor: 'date' })).toBe(false);
+    expect(fieldApplies(day, { unit: 'month', anchor: 'last_day' })).toBe(false);
+  });
+
+  it('refuses a second condition on a field the form does not declare', () => {
+    const broken: FormDescriptor = {
+      id: 'broken',
+      sections: [
+        {
+          id: 'main',
+          title: 't.main',
+          fields: [
+            { id: 'anchor', label: 't.anchor', kind: 'text' },
+            {
+              id: 'rate',
+              label: 't.rate',
+              kind: 'text',
+              visibleWhen: { field: 'anchor', oneOf: ['x'], and: { field: 'nope', oneOf: ['y'] } },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(() => buildFormGroup(broken)).toThrow(InvalidFormField);
+  });
+
   it('refuses a condition on a field the form does not declare', () => {
     const broken: FormDescriptor = {
       id: 'broken',
