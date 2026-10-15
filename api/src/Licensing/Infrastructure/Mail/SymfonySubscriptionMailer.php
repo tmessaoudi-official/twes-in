@@ -12,13 +12,15 @@ namespace App\Licensing\Infrastructure\Mail;
 use App\Licensing\Application\PaymentDecidedMail;
 use App\Licensing\Application\PaymentDeclaredMail;
 use App\Licensing\Application\SubscriptionMailer;
+use App\Shared\Infrastructure\Twig\DecimalExtension;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The subscription mails, over the configured DSN, each rendered in its reader's language. Neither carries a link that
+ * The subscription mails, over the configured DSN, each rendered in its reader's language, its amount written as that
+ * language writes amounts, at its currency's decimals. Neither carries a link that
  * decides anything: a mail client opens links on its own, so the operator's mail leads to the platform page and the
  * decision is made there, signed in.
  */
@@ -27,6 +29,7 @@ final readonly class SymfonySubscriptionMailer implements SubscriptionMailer
     public function __construct(
         private MailerInterface $mailer,
         private TranslatorInterface $translator,
+        private DecimalExtension $decimals,
         #[Autowire(param: 'app.mail.sender')]
         private string $sender,
         #[Autowire(param: 'app.product_name')]
@@ -36,16 +39,17 @@ final readonly class SymfonySubscriptionMailer implements SubscriptionMailer
 
     public function paymentDeclared(PaymentDeclaredMail $mail): void
     {
+        $amount = $this->amount($mail->amount, $mail->scale, $mail->locale);
         $this->mailer->send(
             (new TemplatedEmail())
                 ->from($this->sender)
                 ->to($mail->to)
-                ->subject($this->translator->trans('payment_declared.subject', ['%company%' => $mail->companyName, '%amount%' => $mail->amount, '%currency%' => $mail->currency], 'emails', $mail->locale))
+                ->subject($this->translator->trans('payment_declared.subject', ['%company%' => $mail->companyName, '%amount%' => $amount, '%currency%' => $mail->currency], 'emails', $mail->locale))
                 ->htmlTemplate('email/payment_declared.html.twig')
                 ->locale($mail->locale)
                 ->context([
                     'companyName' => $mail->companyName,
-                    'amount' => $mail->amount,
+                    'amount' => $amount,
                     'currency' => $mail->currency,
                     'method' => $mail->method,
                     'paidOn' => $mail->paidOn,
@@ -69,7 +73,7 @@ final readonly class SymfonySubscriptionMailer implements SubscriptionMailer
                 ->context([
                     'companyName' => $mail->companyName,
                     'confirmed' => $mail->confirmed,
-                    'amount' => $mail->amount,
+                    'amount' => $this->amount($mail->amount, $mail->scale, $mail->locale),
                     'currency' => $mail->currency,
                     'paidThrough' => $mail->paidThrough,
                     'note' => $mail->note,
@@ -77,5 +81,10 @@ final readonly class SymfonySubscriptionMailer implements SubscriptionMailer
                     'productName' => $this->productName,
                 ]),
         );
+    }
+
+    private function amount(string $amount, int $scale, string $locale): string
+    {
+        return $this->decimals->format($amount, $scale, strtok($locale, '_-') ?: $locale);
     }
 }

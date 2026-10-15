@@ -16,12 +16,14 @@ namespace App\Inbox\Application;
 final readonly class NotificationKind
 {
     /**
-     * @param string      $type       the dotted code the notification carries
-     * @param string|null $module     the module it belongs to; switched off, nothing of it is told
-     * @param string|null $permission the permission its publisher tells, null when every member is told
-     * @param string|null $role       the one role its publisher tells, such as the owner, null when any role may be
-     * @param bool        $mailed     false for a kind its context already mails on its own, such as an invitation, whose
-     *                                mail is the only way to accept it
+     * @param string       $type       the dotted code the notification carries
+     * @param string|null  $module     the module it belongs to; switched off, nothing of it is told
+     * @param string|null  $permission the permission its publisher tells, null when every member is told
+     * @param string|null  $role       the one role its publisher tells, such as the owner, null when any role may be
+     * @param bool         $mailed     false for a kind its context already mails on its own, such as an invitation, whose
+     *                                 mail is the only way to accept it
+     * @param list<string> $amounts    the payload's amounts, which its mail writes as the reader's language writes amounts,
+     *                                 at the payload's `scale` (the bell reads the same names from its own list)
      */
     public function __construct(
         public string $type,
@@ -30,6 +32,7 @@ final readonly class NotificationKind
         public ?string $permission = null,
         public ?string $role = null,
         public bool $mailed = true,
+        public array $amounts = [],
     ) {
     }
 }

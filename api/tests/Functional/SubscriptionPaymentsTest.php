@@ -208,14 +208,22 @@ final class SubscriptionPaymentsTest extends ApiTestCase
     {
         $company = $this->createCompany('Acme');
         $this->createUser('owner@twes.local', 'password-1234', $company);
-        $this->subscribe($company, ['paidThrough' => $this->day(-30), 'graceDays' => 0, 'unpaidMode' => 'read_only', 'price' => '600.00', 'currency' => 'EUR']);
+        $this->subscribe($company, ['paidThrough' => $this->day(-30), 'graceDays' => 0, 'unpaidMode' => 'read_only', 'price' => '1234.50', 'currency' => 'EUR']);
         $this->login('owner@twes.local', 'password-1234');
-        $this->postJson($this->paymentsOf($company), $this->payment(['amount' => '600.00', 'currency' => 'EUR']));
+        $this->postJson($this->paymentsOf($company), $this->payment(['amount' => '1234.50', 'currency' => 'EUR']));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $declarationId = $this->stringAt($this->json(), 'id');
+        // Both mails write it as their reader's language does (French here): a no-break space between thousands, a comma.
+        $declared = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $declared);
+        self::assertSame("Acme a déclaré un règlement de 1\u{a0}234,50 EUR", $declared->getSubject());
+        self::assertStringContainsString("Acme a déclaré 1\u{a0}234,50 EUR réglés le", (string) $declared->getHtmlBody());
         $this->signInOperator();
         $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/reject', ['note' => 'rien reçu']);
         self::assertResponseIsSuccessful();
+        $decided = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $decided);
+        self::assertStringContainsString("Règlement de 1\u{a0}234,50 EUR non confirmé", (string) $decided->getHtmlBody());
 
         foreach (['subscription.payment_declared', 'subscription.payment_decided'] as $type) {
             $raw = $this->em()->getConnection()->fetchOne('SELECT payload FROM inbox_item WHERE type = ?', [$type]);

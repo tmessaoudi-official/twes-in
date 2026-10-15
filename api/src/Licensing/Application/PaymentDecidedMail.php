@@ -19,6 +19,8 @@ final readonly class PaymentDecidedMail
         public bool $confirmed,
         public string $amount,
         public string $currency,
+        /** The currency's decimals, which its amount is written with. */
+        public int $scale,
         /** The day the subscription is now paid through, where one was confirmed. */
         public ?string $paidThrough,
         public ?string $note,
