@@ -65,6 +65,8 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-15 05:48] ASSUMED (review): L-601: a customer or vendor file is held to the form's own rules for what the domain does not check (e-mail, telephone, website, country, IBAN, BIC, address and note lengths): each cell is checked against the constraints declared on the API resource's property it fills, in its write group, through one ImportExport service, so the rules live in one place; a refused cell names its column and a code the screen already translates, plus a new invalid_country. A country written in small letters is taken in capitals. The vendor template's example IBAN, which failed its own checksum, is replaced by a valid one. Alternatives: move the checks into the domain (rejected for now: Symfony's IBAN, BIC, URL and country rules would be written twice and drift).
 - [2026-10-15 06:31] AGREED: L-221 display: once the live figures answer, the customer display shows the scanned line's own unit price with taxes, after its price list and discount, under « Prix unitaire, toutes taxes comprises »; until then, or with no customer chosen, it shows the labelled shelf price. Supersedes the 2026-10-02 10:40 shelf-price label.
 - [2026-10-15 06:31] AGREED: Next after L-221's display: L-605b, each refusal of a customer or vendor save on its own field through a shared reader of the API's per-field answers; the texts are shown to the developer first.
+- [2026-10-15 06:51] AGREED: L-605b: a refused field shows the import's own rejection text under itself (« E-mail refusé. », « Pays refusé : … », « Texte refusé : {{max}} caractères au plus. »), so a file and a form say the same; it covers all five forms in two slices, customers and vendors first, then products, expenses and the company profile, through one reader of a single refusal shape the API answers on both its constraint and domain paths.
+- [2026-10-15 07:23] ASSUMED (review): L-605b slice 1 (customers and vendors): a refused save answers API Platform's own violations, each payload carrying the reason (the import's codes) and that text's parameters, through api_platform.validator.serialize_payload_fields; a domain refusal answers the same shape through DomainRule; the import reads its reasons from the same constraint payloads; the web puts each refusal on its field as a control error until the field changes, and a reason with no screen text (the domain's invalid_customer_number, invalid_length, invalid_rate, unknown_tax_regime, unknown_group_id, unknown_tax, regime_excludes_tax, and the vendors' invalid_value default) is said « Valeur refusée. » until its own words are ruled — because the 06:51 ruling names the import's texts and no new text is written before the developer sees it. Alternatives: a decorated violation normalizer computing reasons per constraint class; refusals kept in a signal beside the form.
 
 ## Formal Plan
 
@@ -187,6 +189,20 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
   coming back online resend with the same id; a pairing refusal still ends it), one mutant each; the pairing e2e with
   the network cut by `page.route` for one scan, then restored.
 - New words in fr/en (fr.json has 1,067 B left), gates, one commit, a SPEC § 8 row, L-425 closed in the ledger.
+
+**L-605b, slice 1: a refused customer or vendor field said on the field (ruled 2026-10-15 06:51).**
+- One shape on both paths, API Platform's own: a 422 problem+json `violations: [{propertyPath, message, code, payload:
+  {reason, params?}}]`, the payload serialized through `api_platform.validator.serialize_payload_fields: [reason, params]`.
+- Constraint path: the customer and vendor resources' constraints carry `payload: {reason}` (a length also its `max`), the
+  codes the import already names; `ResourceRules` takes a cell's reason from that payload, so a file and a form share it.
+- Domain path: `InvalidCustomer` and `InvalidVendor` (field, reason, params) answer through one Shared helper as an
+  API Platform `ValidationException` of one violation, its payload the reason and params, instead of `"field: message"`.
+- Web: `shared/form/field-refusals.ts` reads the violations; `DescriptorForm` shows a `refused` control error as
+  `import.rejections.<reason>` (a reason the screens do not know as « Valeur refusée. »), cleared once the field changes;
+  the customer and vendor pages put each refusal on its field (`identifiers.x` on `identifier__x`) and the person on the
+  first; the « Vérifiez… » line stays for what names no field.
+- Tests first: API functional (each path's payload), web specs (reader, error, page), one e2e (an e-mail the browser takes
+  and the API refuses, shown under the field), one mutant per guarantee. Slice 2: products, expenses, company profile.
 
 ## Status
 <!-- progress-block v1 -->
