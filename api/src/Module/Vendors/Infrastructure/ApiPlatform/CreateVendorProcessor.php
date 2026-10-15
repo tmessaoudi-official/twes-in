@@ -15,10 +15,10 @@ use App\Identity\Infrastructure\StepUp\RecentProof;
 use App\Module\Vendors\Application\ManageVendors;
 use App\Module\Vendors\Application\VendorNumberTaken;
 use App\Module\Vendors\Domain\InvalidVendor;
+use App\Shared\Infrastructure\ApiPlatform\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * A vendor created with an IBAN or a BIC asks who is at the screen again, as the company's own bank details do
@@ -45,7 +45,7 @@ final readonly class CreateVendorProcessor implements ProcessorInterface
         } catch (VendorNumberTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidVendor $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return VendorResource::of($vendor);

@@ -99,17 +99,17 @@ final class VendorResource
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Regex(pattern: Vendor::NUMBER, groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Regex(pattern: Vendor::NUMBER, groups: [self::WRITE], payload: ['reason' => 'invalid_number'])]
     #[Groups([self::READ, self::WRITE])]
     public string $number = '';
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Length(max: VendorProfile::NAME_MAX, groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: VendorProfile::NAME_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_name'])]
     #[Groups([self::READ, self::WRITE])]
     public string $name = '';
 
-    #[Assert\Length(max: 200, groups: [self::WRITE])]
+    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_legal_name'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $legalName = null;
 
@@ -119,54 +119,54 @@ final class VendorResource
     #[Groups([self::READ, self::WRITE])]
     public array $identifiers = [];
 
-    #[Assert\Email(groups: [self::WRITE])]
-    #[Assert\Length(max: 254, groups: [self::WRITE])]
+    #[Assert\Email(groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
+    #[Assert\Length(max: 254, groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;
 
-    #[Assert\Regex(pattern: self::PHONE, groups: [self::WRITE])]
+    #[Assert\Regex(pattern: self::PHONE, groups: [self::WRITE], payload: ['reason' => 'invalid_phone'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $phone = null;
 
-    #[Assert\Url(requireTld: true, groups: [self::WRITE])]
-    #[Assert\Length(max: 200, groups: [self::WRITE])]
+    #[Assert\Url(requireTld: true, groups: [self::WRITE], payload: ['reason' => 'invalid_website'])]
+    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_website'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $website = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE])]
+    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $addressLine1 = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE])]
+    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $addressLine2 = null;
 
-    #[Assert\Length(max: 20, groups: [self::WRITE])]
+    #[Assert\Length(max: 20, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 20]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $postalCode = null;
 
-    #[Assert\Length(max: 120, groups: [self::WRITE])]
+    #[Assert\Length(max: 120, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 120]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $city = null;
 
-    #[Assert\Country(groups: [self::WRITE])]
+    #[Assert\Country(groups: [self::WRITE], payload: ['reason' => 'invalid_country'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $countryCode = null;
 
-    #[Assert\Iban(groups: [self::WRITE])]
+    #[Assert\Iban(groups: [self::WRITE], payload: ['reason' => 'invalid_iban'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $iban = null;
 
-    #[Assert\Bic(mode: Assert\Bic::VALIDATION_MODE_CASE_INSENSITIVE, groups: [self::WRITE])]
+    #[Assert\Bic(mode: Assert\Bic::VALIDATION_MODE_CASE_INSENSITIVE, groups: [self::WRITE], payload: ['reason' => 'invalid_bic'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $bic = null;
 
     /** Days after the vendor's invoice its payment is due. */
-    #[Assert\Range(min: 0, max: VendorProfile::PAYMENT_TERMS_MAX, groups: [self::WRITE])]
+    #[Assert\Range(min: 0, max: VendorProfile::PAYMENT_TERMS_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_payment_terms'])]
     #[Groups([self::READ, self::WRITE])]
     public ?int $paymentTermsDays = null;
 
-    #[Assert\Length(max: 5000, groups: [self::WRITE])]
+    #[Assert\Length(max: 5000, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 5000]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notes = null;
 

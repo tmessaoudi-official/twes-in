@@ -17,11 +17,11 @@ use App\Module\Vendors\Application\VendorNotFound;
 use App\Module\Vendors\Application\VendorNumberTaken;
 use App\Module\Vendors\Domain\InvalidVendor;
 use App\Module\Vendors\Domain\VendorRepository;
+use App\Shared\Infrastructure\ApiPlatform\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * A vendor whose IBAN or BIC is set or changed asks who is at the screen again, as the company's own bank details do
@@ -53,7 +53,7 @@ final readonly class ReviseVendorProcessor implements ProcessorInterface
         } catch (VendorNumberTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidVendor $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return VendorResource::of($vendor);

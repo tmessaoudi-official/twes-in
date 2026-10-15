@@ -8,6 +8,10 @@ api_platform:
         Doctrine\DBAL\Exception\UniqueConstraintViolationException: 422
         App\Shared\Domain\InvalidFilter: 422
         App\Tenancy\Domain\PeriodClosed: 422
+    # A violation carries the reason a screen translates, and that text's parameters, from its constraint's payload:
+    # a form and an import file then say the same refusal in the person's language, never in the API's English.
+    validator:
+        serialize_payload_fields: [reason, params]
     title: twes-in API
     version: 0.1.0
     # Plain JSON in and out, except a list: a list is paged, and plain JSON has nowhere to say which page it is and how

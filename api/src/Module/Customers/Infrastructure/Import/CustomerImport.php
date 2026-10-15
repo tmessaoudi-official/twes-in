@@ -77,25 +77,25 @@ final readonly class CustomerImport implements DeclaresImport
     ];
 
     /**
-     * The cells the domain does not check, each with the resource property whose rules it is held to and the code its
-     * refusal carries.
+     * The cells the domain does not check, by the resource property whose rules each is held to; the property's
+     * constraints give the reason a refusal carries, as they do on the form.
      */
     private const array CELL_RULES = [
-        'legalName' => ['legal_name', 'invalid_legal_name'],
-        'email' => ['email', 'invalid_email'],
-        'phone' => ['phone', 'invalid_phone'],
-        'website' => ['website', 'invalid_website'],
-        'billingAddressLine1' => ['billing_line1', 'invalid_text'],
-        'billingAddressLine2' => ['billing_line2', 'invalid_text'],
-        'billingPostalCode' => ['billing_postal_code', 'invalid_text'],
-        'billingCity' => ['billing_city', 'invalid_text'],
-        'billingCountryCode' => ['billing_country_code', 'invalid_country'],
-        'shippingAddressLine1' => ['shipping_line1', 'invalid_text'],
-        'shippingAddressLine2' => ['shipping_line2', 'invalid_text'],
-        'shippingPostalCode' => ['shipping_postal_code', 'invalid_text'],
-        'shippingCity' => ['shipping_city', 'invalid_text'],
-        'shippingCountryCode' => ['shipping_country_code', 'invalid_country'],
-        'notes' => ['notes', 'invalid_text'],
+        'legalName' => 'legal_name',
+        'email' => 'email',
+        'phone' => 'phone',
+        'website' => 'website',
+        'billingAddressLine1' => 'billing_line1',
+        'billingAddressLine2' => 'billing_line2',
+        'billingPostalCode' => 'billing_postal_code',
+        'billingCity' => 'billing_city',
+        'billingCountryCode' => 'billing_country_code',
+        'shippingAddressLine1' => 'shipping_line1',
+        'shippingAddressLine2' => 'shipping_line2',
+        'shippingPostalCode' => 'shipping_postal_code',
+        'shippingCity' => 'shipping_city',
+        'shippingCountryCode' => 'shipping_country_code',
+        'notes' => 'notes',
     ];
 
     private const array YES = ['yes', 'y', 'true', '1', 'oui', 'o'];
@@ -387,14 +387,14 @@ final readonly class CustomerImport implements DeclaresImport
     /**
      * The cells the form's rules hold, by the property each fills; a country as the column holds it.
      *
-     * @return array<string, array{column: string, value: ?string, reason: string}>
+     * @return array<string, array{column: string, value: ?string}>
      */
     private static function cells(ImportRecord $record): array
     {
         $cells = [];
-        foreach (self::CELL_RULES as $property => [$column, $reason]) {
+        foreach (self::CELL_RULES as $property => $column) {
             $value = $record->value($column);
-            $cells[$property] = ['column' => $column, 'value' => 'invalid_country' === $reason ? self::country($value) : $value, 'reason' => $reason];
+            $cells[$property] = ['column' => $column, 'value' => str_ends_with($property, 'ountryCode') ? self::country($value) : $value];
         }
 
         return $cells;
