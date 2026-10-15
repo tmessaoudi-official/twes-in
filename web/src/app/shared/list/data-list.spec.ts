@@ -13,7 +13,11 @@ import { of } from 'rxjs';
 import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
-import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
+import {
+  listPreferencesSetting,
+  listViewsSetting,
+  PRESENTATION,
+} from '../settings/settings-registry';
 import { DataList, DataListCell, DataListSelection } from './data-list';
 import { WINDOW_CLASS, type WindowClass } from '../ui/window-class';
 import type {
@@ -372,6 +376,7 @@ describe('DataList', () => {
     savedViews?: ListView[],
     initialRows: Customer[] = all,
     queryParams: Record<string, string> = {},
+    pageSize?: string,
   ): Promise<void> {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -394,6 +399,7 @@ describe('DataList', () => {
     });
     if (saved) TestBed.inject(SettingsFacade).set(listPreferencesSetting('customers'), saved);
     if (savedViews) TestBed.inject(SettingsFacade).set(listViewsSetting('customers'), savedViews);
+    if (pageSize) TestBed.inject(SettingsFacade).set(PRESENTATION.pageSize, pageSize);
     fixture = TestBed.createComponent(Host);
     fixture.componentInstance.rows.set(initialRows);
     await settle();
@@ -713,6 +719,34 @@ describe('DataList', () => {
     expect(q('list-view-apply-v1')).toBeNull();
   });
 
+  // The rows-per-page chooser is always reachable, and the size a person picks is theirs on every list.
+  describe('rows per page', () => {
+    it('offers the chooser even when every row fits on the smallest page', async () => {
+      await mount(undefined, undefined, all.slice(0, 5));
+
+      expect(q('list-paginator')).not.toBeNull();
+      expect(rowIds()).toEqual(['1', '2', '3', '4', '5']);
+    });
+
+    it('opens at the size the person chose, or at its own first size when it offers no such one', async () => {
+      await mount(undefined, undefined, all, {}, '25');
+      expect(rowIds()).toHaveLength(25);
+
+      await mount(undefined, undefined, all, {}, '50');
+      expect(rowIds()).toHaveLength(10);
+    });
+
+    it('remembers the size a person picks, for every list', async () => {
+      fixture.debugElement
+        .query((element) => element.attributes['data-testid'] === 'list-paginator')
+        .triggerEventHandler('page', { pageIndex: 0, pageSize: 25, length: 30 });
+      await settle();
+
+      expect(rowIds()).toHaveLength(25);
+      expect(TestBed.inject(SettingsFacade).value(PRESENTATION.pageSize)()).toBe('25');
+    });
+  });
+
   describe('when the API pages the list', () => {
     let server: ComponentFixture<ServerHost>;
     const queries = (): ListQuery[] => server.componentInstance.queries;
@@ -816,6 +850,22 @@ describe('DataList', () => {
 
       expect(server.nativeElement.querySelectorAll('.twes-row-new')).toHaveLength(0);
       expect(q('list-new')).toBeNull();
+    });
+
+    it('asks for the size the person chose for every list, unless a shared address names its own', async () => {
+      server.destroy();
+      await mount(undefined, undefined, all, {}, '25');
+      fixture.destroy();
+      server = TestBed.createComponent(ServerHost);
+      await settleServer();
+      expect(lastQuery()?.pageSize).toBe(25);
+
+      server.destroy();
+      await mount(undefined, undefined, all, { size: '10' }, '25');
+      fixture.destroy();
+      server = TestBed.createComponent(ServerHost);
+      await settleServer();
+      expect(queries().map((query) => query.pageSize)).toEqual([10]);
     });
 
     it('opens on the page, words, filter options, sort and size the address names', async () => {

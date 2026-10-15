@@ -24,6 +24,9 @@ export type PlanLabelMode = (typeof PLAN_LABEL_MODES)[number];
 /** How the stock map shows a floor: the plan, or the volume, which is for looking only. */
 export const STOCK_MAP_VIEWS = ['plan', 'volume'] as const;
 export type StockMapView = (typeof STOCK_MAP_VIEWS)[number];
+/** The rows a list shows per page, the same for every list: `auto` is each list's own first size. */
+export const PAGE_SIZE_CHOICES = ['auto', '10', '25', '50', '100', '200'] as const;
+export type PageSizeChoice = (typeof PAGE_SIZE_CHOICES)[number];
 
 /**
  * The accent used until someone chooses one; the platform → company → role → user chain takes over at G3b
@@ -123,6 +126,15 @@ export const PRESENTATION = {
     'presentation.stock-map-view',
     'plan',
     oneOf<StockMapView>(...STOCK_MAP_VIEWS),
+  ),
+  /**
+   * How many rows a list shows per page, one choice for every list and kept for each person: a list that does not
+   * offer it shows its own first size. A shared address's `size` still wins, so a link opens as it was taken.
+   */
+  pageSize: defineSetting<PageSizeChoice>(
+    'presentation.page-size',
+    'auto',
+    oneOf<PageSizeChoice>(...PAGE_SIZE_CHOICES),
   ),
   language: defineSetting<Language>(
     'presentation.language',

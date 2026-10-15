@@ -1021,7 +1021,8 @@
       "shortcuts": "Raccourcis clavier",
       "folded_sections": "Sections repliées des menus",
       "settings_list": "Liste des réglages",
-      "stock_map_view": "Vue du plan du stock"
+      "stock_map_view": "Vue du plan du stock",
+      "page_size": "Lignes par page"
     },
     "choices": {
       "stock": {
@@ -1097,6 +1098,14 @@
         "stock-map-view": {
           "plan": "Plan 2D",
           "volume": "Volume 3D"
+        },
+        "page-size": {
+          "auto": "Selon la liste",
+          "10": "10",
+          "25": "25",
+          "50": "50",
+          "100": "100",
+          "200": "200"
         }
       }
     },

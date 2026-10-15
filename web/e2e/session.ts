@@ -24,8 +24,24 @@ export const NOTICE_CLOSED = 'twes.cookie-notice';
 
 type SavedCookie = Awaited<ReturnType<BrowserContext['storageState']>>['cookies'][number];
 
+const leaving = new WeakSet<Page>();
+
+/**
+ * A reload or a `goto` while a form holds unsaved work meets the browser's own « leave the page? » (docs/SPEC.md § 7,
+ * 2026-09-21 18:20), which Playwright would dismiss, keeping the page and timing the scenario out: a scenario leaves
+ * as a person who chose to. Any other dialog is dismissed, as Playwright does with no listener.
+ */
+export function leaveWhenAsked(page: Page): void {
+  if (leaving.has(page)) return;
+  leaving.add(page);
+  page.on('dialog', (dialog) => {
+    void (dialog.type() === 'beforeunload' ? dialog.accept() : dialog.dismiss());
+  });
+}
+
 /** The operator, signed in on the session the setup project opened, on whichever host this page talks to. */
 export async function signIn(page: Page): Promise<void> {
+  leaveWhenAsked(page);
   const { cookies } = JSON.parse(readFileSync(OPERATOR_SESSION, 'utf8')) as {
     cookies: SavedCookie[];
   };

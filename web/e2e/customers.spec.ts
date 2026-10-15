@@ -178,3 +178,24 @@ test('« Facturer ce client » from a customer just created opens a new invoice 
     await retire(page, number, `no group ${run}`);
   }
 });
+
+// Closing or reloading the tab is not a navigation the app can guard: the browser's own question holds it, and only
+// while something is unsaved (docs/SPEC.md § 7, 2026-09-21 18:20). `signIn` answers it by leaving.
+test('a reload asks the browser’s question while a new customer is half typed, and not once nothing is', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/customers/new');
+  const asked: string[] = [];
+  page.on('dialog', (dialog) => asked.push(dialog.type()));
+
+  await page.getByTestId('field-name').fill('Half typed');
+  await page.reload();
+  await expect(page.getByTestId('field-name')).toHaveValue('');
+  expect(asked).toEqual(['beforeunload']);
+
+  await page.reload();
+  await expect(page.getByTestId('field-name')).toBeVisible();
+  expect(asked).toEqual(['beforeunload']);
+});
