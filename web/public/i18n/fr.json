@@ -303,7 +303,7 @@
       "add": "Ajouter un établissement",
       "edit": "Modifier",
       "save": "Enregistrer",
-      "cancel": "Annuler",
+      "cancel": "Fermer",
       "saved": "L’établissement a été enregistré.",
       "none": "Aucun établissement pour le moment.",
       "no_company": "Choisissez d’abord une société.",
@@ -337,7 +337,7 @@
       "intro": "Comment chaque établissement numérote chaque type de document. Les numéros sont attribués à l’émission d’un document ; d’ici là, une série peut reprendre à n’importe quel numéro.",
       "edit": "Modifier",
       "save": "Enregistrer",
-      "cancel": "Annuler",
+      "cancel": "Fermer",
       "saved": "La numérotation a été enregistrée.",
       "none": "Aucune série de numérotation pour le moment.",
       "no_company": "Choisissez d’abord une société.",
@@ -385,7 +385,7 @@
       "add": "Ajouter un champ",
       "section": "Champ",
       "save": "Enregistrer",
-      "cancel": "Annuler",
+      "cancel": "Fermer",
       "edit": "Modifier",
       "saved": "Le champ a été enregistré.",
       "none": "Aucun champ personnalisé pour le moment.",
@@ -461,7 +461,6 @@
       "name": "Nom du rôle",
       "everything": "Le propriétaire a tous les droits, y compris ceux ajoutés par les futures versions.",
       "save": "Enregistrer",
-      "cancel": "Annuler",
       "close": "Fermer",
       "saved": "Rôle enregistré",
       "deleted": "Rôle supprimé",
@@ -874,7 +873,7 @@
   "fiscal": {
     "no_company": "Choisissez d’abord une société.",
     "edit": "Modifier",
-    "cancel": "Annuler",
+    "cancel": "Fermer",
     "save": "Enregistrer",
     "yes": "Oui",
     "no": "Non",
@@ -1198,7 +1197,7 @@
     "new_title": "Nouveau client",
     "back": "Retour aux clients",
     "save": "Enregistrer",
-    "cancel": "Annuler",
+    "cancel": "Fermer",
     "edit": "Modifier",
     "saved": "Le client a été enregistré.",
     "read_only": "Vous pouvez consulter les clients mais pas les modifier.",
@@ -1385,13 +1384,12 @@
       "reasons": {
         "not_found": "Introuvable : supprimée entre-temps, ou plus accessible",
         "draft": "Brouillon : pas encore numérotée",
-        "cancelled": "Annulée : jamais numérotée",
+        "cancelled": "Abandonnée : jamais numérotée",
         "paid": "Soldée : plus rien n’est dû",
         "credit_note": "Avoir : il ne s’encaisse pas",
         "instrument_held": "Un chèque ou une traite est en cours sur elle",
         "issued_after": "Émise après le jour du paiement"
       },
-      "cancel": "Annuler",
       "close": "Fermer",
       "export_rest": "{count, plural, one {Exporter l’autre} other {Exporter les {{count}} autres}}",
       "pdf": "PDF",
@@ -1402,7 +1400,7 @@
       "pdf_rest": "{count, plural, one {Télécharger la facture} other {Télécharger les {{count}} factures}}",
       "printed": "{count, plural, one {{{count}} facture en PDF} other {{{count}} factures en PDF}}",
       "include_drafts": "Inclure les brouillons (filigrane BROUILLON)",
-      "include_cancelled": "Inclure les annulées (filigrane ANNULÉ)",
+      "include_cancelled": "Inclure les abandonnées (filigrane ANNULÉ)",
       "pay": "Encaisser",
       "pay_title": "{count, plural, =0 {Aucune facture à encaisser} one {Encaisser une facture} other {Encaisser {{count}} factures}}",
       "pay_how": "Le paiement",
@@ -1588,7 +1586,7 @@
       "delete_short": "Supprimer",
       "confirm_delete": "Confirmer la suppression",
       "keep": "Garder le paiement",
-      "cancel": "Annuler",
+      "cancel": "Fermer",
       "methods": {
         "transfer": "Virement",
         "cash": "Espèces",
@@ -1629,7 +1627,7 @@
       "receive": "Recevoir un chèque ou une traite",
       "receive_title": "Recevoir un chèque ou une traite",
       "save": "Le recevoir",
-      "cancel": "Annuler",
+      "cancel": "Fermer",
       "kind": "Nature",
       "kinds": {
         "check": "Chèque",
@@ -1724,7 +1722,7 @@
       "reference_hint": "Un numéro de virement ou de chèque, par exemple.",
       "notes": "Notes",
       "record": "Enregistrer le trop-perçu",
-      "keep": "Annuler",
+      "keep": "Fermer",
       "recorded": "Le trop-perçu est gardé au crédit du client."
     },
     "errors": {
@@ -1741,7 +1739,7 @@
       "missing_customer_identity": "Une facture doit nommer le client comme la loi le demande : son adresse de facturation et, pour une entreprise de votre pays, ses numéros fiscaux. Complétez sa fiche ; la facture reste un brouillon et ne prend aucun numéro.",
       "period_closed": "Les comptes sont clos à cette date : choisissez un jour après la clôture.",
       "missing_operation_category": "Une facture française dit la nature de ses opérations : choisissez-la dans « Nature des opérations », car une ligne sans produit ne la dit pas.",
-      "deposit_beyond_quote": "Cet acompte dépasse ce que son devis laisse, une fois déduits les acomptes déjà émis : baissez son montant, ou annulez-le."
+      "deposit_beyond_quote": "Cet acompte dépasse ce que son devis laisse, une fois déduits les acomptes déjà émis : baissez son montant, ou abandonnez-le."
     },
     "home": {
       "outstanding": "À encaisser",
@@ -1863,13 +1861,13 @@
       "help": "Une nouvelle facture, ou à la suite des lignes d’un brouillon de ce client. Une facture émise n’est jamais modifiée : un avoir la corrige.",
       "new": "Une nouvelle facture",
       "draft": "Ajouter à un brouillon de {{total}} ({{lines}} lignes) {{reference}}",
-      "cancel": "Annuler"
+      "cancel": "Fermer"
     },
     "invoice_part": {
       "title": "Quantités à facturer",
       "help": "Chaque ligne part de ce qu’il en reste ; mettez 0 pour l’écarter de cette facture.",
       "left": "Il en reste {{left}}",
-      "cancel": "Annuler",
+      "cancel": "Fermer",
       "confirm": "Créer le brouillon"
     },
     "title": "Bons de livraison",
@@ -2018,7 +2016,7 @@
     "new_title": "Nouveau produit",
     "back": "Retour aux produits",
     "save": "Enregistrer",
-    "cancel": "Annuler",
+    "cancel": "Fermer",
     "edit": "Modifier",
     "saved": "Le produit a été enregistré.",
     "read_only": "Vous pouvez consulter les produits mais pas les modifier.",
@@ -2292,7 +2290,7 @@
   "inventory": {
     "no_company": "Choisissez d’abord une entreprise.",
     "save": "Enregistrer",
-    "cancel": "Annuler",
+    "cancel": "Fermer",
     "edit": "Modifier",
     "delete_named": "Supprimer {{name}}",
     "errors": {
@@ -2908,7 +2906,7 @@
     "new_title": "Nouvelle dépense",
     "back": "Retour aux dépenses",
     "save": "Enregistrer",
-    "cancel": "Annuler",
+    "cancel": "Fermer",
     "saved": "La dépense a été enregistrée.",
     "deleted": "La dépense a été supprimée.",
     "read_only": "Vous pouvez consulter les dépenses mais pas les modifier.",
@@ -3445,7 +3443,7 @@
       "section": "Règlement",
       "section_hint": "Indiquez ce que vous avez réglé ; nous le confirmons après vérification.",
       "submit": "Déclarer",
-      "cancel": "Annuler",
+      "cancel": "Fermer",
       "methods": {
         "cash": "Espèces",
         "transfer": "Virement",
@@ -3833,7 +3831,7 @@
     "password": "Mot de passe",
     "passkey": "Clé d’accès",
     "confirm": "Confirmer",
-    "cancel": "Annuler",
+    "cancel": "Fermer",
     "errors": {
       "refused": "Ce n’est pas le bon mot de passe.",
       "too_many": "Trop de tentatives : réessayez dans quelques minutes.",
@@ -4288,7 +4286,6 @@
     "logo_unlock": "Libérer les proportions du logo",
     "logo_stretched": "Proportions libérées : le logo sera étiré à exactement cette taille.",
     "save": "Enregistrer",
-    "cancel": "Annuler les modifications",
     "saved": "Présentation des documents enregistrée.",
     "preview": "Aperçu",
     "preview_hint": "Votre dernière facture, telle qu’elle s’imprimerait.",
@@ -4315,7 +4312,7 @@
     "sent": "Le devis est marqué envoyé : il porte son numéro et sa date de validité.",
     "accepted": "Le devis est marqué accepté.",
     "refused": "Le devis est marqué refusé.",
-    "cancelled": "Le devis a été annulé.",
+    "cancelled": "Le devis a été classé sans suite.",
     "invoiced": "Le devis est devenu une facture en brouillon.",
     "invoiced_link": "Voir la facture tirée de ce devis",
     "refusal_shown": "Motif du refus : {{reason}}",
@@ -4323,7 +4320,7 @@
       "sent": "Ce devis est envoyé et ne change plus ; il attend la réponse du client.",
       "accepted": "Ce devis est accepté et ne change plus ; il peut devenir une facture.",
       "refused": "Ce devis est refusé et ne change plus ; il peut encore être imprimé.",
-      "cancelled": "Ce devis est annulé et ne change plus ; il peut encore être imprimé."
+      "cancelled": "Ce devis est classé sans suite et ne change plus ; il peut encore être imprimé."
     },
     "statuses": {
       "draft": "Brouillon",
@@ -4331,7 +4328,7 @@
       "expired": "Expiré",
       "accepted": "Accepté",
       "refused": "Refusé",
-      "cancelled": "Annulé"
+      "cancelled": "Classé sans suite"
     },
     "sections": {
       "parties": "Client et établissement",
@@ -4384,10 +4381,10 @@
       "open_invoice": "Voir la facture",
       "pdf": "Télécharger le PDF",
       "pdf_draft": "Aperçu du PDF",
-      "cancel": "Annuler le devis",
-      "cancel_title": "Annuler ce devis ?",
-      "cancel_message": "Un devis annulé ne peut plus être envoyé.",
-      "confirm_cancel": "Confirmer l’annulation",
+      "cancel": "Classer sans suite…",
+      "cancel_title": "Classer ce devis sans suite ?",
+      "cancel_message": "Un devis classé sans suite ne peut plus être envoyé.",
+      "confirm_cancel": "Classer sans suite",
       "keep": "Garder le devis",
       "deposit": "Facture d’acompte"
     },
@@ -4426,7 +4423,7 @@
       "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP d’au plus 10 Mo, non vide, et le devis compte au plus 10 fichiers.",
       "files_full": "Ce fichier ne peut pas revenir : le devis garde déjà autant de fichiers qu’il peut. Retirez-en un d’abord.",
       "deposit_refused": "Cet acompte est refusé : il reste sous le total du devis et sous ce que ses autres acomptes laissent, au centime de la devise.",
-      "deposit_pending": "Une facture d’acompte de ce devis est encore en brouillon : émettez-la ou annulez-la avant de facturer le devis."
+      "deposit_pending": "Une facture d’acompte de ce devis est encore en brouillon : émettez-la ou abandonnez-la avant de facturer le devis."
     },
     "deposit_drafted": "Facture d’acompte créée en brouillon.",
     "deposit": {
@@ -4602,14 +4599,14 @@
         "sent": "a envoyé le devis",
         "accepted": "a marqué le devis accepté",
         "refused": "a marqué le devis refusé",
-        "cancelled": "a annulé le devis",
+        "cancelled": "a classé le devis sans suite",
         "invoiced": "a facturé le devis"
       },
       "invoice": {
         "created": "a créé la facture",
         "revised": "a modifié la facture",
         "issued": "a émis la facture",
-        "cancelled": "a annulé la facture",
+        "cancelled": "a abandonné le brouillon",
         "credited": "a établi un avoir sur la facture"
       },
       "payment": {
@@ -4844,7 +4841,7 @@
       "intro": "Chaque échéance prépare un brouillon copié de cette facture, daté du jour. Rien n’est émis sans vous.",
       "confirm": "Rendre récurrente"
     },
-    "cancel": "Annuler",
+    "cancel": "Fermer",
     "keep": "Garder",
     "made": "La facture est récurrente : son premier brouillon sera préparé le jour choisi.",
     "open": "Voir les récurrentes",
@@ -4863,7 +4860,7 @@
       "invalid": "La facture récurrente n’a pas pu être enregistrée.",
       "not_found": "Cette facture récurrente n’existe plus.",
       "network": "Le serveur ne répond pas. Réessayez dans un instant.",
-      "modelInvoiceId": "Un avoir, une facture d’acompte ou une facture annulée ne se rend pas récurrent.",
+      "modelInvoiceId": "Un avoir, une facture d’acompte ou une facture abandonnée ne se rend pas récurrent.",
       "startsOn": "Le premier brouillon se fait aujourd’hui ou plus tard, jamais un jour passé.",
       "endsOn": "Le dernier jour vient le jour du premier brouillon ou après."
     }

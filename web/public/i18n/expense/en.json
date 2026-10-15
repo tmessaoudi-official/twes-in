@@ -79,7 +79,7 @@
         "title": "Edit the recurring expense",
         "confirm": "Save"
       },
-      "cancel": "Cancel",
+      "cancel": "Close",
       "keep": "Keep",
       "made": "The expense is recurring: its first draft will be prepared when the day comes.",
       "open": "See recurring",

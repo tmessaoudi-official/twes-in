@@ -70,7 +70,7 @@ export interface BulkSkippedChoice {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" [mat-dialog-close]="null" data-testid="invoice-bulk-cancel">
-        {{ (included() === 0 ? 'invoices.bulk.close' : 'invoices.bulk.cancel') | translate }}
+        {{ 'invoices.bulk.close' | translate }}
       </button>
       @if (included() > 0) {
         <button

@@ -303,7 +303,7 @@
       "add": "Add an establishment",
       "edit": "Edit",
       "save": "Save",
-      "cancel": "Cancel",
+      "cancel": "Close",
       "saved": "The establishment was saved.",
       "none": "No establishment yet.",
       "no_company": "Choose a company first.",
@@ -337,7 +337,7 @@
       "intro": "How each establishment numbers each kind of document. Numbers are given when a document is issued; until then a series may resume at any number.",
       "edit": "Edit",
       "save": "Save",
-      "cancel": "Cancel",
+      "cancel": "Close",
       "saved": "The numbering was saved.",
       "none": "No numbering series yet.",
       "no_company": "Choose a company first.",
@@ -385,7 +385,7 @@
       "add": "Add a field",
       "section": "Field",
       "save": "Save",
-      "cancel": "Cancel",
+      "cancel": "Close",
       "edit": "Edit",
       "saved": "The field was saved.",
       "none": "No custom field yet.",
@@ -461,7 +461,6 @@
       "name": "Role name",
       "everything": "The owner holds every right there is, including those later releases add.",
       "save": "Save",
-      "cancel": "Cancel",
       "close": "Close",
       "saved": "Role saved",
       "deleted": "Role deleted",
@@ -874,7 +873,7 @@
   "fiscal": {
     "no_company": "Choose a company first.",
     "edit": "Edit",
-    "cancel": "Cancel",
+    "cancel": "Close",
     "save": "Save",
     "yes": "Yes",
     "no": "No",
@@ -1198,7 +1197,7 @@
     "new_title": "New customer",
     "back": "Back to customers",
     "save": "Save",
-    "cancel": "Cancel",
+    "cancel": "Close",
     "edit": "Edit",
     "saved": "The customer was saved.",
     "read_only": "You can read customers but not change them.",
@@ -1385,13 +1384,12 @@
       "reasons": {
         "not_found": "Not found: deleted meanwhile, or no longer reachable",
         "draft": "Draft: not numbered yet",
-        "cancelled": "Cancelled: never numbered",
+        "cancelled": "Abandoned: never numbered",
         "paid": "Settled: nothing is left due",
         "credit_note": "Credit note: it is not cashed",
         "instrument_held": "A cheque or bill of exchange is outstanding on it",
         "issued_after": "Issued after the payment day"
       },
-      "cancel": "Cancel",
       "close": "Close",
       "export_rest": "{count, plural, one {Export the other one} other {Export the other {{count}}}}",
       "pdf": "PDF",
@@ -1402,7 +1400,7 @@
       "pdf_rest": "{count, plural, one {Download the invoice} other {Download the {{count}} invoices}}",
       "printed": "{count, plural, one {{{count}} invoice as PDF} other {{{count}} invoices as PDF}}",
       "include_drafts": "Include the drafts (with a draft watermark)",
-      "include_cancelled": "Include the cancelled ones (with a cancelled watermark)",
+      "include_cancelled": "Include the abandoned ones (with a cancelled watermark)",
       "pay": "Record payment",
       "pay_title": "{count, plural, =0 {No invoice to record a payment for} one {Record payment for one invoice} other {Record payment for {{count}} invoices}}",
       "pay_how": "The payment",
@@ -1588,7 +1586,7 @@
       "delete_short": "Delete",
       "confirm_delete": "Confirm deletion",
       "keep": "Keep the payment",
-      "cancel": "Cancel",
+      "cancel": "Close",
       "methods": {
         "transfer": "Transfer",
         "cash": "Cash",
@@ -1629,7 +1627,7 @@
       "receive": "Receive a cheque or traite",
       "receive_title": "Receive a cheque or traite",
       "save": "Receive it",
-      "cancel": "Cancel",
+      "cancel": "Close",
       "kind": "Kind",
       "kinds": {
         "check": "Cheque",
@@ -1724,7 +1722,7 @@
       "reference_hint": "A transfer or cheque number, say.",
       "notes": "Notes",
       "record": "Record the overpayment",
-      "keep": "Cancel",
+      "keep": "Close",
       "recorded": "The overpayment is kept to the customer’s credit."
     },
     "errors": {
@@ -1741,7 +1739,7 @@
       "missing_customer_identity": "An invoice must name the customer as the law asks: its billing address and, for a business in your country, its tax numbers. Complete the customer’s record; the invoice stays a draft and takes no number.",
       "period_closed": "The books are closed on that day: choose a day after the closing.",
       "missing_operation_category": "A French invoice states what its operations are: choose them under « Operations », since a line with no product does not say them.",
-      "deposit_beyond_quote": "This deposit goes beyond what its quote leaves once the deposits already issued are taken off: lower its amount, or cancel it."
+      "deposit_beyond_quote": "This deposit goes beyond what its quote leaves once the deposits already issued are taken off: lower its amount, or abandon it."
     },
     "home": {
       "outstanding": "To collect",
@@ -1863,13 +1861,13 @@
       "help": "A new invoice, or added after the lines of a draft of this customer. An issued invoice is never changed: a credit note corrects it.",
       "new": "A new invoice",
       "draft": "Add to a draft of {{total}} ({{lines}} lines) {{reference}}",
-      "cancel": "Cancel"
+      "cancel": "Close"
     },
     "invoice_part": {
       "title": "Quantities to invoice",
       "help": "Each line starts at what is left of it; enter 0 to leave it off this invoice.",
       "left": "{{left}} left",
-      "cancel": "Cancel",
+      "cancel": "Close",
       "confirm": "Draft the invoice"
     },
     "title": "Delivery notes",
@@ -2018,7 +2016,7 @@
     "new_title": "New product",
     "back": "Back to products",
     "save": "Save",
-    "cancel": "Cancel",
+    "cancel": "Close",
     "edit": "Edit",
     "saved": "The product was saved.",
     "read_only": "You can read products but not change them.",
@@ -2292,7 +2290,7 @@
   "inventory": {
     "no_company": "Choose a company first.",
     "save": "Save",
-    "cancel": "Cancel",
+    "cancel": "Close",
     "edit": "Edit",
     "delete_named": "Delete {{name}}",
     "errors": {
@@ -2908,7 +2906,7 @@
     "new_title": "New expense",
     "back": "Back to expenses",
     "save": "Save",
-    "cancel": "Cancel",
+    "cancel": "Close",
     "saved": "The expense was saved.",
     "deleted": "The expense was deleted.",
     "read_only": "You can read expenses but not change them.",
@@ -3445,7 +3443,7 @@
       "section": "Payment",
       "section_hint": "Tell us what you paid; we confirm it once checked.",
       "submit": "Declare",
-      "cancel": "Cancel",
+      "cancel": "Close",
       "methods": {
         "cash": "Cash",
         "transfer": "Transfer",
@@ -3833,7 +3831,7 @@
     "password": "Password",
     "passkey": "Passkey",
     "confirm": "Confirm",
-    "cancel": "Cancel",
+    "cancel": "Close",
     "errors": {
       "refused": "That is not the right password.",
       "too_many": "Too many attempts: try again in a few minutes.",
@@ -4288,7 +4286,6 @@
     "logo_unlock": "Free the logo’s proportions",
     "logo_stretched": "Proportions freed: the logo will be stretched to exactly this size.",
     "save": "Save",
-    "cancel": "Discard changes",
     "saved": "Document design saved.",
     "preview": "Preview",
     "preview_hint": "Your latest invoice, as it would print.",
@@ -4315,7 +4312,7 @@
     "sent": "The quote is marked sent: it carries its number and its validity date.",
     "accepted": "The quote is marked accepted.",
     "refused": "The quote is marked refused.",
-    "cancelled": "The quote was cancelled.",
+    "cancelled": "The quote was closed as not pursued.",
     "invoiced": "The quote became a draft invoice.",
     "invoiced_link": "See the invoice drawn from this quote",
     "refusal_shown": "Reason for refusal: {{reason}}",
@@ -4323,7 +4320,7 @@
       "sent": "This quote is sent and no longer changes; it waits for the customer's answer.",
       "accepted": "This quote is accepted and no longer changes; it can become an invoice.",
       "refused": "This quote is refused and no longer changes; it can still be printed.",
-      "cancelled": "This quote is cancelled and no longer changes; it can still be printed."
+      "cancelled": "This quote is not pursued and no longer changes; it can still be printed."
     },
     "statuses": {
       "draft": "Draft",
@@ -4331,7 +4328,7 @@
       "expired": "Expired",
       "accepted": "Accepted",
       "refused": "Refused",
-      "cancelled": "Cancelled"
+      "cancelled": "Not pursued"
     },
     "sections": {
       "parties": "Customer and establishment",
@@ -4384,10 +4381,10 @@
       "open_invoice": "See the invoice",
       "pdf": "Download the PDF",
       "pdf_draft": "Preview the PDF",
-      "cancel": "Cancel the quote",
-      "cancel_title": "Cancel this quote?",
-      "cancel_message": "A cancelled quote can no longer be sent.",
-      "confirm_cancel": "Confirm the cancellation",
+      "cancel": "Close as not pursued…",
+      "cancel_title": "Close this quote as not pursued?",
+      "cancel_message": "A quote not pursued can no longer be sent.",
+      "confirm_cancel": "Close as not pursued",
       "keep": "Keep the quote",
       "deposit": "Deposit invoice"
     },
@@ -4426,7 +4423,7 @@
       "file_refused": "The file was refused: it must be a PDF or a PNG, JPEG or WebP image of at most 10 MB, not empty, and a quote holds at most 10 files.",
       "files_full": "This file cannot come back: the quote already holds as many files as it may. Remove one first.",
       "deposit_refused": "This deposit is refused: it stays under the quote's total and under what its other deposits leave, to the currency's smallest unit.",
-      "deposit_pending": "A deposit invoice of this quote is still a draft: issue or cancel it before invoicing the quote."
+      "deposit_pending": "A deposit invoice of this quote is still a draft: issue or abandon it before invoicing the quote."
     },
     "deposit_drafted": "Deposit invoice drafted.",
     "deposit": {
@@ -4602,14 +4599,14 @@
         "sent": "sent the quote",
         "accepted": "marked the quote accepted",
         "refused": "marked the quote refused",
-        "cancelled": "cancelled the quote",
+        "cancelled": "closed the quote as not pursued",
         "invoiced": "invoiced the quote"
       },
       "invoice": {
         "created": "created the invoice",
         "revised": "changed the invoice",
         "issued": "issued the invoice",
-        "cancelled": "cancelled the invoice",
+        "cancelled": "abandoned the draft",
         "credited": "credited the invoice"
       },
       "payment": {
@@ -4844,7 +4841,7 @@
       "intro": "Each due day prepares a draft copied from this invoice, dated that day. Nothing is issued without you.",
       "confirm": "Make recurring"
     },
-    "cancel": "Cancel",
+    "cancel": "Close",
     "keep": "Keep",
     "made": "The invoice is recurring: its first draft will be prepared on the day chosen.",
     "open": "See the recurring ones",
@@ -4863,7 +4860,7 @@
       "invalid": "The recurring invoice could not be saved.",
       "not_found": "This recurring invoice no longer exists.",
       "network": "The server is not answering. Try again in a moment.",
-      "modelInvoiceId": "A credit note, a deposit invoice or a cancelled invoice is not made recurring.",
+      "modelInvoiceId": "A credit note, a deposit invoice or an abandoned invoice is not made recurring.",
       "startsOn": "The first draft is made today or later, never on a day already past.",
       "endsOn": "The last day comes on the day of the first draft or after it."
     }

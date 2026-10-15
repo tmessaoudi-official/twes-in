@@ -396,7 +396,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
         .evaluate((wrapper) => wrapper.getBoundingClientRect().width);
       expect(width, `the dialog’s ${field} takes the dialog’s width`).toBeGreaterThan(300);
     }
-    await expect(page.getByTestId('payment-cancel')).toHaveText(/Annuler/);
+    await expect(page.getByTestId('payment-cancel')).toHaveText(/Fermer/);
     // The dialog puts the cursor in its first field once it has finished opening; filling before that sent the
     // reference into the day on a slow runner.
     await expect(page.getByTestId('field-date')).toBeFocused();
