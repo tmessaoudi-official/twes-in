@@ -37,9 +37,9 @@ export class UnknownFormSection extends Error {
 }
 
 export interface FieldError {
-  /** A translation key under `form.errors`. */
+  /** A translation key: under `form.errors` for the form's own rules, `import.rejections` for what the API refused. */
   key: string;
-  params?: Record<string, number>;
+  params?: Readonly<Record<string, number | string>>;
   /**
    * The field's hint, a translation key, when the error alone does not state the rule: Material hides the hint while
    * the error shows, and « not the expected format » says nothing about which one (MSG-03, WCAG 3.3.3).
@@ -131,6 +131,8 @@ export function buildFormGroup(
 export function fieldError(control: AbstractControl, field: FormField): FieldError | null {
   const errors: ValidationErrors | null = control.errors;
   if (!errors) return null;
+  // What the API refused outranks the form's own rules: it is what the last save was told.
+  if (errors['refused']) return errors['refused'] as FieldError;
   if (errors['required']) return { key: 'form.errors.required' };
   if (errors['email']) return { key: 'form.errors.email' };
   if (errors['date']) return { key: 'form.errors.date' };

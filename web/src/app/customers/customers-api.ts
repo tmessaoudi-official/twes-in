@@ -6,6 +6,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
+import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import type {
   ApiCompaniesCompanyIdcustomersGetCollectionResponse,
   ContactContactRead,
@@ -39,7 +40,11 @@ import {
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CustomersRefused extends Error {
-  constructor(readonly code: CustomersError) {
+  constructor(
+    readonly code: CustomersError,
+    /** Each field a save was refused on, when the API named them. */
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -282,7 +287,7 @@ export class CustomersApi {
     try {
       return await call();
     } catch (error) {
-      throw new CustomersRefused(codeOf(error, conflict));
+      throw new CustomersRefused(codeOf(error, conflict), refusalsOf(error));
     }
   }
 }
@@ -467,4 +472,9 @@ function toContact(raw: ContactContactRead): ContactRow {
     role: raw.role ?? null,
     isPrimary: raw.isPrimary ?? false,
   };
+}
+
+/** The fields a save was refused on, read from a 422's body only. */
+function refusalsOf(error: unknown): readonly FieldRefusal[] {
+  return error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
 }

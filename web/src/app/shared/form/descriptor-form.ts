@@ -26,6 +26,7 @@ import { DayInput } from './day-input';
 import { PickField, type PickOption } from './pick-field';
 import { Select } from './select';
 import { type DescriptorFormGroup, type FieldError, fieldError } from './form-builder';
+import type { FieldRefusal } from './field-refusals';
 import type { FieldConflict } from './form-merge';
 import type { FieldValue, FormDescriptor, FormField, FormSection, FormValues } from './form-types';
 import { applicableValues, applyVisibility, fieldApplies } from './form-visibility';
@@ -211,6 +212,36 @@ export class DescriptorForm {
     form.markAllAsTouched();
     this.revision.update((revision) => revision + 1);
     this.focusFirstInvalid();
+  }
+
+  /**
+   * What the API refused, each under its own field in the text a file is refused with (« Valeur refusée. » for a
+   * reason the screens do not know), and the person put on the first. A refusal holds the save until its field
+   * changes. Hands back what no field shown here can carry, for the screen to say another way.
+   */
+  showRefused(refusals: readonly FieldRefusal[]): readonly FieldRefusal[] {
+    const form = this.form();
+    applyVisibility(this.descriptor(), form, this.readOnly());
+    const translate = this.injector.get(TranslateService);
+    const unplaced: FieldRefusal[] = [];
+    for (const refusal of refusals) {
+      const control = form.controls[refusal.field];
+      if (!control || control.disabled) {
+        unplaced.push(refusal);
+        continue;
+      }
+      const key = `import.rejections.${refusal.reason ?? ''}`;
+      const known = refusal.reason !== null && translate.instant(key) !== key;
+      const error: FieldError = {
+        key: known ? key : 'import.rejections.invalid_value',
+        params: refusal.params,
+      };
+      control.setErrors({ refused: error });
+      control.markAsTouched();
+    }
+    this.revision.update((revision) => revision + 1);
+    this.focusFirstInvalid();
+    return unplaced;
   }
 
   private focusFirstInvalid(): void {

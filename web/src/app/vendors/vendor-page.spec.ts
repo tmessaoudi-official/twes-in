@@ -22,6 +22,7 @@ import {
 } from '../shared/settings/settings-facade';
 import { VendorPage } from './vendor-page';
 import { VendorsFacade } from './vendors-facade';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { VendorOptions, VendorRow, VendorsError } from './vendors-types';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
@@ -33,6 +34,7 @@ class StaticLoader implements TranslateLoader {
         saved: 'Le fournisseur a été enregistré.',
         errors: { number_taken: 'Un autre fournisseur porte déjà ce numéro.' },
       },
+      import: { rejections: { invalid_iban: 'IBAN refusé.', invalid_value: 'Valeur refusée.' } },
     });
   }
 }
@@ -68,6 +70,7 @@ const sotumag: VendorRow = {
 
 describe('VendorPage', () => {
   const error = signal<VendorsError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const vendor = signal<VendorRow | null>(null);
   const optionsShown = signal<VendorOptions | null>(options);
   const facade = {
@@ -75,6 +78,7 @@ describe('VendorPage', () => {
     vendor: vendor.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadVendor: vi.fn(),
     createVendor: vi.fn(),
     reviseVendor: vi.fn(),
@@ -119,6 +123,7 @@ describe('VendorPage', () => {
 
   beforeEach(() => {
     error.set(null);
+    refusals.set([]);
     vendor.set(null);
     optionsShown.set(options);
     facade.loadVendor.mockReset().mockResolvedValue(undefined);
@@ -277,6 +282,28 @@ describe('VendorPage', () => {
     await settle();
     expect(successToasts()).toEqual(['vendors.saved']);
     expect(q('vendor-error')?.textContent).toContain('Un autre fournisseur porte déjà ce numéro.');
+  });
+
+  it('says each field the API refused on that field, and puts the person on the first', async () => {
+    vendor.set(sotumag);
+    await open('v1');
+    facade.reviseVendor.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'iban', reason: 'invalid_iban', params: {} },
+        { field: 'paymentTermsDays', reason: 'invalid_value', params: {} },
+      ]);
+      return null;
+    });
+
+    type('field-iban', 'TN00 1234 5678 9012 3456');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(q('field-error-iban')?.textContent).toContain('IBAN refusé.');
+    expect(q('field-error-paymentTermsDays')?.textContent).toContain('Valeur refusée.');
+    expect(document.activeElement).toBe(q('field-iban'));
   });
 
   // A save once sent no category, and the PUT cleared the one the vendor had.

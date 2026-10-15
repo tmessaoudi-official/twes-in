@@ -1,0 +1,149 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { ChangeDetectionStrategy, Component, viewChild } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import {
+  provideTranslateLoader,
+  provideTranslateService,
+  TranslateLoader,
+} from '@ngx-translate/core';
+import { of } from 'rxjs';
+import { buildFormGroup } from './form-builder';
+import { DescriptorForm } from './descriptor-form';
+import type { FieldRefusal } from './field-refusals';
+import type { FormDescriptor } from './form-types';
+
+const party: FormDescriptor = {
+  id: 'party',
+  sections: [
+    {
+      id: 'identity',
+      title: 'p.identity',
+      fields: [
+        { id: 'name', label: 'p.name', kind: 'text', required: true },
+        {
+          id: 'kind',
+          label: 'p.kind',
+          kind: 'select',
+          defaultValue: 'individual',
+          options: [
+            { value: 'company', label: 'p.company' },
+            { value: 'individual', label: 'p.individual' },
+          ],
+        },
+        {
+          id: 'identifier__siren',
+          label: 'p.siren',
+          kind: 'text',
+          visibleWhen: { field: 'kind', oneOf: ['company'] },
+        },
+        { id: 'email', label: 'p.email', kind: 'email' },
+        { id: 'city', label: 'p.city', kind: 'text' },
+        { id: 'website', label: 'p.website', kind: 'text' },
+      ],
+    },
+  ],
+};
+
+@Component({
+  imports: [DescriptorForm],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<app-descriptor-form [descriptor]="descriptor" [form]="form" testId="party-form" />`,
+})
+class Host {
+  readonly descriptor = party;
+  readonly form = buildFormGroup(party);
+  readonly shown = viewChild.required(DescriptorForm);
+}
+
+class StaticLoader implements TranslateLoader {
+  getTranslation() {
+    return of({
+      p: { identity: 'Identity', name: 'Name', email: 'Email', city: 'City', website: 'Website' },
+      form: { optional: 'optional', errors: { required: 'Required.' } },
+      import: {
+        rejections: {
+          invalid_email: 'E-mail refused.',
+          invalid_text: 'Text refused: {{max}} characters at most.',
+          invalid_value: 'Value refused.',
+        },
+      },
+    });
+  }
+}
+
+describe('DescriptorForm, a save the API refused', () => {
+  let fixture: ComponentFixture<Host>;
+
+  const q = (testId: string): HTMLElement | null =>
+    document.body.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
+  const text = (testId: string): string | undefined => q(testId)?.textContent?.trim();
+
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [Host],
+      providers: [
+        provideTranslateService({
+          lang: 'en',
+          loader: provideTranslateLoader(() => new StaticLoader()),
+        }),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+      ],
+    });
+    fixture = TestBed.createComponent(Host);
+    fixture.componentInstance.form.controls['name']!.setValue('Carthage');
+    fixture.componentInstance.form.controls['email']!.setValue('nobody@nowhere');
+    await settle();
+  });
+
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
+  const refusals: readonly FieldRefusal[] = [
+    { field: 'email', reason: 'invalid_email', params: {} },
+    { field: 'city', reason: 'invalid_text', params: { max: 120 } },
+    { field: 'website', reason: 'not_a_reason_the_screens_know', params: {} },
+    { field: 'identifier__siren', reason: 'identifier_shape', params: {} },
+    { field: 'nowhere', reason: 'invalid_value', params: {} },
+  ];
+
+  it('says each refusal under its own field, in the text a file is refused with', async () => {
+    fixture.componentInstance.shown().showRefused(refusals);
+    await settle();
+
+    expect(text('field-error-email')).toBe('E-mail refused.');
+    expect(text('field-error-city')).toBe('Text refused: 120 characters at most.');
+    expect(text('field-error-website')).toBe('Value refused.');
+  });
+
+  it('hands back what no field shown can carry, and puts the person on the first refused field', async () => {
+    const unplaced = fixture.componentInstance.shown().showRefused(refusals);
+    await settle();
+
+    expect(unplaced.map((refusal) => refusal.field)).toEqual(['identifier__siren', 'nowhere']);
+    expect(document.activeElement).toBe(q('field-email'));
+  });
+
+  it('holds the save until the refused field changes, and drops the refusal once it does', async () => {
+    const form = fixture.componentInstance.form;
+    fixture.componentInstance.shown().showRefused(refusals.slice(0, 1));
+    await settle();
+    expect(form.invalid).toBe(true);
+
+    const input = q('field-email') as HTMLInputElement;
+    input.value = 'someone@example.tn';
+    input.dispatchEvent(new Event('input'));
+    await settle();
+
+    expect(q('field-error-email')).toBeNull();
+    expect(form.valid).toBe(true);
+  });
+});

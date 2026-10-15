@@ -312,12 +312,22 @@ export class CustomerPage {
         // typed and the record holds what the API answered (row 45's leave guard, 2026-09-20).
         this.unsaved.savedAndLeaving();
         await this.router.navigate(['/customers', created.id], { replaceUrl: true });
+      } else {
+        this.showRefused();
       }
     } else if ((await this.facade.reviseCustomer(companyId, id, input)) !== null) {
       const form = this.form();
       if (form !== null) this.sync.savedHere(form);
       this.feedback.success('customers.saved');
+    } else {
+      this.showRefused();
     }
+  }
+
+  /** Each field the API refused said on that field; the line above the form stays for what it says as a whole. */
+  private showRefused(): void {
+    const refused = this.facade.refusals();
+    if (refused.length > 0) this.mainForm()?.showRefused(refused);
   }
 
   protected openContact(target: ContactRow | 'new'): void {

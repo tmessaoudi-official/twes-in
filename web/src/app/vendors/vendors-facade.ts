@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import type { ExportFormat } from '../shared/list/export-address';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { StepUp } from '../shared/step-up/step-up';
 import { VendorsApi, VendorsRefused } from './vendors-api';
 import type {
@@ -25,6 +26,7 @@ export class VendorsFacade {
   private readonly busySignal = signal(false);
   private reads = 0;
   private readonly errorSignal = signal<VendorsError | null>(null);
+  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
 
   readonly vendors = this.vendorsSignal.asReadonly();
   /** How many vendors the last search found in all, the page shown being one part of them. */
@@ -33,6 +35,8 @@ export class VendorsFacade {
   readonly vendor = this.vendorSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
+  /** The fields the last save was refused on, each with the reason the screens translate. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   exportUrl(companyId: string, search: VendorSearch, format: ExportFormat): string {
     return this.api.exportUrl(companyId, search, format);
@@ -95,6 +99,7 @@ export class VendorsFacade {
   private async save(call: () => Promise<VendorRow>): Promise<VendorRow | null> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
+    this.refusalsSignal.set([]);
     try {
       // A vendor's bank details, set or changed, wait for the person to prove who they are again (docs/SPEC.md § 7).
       const vendor = await this.stepUp.retrying(
@@ -106,6 +111,7 @@ export class VendorsFacade {
       return vendor;
     } catch (error) {
       this.errorSignal.set(codeOf(error));
+      this.refusalsSignal.set(error instanceof VendorsRefused ? error.refusals : []);
       return null;
     } finally {
       this.busySignal.set(false);

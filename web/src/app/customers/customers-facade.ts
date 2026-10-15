@@ -4,6 +4,7 @@ import type { ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable, signal } from '@angular/core';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { CustomersApi, CustomersRefused } from './customers-api';
 import type {
   ContactInput,
@@ -33,6 +34,7 @@ export class CustomersFacade {
   private readonly busySignal = signal(false);
   private reads = 0;
   private readonly errorSignal = signal<CustomersError | null>(null);
+  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
 
   readonly customers = this.customersSignal.asReadonly();
   /** How many customers the last search found in all, the page shown being one part of them. */
@@ -45,6 +47,8 @@ export class CustomersFacade {
   readonly contacts = this.contactsSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
+  /** The fields the last save was refused on, each with the reason the screens translate. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   /**
    * What the list screen needs besides its page: the groups its rows name and it filters by, the custom fields it adds
@@ -194,12 +198,14 @@ export class CustomersFacade {
   private async save(call: () => Promise<CustomerRow>): Promise<CustomerRow | null> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
+    this.refusalsSignal.set([]);
     try {
       const customer = await call();
       this.customerSignal.set(customer);
       return customer;
     } catch (error) {
       this.errorSignal.set(codeOf(error));
+      this.refusalsSignal.set(error instanceof CustomersRefused ? error.refusals : []);
       return null;
     } finally {
       this.busySignal.set(false);
