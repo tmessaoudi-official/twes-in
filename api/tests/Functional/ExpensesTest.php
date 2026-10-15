@@ -427,6 +427,23 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame([], $this->json()['withholdingOperationCodes'] ?? null);
     }
 
+    /** A euro has two decimals: a net finer than that is told two, however much finer it is. */
+    public function testANetFinerThanTheCurrencyIsToldTheCurrencysDecimals(): void
+    {
+        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->em()->persist($durand);
+        $this->em()->flush();
+        $this->createUser('achats@durand.fr', 'password-1234', $durand, ['expense.read', 'expense.write'], 'member');
+        $this->login('achats@durand.fr', 'password-1234');
+
+        foreach (['10.005', '10.0055'] as $net) {
+            $this->postJson('/api/companies/'.$durand->getId()->toRfc4122().'/expenses', $this->expense(['vendorId' => null, 'payee' => 'Station Total', 'lines' => $this->line($net, false)]));
+
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $net);
+            self::assertSame([['propertyPath' => 'lines[0].amountNet', 'reason' => 'invalid_amount', 'params' => ['decimals' => 2]]], $this->refusals(), $net);
+        }
+    }
+
     public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);
@@ -562,7 +579,7 @@ final class ExpensesTest extends ApiTestCase
 
         // Made before the next request: the test client reboots the kernel, and with it the entity manager.
         $globex = $this->createCompany('Globex');
-        $their = Expense::create($globex, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Loyer'), ExpenseAmounts::one('500'), null, null, 3, RoundingPoint::PerRateGroup, new \DateTimeImmutable());
+        $their = Expense::create($globex, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Loyer'), ExpenseAmounts::one('500', 3), null, null, 3, RoundingPoint::PerRateGroup, new \DateTimeImmutable());
         $this->em()->persist($their);
         $this->em()->flush();
         $theirs = '/api/companies/'.$globex->getId()->toRfc4122().'/expenses';

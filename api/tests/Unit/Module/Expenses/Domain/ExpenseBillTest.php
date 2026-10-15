@@ -66,7 +66,7 @@ final class ExpenseBillTest extends TestCase
 
     public function testAPrintedAmountReplacesTheWorkedOutOneWithinAMillimeALineAndNoFurther(): void
     {
-        $lines = [new ExpenseAmountLine('33.335', [$this->vat19]), new ExpenseAmountLine('33.335', [$this->vat19]), new ExpenseAmountLine('33.335', [$this->vat19])];
+        $lines = [new ExpenseAmountLine('33.335', [$this->vat19], 3), new ExpenseAmountLine('33.335', [$this->vat19], 3), new ExpenseAmountLine('33.335', [$this->vat19], 3)];
 
         $worked = $this->expense(new ExpenseAmounts($lines));
         self::assertSame(['19.001', '119.006'], [$worked->getTaxAmount(), $worked->getAmountGross()], '19 % of 100.005 rounded once');
@@ -99,7 +99,7 @@ final class ExpenseBillTest extends TestCase
 
     public function testWhatNoVatTaxesIsAnOperationAtNoRate(): void
     {
-        $expense = $this->expense(new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19]), new ExpenseAmountLine('200', [])]));
+        $expense = $this->expense(new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19], 3), new ExpenseAmountLine('200', [], 3)]));
 
         self::assertEquals([
             new WithholdingOperation('19.000', '1000.000', '190.000', '1190.000'),
@@ -113,18 +113,18 @@ final class ExpenseBillTest extends TestCase
         $theirs = TaxComponent::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'TVA19', 'TVA 19 %', TaxFamily::Vat, '19', null, null, false, false, null, 0, 3, $this->now);
 
         $this->assertRefused('lines', static fn () => new ExpenseAmounts([]), 'no line');
-        $this->assertRefused('amountNet', static fn () => new ExpenseAmountLine('0', []), 'a net of zero, named by the line alone');
-        $this->assertRefused('lines[0].amountNet', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10.005', [])]), 2), 'finer than a euro');
+        $this->assertRefused('amountNet', static fn () => new ExpenseAmountLine('0', [], 3), 'a net of zero, named by the line alone');
+        $this->assertRefused('lines[0].amountNet', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10.005', [], 3)]), 2), 'finer than a euro');
         foreach (['a stamp' => $this->stamp, 'a withholding' => $withholding, 'another company\'s' => $theirs] as $case => $tax) {
-            $this->assertRefused('lines[1].taxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', []), new ExpenseAmountLine('10', [$tax])])), $case);
+            $this->assertRefused('lines[1].taxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [], 3), new ExpenseAmountLine('10', [$tax], 3)])), $case);
         }
-        $this->assertRefused('lines[0].taxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [$this->vat19, $this->vat19])])), 'the same rate twice');
-        $this->assertRefused('lines[0].taxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [$this->vat19, $this->vat7])])), 'two VAT rates on one line, which TEJ declares as one operation each');
-        $this->assertRefused('documentTaxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [])], [$this->vat19])), 'a rate as a fixed charge');
-        $this->assertRefused('documentTaxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [])], [$this->stamp, $this->stamp])), 'the stamp twice');
+        $this->assertRefused('lines[0].taxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [$this->vat19, $this->vat19], 3)])), 'the same rate twice');
+        $this->assertRefused('lines[0].taxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [$this->vat19, $this->vat7], 3)])), 'two VAT rates on one line, which TEJ declares as one operation each');
+        $this->assertRefused('documentTaxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [], 3)], [$this->vat19])), 'a rate as a fixed charge');
+        $this->assertRefused('documentTaxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [], 3)], [$this->stamp, $this->stamp])), 'the stamp twice');
 
         $this->vat7->revise('TVA 7 %', '7', null, null, false, false, false, null, 1, 3, $this->now);
-        $this->assertRefused('lines[0].taxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [$this->vat7])])), 'an inactive rate');
+        $this->assertRefused('lines[0].taxComponentIds', fn () => $this->expense(new ExpenseAmounts([new ExpenseAmountLine('10', [$this->vat7], 3)])), 'an inactive rate');
     }
 
     public function testARevisionNamesTheBillsFieldThatChangedAndNothingWhenItSaysTheSame(): void
@@ -132,10 +132,10 @@ final class ExpenseBillTest extends TestCase
         $expense = $this->bill();
 
         self::assertSame([], $expense->revise($this->details(), $this->amounts(), null, $this->hardware, 3, RoundingPoint::PerRateGroup, $this->now));
-        self::assertSame(['lines'], $expense->revise($this->details(), new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $this->fodec])], [$this->stamp]), null, $this->hardware, 3, RoundingPoint::PerRateGroup, $this->now));
+        self::assertSame(['lines'], $expense->revise($this->details(), new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $this->fodec], 3)], [$this->stamp]), null, $this->hardware, 3, RoundingPoint::PerRateGroup, $this->now));
         self::assertSame('1202.900', $expense->getAmountGross());
-        self::assertSame(['printedTaxes'], $expense->revise($this->details(), new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $this->fodec])], [$this->stamp], ['TVA19' => '191.901']), null, $this->hardware, 3, RoundingPoint::PerRateGroup, $this->now), 'a printed amount is a change');
-        self::assertSame(['documentTaxComponentIds', 'printedTaxes'], $expense->revise($this->details(), new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $this->fodec])]), null, $this->hardware, 3, RoundingPoint::PerRateGroup, $this->now), 'the stamp left out, and the printed amount with it');
+        self::assertSame(['printedTaxes'], $expense->revise($this->details(), new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $this->fodec], 3)], [$this->stamp], ['TVA19' => '191.901']), null, $this->hardware, 3, RoundingPoint::PerRateGroup, $this->now), 'a printed amount is a change');
+        self::assertSame(['documentTaxComponentIds', 'printedTaxes'], $expense->revise($this->details(), new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $this->fodec], 3)]), null, $this->hardware, 3, RoundingPoint::PerRateGroup, $this->now), 'the stamp left out, and the printed amount with it');
     }
 
     private function bill(): Expense
@@ -145,7 +145,7 @@ final class ExpenseBillTest extends TestCase
 
     private function amounts(): ExpenseAmounts
     {
-        return new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $this->fodec]), new ExpenseAmountLine('500', [$this->vat7])], [$this->stamp]);
+        return new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $this->fodec], 3), new ExpenseAmountLine('500', [$this->vat7], 3)], [$this->stamp]);
     }
 
     private function expense(ExpenseAmounts $amounts, int $scale = 3): Expense
@@ -170,7 +170,21 @@ final class ExpenseBillTest extends TestCase
         return $taxes;
     }
 
-    /** @param \Closure(): mixed $attempt */
+    /** A line keeps no more decimals than its currency has, three at most, and says how many it takes. */
+    public function testALineTakesTheDecimalsOfItsCurrency(): void
+    {
+        self::assertSame('1200.000', new ExpenseAmountLine('1200', [], 0)->amountNet, 'a currency without decimals');
+        self::assertSame('10.050', new ExpenseAmountLine('10.05', [], 2)->amountNet);
+        foreach ([['10.5', 0, 0], ['10.005', 2, 2], ['10.0005', 4, 3]] as [$net, $scale, $told]) {
+            try {
+                new ExpenseAmountLine($net, [], $scale);
+                self::fail("$net at $scale decimals was accepted");
+            } catch (InvalidExpense $refused) {
+                self::assertSame(['amountNet', 'invalid_amount', ['decimals' => $told]], [$refused->field, $refused->reason, $refused->params], "$net at $scale");
+            }
+        }
+    }
+
     private function assertRefused(string $field, \Closure $attempt, string $case): void
     {
         try {
