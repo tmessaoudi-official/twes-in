@@ -67,6 +67,36 @@ final class NotificationMailTest extends ApiTestCase
         self::assertSame("<$stop>", $mail->getHeaders()->get('List-Unsubscribe')?->getBodyAsString());
     }
 
+    public function testAnInvoiceNoticesAmountsAreWrittenAsItsReadersLanguageWritesThemAtItsCurrencysDecimals(): void
+    {
+        $lea = $this->member('lea@twes.local', 'fr', 'invoicer', ['invoice.issue', 'invoice.read', 'company.read']);
+        $sam = $this->member('sam@twes.local', 'en', 'invoicer', null);
+        $told = ['customer' => 'Atlas', 'number' => 'F-7', 'stage' => '1', 'days_late' => '12'];
+        $this->tell($lea, 'invoice.credit_limit_passed', $told + ['owed' => '1234.5', 'limit' => '1000', 'currency' => 'EUR', 'scale' => 2]);
+        $this->tell($sam, 'invoice.reminder_due', $told + ['amount_due' => '1500.5', 'currency' => 'TND', 'scale' => 3]);
+        $this->tell($lea, 'invoice.late_fee_drafted', $told + ['amount_due' => '12000', 'late_fee' => '35.000', 'currency' => 'JPY', 'scale' => 0]);
+        self::assertSame(3, $this->deliverQueued());
+
+        $bodies = array_map(static fn (MimeEmail $mail): string => (string) $mail->getHtmlBody(), array_values(array_filter(self::getMailerMessages(), static fn ($mail): bool => $mail instanceof MimeEmail)));
+        self::assertCount(3, $bodies);
+        // French groups thousands with a no-break space and writes a decimal comma; English, a comma and a decimal point.
+        self::assertStringContainsString("crédit\u{a0}: 1\u{a0}234,50 EUR dus pour 1\u{a0}000,00 après la facture F-7.", $bodies[0]);
+        self::assertStringContainsString('invoice F-7 of Atlas, 1,500.500 TND, is 12 days late.', $bodies[1]);
+        // A currency with no decimals has no decimal part at all.
+        self::assertStringContainsString("Atlas, 12\u{a0}000 JPY, a 12 jours de retard. Frais de retard de 35 JPY préparés", $bodies[2]);
+    }
+
+    public function testAnOlderNoticeWithoutItsDecimalsKeepsItsAmountsAsSent(): void
+    {
+        $lea = $this->member('lea@twes.local', 'fr', 'invoicer', ['invoice.issue', 'invoice.read', 'company.read']);
+        $this->tell($lea, 'invoice.reminder_due', ['customer' => 'Atlas', 'number' => 'F-7', 'stage' => '1', 'days_late' => '12', 'amount_due' => '1500.5', 'currency' => 'TND']);
+        self::assertSame(1, $this->deliverQueued());
+
+        $mail = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $mail);
+        self::assertStringContainsString('Atlas, 1500.5 TND, a 12 jours', (string) $mail->getHtmlBody());
+    }
+
     public function testNoMailIsSentForAKindWhoseMailWasTurnedOffBeforeTheWorkerSendsIt(): void
     {
         $this->tellStockLow();
@@ -211,13 +241,21 @@ final class NotificationMailTest extends ApiTestCase
         return static::getContainer()->get(Notifications::class);
     }
 
-    private function member(string $email, string $locale): User
+    /** @param array<string, scalar|null> $payload */
+    private function tell(User $user, string $type, array $payload): void
+    {
+        $this->notifications()->publish(new Notification('user:'.$user->getId()->toRfc4122(), $type, $payload, $this->acme->getId()->toRfc4122()));
+    }
+
+    /** @param list<string>|null $permissions the role's, made with them; null joins the role already made under that name */
+    private function member(string $email, string $locale, string $roleName = Role::MEMBER, ?array $permissions = ['stock.write', 'stock.read', 'company.read']): User
     {
         $em = $this->em();
         $user = new User(Email::fromString($email), 'Keeper', $locale);
         $user->setPasswordHash(static::getContainer()->get(PasswordHasher::class)->hash('password-1234'), new \DateTimeImmutable());
         $em->persist($user);
-        $role = new Role(Role::MEMBER, ['stock.write', 'stock.read', 'company.read'], $this->acme);
+        $role = null === $permissions ? $em->getRepository(Role::class)->findOneBy(['name' => $roleName, 'company' => $this->acme]) : new Role($roleName, $permissions, $this->acme);
+        self::assertInstanceOf(Role::class, $role);
         $em->persist($role);
         $em->persist(new Membership($user, $this->acme, $role));
         $em->flush();

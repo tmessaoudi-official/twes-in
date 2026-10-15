@@ -18,6 +18,8 @@ final readonly class PaymentDeclaredMail
         public string $companyName,
         public string $amount,
         public string $currency,
+        /** The currency's decimals, which its amount is written with. */
+        public int $scale,
         public string $method,
         public string $paidOn,
         public ?string $reference,
