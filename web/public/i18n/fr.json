@@ -2742,7 +2742,8 @@
     },
     "scan": {
       "filled": "{{name}} : article, lot et quantité remplis",
-      "location_set": "{{name}} : emplacement rempli"
+      "location_set": "{{name}} : emplacement rempli",
+      "location_ambiguous": "Le code « {{code}} » est celui d’un emplacement dans plusieurs établissements : scannez l’étiquette de l’emplacement."
     },
     "count": {
       "title": "Comptage",

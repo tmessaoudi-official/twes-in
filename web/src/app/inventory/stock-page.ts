@@ -380,8 +380,19 @@ export class StockPage implements OnInit {
     const companyId = this.company()?.id;
     const form = this.form();
     if (!companyId || form === null) return { kind: 'unclaimed' };
-    const located = locationScanned(scan.code, this.facade.locations());
-    if (located !== null) return this.located(form, located, scan.code);
+    const located = locationScanned(
+      scan.code,
+      this.facade.locations(),
+      String(form.get('locationId')?.value ?? ''),
+    );
+    if (located?.kind === 'ambiguous') {
+      return {
+        kind: 'refused',
+        key: 'inventory.scan.location_ambiguous',
+        params: { code: scan.code.trim() },
+      };
+    }
+    if (located !== null) return this.located(form, located.id, scan.code);
     if (!this.auth.hasPermission('product.read')) return { kind: 'unclaimed' };
     const named = await this.productScans.named(scan.code);
     if (named === null) return { kind: 'unclaimed' };

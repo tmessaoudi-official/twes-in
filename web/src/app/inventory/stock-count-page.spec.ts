@@ -96,8 +96,9 @@ const scanOf = (productId: string, extra: Record<string, unknown> = {}) => ({
 
 describe('StockCountPage', () => {
   const error = signal<InventoryError | null>(null);
+  const locations = signal<readonly StockLocationRow[]>([site, rack]);
   const facade = {
-    locations: signal<readonly StockLocationRow[]>([site, rack]).asReadonly(),
+    locations: locations.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     loadStockContext: vi.fn(),
@@ -182,6 +183,42 @@ describe('StockCountPage', () => {
     expect((q('stock-count-0-counted') as HTMLInputElement).value).toBe('14');
     expect(q('stock-count-1')).toBeNull();
     expect(facade.pickProducts).toHaveBeenCalledWith('c1', { ids: ['p1'] });
+  });
+
+  it('takes a code another shop also uses at the shop counted, and asks for the label where it names neither', async () => {
+    // A code is used once per establishment: another shop holds an « R1 » too, listed first.
+    const elsewhere = { ...site, id: 'l8', establishmentId: 'e2', code: '001', name: 'Sousse' };
+    const third = {
+      ...site,
+      id: '0192a0b1-0000-7000-8000-000000000007',
+      establishmentId: 'e3',
+      code: '002',
+    };
+    locations.set([
+      elsewhere,
+      { ...rack, id: 'l9', establishmentId: 'e2', parentId: 'l8' },
+      site,
+      rack,
+      third,
+    ]);
+    try {
+      await settle();
+      expect(await scanned('R1')).toMatchObject({
+        kind: 'done',
+        key: 'inventory.count.at_location',
+        // Its own shop's rack, not the other shop's (« 001 »).
+        params: { name: expect.stringMatching(/^(?!.*001).*R1/) },
+      });
+
+      await scanned(`https://twes.example/stock/locations/${third.id}`);
+      expect(await scanned('R1')).toEqual({
+        kind: 'refused',
+        key: 'inventory.scan.location_ambiguous',
+        params: { code: 'R1' },
+      });
+    } finally {
+      locations.set([site, rack]);
+    }
   });
 
   // docs/SPEC.md § 7, 2026-09-24 12:40 (row 23): what is counted and not recorded is unsaved work.

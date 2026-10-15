@@ -70,19 +70,33 @@ export function countLine(
 const LOCATION_ADDRESS =
   /\/stock\/locations\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 
+/** The location a scan names, or that its code names one in several establishments and none of them is in hand. */
+export type ScannedLocation =
+  { readonly kind: 'found'; readonly id: string } | { readonly kind: 'ambiguous' };
+
 /**
  * The location a scan names: the address its label carries, or its code as the store numbers it, exactly as written.
- * Null for anything else — a product's code, or a location this company does not have.
+ * A code is used once per establishment, so one used in several is the one in the establishment of the place `near`,
+ * the place already in hand; none there, it is ambiguous, and only the label says which. Null for anything else — a
+ * product's code, or a location this company does not have.
  */
 export function locationScanned(
   code: string,
   locations: readonly StockLocationRow[],
-): string | null {
+  near: string | null,
+): ScannedLocation | null {
   const address = LOCATION_ADDRESS.exec(code.trim());
-  const found = address
-    ? locations.find((location) => location.id.toLowerCase() === address[1].toLowerCase())
-    : locations.find((location) => location.code === code.trim());
-  return found?.id ?? null;
+  if (address) {
+    const found = locations.find(
+      (location) => location.id.toLowerCase() === address[1].toLowerCase(),
+    );
+    return found ? { kind: 'found', id: found.id } : null;
+  }
+  const named = locations.filter((location) => location.code === code.trim());
+  if (named.length <= 1) return named[0] ? { kind: 'found', id: named[0].id } : null;
+  const establishment = locations.find((location) => location.id === near)?.establishmentId;
+  const here = named.find((location) => location.establishmentId === establishment);
+  return here ? { kind: 'found', id: here.id } : { kind: 'ambiguous' };
 }
 
 const QUANTITY = new RegExp(`^(?:${QUANTITY_PATTERN})$`);
