@@ -49,6 +49,7 @@
             [conflicts]="sync.conflicts()"
             (resolved)="sync.resolve(form, $event)"
             testId="vendor-form"
+            #mainForm
             [readOnly]="!mayWrite()"
             (submitted)="save($event)"
           >

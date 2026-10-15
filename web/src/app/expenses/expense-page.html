@@ -178,6 +178,7 @@
             [conflicts]="sync.conflicts()"
             (resolved)="sync.resolve(form, $event)"
             testId="expense-form"
+            #mainForm
             [readOnly]="!mayWrite() || !isDraft()"
             (submitted)="save($event)"
           />

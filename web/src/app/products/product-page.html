@@ -71,6 +71,7 @@
                   [suggestions]="suggestions()"
                   (resolved)="sync.resolve(form, $event)"
                   testId="product-form"
+                  #mainForm
                   [readOnly]="!mayWrite()"
                   (submitted)="save($event)"
                 >
