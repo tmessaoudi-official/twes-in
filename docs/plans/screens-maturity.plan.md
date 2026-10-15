@@ -103,6 +103,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-15 17:02] AGREED: L-1115 (days, quantities, method codes and the chosen number format in mails and the bell) goes right after L-605c, before the D1/D2 screens.
 - [2026-10-15 17:02] AGREED: Ratified: mails write amounts through the PDF's decimal canon, not PHP intl, because NumberFormatter takes floats (float-casts invariant); one canon for mails and PDFs.
 - [2026-10-15 17:10] ASSUMED (review): L-605c: the TEJ-code refusal (tej_outside_tunisia) is proved at the API on pay and classify only; the web classify path keeps its generic line, because no screen can produce it (outside Tunisia no TEJ field is offered, inside it the select offers valid codes only), so a routing there would be dead code. Alternatives: route it to the classify form as well.
+- [2026-10-15 17:39] AGREED: Recurring expenses (row 179, the « Dépenses récurrentes » module) come next, as soon as possible and before L-1115 and the D1/D2 screens; « after row 80 » is dropped. Nothing is compromised for speed: TDD, mutants, gates and CI as for any goal (developer, 2026-10-15).
 
 ## Formal Plan
 
