@@ -1,0 +1,52 @@
+{
+  "schedule": {
+    "fields": {
+      "unit": "Repeats every",
+      "every": "Interval",
+      "every_hint": "1 for every time, 2 for every other time, and so on.",
+      "anchor": "Which day",
+      "month_day": "On the",
+      "month_day_hint": "A shorter month takes its last day.",
+      "ordinal": "Which one",
+      "weekday": "Day of the week"
+    },
+    "units": {
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "year": "Year"
+    },
+    "anchors": {
+      "date": "A date of the month (the 5th…)",
+      "last_day": "The last day of the month",
+      "weekday": "A day of the week (the second Tuesday…)",
+      "last_weekday": "The last of a day of the week (the last Friday…)"
+    },
+    "ordinals": {
+      "1": "first",
+      "2": "second",
+      "3": "third",
+      "4": "fourth"
+    },
+    "every": {
+      "day": "{every, plural, =1 {Every day} other {Every {{every}} days}}",
+      "week": "{every, plural, =1 {Every week} other {Every {{every}} weeks}}",
+      "month": "{every, plural, =1 {Every month} other {Every {{every}} months}}",
+      "year": "{every, plural, =1 {Every year} other {Every {{every}} years}}"
+    },
+    "on": {
+      "week": "{{every}}, on {{weekday}}",
+      "date": "{{every}}, on the {day, plural, =1 {1st} =2 {2nd} =3 {3rd} =21 {21st} =22 {22nd} =23 {23rd} =31 {31st} other {{{day}}th}}",
+      "last_day": "{{every}}, on the last day of the month",
+      "weekday": "{{every}}, on the {{ordinal}} {{weekday}}",
+      "last_weekday": "{{every}}, on the last {{weekday}}"
+    },
+    "in_month": "{{on}}, in {{month}}",
+    "errors": {
+      "every": "The interval goes from 1 to 99.",
+      "monthDay": "The day of the month goes from 1 to 31.",
+      "ordinal": "Choose which one.",
+      "weekday": "Choose a day of the week."
+    }
+  }
+}

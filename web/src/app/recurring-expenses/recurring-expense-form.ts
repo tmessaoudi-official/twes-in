@@ -7,7 +7,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
-import { scheduleFields, scheduleOf } from '../shared/schedule/schedule';
+import { scheduleFailure, scheduleFields, scheduleOf } from '../shared/schedule/schedule';
 import type {
   RecurringExpenseDraft,
   RecurringExpenseRevision,
@@ -99,21 +99,16 @@ export function recurringExpenseRevision(
 }
 
 /** The fields a refusal can name, each with its own words; a field with none is the form's as a whole. */
-const REFUSED_FIELDS = new Set([
-  'modelExpenseId',
-  'every',
-  'monthDay',
-  'ordinal',
-  'weekday',
-  'startsOn',
-  'endsOn',
-]);
+const REFUSED_FIELDS = new Set(['modelExpenseId', 'startsOn', 'endsOn']);
 
-/** What a refusal says: the field's own words where it has some, else the general line. */
+/** What a refusal says: the field's own words where it has some, the schedule's for its own, else the general line. */
 export function recurringExpenseFailure(field: string | null): string {
-  return field !== null && REFUSED_FIELDS.has(field)
-    ? `${TEXTS}.errors.${field}`
-    : `${TEXTS}.errors.invalid`;
+  return (
+    scheduleFailure(field) ??
+    (field !== null && REFUSED_FIELDS.has(field)
+      ? `${TEXTS}.errors.${field}`
+      : `${TEXTS}.errors.invalid`)
+  );
 }
 
 export interface RecurringExpenseDialogData {

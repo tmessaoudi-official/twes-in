@@ -13,6 +13,14 @@ export type ScheduleAnchor = (typeof SCHEDULE_ANCHORS)[number];
 /** The most apart two occurrences may be, in their unit: the API refuses more. */
 export const MOST_APART = 99;
 
+/** The schedule's own fields a refusal may name, each with its words under `schedule.errors`. */
+const REFUSED_FIELDS = new Set(['every', 'monthDay', 'ordinal', 'weekday']);
+
+/** A refused field's words when it is the schedule's own, null for another the form names. */
+export function scheduleFailure(field: string | null): string | null {
+  return field !== null && REFUSED_FIELDS.has(field) ? `schedule.errors.${field}` : null;
+}
+
 /**
  * When something recurs, as the API writes it flat: every so many days, weeks, months or years, a month or a year on
  * the day it is anchored to. Each figure is null where its anchor does not read it.

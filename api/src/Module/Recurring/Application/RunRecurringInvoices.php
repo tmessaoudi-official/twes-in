@@ -85,7 +85,7 @@ final readonly class RunRecurringInvoices
         if (null === $recurring || !$recurring->isDueOn($today)) {
             return null;
         }
-        $dueOn = $recurring->getNextOn()?->format('Y-m-d') ?? $today->format('Y-m-d');
+        $dueOn = $recurring->getRecurrence()->nextOn?->format('Y-m-d') ?? $today->format('Y-m-d');
         $model = $this->models->describe($company, $recurring->getModelInvoiceId());
         $draftId = null === $model ? null : $this->drafts->draftFrom($company, $recurring->getModelInvoiceId(), $recurring->getId(), $dueOn);
         $payload = ['recurringInvoiceId' => $id->toRfc4122(), 'customer' => $model->customerName ?? '', 'number' => $model->number ?? ''];

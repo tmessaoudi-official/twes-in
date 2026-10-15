@@ -7,14 +7,14 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
-import {
-  RECURRING_FREQUENCIES,
-  type RecurringFrequency,
-  type RecurringInvoiceDraft,
-} from './recurring-types';
+import { scheduleFailure, scheduleFields, scheduleOf } from '../shared/schedule/schedule';
+import type { RecurringInvoiceDraft } from './recurring-types';
 
-/** How often, from which day and up to which: what making an invoice recurring asks. */
-export function makeRecurringForm(today: string): FormDescriptor {
+/**
+ * When, from which day and up to which: what making an invoice recurring asks. When is the shared schedule (docs/SPEC.md
+ * § 7, 2026-10-15 17:46): any interval, a month or a year on a date, its last day or one of its weekdays.
+ */
+export function makeRecurringForm(language: string, today: string): FormDescriptor {
   return {
     id: 'make-recurring',
     sections: [
@@ -23,17 +23,7 @@ export function makeRecurringForm(today: string): FormDescriptor {
         title: 'recurring.make.title',
         description: 'recurring.make.intro',
         fields: [
-          {
-            id: 'frequency',
-            label: 'recurring.fields.frequency',
-            kind: 'select',
-            required: true,
-            defaultValue: 'monthly',
-            options: RECURRING_FREQUENCIES.map((value) => ({
-              value,
-              label: `recurring.frequencies.${value}`,
-            })),
-          },
+          ...scheduleFields(language, today),
           {
             id: 'startsOn',
             label: 'recurring.fields.starts_on',
@@ -56,16 +46,26 @@ export function makeRecurringForm(today: string): FormDescriptor {
 
 /** What the form holds as the request that makes the invoice recurring. */
 export function recurringDraft(modelInvoiceId: string, values: FormValues): RecurringInvoiceDraft {
-  const frequency = String(values['frequency'] ?? 'monthly');
   const endsOn = String(values['endsOn'] ?? '');
   return {
     modelInvoiceId,
-    frequency: (RECURRING_FREQUENCIES as readonly string[]).includes(frequency)
-      ? (frequency as RecurringFrequency)
-      : 'monthly',
+    schedule: scheduleOf(values),
     startsOn: String(values['startsOn'] ?? ''),
     endsOn: endsOn === '' ? null : endsOn,
   };
+}
+
+/** The fields a refusal can name with words of the recurring invoices' own; the schedule's have theirs. */
+const REFUSED_FIELDS = new Set(['modelInvoiceId', 'startsOn', 'endsOn']);
+
+/** What a refusal says: the field's own words where it has some, the schedule's for its own, else the general line. */
+export function recurringFailure(field: string | null): string {
+  return (
+    scheduleFailure(field) ??
+    (field !== null && REFUSED_FIELDS.has(field)
+      ? `recurring.errors.${field}`
+      : 'recurring.errors.invalid')
+  );
 }
 
 export interface MakeRecurringData {

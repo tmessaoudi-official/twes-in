@@ -6,12 +6,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
 import {
+  provideTranslateCompiler,
   provideTranslateLoader,
   provideTranslateService,
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { PluralCompiler } from '../shared/i18n/plural-compiler';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
@@ -28,8 +30,18 @@ import type { RecurringInvoiceRow } from './recurring-types';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      schedule: {
+        every: {
+          month: '{every, plural, =1 {Chaque mois} other {Tous les {{every}} mois}}',
+          year: '{every, plural, =1 {Chaque année} other {Tous les {{every}} ans}}',
+        },
+        on: {
+          last_weekday: '{{every}}, le dernier {{weekday}}',
+          date: '{{every}}, le {{day}}',
+        },
+        in_month: '{{on}}, en {{month}}',
+      },
       recurring: {
-        frequencies: { monthly: 'Chaque mois', yearly: 'Chaque année' },
         states: { active: 'Active', paused: 'En pause', ended: 'Terminée' },
         errors: { not_found: 'Cette facture récurrente n’existe plus.' },
         delete_message: 'Plus aucun brouillon ne sera préparé pour {{customer}}.',
@@ -43,7 +55,14 @@ const rent: RecurringInvoiceRow = {
   modelInvoiceId: 'i1',
   modelNumber: 'F-2026-0007',
   customerName: 'Atelier Ben Salah',
-  frequency: 'monthly',
+  schedule: {
+    unit: 'month',
+    every: 2,
+    anchor: 'last_weekday',
+    monthDay: null,
+    ordinal: null,
+    weekday: 5,
+  },
   startsOn: '2026-10-31',
   endsOn: null,
   paused: false,
@@ -56,7 +75,7 @@ const over: RecurringInvoiceRow = {
   ...rent,
   id: 'r2',
   customerName: 'Café du Port',
-  frequency: 'yearly',
+  schedule: { unit: 'year', every: 1, anchor: 'date', monthDay: 31, ordinal: null, weekday: null },
   nextOn: null,
   drafted: 2,
   lastInvoiceId: null,
@@ -109,6 +128,7 @@ describe('RecurringPage', () => {
           lang: 'fr',
           fallbackLang: 'fr',
           loader: provideTranslateLoader(() => new StaticLoader()),
+          compiler: provideTranslateCompiler(PluralCompiler),
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: RecurringApi, useValue: api },
@@ -125,14 +145,15 @@ describe('RecurringPage', () => {
     document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
   });
 
-  it('lists each with the invoice it copies, how often, the next draft and where it stands', async () => {
+  it('lists each with the invoice it copies, when in words, the next draft and where it stands', async () => {
     await open();
 
     expect(api.list).toHaveBeenCalledWith('c1');
     const row = q('recurring-r1')?.textContent ?? '';
     expect(row).toContain('Atelier Ben Salah');
     expect(row).toContain('F-2026-0007');
-    expect(row).toContain('Chaque mois');
+    expect(row).toContain('Tous les 2 mois, le dernier vendredi');
+    expect(q('recurring-r2')?.textContent).toContain('Chaque année, le 31, en octobre');
     expect(row).toContain('Active');
     expect(q('recurring-r2')?.textContent).toContain('Terminée');
     // It reads again when another tab or member changes one.
@@ -150,14 +171,14 @@ describe('RecurringPage', () => {
     expect(q('recurring-tab')?.getAttribute('href')).toBe('/invoices/recurring');
   });
 
-  it('pauses one, keeping its frequency and last day, and says so', async () => {
+  it('pauses one, keeping its schedule and last day, and says so', async () => {
     await open();
 
     q('row-action-pause-r1')!.click();
     await settle();
 
     expect(api.revise).toHaveBeenCalledWith('c1', 'r1', {
-      frequency: 'monthly',
+      schedule: rent.schedule,
       endsOn: null,
       paused: true,
     });

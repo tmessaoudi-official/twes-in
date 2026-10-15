@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Recurring\Domain;
 
-/** A recurring invoice refused as written: the field it is about, and why in words. */
+/** A recurring invoice refused as written: the field it is about, why in words, and the reason a screen translates. */
 final class InvalidRecurringInvoice extends \DomainException
 {
-    public function __construct(public readonly string $field, string $message)
+    public function __construct(public readonly string $field, string $message, public readonly string $reason = 'invalid_value')
     {
         parent::__construct($message);
     }

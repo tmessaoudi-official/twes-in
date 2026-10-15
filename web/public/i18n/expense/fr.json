@@ -99,57 +99,9 @@
         "not_found": "Cette dépense récurrente n’existe plus.",
         "network": "Le serveur ne répond pas. Réessayez dans un instant.",
         "modelExpenseId": "Cette dépense ne peut pas être copiée.",
-        "every": "L’intervalle va de 1 à 99.",
-        "monthDay": "Le jour du mois va de 1 à 31.",
-        "ordinal": "Choisissez lequel.",
-        "weekday": "Choisissez un jour de la semaine.",
         "startsOn": "Le premier brouillon se fait aujourd’hui ou plus tard, jamais un jour passé.",
         "endsOn": "Le dernier jour vient le jour du premier brouillon ou après."
       }
     }
-  },
-  "schedule": {
-    "fields": {
-      "unit": "Revient chaque",
-      "every": "Intervalle",
-      "every_hint": "1 pour chaque fois, 2 pour une fois sur deux, et ainsi de suite.",
-      "anchor": "Quel jour",
-      "month_day": "Le",
-      "month_day_hint": "Un mois plus court prend son dernier jour.",
-      "ordinal": "Lequel",
-      "weekday": "Jour de la semaine"
-    },
-    "units": {
-      "day": "Jour",
-      "week": "Semaine",
-      "month": "Mois",
-      "year": "Année"
-    },
-    "anchors": {
-      "date": "Une date du mois (le 5…)",
-      "last_day": "Le dernier jour du mois",
-      "weekday": "Un jour de la semaine (le deuxième mardi…)",
-      "last_weekday": "Le dernier d’un jour de la semaine (le dernier vendredi…)"
-    },
-    "ordinals": {
-      "1": "premier",
-      "2": "deuxième",
-      "3": "troisième",
-      "4": "quatrième"
-    },
-    "every": {
-      "day": "{every, plural, =1 {Chaque jour} other {Tous les {{every}} jours}}",
-      "week": "{every, plural, =1 {Chaque semaine} other {Toutes les {{every}} semaines}}",
-      "month": "{every, plural, =1 {Chaque mois} other {Tous les {{every}} mois}}",
-      "year": "{every, plural, =1 {Chaque année} other {Tous les {{every}} ans}}"
-    },
-    "on": {
-      "week": "{{every}}, le {{weekday}}",
-      "date": "{{every}}, le {day, plural, =1 {1er} other {{{day}}}}",
-      "last_day": "{{every}}, le dernier jour du mois",
-      "weekday": "{{every}}, le {{ordinal}} {{weekday}}",
-      "last_weekday": "{{every}}, le dernier {{weekday}}"
-    },
-    "in_month": "{{on}}, en {{month}}"
   }
 }

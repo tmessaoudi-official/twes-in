@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { Schedule } from '../shared/schedule/schedule';
+
 /** How often a recurring invoice is drafted again, as the API names it. */
-export const RECURRING_FREQUENCIES = ['weekly', 'monthly', 'quarterly', 'yearly'] as const;
-
-export type RecurringFrequency = (typeof RECURRING_FREQUENCIES)[number];
-
-/** A recurring invoice as the screens show it: what it copies, how often, and where it stands. */
+/** A recurring invoice as the screens show it: what it copies, when, and where it stands. */
 export interface RecurringInvoiceRow {
   readonly id: string;
   readonly modelInvoiceId: string;
   /** The model's number; null while the model is a draft. */
   readonly modelNumber: string | null;
   readonly customerName: string;
-  readonly frequency: RecurringFrequency;
+  readonly schedule: Schedule;
   readonly startsOn: string;
   /** The last day a draft may be made on; null when it goes on. */
   readonly endsOn: string | null;
@@ -26,14 +24,14 @@ export interface RecurringInvoiceRow {
 /** What making an invoice recurring asks. */
 export interface RecurringInvoiceDraft {
   readonly modelInvoiceId: string;
-  readonly frequency: RecurringFrequency;
+  readonly schedule: Schedule;
   readonly startsOn: string;
   readonly endsOn: string | null;
 }
 
 /** What a recurring invoice's revision changes. */
 export interface RecurringInvoiceRevision {
-  readonly frequency: RecurringFrequency;
+  readonly schedule: Schedule;
   readonly endsOn: string | null;
   readonly paused: boolean;
 }

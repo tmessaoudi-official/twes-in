@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\RecurringExpenses\Infrastructure\ApiPlatform;
+namespace App\Shared\Infrastructure\ApiPlatform;
 
 use App\Shared\Domain\InvalidSchedule;
 use App\Shared\Domain\Schedule;
@@ -16,12 +16,13 @@ use App\Shared\Domain\ScheduleUnit;
 
 /**
  * The schedule and the days a request wrote, read once the resource's constraints passed: the unit and the anchor are
- * then among their cases and each day a real calendar day.
+ * then among their cases and each day a real calendar day. Every recurring document's resource writes its schedule
+ * flat, the same fields under the same names.
  */
 final class RequestedSchedule
 {
     /** @throws InvalidSchedule */
-    public static function of(RecurringExpenseResource $data): Schedule
+    public static function of(ScheduleRequest $data): Schedule
     {
         return new Schedule(
             ScheduleUnit::from($data->unit),
@@ -41,5 +42,17 @@ final class RequestedSchedule
     public static function dayOrNull(?string $day): ?\DateTimeImmutable
     {
         return null === $day ? null : self::day($day);
+    }
+
+    /** @return list<string> what a unit may be written as */
+    public static function units(): array
+    {
+        return array_map(static fn (ScheduleUnit $unit): string => $unit->value, ScheduleUnit::cases());
+    }
+
+    /** @return list<string> what an anchor may be written as */
+    public static function anchors(): array
+    {
+        return array_map(static fn (ScheduleAnchor $anchor): string => $anchor->value, ScheduleAnchor::cases());
     }
 }

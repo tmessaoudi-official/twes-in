@@ -66,8 +66,8 @@ final readonly class DoctrineRecurringInvoiceRepository implements RecurringInvo
             ->where('r.company = :company')
             ->setParameter('company', $companyId, 'uuid')
             // The next to draft first, then the ended, the newest of each first.
-            ->orderBy('CASE WHEN r.nextOn IS NULL THEN 1 ELSE 0 END', 'ASC')
-            ->addOrderBy('r.nextOn', 'ASC')
+            ->orderBy('CASE WHEN r.recurrence.nextOn IS NULL THEN 1 ELSE 0 END', 'ASC')
+            ->addOrderBy('r.recurrence.nextOn', 'ASC')
             ->addOrderBy('r.createdAt', 'DESC')
             ->addOrderBy('r.id', 'ASC')
             ->getQuery()

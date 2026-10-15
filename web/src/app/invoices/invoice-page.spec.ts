@@ -14,6 +14,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { formatDay, todayIn } from '../shared/i18n/format';
+import { TextsApi } from '../shared/i18n/texts-api';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -434,6 +435,7 @@ describe('InvoicePage', () => {
         { provide: InventoryFacade, useValue: inventory },
         { provide: CustomerDisplay, useValue: display },
         { provide: RecurringApi, useValue: recurring },
+        { provide: TextsApi, useValue: { part: () => Promise.resolve({}) } },
         { provide: AuthFacade, useValue: auth },
         { provide: FileSaver, useValue: saver },
         { provide: Session, useExisting: AuthFacade },
@@ -1738,7 +1740,11 @@ describe('InvoicePage', () => {
     await vi.waitFor(() =>
       expect(recurring.create).toHaveBeenCalledWith(
         'c1',
-        expect.objectContaining({ modelInvoiceId: 'i1', frequency: 'monthly', endsOn: null }),
+        expect.objectContaining({
+          modelInvoiceId: 'i1',
+          schedule: expect.objectContaining({ unit: 'month', every: 1, anchor: 'date' }),
+          endsOn: null,
+        }),
       ),
     );
     await vi.waitFor(() => expect(successToasts()).toContain('recurring.made'));

@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { RecurringApi, RecurringRefused } from './recurring-api';
+import type { RecurringInvoiceRow } from './recurring-types';
 
 describe('RecurringApi', () => {
   let api: RecurringApi;
@@ -20,7 +21,7 @@ describe('RecurringApi', () => {
 
   afterEach(() => http.verify());
 
-  it('reads the list, a model still a draft with no number', async () => {
+  it('reads the list, its schedule gathered as one, a model still a draft with no number, a month’s second Wednesday', async () => {
     const listed = api.list('c1');
     http.expectOne({ method: 'GET', url }).flush([
       {
@@ -28,7 +29,12 @@ describe('RecurringApi', () => {
         modelInvoiceId: 'i1',
         modelNumber: null,
         customerName: 'Café du Port',
-        frequency: 'quarterly',
+        unit: 'month',
+        every: 3,
+        anchor: 'date',
+        monthDay: 31,
+        ordinal: null,
+        weekday: null,
         startsOn: '2026-10-31',
         endsOn: null,
         paused: false,
@@ -36,35 +42,165 @@ describe('RecurringApi', () => {
         drafted: 1,
         lastInvoiceId: 'i9',
       },
+      {
+        id: 'r2',
+        modelInvoiceId: 'i2',
+        modelNumber: 'F-2026-0007',
+        customerName: 'Atelier Ben Salah',
+        unit: 'month',
+        every: 1,
+        anchor: 'weekday',
+        monthDay: null,
+        ordinal: 2,
+        weekday: 3,
+        startsOn: '2026-11-01',
+        endsOn: '2027-06-30',
+        paused: true,
+        nextOn: '2026-11-11',
+        drafted: 0,
+        lastInvoiceId: null,
+      },
     ]);
 
-    await expect(listed).resolves.toEqual([
-      expect.objectContaining({ id: 'r1', modelNumber: null, frequency: 'quarterly', drafted: 1 }),
+    await expect(listed).resolves.toEqual<RecurringInvoiceRow[]>([
+      {
+        id: 'r1',
+        modelInvoiceId: 'i1',
+        modelNumber: null,
+        customerName: 'Café du Port',
+        schedule: {
+          unit: 'month',
+          every: 3,
+          anchor: 'date',
+          monthDay: 31,
+          ordinal: null,
+          weekday: null,
+        },
+        startsOn: '2026-10-31',
+        endsOn: null,
+        paused: false,
+        nextOn: '2027-01-31',
+        drafted: 1,
+        lastInvoiceId: 'i9',
+      },
+      {
+        id: 'r2',
+        modelInvoiceId: 'i2',
+        modelNumber: 'F-2026-0007',
+        customerName: 'Atelier Ben Salah',
+        schedule: {
+          unit: 'month',
+          every: 1,
+          anchor: 'weekday',
+          monthDay: null,
+          ordinal: 2,
+          weekday: 3,
+        },
+        startsOn: '2026-11-01',
+        endsOn: '2027-06-30',
+        paused: true,
+        nextOn: '2026-11-11',
+        drafted: 0,
+        lastInvoiceId: null,
+      },
     ]);
   });
 
-  it('names the field a refusal was about in the screens’ words, and none it has no words for', async () => {
+  it('writes the schedule flat, a day or a week with no anchor at all', async () => {
     const made = api.create('c1', {
       modelInvoiceId: 'i1',
-      frequency: 'monthly',
+      schedule: {
+        unit: 'week',
+        every: 2,
+        anchor: null,
+        monthDay: null,
+        ordinal: null,
+        weekday: null,
+      },
+      startsOn: '2026-10-16',
+      endsOn: null,
+    });
+    const create = http.expectOne({ method: 'POST', url });
+    expect(create.request.body).toEqual({
+      modelInvoiceId: 'i1',
+      unit: 'week',
+      every: 2,
+      monthDay: null,
+      ordinal: null,
+      weekday: null,
+      startsOn: '2026-10-16',
+      endsOn: null,
+    });
+    expect('anchor' in (create.request.body as object)).toBe(false);
+    create.flush({ id: 'r1', unit: 'week', every: 2, anchor: null });
+    await expect(made).resolves.toMatchObject({ schedule: { unit: 'week', anchor: null } });
+
+    const revised = api.revise('c1', 'r1', {
+      schedule: {
+        unit: 'month',
+        every: 2,
+        anchor: 'last_weekday',
+        monthDay: null,
+        ordinal: null,
+        weekday: 5,
+      },
+      endsOn: '2027-12-31',
+      paused: true,
+    });
+    const revise = http.expectOne({ method: 'PUT', url: `${url}/r1` });
+    expect(revise.request.body).toEqual({
+      unit: 'month',
+      every: 2,
+      anchor: 'last_weekday',
+      monthDay: null,
+      ordinal: null,
+      weekday: 5,
+      endsOn: '2027-12-31',
+      paused: true,
+    });
+    revise.flush({ id: 'r1' });
+    await revised;
+  });
+
+  it('names the field a refusal was about as the form names it, and none it has no field for', async () => {
+    const made = api.create('c1', {
+      modelInvoiceId: 'i1',
+      schedule: {
+        unit: 'month',
+        every: 1,
+        anchor: 'date',
+        monthDay: 5,
+        ordinal: null,
+        weekday: null,
+      },
       startsOn: '2026-10-01',
       endsOn: null,
     });
-    http
-      .expectOne({ method: 'POST', url })
-      .flush(
-        { detail: 'startsOn: The first draft is made today or later.' },
-        { status: 422, statusText: 'Unprocessable Content' },
-      );
-    await expect(made).rejects.toMatchObject({ code: 'invalid', field: 'starts_on' });
+    http.expectOne({ method: 'POST', url }).flush(
+      {
+        violations: [
+          { propertyPath: 'startsOn', message: 'past', payload: { reason: 'first_day_past' } },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(made).rejects.toMatchObject({ code: 'invalid', field: 'startsOn' });
 
-    const revised = api.revise('c1', 'r1', { frequency: 'monthly', endsOn: null, paused: true });
+    const revised = api.revise('c1', 'r1', {
+      schedule: {
+        unit: 'day',
+        every: 1,
+        anchor: null,
+        monthDay: null,
+        ordinal: null,
+        weekday: null,
+      },
+      endsOn: null,
+      paused: true,
+    });
     http
       .expectOne({ method: 'PUT', url: `${url}/r1` })
-      .flush(
-        { detail: 'somethingElse: no.' },
-        { status: 422, statusText: 'Unprocessable Content' },
-      );
+      .flush({ detail: 'no.' }, { status: 422, statusText: 'Unprocessable Content' });
     const refusal = await revised.catch((error: unknown) => error);
     expect(refusal).toBeInstanceOf(RecurringRefused);
     expect((refusal as RecurringRefused).field).toBeNull();

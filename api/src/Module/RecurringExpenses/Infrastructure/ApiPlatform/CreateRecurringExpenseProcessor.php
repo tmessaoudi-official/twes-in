@@ -16,6 +16,7 @@ use App\Module\RecurringExpenses\Application\ManageRecurringExpenses;
 use App\Module\RecurringExpenses\Domain\InvalidRecurringExpense;
 use App\Shared\Domain\InvalidSchedule;
 use App\Shared\Infrastructure\ApiPlatform\DomainRule;
+use App\Shared\Infrastructure\ApiPlatform\RequestedSchedule;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\Uid\Uuid;

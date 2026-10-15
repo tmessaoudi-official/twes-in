@@ -26,6 +26,7 @@ import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
+import { SCHEDULE_TEXTS } from '../shared/schedule/schedule-texts';
 import { StatusBadge } from '../shared/ui/status-badge';
 import {
   billGroup,
@@ -53,6 +54,7 @@ import {
   RecurringExpensesApi,
 } from '../recurring-expenses/recurring-expenses-api';
 import { LanguageFacade } from '../shared/i18n/language-facade';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -108,6 +110,7 @@ export class ExpensePage {
   private readonly dialog = inject(MatDialog);
   private readonly recurring = inject(RecurringExpensesApi);
   private readonly language = inject(LanguageFacade);
+  private readonly texts = inject(TextsParts);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `expenses/new`. */
   readonly expenseId = input<string | undefined>(undefined);
@@ -409,6 +412,7 @@ export class ExpensePage {
     const company = this.company();
     const current = this.current();
     if (!company || !current) return;
+    await this.texts.open(SCHEDULE_TEXTS);
     const descriptor = recurringExpenseForm(this.language.current(), todayIn(company.timezone));
     const data: RecurringExpenseDialogData = {
       descriptor,
