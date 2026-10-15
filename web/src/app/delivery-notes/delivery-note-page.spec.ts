@@ -1224,6 +1224,25 @@ describe('DeliveryNotePage', () => {
       await vi.waitFor(() => expect(scans.named).toHaveBeenLastCalledWith('5449000000996'));
     });
 
+    // A scanned line is priced as a picked one: the customer's list, for the quantity the scans have reached.
+    it('starts a scanned line at the customer’s list price, and asks again when a scan adds to it', async () => {
+      modules.add('price_lists');
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '1100.0000', priceListName: 'Gros' });
+      note.set({ ...draft, lines: [] });
+      await open('n1');
+      facade.pickProducts.mockResolvedValue(products);
+      scans.named.mockResolvedValue(laptop);
+
+      await scanned('3017620422003');
+      await settle();
+      expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '1');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1100,000');
+
+      await scanned('3017620422003');
+      await settle();
+      expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '2');
+    });
+
     it('counts a product already on a draft line, and starts a line for another', async () => {
       note.set(draft);
       await open('n1');
