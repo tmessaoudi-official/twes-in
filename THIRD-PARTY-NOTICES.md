@@ -122,7 +122,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | symfony/error-handler | 8.1.8 | MIT | runtime |
 | symfony/event-dispatcher | 8.1.5 | MIT | runtime |
 | symfony/event-dispatcher-contracts | 3.7.1 | MIT | runtime |
-| symfony/expression-language | 8.1.6 | MIT | runtime |
+| symfony/expression-language | 8.1.9 | MIT | runtime |
 | symfony/filesystem | 8.1.6 | MIT | runtime |
 | symfony/finder | 8.1.8 | MIT | runtime |
 | symfony/flex | 2.11.0 | MIT | runtime |
