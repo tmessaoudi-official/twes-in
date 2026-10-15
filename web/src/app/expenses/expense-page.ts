@@ -10,6 +10,7 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -372,12 +373,17 @@ export class ExpensePage {
     ];
   });
 
+  /** The record's own form, which shows what a save from the bar refused and puts the person on it. */
+  private readonly mainForm = viewChild<DescriptorForm>('mainForm');
+
   /** From the bar beside the title, which holds no form of its own. */
   protected saveFromBar(): void {
     const form = this.form();
     if (form === null) return;
     if (form.invalid) {
-      form.markAllAsTouched();
+      const shown = this.mainForm();
+      if (shown) shown.showErrors();
+      else form.markAllAsTouched();
       this.bill()?.markAllAsTouched();
       return;
     }

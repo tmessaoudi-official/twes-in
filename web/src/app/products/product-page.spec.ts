@@ -190,6 +190,22 @@ describe('ProductPage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-23 slice 8: a saved product's labels open in a tab of their own, to print.
+  it('puts the person on the first field in error when the bar saves a form that cannot be sent', async () => {
+    await open(undefined);
+    await settle();
+    type('field-reference', 'ART-010');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    const focused = document.activeElement as HTMLElement;
+    expect(focused.getAttribute('data-testid')).toMatch(/^field-/);
+    fixture.detectChanges();
+    // Its error is shown and is what is said with it.
+    expect(focused.classList).toContain('ng-invalid');
+    expect(focused.getAttribute('aria-describedby')).toMatch(/mat-mdc-error/);
+  });
+
   it("offers a saved product's labels, opened in a new tab", async () => {
     const view = TestBed.inject(DOCUMENT).defaultView!;
     const opened = vi.spyOn(view, 'open').mockReturnValue(null);

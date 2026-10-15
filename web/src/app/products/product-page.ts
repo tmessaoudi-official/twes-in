@@ -12,6 +12,7 @@ import {
   linkedSignal,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -401,12 +402,17 @@ export class ProductPage {
     if (id !== null) this.document.defaultView?.open(`/print/product-labels/${id}`, '_blank');
   }
 
+  /** The record's own form, which shows what a save from the bar refused and puts the person on it. */
+  private readonly mainForm = viewChild<DescriptorForm>('mainForm');
+
   /** From the bar beside the title, which holds no form of its own. */
   protected saveFromBar(): void {
     const form = this.form();
     if (form === null) return;
     if (form.invalid) {
-      form.markAllAsTouched();
+      const shown = this.mainForm();
+      if (shown) shown.showErrors();
+      else form.markAllAsTouched();
       return;
     }
     void this.save(form.getRawValue());

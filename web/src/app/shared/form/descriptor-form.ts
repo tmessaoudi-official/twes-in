@@ -195,12 +195,22 @@ export class DescriptorForm {
     if (this.readOnly()) return;
     applyVisibility(this.descriptor(), form);
     if (form.invalid) {
-      form.markAllAsTouched();
-      this.revision.update((revision) => revision + 1);
-      this.focusFirstInvalid();
+      this.showErrors();
       return;
     }
     this.submitted.emit(applicableValues(this.descriptor(), form));
+  }
+
+  /**
+   * What a save refused for the fields in error does, from the form or from a bar outside it: each error shown, and the
+   * person put on the first, so its label and error are what they hear next.
+   */
+  showErrors(): void {
+    const form = this.form();
+    applyVisibility(this.descriptor(), form);
+    form.markAllAsTouched();
+    this.revision.update((revision) => revision + 1);
+    this.focusFirstInvalid();
   }
 
   private focusFirstInvalid(): void {

@@ -190,6 +190,23 @@ describe('CompanyProfilePage', () => {
     expect(successToasts()).toContain('company.profile.logo.removed');
   });
 
+  it('puts the person on the first field in error when the bar saves a form that cannot be sent', async () => {
+    await open();
+    const email = q('field-email') as HTMLInputElement;
+    email.value = 'not an address';
+    email.dispatchEvent(new Event('input'));
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    const focused = document.activeElement as HTMLElement;
+    expect(focused.getAttribute('data-testid')).toMatch(/^field-/);
+    fixture.detectChanges();
+    // Its error is shown and is what is said with it.
+    expect(focused.classList).toContain('ng-invalid');
+    expect(focused.getAttribute('aria-describedby')).toMatch(/mat-mdc-error/);
+  });
+
   it('saves what the form holds', async () => {
     await open();
     const legalName = q('field-legalName') as HTMLInputElement;

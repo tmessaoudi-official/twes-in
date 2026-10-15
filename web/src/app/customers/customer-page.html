@@ -51,6 +51,7 @@
                   [descriptor]="descriptor"
                   [form]="form"
                   testId="customer-form"
+                  #mainForm
                   [readOnly]="!mayWrite()"
                   [updated]="sync.updated()"
                   [conflicts]="sync.conflicts()"

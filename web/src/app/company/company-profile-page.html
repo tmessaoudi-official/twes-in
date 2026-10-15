@@ -94,6 +94,7 @@
               [descriptor]="descriptor"
               [form]="form"
               testId="profile-form"
+              #mainForm
               [updated]="sync.updated()"
               [conflicts]="sync.conflicts()"
               (resolved)="sync.resolve(form, $event)"

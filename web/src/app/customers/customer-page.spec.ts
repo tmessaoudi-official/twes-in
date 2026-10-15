@@ -407,6 +407,21 @@ describe('CustomerPage', () => {
     expect(offeredNext()).toBeNull();
   });
 
+  it('puts the person on the first field in error when the bar saves a form that cannot be sent', async () => {
+    await open(undefined);
+    type('field-number', 'CLI-0010');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    const focused = document.activeElement as HTMLElement;
+    expect(focused.getAttribute('data-testid')).toMatch(/^field-/);
+    fixture.detectChanges();
+    // Its error is shown and is what is said with it.
+    expect(focused.classList).toContain('ng-invalid');
+    expect(focused.getAttribute('aria-describedby')).toMatch(/mat-mdc-error/);
+  });
+
   it("sends what the company's custom fields were filled in with", async () => {
     customFields.set([
       {

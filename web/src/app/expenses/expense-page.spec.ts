@@ -262,6 +262,21 @@ describe('ExpensePage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
+  it('puts the person on the first field in error when the bar saves a form that cannot be sent', async () => {
+    await open(undefined);
+    type('field-reference', 'FAC-77');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    const focused = document.activeElement as HTMLElement;
+    expect(focused.getAttribute('data-testid')).toMatch(/^field-/);
+    fixture.detectChanges();
+    // Its error is shown and is what is said with it.
+    expect(focused.classList).toContain('ng-invalid');
+    expect(focused.getAttribute('aria-describedby')).toMatch(/mat-mdc-error/);
+  });
+
   it('titles an expense still loading as nothing, never as a new one', async () => {
     await open('x1');
 
