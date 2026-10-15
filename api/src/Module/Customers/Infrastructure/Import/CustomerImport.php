@@ -26,6 +26,7 @@ use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
+use App\ImportExport\Infrastructure\Validation\ResourceRules;
 use App\Module\Customers\Application\CustomerInput;
 use App\Module\Customers\Application\CustomerNumberTaken;
 use App\Module\Customers\Application\ManageCustomers;
@@ -36,6 +37,7 @@ use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Customers\Domain\CustomerRepository;
 use App\Module\Customers\Domain\InvalidCustomer;
 use App\Module\Customers\Infrastructure\ApiPlatform\CustomerPermission;
+use App\Module\Customers\Infrastructure\ApiPlatform\CustomerResource;
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
@@ -74,6 +76,28 @@ final readonly class CustomerImport implements DeclaresImport
         'defaultDiscountRate' => 'default_discount_rate',
     ];
 
+    /**
+     * The cells the domain does not check, each with the resource property whose rules it is held to and the code its
+     * refusal carries.
+     */
+    private const array CELL_RULES = [
+        'legalName' => ['legal_name', 'invalid_legal_name'],
+        'email' => ['email', 'invalid_email'],
+        'phone' => ['phone', 'invalid_phone'],
+        'website' => ['website', 'invalid_website'],
+        'billingAddressLine1' => ['billing_line1', 'invalid_text'],
+        'billingAddressLine2' => ['billing_line2', 'invalid_text'],
+        'billingPostalCode' => ['billing_postal_code', 'invalid_text'],
+        'billingCity' => ['billing_city', 'invalid_text'],
+        'billingCountryCode' => ['billing_country_code', 'invalid_country'],
+        'shippingAddressLine1' => ['shipping_line1', 'invalid_text'],
+        'shippingAddressLine2' => ['shipping_line2', 'invalid_text'],
+        'shippingPostalCode' => ['shipping_postal_code', 'invalid_text'],
+        'shippingCity' => ['shipping_city', 'invalid_text'],
+        'shippingCountryCode' => ['shipping_country_code', 'invalid_country'],
+        'notes' => ['notes', 'invalid_text'],
+    ];
+
     private const array YES = ['yes', 'y', 'true', '1', 'oui', 'o'];
     private const array NO = ['no', 'n', 'false', '0', 'non'];
 
@@ -85,6 +109,7 @@ final readonly class CustomerImport implements DeclaresImport
         private CustomerGroupRepository $groups,
         private TaxComponentRepository $taxes,
         private EntityManagerInterface $entityManager,
+        private ResourceRules $rules,
     ) {
     }
 
@@ -129,6 +154,7 @@ final readonly class CustomerImport implements DeclaresImport
         if (null !== $existing && ImportMode::Create === $mode) {
             throw new RowRejected('number', 'A customer already has this number. Import in "create and update" mode to update it.', 'already_exists');
         }
+        $this->rules->hold(CustomerResource::class, CustomerResource::WRITE, self::cells($record));
 
         $written = null;
         try {
@@ -202,7 +228,7 @@ final readonly class CustomerImport implements DeclaresImport
             $record->value($prefix.'_line2') ?? $held?->line2,
             $record->value($prefix.'_postal_code') ?? $held?->postalCode,
             $record->value($prefix.'_city') ?? $held?->city,
-            $record->value($prefix.'_country_code') ?? $held?->countryCode,
+            self::country($record->value($prefix.'_country_code')) ?? $held?->countryCode,
         );
         if ($address->isEmpty()) {
             return null;
@@ -356,6 +382,28 @@ final readonly class CustomerImport implements DeclaresImport
         }
 
         return self::COLUMN_OF[$field] ?? null;
+    }
+
+    /**
+     * The cells the form's rules hold, by the property each fills; a country as the column holds it.
+     *
+     * @return array<string, array{column: string, value: ?string, reason: string}>
+     */
+    private static function cells(ImportRecord $record): array
+    {
+        $cells = [];
+        foreach (self::CELL_RULES as $property => [$column, $reason]) {
+            $value = $record->value($column);
+            $cells[$property] = ['column' => $column, 'value' => 'invalid_country' === $reason ? self::country($value) : $value, 'reason' => $reason];
+        }
+
+        return $cells;
+    }
+
+    /** A country code in capitals, as a spreadsheet may well write it in small letters. */
+    private static function country(?string $cell): ?string
+    {
+        return null === $cell ? null : mb_strtoupper($cell);
     }
 
     /** @throws RowRejected when the cell is neither a yes nor a no */

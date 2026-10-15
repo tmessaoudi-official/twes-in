@@ -3647,6 +3647,7 @@
       "invalid_price": "Prix refusé : un nombre positif.",
       "invalid_iban": "IBAN refusé.",
       "invalid_bic": "BIC refusé.",
+      "invalid_country": "Pays refusé : un code à deux lettres, comme TN ou FR.",
       "invalid_payment_terms": "Délai de paiement refusé : un nombre entier de jours.",
       "identifier_required": "Ce numéro d’immatriculation est obligatoire pour ce régime.",
       "identifier_shape": "Ce numéro d’immatriculation n’a pas la forme attendue.",

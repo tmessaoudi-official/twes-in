@@ -23,6 +23,7 @@ use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
+use App\ImportExport\Infrastructure\Validation\ResourceRules;
 use App\Module\Vendors\Application\ExpenseCategoryDirectory;
 use App\Module\Vendors\Application\ManageVendors;
 use App\Module\Vendors\Application\VendorInput;
@@ -32,6 +33,7 @@ use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorProfile;
 use App\Module\Vendors\Domain\VendorRepository;
 use App\Module\Vendors\Infrastructure\ApiPlatform\VendorPermission;
+use App\Module\Vendors\Infrastructure\ApiPlatform\VendorResource;
 use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
@@ -70,6 +72,25 @@ final readonly class VendorImport implements DeclaresImport
         'defaultExpenseCategoryId' => ['expense_category', 'unknown_expense_category'],
     ];
 
+    /**
+     * The cells the domain does not check, each with the resource property whose rules it is held to and the code its
+     * refusal carries.
+     */
+    private const array CELL_RULES = [
+        'legalName' => ['legal_name', 'invalid_legal_name'],
+        'email' => ['email', 'invalid_email'],
+        'phone' => ['phone', 'invalid_phone'],
+        'website' => ['website', 'invalid_website'],
+        'addressLine1' => ['line1', 'invalid_text'],
+        'addressLine2' => ['line2', 'invalid_text'],
+        'postalCode' => ['postal_code', 'invalid_text'],
+        'city' => ['city', 'invalid_text'],
+        'countryCode' => ['country_code', 'invalid_country'],
+        'iban' => ['iban', 'invalid_iban'],
+        'bic' => ['bic', 'invalid_bic'],
+        'notes' => ['notes', 'invalid_text'],
+    ];
+
     private const array YES = ['yes', 'y', 'true', '1', 'oui', 'o'];
     private const array NO = ['no', 'n', 'false', '0', 'non'];
 
@@ -80,6 +101,7 @@ final readonly class VendorImport implements DeclaresImport
         private ExpenseCategoryDirectory $expenseCategories,
         private EntityManagerInterface $entityManager,
         private ConfirmStepUp $stepUp,
+        private ResourceRules $rules,
     ) {
     }
 
@@ -124,6 +146,7 @@ final readonly class VendorImport implements DeclaresImport
         if (null !== $existing && ImportMode::Create === $mode) {
             throw new RowRejected('number', 'A vendor already has this number. Import in "create and update" mode to update it.', 'already_exists');
         }
+        $this->rules->hold(VendorResource::class, VendorResource::WRITE, self::cells($record));
 
         $written = null;
         try {
@@ -199,7 +222,7 @@ final readonly class VendorImport implements DeclaresImport
             $record->value('line2') ?? $held?->line2,
             $record->value('postal_code') ?? $held?->postalCode,
             $record->value('city') ?? $held?->city,
-            $record->value('country_code') ?? $held?->countryCode,
+            self::country($record->value('country_code')) ?? $held?->countryCode,
         );
         if ($address->isEmpty()) {
             return new PostalAddress();
@@ -243,7 +266,7 @@ final readonly class VendorImport implements DeclaresImport
             new ImportColumn('postal_code', 'import.vendors.postal_code', false, '2033'),
             new ImportColumn('city', 'import.vendors.city', false, 'Megrine'),
             new ImportColumn('country_code', 'import.vendors.country_code', false, 'TN', 'import.country_note'),
-            new ImportColumn('iban', 'import.vendors.iban', false, 'TN5904018104003691000123'),
+            new ImportColumn('iban', 'import.vendors.iban', false, 'TN5910006035183598478831'),
             new ImportColumn('bic', 'import.vendors.bic', false, 'BIATTNTT'),
             new ImportColumn('payment_terms_days', 'import.vendors.payment_terms_days', false, '30', 'import.vendors.payment_terms_note'),
             new ImportColumn('expense_category', 'import.vendors.expense_category', false, null, 'import.vendors.expense_category_note'),
@@ -279,6 +302,28 @@ final readonly class VendorImport implements DeclaresImport
         }
 
         return self::REFUSAL_OF[$field] ?? [null, 'invalid_value'];
+    }
+
+    /**
+     * The cells the form's rules hold, by the property each fills; a country as the column holds it.
+     *
+     * @return array<string, array{column: string, value: ?string, reason: string}>
+     */
+    private static function cells(ImportRecord $record): array
+    {
+        $cells = [];
+        foreach (self::CELL_RULES as $property => [$column, $reason]) {
+            $value = $record->value($column);
+            $cells[$property] = ['column' => $column, 'value' => 'invalid_country' === $reason ? self::country($value) : $value, 'reason' => $reason];
+        }
+
+        return $cells;
+    }
+
+    /** A country code in capitals, as a spreadsheet may well write it in small letters. */
+    private static function country(?string $cell): ?string
+    {
+        return null === $cell ? null : mb_strtoupper($cell);
     }
 
     /** @throws RowRejected when the cell is neither a yes nor a no */

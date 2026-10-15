@@ -3647,6 +3647,7 @@
       "invalid_price": "Price refused: a positive number.",
       "invalid_iban": "IBAN refused.",
       "invalid_bic": "BIC refused.",
+      "invalid_country": "Country refused: a two-letter code, such as TN or FR.",
       "invalid_payment_terms": "Payment terms refused: a whole number of days.",
       "identifier_required": "This registration number is required under this regime.",
       "identifier_shape": "This registration number is not of the expected shape.",
