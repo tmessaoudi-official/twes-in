@@ -5,7 +5,7 @@ import { toast } from './toast';
 import { wcagViolations } from './axe';
 import { rowAction } from './rows';
 import { choose } from './select';
-import { aProduct, forget, gtin } from './catalogue';
+import { aProduct, forget, gtin, stockKept } from './catalogue';
 import { cardHasFocus, scan as scanned } from './scan';
 
 // G5 products through the real stack: in the seeded Tunisian company, the owner files a category, creates a service
@@ -332,5 +332,51 @@ test('a product is given its codes by scanning them, and a code finds it', async
     await expect(page.getByTestId('line-1-quantity')).toHaveValue('2');
   } finally {
     await forget(page, ids);
+  }
+});
+
+// A refused save is said on the field it was refused on: stock that has moved keeps the way a product is tracked,
+// which the form cannot know before the API answers.
+test('a product whose stock has moved says on its tracking that it keeps it', async ({ page }) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const reference = `KEPT-${Date.now().toString(36).toUpperCase()}`;
+  const productId = await aProduct(page, reference);
+  try {
+    await stockKept(page, productId, true);
+    await page.evaluate(
+      async ([csrf, id]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+        const base = `/api/companies/${me.company.id}`;
+        const locations = (await (await fetch(`${base}/stock-locations`)).json()) as {
+          id: string;
+        }[];
+        const received = await fetch(`${base}/stock-movements`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({
+            operation: 'receive',
+            productId: id,
+            locationId: locations[0]!.id,
+            quantity: '2',
+          }),
+        });
+        if (!received.ok) throw new Error(`receiving answered ${received.status}`);
+      },
+      [CSRF, productId] as const,
+    );
+
+    await page.goto(`/products/${productId}`);
+    await page.getByTestId('field-tracking').click();
+    await page.getByRole('option', { name: 'Par lot' }).click();
+    await page.getByTestId('record-save').click();
+
+    await expect(page.getByTestId('field-error-tracking')).toContainText(
+      'Du stock de ce produit a déjà bougé\u00a0: il garde son suivi.',
+    );
+    await expect(page.getByTestId('field-tracking')).toBeFocused();
+    expect(await wcagViolations(page)).toEqual([]);
+  } finally {
+    await forget(page, [productId]);
   }
 });

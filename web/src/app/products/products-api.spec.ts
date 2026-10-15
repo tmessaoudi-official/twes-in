@@ -430,13 +430,37 @@ describe('ProductsApi', () => {
 
   it('answers each refusal with the code the screens translate', async () => {
     const kept = api.reviseProduct('c1', 'p1', { ...laptop, tracking: 'lot' });
-    http
-      .expectOne('/api/companies/c1/products/p1')
-      .flush(
-        { detail: 'tracking: Stock of ART-001 was moved without lots, so it stays that way.' },
-        { status: 422, statusText: 'Unprocessable' },
-      );
-    await expect(kept).rejects.toEqual(new ProductsRefused('tracking_kept'));
+    http.expectOne('/api/companies/c1/products/p1').flush(
+      {
+        detail: 'tracking: Stock of ART-001 was moved without lots, so it stays that way.',
+        violations: [
+          {
+            propertyPath: 'tracking',
+            message: 'x',
+            payload: { reason: 'tracking_kept_by_stock' },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(kept).rejects.toMatchObject({ code: 'tracking_kept' });
+
+    // A service is never tracked: refused on the same field, it is not stock that keeps it.
+    const service = api.createProduct('c1', { ...laptop, kind: 'service', tracking: 'lot' });
+    http.expectOne('/api/companies/c1/products').flush(
+      {
+        detail:
+          'tracking: A service holds no stock, so it is tracked neither by lot nor by serial.',
+        violations: [
+          { propertyPath: 'tracking', message: 'x', payload: { reason: 'service_untracked' } },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(service).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'tracking', reason: 'service_untracked', params: {} }],
+    });
 
     const taken = api.createProduct('c1', laptop);
     http
@@ -461,6 +485,39 @@ describe('ProductsApi', () => {
       .expectOne((req) => req.url === '/api/companies/c1/products')
       .error(new ProgressEvent('error'));
     await expect(offline).rejects.toEqual(new ProductsRefused('network'));
+  });
+
+  it('names each field a save was refused on, and only a save does', async () => {
+    const created = api.createProduct('c1', laptop);
+    http.expectOne('/api/companies/c1/products').flush(
+      {
+        violations: [
+          { propertyPath: 'unitId', message: 'x', payload: { reason: 'unknown_choice' } },
+          {
+            propertyPath: 'customFields.sector',
+            message: 'x',
+            payload: { reason: 'invalid_text', params: { max: 200 } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(created).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [
+        { field: 'unitId', reason: 'unknown_choice', params: {} },
+        { field: 'custom__sector', reason: 'invalid_text', params: { max: 200 } },
+      ],
+    });
+
+    const category = api.createCategory('c1', { name: 'x', parentId: null });
+    http.expectOne('/api/companies/c1/product-categories').flush(
+      {
+        violations: [{ propertyPath: 'name', message: 'x', payload: { reason: 'invalid_text' } }],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(category).rejects.toMatchObject({ code: 'invalid', refusals: [] });
   });
 
   it('manages categories, a taken name and a category in use each saying so', async () => {

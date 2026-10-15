@@ -3671,7 +3671,11 @@
       "unknown_tax_regime": "Régime inconnu : choisissez-en un dans la liste.",
       "unknown_group_id": "Ce groupe n’existe plus : choisissez-en un autre.",
       "unknown_tax": "Cette taxe n’existe plus, ou n’est plus active.",
-      "regime_excludes_tax": "Ce régime ne facture pas la taxe « {{tax}} »."
+      "regime_excludes_tax": "Ce régime ne facture pas la taxe « {{tax}} ».",
+      "unknown_choice": "Ce choix n’est plus proposé : choisissez-en un autre.",
+      "tax_on_document": "{{tax}} se compte sur le document, pas sur une ligne.",
+      "tracking_kept_by_stock": "Du stock de ce produit a déjà bougé : il garde son suivi.",
+      "service_untracked": "Un service n’a pas de stock : il n’est suivi ni par lot ni par numéro de série."
     },
     "action": "Importer",
     "notes_title": "À savoir",

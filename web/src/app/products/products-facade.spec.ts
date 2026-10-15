@@ -199,6 +199,17 @@ describe('ProductsFacade', () => {
     expect(facade.error()).toBeNull();
   });
 
+  it('keeps the fields a save was refused on until the next save', async () => {
+    const unit = { field: 'unitId', reason: 'unknown_choice', params: {} };
+    api.createProduct.mockRejectedValueOnce(new ProductsRefused('invalid', [unit]));
+    expect(await facade.createProduct('c1', input)).toBeNull();
+    expect(facade.refusals()).toEqual([unit]);
+
+    api.reviseProduct.mockResolvedValueOnce(laptop);
+    await facade.reviseProduct('c1', 'p1', input);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it('reads the categories again after each change', async () => {
     api.createCategory.mockResolvedValue(hardware);
     expect(await facade.createCategory('c1', { name: 'Matériel', parentId: null })).toBe(true);

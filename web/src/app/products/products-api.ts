@@ -28,6 +28,7 @@ import type {
   StockTotalStockTotalRead,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
+import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import {
@@ -54,7 +55,11 @@ import {
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ProductsRefused extends Error {
-  constructor(readonly code: ProductsError) {
+  constructor(
+    readonly code: ProductsError,
+    /** Each field a product's save was refused on, when the API named them. */
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -162,7 +167,7 @@ export class ProductsApi {
    * left empty is given the next free one of the company's format.
    */
   async createProduct(companyId: string, input: ProductInput): Promise<ProductRow> {
-    return this.guard(async () =>
+    return this.saving(async () =>
       toProduct(
         await firstValueFrom(
           this.http.post<ProductProductRead>(path(companyId, 'products'), toProductBody(input)),
@@ -172,7 +177,7 @@ export class ProductsApi {
   }
 
   async reviseProduct(companyId: string, id: string, input: ProductInput): Promise<ProductRow> {
-    return this.guard(async () =>
+    return this.saving(async () =>
       toProduct(
         await firstValueFrom(
           this.http.put<ProductProductRead>(path(companyId, 'products', id), toProductBody(input)),
@@ -465,6 +470,17 @@ export class ProductsApi {
       throw new ProductsRefused(codeOf(error, conflict));
     }
   }
+
+  /** A product's save, the only call whose refusals name the fields of the form. */
+  private async saving<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      const refusals =
+        error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
+      throw new ProductsRefused(codeOf(error, 'reference_taken'), refusals);
+    }
+  }
 }
 
 function codeOf(error: unknown, conflict: ProductsError): ProductsError {
@@ -476,13 +492,11 @@ function codeOf(error: unknown, conflict: ProductsError): ProductsError {
       return 'not_found';
     case 409:
       return conflict;
-    default: {
-      // The API names the field it refused first, `field: why` (the product processors' documented contract).
-      const detail = (error.error as { detail?: unknown } | null)?.detail;
-      return typeof detail === 'string' && detail.startsWith('tracking:')
+    default:
+      // Stock that has moved keeps a product's tracking: the screen says so as a whole, not under the field.
+      return refusalsIn(error.error).some(({ reason }) => reason === 'tracking_kept_by_stock')
         ? 'tracking_kept'
         : 'invalid';
-    }
   }
 }
 

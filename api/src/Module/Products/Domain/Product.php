@@ -180,7 +180,7 @@ class Product implements CompanyOwned
     public static function trackingFor(ProductTracking $tracking, ProductKind $kind): ProductTracking
     {
         if (ProductTracking::None !== $tracking && ProductKind::Service === $kind) {
-            throw new InvalidProduct('tracking', 'A service holds no stock, so it is tracked neither by lot nor by serial.');
+            throw new InvalidProduct('tracking', 'A service holds no stock, so it is tracked neither by lot nor by serial.', 'service_untracked');
         }
 
         return $tracking;
@@ -323,7 +323,7 @@ class Product implements CompanyOwned
     private function unitOfThisCompany(Unit $unit): Unit
     {
         if (!$unit->getCompany()->getId()->equals($this->company->getId())) {
-            throw new InvalidProduct('unitId', 'A product is sold in a unit of its own company.');
+            throw new InvalidProduct('unitId', 'A product is sold in a unit of its own company.', 'unknown_choice');
         }
 
         return $unit;
@@ -332,7 +332,7 @@ class Product implements CompanyOwned
     private function categoryOfThisCompany(?ProductCategory $category): ?ProductCategory
     {
         if (null !== $category && !$category->getCompany()->getId()->equals($this->company->getId())) {
-            throw new InvalidProduct('categoryId', 'A product belongs to a category of its own company.');
+            throw new InvalidProduct('categoryId', 'A product belongs to a category of its own company.', 'unknown_choice');
         }
 
         return $category;
@@ -342,7 +342,7 @@ class Product implements CompanyOwned
     {
         $reference = trim($reference);
         if (1 !== preg_match(self::REFERENCE, $reference)) {
-            throw new InvalidProduct('reference', \sprintf('"%s" is not a product reference: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $reference));
+            throw new InvalidProduct('reference', \sprintf('"%s" is not a product reference: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $reference), 'invalid_reference', ['max' => 32]);
         }
 
         return $reference;
