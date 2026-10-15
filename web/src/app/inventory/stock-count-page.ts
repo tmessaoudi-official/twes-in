@@ -164,11 +164,18 @@ export class StockCountPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId || !this.auth.hasPermission('stock.write')) return { kind: 'unclaimed' };
 
-    const located = locationScanned(scan.code, this.facade.locations());
+    const located = locationScanned(scan.code, this.facade.locations(), this.locationId());
+    if (located?.kind === 'ambiguous') {
+      return {
+        kind: 'refused',
+        key: 'inventory.scan.location_ambiguous',
+        params: { code: scan.code.trim() },
+      };
+    }
     if (located !== null) {
       const before = this.locationId();
-      this.locationId.set(located);
-      const name = this.locations().find(([id]) => id === located)?.[1] ?? scan.code;
+      this.locationId.set(located.id);
+      const name = this.locations().find(([id]) => id === located.id)?.[1] ?? scan.code;
       return {
         kind: 'done',
         key: 'inventory.count.at_location',

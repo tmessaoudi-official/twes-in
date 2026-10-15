@@ -145,13 +145,14 @@ const products: StockProductOption[] = [
 ];
 
 const levelsSignal = signal<readonly StockLevelRow[]>([shortage]);
+const locationsSignal = signal<readonly StockLocationRow[]>([site, rack]);
 
 describe('StockPage', () => {
   const error = signal<InventoryError | null>(null);
   const facade = {
     options: signal<StockOptions | null>(options).asReadonly(),
     levels: levelsSignal.asReadonly(),
-    locations: signal<readonly StockLocationRow[]>([site, rack]).asReadonly(),
+    locations: locationsSignal.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     total: signal(1).asReadonly(),
@@ -748,6 +749,39 @@ describe('StockPage', () => {
       await settle();
       await scanned('R1');
       expect(values()['locationId']).toBe('l2');
+    });
+
+    it('takes a code another shop also uses in the shop of the place in hand, and asks for the label where it names neither', async () => {
+      // A code is used once per establishment: another shop holds an « R1 » too, listed first.
+      const elsewhere = { ...rack, id: 'l9', establishmentId: 'e2', parentId: null };
+      const third = {
+        ...site,
+        id: '0192a0b1-0000-7000-8000-000000000007',
+        establishmentId: 'e3',
+        code: '002',
+      };
+      locationsSignal.set([elsewhere, site, rack, third]);
+      try {
+        q('stock-move')!.click();
+        await settle();
+        expect(await scanned('R1')).toMatchObject({ kind: 'done' });
+        expect(values()['toLocationId']).toBe('l2');
+
+        q('stock-movement-cancel')!.click();
+        await settle();
+        q('stock-receive')!.click();
+        await settle();
+        await scanned(`https://twes.example/stock/locations/${third.id}`);
+        expect(values()['locationId']).toBe(third.id);
+        expect(await scanned('R1')).toEqual({
+          kind: 'refused',
+          key: 'inventory.scan.location_ambiguous',
+          params: { code: 'R1' },
+        });
+        expect(values()['locationId']).toBe(third.id);
+      } finally {
+        locationsSignal.set([site, rack]);
+      }
     });
 
     it('leaves a scan to the card with no movement open, or when the picker does not answer the product', async () => {

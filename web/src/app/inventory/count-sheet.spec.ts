@@ -72,18 +72,42 @@ describe('the count sheet', () => {
       locationScanned(
         'https://twes.example/stock/locations/0192a0b1-0000-7000-8000-000000000001',
         locations,
+        null,
       ),
-    ).toBe('0192a0b1-0000-7000-8000-000000000001');
-    expect(locationScanned('A-R1', locations)).toBe('0192a0b1-0000-7000-8000-000000000001');
-    expect(locationScanned('a-r1', locations)).toBeNull();
-    expect(locationScanned('3017620422003', locations)).toBeNull();
+    ).toEqual({ kind: 'found', id: '0192a0b1-0000-7000-8000-000000000001' });
+    expect(locationScanned('A-R1', locations, null)).toEqual({
+      kind: 'found',
+      id: '0192a0b1-0000-7000-8000-000000000001',
+    });
+    expect(locationScanned('a-r1', locations, null)).toBeNull();
+    expect(locationScanned('3017620422003', locations, null)).toBeNull();
     // An address of a location this company does not have is not one of its locations.
     expect(
       locationScanned(
         'https://twes.example/stock/locations/0192a0b1-0000-7000-8000-00000000000f',
         locations,
+        null,
       ),
     ).toBeNull();
+  });
+
+  it('takes a code another establishment also uses where the place in hand is, and none when that names neither', () => {
+    // A code is used once per establishment: another shop may hold an « R1 » too, listed first here.
+    const locations = [
+      { ...location('l9', 'R1'), establishmentId: 'e2' },
+      location('l1', 'R1'),
+      location('l5', 'B'),
+      { ...location('l7', 'C'), establishmentId: 'e2' },
+      { ...location('l8', 'D'), establishmentId: 'e3' },
+    ];
+
+    expect(locationScanned('R1', locations, 'l5')).toEqual({ kind: 'found', id: 'l1' });
+    expect(locationScanned('R1', locations, 'l7')).toEqual({ kind: 'found', id: 'l9' });
+    expect(locationScanned('R1', locations, null)).toEqual({ kind: 'ambiguous' });
+    expect(locationScanned('R1', locations, 'l8')).toEqual({ kind: 'ambiguous' });
+    expect(locationScanned('R1', locations, 'unknown')).toEqual({ kind: 'ambiguous' });
+    // A code used once is that place, whichever establishment is in hand; its label always is.
+    expect(locationScanned('C', locations, 'l5')).toEqual({ kind: 'found', id: 'l7' });
   });
 
   it('records a line once it has a whole count, and a tracked product only with its lot', () => {

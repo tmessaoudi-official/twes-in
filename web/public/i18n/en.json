@@ -2742,7 +2742,8 @@
     },
     "scan": {
       "filled": "{{name}}: article, lot and quantity filled in",
-      "location_set": "{{name}}: location filled in"
+      "location_set": "{{name}}: location filled in",
+      "location_ambiguous": "The code “{{code}}” names a location in several establishments: scan the location’s label."
     },
     "count": {
       "title": "Count",
