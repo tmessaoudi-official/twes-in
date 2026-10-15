@@ -78,6 +78,12 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-15 11:18] AGREED: L-605b slice 2: an expense line's refusal is said under that line's own field in the bill, and the person lands on it.
 - [2026-10-15 11:18] AGREED: L-605b slice 2: a product's name, description and substitution group refuse as « Texte refusé : {{max}} caractères au plus. » on the form and in the file, as a customer's name does.
 - [2026-10-15 11:18] AGREED: L-605b slice 2 leaves the expense payment dialog (paid on, withholding, TEJ code) out; it goes to the ledger as a follow-up.
+- [2026-10-15 12:52] AGREED: L-1112: a tracking refusal's top line falls back to the products form's generic refused text; the exact sentence stays under the tracking field, as every other refused product field (developer, closing question of slice 2).
+- [2026-10-15 12:52] AGREED: unknown_identifier gets a French and English text now, its wording proposed and confirmed before it is written (developer, closing question of slice 2).
+- [2026-10-15 12:52] AGREED: Next: all four of L-1113 (bell amounts), L-605c (payment dialog refusals), L-1111 (expense line decimals) and the held rulings; order and approach re-asked for confirmation or challenge (developer, closing question of slice 2).
+- [2026-10-15 12:58] AGREED: unknown_identifier's text: FR « Ce pays ne prévoit pas de numéro « {{identifier}} ». », EN "This country has no “{{identifier}}” number." (developer).
+- [2026-10-15 12:58] AGREED: Order: slice 2's tail (L-1112, unknown_identifier text), L-1111, L-1113, L-605c, then the held rulings one batch at a time (developer).
+- [2026-10-15 12:59] AGREED: L-1113: each publisher of an amount-bearing notification adds the currency's scale beside currency; each notification type lists its amount keys, which the bell formats with the screen's separator; an older notification without a scale keeps the decimals it was sent with (developer).
 
 ## Formal Plan
 

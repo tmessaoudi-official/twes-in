@@ -10,9 +10,7 @@ export type ProductsError =
   | 'name_taken'
   | 'in_use'
   | 'invalid'
-  | 'barcode_taken'
-  /** Stock of the product has moved, so how it is told apart stays as it moved (docs/SPEC.md § 7, 2026-09-23 02:40). */
-  | 'tracking_kept';
+  | 'barcode_taken';
 
 export type ProductKind = 'goods' | 'service';
 export const PRODUCT_KINDS: readonly ProductKind[] = ['goods', 'service'];

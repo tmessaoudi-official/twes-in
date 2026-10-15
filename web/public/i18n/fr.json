@@ -2057,8 +2057,7 @@
       "name_taken": "Une autre catégorie porte déjà ce nom.",
       "in_use": "La catégorie contient encore des sous-catégories ou des produits.",
       "invalid": "La modification a été refusée. Vérifiez l’unité, les prix et les taxes.",
-      "barcode_taken": "Ce code est déjà celui d’un autre article.",
-      "tracking_kept": "Du stock de cet article a déjà bougé : la façon de le suivre reste celle sous laquelle il a bougé."
+      "barcode_taken": "Ce code est déjà celui d’un autre article."
     },
     "categories": {
       "title": "Catégories de produits",
@@ -3652,6 +3651,7 @@
       "identifier_required": "Ce numéro d’immatriculation est obligatoire pour ce régime.",
       "identifier_shape": "Ce numéro d’immatriculation n’a pas la forme attendue.",
       "identifier_checksum": "Ce numéro d’immatriculation est mal formé : la clé de contrôle ne tombe pas juste.",
+      "unknown_identifier": "Ce pays ne prévoit pas de numéro « {{identifier}} ».",
       "barcode_taken": "Ce code-barres est déjà celui de « {{reference}} » : un code ne désigne qu’un produit.",
       "unit_kept_by_stock": "Du stock de ce produit a déjà bougé en « {{unit}} » : il garde cette unité.",
       "kind_kept_by_stock": "Du stock de ce produit a déjà bougé : il reste une marchandise.",

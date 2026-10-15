@@ -69,8 +69,6 @@ final class RefusalReasonsTest extends KernelTestCase
      */
     public function testEveryReasonADomainRefusesAFieldWithIsTranslated(): void
     {
-        // No form reaches it: a form offers only the identifiers its preset declares, and its words are not ruled yet.
-        $unreachable = ['unknown_identifier'];
         $root = \dirname(__DIR__, 2);
         $translated = self::translated();
         $statements = 0;
@@ -87,7 +85,7 @@ final class RefusalReasonsTest extends KernelTestCase
                     ++$statements;
                     preg_match_all("/'([a-z]+(?:_[a-z]+)+)'/", $arguments, $reasons);
                     foreach ($reasons[1] ?: ['invalid_value'] as $reason) {
-                        if (!\array_key_exists($reason, $translated) && !\in_array($reason, $unreachable, true)) {
+                        if (!\array_key_exists($reason, $translated)) {
                             $untranslated[] = "$reason in {$file->getFilename()}";
                         }
                     }
