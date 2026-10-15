@@ -400,9 +400,10 @@ final readonly class ManageExpenses
     private function amounts(Company $company, ExpenseInput $input): ExpenseAmounts
     {
         $lines = [];
+        $scale = $this->scales->of($company->getCurrency());
         foreach ($input->lines as $at => $line) {
             try {
-                $lines[] = new ExpenseAmountLine($line['amountNet'], array_map(fn (Uuid $id): TaxComponent => $this->tax($company, $id, 'taxComponentIds'), $line['taxComponentIds']));
+                $lines[] = new ExpenseAmountLine($line['amountNet'], array_map(fn (Uuid $id): TaxComponent => $this->tax($company, $id, 'taxComponentIds'), $line['taxComponentIds']), $scale);
             } catch (InvalidExpense $refused) {
                 throw $refused->within("lines[$at]");
             }

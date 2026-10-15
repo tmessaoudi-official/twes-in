@@ -64,7 +64,7 @@ final class ExpenseTest extends TestCase
     public function testANetOfZeroOrFinerThanTheCurrencyIsRefused(): void
     {
         foreach (['0', '0.000', '-3', '1.2345', 'ten'] as $net) {
-            $this->assertRefused('lines[0].amountNet', static fn () => ExpenseAmounts::one($net), $net);
+            $this->assertRefused('lines[0].amountNet', static fn () => ExpenseAmounts::one($net, 3), $net);
         }
         $this->assertRefused('lines[0].amountNet', fn () => $this->create($this->acme, '10.005', null, null, null, 2), 'a euro has two decimals');
     }
@@ -113,15 +113,15 @@ final class ExpenseTest extends TestCase
 
         $this->assertRefused('categoryId', fn () => $expense->record($this->now), 'an expense is recorded under a category');
 
-        self::assertSame(['lines', 'categoryId'], $expense->revise($this->details(), ExpenseAmounts::one('20', $this->vat19), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now));
-        self::assertSame([], $expense->revise($this->details(), ExpenseAmounts::one('20', $this->vat19), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now));
+        self::assertSame(['lines', 'categoryId'], $expense->revise($this->details(), ExpenseAmounts::one('20', 3, $this->vat19), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now));
+        self::assertSame([], $expense->revise($this->details(), ExpenseAmounts::one('20', 3, $this->vat19), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now));
         self::assertSame(['23.800'], [$expense->getAmountGross()]);
 
         $expense->record($this->now);
         self::assertSame(ExpenseStatus::Recorded, $expense->getStatus());
 
         $this->expectException(ExpenseTransitionRefused::class);
-        $expense->revise($this->details(), ExpenseAmounts::one('30', null), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now);
+        $expense->revise($this->details(), ExpenseAmounts::one('30', 3, null), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now);
     }
 
     public function testARecordedExpenseIsPaidOnADayFromItsDateToToday(): void
@@ -266,7 +266,7 @@ final class ExpenseTest extends TestCase
     /** A receipt: one line at one rate or none. */
     private function create(Company $company, string $net, ?Vendor $vendor, ?ExpenseCategory $category, ?TaxComponent $tax, int $scale, ?ExpenseDetails $details = null): Expense
     {
-        return Expense::create($company, $details ?? $this->details(), ExpenseAmounts::one($net, $tax), $vendor, $category, $scale, RoundingPoint::PerRateGroup, $this->now);
+        return Expense::create($company, $details ?? $this->details(), ExpenseAmounts::one($net, $scale, $tax), $vendor, $category, $scale, RoundingPoint::PerRateGroup, $this->now);
     }
 
     private function percentage(Company $company, string $code, string $rate, int $scale): TaxComponent

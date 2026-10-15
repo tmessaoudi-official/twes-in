@@ -103,7 +103,7 @@ final class DeclareTejWithholdingsTest extends TestCase
         $fodec = TaxComponent::create($this->acme, 'FODEC', 'FODEC', TaxFamily::Levy, '1', null, null, true, false, null, 1, 3, $this->now);
         $vat7 = TaxComponent::create($this->acme, 'TVA7', 'TVA7', TaxFamily::Vat, '7', null, null, false, false, null, 2, 3, $this->now);
         $stamp = TaxComponent::create($this->acme, 'TIMBRE', 'Timbre', TaxFamily::Stamp, null, '1.000', null, false, false, null, 3, 3, $this->now);
-        $bill = new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $fodec]), new ExpenseAmountLine('200', [$vat7])], [$stamp]);
+        $bill = new ExpenseAmounts([new ExpenseAmountLine('1000', [$this->vat19, $fodec], 3), new ExpenseAmountLine('200', [$vat7], 3)], [$stamp]);
         $expense = Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable('2026-09-01'), 'Quincaillerie', 'F-77'), $bill, $this->sotumag, $this->purchases, 3, RoundingPoint::PerRateGroup, $this->now);
         $expense->record($this->now);
         $expense->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-10'), new \DateTimeImmutable('2026-09-20'), $this->now, '1.5', 3, TejOperationCode::Rs7_000001);
@@ -177,7 +177,7 @@ final class DeclareTejWithholdingsTest extends TestCase
     private function paid(string $net, string $paidOn, string $rate, ?TejOperationCode $code = null, string $date = '2026-09-01', string $today = '2026-09-20', Vendor|bool $vendor = true): Expense
     {
         $from = true === $vendor ? $this->sotumag : (false === $vendor ? null : $vendor);
-        $expense = Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable($date), 'Achat '.$net, 'F-'.$net), ExpenseAmounts::one($net, $this->vat19), $from, $this->purchases, 3, RoundingPoint::PerRateGroup, $this->now);
+        $expense = Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable($date), 'Achat '.$net, 'F-'.$net), ExpenseAmounts::one($net, 3, $this->vat19), $from, $this->purchases, 3, RoundingPoint::PerRateGroup, $this->now);
         $expense->record($this->now);
         $expense->pay(PaymentMethod::Transfer, new \DateTimeImmutable($paidOn), new \DateTimeImmutable($today), $this->now, $rate, 3, $code);
         self::assertSame(ExpenseStatus::Paid, $expense->getStatus());

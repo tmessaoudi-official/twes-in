@@ -37,12 +37,14 @@ final readonly class ExpenseAmounts
     /**
      * A bill of one line, at one rate or none: a receipt.
      *
+     * @param int $currencyScale the company currency's decimals
+     *
      * @throws InvalidExpense
      */
-    public static function one(string $amountNet, ?TaxComponent $tax = null): self
+    public static function one(string $amountNet, int $currencyScale, ?TaxComponent $tax = null): self
     {
         try {
-            $line = new ExpenseAmountLine($amountNet, null === $tax ? [] : [$tax]);
+            $line = new ExpenseAmountLine($amountNet, null === $tax ? [] : [$tax], $currencyScale);
         } catch (InvalidExpense $refused) {
             throw $refused->within('lines[0]');
         }
