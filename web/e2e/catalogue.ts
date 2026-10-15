@@ -40,6 +40,27 @@ export async function aProduct(page: Page, reference: string): Promise<string> {
   );
 }
 
+/** Creates an individual customer through the API; a customer is never deleted, so each run leaves one. */
+export async function aCustomer(page: Page, number: string): Promise<void> {
+  await page.evaluate(
+    async ([csrf, customerNumber]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const created = await fetch(`/api/companies/${me.company.id}/customers`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({
+          number: customerNumber,
+          kind: 'individual',
+          taxRegime: 'standard',
+          name: `Client ${customerNumber}`,
+        }),
+      });
+      if (!created.ok) throw new Error(`creating ${customerNumber} answered ${created.status}`);
+    },
+    [CSRF, number] as const,
+  );
+}
+
 /** Frees the run's codes and retires its products, so the next run can scan the same shelf. */
 export async function forget(page: Page, ids: string[]): Promise<void> {
   await page.evaluate(

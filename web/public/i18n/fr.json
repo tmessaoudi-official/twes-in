@@ -3820,6 +3820,7 @@
     "title": "Affichage client",
     "welcome": "Bienvenue",
     "shelf_price": "Prix affiché, toutes taxes comprises",
+    "unit_price": "Prix unitaire, toutes taxes comprises",
     "excl_tax": "Hors taxes :",
     "total": "Total :",
     "open": "Ouvrir l’affichage client"

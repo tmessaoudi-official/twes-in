@@ -41,6 +41,7 @@ import { ProductScans } from '../products/product-scans';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { placedOutcome, scanIntoLines, scannedLot } from '../shared/scan/scan-lines';
 import { CustomerDisplay } from '../shared/customer-display/customer-display';
+import { linePriced } from '../shared/customer-display/line-price';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { DeliveryNoteCreditNotice } from './delivery-note-credit-notice';
 import { DeliveryNoteLines } from './delivery-note-lines';
@@ -120,6 +121,11 @@ export class DeliveryNotePage {
   private readonly linesEditor = viewChild(DeliveryNoteLines);
   /** Set once the note was created and is opened at its own address, which the customer display keeps showing. */
   private handedOver = false;
+  /**
+   * The line the customer display shows, which a scan of this tab's put there. A plain field, not a signal: the line's
+   * own price is taken only from figures that arrive after the scan, never from an answer worked out before it.
+   */
+  private onDisplay: { readonly line: LineGroup; readonly name: string } | null = null;
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `delivery-notes/new`. */
   readonly deliveryNoteId = input<string | undefined>(undefined);
@@ -556,13 +562,14 @@ export class DeliveryNotePage {
     const line = lines.at(placed.index);
     this.linesEditor()?.scanned(line, product);
     // The customer sees the line the scan went onto at the product's shelf price with taxes, which the display labels
-    // as such: the line's own price, after a list or a discount, is not worked out yet when the scan lands.
+    // as such: the line's own price, after a list or a discount, takes its place once the line's figures arrive.
     this.display.show({
       name: product.name,
       quantity: placed.quantity,
       unitPrice: named.unitPriceGross,
       unitPriceNet: named.unitPriceNet,
     });
+    this.onDisplay = { line, name: product.name };
     return placedOutcome(
       {
         ...placed,
@@ -570,6 +577,7 @@ export class DeliveryNotePage {
           placed.undo();
           // A count taken back may fall below the list's quantity break the scan reached.
           if (!placed.added) this.linesEditor()?.scanned(line, product);
+          this.onDisplay = null;
           this.display.clear();
         },
       },
@@ -584,6 +592,22 @@ export class DeliveryNotePage {
     inject(ScreenActions).declare(this.actions);
     const scans = inject(ScanBus);
     scans.handle((scan) => this.scanned(scan));
+    effect(() => {
+      const figures = this.figures();
+      untracked(() => {
+        const shown = this.onDisplay;
+        const lines = this.lines();
+        const options = this.options();
+        if (figures === null || shown === null || lines === null || options === null) return;
+        const item = linePriced(
+          shown.name,
+          shown.line.controls.quantity.value,
+          figures.lines[lines.controls.indexOf(shown.line)],
+          options.currencyScale,
+        );
+        if (item !== null) this.display.reprice(item);
+      });
+    });
     inject(DestroyRef).onDestroy(() => {
       if (!this.handedOver) this.display.clear();
     });

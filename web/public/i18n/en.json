@@ -3820,6 +3820,7 @@
     "title": "Customer display",
     "welcome": "Welcome",
     "shelf_price": "Price shown, taxes included",
+    "unit_price": "Unit price, taxes included",
     "excl_tax": "Excluding tax:",
     "total": "Total:",
     "open": "Open the customer display"

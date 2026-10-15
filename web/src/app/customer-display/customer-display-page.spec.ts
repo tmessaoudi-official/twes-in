@@ -72,6 +72,19 @@ describe('CustomerDisplayPage', () => {
     expect(q('customer-display-total')).toBeNull();
   });
 
+  it('names the price shown: the shelf’s until the line’s own is worked out, then the unit price the line charges', () => {
+    fixture = TestBed.createComponent(CustomerDisplayPage);
+    const sender = TestBed.inject(CustomerDisplay);
+    sender.show({ name: 'Vis', quantity: '2', unitPrice: '1.190' });
+    fixture.detectChanges();
+    expect(q('customer-display-price-kind')?.textContent).toContain('customer_display.shelf_price');
+
+    sender.reprice({ name: 'Vis', quantity: '2', unitPrice: '1.071', priced: 'line' });
+    fixture.detectChanges();
+    expect(q('customer-display-line')?.textContent).toContain('~1.071 TND');
+    expect(q('customer-display-price-kind')?.textContent).toContain('customer_display.unit_price');
+  });
+
   it("says the quantity in the screen's figures, without the zeros its scale pads it with", () => {
     // « 2.000 × » read as the API's decimal string, not as the customer reads a count (sweep 2026-10-09).
     fixture = TestBed.createComponent(CustomerDisplayPage);
@@ -89,7 +102,7 @@ describe('CustomerDisplayPage', () => {
 
     sender.show({ name: 'Vis', quantity: '2', unitPrice: '1.190', unitPriceNet: '1.000' });
     fixture.detectChanges();
-    expect(q('customer-display-shelf')).not.toBeNull();
+    expect(q('customer-display-price-kind')).not.toBeNull();
     expect(q('customer-display-net')).toBeNull();
     expect(settings.chain).toHaveBeenCalledWith('c1', 'articles');
 

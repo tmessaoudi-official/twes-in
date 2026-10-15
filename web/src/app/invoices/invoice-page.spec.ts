@@ -285,7 +285,13 @@ describe('InvoicePage', () => {
   let country: string | undefined;
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
   const inventory = { onHand: vi.fn() };
-  const display = { show: vi.fn(), total: vi.fn(), clear: vi.fn(), openWindow: vi.fn() };
+  const display = {
+    show: vi.fn(),
+    total: vi.fn(),
+    reprice: vi.fn(),
+    clear: vi.fn(),
+    openWindow: vi.fn(),
+  };
   const recurring = { create: vi.fn() };
   const granted = new Set<string>();
   const modulesOn = new Set<string>();
@@ -2120,6 +2126,44 @@ describe('InvoicePage', () => {
       TestBed.inject(ScanBus).undoLast();
       await settle();
       expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '1');
+    });
+
+    it('shows the customer display the line’s own price once its figures are worked out', async () => {
+      invoice.set({ ...draft, lines: [] });
+      await open('i1');
+      facade.pickProducts.mockResolvedValue(products);
+      scans.named.mockResolvedValue(coffee);
+      facade.preview.mockResolvedValue({
+        lines: [
+          {
+            amount: '1800.000',
+            discount: '180.000',
+            net: '1620.000',
+            documentDiscount: '20.000',
+            taxes: [{ code: 'TVA19', base: '1600.000', amount: '304.000' }],
+            total: '1904.000',
+            sentFrom: 0,
+          },
+        ],
+        total: '1905.000',
+        netToPay: '1905.000',
+      });
+
+      await scanned('3017620422003');
+      expect(display.show).toHaveBeenLastCalledWith(
+        expect.objectContaining({ unitPrice: '1.190' }),
+      );
+      await settle();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await settle();
+
+      expect(display.reprice).toHaveBeenLastCalledWith({
+        name: 'Conception',
+        quantity: '1',
+        unitPrice: '1904.000',
+        unitPriceNet: '1600.000',
+        priced: 'line',
+      });
     });
 
     it('shows the customer display what the sale comes to as typed, not as last saved', async () => {

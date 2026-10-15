@@ -40,8 +40,8 @@ export const CUSTOMER_DISPLAY_CHANNEL = new InjectionToken<DisplayChannelOpener>
 );
 
 /**
- * The line a scan last went onto: its product, how many the line now holds, and one's price, taxes included, which
- * is the price shown on the shelf, since it is the product's own and not yet the line's.
+ * The line a scan last went onto: its product, how many the line now holds, and one's price, taxes included: the
+ * shelf's when the scan lands, then the line's own, after its price list and discounts, once the figures are worked out.
  */
 export interface DisplayItem {
   readonly name: string;
@@ -49,6 +49,8 @@ export interface DisplayItem {
   readonly unitPrice: string;
   /** One's price without tax, shown beside the other only when the company asks. */
   readonly unitPriceNet?: string;
+  /** Whose price it is: the product's on the shelf, which a scan starts with, or the one the line charges. */
+  readonly priced?: 'shelf' | 'line';
 }
 
 /** What the customer display shows: the last line scanned and, once the sale was saved, what it comes to. */
@@ -94,6 +96,12 @@ export class CustomerDisplay {
     const currency = this.session.me()?.company?.currency;
     if (currency === undefined) return;
     this.send({ item, total: null, currency });
+  }
+
+  /** The line's own price in place of the shelf's, the total kept; said only by a tab whose scan the display shows. */
+  reprice(item: DisplayItem): void {
+    if (this.state === null || this.state.item === null) return;
+    this.send({ ...this.state, item });
   }
 
   /** What the sale comes to as saved; said only by a tab whose scans the display is showing. */
