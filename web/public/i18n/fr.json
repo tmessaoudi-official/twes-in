@@ -4807,7 +4807,7 @@
   "recurring": {
     "tab": "Récurrentes",
     "title": "Factures récurrentes",
-    "intro": "Une facture qui revient à intervalle régulier : toutes les semaines, tous les deux mois, le dernier vendredi du trimestre, chaque année le 31 octobre. À chaque échéance, une copie est préparée en brouillon pour qu’une personne la vérifie et l’émette : rien ne part seul. On en crée une depuis une facture, avec « Rendre récurrente ».",
+    "intro": "Une facture qui revient à intervalle régulier : toutes les semaines, tous les deux mois, le dernier vendredi tous les trois mois, chaque année le 31 octobre. À chaque échéance, une copie est préparée en brouillon pour qu’une personne la vérifie et l’émette : rien ne part seul. On en crée une depuis une facture, avec « Rendre récurrente ».",
     "no_company": "Choisissez une entreprise pour voir ses factures récurrentes.",
     "none": "Aucune facture récurrente. Ouvrez une facture et choisissez « Rendre récurrente » dans « ⋮ ».",
     "columns": {
@@ -4854,7 +4854,7 @@
       "invalid": "La facture récurrente n’a pas pu être enregistrée.",
       "not_found": "Cette facture récurrente n’existe plus.",
       "network": "Le serveur ne répond pas. Réessayez dans un instant.",
-      "modelInvoiceId": "Un avoir ou une facture d’acompte ne se rend pas récurrent.",
+      "modelInvoiceId": "Un avoir, une facture d’acompte ou une facture annulée ne se rend pas récurrent.",
       "startsOn": "Le premier brouillon se fait aujourd’hui ou plus tard, jamais un jour passé.",
       "endsOn": "Le dernier jour vient le jour du premier brouillon ou après."
     }

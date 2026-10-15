@@ -4807,7 +4807,7 @@
   "recurring": {
     "tab": "Recurring",
     "title": "Recurring invoices",
-    "intro": "An invoice that comes back at a regular interval: every week, every two months, the last Friday of the quarter, every year on 31 October. On each due day a copy is prepared as a draft for a person to check and issue: nothing goes out by itself. Make one from an invoice, with « Make recurring ».",
+    "intro": "An invoice that comes back at a regular interval: every week, every two months, the last Friday every three months, every year on 31 October. On each due day a copy is prepared as a draft for a person to check and issue: nothing goes out by itself. Make one from an invoice, with « Make recurring ».",
     "no_company": "Choose a company to see its recurring invoices.",
     "none": "No recurring invoice. Open an invoice and choose « Make recurring » in « ⋮ ».",
     "columns": {
@@ -4854,7 +4854,7 @@
       "invalid": "The recurring invoice could not be saved.",
       "not_found": "This recurring invoice no longer exists.",
       "network": "The server is not answering. Try again in a moment.",
-      "modelInvoiceId": "A credit note or a deposit invoice is not made recurring.",
+      "modelInvoiceId": "A credit note, a deposit invoice or a cancelled invoice is not made recurring.",
       "startsOn": "The first draft is made today or later, never on a day already past.",
       "endsOn": "The last day comes on the day of the first draft or after it."
     }

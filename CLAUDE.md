@@ -169,8 +169,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   functions and `DataList` (given a `total`, it shows the page the API answered and emits `queryChange`); `form/`: `FormDescriptor`, `buildFormGroup` and `DescriptorForm`, and `DecimalInput` (`kind: 'decimal'`, or `appDecimal` on a hand-written input: the screen's decimal separator shown, a comma or a point taken, the API's point kept in the control); `liveRecord`, which merges another person's save into an open editor field by field over `mergeSavedVersion` and `RecordSync`, with the `RecordChanged` banner and `PartConflict` for what merges as one field, such as a document's lines), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
   `public/i18n/{fr,en}.json` with a parity test; the texts only one page reads in `public/i18n/<page>/{fr,en}.json`,
-  fetched when it first opens (`textsPart('<page>')` on its route, `shared/i18n/texts-part.ts`; « Mon compte » so far),
-  added to the parity spec's `parts` and measured on their own by the budget gate.
+  fetched when it first opens (`textsPart('<page>')` on its route, `shared/i18n/texts-part.ts`; « Mon compte » and the
+  expense pages), added to the parity spec's `parts` and measured on their own by the budget gate; texts several screens
+  and dialogs read (the schedule's, `public/i18n/schedule/`) are opened into the root instead, by `textsOpened(name)` on
+  a route or `await TextsParts.open(name)` before a dialog, and a screen that says them without opening them shows keys.
 - `api/translations/*.{fr,en}.yaml` — the only strings the API itself emits: the invitation mail (`emails`), fiscal
   labels and mentions (`fiscal`), and printed documents (`pdf`, laid out in `api/templates/pdf/`, whose `_document.css.twig` every document shares with the
   built-in layouts and the accent, and rendered by
@@ -518,3 +520,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - An effect keyed on `auth.me()?.company?.id ?? null` fires again when the person signs out, and its call answers 401:
   « Se déconnecter » landed on « Votre session a pris fin ». Treat signed-out as its own state and ask nothing then
   (`NotificationBell`); `RequestActivity` takes no 401 for an ended session once nobody is signed in (2026-10-14).
+- `app.routes.ts` is on the first page, so a constant it imports from a feature's module brings that whole module with it:
+  `SCHEDULE_TEXTS` from `schedule.ts` put the first page 2.77 kB over its 1 MB. Keep such a constant in a file of its own
+  (`shared/schedule/schedule-texts.ts`), and measure the first page before a web slice, not after (2026-10-15).
