@@ -65,6 +65,24 @@ describe('CustomerDisplay', () => {
     expect(display.shown()?.total).toBeNull();
   });
 
+  it('puts the line’s own price in place of the shelf price, keeping the total, and only on a display this tab feeds', () => {
+    const display = aDisplay();
+    const sender = TestBed.inject(CustomerDisplay);
+
+    sender.reprice({ name: 'Vis', quantity: '1', unitPrice: '0.900', priced: 'line' });
+    expect(display.shown()).toBeNull();
+
+    sender.show({ name: 'Vis', quantity: '2', unitPrice: '1.190' });
+    sender.total('11.900');
+    sender.reprice({ name: 'Vis', quantity: '2', unitPrice: '1.071', priced: 'line' });
+
+    expect(display.shown()).toEqual({
+      item: { name: 'Vis', quantity: '2', unitPrice: '1.071', priced: 'line' },
+      total: '11.900',
+      currency: 'TND',
+    });
+  });
+
   it('never shows a total the tab did not feed a scan for: browsing documents says nothing to the customer', () => {
     const display = aDisplay();
     const sender = TestBed.inject(CustomerDisplay);

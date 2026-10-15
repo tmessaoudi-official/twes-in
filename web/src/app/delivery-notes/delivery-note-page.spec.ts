@@ -167,7 +167,13 @@ describe('DeliveryNotePage', () => {
   };
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
   const inventory = { onHand: vi.fn() };
-  const display = { show: vi.fn(), total: vi.fn(), clear: vi.fn(), openWindow: vi.fn() };
+  const display = {
+    show: vi.fn(),
+    total: vi.fn(),
+    reprice: vi.fn(),
+    clear: vi.fn(),
+    openWindow: vi.fn(),
+  };
   const granted = new Set<string>();
   const modules = new Set<string>(['delivery_notes', 'invoices']);
   const auth = {
@@ -1241,6 +1247,30 @@ describe('DeliveryNotePage', () => {
       await scanned('3017620422003');
       await settle();
       expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '2');
+    });
+
+    it('shows the customer display the line’s own price once its figures are worked out', async () => {
+      note.set({ ...draft, lines: [] });
+      await open('n1');
+      facade.pickProducts.mockResolvedValue(products);
+      scans.named.mockResolvedValue(laptop);
+      facade.preview.mockResolvedValue({
+        ...typedFigures,
+        lines: [{ ...typedFigures.lines[0]!, total: '4462.500', net: '3750.000' }],
+      });
+
+      await scanned('3017620422003');
+      await settle();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await settle();
+
+      expect(display.reprice).toHaveBeenLastCalledWith({
+        name: 'Portable 14"',
+        quantity: '1',
+        unitPrice: '4462.500',
+        unitPriceNet: '3750.000',
+        priced: 'line',
+      });
     });
 
     it('counts a product already on a draft line, and starts a line for another', async () => {

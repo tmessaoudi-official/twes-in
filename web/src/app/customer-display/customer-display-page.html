@@ -11,8 +11,13 @@
         <p class="m-0 text-4xl" data-testid="customer-display-line">
           {{ count(item.quantity) }} × {{ price(item.unitPrice, state.currency) }}
         </p>
-        <p class="m-0 text-lg opacity-80" data-testid="customer-display-shelf">
-          {{ 'customer_display.shelf_price' | translate }}
+        <p class="m-0 text-lg opacity-80" data-testid="customer-display-price-kind">
+          {{
+            (item.priced === 'line'
+              ? 'customer_display.unit_price'
+              : 'customer_display.shelf_price'
+            ) | translate
+          }}
         </p>
         @if (showsNet() && item.unitPriceNet; as net) {
           <p class="m-0 text-xl opacity-80" data-testid="customer-display-net">
