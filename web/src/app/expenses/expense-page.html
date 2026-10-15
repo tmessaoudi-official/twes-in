@@ -242,6 +242,7 @@
               [descriptor]="paymentDescriptor"
               [form]="paymentGroup"
               testId="expense-payment-form"
+              #paymentForm
               (submitted)="pay($event)"
             >
               <div class="flex flex-wrap justify-end gap-2">

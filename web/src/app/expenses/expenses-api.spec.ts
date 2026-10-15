@@ -452,7 +452,7 @@ describe('ExpensesApi', () => {
     await expect(restoreRecorded).rejects.toEqual(new ExpensesRefused('not_draft'));
   });
 
-  it('names each field a save or a recording was refused on, a line by its place', async () => {
+  it('names each field a save, a recording or a payment was refused on, a line by its place', async () => {
     const violations = (path: string, reason: string, params?: Record<string, unknown>) => ({
       violations: [{ propertyPath: path, message: 'x', payload: { reason, params } }],
     });
@@ -483,6 +483,19 @@ describe('ExpensesApi', () => {
       .flush(violations('categoryId', 'value_required'), unprocessable);
     await expect(recorded).rejects.toMatchObject({
       refusals: [{ field: 'categoryId', reason: 'value_required', params: {} }],
+    });
+
+    const paid = api.payExpense('c1', 'e1', {
+      paymentMethod: 'cash',
+      paidOn: '2026-09-01',
+      withholdingRate: '0',
+    });
+    http
+      .expectOne('/api/companies/c1/expenses/e1/pay')
+      .flush(violations('paidOn', 'paid_before_expense'), unprocessable);
+    await expect(paid).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'paidOn', reason: 'paid_before_expense', params: {} }],
     });
 
     // A category's and a file's refusals are about the row as a whole.

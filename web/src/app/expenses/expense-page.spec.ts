@@ -54,6 +54,9 @@ class StaticLoader implements TranslateLoader {
           one_vat_rate:
             'Une ligne porte un seul taux de TVA\u00a0: pour deux taux, faites deux lignes.',
           printed_tax_off: 'Ce montant s’écarte de plus de {{tolerance}} de ce que donne le taux.',
+          paid_before_expense: 'Date de règlement refusée : le jour de la dépense au plus tôt.',
+          invalid_withholding_rate:
+            'Retenue refusée : un pourcentage de 0 à 100, trois décimales au plus.',
         },
       },
     });
@@ -423,6 +426,30 @@ describe('ExpensePage', () => {
       'e1',
       expect.objectContaining({ paymentMethod: 'transfer' }),
     );
+  });
+
+  it('says a refused payment under the field it names, and puts the person on it', async () => {
+    expense.set({ ...draft, status: 'recorded' });
+    await open('e1');
+    facade.payExpense.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'paidOn', reason: 'paid_before_expense', params: {} },
+        { field: 'withholdingRate', reason: 'invalid_withholding_rate', params: {} },
+      ]);
+      return null;
+    });
+
+    q('expense-pay')!.click();
+    await settle();
+
+    expect(q('field-error-paidOn')?.textContent?.trim()).toBe(
+      'Date de règlement refusée : le jour de la dépense au plus tôt.',
+    );
+    expect(q('field-error-withholdingRate')?.textContent?.trim()).toBe(
+      'Retenue refusée : un pourcentage de 0 à 100, trois décimales au plus.',
+    );
+    expect(document.activeElement).toBe(q('field-paidOn'));
   });
 
   it("proposes the company's day, not the browser's, for an expense's date and its payment", async () => {

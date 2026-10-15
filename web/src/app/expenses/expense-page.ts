@@ -377,6 +377,8 @@ export class ExpensePage {
   private readonly mainForm = viewChild<DescriptorForm>('mainForm');
   /** The bill beside it, which says a line's refusal under that line. */
   private readonly billView = viewChild(ExpenseBill);
+  /** The payment's form, which says what the payment was refused on. */
+  private readonly paymentForm = viewChild<DescriptorForm>('paymentForm');
 
   /** From the bar beside the title, which holds no form of its own. */
   protected saveFromBar(): void {
@@ -475,7 +477,10 @@ export class ExpensePage {
     const companyId = this.company()?.id;
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
-    await this.facade.payExpense(companyId, id, paymentInput(values));
+    if ((await this.facade.payExpense(companyId, id, paymentInput(values))) === null) {
+      // What names no field of the payment stays on the line above the form.
+      this.paymentForm()?.showRefused(this.facade.refusals());
+    }
   }
 
   protected async classify(values: FormValues): Promise<void> {

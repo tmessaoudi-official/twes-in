@@ -3678,7 +3678,11 @@
       "service_untracked": "Un service n’a pas de stock : il n’est suivi ni par lot ni par numéro de série.",
       "invalid_amount": "Montant refusé : un nombre au-dessus de 0, {{decimals}} décimales au plus.",
       "one_vat_rate": "Une ligne porte un seul taux de TVA : pour deux taux, faites deux lignes.",
-      "printed_tax_off": "Ce montant s’écarte de plus de {{tolerance}} de ce que donne le taux."
+      "printed_tax_off": "Ce montant s’écarte de plus de {{tolerance}} de ce que donne le taux.",
+      "paid_before_expense": "Date de règlement refusée : le jour de la dépense au plus tôt.",
+      "paid_after_today": "Date de règlement refusée : aujourd’hui au plus tard.",
+      "invalid_withholding_rate": "Retenue refusée : un pourcentage de 0 à 100, trois décimales au plus.",
+      "tej_outside_tunisia": "Code TEJ refusé : il ne vaut que pour une entreprise sous le préréglage tunisien."
     },
     "action": "Importer",
     "notes_title": "À savoir",
