@@ -5140,6 +5140,21 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-15 11:18] AGREED: L-605b slice 2: an expense line's refusal is said under that line's own field in the bill, and the person lands on it.
 - [2026-10-15 11:18] AGREED: L-605b slice 2: a product's name, description and substitution group refuse as « Texte refusé : {{max}} caractères au plus. » on the form and in the file, as a customer's name does.
 - [2026-10-15 11:18] AGREED: L-605b slice 2 leaves the expense payment dialog (paid on, withholding, TEJ code) out; it goes to the ledger as a follow-up.
+- [2026-10-15 12:52] AGREED: L-1112: a tracking refusal's top line falls back to the products form's generic refused text; the exact sentence stays under the tracking field, as every other refused product field (developer, closing question of slice 2).
+- [2026-10-15 12:52] AGREED: unknown_identifier gets a French and English text now, its wording proposed and confirmed before it is written (developer, closing question of slice 2).
+- [2026-10-15 12:52] AGREED: Next: all four of L-1113 (bell amounts), L-605c (payment dialog refusals), L-1111 (expense line decimals) and the held rulings; order and approach re-asked for confirmation or challenge (developer, closing question of slice 2).
+- [2026-10-15 12:58] AGREED: unknown_identifier's text: FR « Ce pays ne prévoit pas de numéro « {{identifier}} ». », EN "This country has no “{{identifier}}” number." (developer).
+- [2026-10-15 12:58] AGREED: Order: slice 2's tail (L-1112, unknown_identifier text), L-1111, L-1113, L-605c, then the held rulings one batch at a time (developer).
+- [2026-10-15 12:59] AGREED: L-1113: each publisher of an amount-bearing notification adds the currency's scale beside currency; each notification type lists its amount keys, which the bell formats with the screen's separator; an older notification without a scale keeps the decimals it was sent with (developer).
+- [2026-10-15 14:03] AGREED: L-1113: the bell's text in a browser is named not certified by execution; no credit-limit e2e (developer).
+- [2026-10-15 14:03] AGREED: Before L-605c: all four tooling speed-ups (parallel gates, a fast pre-gate check, a mutation runner, tidying the noise), each challenged and re-asked before it is built (developer).
+- [2026-10-15 14:10] AGREED: Tooling #2: PHPStan's result cache kept in api/var/cache/phpstan and a make check FILES=… quick filter (php-cs-fixer, Prettier, cached PHPStan in one container); make gate stays the authority; a gate is timed before and after (developer).
+- [2026-10-15 14:10] AGREED: Tooling #3: our own small mutation runner (a list of chosen mutants, one container, landed and tally checks, plain-cp restore, cmp), tested in CI; not Infection or Stryker (developer).
+- [2026-10-15 14:10] AGREED: Tooling #4: the vitest ESM warning and the Prettier two-pass check only; the skipped schema tests and colour-free logs dropped (developer).
+- [2026-10-15 14:10] AGREED: Order: make gate from now on, then #4, #2, #3, then L-605c; a status check of the maturity rounds was asked first (developer).
+- [2026-10-15 14:14] AGREED: Back to screens as maturity: the never-built promises (D1, D2) are built screen by screen, each screen closing its open ledger items by kind; round 2 runs once the marking page is ruled (developer).
+- [2026-10-15 14:14] AGREED: The ruled tooling (#4, #2, #3) comes before the next screen (developer).
+- [2026-10-15 14:14] AGREED: L-1114: the API's mails write amounts in the recipient's language through PHP intl, a test per mail, done with the tooling (developer).
 
 ## 8. Status
 
@@ -5473,6 +5488,9 @@ verdict: https://claude.ai/artifact/2AUhf7V1Nuro3kqR1RKdN6 (sources in `var/clau
 | 308 | A refused product field is said on that field (§ 7 2026-10-15 11:18, screens-maturity L-605b slice 2): the product's constraints and domain refusals carry the import's reasons, the page puts each under its field on creation and revision, stock that has moved keeps the tracking (read from the reason, so a service's refusal is no longer said as moved stock), and the import refuses a too-long name with the form's text | M | done | 35a846d7 | api/src/Module/Products/**, api/tests/**, web/src/app/products/**, web/e2e/**, web/public/i18n/** |
 | 309 | A refused expense field is said on that field, a line's under its line of the bill (§ 7 2026-10-15 11:18, screens-maturity L-605b slice 2): the expense's constraints and domain refusals carry the import's reasons on a save and a recording, a printed amount names its tax's code, a draft recorded without a category says so on its category, and three texts join the rejections; the payment dialog stays out (L-605c). The goal-end check's fix 1402dbd4: a printed amount's refusal states the bound checked, one unit of the last decimal per line carrying the rate, written with the screen's decimal separator | M | done | eadc6f51 | api/src/Module/Expenses/**, api/tests/**, web/src/app/expenses/**, web/e2e/**, web/public/i18n/** |
 | 310 | symfony/expression-language 8.1.9 for CVE-2026-109449 (published 2026-10-14), which failed the dependency audit on master | S | done | 5e180c00 | api/composer.lock, THIRD-PARTY-NOTICES.md |
+| 311 | Slice 2's tail (§ 7 2026-10-15 12:52, 12:58): a product whose stock has moved says why under its tracking alone, the form's line being the one every refused field shares; `unknown_identifier` gets its text, so every reason a form is refused with has one | S | done | 3373f2b9 | web/src/app/products/**, web/public/i18n/**, api/tests/Architecture/** |
+| 312 | An expense line is told the decimals of its company's currency, three at most (L-1111, « everything parametrized »): a euro company typing 10.0055 is told two | S | done | 52dc5728 | api/src/Module/Expenses/**, api/tests/** |
+| 313 | The bell writes a notification's amounts as the screen writes amounts (§ 7 2026-10-15 12:59, L-1113): the five notices that say money carry their currency's decimals, each type names its amounts; an older notice keeps the decimals it came with; the bell's text in a browser is not certified (§ 7 2026-10-15 14:03) | M | done | 2dd65ee7 | api/src/Licensing/**, api/src/Module/Invoices/**, api/tests/**, web/src/app/notifications/** |
 <!-- /progress-block -->
 
 ### Delivered
