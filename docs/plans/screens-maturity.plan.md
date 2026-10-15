@@ -90,6 +90,9 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-15 14:10] AGREED: Tooling #3: our own small mutation runner (a list of chosen mutants, one container, landed and tally checks, plain-cp restore, cmp), tested in CI; not Infection or Stryker (developer).
 - [2026-10-15 14:10] AGREED: Tooling #4: the vitest ESM warning and the Prettier two-pass check only; the skipped schema tests and colour-free logs dropped (developer).
 - [2026-10-15 14:10] AGREED: Order: make gate from now on, then #4, #2, #3, then L-605c; a status check of the maturity rounds was asked first (developer).
+- [2026-10-15 14:14] AGREED: Back to screens as maturity: the never-built promises (D1, D2) are built screen by screen, each screen closing its open ledger items by kind; round 2 runs once the marking page is ruled (developer).
+- [2026-10-15 14:14] AGREED: The ruled tooling (#4, #2, #3) comes before the next screen (developer).
+- [2026-10-15 14:14] AGREED: L-1114: the API's mails write amounts in the recipient's language through PHP intl, a test per mail, done with the tooling (developer).
 
 ## Formal Plan
 
