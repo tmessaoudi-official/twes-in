@@ -121,6 +121,17 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await expect(page.getByTestId('expense-detach-recu.pdf')).toHaveCount(0);
     await page.getByTestId('field-paymentMethod').click();
     await page.getByRole('option', { name: /esp[eè]ces|cash/i }).click();
+    // A withholding over 100 % passes the field's own pattern: the API refuses it, said under the field.
+    const rate = page.getByTestId('field-withholdingRate');
+    const proposed = await rate.inputValue();
+    await rate.fill('150');
+    await page.getByTestId('expense-pay').click();
+    await expect(page.getByTestId('field-error-withholdingRate')).toHaveText(
+      'Retenue refusée : un pourcentage de 0 à 100, trois décimales au plus.',
+    );
+    await expect(rate).toBeFocused();
+    await rate.fill(proposed);
+    await expect(page.getByTestId('field-error-withholdingRate')).toHaveCount(0);
     await page.getByTestId('expense-pay').click();
     await expect(page.getByTestId('expense-paid')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);

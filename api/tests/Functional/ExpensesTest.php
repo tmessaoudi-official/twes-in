@@ -271,10 +271,10 @@ final class ExpensesTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path($id), $this->expense(['categoryId' => null]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
-        foreach ([$today->modify('-11 days'), $today->modify('+1 day')] as $impossible) {
+        foreach (['paid_before_expense' => $today->modify('-11 days'), 'paid_after_today' => $today->modify('+1 day')] as $reason => $impossible) {
             $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'cash', 'paidOn' => $impossible->format('Y-m-d')]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $impossible->format('Y-m-d'));
-            self::assertStringContainsString('paidOn', (string) $this->client->getResponse()->getContent());
+            self::assertSame([['propertyPath' => 'paidOn', 'reason' => $reason, 'params' => []]], $this->refusals());
         }
         $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'bitcoin', 'paidOn' => $today->format('Y-m-d')]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -358,7 +358,7 @@ final class ExpensesTest extends ApiTestCase
         $exempt = $recorded('2000');
         $pay($exempt, '101');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('withholdingRate', (string) $this->client->getResponse()->getContent());
+        self::assertSame([['propertyPath' => 'withholdingRate', 'reason' => 'invalid_withholding_rate', 'params' => []]], $this->refusals());
         $pay($exempt, '0');
         self::assertResponseIsSuccessful();
         self::assertSame([null, null, '2380.000'], $withheld(), 'an exempt supplier: said so, nothing withheld');
@@ -411,6 +411,34 @@ final class ExpensesTest extends ApiTestCase
         $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'expense.withholding_classified'");
         self::assertIsString($changes);
         self::assertSame(['fields' => ['withholdingOperationCode']], json_decode($changes, true));
+    }
+
+    /** Only a direct call reaches it: a company outside Tunisia is offered no TEJ operation to pick. */
+    public function testATejOperationIsRefusedOnItsFieldOutsideTunisiaWhetherPaidOrClassifiedAfter(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $recorded = function (): string {
+            $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Achats '.bin2hex(random_bytes(3))), 'lines' => $this->line('1000')]));
+            $id = $this->stringAt($this->json(), 'id');
+            $this->postJson($this->path($id).'/record', null);
+            self::assertResponseIsSuccessful();
+
+            return $id;
+        };
+        $unsaid = $recorded();
+        $this->postJson($this->path($unsaid).'/pay', ['paymentMethod' => 'transfer', 'paidOn' => $today->format('Y-m-d')]);
+        self::assertResponseIsSuccessful();
+        $said = $recorded();
+        $this->em()->getConnection()->executeStatement('UPDATE company SET fiscal_preset = :preset WHERE id = :id', ['preset' => 'FR', 'id' => $this->company->getId()->toRfc4122()]);
+        $refused = [['propertyPath' => 'withholdingOperationCode', 'reason' => 'tej_outside_tunisia', 'params' => []]];
+
+        $this->postJson($this->path($said).'/pay', ['paymentMethod' => 'transfer', 'paidOn' => $today->format('Y-m-d'), 'withholdingOperationCode' => 'RS7_000001']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame($refused, $this->refusals());
+        $this->postJson($this->path($unsaid).'/withholding-operation', ['withholdingOperationCode' => 'RS7_000001']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame($refused, $this->refusals());
     }
 
     public function testACompanyOutsideTunisiaIsOfferedNoTejOperation(): void

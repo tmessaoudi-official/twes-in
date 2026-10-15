@@ -207,11 +207,11 @@ export class ExpensesApi {
     );
   }
 
-  /** 422 for a day before the expense's or after today. */
+  /** 422 for a day before the expense's or after today, or a withholding outside 0 to 100, named on its field. */
   async payExpense(companyId: string, id: string, payment: ExpensePayment): Promise<ExpenseRow> {
     // The code is one of the options the API itself offered; its enum is the API's to enforce (422).
     const body = { ...payment } as ExpenseExpensePay;
-    return this.guard(EXPENSE, async () =>
+    return this.saving(async () =>
       toExpense(
         await firstValueFrom(
           this.http.post<ExpenseExpenseRead>(`${path(companyId, 'expenses', id)}/pay`, body),
@@ -378,7 +378,7 @@ export class ExpensesApi {
     }
   }
 
-  /** An expense's save or recording, the only calls whose refusals name the fields of the form and the bill. */
+  /** An expense's save, recording or payment: the calls whose refusals name the fields of a form and the bill. */
   private async saving<T>(call: () => Promise<T>): Promise<T> {
     try {
       return await call();

@@ -3678,7 +3678,11 @@
       "service_untracked": "A service holds no stock: it is tracked neither by lot nor by serial number.",
       "invalid_amount": "Amount refused: a number above 0, with at most {{decimals}} decimals.",
       "one_vat_rate": "A line carries one VAT rate: for two rates, make two lines.",
-      "printed_tax_off": "This amount is more than {{tolerance}} away from what the rate gives."
+      "printed_tax_off": "This amount is more than {{tolerance}} away from what the rate gives.",
+      "paid_before_expense": "Payment date refused: the expense's day at the earliest.",
+      "paid_after_today": "Payment date refused: today at the latest.",
+      "invalid_withholding_rate": "Withholding refused: a percentage from 0 to 100, three decimals at most.",
+      "tej_outside_tunisia": "TEJ code refused: it applies only to a company under the Tunisian preset."
     },
     "action": "Import",
     "notes_title": "Good to know",

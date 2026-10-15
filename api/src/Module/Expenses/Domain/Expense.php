@@ -214,15 +214,15 @@ class Expense implements CompanyOwned
         }
         $day = self::day($paidOn);
         if ($day < $this->date) {
-            throw new InvalidExpense('paidOn', \sprintf('An expense is paid on or after its own day, %s.', $this->date->format('Y-m-d')));
+            throw new InvalidExpense('paidOn', \sprintf('An expense is paid on or after its own day, %s.', $this->date->format('Y-m-d')), 'paid_before_expense');
         }
         if ($day > self::day($today)) {
-            throw new InvalidExpense('paidOn', 'A payment is recorded once it happened, today at the latest.');
+            throw new InvalidExpense('paidOn', 'A payment is recorded once it happened, today at the latest.', 'paid_after_today');
         }
         $this->assertDeclarableToTej($operationCode);
         $rate = trim($withholdingRate ?? '');
         if ('' !== $rate && (1 !== preg_match(self::WITHHOLDING_RATE, $rate) || Decimal::of($rate)->compare(100) > 0)) {
-            throw new InvalidExpense('withholdingRate', 'A withholding is a percentage from 0 to 100 with at most three decimals.');
+            throw new InvalidExpense('withholdingRate', 'A withholding is a percentage from 0 to 100 with at most three decimals.', 'invalid_withholding_rate');
         }
         if ('' === $rate || 0 === Decimal::of($rate)->compare(0)) {
             $this->withholdingRate = null;
@@ -269,7 +269,7 @@ class Expense implements CompanyOwned
     private function assertDeclarableToTej(?TejOperationCode $operationCode): void
     {
         if (null !== $operationCode && TejOperationCode::PRESET !== $this->company->getFiscalPreset()) {
-            throw new InvalidExpense('withholdingOperationCode', 'A TEJ operation code is said for a company under the Tunisian preset only.');
+            throw new InvalidExpense('withholdingOperationCode', 'A TEJ operation code is said for a company under the Tunisian preset only.', 'tej_outside_tunisia');
         }
     }
 
