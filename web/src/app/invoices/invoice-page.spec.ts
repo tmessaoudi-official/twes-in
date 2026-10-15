@@ -2089,6 +2089,39 @@ describe('InvoicePage', () => {
       expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '2');
     });
 
+    it('prices from the list the line a scan card started a new document with', async () => {
+      modulesOn.add('price_lists');
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '1700.0000', priceListName: 'Gros' });
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.pickProducts.mockResolvedValue(products);
+      scans.named.mockResolvedValue(coffee);
+      fixture = TestBed.createComponent(InvoicePage);
+      fixture.componentRef.setInput('scan', '3017620422003');
+      await settle();
+      await vi.waitFor(() => expect(scans.named).toHaveBeenCalledWith('3017620422003'));
+      await settle();
+
+      expect(facade.productPrice).toHaveBeenCalledWith('c1', 'p1', null, '1');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1700,000');
+    });
+
+    it('asks the list again for the count a scan taken back leaves', async () => {
+      modulesOn.add('price_lists');
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '1700.0000', priceListName: 'Gros' });
+      invoice.set({ ...draft, lines: [] });
+      await open('i1');
+      facade.pickProducts.mockResolvedValue(products);
+      scans.named.mockResolvedValue(coffee);
+      await scanned('3017620422003');
+      await scanned('3017620422003');
+      await settle();
+      expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '2');
+
+      TestBed.inject(ScanBus).undoLast();
+      await settle();
+      expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '1');
+    });
+
     it('shows the customer display what the sale comes to as typed, not as last saved', async () => {
       invoice.set(draft);
       await open('i1');
