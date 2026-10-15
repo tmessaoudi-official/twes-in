@@ -216,6 +216,36 @@ export class InventoryFacade {
     if (search !== null) await this.loadMovements(companyId, search);
   }
 
+  /**
+   * A receipt of a product still waiting for its cost, as « À surveiller » names it, wherever it sits in the list; null
+   * once someone entered it. A product has few such receipts, so one page of them is all of them.
+   */
+  async receiptToComplete(
+    companyId: string,
+    productId: string,
+    movementId: string,
+  ): Promise<StockMovementRow | null> {
+    const found: { row: StockMovementRow | null } = { row: null };
+    await this.read(async () => {
+      const page = await this.api.movements(companyId, {
+        page: 1,
+        itemsPerPage: 100,
+        q: '',
+        productIds: [productId],
+        locationIds: [],
+        kinds: [],
+        sourceTypes: [],
+        reasons: [],
+        costToComplete: 'yes',
+        intervals: {},
+        lot: null,
+        order: null,
+      });
+      found.row = page.rows.find((row) => row.id === movementId) ?? null;
+    });
+    return found.row;
+  }
+
   /** What the locations and movements screens need besides their rows: the locations a row names, and the options. */
   async loadLocations(companyId: string): Promise<void> {
     await this.read(async () => {

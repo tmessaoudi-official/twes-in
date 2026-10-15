@@ -104,6 +104,10 @@ const uncosted: StockMovementRow = {
   sourceType: 'receipt',
   sourceId: null,
   lotCode: null,
+  vendorId: 'v1',
+  vendorName: 'Quincaillerie Ben Ali',
+  supplierReference: 'BL-778',
+  receivedOn: '2026-09-14',
   costToComplete: true,
 };
 
@@ -155,6 +159,7 @@ describe('StockMovementsPage', () => {
     reloadMovements: vi.fn(),
     loadLocations: vi.fn(),
     receiptCost: vi.fn(),
+    receiptToComplete: vi.fn(),
     enterReceiptCost: vi.fn(),
     lossFiles: vi.fn(),
     attachToLoss: vi.fn(),
@@ -311,6 +316,15 @@ describe('StockMovementsPage', () => {
     expect(
       document.body.querySelector('[data-testid="receipt-cost-product"]')?.textContent,
     ).toContain('ART-1 — Portable');
+    // The cost is final once entered, so the dialog says which receipt it is for: how much, when, where, from whom.
+    const said = (id: string) =>
+      document.body.querySelector(`[data-testid="receipt-cost-${id}"]`)?.textContent ?? '';
+    expect(said('quantity')).toContain('10');
+    expect(said('at')).toContain('15/09/2026');
+    expect(said('location')).toContain('Siège');
+    expect(said('vendor')).toContain('Quincaillerie Ben Ali');
+    expect(said('vendor')).toContain('BL-778');
+    expect(said('received')).toContain('14/09/2026');
     expect(document.body.querySelector('[data-testid="field-applyCost"]')).toBeNull();
     const cost = document.body.querySelector<HTMLInputElement>('[data-testid="field-unitCost"]')!;
     cost.value = '1200,5';
@@ -323,12 +337,22 @@ describe('StockMovementsPage', () => {
 
   it('asks the cost of the receipt « À surveiller » sent a cost reader here for, with the choice a suggesting company leaves', async () => {
     facade.receiptCost.mockResolvedValue({ mode: 'suggest' });
+    facade.receiptToComplete.mockResolvedValue(uncosted);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     fixture.componentRef.setInput('productId', 'p1');
     fixture.componentRef.setInput('costOf', 'm2');
     await settle();
+    // The receipt is looked up before its cost is asked: one more answer to wait for.
+    await settle();
 
+    expect(facade.receiptToComplete).toHaveBeenCalledWith('c1', 'p1', 'm2');
     expect(document.body.querySelector('[data-testid="receipt-cost-title"]')).not.toBeNull();
+    expect(
+      document.body.querySelector('[data-testid="receipt-cost-product"]')?.textContent,
+    ).toContain('ART-1 — Portable');
+    expect(
+      document.body.querySelector('[data-testid="receipt-cost-quantity"]')?.textContent,
+    ).toContain('10');
     expect(document.body.querySelector('[data-testid="field-applyCost"]')).not.toBeNull();
     document.body.querySelector<HTMLElement>('[data-testid="receipt-cost-keep"]')!.click();
     await settle();
@@ -337,6 +361,20 @@ describe('StockMovementsPage', () => {
       queryParamsHandling: 'merge',
     });
     expect(facade.enterReceiptCost).not.toHaveBeenCalled();
+  });
+
+  it('asks nothing when the receipt « À surveiller » named no longer waits for its cost', async () => {
+    facade.receiptToComplete.mockResolvedValue(null);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.componentRef.setInput('productId', 'p1');
+    fixture.componentRef.setInput('costOf', 'm2');
+    await settle();
+
+    expect(document.body.querySelector('[data-testid="receipt-cost-title"]')).toBeNull();
+    expect(navigate).toHaveBeenCalledWith([], {
+      queryParams: { costOf: null },
+      queryParamsHandling: 'merge',
+    });
   });
 
   it('offers no cost to whoever may not read costs', async () => {

@@ -5,14 +5,16 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { TranslatePipe } from '@ngx-translate/core';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import type { DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
+import type { StockMovementListRow } from './inventory-forms';
 
 export interface ReceiptCostDialogData {
   descriptor: FormDescriptor;
   group: DescriptorFormGroup;
-  /** What came in, as the movements list names it. */
-  product: string;
+  /** The receipt, as the movements list names it: the cost is final once entered, so the question says which it is. */
+  receipt: StockMovementListRow;
 }
 
 /**
@@ -21,16 +23,45 @@ export interface ReceiptCostDialogData {
  */
 @Component({
   selector: 'app-receipt-cost-dialog',
-  imports: [MatButtonModule, MatDialogModule, TranslatePipe, DescriptorForm],
+  imports: [
+    MatButtonModule,
+    MatDialogModule,
+    TranslatePipe,
+    DescriptorForm,
+    AmountPipe,
+    DayPipe,
+    MomentPipe,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="receipt-cost-title">
       {{ 'inventory.receipt_cost.title' | translate }}
     </h2>
     <mat-dialog-content>
-      @if (data.product) {
-        <p class="font-semibold" data-testid="receipt-cost-product">{{ data.product }}</p>
-      }
+      <p class="font-semibold" data-testid="receipt-cost-product">{{ receipt.productLabel }}</p>
+      <dl class="mb-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+        <dt>{{ 'inventory.stock.fields.quantity' | translate }}</dt>
+        <dd data-testid="receipt-cost-quantity">
+          {{ receipt.quantity | amount: receipt.unitDecimals }}
+        </dd>
+        <dt>{{ 'inventory.stock.fields.at' | translate }}</dt>
+        <dd data-testid="receipt-cost-at">{{ receipt.at | moment }}</dd>
+        <dt>{{ 'inventory.stock.fields.location' | translate }}</dt>
+        <dd data-testid="receipt-cost-location">{{ receipt.locationLabel }}</dd>
+        @if (receipt.vendorName; as vendor) {
+          <dt>{{ 'inventory.stock.fields.vendor' | translate }}</dt>
+          <dd data-testid="receipt-cost-vendor">
+            {{ vendor }}
+            @if (receipt.supplierReference; as reference) {
+              — {{ reference }}
+            }
+          </dd>
+        }
+        @if (receipt.receivedOn; as day) {
+          <dt>{{ 'inventory.stock.fields.receivedOn' | translate }}</dt>
+          <dd data-testid="receipt-cost-received">{{ day | day }}</dd>
+        }
+      </dl>
       <p class="mb-4" data-testid="receipt-cost-intro">
         {{ 'inventory.receipt_cost.intro' | translate }}
       </p>
@@ -54,6 +85,7 @@ export interface ReceiptCostDialogData {
 export class ReceiptCostDialog {
   protected readonly ref = inject<MatDialogRef<ReceiptCostDialog, FormValues | null>>(MatDialogRef);
   protected readonly data = inject<ReceiptCostDialogData>(MAT_DIALOG_DATA);
+  protected readonly receipt = this.data.receipt;
 
   protected enter(): void {
     const group = this.data.group;

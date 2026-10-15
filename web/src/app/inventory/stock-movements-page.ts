@@ -102,7 +102,7 @@ export class StockMovementsPage {
     label: 'inventory.receipt_cost.enter_of',
     labelParams: (row) => ({ name: row.productLabel }),
     icon: 'request_quote',
-    run: (row) => void this.enterCost(row.id, row.productId, row.productLabel),
+    run: (row) => void this.enterCost(row),
     shown: (row) => row.costToComplete && this.auth.hasPermission('product.cost.read'),
   };
   /** A loss's files — the photo of what broke, the complaint for a theft — opened by any reader of the movements. */
@@ -154,41 +154,58 @@ export class StockMovementsPage {
       const movementId = this.costOf();
       const productId = this.productId();
       if (movementId && productId && this.company()) {
-        untracked(() => void this.enterCost(movementId, productId, ''));
+        untracked(() => void this.costFromWatch(movementId, productId));
       }
     });
     void this.start();
   }
 
   /**
+   * The receipt « À surveiller » named, looked up wherever it sits in the list, so the question says which receipt it
+   * is for; nothing is asked once it no longer waits for its cost.
+   */
+  private async costFromWatch(movementId: string, productId: string): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    const receipt = await this.facade.receiptToComplete(companyId, productId, movementId);
+    if (receipt === null) {
+      this.forgetCostOf();
+      return;
+    }
+    await this.enterCost(movementListRows([receipt], this.facade.locations())[0]);
+  }
+
+  /**
    * Asks a cost reader for a receipt's cost, with the choice the company leaves to a receipt when it leaves one, and
    * enters it. The movements are read again, so the row stops saying its cost is to complete.
    */
-  private async enterCost(movementId: string, productId: string, product: string): Promise<void> {
+  private async enterCost(receipt: StockMovementListRow): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId) return;
-    const mode = (await this.facade.receiptCost(companyId, productId, '1', '0'))?.mode ?? null;
+    const mode =
+      (await this.facade.receiptCost(companyId, receipt.productId, '1', '0'))?.mode ?? null;
     const descriptor = receiptCostForm(mode);
     const group = buildFormGroup(descriptor, receiptCostValues());
     const values = await firstValueFrom(
       this.dialog
         .open<ReceiptCostDialog, ReceiptCostDialogData>(ReceiptCostDialog, {
-          data: { descriptor, group, product },
+          data: { descriptor, group, receipt },
           autoFocus: 'first-tabbable',
         })
         .afterClosed(),
     );
-    if (this.costOf()) {
-      void this.router.navigate([], {
-        queryParams: { costOf: null },
-        queryParamsHandling: 'merge',
-      });
-    }
+    this.forgetCostOf();
     if (!values) return;
     const { unitCost, applyCost } = receiptCostInput(values);
-    if (await this.facade.enterReceiptCost(companyId, movementId, unitCost, applyCost)) {
+    if (await this.facade.enterReceiptCost(companyId, receipt.id, unitCost, applyCost)) {
       this.feedback.effect('inventory.receipt_cost.entered', {}, 'definitif');
     }
+  }
+
+  /** The address forgets the receipt « À surveiller » named, once it was asked about or no longer waits. */
+  private forgetCostOf(): void {
+    if (!this.costOf()) return;
+    void this.router.navigate([], { queryParams: { costOf: null }, queryParamsHandling: 'merge' });
   }
 
   private openLossFiles(row: StockMovementListRow): void {
