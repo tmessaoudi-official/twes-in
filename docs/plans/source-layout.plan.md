@@ -70,13 +70,14 @@ Work in flight is rebased on the new paths only after the move of its context la
 | 3 | The oracle: OpenAPI and router byte-identical | S | done | 419c0077 | scripts/refactor/** |
 | 4 | Move context by context | L | done | 8217b242 | api/src/** api/tests/** |
 | 5 | Docs and the expertise refresh | S | done | 1d6a0beb | CLAUDE.md docs/** .claude/** |
-| 6 | List stance gate | M | todo | - | scripts/gates/** web/src/app/** |
-| 7 | List × action matrix for ruling | S | todo | - | var/claude/** |
+| 6 | List stance gate | M | done | e209cd8f | scripts/gates/** web/src/app/** |
+| 7 | List × action matrix for ruling | S | doing | - | var/claude/** |
 | 8 | Ruled bulk actions | L | todo | - | api/src/** web/src/app/** |
 | 9 | Lenses 54 and 55 in round 2's brief | S | todo | - | docs/plans/** var/claude/** |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
+- Step 7: the developer's marks on https://claude.ai/artifact/TKaUgZUjYcyp9sWCYrYuhq (db `marks/<key with every run of other characters as ->`, `{key, marks: {S|B|R|I|E: offer|no|later}, note}`); 108 open cells, 97 not ruled. An absent mark is undecided, never the recommendation. Read back, record in SPEC § 7, then change the gate's reasons.
 ### Needs research
 ### Fragile
 ### Known issues
