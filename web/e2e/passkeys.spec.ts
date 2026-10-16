@@ -142,6 +142,8 @@ test('an account adds a passkey, signs in with it, and removes it', async ({ pag
 
   // Removing the last factor puts the account back to having none, and the authenticator set-up starts again.
   await page.getByTestId('two-factor-passkey-remove').click();
+  await expect(page.getByTestId('confirm-message')).toContainText('Work laptop');
+  await page.getByTestId('confirm-run').click();
   await expect(page.getByTestId('two-factor-passkeys-none')).toBeVisible();
   await expect(page.getByTestId('two-factor-qr').locator('svg')).toBeVisible();
   await page.getByTestId('two-factor-logout').click();

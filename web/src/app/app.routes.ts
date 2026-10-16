@@ -38,7 +38,7 @@ export const routes: Routes = [
     // other endpoint until it has, so the shell could not load.
     path: 'two-factor',
     title: 'titles.two_factor',
-    canActivate: [twoFactorGuard],
+    ...textsPart('two-factor', twoFactorGuard),
     loadComponent: () => import('./auth/two-factor-page').then((m) => m.TwoFactorPage),
   },
   {
@@ -406,12 +406,11 @@ export const routes: Routes = [
         title: 'modules.recurring_expenses',
         // Its texts are read on the expense pages only, the schedule's on every recurring list: both load with it (the
         // screen texts budget).
-        providers: textsPart('expense').providers,
-        canActivate: [
+        ...textsPart(
+          'expense',
           moduleGuard(RECURRING_EXPENSES_MODULE),
-          ...(textsPart('expense').canActivate ?? []),
           textsOpened(SCHEDULE_TEXTS),
-        ],
+        ),
         loadComponent: () =>
           import('./recurring-expenses/recurring-expenses-page').then(
             (m) => m.RecurringExpensesPage,
@@ -421,16 +420,14 @@ export const routes: Routes = [
         path: 'expenses/new',
         title: 'titles.new_expense',
         // The bill's texts are read on this page only: they load with it (the screen texts budget).
-        providers: textsPart('expense').providers,
-        canActivate: [moduleGuard(EXPENSES_MODULE), ...(textsPart('expense').canActivate ?? [])],
+        ...textsPart('expense', moduleGuard(EXPENSES_MODULE)),
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
       },
       {
         path: 'expenses/:expenseId',
         title: 'titles.expense',
         // The bill's texts are read on this page only: they load with it (the screen texts budget).
-        providers: textsPart('expense').providers,
-        canActivate: [moduleGuard(EXPENSES_MODULE), ...(textsPart('expense').canActivate ?? [])],
+        ...textsPart('expense', moduleGuard(EXPENSES_MODULE)),
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
       },
       {

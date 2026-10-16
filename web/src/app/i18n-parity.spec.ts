@@ -7,6 +7,8 @@ import frExpense from '../../public/i18n/expense/fr.json';
 import fr from '../../public/i18n/fr.json';
 import enSchedule from '../../public/i18n/schedule/en.json';
 import frSchedule from '../../public/i18n/schedule/fr.json';
+import enTwoFactor from '../../public/i18n/two-factor/en.json';
+import frTwoFactor from '../../public/i18n/two-factor/fr.json';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { SETTING_HINTS } from './shared/settings/setting-forms';
 
@@ -28,6 +30,7 @@ const parts: Record<string, Record<string, unknown>> = {
   account: { fr: frAccount, en: enAccount },
   expense: { fr: frExpense, en: enExpense },
   schedule: { fr: frSchedule, en: enSchedule },
+  'two-factor': { fr: frTwoFactor, en: enTwoFactor },
 };
 
 /** Two files' texts as one, refusing a key both hold: the part would silently win where the page reads it. */

@@ -85,6 +85,7 @@ describe('textsPart', () => {
         }),
         provideRouter([
           { path: 'part', ...textsPart('part'), component: PartPage },
+          { path: 'refused', ...textsPart('part', () => false), component: PartPage },
           { path: 'shared', canActivate: [textsOpened('shared-part')], component: SharedPartPage },
         ]),
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -110,6 +111,14 @@ describe('textsPart', () => {
     harness.detectChanges();
 
     expect(text()).toBe('Supprimer · Oui · 2 éléments');
+  });
+
+  it('keeps the route’s own guards beside the texts’, so a refusal still refuses', async () => {
+    const opened = await TestBed.inject(Router).navigateByUrl('/refused');
+    for (const request of http.match('/i18n/part/fr.json')) request.flush(PART.fr);
+
+    expect(opened).toBe(false);
+    expect(text()).toBe('');
   });
 
   it('has the page’s texts in the new language before the language changes', async () => {
