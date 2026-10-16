@@ -328,8 +328,8 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
-- Where round 2 goes now that its rubric and grades are ruled (2026-10-15 20:00, 20:02): after L-1115 (recommended,
-  so the D1/D2 screens are built against its grades), right now, or after D1/D2. Asked in chat at 23:43.
+- (Ruled § 7 2026-10-16 17:25: round 2 runs after the version updates, the tool-by-tool audit's fixes and the web's
+  partial split, on a frozen commit; lens 55 folds into the audit.)
 - A quote classé sans suite still prints the shared « ANNULÉ » watermark (`api/translations/pdf.*.yaml`
   `watermark.cancelled`, shared by invoice, quote and delivery note templates; the invoice slice kept it too): a
   watermark per document type, or the word as it is?

@@ -31,10 +31,10 @@ page and list, the scan card, the stock map's selection and between documents; o
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
 | 1 | Picker + products list/page + three editors' intake | L | done | - | web/src/app/shared/documents/** web/src/app/products/** web/src/app/invoices/** web/src/app/quotes/** web/src/app/delivery-notes/** |
-| 2 | Fold InvoiceTargetDialog into the picker | M | todo | - | web/src/app/delivery-notes/** web/src/app/shared/documents/** |
-| 3 | Scan card and stock map selection | M | todo | - | web/src/app/products/** web/src/app/inventory/** |
-| 4 | « Ajouter à un tarif » | M | todo | - | web/src/app/products/** web/src/app/price-lists/** |
-| 5 | A quote's lines onto an open invoice | M | todo | - | api/src/Module/** web/src/app/quotes/** |
+| 2 | Break the picker's import cycle (a token each document feature provides), fold InvoiceTargetDialog into the picker | M | doing | - | web/src/app/delivery-notes/** web/src/app/shared/documents/** |
+| 3 | Scan card and stock map selection (moved into Stage 2, § 7 2026-10-16 17:25) | M | deferred | - | web/src/app/products/** web/src/app/inventory/** |
+| 4 | « Ajouter à un tarif » (moved into Stage 2) | M | deferred | - | web/src/app/products/** web/src/app/price-lists/** |
+| 5 | A quote's lines onto an open invoice (moved into Stage 2) | M | deferred | - | api/src/Module/** web/src/app/quotes/** |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
