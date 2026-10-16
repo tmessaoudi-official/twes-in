@@ -17,3 +17,9 @@ scripts
 web/src/app/api
 # The cut icon font: the web image generates its own before building, so a stale local copy must not leak in.
 web/src/generated
+# A machine's own values and keys stay on that machine: `composer dump-env prod` would compile a local .env into the
+# image, and a host-side dump would shadow the build's own.
+**/.env.local
+**/.env.*.local
+**/.env.local.php
+**/config/secrets/*/*.decrypt.private.php
