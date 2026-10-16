@@ -2,7 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { DOCUMENT, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
@@ -192,6 +192,19 @@ describe('ProductsPage', () => {
     expect(q('products-tab')?.getAttribute('href')).toBe('/products');
     expect(q('product-categories-link')?.getAttribute('href')).toBe('/products/categories');
     expect(q('product-categories-link')?.closest('nav')).not.toBeNull();
+  });
+
+  it('selects products and opens a sheet of their labels in a tab of its own', async () => {
+    const opened = vi
+      .spyOn(TestBed.inject(DOCUMENT).defaultView!, 'open')
+      .mockImplementation(() => null);
+    expect(q('products-bulk-labels')).toBeNull();
+
+    (q('list-select-row-p1')!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    q('products-bulk-labels')!.click();
+
+    expect(opened).toHaveBeenCalledExactlyOnceWith('/print/product-labels?id=p1', '_blank');
   });
 
   it('says why the list could not be read', async () => {

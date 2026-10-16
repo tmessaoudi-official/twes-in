@@ -309,6 +309,34 @@ describe('ProductsApi', () => {
     expect(await saved).toEqual(codes);
   });
 
+  it('reads the labels of the products asked for, naming each in the order asked', async () => {
+    const read = api.labels('c1', ['p2', 'p1']);
+    const request = http.expectOne(
+      (req) =>
+        req.url === '/api/companies/c1/product-labels' &&
+        req.params.getAll('productId[]')?.join() === 'p2,p1',
+    );
+    expect(request.request.method).toBe('GET');
+    request.flush([
+      { productId: 'p2', reference: 'B', name: 'Boîte', codes: [] },
+      {
+        productId: 'p1',
+        reference: 'A',
+        name: 'Vis',
+        codes: [{ code: '4006381333931', role: 'unit', quantity: 1, priceGross: '1.190' }],
+      },
+    ]);
+    expect(await read).toEqual([
+      { productId: 'p2', reference: 'B', name: 'Boîte', codes: [] },
+      {
+        productId: 'p1',
+        reference: 'A',
+        name: 'Vis',
+        codes: [{ code: '4006381333931', role: 'unit', quantity: 1, priceGross: '1.190' }],
+      },
+    ]);
+  });
+
   it('reads what one scan names, sending the scan as it came, and answers null when no product holds it', async () => {
     const scanned = api.scan('c1', ']C10113017620422000\x1d10LOT 7');
     const get = http.expectOne(

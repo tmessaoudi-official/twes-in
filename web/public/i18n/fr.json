@@ -2227,7 +2227,15 @@
       "print": "Imprimer",
       "no_code": "Cet article ne répond à aucun code qui soit le sien : ajoutez-lui un code unitaire ou interne pour imprimer ses étiquettes.",
       "open": "Imprimer des étiquettes",
-      "back": "Retour au produit"
+      "back": "Retour au produit",
+      "sheet_intro": "Une étiquette par produit sélectionné, avec le code de sa propre feuille : l’unitaire, sinon un code interne, sinon celui d’un colis.",
+      "back_to_list": "Retour aux produits",
+      "left_out": "{count, plural, one {Un produit sélectionné n’a pas d’étiquette} other {{{count}} produits sélectionnés n’ont pas d’étiquette}}",
+      "unknown": "Produit inconnu",
+      "reasons": {
+        "not_found": "Introuvable : supprimé entre-temps, ou plus accessible",
+        "no_code": "Aucun code qui soit le sien : ajoutez-lui un code unitaire ou interne"
+      }
     },
     "substitutes": {
       "title": "Substituts",
@@ -2278,7 +2286,11 @@
       "from_phone": "Photo ajoutée à {{name}}.",
       "phone_hint": "Le téléphone prêté peut aussi prendre la photo : elle arrive ici."
     },
-    "saved_as": "Le produit a été enregistré sous la référence {{given}} : {{shown}} a été prise entre-temps."
+    "saved_as": "Le produit a été enregistré sous la référence {{given}} : {{shown}} a été prise entre-temps.",
+    "selected": "{count, plural, =0 {Aucun produit sélectionné} one {{{count}} produit sélectionné} other {{{count}} produits sélectionnés}}",
+    "bulk": {
+      "labels": "Étiquettes"
+    }
   },
   "inventory": {
     "no_company": "Choisissez d’abord une entreprise.",
