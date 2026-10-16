@@ -1,9 +1,9 @@
 {
   "package": "zxing-wasm",
-  "version": "3.1.4",
-  "integrity": "sha512-1+v8p7sauddySVNG+ye7GD/0TS95BG2ycdkrC+EnBrFBFkHeIghzUt2yVjtx3NucJeNrQnhT8yGAIz60Vx9o0w==",
+  "version": "3.1.5",
+  "integrity": "sha512-jmxXvTCR/qZxMz2XwR6V+nL2BlDTD1aux7ZWSH9BV77TG9u4k0VyHba/NCCHBHJ60Wg6VV0QL/SMlJczKhJI4w==",
   "file": "dist/reader/zxing_reader.wasm",
-  "audit": "zxing-cpp 0b2d9a8fc81f420f369928c24331091ff0525976 (ZXING_CPP_COMMIT), wasm sha256 e8af31edb56d0522f4de74495839385ef019ba8bc90d38e5ecb2f18795d86fb2 (ZXING_WASM_SHA256); read 2026-10-03: the 29 commits since the previous audited commit add no file and no third-party code, the wasm carries the same component markers",
+  "audit": "zxing-cpp 2ecec3f5be0ee803f6e14a5a2c7028c0cfe525b4 (ZXING_CPP_COMMIT), wasm sha256 aecc1876de036c62c8419f67a5e1a16b1698a325bcd190aa84810d516e263931 (ZXING_WASM_SHA256); read 2026-10-16: the 41 commits since the previous audited commit add no file outside test/, the code they touch is zxing-cpp's own (librscpp, Apache-2.0), the package ships the same files and LICENSE, and the wasm carries the same component markers",
   "components": [
     {
       "name": "zxing-wasm (JavaScript wrapper)",
