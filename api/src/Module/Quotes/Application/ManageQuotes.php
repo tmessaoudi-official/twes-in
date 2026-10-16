@@ -30,6 +30,8 @@ use App\Module\Quotes\Domain\Model\Quote;
 use App\Module\Quotes\Domain\Repository\QuoteRepository;
 use App\Module\Quotes\Domain\ValueObject\QuoteLineDetails;
 use App\Module\Quotes\Domain\ValueObject\QuoteSearch;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
@@ -69,6 +71,7 @@ final readonly class ManageQuotes
         private QuoteLinePrices $linePrices,
         private ExcludedTaxFamilies $excluded,
         private Attachments $attachments,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -131,15 +134,21 @@ final readonly class ManageQuotes
     }
 
     /**
+     * `$version` is the one the editor opened; a save over a later one is refused before anything is changed.
+     *
      * @throws QuoteNotFound
      * @throws QuoteNotDraft
      * @throws InvalidQuote
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, QuoteInput $input, ?Uuid $actorUserId): Quote
+    public function revise(Company $company, Uuid $id, QuoteInput $input, ?Uuid $actorUserId, ?int $version = null): Quote
     {
-        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Quote {
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): Quote {
             // Held until this transaction ends and read as it stands: a draft check on it cannot be overtaken.
             $quote = $this->quotes->lockedOfIdInCompany($id, $company->getId()) ?? throw new QuoteNotFound();
+            if (null !== $version) {
+                $this->versions->expect($quote, $version);
+            }
             [$establishment, $customer, $lines] = $this->checked($company, $input, $quote);
             $changed = $quote->revise($establishment, $customer, $input->header, $lines, $this->clock->now());
             if ([] !== $changed) {

@@ -36,7 +36,7 @@ final readonly class ReviseQuoteProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), QuotePermission::WRITE);
 
         try {
-            $quote = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'quoteId'), $data->input(), $this->guard->account()->getId());
+            $quote = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'quoteId'), $data->input(), $this->guard->account()->getId(), $data->version);
         } catch (QuoteNotFound $absent) {
             throw new NotFoundHttpException('No such quote.', $absent);
         } catch (QuoteNotDraft $fixed) {

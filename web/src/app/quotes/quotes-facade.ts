@@ -115,8 +115,13 @@ export class QuotesFacade implements LineCatalogue {
     return this.step(() => this.api.create(companyId, input));
   }
 
-  async revise(companyId: string, id: string, input: QuoteInput): Promise<QuoteRow | null> {
-    return this.step(() => this.api.revise(companyId, id, input));
+  async revise(
+    companyId: string,
+    id: string,
+    input: QuoteInput,
+    version: number | null,
+  ): Promise<QuoteRow | null> {
+    return this.step(() => this.api.revise(companyId, id, input, version));
   }
 
   /**
@@ -135,10 +140,20 @@ export class QuotesFacade implements LineCatalogue {
     }
   }
 
-  /** Saves what is on screen, then marks it sent: a quote is never numbered with content other than the one shown. */
-  async reviseAndSend(companyId: string, id: string, input: QuoteInput): Promise<QuoteRow | null> {
+  /**
+   * Saves what is on screen, then marks it sent: a quote is never numbered with content other than the one shown.
+   * `revised` is told once the save is kept, whatever sending then answers, so the form stands on what was saved.
+   */
+  async reviseAndSend(
+    companyId: string,
+    id: string,
+    input: QuoteInput,
+    version: number | null,
+    revised: () => void,
+  ): Promise<QuoteRow | null> {
     return this.step(async () => {
-      this.quoteSignal.set(await this.api.revise(companyId, id, input));
+      this.quoteSignal.set(await this.api.revise(companyId, id, input, version));
+      revised();
       return this.api.send(companyId, id);
     });
   }

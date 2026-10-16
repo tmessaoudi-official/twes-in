@@ -2,6 +2,7 @@
 
 import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import type { PreviewBody } from '../shared/documents/document-figures';
+import { isRecordChanged } from '../shared/errors/record-changed';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -15,6 +16,7 @@ import type {
   QuoteProductPickQuoteProductPickRead,
   QuoteQuoteAnswerQuoteRefuseValidationQuoteAnswerQuoteRefuse as QuoteRefuseBody,
   QuoteQuoteRead,
+  QuoteQuoteWriteRecordReviseValidationQuoteWriteRecordRevise as QuoteReviseBody,
   QuoteQuoteWriteValidationQuoteWrite as QuoteWriteBody,
   QuoteStatusCountsQuoteStatusCountsRead,
 } from '../api/types.gen';
@@ -161,14 +163,19 @@ export class QuotesApi {
     );
   }
 
-  /** 409 once the quote is no longer a draft. */
-  async revise(companyId: string, id: string, input: QuoteInput): Promise<QuoteRow> {
+  /**
+   * 409 once the quote is no longer a draft; `version` is the one the form was opened at, and a later one saved
+   * elsewhere answers `record_changed`.
+   */
+  async revise(
+    companyId: string,
+    id: string,
+    input: QuoteInput,
+    version: number | null,
+  ): Promise<QuoteRow> {
+    const body: QuoteReviseBody = { ...toBody(input), version };
     return this.guard(async () =>
-      toQuote(
-        await firstValueFrom(
-          this.http.put<QuoteQuoteRead>(quotePath(companyId, id), toBody(input)),
-        ),
-      ),
+      toQuote(await firstValueFrom(this.http.put<QuoteQuoteRead>(quotePath(companyId, id), body))),
     );
   }
 
@@ -323,7 +330,7 @@ function codeOf(error: unknown, invalid: QuotesError | undefined): QuotesError {
     case 404:
       return 'not_found';
     case 409:
-      return 'conflict';
+      return isRecordChanged(error.error) ? 'record_changed' : 'conflict';
     case 413:
       return 'file_refused';
     default:
@@ -377,6 +384,7 @@ function toCountParams(search: QuoteSearch): HttpParams {
 function toQuote(raw: QuoteQuoteRead | QuoteJsonldQuoteRead): QuoteRow {
   return {
     id: raw.id ?? '',
+    version: raw.version ?? 0,
     number: raw.number ?? null,
     status: QUOTE_STATUSES.find((status) => status === raw.status) ?? 'draft',
     expired: raw.expired ?? false,
