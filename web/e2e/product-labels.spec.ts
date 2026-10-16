@@ -6,7 +6,7 @@ import { wcagViolations } from './axe';
 import { aProduct, forget, gtin, withCodes } from './catalogue';
 import { inACompany, signIn } from './session';
 
-// docs/SPEC.md § 7, 2026-09-23 slice 8: printed product labels. Each label carries the product's name, reference,
+// Printed product labels. Each label carries the product's name, reference,
 // price and its code as a barcode a scanner reads back: EAN-13 for a GTIN, Code 128 for anything else. The proof
 // is the decoder itself, the same zxing-cpp build the camera uses, run here in Node on a screenshot of the bars.
 const CSRF = '0123456789abcdef0123456789abcdef';
@@ -71,6 +71,53 @@ test('a product label prints its code as a barcode a scanner reads back', async 
     await withCodes(page, ids[1], [internal]);
     await page.goto(`/print/product-labels/${ids[1]}`);
     expect(await decoded(page)).toEqual([{ format: 'Code128', text: internal }]);
+  } finally {
+    await forget(page, ids);
+  }
+});
+
+test('the products selected on the list print on one sheet, which names the one without a code', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const reference = `LBLS-${run}`;
+  const code = `REF-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const ids: string[] = [];
+  try {
+    ids.push(await aProduct(page, `${reference}-A`));
+    await withCodes(page, ids[0], [code]);
+    ids.push(await aProduct(page, `${reference}-B`));
+
+    await page.goto('/products');
+    await page.getByTestId('list-filter').fill(reference);
+    for (const id of ids) {
+      await page.getByTestId(`list-select-row-${id}`).locator('input').check();
+    }
+    const [sheet] = await Promise.all([
+      page.context().waitForEvent('page'),
+      page.getByTestId('products-bulk-labels').click(),
+    ]);
+
+    // Before anything is printed, the sheet names the product that gets no label, and why.
+    await expect(sheet.getByTestId(`product-labels-left-out-${ids[1]}`)).toContainText(
+      `${reference}-B`,
+    );
+    await expect(sheet.getByTestId(`product-labels-left-out-${ids[1]}`)).toContainText(
+      'Aucun code',
+    );
+    const label = sheet.getByTestId('product-label');
+    await expect(label).toHaveCount(1);
+    await expect(label).toContainText(`${reference}-A`);
+    await expect(label.locator('svg[role="img"]')).toHaveAttribute('aria-label', code);
+    expect(await wcagViolations(sheet)).toEqual([]);
+
+    // The paper carries the labels alone: what was left out stays on the screen.
+    await sheet.emulateMedia({ media: 'print' });
+    await expect(sheet.getByTestId('product-labels-left-out')).toBeHidden();
+    await expect(label).toBeVisible();
+    await sheet.close();
   } finally {
     await forget(page, ids);
   }

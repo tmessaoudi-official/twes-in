@@ -69,22 +69,14 @@
       >
         @for (barcode of chosen(); track barcode.code) {
           @for (copy of labels(); track copy) {
-            <li
-              class="flex break-inside-avoid flex-col gap-1 rounded-md border border-black bg-white p-3 text-black"
-              data-testid="product-label"
-            >
-              <span class="text-lg leading-tight font-semibold">{{ product.name }}</span>
-              <span class="text-sm">{{ product.reference }}</span>
-              @if (prices()[barcode.code]; as price) {
-                <span class="text-2xl font-bold">{{ price }}</span>
-              }
-              @if (barcode.quantity > 1) {
-                <span class="text-sm">{{
-                  'products.labels.pack_of' | translate: { quantity: barcode.quantity }
-                }}</span>
-              }
-              <app-barcode-svg class="block h-16" [value]="barcode.code" />
-              <span class="text-center font-mono text-sm tracking-widest">{{ barcode.code }}</span>
+            <li class="break-inside-avoid">
+              <app-product-label
+                [name]="product.name"
+                [reference]="product.reference"
+                [code]="barcode.code"
+                [quantity]="barcode.quantity"
+                [price]="prices()[barcode.code] ?? null"
+              />
             </li>
           }
         }

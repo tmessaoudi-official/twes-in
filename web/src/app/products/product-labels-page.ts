@@ -19,18 +19,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { BarcodeSvg } from '../shared/barcode/barcode-svg';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { Session } from '../shared/session/session';
+import { labelCode, MOST_LABEL_COPIES, ProductLabel } from './product-label';
 import { ProductsApi } from './products-api';
-import type { BarcodeRole, ProductBarcode, ProductRow } from './products-types';
-
-/** Which of a product's codes a label carries unless one is asked for: never a supplier's, which is theirs to print. */
-const PRINTED_FIRST: readonly BarcodeRole[] = ['unit', 'internal', 'pack'];
-const MOST_COPIES = 100;
+import type { ProductBarcode, ProductRow } from './products-types';
 
 /**
- * Printed product labels (docs/SPEC.md § 7, 2026-09-23 slice 8): the product's name and reference, what a customer
+ * Printed product labels: the product's name and reference, what a customer
  * pays for what the code enters, taxes included (the price check's count), and the code as a barcode — EAN when it
  * is a GTIN, Code 128 otherwise — with the code written under it. The unit code unless another is asked for, as
  * many copies as asked; every code of the product can be ticked, each printing at its own price and with the pieces it
@@ -39,13 +35,13 @@ const MOST_COPIES = 100;
 @Component({
   selector: 'app-product-labels-page',
   imports: [
-    BarcodeSvg,
     FormsModule,
     MatButtonModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    ProductLabel,
     RouterLink,
     TranslatePipe,
   ],
@@ -73,12 +69,7 @@ export class ProductLabelsPage {
   protected readonly printed = computed((): ProductBarcode | null => {
     const barcodes = this.product()?.barcodes ?? [];
     const asked = barcodes.find((barcode) => barcode.code === this.code());
-    if (asked) return asked;
-    for (const role of PRINTED_FIRST) {
-      const found = barcodes.find((barcode) => barcode.role === role);
-      if (found) return found;
-    }
-    return null;
+    return asked ?? labelCode(barcodes);
   });
   protected readonly codes = computed(() => this.product()?.barcodes ?? []);
   /** What is printed: the ticked codes in the order the product holds them, else the default one. */
@@ -114,7 +105,7 @@ export class ProductLabelsPage {
 
   protected setCopies(value: unknown): void {
     const copies = Math.trunc(Number(value));
-    this.copies.set(Number.isFinite(copies) ? Math.min(Math.max(copies, 1), MOST_COPIES) : 1);
+    this.copies.set(Number.isFinite(copies) ? Math.min(Math.max(copies, 1), MOST_LABEL_COPIES) : 1);
   }
 
   protected print(): void {

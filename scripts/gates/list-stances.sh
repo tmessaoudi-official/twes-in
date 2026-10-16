@@ -109,9 +109,7 @@ products/product-categories-page|export=not-ruled
 products/product-categories-page|import=not-ruled
 products/product-categories-page#list|bulk=not-ruled
 products/product-categories-page#list|selection=not-ruled
-products/products-page#list|bulk=bulk-ruled
 products/products-page#list|row-actions=row-260
-products/products-page#list|selection=bulk-ruled
 quotes/quotes-page|export=not-ruled
 quotes/quotes-page|import=not-ruled
 quotes/quotes-page#list|bulk=not-ruled
@@ -140,7 +138,6 @@ import os, re, subprocess, sys
 
 REASONS = {
     'not-ruled': 'not ruled yet: the list × action matrix (docs/plans/source-layout.plan.md step 7)',
-    'bulk-ruled': 'ruled 2026-10-11 08:26 (its first bulk actions, each previewed per record): built at plan step 8',
     'row-260': 'ruled 2026-10-11 01:24 (row 260: every action of a record reachable from its list row): not built here yet',
 }
 ASPECTS_OF_LIST = ('selection', 'bulk', 'row-actions')

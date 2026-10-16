@@ -26,6 +26,7 @@ import type {
   ProductSubstituteProductSubstituteRead,
   ProductSubstitutionGroupProductSubstitutionGroupRead,
   StockTotalStockTotalRead,
+  ProductLabelProductLabelRead,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
@@ -36,6 +37,7 @@ import {
   PRODUCT_KINDS,
   PRODUCT_TRACKINGS,
   type BarcodesRefusal,
+  type LabelledProduct,
   type LineTaxFamily,
   type ProductBarcode,
   type ProductCategoryInput,
@@ -117,6 +119,26 @@ export class ProductsApi {
       toProduct(
         await firstValueFrom(this.http.get<ProductProductRead>(path(companyId, 'products', id))),
       ),
+    );
+  }
+
+  /** The labels of the products asked for, in the order asked, each once; a product the company does not hold is left out. */
+  async labels(companyId: string, productIds: readonly string[]): Promise<LabelledProduct[]> {
+    let params = new HttpParams();
+    for (const id of productIds) params = params.append('productId[]', id);
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<ProductLabelProductLabelRead[]>(path(companyId, 'product-labels'), {
+            params,
+          }),
+        )
+      ).map((label) => ({
+        productId: label.productId,
+        reference: label.reference,
+        name: label.name,
+        codes: label.codes.map((code) => ({ ...code })),
+      })),
     );
   }
 

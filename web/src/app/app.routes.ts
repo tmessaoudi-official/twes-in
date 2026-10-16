@@ -78,11 +78,11 @@ export const routes: Routes = [
           import('./inventory/location-labels-page').then((m) => m.LocationLabelsPage),
       },
       {
-        path: 'product-labels/:productId',
+        path: 'product-labels',
         title: 'titles.product_labels',
         canActivate: [moduleGuard(PRODUCTS_MODULE)],
-        loadComponent: () =>
-          import('./products/product-labels-page').then((m) => m.ProductLabelsPage),
+        loadChildren: () =>
+          import('./products/product-labels.routes').then((m) => m.PRODUCT_LABELS_ROUTES),
       },
     ],
   },

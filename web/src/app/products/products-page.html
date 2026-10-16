@@ -33,12 +33,16 @@
       [failed]="facade.error() !== null"
       [total]="total()"
       [pickSources]="pickSources"
+      [(selected)]="selected"
       (queryChange)="onQuery($event)"
       testId="products-table"
       [rowTestId]="rowTestId"
       emptyKey="products.none"
       emptyTestId="products-empty"
     >
+      <ng-template appDataListSelection>
+        <app-product-bulk [ids]="selected()" />
+      </ng-template>
       <ng-template appDataListCell="photo" let-row>
         <app-product-thumbnail [productId]="row.id" [photoId]="row.mainPhotoId" [side]="40" />
       </ng-template>

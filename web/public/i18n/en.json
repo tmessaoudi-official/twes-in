@@ -2227,7 +2227,15 @@
       "print": "Print",
       "no_code": "This product answers to no code of its own: give it a unit or internal code to print its labels.",
       "open": "Print labels",
-      "back": "Back to the product"
+      "back": "Back to the product",
+      "sheet_intro": "One label per product selected, with the code of its own sheet: the unit code, else an internal one, else a pack's.",
+      "back_to_list": "Back to products",
+      "left_out": "{count, plural, one {One selected product gets no label} other {{{count}} selected products get no label}}",
+      "unknown": "Unknown product",
+      "reasons": {
+        "not_found": "Not found: deleted meanwhile, or no longer accessible",
+        "no_code": "No code of its own: give it a unit or internal code"
+      }
     },
     "substitutes": {
       "title": "Substitutes",
@@ -2278,7 +2286,11 @@
       "from_phone": "Photo added to {{name}}.",
       "phone_hint": "The lent phone can take the photo too: it arrives here."
     },
-    "saved_as": "The product was saved as {{given}}: {{shown}} was taken in the meantime."
+    "saved_as": "The product was saved as {{given}}: {{shown}} was taken in the meantime.",
+    "selected": "{count, plural, =0 {No product selected} one {{{count}} product selected} other {{{count}} products selected}}",
+    "bulk": {
+      "labels": "Labels"
+    }
   },
   "inventory": {
     "no_company": "Choose a company first.",

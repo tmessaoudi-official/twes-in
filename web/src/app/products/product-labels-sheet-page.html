@@ -1,0 +1,88 @@
+<main class="flex flex-col gap-6 p-6 print:p-0" data-testid="product-labels-sheet">
+  <header
+    class="flex flex-wrap items-start justify-between gap-3 print:hidden"
+    data-testid="product-labels-controls"
+  >
+    <div class="flex flex-col gap-1">
+      <h1 class="m-0 text-3xl font-semibold">{{ 'products.labels.title' | translate }}</h1>
+      <p class="m-0 max-w-prose">{{ 'products.labels.sheet_intro' | translate }}</p>
+    </div>
+    <div class="flex flex-wrap items-start gap-3">
+      <a mat-button class="mt-2" routerLink="/products" data-testid="product-labels-back">{{
+        'products.labels.back_to_list' | translate
+      }}</a>
+      <mat-form-field class="w-32">
+        <mat-label>{{ 'products.labels.copies' | translate }}</mat-label>
+        <input
+          matInput
+          type="number"
+          min="1"
+          [max]="most"
+          data-testid="product-labels-copies"
+          [ngModel]="copies()"
+          (ngModelChange)="setCopies($event)"
+        />
+      </mat-form-field>
+      <button
+        mat-flat-button
+        type="button"
+        class="mt-2"
+        data-testid="product-labels-print"
+        [disabled]="printed().length === 0"
+        (click)="print()"
+      >
+        <mat-icon>print</mat-icon>
+        {{ 'products.labels.print' | translate }}
+      </button>
+    </div>
+  </header>
+
+  @if (error(); as code) {
+    <p role="alert" class="text-error print:hidden" data-testid="product-labels-error">
+      {{ 'products.errors.' + code | translate }}
+    </p>
+  }
+
+  @if (leftOut().length > 0) {
+    <section class="flex flex-col gap-2 print:hidden" data-testid="product-labels-left-out">
+      <h2 class="m-0 text-lg font-medium">
+        {{ 'products.labels.left_out' | translate: { count: leftOut().length } }}
+      </h2>
+      <ul class="m-0 flex flex-col gap-2 pl-0">
+        @for (product of leftOut(); track product.id) {
+          <li
+            class="flex list-none flex-col"
+            [attr.data-testid]="'product-labels-left-out-' + product.id"
+          >
+            <span class="font-medium">{{
+              product.name ?? ('products.labels.unknown' | translate)
+            }}</span>
+            <span class="text-sm text-on-surface-variant">{{
+              'products.labels.reasons.' + product.reason | translate
+            }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  @if (printed().length > 0) {
+    <ul
+      class="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4 p-0 print:gap-2"
+    >
+      @for (label of printed(); track label.product.productId) {
+        @for (copy of labels(); track copy) {
+          <li class="break-inside-avoid">
+            <app-product-label
+              [name]="label.product.name"
+              [reference]="label.product.reference"
+              [code]="label.code.code"
+              [quantity]="label.code.quantity"
+              [price]="label.price"
+            />
+          </li>
+        }
+      }
+    </ul>
+  }
+</main>

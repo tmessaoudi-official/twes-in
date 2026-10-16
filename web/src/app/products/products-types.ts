@@ -114,6 +114,23 @@ export type ProductInput = Omit<ProductRow, 'id' | 'barcodes' | 'mainPhotoId'>;
 export type BarcodeRole = 'unit' | 'pack' | 'supplier' | 'internal';
 export const BARCODE_ROLES: readonly BarcodeRole[] = ['unit', 'pack', 'supplier', 'internal'];
 
+/** One of a product's codes on a label: what it enters and what a customer pays for that, taxes included. */
+export interface LabelCode {
+  code: string;
+  role: BarcodeRole;
+  quantity: number;
+  /** The API's decimal string. */
+  priceGross: string;
+}
+
+/** A product as a sheet of labels prints it: its name, its reference and every code it holds, by role then code. */
+export interface LabelledProduct {
+  productId: string;
+  reference: string;
+  name: string;
+  codes: readonly LabelCode[];
+}
+
 export interface ProductBarcode {
   role: BarcodeRole;
   /** As printed. */

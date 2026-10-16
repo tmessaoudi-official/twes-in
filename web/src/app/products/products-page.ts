@@ -15,7 +15,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
-import { DataList, DataListCell } from '../shared/list/data-list';
+import { DataList, DataListCell, DataListSelection } from '../shared/list/data-list';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -28,6 +28,7 @@ import {
   productsList,
 } from './product-forms';
 import { ProductsFacade } from './products-facade';
+import { ProductBulk } from './product-bulk';
 import { ProductThumbnail } from './product-thumbnail';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { PRODUCTS_TABS } from './products-nav';
@@ -44,7 +45,9 @@ import type { ProductSearch } from './products-types';
     AmountPipe,
     DataList,
     DataListCell,
+    DataListSelection,
     ListExport,
+    ProductBulk,
     ProductThumbnail,
     StatusBadge,
   ],
@@ -58,7 +61,13 @@ export class ProductsPage implements OnInit {
   private readonly facade = inject(ProductsFacade);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = computed(() => productsList(this.facade.customFields()));
+  /** Rows are selected for what the selection bar offers on them: their labels on one sheet. */
+  protected readonly list = computed(() => ({
+    ...productsList(this.facade.customFields()),
+    selection: { countKey: 'products.selected' },
+  }));
+  /** The rows ticked on the page shown, by id: what the selection bar's actions act on. */
+  protected readonly selected = signal<readonly string[]>([]);
   protected readonly rows = computed(() =>
     productListRows(this.facade.products(), this.facade.categories(), this.facade.options()),
   );
