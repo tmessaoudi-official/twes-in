@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Doctrine;
 
-use App\Tenancy\Domain\NumberingSeries;
-use App\Tenancy\Domain\NumberingSeriesRepository;
+use App\Tenancy\Domain\Model\NumberingSeries;
+use App\Tenancy\Domain\Repository\NumberingSeriesRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;

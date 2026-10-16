@@ -37,11 +37,11 @@ use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Shared\Domain\PaymentMethod;
-use App\Shared\Domain\Tree;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\Tree;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

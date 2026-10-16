@@ -18,7 +18,7 @@ use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

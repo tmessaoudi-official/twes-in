@@ -16,8 +16,8 @@ use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\ValueObject\NamedLot;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockCountResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 

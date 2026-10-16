@@ -23,9 +23,9 @@ use App\Fiscal\Domain\ValueObject\IdentifierCheck;
 use App\Fiscal\Domain\ValueObject\StampOnCorrection;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Fiscal\Domain\ValueObject\TaxKind;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\InvalidNumbering;
-use App\Tenancy\Domain\NumberFormat;
+use App\Tenancy\Domain\Exception\InvalidNumbering;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\ValueObject\NumberFormat;
 use Symfony\Component\Intl\Countries;
 use Symfony\Component\Intl\Currencies;
 

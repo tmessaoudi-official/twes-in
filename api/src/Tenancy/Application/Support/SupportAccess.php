@@ -11,9 +11,9 @@ namespace App\Tenancy\Application\Support;
 
 use App\Identity\Application\Mfa\SecondFactors;
 use App\Identity\Domain\Repository\UserRepository;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\SupportGrant;
-use App\Tenancy\Domain\SupportGrantRepository;
+use App\Tenancy\Domain\Model\SupportGrant;
+use App\Tenancy\Domain\Repository\MembershipRepository;
+use App\Tenancy\Domain\Repository\SupportGrantRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

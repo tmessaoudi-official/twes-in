@@ -12,7 +12,7 @@ namespace App\Shared\Infrastructure\Validation;
 use Symfony\Component\Validator\Constraint;
 
 /**
- * Holds a form's field to the rule the domain holds every writer to (`App\Shared\Domain\ContactRules`), so the form, a
+ * Holds a form's field to the rule the domain holds every writer to (`App\Shared\Domain\Service\ContactRules`), so the form, a
  * file and anything else that writes it refuse the same values under the same reason: the rule is declared once, in
  * the domain, and a form gets every field's fault in one answer before the domain sees the first.
  */

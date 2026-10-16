@@ -15,8 +15,8 @@ use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\Module\RecurringExpenses\Application\ManageRecurringExpenses;
 use App\Module\RecurringExpenses\Application\RecurringExpenseNotFound;
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\Resource\RecurringExpenseResource;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProviderInterface<RecurringExpenseResource> */

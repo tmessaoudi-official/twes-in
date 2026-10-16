@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Audit\Application;
 
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 /** The journal as stored: one company's entries from a moment on, narrowed and paged. */

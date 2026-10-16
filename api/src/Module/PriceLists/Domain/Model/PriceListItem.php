@@ -11,8 +11,8 @@ namespace App\Module\PriceLists\Domain\Model;
 
 use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
 use App\Module\Products\Domain\Model\Product;
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;

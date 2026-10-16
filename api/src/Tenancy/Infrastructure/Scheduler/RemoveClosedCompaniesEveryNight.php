@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Scheduler;
 
-use App\Tenancy\Application\Company\RemoveClosedCompanies;
+use App\Tenancy\Application\Closing\RemoveClosedCompanies;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Scheduler\Attribute\AsPeriodicTask;
 

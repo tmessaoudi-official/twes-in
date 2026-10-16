@@ -10,11 +10,11 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Recurring\Domain;
 
 use App\Module\Recurring\Domain\Model\RecurringInvoice;
-use App\Shared\Domain\InvalidSchedule;
-use App\Shared\Domain\Schedule;
-use App\Shared\Domain\ScheduleAnchor;
-use App\Shared\Domain\ScheduleUnit;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Exception\InvalidSchedule;
+use App\Shared\Domain\Model\Schedule;
+use App\Shared\Domain\ValueObject\ScheduleAnchor;
+use App\Shared\Domain\ValueObject\ScheduleUnit;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;

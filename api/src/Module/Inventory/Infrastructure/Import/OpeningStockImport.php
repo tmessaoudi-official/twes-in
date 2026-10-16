@@ -33,8 +33,8 @@ use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\Barcode;
 use App\Module\Products\Domain\ValueObject\BarcodeRole;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

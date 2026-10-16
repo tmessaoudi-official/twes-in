@@ -17,7 +17,7 @@ use App\Module\Expenses\Domain\ValueObject\ExpenseAmounts;
 use App\Module\Expenses\Domain\ValueObject\ExpenseDetails;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Unit\Files\Application\AttachmentsTest;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;

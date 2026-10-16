@@ -12,7 +12,7 @@ namespace App\Module\Inventory\Application;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Tenancy\Application\Establishment\EstablishmentNotFound;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 

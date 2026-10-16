@@ -11,7 +11,7 @@ namespace App\Tests\Support;
 
 use App\Shared\Application\DomainEvents;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\DomainEvent;
+use App\Shared\Domain\Event\DomainEvent;
 
 /** Keeps what was published, and whether a transaction was still open when it was. */
 final class RecordingDomainEvents implements DomainEvents

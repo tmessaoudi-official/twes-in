@@ -14,7 +14,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Expenses\Domain\Model\Expense;
 use App\Module\RecurringExpenses\Application\RecurringExpenseModel;
 use App\Module\RecurringExpenses\Application\RecurringExpenseModels;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

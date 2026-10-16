@@ -15,7 +15,7 @@ use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Infrastructure\ApiPlatform\Security\ModulePermission;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Application\Permission\PermissionGroup;
-use App\Tenancy\Infrastructure\ApiPlatform\MemberPermission;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
 
 /**
  * The catalogue, collected from the modules that declare themselves and completed by the few permissions that belong

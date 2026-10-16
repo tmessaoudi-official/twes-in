@@ -12,8 +12,8 @@ namespace App\Tests\Functional;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
-use App\Shared\Domain\PostalAddress;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Model\PostalAddress;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /** The vendors list exported as a file, under the columns the import reads (docs/SPEC.md § 7, row 60). */

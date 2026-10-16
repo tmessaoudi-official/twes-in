@@ -23,9 +23,9 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Tenancy\Application\Company\CompanyLogo;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyProfile;
-use App\Tenancy\Domain\EstablishmentRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use Symfony\Component\HttpFoundation\Response;
 
 final class DeliveryNotesTest extends ApiTestCase

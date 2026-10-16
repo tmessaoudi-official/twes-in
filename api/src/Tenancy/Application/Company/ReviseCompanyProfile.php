@@ -14,9 +14,9 @@ use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyProfile;
-use App\Tenancy\Domain\CompanyRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

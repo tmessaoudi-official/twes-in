@@ -19,7 +19,7 @@ use App\ModuleRegistry\Application\ModuleStates;
 use App\ModuleRegistry\Application\ModuleView;
 use App\ModuleRegistry\Application\PlannedModules;
 use App\ModuleRegistry\Application\UnknownModule;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryModuleStates;

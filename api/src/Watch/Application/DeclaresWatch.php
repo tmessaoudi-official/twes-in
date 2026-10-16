@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Watch\Application;
 
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**

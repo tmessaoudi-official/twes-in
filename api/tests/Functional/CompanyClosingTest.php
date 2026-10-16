@@ -16,11 +16,11 @@ use App\Identity\Domain\ValueObject\Email;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Invitation;
-use App\Tenancy\Domain\InvitationToken;
-use App\Tenancy\Domain\Role;
-use App\Tenancy\Domain\SupportGrant;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Model\SupportGrant;
+use App\Tenancy\Domain\ValueObject\InvitationToken;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\RouterInterface;
 

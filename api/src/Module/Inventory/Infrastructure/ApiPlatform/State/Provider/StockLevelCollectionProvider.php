@@ -23,9 +23,9 @@ use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductPhotoRepository;
 use App\Module\Products\Domain\Repository\ProductRepository;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\Uid\Uuid;
 
 /**

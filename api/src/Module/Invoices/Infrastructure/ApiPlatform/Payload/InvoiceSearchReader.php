@@ -12,9 +12,9 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform\Payload;
 use App\Module\Invoices\Domain\ValueObject\InvoiceKind;
 use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\ListFilters;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The one reading of an invoices list's query string, for the list, its status counts and its CSV and Excel files, so
@@ -53,7 +53,7 @@ final class InvoiceSearchReader
     }
 
     /**
-     * @template T of \App\Shared\Domain\DateRange|\App\Shared\Domain\DecimalRange
+     * @template T of \App\Shared\Domain\ValueObject\DateRange|\App\Shared\Domain\ValueObject\DecimalRange
      *
      * @param T $range
      *

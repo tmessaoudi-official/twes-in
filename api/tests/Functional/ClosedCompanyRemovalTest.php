@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Files\Application\FileStorage;
 use App\Files\Application\StoredFileMissing;
-use App\Tenancy\Application\Company\RemoveClosedCompanies;
+use App\Tenancy\Application\Closing\RemoveClosedCompanies;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\ApplicationTester;
 

@@ -16,8 +16,8 @@ use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use Symfony\Component\Uid\Uuid;
 
 /**

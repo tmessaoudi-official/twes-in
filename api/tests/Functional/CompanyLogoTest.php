@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /** docs/SPEC.md § 7, 2026-09-26 22:24: each company uploads its logo, which its documents and its switcher show. */

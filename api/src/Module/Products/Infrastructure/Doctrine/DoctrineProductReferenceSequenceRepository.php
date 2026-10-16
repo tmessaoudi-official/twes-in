@@ -11,7 +11,7 @@ namespace App\Module\Products\Infrastructure\Doctrine;
 
 use App\Module\Products\Domain\Model\ProductReferenceSequence;
 use App\Module\Products\Domain\Repository\ProductReferenceSequenceRepository;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;

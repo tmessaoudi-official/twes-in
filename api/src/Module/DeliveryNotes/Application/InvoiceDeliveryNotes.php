@@ -28,7 +28,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Module\Products\Domain\Service\LotCode;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

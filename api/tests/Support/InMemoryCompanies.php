@@ -9,11 +9,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyRepository;
-use App\Tenancy\Domain\CompanySearch;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\ValueObject\CompanySearch;
 
 final class InMemoryCompanies implements CompanyRepository
 {

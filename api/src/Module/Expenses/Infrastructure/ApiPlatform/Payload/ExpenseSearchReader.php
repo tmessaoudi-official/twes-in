@@ -11,9 +11,9 @@ namespace App\Module\Expenses\Infrastructure\ApiPlatform\Payload;
 
 use App\Module\Expenses\Domain\ValueObject\ExpenseSearch;
 use App\Module\Expenses\Domain\ValueObject\ExpenseStatus;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
-use App\Shared\Domain\PaymentMethod;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\ListFilters;
+use App\Shared\Domain\ValueObject\PaymentMethod;
 
 /**
  * The one reading of an expenses list's query string, for the list, its status counts and its CSV and Excel files, so

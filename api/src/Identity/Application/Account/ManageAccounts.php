@@ -15,8 +15,8 @@ use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\AccountSearch;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 /**

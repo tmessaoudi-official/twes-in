@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Domain;
 
-use App\Shared\Domain\DateRange;
-use App\Shared\Domain\DecimalRange;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\DateRange;
+use App\Shared\Domain\ValueObject\DecimalRange;
+use App\Shared\Domain\ValueObject\ListFilters;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

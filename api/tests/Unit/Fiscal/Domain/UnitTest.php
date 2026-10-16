@@ -11,7 +11,7 @@ namespace App\Tests\Unit\Fiscal\Domain;
 
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Domain\Model\Unit;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

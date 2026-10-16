@@ -12,7 +12,7 @@ namespace App\Module\Inventory\Application\StockMap;
 use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use App\Module\Inventory\Domain\Repository\StockMovementRepository;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 

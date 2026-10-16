@@ -18,8 +18,8 @@ use App\Module\Vendors\Infrastructure\ApiPlatform\Output\VendorIdentifierOption;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Resource\VendorOptionsResource;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Security\VendorPermission;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** @implements ProviderInterface<VendorOptionsResource> */

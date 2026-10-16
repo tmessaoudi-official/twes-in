@@ -1,0 +1,151 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Tenancy\Infrastructure\ApiPlatform\Security;
+
+use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Licensing\Application\CompanyAccess;
+use App\Licensing\Domain\ValueObject\Access;
+use App\Shared\Infrastructure\Doctrine\CompanyFilter;
+use App\Tenancy\Application\Support\SupportAccess;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * The one place a "{companyId}" in a path is turned into a company the caller may act on. A company that does
+ * not exist and a company the caller has nothing to do with answer the same 404: a 403 would confirm the
+ * identifier exists, which is how a tenant list gets enumerated.
+ *
+ * A platform operator answers here as anyone else does, by membership: what an operator does to a company they are not
+ * in, opening it, inviting its owners, deciding on it, goes through the platform endpoints, never through a company's
+ * own. The one way in besides is the owner's « Accès support », which lets an operator read, and only read
+ * (SupportAccess); a write or an export under it is refused before it gets here (SupportReadOnlyListener).
+ *
+ * A closed company is still its members' to read, and to take its books from; anything else is refused with a 403
+ * naming why. A member whose company's subscription is unpaid past its grace period is refused with a 403 naming why, read-only
+ * or locked; the requested permission is what is judged, so an owner's "*" passes nothing the subscription refuses.
+ *
+ * Once it has resolved the company, it scopes the rest of the request to it through the company filter (review S5):
+ * a query that forgets its own company condition still reaches no other company's rows.
+ */
+final readonly class CompanyGuard
+{
+    /** What a member is told when the company's unpaid subscription refuses the permission (docs/SPEC.md § 7, 2026-09-17). */
+    public const string SUBSCRIPTION_READ_ONLY = 'subscription_read_only';
+    public const string SUBSCRIPTION_LOCKED = 'subscription_locked';
+    /** What a member is told when the company is closed down and the permission is not one it keeps open. */
+    public const string COMPANY_CLOSED = 'company_closed';
+
+    public function __construct(
+        private Security $security,
+        private CompanyRepository $companies,
+        private MembershipRepository $memberships,
+        private EntityManagerInterface $entityManager,
+        private CompanyAccess $access,
+        private SupportAccess $support,
+    ) {
+    }
+
+    /**
+     * @throws NotFoundHttpException     when the company is absent or none of the caller's business
+     * @throws AccessDeniedHttpException when the caller's role grants it but the company's subscription does not
+     */
+    public function companyForActing(Uuid $companyId, string $permission): Company
+    {
+        $company = $this->companies->ofId($companyId);
+        if (null === $company || !$this->roleGrants($company, $permission)) {
+            throw new NotFoundHttpException('No such company.');
+        }
+        // Only a member reaches this point, so saying why does not tell a stranger the company exists. A closed company
+        // pays for nothing any more, so its subscription is no longer judged: what it keeps open is.
+        if ($company->isClosedDown()) {
+            if (!$company->permitsWhileClosedDown($permission)) {
+                throw new AccessDeniedHttpException(self::COMPANY_CLOSED);
+            }
+        } else {
+            $access = $this->access->accessOf($company->getId());
+            if (!$access->permits($permission)) {
+                throw new AccessDeniedHttpException(Access::Locked === $access ? self::SUBSCRIPTION_LOCKED : self::SUBSCRIPTION_READ_ONLY);
+            }
+        }
+        $this->entityManager->getFilters()->enable(CompanyFilter::NAME)->setParameter(CompanyFilter::COMPANY, $company->getId()->toRfc4122());
+
+        return $company;
+    }
+
+    /**
+     * Whether the caller holds the permission in the company: what a response offers them. Enforcing is companyForActing's.
+     * A company that is not active is closed to its members, pending an operator's approval or suspended by one, and
+     * answers them as it answers a stranger; the session still describes it, which is how the application explains why.
+     */
+    public function may(Company $company, string $permission): bool
+    {
+        return $this->roleGrants($company, $permission) && ($company->isClosedDown()
+            ? $company->permitsWhileClosedDown($permission)
+            : $this->access->accessOf($company->getId())->permits($permission));
+    }
+
+    /**
+     * The company a member asks to reopen, closed down as it is: the one way to act on a closed company that is not a
+     * read. Whether they are its owner, and whether the days allow it, is the use case's to say.
+     *
+     * @throws NotFoundHttpException when the company is absent or none of the caller's business
+     */
+    public function companyToReopen(Uuid $companyId, string $permission): Company
+    {
+        $company = $this->companies->ofId($companyId);
+        if (null === $company || !$this->roleGrants($company, $permission)) {
+            throw new NotFoundHttpException('No such company.');
+        }
+
+        return $company;
+    }
+
+    /**
+     * Whether the signed-in member's ROLE grants a permission, whatever the subscription says: what a role editor may
+     * hand on is what they hold, and a lapsed subscription does not make them hold less.
+     */
+    public function holds(Company $company, string $permission): bool
+    {
+        return $this->roleGrants($company, $permission);
+    }
+
+    private function roleGrants(Company $company, string $permission): bool
+    {
+        $account = $this->account();
+        // A closed company is still its members', to read: what it keeps open is companyForActing's to judge.
+        if (!$company->isActive() && !$company->isClosedDown()) {
+            return false;
+        }
+        $role = $this->memberships->ofUserInCompany($account->getId(), $company->getId())?->getRole();
+        if (null !== $role) {
+            return $role->grants($permission);
+        }
+
+        return $company->isActive() && SupportAccess::permits($permission) && null !== $this->support->grantOf($account->getId(), $company->getId());
+    }
+
+    public function account(): SecurityUser
+    {
+        $account = $this->security->getUser();
+        if (!$account instanceof SecurityUser) {
+            // The operation security expression runs first; this is the type guard, not the access check.
+            throw new AccessDeniedException();
+        }
+
+        return $account;
+    }
+}

@@ -11,9 +11,9 @@ namespace App\Module\Inventory\Infrastructure\Watch;
 
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 use App\Watch\Application\DeclaresWatch;
 use App\Watch\Application\WatchItem;
 use Doctrine\DBAL\Connection;

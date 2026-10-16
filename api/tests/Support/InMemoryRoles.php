@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Tenancy\Domain\Role;
-use App\Tenancy\Domain\RoleRepository;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\RoleRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryRoles implements RoleRepository

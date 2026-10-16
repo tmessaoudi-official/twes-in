@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Domain;
 
-use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\Model\PostalAddress;
 use PHPUnit\Framework\TestCase;
 
 final class PostalAddressTest extends TestCase

@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Tenancy\Application;
 
 use App\Tenancy\Application\Company\SellerIdentity;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyProfile;
-use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 

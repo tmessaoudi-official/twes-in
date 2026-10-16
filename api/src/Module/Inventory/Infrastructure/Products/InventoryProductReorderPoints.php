@@ -15,7 +15,7 @@ use App\Module\Inventory\Domain\Repository\ProductReorderPointRepository;
 use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use App\Module\Products\Application\Stock\ProductReorderPoints;
 use App\Module\Products\Application\Stock\ReorderPointRefused;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

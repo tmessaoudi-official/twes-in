@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\RecurringExpenses\Application;
 
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /** The expenses a recurring expense copies, read from the expenses, which answer this port. */

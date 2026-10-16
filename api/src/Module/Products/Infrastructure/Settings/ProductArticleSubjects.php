@@ -15,7 +15,7 @@ use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Settings\Application\ArticleSubject;
 use App\Settings\Application\ArticleSubjects;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

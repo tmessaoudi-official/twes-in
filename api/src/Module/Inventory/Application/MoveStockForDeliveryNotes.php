@@ -27,7 +27,7 @@ use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\EstablishmentRepository;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use BcMath\Number;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;

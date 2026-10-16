@@ -26,7 +26,7 @@ use App\Identity\Infrastructure\Security\UserProvider;
 use App\Module\Customers\Domain\Exception\InvalidContact;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Invoices\Domain\Event\InvoiceIssued;
-use App\Shared\Domain\DomainEvent;
+use App\Shared\Domain\Event\DomainEvent;
 use Doctrine\ORM\Mapping\Embeddable;
 use Doctrine\ORM\Mapping\Entity;
 use PHPUnit\Framework\TestCase;
@@ -71,15 +71,6 @@ final class SourceLayoutTest extends TestCase
     private const array SUB_DOMAINS = ['Fiscal/Domain/Calculation'];
 
     /**
-     * The contexts whose move has not landed yet: each still breaks the layout, which the last case checks, so the list
-     * only shrinks, one context per commit.
-     */
-    private const array NOT_YET_MOVED = [
-        'Shared',
-        'Tenancy',
-    ];
-
-    /**
      * What is stored or routed by its fully-qualified name: a message the queue keeps, the user the session keeps, a
      * scheduled task the schedule names. Moving one strands queued mail or signs everyone out, so these stay put.
      */
@@ -107,9 +98,7 @@ final class SourceLayoutTest extends TestCase
         foreach ($this->contexts() as $context) {
             foreach ($this->phpFilesUnder(self::SRC."/$context") as $relative) {
                 ++$read;
-                if (!\in_array($context, self::NOT_YET_MOVED, true)) {
-                    $violations = [...$violations, ...$this->misplaced($context, $relative)];
-                }
+                $violations = [...$violations, ...$this->misplaced($context, $relative)];
             }
         }
         self::assertGreaterThan(1700, $read, 'the contexts hold some 1,800 classes: a scan reading fewer has stopped finding them');
@@ -117,8 +106,8 @@ final class SourceLayoutTest extends TestCase
     }
 
     /**
-     * Each rule, both ways, on real classes set at chosen places: until a context moves, a rule broken here would
-     * otherwise go unseen, the contexts not yet moved breaking the layout by their flat folders alone.
+     * Each rule, both ways, on real classes set at chosen places: on a tree where every class sits right, a rule that
+     * stopped placing its role would otherwise pass unseen.
      */
     public function testEachRuleKnowsTheRoleItPlaces(): void
     {
@@ -180,22 +169,9 @@ final class SourceLayoutTest extends TestCase
     {
         $crowded = [];
         foreach ($this->crowded($this->folders()) as $folder => $count) {
-            if (!$this->notYetMoved($folder)) {
-                $crowded[] = "$folder holds $count files";
-            }
+            $crowded[] = "$folder holds $count files";
         }
         self::assertSame([], $crowded, 'A folder past '.self::CAP." files is split by aggregate or capability:\n".implode("\n", $crowded));
-    }
-
-    public function testEveryContextNotYetMovedStillBreaksTheLayout(): void
-    {
-        self::assertSame([], array_values(array_diff(self::NOT_YET_MOVED, $this->contexts())), 'NOT_YET_MOVED names contexts only');
-        // Two contexts keep the layout already: what tells a context that breaks it must say so of them.
-        self::assertFalse($this->breaks('DataHealth'), 'DataHealth keeps the layout');
-        self::assertFalse($this->breaks('Module/AccountingExport'), 'AccountingExport keeps the layout');
-        foreach (self::NOT_YET_MOVED as $context) {
-            self::assertTrue($this->breaks($context), "$context keeps the layout now: take it off NOT_YET_MOVED, which only shrinks");
-        }
     }
 
     public function testWhatIsStoredOrRoutedByItsClassNameStaysPut(): void
@@ -331,23 +307,6 @@ final class SourceLayoutTest extends TestCase
         return null;
     }
 
-    /** Whether a context breaks the layout, listed or not: a class out of its folder, or a folder past the cap. */
-    private function breaks(string $context): bool
-    {
-        foreach ($this->phpFilesUnder(self::SRC."/$context") as $relative) {
-            if ([] !== $this->misplaced($context, $relative)) {
-                return true;
-            }
-        }
-        foreach (array_keys($this->crowded($this->folders())) as $folder) {
-            if ($this->within($folder, $context)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /**
      * @param array<string, int> $folders
      *
@@ -367,17 +326,6 @@ final class SourceLayoutTest extends TestCase
     {
         foreach (self::SUB_DOMAINS as $subDomain) {
             if ($this->within("$context/$folder", $subDomain)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function notYetMoved(string $folder): bool
-    {
-        foreach (self::NOT_YET_MOVED as $context) {
-            if ($this->within($folder, $context)) {
                 return true;
             }
         }

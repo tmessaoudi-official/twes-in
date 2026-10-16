@@ -14,8 +14,8 @@ use App\Module\Expenses\Domain\Model\ExpenseCategory;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\ModuleRegistry\Domain\Model\ModuleState;
-use App\Shared\Domain\PostalAddress;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Model\PostalAddress;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 final class VendorsTest extends ApiTestCase

@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Module\Invoices\Application\Deposit\DepositQuotes;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /** The quotes deposits were drawn from, by company and id, each with the net it comes to; the hold is the caller's transaction's. */

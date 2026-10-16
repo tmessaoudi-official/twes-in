@@ -15,8 +15,8 @@ use App\CustomFields\Application\CustomFieldKeyTaken;
 use App\CustomFields\Application\ManageCustomFields;
 use App\CustomFields\Domain\Exception\InvalidCustomFieldDefinition;
 use App\CustomFields\Infrastructure\ApiPlatform\Resource\CustomFieldResource;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 

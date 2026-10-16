@@ -17,7 +17,7 @@ use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\ModuleRegistry\Domain\Model\ModuleState;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\InMemoryModuleStates;
 use App\Tests\Support\InMemoryVendors;
 use PHPUnit\Framework\TestCase;

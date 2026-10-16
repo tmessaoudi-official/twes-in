@@ -17,8 +17,8 @@ use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Fiscal\Infrastructure\ApiPlatform\Resource\CustomerTaxRegimeResource;
 use App\Fiscal\Infrastructure\ApiPlatform\Security\FiscalPermission;
 use App\Identity\Domain\Repository\UserRepository;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** @implements ProviderInterface<CustomerTaxRegimeResource> */

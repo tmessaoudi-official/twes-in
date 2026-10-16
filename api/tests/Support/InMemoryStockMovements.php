@@ -21,9 +21,9 @@ use App\Module\Inventory\Domain\ValueObject\StockValue;
 use App\Module\Inventory\Domain\ValueObject\TypedCost;
 use App\Module\Products\Domain\Model\Product;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\DateRange;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\DateRange;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 

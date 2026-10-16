@@ -13,8 +13,8 @@ use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Tenancy\Application\Establishment\EstablishmentNotFound;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\EstablishmentRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**

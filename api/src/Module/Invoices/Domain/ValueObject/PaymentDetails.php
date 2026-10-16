@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Domain\ValueObject;
 
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
-use App\Shared\Domain\PaymentMethod;
+use App\Shared\Domain\ValueObject\PaymentMethod;
 
 /**
  * What a payment says: its day, an amount above zero with at most three decimals, how it was paid, a reference and

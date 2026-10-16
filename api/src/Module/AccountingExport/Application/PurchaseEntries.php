@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\AccountingExport\Application;
 
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /** The expenses a company entered in its books for a period, by their own day: the port the expenses module answers. */
 interface PurchaseEntries

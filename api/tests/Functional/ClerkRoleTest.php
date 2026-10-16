@@ -15,8 +15,8 @@ use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Tenancy\Application\Seed\SeedPlatform;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Role;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

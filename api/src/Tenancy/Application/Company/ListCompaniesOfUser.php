@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Company;
 
 use App\Tenancy\Application\Support\SupportAccess;
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\SupportGrant;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\SupportGrant;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**

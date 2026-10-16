@@ -31,10 +31,10 @@ use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
-use App\Shared\Domain\AmountInWords;
-use App\Shared\Domain\DocumentDesign;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\SellerSnapshot;
+use App\Shared\Domain\Service\AmountInWords;
+use App\Shared\Domain\ValueObject\DocumentDesign;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

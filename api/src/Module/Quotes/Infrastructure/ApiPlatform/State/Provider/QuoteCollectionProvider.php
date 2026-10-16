@@ -18,10 +18,10 @@ use App\Module\Quotes\Infrastructure\ApiPlatform\Output\QuoteView;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Payload\QuoteSearchReader;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
-use App\Shared\Domain\Page;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * One page of a company's quotes, searched, narrowed and sorted in the database. Each row's figures are worked out for

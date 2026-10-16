@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Recurring\Application;
 
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /** Drafting an occurrence: a copy of the model as a new draft invoice, which the invoices write and audit. */

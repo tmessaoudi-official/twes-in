@@ -13,8 +13,8 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Tenancy\Application\Company\SellerIdentity;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 
 /**
  * Who an invoice names, checked before it takes a number (Code de la TVA art. 18-II, CGI annexe II art. 242 nonies A):

@@ -12,7 +12,7 @@ namespace App\Settings\Infrastructure\FirstSteps;
 use App\FirstSteps\Application\DeclaresFirstStep;
 use App\ModuleRegistry\Infrastructure\ApiPlatform\Security\ModulePermission;
 use App\Settings\Domain\ValueObject\SettingLevel;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Connection;
 
 /**

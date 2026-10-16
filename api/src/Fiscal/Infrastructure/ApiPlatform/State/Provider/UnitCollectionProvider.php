@@ -15,8 +15,8 @@ use App\Fiscal\Application\Unit\ManageUnits;
 use App\Fiscal\Domain\Model\Unit;
 use App\Fiscal\Infrastructure\ApiPlatform\Resource\UnitResource;
 use App\Fiscal\Infrastructure\ApiPlatform\Security\FiscalPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<UnitResource> */
 final readonly class UnitCollectionProvider implements ProviderInterface

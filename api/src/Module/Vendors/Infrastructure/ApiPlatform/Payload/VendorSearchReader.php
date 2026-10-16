@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Module\Vendors\Infrastructure\ApiPlatform\Payload;
 
 use App\Module\Vendors\Domain\ValueObject\VendorSearch;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\ListFilters;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The one reading of a vendors list's query string, for the list and its CSV and Excel files, so that what the screen

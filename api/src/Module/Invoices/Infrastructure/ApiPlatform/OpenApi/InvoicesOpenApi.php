@@ -18,7 +18,7 @@ use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
 use App\Module\Invoices\Application\Bulk\CheckInvoicesInBulk;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
-use App\Shared\Domain\DocumentDesign;
+use App\Shared\Domain\ValueObject\DocumentDesign;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
 /** Documents the PDF and Factur-X downloads, plain controllers API Platform does not describe (InvoicePdfController, InvoiceSelectionPdfController, FacturXController). */

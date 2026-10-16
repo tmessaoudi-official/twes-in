@@ -11,10 +11,10 @@ namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Invitation;
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\Invitation\InvitationToMail;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;

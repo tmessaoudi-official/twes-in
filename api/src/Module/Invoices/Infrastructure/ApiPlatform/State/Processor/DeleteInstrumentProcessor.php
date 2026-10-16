@@ -17,8 +17,8 @@ use App\Module\Invoices\Application\Payment\ManageInstruments;
 use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\PaymentInstrumentResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 

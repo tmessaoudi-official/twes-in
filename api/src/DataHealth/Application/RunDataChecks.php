@@ -12,7 +12,7 @@ namespace App\DataHealth\Application;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
-use App\Tenancy\Domain\CompanyRepository;
+use App\Tenancy\Domain\Repository\CompanyRepository;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Uid\Uuid;
 

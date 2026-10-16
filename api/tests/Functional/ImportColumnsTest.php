@@ -15,7 +15,7 @@ use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportHeading;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;

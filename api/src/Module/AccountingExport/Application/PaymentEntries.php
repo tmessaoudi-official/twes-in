@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\AccountingExport\Application;
 
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /** The payments a company received on its invoices in a period: the port the sales module answers. */
 interface PaymentEntries

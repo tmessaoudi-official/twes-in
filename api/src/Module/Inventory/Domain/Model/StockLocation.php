@@ -11,9 +11,9 @@ namespace App\Module\Inventory\Domain\Model;
 
 use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use App\Venue\Domain\Model\VenueSpot;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;

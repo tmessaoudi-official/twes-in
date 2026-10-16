@@ -14,7 +14,7 @@ use App\CustomFields\Domain\Model\CustomFieldDefinition;
 use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use App\CustomFields\Domain\ValueObject\CustomFieldRule;
 use App\CustomFields\Domain\ValueObject\CustomFieldType;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

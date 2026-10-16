@@ -11,10 +11,10 @@ namespace App\Tests\Unit\Tenancy\Application;
 
 use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Application\Invitation\MailInvitation;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Invitation;
-use App\Tenancy\Domain\InvitationToken;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\ValueObject\InvitationToken;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryInvitationMailer;
 use App\Tests\Support\InMemoryInvitations;

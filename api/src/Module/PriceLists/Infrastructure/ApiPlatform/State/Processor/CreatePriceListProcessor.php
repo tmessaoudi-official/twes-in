@@ -16,8 +16,8 @@ use App\Module\PriceLists\Application\PriceListNameTaken;
 use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\Resource\PriceListResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 

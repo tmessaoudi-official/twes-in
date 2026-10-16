@@ -15,7 +15,7 @@ use App\DataHealth\Application\RunDataChecks;
 use App\Module\Invoices\Application\Chain\VerifyInvoiceChains;
 use App\Module\Invoices\Application\FacturX\ExportFacturX;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\NativeClock;

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Domain\Event;
 
-use App\Shared\Domain\DomainEvent;
+use App\Shared\Domain\Event\DomainEvent;
 use Symfony\Component\Uid\Uuid;
 
 /**

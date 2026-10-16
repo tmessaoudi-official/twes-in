@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application\Statement;
 
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
-use App\Shared\Domain\DocumentDesign;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\SellerSnapshot;
+use App\Shared\Domain\ValueObject\DocumentDesign;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 
 /**
  * What a printed statement of account shows: the account over its period, who sends it and to whom, in the language

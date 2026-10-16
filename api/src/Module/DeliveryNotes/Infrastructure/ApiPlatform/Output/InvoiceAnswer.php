@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output;
 
 use App\Module\Invoices\Domain\Model\Invoice;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * An invoice drafted from delivery notes, as the API answers any invoice: with its figures and what each line may take of

@@ -13,7 +13,7 @@ use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Domain\Model\InvoiceReminder;
 use App\Module\Invoices\Domain\Repository\InvoiceReminderRepository;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /** The reminder stages an invoice reached, the first first. */

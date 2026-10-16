@@ -17,7 +17,7 @@ use App\CustomFields\Domain\Exception\InvalidCustomFieldDefinition;
 use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use App\CustomFields\Domain\ValueObject\CustomFieldRule;
 use App\CustomFields\Domain\ValueObject\CustomFieldType;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomFieldDefinitions;

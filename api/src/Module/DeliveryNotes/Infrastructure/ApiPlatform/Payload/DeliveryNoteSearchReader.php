@@ -11,9 +11,9 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Payload;
 
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteSearch;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\ListFilters;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The one reading of a delivery notes list's query string, for the list, its status counts and its CSV and Excel files,

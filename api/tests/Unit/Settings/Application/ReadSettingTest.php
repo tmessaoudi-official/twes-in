@@ -17,7 +17,7 @@ use App\Settings\Application\SettingContext;
 use App\Settings\Application\UnknownSetting;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\InMemorySettings;
 use PHPUnit\Framework\TestCase;
 

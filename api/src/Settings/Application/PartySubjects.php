@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

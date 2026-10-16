@@ -15,8 +15,8 @@ use App\Licensing\Application\CompanyStandings;
 use App\Licensing\Domain\Repository\PaymentDeclarationRepository;
 use App\Licensing\Domain\Repository\SubscriptionRepository;
 use App\Licensing\Infrastructure\ApiPlatform\Resource\CompanySubscriptionResource;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProviderInterface<CompanySubscriptionResource> */

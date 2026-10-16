@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Domain\Model;
 
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
-use App\Shared\Domain\CompanyOwned;
-use App\Shared\Domain\PaymentMethod;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;

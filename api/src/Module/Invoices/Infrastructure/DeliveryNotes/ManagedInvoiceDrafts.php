@@ -14,8 +14,8 @@ use App\Module\DeliveryNotes\Application\InvoiceDrafts;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use Symfony\Component\Uid\Uuid;
 
 /** Answers the delivery notes' `InvoiceDrafts` port through this module's own use case, audit and checks included. */

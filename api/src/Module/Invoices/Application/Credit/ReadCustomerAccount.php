@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Application\Credit;
 use App\Module\Customers\Application\CustomerNotFound;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\Invoices\Application\Statement\RunningAccount;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /** A customer's running account as it stands today (RunningAccount). */

@@ -22,7 +22,7 @@ use App\Module\Customers\Infrastructure\ApiPlatform\Resource\CustomerOptionsReso
 use App\Module\Customers\Infrastructure\ApiPlatform\Resource\CustomerResource;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\ModuleRegistry\Infrastructure\ApiPlatform\Security\ModuleOwnership;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

@@ -13,7 +13,7 @@ use App\Inbox\Application\DeclaresNotificationKinds;
 use App\Inbox\Application\NotificationAudience;
 use App\Inbox\Application\NotificationKind;
 use App\Tenancy\Application\Support\ManageSupportAccess;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Role;
 
 /** « Accès support » opened or closed early by one owner: told to the others, whose company it is as much. */
 final readonly class SupportAccessNotificationKinds implements DeclaresNotificationKinds

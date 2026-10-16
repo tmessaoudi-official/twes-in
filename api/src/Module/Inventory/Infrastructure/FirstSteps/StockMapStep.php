@@ -12,7 +12,7 @@ namespace App\Module\Inventory\Infrastructure\FirstSteps;
 use App\FirstSteps\Application\DeclaresFirstStep;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Connection;
 
 /**

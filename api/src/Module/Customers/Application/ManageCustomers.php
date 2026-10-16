@@ -28,9 +28,9 @@ use App\Module\Customers\Domain\Repository\CustomerGroupRepository;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\Customers\Domain\ValueObject\CustomerSearch;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

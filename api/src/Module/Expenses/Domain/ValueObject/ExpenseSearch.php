@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Expenses\Domain\ValueObject;
 
-use App\Shared\Domain\DateRange;
-use App\Shared\Domain\DecimalRange;
-use App\Shared\Domain\PaymentMethod;
+use App\Shared\Domain\ValueObject\DateRange;
+use App\Shared\Domain\ValueObject\DecimalRange;
+use App\Shared\Domain\ValueObject\PaymentMethod;
 use Symfony\Component\Uid\Uuid;
 
 /**

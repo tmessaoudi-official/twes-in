@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Infrastructure;
 
-use App\Shared\Domain\DomainEvent;
+use App\Shared\Domain\Event\DomainEvent;
 use App\Shared\Infrastructure\Events\SymfonyDomainEvents;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\EventDispatcher\EventDispatcher;

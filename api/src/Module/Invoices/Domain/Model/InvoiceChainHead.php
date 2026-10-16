@@ -11,9 +11,9 @@ namespace App\Module\Invoices\Domain\Model;
 
 use App\Module\Invoices\Domain\Service\InvoiceChain;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 

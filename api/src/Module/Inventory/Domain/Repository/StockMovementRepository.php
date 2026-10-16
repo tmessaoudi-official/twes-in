@@ -17,8 +17,8 @@ use App\Module\Inventory\Domain\ValueObject\StockMovementSearch;
 use App\Module\Inventory\Domain\ValueObject\StockValue;
 use App\Module\Inventory\Domain\ValueObject\TypedCost;
 use App\Module\Products\Domain\Model\Product;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface StockMovementRepository

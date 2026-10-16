@@ -16,7 +16,7 @@ use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
 use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Venue\Application\ArrangeVenue;
 use App\Venue\Application\VenueAreaNotFound;
 use App\Venue\Application\VenueLevelTaken;

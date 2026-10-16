@@ -18,8 +18,8 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteSearch;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Payload\DeliveryNoteSearchReader;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
 use App\Module\DeliveryNotes\Infrastructure\Module\DeliveryNotesModule;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The delivery notes list as a file (docs/SPEC.md § 7, row 60): one row per note, under the search, status, customer

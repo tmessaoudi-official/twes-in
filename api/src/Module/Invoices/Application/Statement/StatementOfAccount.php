@@ -13,7 +13,7 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Application\CustomerNotFound;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

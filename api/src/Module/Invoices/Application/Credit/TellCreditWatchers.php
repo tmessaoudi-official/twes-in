@@ -16,8 +16,8 @@ use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 
 /**
  * Tells the people who issue a company's invoices that an invoice just took a customer past their credit limit (docs/

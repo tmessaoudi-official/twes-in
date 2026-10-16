@@ -24,9 +24,9 @@ use App\Module\Vendors\Infrastructure\ApiPlatform\State\Processor\CreateVendorPr
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Processor\ReviseVendorProcessor;
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Provider\VendorCollectionProvider;
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Provider\VendorItemProvider;
-use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Infrastructure\Validation\ContactRule;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;

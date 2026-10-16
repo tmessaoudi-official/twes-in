@@ -17,8 +17,8 @@ use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockValuationResou
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use BcMath\Number;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;

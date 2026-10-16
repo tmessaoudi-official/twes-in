@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Quotes\Domain\ValueObject;
 
-use App\Shared\Domain\PrintSettings;
+use App\Shared\Domain\ValueObject\PrintSettings;
 
 /**
  * How a quote prints as it was sent: its language, whether it ends with the « Bon pour accord » block, and the notes,

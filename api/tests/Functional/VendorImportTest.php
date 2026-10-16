@@ -13,7 +13,7 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Module\Expenses\Domain\Model\ExpenseCategory;
 use App\Module\Vendors\Domain\Model\Vendor;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Events;
 
 use App\Shared\Application\DomainEvents;
-use App\Shared\Domain\DomainEvent;
+use App\Shared\Domain\Event\DomainEvent;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**

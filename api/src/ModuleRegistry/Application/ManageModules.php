@@ -14,7 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\ModuleRegistry\Domain\Repository\ModuleStateRepository;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

@@ -19,10 +19,10 @@ use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteOptionsResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\EstablishmentRepository;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<QuoteOptionsResource> */
 final readonly class QuoteOptionsProvider implements ProviderInterface

@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\Doctrine;
 
 use App\Identity\Domain\ValueObject\Email;
-use App\Tenancy\Domain\Signup;
-use App\Tenancy\Domain\SignupRepository;
+use App\Tenancy\Domain\Model\Signup;
+use App\Tenancy\Domain\Repository\SignupRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class DoctrineSignupRepository implements SignupRepository

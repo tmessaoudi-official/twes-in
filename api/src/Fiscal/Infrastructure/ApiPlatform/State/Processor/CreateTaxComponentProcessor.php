@@ -17,8 +17,8 @@ use App\Fiscal\Application\TaxComponent\TaxComponentDraft;
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Infrastructure\ApiPlatform\Resource\TaxComponentResource;
 use App\Fiscal\Infrastructure\ApiPlatform\Security\FiscalPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 

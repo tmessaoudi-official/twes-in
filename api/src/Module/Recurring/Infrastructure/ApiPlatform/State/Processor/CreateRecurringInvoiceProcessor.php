@@ -15,11 +15,11 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Recurring\Application\ManageRecurringInvoices;
 use App\Module\Recurring\Domain\Exception\InvalidRecurringInvoice;
 use App\Module\Recurring\Infrastructure\ApiPlatform\Resource\RecurringInvoiceResource;
-use App\Shared\Domain\InvalidSchedule;
-use App\Shared\Infrastructure\ApiPlatform\DomainRule;
-use App\Shared\Infrastructure\ApiPlatform\RequestedSchedule;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Domain\Exception\InvalidSchedule;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RequestedSchedule;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\Uid\Uuid;
 
 /** @implements ProcessorInterface<RecurringInvoiceResource, RecurringInvoiceResource> */

@@ -11,7 +11,7 @@ namespace App\Tests\Architecture;
 
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Application\Seed\SeedPlatform;
-use App\Tenancy\Domain\Permission;
+use App\Tenancy\Domain\ValueObject\Permission;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**

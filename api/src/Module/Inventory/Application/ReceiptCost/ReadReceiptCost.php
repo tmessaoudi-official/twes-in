@@ -15,7 +15,7 @@ use App\Module\Inventory\Domain\ValueObject\RunningValue;
 use App\Module\Products\Domain\Model\Product;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 
 /**

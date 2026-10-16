@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Domain\ValueObject;
 
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
-use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\Model\PostalAddress;
 
 /**
  * What a delivery note says besides its customer and its lines: the day the goods are expected, where they go, the

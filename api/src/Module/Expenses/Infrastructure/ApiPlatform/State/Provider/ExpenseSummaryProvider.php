@@ -14,8 +14,8 @@ use ApiPlatform\State\ProviderInterface;
 use App\Module\Expenses\Application\SummarizeExpenses;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Resource\ExpenseSummaryResource;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<ExpenseSummaryResource> */
 final readonly class ExpenseSummaryProvider implements ProviderInterface

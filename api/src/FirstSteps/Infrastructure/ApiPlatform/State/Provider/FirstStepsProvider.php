@@ -13,8 +13,8 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\FirstSteps\Application\FirstStepsCatalogue;
 use App\FirstSteps\Infrastructure\ApiPlatform\Resource\FirstStepsResource;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<FirstStepsResource> */
 final readonly class FirstStepsProvider implements ProviderInterface

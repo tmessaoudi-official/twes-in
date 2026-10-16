@@ -16,13 +16,13 @@ use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Model\Unit;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\EstablishmentRepository;
-use App\Tenancy\Domain\NumberFormat;
-use App\Tenancy\Domain\NumberingSeries;
-use App\Tenancy\Domain\NumberingSeriesRepository;
-use App\Tenancy\Domain\ResetPeriod;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Model\NumberingSeries;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tenancy\Domain\Repository\NumberingSeriesRepository;
+use App\Tenancy\Domain\ValueObject\NumberFormat;
+use App\Tenancy\Domain\ValueObject\ResetPeriod;
 use Psr\Clock\ClockInterface;
 
 /**

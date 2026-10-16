@@ -15,9 +15,9 @@ use App\Module\Expenses\Application\ManageExpenses;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Payload\ExpenseSearchReader;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Resource\ExpenseStatusCountsResource;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<ExpenseStatusCountsResource> */
 final readonly class ExpenseStatusCountsProvider implements ProviderInterface

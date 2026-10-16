@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Doctrine;
 
-use App\Tenancy\Domain\Invitation;
-use App\Tenancy\Domain\InvitationRepository;
+use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Repository\InvitationRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

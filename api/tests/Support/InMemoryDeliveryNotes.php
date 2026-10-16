@@ -15,8 +15,8 @@ use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteSearch;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryDeliveryNotes implements DeliveryNoteRepository

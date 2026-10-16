@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryMemberships implements MembershipRepository

@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

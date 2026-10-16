@@ -9,11 +9,11 @@ declare(strict_types=1);
 
 namespace App\Module\RecurringExpenses\Domain\Model;
 
-use App\Shared\Domain\CompanyOwned;
-use App\Shared\Domain\InvalidSchedule;
-use App\Shared\Domain\Recurrence;
-use App\Shared\Domain\Schedule;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Exception\InvalidSchedule;
+use App\Shared\Domain\Model\Recurrence;
+use App\Shared\Domain\Model\Schedule;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;

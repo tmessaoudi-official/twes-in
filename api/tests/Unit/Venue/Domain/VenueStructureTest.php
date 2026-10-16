@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Venue\Domain;
 
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use App\Venue\Domain\Exception\InvalidVenue;
 use App\Venue\Domain\Model\VenueArea;
 use App\Venue\Domain\Model\VenueStructure;

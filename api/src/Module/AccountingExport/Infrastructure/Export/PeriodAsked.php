@@ -11,7 +11,7 @@ namespace App\Module\AccountingExport\Infrastructure\Export;
 
 use App\ImportExport\Application\ExportQuery;
 use App\Module\AccountingExport\Application\JournalPeriod;
-use App\Shared\Domain\InvalidFilter;
+use App\Shared\Domain\Exception\InvalidFilter;
 
 /** The period a file asks for, `from` and `to`, each a day written YYYY-MM-DD; both are required. */
 final class PeriodAsked

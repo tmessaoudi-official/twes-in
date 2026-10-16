@@ -14,7 +14,7 @@ use App\Fiscal\Application\Unit\UnitChanges;
 use App\Fiscal\Application\Unit\UnitCodeTaken;
 use App\Fiscal\Application\Unit\UnitDraft;
 use App\Fiscal\Application\Unit\UnitNotFound;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryUnits;

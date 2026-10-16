@@ -15,7 +15,7 @@ use App\Identity\Application\Account\OwnAccount;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\AccountSearch;
 use App\Identity\Domain\ValueObject\Email;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryUsers;

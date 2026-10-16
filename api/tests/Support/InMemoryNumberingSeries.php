@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Tenancy\Domain\NumberingSeries;
-use App\Tenancy\Domain\NumberingSeriesRepository;
+use App\Tenancy\Domain\Model\NumberingSeries;
+use App\Tenancy\Domain\Repository\NumberingSeriesRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryNumberingSeries implements NumberingSeriesRepository

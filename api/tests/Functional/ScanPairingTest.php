@@ -16,7 +16,7 @@ use App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Shared\Application\RealtimePublisher;
 use App\Shared\Infrastructure\Realtime\HmacJwt;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\MakesPictures;
 use App\Tests\Support\RecordingRealtimePublisher;
 use Symfony\Component\Clock\Clock;

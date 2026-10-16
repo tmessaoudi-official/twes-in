@@ -14,7 +14,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Licensing\Application\ManageSubscriptions;
 use App\Tenancy\Application\Company\CompanyNotFound;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;

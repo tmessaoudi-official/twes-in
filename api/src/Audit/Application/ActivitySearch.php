@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Audit\Application;
 
-use App\Shared\Domain\DateRange;
+use App\Shared\Domain\ValueObject\DateRange;
 use Symfony\Component\Uid\Uuid;
 
 /** What a reader of the journal narrows it to: words, a person, kinds of record, one record, actions and days. */

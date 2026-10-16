@@ -144,12 +144,14 @@ tables, essay gotchas) was retired with the reset. What applies here:
   and the modules one level down in `api/src/Module/<Name>/`, the scanner among them (`Module/Scanning`: a phone lent
   to a computer tab as a scanner, `scan_pairing`, the tab's endpoints under its company and the phone's four public ones
   behind its key, named in `UnauthenticatedSweepTest`, which check the module themselves through `ScannerSwitch`) (a module reaches another only through a port it owns in its
-  `Application/`, answered in the other's `Infrastructure/<Caller>/`, such as `Inventory/Application/ReceiptCosts`;
+  `Application/`, answered in the other's `Infrastructure/<Caller>/`, such as `Inventory/Application/ReceiptCost/ReceiptCosts`;
   `tests/Architecture/ModuleBoundariesTest` reds on another module's class that runs), `Shared` (docs/SPEC.md § 3
-  "Architecture style"; `Shared/Domain/CompanyOwned` marks an entity the `Shared/Infrastructure/Doctrine/CompanyFilter`
+  "Architecture style"; `Shared/Domain/Service/CompanyOwned` marks an entity the `Shared/Infrastructure/Doctrine/CompanyFilter`
   scopes to the company a request acts for, and `tests/Architecture/CompanyColumnTest` requires it; a paged list's provider
-  uses `Shared/Infrastructure/ApiPlatform/Paging`, its repository `ListOrder` and the `SEARCH_TEXT` expression its trigram
-  index is built on, and `SearchIndexesTest` names the pair). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
+  uses `Shared/Infrastructure/ApiPlatform/Payload/Paging`, its repository `ListOrder` and the `SEARCH_TEXT` expression its trigram
+  index is built on, and `SearchIndexesTest` names the pair). Each class sits in the folder of its role (docs/SPEC.md § 3 « Folders by role »; `SourceLayoutTest`
+  reds on one out of place or a folder past 25 files; `scripts/refactor/move-classes.py` moves classes and
+  `scripts/refactor/layout-oracle.sh` proves the move). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
   Application: use cases and ports (no framework import; `tests/Architecture/` enforces it). Infrastructure: Doctrine
   repositories, Symfony security (`SecurityUser` snapshot, `UserProvider`, handlers, listeners, `CsrfRequestListener`),
   API Platform resources (`Me`) and the OpenAPI decorator, the console command, the session handler. Every port has one

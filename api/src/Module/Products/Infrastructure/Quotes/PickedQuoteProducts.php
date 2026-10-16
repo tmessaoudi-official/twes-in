@@ -11,7 +11,7 @@ namespace App\Module\Products\Infrastructure\Quotes;
 
 use App\Module\Products\Application\PickProducts;
 use App\Module\Quotes\Application\QuoteProducts;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /** Answers the quotes module's `QuoteProducts` port out of this module. */
 final readonly class PickedQuoteProducts implements QuoteProducts

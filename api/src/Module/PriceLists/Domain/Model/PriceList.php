@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\PriceLists\Domain\Model;
 
 use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;

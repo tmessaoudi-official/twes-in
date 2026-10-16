@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Model\Unit;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /** POST /api/companies: only a platform operator opens a company, and it waits for its first owner. */

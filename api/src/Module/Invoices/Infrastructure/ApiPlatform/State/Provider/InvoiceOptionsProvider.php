@@ -20,10 +20,10 @@ use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceOptionsResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\EstablishmentRepository;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<InvoiceOptionsResource> */
 final readonly class InvoiceOptionsProvider implements ProviderInterface

@@ -16,8 +16,8 @@ use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\Service\InvoiceChain;
 use App\Module\Invoices\Domain\ValueObject\InvoiceFigures;
 use App\Module\Invoices\Domain\ValueObject\OperationCategory;
-use App\Shared\Domain\DocumentDesign;
-use App\Tenancy\Domain\SellerSnapshot;
+use App\Shared\Domain\ValueObject\DocumentDesign;
+use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 
 /**
  * What a printed invoice or credit note shows: the document, its figures, its customer, language, mentions and texts

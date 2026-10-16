@@ -13,7 +13,7 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\PresetRegime;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The tax families a document leaves out: what its customer's regime does not charge and what its company's own VAT

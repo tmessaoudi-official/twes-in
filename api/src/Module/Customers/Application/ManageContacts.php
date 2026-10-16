@@ -17,7 +17,7 @@ use App\Module\Customers\Domain\Repository\ContactRepository;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\Customers\Domain\ValueObject\ContactDetails;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

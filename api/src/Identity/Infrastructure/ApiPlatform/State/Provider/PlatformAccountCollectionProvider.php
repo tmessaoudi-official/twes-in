@@ -16,7 +16,7 @@ use App\Identity\Application\Account\AccountView;
 use App\Identity\Application\Account\ManageAccounts;
 use App\Identity\Domain\ValueObject\AccountSearch;
 use App\Identity\Infrastructure\ApiPlatform\Resource\PlatformAccountResource;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Application\Company\CompaniesOfAccounts;
 use Symfony\Component\Uid\Uuid;
 

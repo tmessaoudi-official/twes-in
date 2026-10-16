@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Domain\ValueObject;
 
-use App\Shared\Domain\PrintSettings;
+use App\Shared\Domain\ValueObject\PrintSettings;
 
 /**
  * How a delivery note was printed when it was validated: its language, whether it showed prices and the reception

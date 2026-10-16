@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Invitation;
 
 use App\Identity\Domain\Repository\UserRepository;
-use App\Tenancy\Domain\InvitationRepository;
-use App\Tenancy\Domain\InvitationToken;
+use App\Tenancy\Domain\Repository\InvitationRepository;
+use App\Tenancy\Domain\ValueObject\InvitationToken;
 use Psr\Clock\ClockInterface;
 
 /**

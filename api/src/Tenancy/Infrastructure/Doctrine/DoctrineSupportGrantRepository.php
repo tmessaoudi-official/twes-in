@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Doctrine;
 
-use App\Tenancy\Domain\SupportGrant;
-use App\Tenancy\Domain\SupportGrantRepository;
+use App\Tenancy\Domain\Model\SupportGrant;
+use App\Tenancy\Domain\Repository\SupportGrantRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

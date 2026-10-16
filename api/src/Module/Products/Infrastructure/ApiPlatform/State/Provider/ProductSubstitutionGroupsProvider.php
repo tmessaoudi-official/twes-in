@@ -14,8 +14,8 @@ use ApiPlatform\State\ProviderInterface;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductSubstitutionGroupResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<ProductSubstitutionGroupResource> */
 final readonly class ProductSubstitutionGroupsProvider implements ProviderInterface

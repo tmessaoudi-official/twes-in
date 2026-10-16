@@ -25,9 +25,9 @@ use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\CreateCustom
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\ReviseCustomerProcessor;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\CustomerCollectionProvider;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\CustomerItemProvider;
-use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Infrastructure\Validation\ContactRule;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;

@@ -16,7 +16,7 @@ use App\Module\AccountingExport\Application\PurchaseEntry;
 use App\Module\Expenses\Domain\Model\Expense;
 use App\Module\Expenses\Domain\Model\ExpenseTax;
 use App\Module\Expenses\Domain\ValueObject\ExpenseStatus;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 
 /** The purchases journal's entries: every expense entered in the books, recorded or paid, on its own day. */

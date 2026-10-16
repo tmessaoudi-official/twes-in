@@ -11,7 +11,7 @@ namespace App\Module\Inventory\Application\ReceiptCost;
 
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\Model\Product;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

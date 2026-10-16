@@ -11,9 +11,9 @@ namespace App\Audit\Infrastructure\ApiPlatform\Payload;
 
 use App\Audit\Application\ActivitySearch;
 use App\Audit\Infrastructure\ApiPlatform\Resource\ActivityResource;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\ListFilters;
+use App\Tenancy\Domain\Model\Company;
 
 /** The one reading of the journal's query string, for the list and for its file, so both show the same entries. */
 final class ActivitySearchReader

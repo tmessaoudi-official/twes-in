@@ -12,7 +12,7 @@ namespace App\Module\Recurring\Infrastructure\Scheduler;
 use App\Module\Recurring\Application\RunRecurringInvoices;
 use App\Module\Recurring\Infrastructure\Module\RecurringModule;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Domain\CompanyRepository;
+use App\Tenancy\Domain\Repository\CompanyRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Scheduler\Attribute\AsPeriodicTask;
 

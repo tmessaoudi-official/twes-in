@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Domain;
 
-use App\Shared\Domain\Tree;
+use App\Shared\Domain\Service\Tree;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 

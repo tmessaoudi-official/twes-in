@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Venue\Domain\Model;
 
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use App\Venue\Domain\Exception\InvalidVenue;
 use App\Venue\Domain\ValueObject\PlanRect;
 use Doctrine\DBAL\Types\Types;

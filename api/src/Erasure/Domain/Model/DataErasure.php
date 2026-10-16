@@ -11,8 +11,8 @@ namespace App\Erasure\Domain\Model;
 
 use App\Erasure\Domain\Exception\ErasureNoLongerPending;
 use App\Erasure\Domain\ValueObject\ErasureState;
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;

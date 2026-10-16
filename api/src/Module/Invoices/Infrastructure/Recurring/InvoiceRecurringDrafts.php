@@ -15,7 +15,7 @@ use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Recurring\Application\RecurringDrafts;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

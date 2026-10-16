@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Mail;
 
-use App\Tenancy\Application\Company\CompanyApprovalMailer;
-use App\Tenancy\Application\Company\CompanyApprovedMail;
+use App\Tenancy\Application\Approval\CompanyApprovalMailer;
+use App\Tenancy\Application\Approval\CompanyApprovedMail;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mailer\MailerInterface;

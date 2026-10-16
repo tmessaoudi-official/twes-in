@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Invitation;
 
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\InvitationRepository;
-use App\Tenancy\Domain\InvitationToken;
+use App\Tenancy\Domain\Repository\InvitationRepository;
+use App\Tenancy\Domain\ValueObject\InvitationToken;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;

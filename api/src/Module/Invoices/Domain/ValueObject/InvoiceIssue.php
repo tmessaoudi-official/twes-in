@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Domain\ValueObject;
 
-use App\Shared\Domain\PrintSettings;
+use App\Shared\Domain\ValueObject\PrintSettings;
 use Symfony\Component\Uid\Uuid;
 
 /**

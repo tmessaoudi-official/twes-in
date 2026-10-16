@@ -16,8 +16,8 @@ use App\ModuleRegistry\Application\ModuleInterests;
 use App\ModuleRegistry\Application\ModuleView;
 use App\ModuleRegistry\Infrastructure\ApiPlatform\Resource\ModuleResource;
 use App\ModuleRegistry\Infrastructure\ApiPlatform\Security\ModulePermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<ModuleResource> */
 final readonly class ModuleCollectionProvider implements ProviderInterface

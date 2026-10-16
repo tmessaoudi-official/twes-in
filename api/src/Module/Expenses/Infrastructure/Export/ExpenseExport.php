@@ -19,8 +19,8 @@ use App\Module\Expenses\Domain\ValueObject\ExpenseSearch;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Payload\ExpenseSearchReader;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\Module\Expenses\Infrastructure\Module\ExpensesModule;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The expenses list as a file (docs/SPEC.md § 7, row 60): one row per expense, under the search, status, vendor,

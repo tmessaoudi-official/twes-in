@@ -23,8 +23,8 @@ use App\Module\Recurring\Infrastructure\ApiPlatform\State\Processor\DeleteRecurr
 use App\Module\Recurring\Infrastructure\ApiPlatform\State\Processor\ReviseRecurringInvoiceProcessor;
 use App\Module\Recurring\Infrastructure\ApiPlatform\State\Provider\RecurringInvoiceCollectionProvider;
 use App\Module\Recurring\Infrastructure\ApiPlatform\State\Provider\RecurringInvoiceItemProvider;
-use App\Shared\Infrastructure\ApiPlatform\RequestedSchedule;
-use App\Shared\Infrastructure\ApiPlatform\ScheduleRequest;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RequestedSchedule;
+use App\Shared\Infrastructure\ApiPlatform\Payload\ScheduleRequest;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 

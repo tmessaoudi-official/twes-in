@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
-use App\Shared\Domain\DocumentDesign;
-use App\Shared\Domain\DocumentLayout;
-use App\Shared\Domain\PrintSettings;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\DocumentDesign;
+use App\Shared\Domain\ValueObject\DocumentLayout;
+use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * How a printed document writes its days and figures (docs/SPEC.md § 7, 2026-09-25 12:45, row 130), and how it looks: the company's own

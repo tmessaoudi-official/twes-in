@@ -39,8 +39,8 @@ use App\Shared\Application\DomainEvents;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\InvalidNumbering;
+use App\Tenancy\Domain\Exception\InvalidNumbering;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

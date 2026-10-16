@@ -15,9 +15,9 @@ use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Payload\InvoiceSearchReader;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceStatusCountsResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<InvoiceStatusCountsResource> */
 final readonly class InvoiceStatusCountsProvider implements ProviderInterface

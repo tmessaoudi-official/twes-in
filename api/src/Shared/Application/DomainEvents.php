@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Application;
 
-use App\Shared\Domain\DomainEvent;
+use App\Shared\Domain\Event\DomainEvent;
 
 /**
  * In-process delivery of domain events (docs/SPEC.md § 3 Domain conventions): no message bus. A use case publishes what

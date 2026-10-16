@@ -18,8 +18,8 @@ use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\Tree;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\Tree;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

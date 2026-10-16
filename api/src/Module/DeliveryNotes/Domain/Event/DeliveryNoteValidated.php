@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Domain\Event;
 
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveredQuantity;
-use App\Shared\Domain\DomainEvent;
+use App\Shared\Domain\Event\DomainEvent;
 use Symfony\Component\Uid\Uuid;
 
 /** `delivery_note.validated`: a note was numbered and its goods leave the establishment (docs/SPEC.md § 5 G6). */

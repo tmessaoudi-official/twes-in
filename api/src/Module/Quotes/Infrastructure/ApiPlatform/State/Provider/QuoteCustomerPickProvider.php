@@ -14,9 +14,9 @@ use ApiPlatform\State\ProviderInterface;
 use App\Module\Quotes\Application\QuoteCustomers;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteCustomerPickResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * A few customers for the quote form's picker, under the quote's own permission (see the resource beside this).

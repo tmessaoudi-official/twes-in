@@ -18,7 +18,7 @@ use App\Module\Invoices\Domain\Model\Payment;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\DeletePaymentProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\RecordPaymentProcessor;
-use App\Shared\Domain\PaymentMethod;
+use App\Shared\Domain\ValueObject\PaymentMethod;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Validator\Constraints as Assert;

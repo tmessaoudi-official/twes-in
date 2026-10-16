@@ -20,7 +20,7 @@ use App\Module\Invoices\Domain\ValueObject\Deduction;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

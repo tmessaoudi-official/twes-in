@@ -14,7 +14,7 @@ use App\Licensing\Domain\Model\PaymentDeclaration;
 use App\Licensing\Domain\Repository\PaymentDeclarationRepository;
 use App\Licensing\Domain\ValueObject\DeclaredPayment;
 use App\Licensing\Domain\ValueObject\PaymentMethod;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Uid\Uuid;

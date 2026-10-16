@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Tenancy\Domain\SupportGrant;
-use App\Tenancy\Domain\SupportGrantRepository;
+use App\Tenancy\Domain\Model\SupportGrant;
+use App\Tenancy\Domain\Repository\SupportGrantRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemorySupportGrants implements SupportGrantRepository

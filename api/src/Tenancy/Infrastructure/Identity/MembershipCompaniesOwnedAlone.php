@@ -11,8 +11,8 @@ namespace App\Tenancy\Infrastructure\Identity;
 
 use App\Identity\Application\Account\CompaniesOwnedAlone;
 use App\Identity\Application\Account\OwnedAlone;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Role;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 

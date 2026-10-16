@@ -13,7 +13,7 @@ use App\Module\Inventory\Application\ReceiptCost\ReceiptCosts;
 use App\Module\Products\Application\ChangeProductCost;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\CostChangeSource;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /** Answers the inventory's `ReceiptCosts` port: a receipt changes the cost as this module changes any cost, with its history. */

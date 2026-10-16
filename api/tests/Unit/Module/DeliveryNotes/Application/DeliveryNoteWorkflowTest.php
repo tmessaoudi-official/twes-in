@@ -42,13 +42,13 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
-use App\Shared\Domain\PrintSettings;
+use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryDeliveryNotes;
@@ -191,7 +191,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
         // A new site gets its code into the format it copies; someone revising it back out is what this refusal still guards.
         foreach ($this->series->series as $series) {
             if ($series->getEstablishment()->getId()->equals($branch->getId()) && 'delivery_note' === $series->getDocumentType()) {
-                $series->revise(new \App\Tenancy\Domain\NumberFormat('BL-{YYYY}-{MM}-{SEQ:5}'), $series->getResetPeriod(), 1, new \DateTimeImmutable());
+                $series->revise(new \App\Tenancy\Domain\ValueObject\NumberFormat('BL-{YYYY}-{MM}-{SEQ:5}'), $series->getResetPeriod(), 1, new \DateTimeImmutable());
             }
         }
         $this->workflow->validate($this->company, $this->draft()->getId(), null);

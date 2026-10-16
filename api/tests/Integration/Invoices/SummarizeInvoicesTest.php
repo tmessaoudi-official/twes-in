@@ -32,10 +32,10 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\InvoiceIssue;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
-use App\Shared\Domain\PaymentMethod;
-use App\Shared\Domain\PrintSettings;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\EstablishmentRepository;
+use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
@@ -340,7 +340,7 @@ final class SummarizeInvoicesTest extends KernelTestCase
         return $customer;
     }
 
-    private function establishment(Company $company): \App\Tenancy\Domain\Establishment
+    private function establishment(Company $company): \App\Tenancy\Domain\Model\Establishment
     {
         return static::getContainer()->get(EstablishmentRepository::class)->ofCompany($company->getId())[0];
     }

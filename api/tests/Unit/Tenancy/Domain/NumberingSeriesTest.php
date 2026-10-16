@@ -9,13 +9,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Tenancy\Domain;
 
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\InvalidEstablishment;
-use App\Tenancy\Domain\InvalidNumbering;
-use App\Tenancy\Domain\NumberFormat;
-use App\Tenancy\Domain\NumberingSeries;
-use App\Tenancy\Domain\ResetPeriod;
+use App\Tenancy\Domain\Exception\InvalidEstablishment;
+use App\Tenancy\Domain\Exception\InvalidNumbering;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Model\NumberingSeries;
+use App\Tenancy\Domain\ValueObject\NumberFormat;
+use App\Tenancy\Domain\ValueObject\ResetPeriod;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 

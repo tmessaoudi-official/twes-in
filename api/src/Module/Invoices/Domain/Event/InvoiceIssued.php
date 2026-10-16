@@ -11,7 +11,7 @@ namespace App\Module\Invoices\Domain\Event;
 
 use App\Module\Invoices\Domain\ValueObject\InvoicedQuantity;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
-use App\Shared\Domain\DomainEvent;
+use App\Shared\Domain\Event\DomainEvent;
 use Symfony\Component\Uid\Uuid;
 
 /** `invoice.issued`: an invoice or a credit note was numbered and its figures fixed. */

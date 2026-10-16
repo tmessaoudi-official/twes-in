@@ -18,7 +18,7 @@ use App\Module\Scanning\Domain\Exception\ScanPairingRefused;
 use App\Module\Scanning\Domain\Model\ScanPairing;
 use App\Shared\Application\RealtimeToken;
 use App\Shared\Application\RealtimeTokens;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryScanPairings;
 use App\Tests\Support\RecordingRealtimePublisher;

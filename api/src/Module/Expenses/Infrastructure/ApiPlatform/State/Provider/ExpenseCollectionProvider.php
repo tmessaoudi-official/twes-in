@@ -19,9 +19,9 @@ use App\Module\Expenses\Domain\ValueObject\ExpenseSearch;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Payload\ExpenseSearchReader;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Resource\ExpenseResource;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * One page of a company's expenses, searched, narrowed and sorted in the database (docs/SPEC.md § 7, lists at scale).

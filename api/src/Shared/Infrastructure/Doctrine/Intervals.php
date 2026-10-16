@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Doctrine;
 
-use App\Shared\Domain\DateRange;
-use App\Shared\Domain\DecimalRange;
+use App\Shared\Domain\ValueObject\DateRange;
+use App\Shared\Domain\ValueObject\DecimalRange;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\QueryBuilder;

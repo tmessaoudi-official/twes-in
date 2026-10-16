@@ -16,7 +16,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Domain\ValueObject\OperationCategory;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The legal mentions an invoice to a customer prints (docs/SPEC.md § 7, 2026-09-14): its customer regime's, its company

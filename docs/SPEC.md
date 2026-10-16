@@ -185,6 +185,20 @@ A Symfony `UserInterface` implementation, an `#[ApiResource]` class, a console c
 Infrastructure: the security user is a wrapper around the domain `User`, loaded by a custom user
 provider through the repository port; the `Me` resource is built from the use case's plain output. Configuration (`api/config/`) wires each port to its adapter.
 
+**Folders by role** (§ 7 2026-10-16 09:47, the layout of API Platform's DDD reference, `mtarld/apip-ddd`). Inside a
+context, where a class sits says what it is. `Domain/` holds `Model/` (entities and embeddables), `Repository/`
+(repository ports), `ValueObject/` (enums among them), `Event/`, `Exception/` and `Service/`; `Fiscal/Domain/Calculation`
+stays one sub-domain. `Infrastructure/ApiPlatform/` holds `Resource/`, `State/Processor/`, `State/Provider/`,
+`OpenApi/`, `Payload/` (inputs and the search readers), `Output/` (views, rows, options, answers), `Security/`
+(permissions, guards) and `Metadata/`; the other adapters sit by technology (`Doctrine/`, flat, `Security/`,
+`Scheduler/`…). `Application/` is grouped by capability. No folder holds more than 25 files directly: past that it is
+split by aggregate or capability (`Invoices/Application/{Bulk,Statement,Credit,Payment,Reminder,Print,Deposit}/`).
+`tests/Architecture/SourceLayoutTest` reads each role by reflection, never from a name, and reds on a class out of its
+folder or a folder past the cap. A class stored or routed by its fully-qualified name never moves (the queued messages,
+the session's user, the scheduled tasks). `scripts/refactor/move-classes.py` moves classes by a mapping, and
+`scripts/refactor/layout-oracle.sh` proves a move left the OpenAPI document, the routes, the mapping and the schema
+as they were.
+
 **Commands and queries** (light CQRS, § 7 2026-10-07 23:43). A use case is a command when it takes the
 `Transactions` port: it changes state in one transaction and records its audit entry, which is also the live
 signal screens reload on. Every other use case is a query and only reads. No bus: a use case is called directly.
@@ -462,7 +476,7 @@ Every goal is done only when all six hold:
 ## 6. Repository layout and environment
 
 ```
-api/                Symfony application (src/<Context>/{Domain,Application,Infrastructure}/, config/fiscal/<CC>.yaml,
+api/                Symfony application (src/<Context>/{Domain,Application,Infrastructure}/ by role, § 3; config/fiscal/<CC>.yaml,
                     tests/{Unit,Integration,Functional,Architecture}/)
 web/                Angular application (src/app/<feature>/, e2e/ Playwright)
 infra/              Dockerfiles, nginx config

@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Watch\Application;
 
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /** The subjects of « À surveiller » every module declared, for one company and one member. */

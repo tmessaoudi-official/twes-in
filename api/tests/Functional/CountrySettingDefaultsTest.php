@@ -12,7 +12,7 @@ namespace App\Tests\Functional;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Settings\Application\SettingCatalog;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * A setting whose answer differs by country takes its default from the country's preset, data and not code: the total

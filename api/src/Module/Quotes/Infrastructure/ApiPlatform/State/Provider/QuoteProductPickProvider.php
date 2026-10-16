@@ -16,9 +16,9 @@ use App\Module\Quotes\Application\QuoteProducts;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteProductPickResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * A few products for the quote form's picker, under the quote's own permission (see the resource beside this).

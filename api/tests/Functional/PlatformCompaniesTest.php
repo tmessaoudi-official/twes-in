@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /** The platform's companies list at scale (docs/SPEC.md § 7): a page at a time, searched, narrowed and sorted in the database. */

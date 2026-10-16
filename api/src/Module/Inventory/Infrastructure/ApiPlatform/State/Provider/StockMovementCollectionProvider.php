@@ -19,9 +19,9 @@ use App\Module\Inventory\Domain\ValueObject\StockMovementSearch;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Payload\StockMovementSearchReader;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMovementResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * One page of a company's movements, newest first (docs/SPEC.md § 7, lists at scale, row 55 (b)).

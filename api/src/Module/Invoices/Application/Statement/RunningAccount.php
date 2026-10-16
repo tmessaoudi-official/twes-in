@@ -17,7 +17,7 @@ use App\Module\Invoices\Domain\Repository\CustomerCreditRepository;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;

@@ -17,12 +17,12 @@ use App\Identity\Domain\Model\User;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\InvalidSupportWindow;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\Role;
-use App\Tenancy\Domain\SupportGrant;
-use App\Tenancy\Domain\SupportGrantRepository;
+use App\Tenancy\Domain\Exception\InvalidSupportWindow;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Model\SupportGrant;
+use App\Tenancy\Domain\Repository\MembershipRepository;
+use App\Tenancy\Domain\Repository\SupportGrantRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

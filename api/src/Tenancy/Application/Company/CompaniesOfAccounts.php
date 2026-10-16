@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Company;
 
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 /** The companies of a page of accounts, by company name, read once for the whole page: only an operator's endpoint reaches this. */

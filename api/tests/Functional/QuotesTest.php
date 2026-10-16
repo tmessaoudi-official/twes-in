@@ -23,7 +23,7 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakePdfRenderer;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;

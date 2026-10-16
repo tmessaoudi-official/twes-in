@@ -36,8 +36,8 @@ use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Resource\VendorResource;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Security\VendorPermission;
 use App\Module\Vendors\Infrastructure\Module\VendorsModule;
-use App\Shared\Domain\PostalAddress;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Model\PostalAddress;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

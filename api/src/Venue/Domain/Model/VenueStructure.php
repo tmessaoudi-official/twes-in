@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Venue\Domain\Model;
 
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
 use App\Venue\Domain\Exception\InvalidVenue;
 use App\Venue\Domain\ValueObject\PlanRect;
 use App\Venue\Domain\ValueObject\StructureKind;

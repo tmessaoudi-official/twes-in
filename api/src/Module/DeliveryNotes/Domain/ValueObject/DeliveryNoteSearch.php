@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Domain\ValueObject;
 
-use App\Shared\Domain\DateRange;
+use App\Shared\Domain\ValueObject\DateRange;
 use Symfony\Component\Uid\Uuid;
 
 /**

@@ -34,7 +34,7 @@ use App\Module\Quotes\Application\QuoteInvoicingRefused;
 use App\Module\Quotes\Domain\Model\Quote;
 use App\Module\Quotes\Domain\Model\QuoteLine;
 use App\Module\Quotes\Domain\Model\QuoteLineTax;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;

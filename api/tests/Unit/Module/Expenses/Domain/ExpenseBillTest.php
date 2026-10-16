@@ -20,8 +20,8 @@ use App\Module\Expenses\Domain\ValueObject\ExpenseAmountLine;
 use App\Module\Expenses\Domain\ValueObject\ExpenseAmounts;
 use App\Module\Expenses\Domain\ValueObject\ExpenseDetails;
 use App\Module\Expenses\Domain\ValueObject\WithholdingOperation;
-use App\Shared\Domain\PaymentMethod;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\TestCase;
 
 /**

@@ -11,8 +11,8 @@ namespace App\Module\Quotes\Infrastructure\ApiPlatform\Payload;
 
 use App\Module\Quotes\Domain\ValueObject\QuoteSearch;
 use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\ListFilters;
 
 /** The one reading of a quotes list's query string, for the list and its status counts. */
 final class QuoteSearchReader

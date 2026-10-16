@@ -17,7 +17,7 @@ use App\Erasure\Domain\Repository\DataErasureRepository;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

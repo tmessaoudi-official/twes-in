@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Mfa;
 
 use App\Identity\Domain\Model\User;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 
 /**
  * Whether this user must carry a second factor.

@@ -15,9 +15,9 @@ use App\Module\Recurring\Domain\Exception\InvalidRecurringInvoice;
 use App\Module\Recurring\Domain\Model\RecurringInvoice;
 use App\Module\Recurring\Domain\Repository\RecurringInvoiceRepository;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\InvalidSchedule;
-use App\Shared\Domain\Schedule;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Exception\InvalidSchedule;
+use App\Shared\Domain\Model\Schedule;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

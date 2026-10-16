@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Domain\ValueObject;
 
 use App\Module\Inventory\Domain\Model\StockMovement;
-use App\Shared\Domain\DateRange;
+use App\Shared\Domain\ValueObject\DateRange;
 use Symfony\Component\Uid\Uuid;
 
 /**
