@@ -138,6 +138,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-16 00:35] ASSUMED (review): presentation.page-size is an Enum, auto (each list's own first size) then 10, 25, 50, 100, 200, on the company, role and person levels like presentation.stock-map-view; a list not offering the size chosen shows its own first. Basis: only a JSON setting may default to nothing, and a default of 25 would have changed the lists whose first size is 10 or 50 for everyone. Alternatives: an Int defaulting to 25, a JSON number.
 - [2026-10-16 00:35] ASSUMED (review): The address leaves out size only when it equals the person's own opening size, so a link carries any size the person changed to; a link without one opens at its reader's own. The e2e suite answers the browser's « leave the page? » by leaving, in signIn (leaveWhenAsked), as the ruling asked it be taught. Basis: the 14:35 ruling keeps the URL parameter so a shared link carries its size; the 18:20 ruling names the e2e cost. Alternatives: always write size; a listener per spec.
 - [2026-10-16 01:01] ASSUMED (review): « Annuler » ruling (§ 7 2026-10-11 08:26) applied to the quote as the invoice slice 53df9fd0 did: action « Classer sans suite… », confirm « Classer sans suite », status, toast and read-only line « classé sans suite », activity « a classé le devis sans suite »; English « Close as not pursued… », status « Not pursued » (no clash with Draft/Sent/Expired/Accepted/Refused, one root word across action, status and toast; advisor agreed). Every « Annuler » that closes a panel or dialog says « Fermer » (each handler read: all close, none keeps the panel open), the overpayment dialog's too; the document design's discard reads form.revert « Rétablir ». Alternatives: « Abandonner le devis », « Dropped », a keep word per dialog.
+- [2026-10-16 02:22] ASSUMED (review): « Valider et livrer » sits in the draft's bar as an outlined action beside the filled « Valider et numéroter », which stays the next step; it is shown under the same condition as validating (a draft, delivery_note.validate and .write) and confirmed with the same kind (corrigeable). Basis: the ruling of § 7 2026-09-21 17:25 keeps the separate actions; the bar has one filled next step (§ 7 2026-10-11 08:26). Alternatives: make it the filled next step; fold it into « ⋮ ».
 
 ## Formal Plan
 
@@ -312,11 +313,21 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
 - A quote classé sans suite still prints the shared « ANNULÉ » watermark (`api/translations/pdf.*.yaml`
   `watermark.cancelled`, shared by invoice, quote and delivery note templates; the invoice slice kept it too): a
   watermark per document type, or the word as it is?
+- Planned module dependencies (D1 L49): § 7 2026-09-20 02:50 makes `Guest` the QR ordering surface, built on Service, and
+  `Ratings` on Guest and Service; the planned list declares `guests` on `customers` and `ratings` on `venue`. But the
+  later § 7 2026-09-26 10:08 (asked twice) names the café's fourth module « Clients fidèles », whose text says loyalty
+  (recognise a regular, reward him), not the QR surface. Is `guests` still the 02:50 Guest (then `guests` → `service`,
+  `ratings` → `guests`, `service`), or loyalty, with the QR surface left without a planned module (then `ratings` →
+  `service` alone, since § 7 2026-09-20 02:38 has the tab prove what was served)? Parked: no ruling decides it.
 ### Needs research
 - Whether the law names voiding a delivery note « annuler » (the 08:26 ruling keeps « Annuler le bon » only if
   so): `docs/fiscal/TN.md` and `FR.md` say nothing on it, so every `delivery_notes.*` « annul » text stays as is.
 ### Fragile
 ### Known issues
+- D1 finding L53 (`presentation.sidebar-settings` « declared, read by no web code, default `rail` ») was CHECKED AND
+  WITHDRAWN: `ThemeFacade` reads it (`settingsSidebar`, `theme-facade.ts:65`, `:121`) and `app-shell.ts:375` folds the
+  settings area by it; its default `expanded` follows the later ruling § 7 2026-09-25 17:22 (the settings board opens
+  labelled), which superseded the `rail` of 2026-09-20 22:40.
 - No gate checks that a template's `'…' | translate` literal names a key that exists: the stock map's repeat panel
   translated a bare `cancel` and showed the word « cancel » (fixed with the « Annuler » wording; a sweep found no
   other). A gate for the class is deferred.
