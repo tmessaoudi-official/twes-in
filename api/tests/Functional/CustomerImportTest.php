@@ -18,6 +18,9 @@ use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerGroup;
+use App\Settings\Application\ResolveSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\SettingLevel;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutWriter;
 use App\Tenancy\Domain\Company;
@@ -25,6 +28,7 @@ use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
 use OpenSpout\Writer\XLSX\Writer as XlsxWriter;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
 
 /** Customers imported from a file (docs/SPEC.md § 7, 2026-09-17 and 2026-09-19). */
@@ -360,6 +364,64 @@ final class CustomerImportTest extends ApiTestCase
         self::assertSame([['line' => 2, 'column' => 'default_discount_rate', 'code' => 'percent_sign', 'params' => [], 'message' => 'Write 5 for 5 %.']], $this->json()['rejected']);
     }
 
+    /**
+     * A file fills in a customer's own terms, credit limit, document language and exemption provision, stored where the
+     * customer's settings tab stores them (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 11); a blank cell keeps what is set.
+     */
+    public function testACustomersOwnSettingsAreFilledInFromTheFile(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import("number,name,kind,payment_terms_days,credit_limit,document_language,exemption_reference\nCLI-0001,Carthage Conseil,individual,45,\"12 500,500\",Anglais,Article 13 du Code de la TVA\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['created']);
+        self::assertSame(
+            ['document.payment_terms_days' => 45, 'credit.limit' => '12500.500', 'document.language' => 'en', 'document.exemption_reference' => 'Article 13 du Code de la TVA'],
+            $this->customerSettings('CLI-0001'),
+        );
+
+        $this->import("number,name,payment_terms_days,credit_limit,document_language,exemption_reference\nCLI-0001,Carthage Conseil,60,,,\n", 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['updated']);
+        self::assertSame(
+            ['document.payment_terms_days' => 60, 'credit.limit' => '12500.500', 'document.language' => 'en', 'document.exemption_reference' => 'Article 13 du Code de la TVA'],
+            $this->customerSettings('CLI-0001'),
+            'a blank cell keeps what the customer has',
+        );
+    }
+
+    /** @return iterable<string, array{string, string, string, array<string, int|string>}> */
+    public static function refusedSettings(): iterable
+    {
+        yield 'terms past the declared maximum' => ['payment_terms_days', '366', 'invalid_payment_terms', ['max' => 365]];
+        yield 'terms that are no whole number' => ['payment_terms_days', '30 jours', 'invalid_payment_terms', ['max' => 365]];
+        yield 'a credit limit below zero' => ['credit_limit', '-100', 'invalid_credit_limit', ['min' => '0']];
+        yield 'a credit limit that is no amount' => ['credit_limit', 'beaucoup', 'invalid_credit_limit', ['min' => '0']];
+        yield 'a language documents are not printed in' => ['document_language', 'arabe', 'not_one_of', ['choices' => 'fr, en']];
+        yield 'an exemption provision past its length' => ['exemption_reference', str_repeat('a', 201), 'invalid_text', ['max' => 200]];
+    }
+
+    /**
+     * Each cell is held to its setting's own declaration, so a file allows what the settings tab allows; the row is
+     * refused, naming the column and the bound, before the customer is written.
+     *
+     * @param array<string, int|string> $params
+     */
+    #[DataProvider('refusedSettings')]
+    public function testASettingTheTabWouldRefuseIsRefusedOnItsColumn(string $column, string $cell, string $code, array $params): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import("number,name,kind,$column\nCLI-0001,Carthage Conseil,individual,\"$cell\"\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        $rejected = $this->json()['rejected'];
+        self::assertIsArray($rejected);
+        self::assertSame([[2, $column, $code, $params]], array_map(static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null, $row['params'] ?? null] : [], $rejected));
+    }
+
     public function testWhatIsNotASpreadsheetIsRefused(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);
@@ -379,6 +441,25 @@ final class CustomerImportTest extends ApiTestCase
         $this->import($this->twoCustomers(), dryRun: true);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * The settings stored on the customer itself, by key: what its settings tab shows as the customer's own.
+     *
+     * @return array<string, mixed>
+     */
+    private function customerSettings(string $number): array
+    {
+        $context = new SettingContext(company: $this->company, customerId: $this->customer($number)->getId());
+        $own = [];
+        foreach (['document.payment_terms_days', 'credit.limit', 'document.language', 'document.exemption_reference'] as $key) {
+            $resolved = static::getContainer()->get(ResolveSettings::class)->one($context, $key);
+            if (SettingLevel::Customer === $resolved->source) {
+                $own[$key] = $resolved->value;
+            }
+        }
+
+        return $own;
     }
 
     private function twoCustomers(): string

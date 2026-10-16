@@ -117,6 +117,7 @@ final readonly class CustomerImport implements DeclaresImport
         private TaxComponentRepository $taxes,
         private EntityManagerInterface $entityManager,
         private ResourceRules $rules,
+        private CustomerSettingCells $settingCells,
     ) {
     }
 
@@ -162,12 +163,15 @@ final readonly class CustomerImport implements DeclaresImport
             throw new RowRejected('number', 'A customer already has this number. Import in "create and update" mode to update it.', 'already_exists');
         }
         $this->rules->hold(CustomerResource::class, CustomerResource::WRITE, self::cells($record));
+        // Read and held to their declarations before the customer is written, so a refused setting writes nothing.
+        $settings = $this->settingCells->read($company, $record);
 
         $written = null;
         try {
             $written = null === $existing
                 ? $this->manage->create($company, $this->input($company, $record, null), $actorUserId)
                 : $this->manage->revise($company, $existing->getId(), $this->input($company, $record, $existing), $actorUserId);
+            $this->settingCells->write($company, $written->getId(), $settings, $actorUserId);
             $this->noteMissingIdentifiers($company, $written, $notes);
 
             return null === $existing ? RowImported::Created : RowImported::Updated;
@@ -343,6 +347,7 @@ final readonly class CustomerImport implements DeclaresImport
             new ImportColumn('tax_regime_code', 'import.customers.tax_regime', false, null, 'import.customers.tax_regime_note'),
             new ImportColumn('default_tax_codes', 'import.customers.default_taxes', false, null, 'import.customers.default_taxes_note'),
             new ImportColumn('default_discount_rate', 'import.customers.discount', false, '5.000', 'import.rate_note'),
+            ...$this->settingCells->columns(),
             new ImportColumn('notes', 'import.customers.notes'),
             new ImportColumn('active', 'import.customers.active', false, 'yes', 'import.boolean_note'),
         ];
