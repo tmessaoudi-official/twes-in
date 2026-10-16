@@ -328,36 +328,18 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
+- (Ruled § 7 2026-10-16 17:40: the watermark by type, row 327; the signature legend the company picks, row 122; price decimals, row 328; a note drawn from an invoice, row 329; `guests` and `loyalty`, row 332; the permission rule stays.)
 - (Ruled § 7 2026-10-16 17:25: round 2 runs after the version updates, the tool-by-tool audit's fixes and the web's
   partial split, on a frozen commit; lens 55 folds into the audit.)
-- A quote classé sans suite still prints the shared « ANNULÉ » watermark (`api/translations/pdf.*.yaml`
-  `watermark.cancelled`, shared by invoice, quote and delivery note templates; the invoice slice kept it too): a
-  watermark per document type, or the word as it is?
-- Planned module dependencies (D1 L49): § 7 2026-09-20 02:50 makes `Guest` the QR ordering surface, built on Service, and
-  `Ratings` on Guest and Service; the planned list declares `guests` on `customers` and `ratings` on `venue`. But the
-  later § 7 2026-09-26 10:08 (asked twice) names the café's fourth module « Clients fidèles », whose text says loyalty
-  (recognise a regular, reward him), not the QR surface. Is `guests` still the 02:50 Guest (then `guests` → `service`,
-  `ratings` → `guests`, `service`), or loyalty, with the QR surface left without a planned module (then `ratings` →
-  `service` alone, since § 7 2026-09-20 02:38 has the tab prove what was served)? Parked: no ruling decides it.
-- Signature block on invoices and credit notes (§ 7 2026-10-03 20:58, row 122): offered, off by default, but the
-  ruling names no legend for them (« Réception » on a delivery note, « Bon pour accord » on a quote, « Approuvé par »
-  on a supplier order). Options: « Bon pour accord »; « Reçu par »; « Signature du client ». Parked.
-- Price decimals display setting (§ 7 2026-09-21 17:55): which level sets it (company, or each person's presentation),
-  its default (the 4 stored, the currency's 3, or « trim trailing zeros »), and whether printed documents follow it
-  or only screens. Parked.
-- A delivery note drawn from an issued invoice (§ 7 2026-09-21 13:44 (3)): what status it reaches once delivered (its
-  lines are already billed), how it is kept out of « Facturer » (a link from each line to the invoice line?), and
-  whether a second note from the same invoice is refused or takes only the lines no live note covers. Parked.
-- Parked by the permission engine (2026-10-16 08:40): the protected ask rule on the bypass-rules file, under the
-  unattended window's « parked » policy. It matched twice. The first was a command that unzipped an e2e trace with
-  `rm -rf ./*` and named no such file. The second named that file only inside text being added to this plan. The trace
-  was then read with a plain `unzip -d`, and the plan text was added with the Edit tool. Is the rule meant to match
-  either command? That is the developer's to judge.
 ### Needs research
 - Whether the law names voiding a delivery note « annuler » (the 08:26 ruling keeps « Annuler le bon » only if
   so): `docs/fiscal/TN.md` and `FR.md` say nothing on it, so every `delivery_notes.*` « annul » text stays as is.
 ### Fragile
 ### Known issues
+- A quote classé sans suite keeps the title « Devis en brouillon » beside its « Classé sans suite » chip, and its
+  read-only line (`quote-fixed`) was not seen in the capture right after classing it (`var/claude/annuler/
+  quote-classed.png`; it may sit under the toast). Not caused by the wording change; no spec renders the line for a
+  voided quote. « Classé sans suite » on a phone card is not checked either.
 - The first page is at 999.79 kB of its 1 MB budget after 4bd347ed (`auth-facade.ts` is on it; the two-factor page's
   texts moved into a part and `textsPart` takes a route's guards, which bought 150 B): the next change to anything the
   first page loads must measure first (`--stats-json`, Lessons) and move a constant or a call out.
@@ -377,7 +359,3 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
 - No gate checks that a template's `'…' | translate` literal names a key that exists: the stock map's repeat panel
   translated a bare `cancel` and showed the word « cancel » (fixed with the « Annuler » wording; a sweep found no
   other). A gate for the class is deferred.
-- A quote classé sans suite keeps the title « Devis en brouillon » beside its « Classé sans suite » chip, and its
-  read-only line (`quote-fixed`) was not seen in the capture right after classing it (`var/claude/annuler/
-  quote-classed.png`; it may sit under the toast). Not caused by the wording change; no spec renders the line for a
-  voided quote. « Classé sans suite » on a phone card is not checked either.

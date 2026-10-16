@@ -48,14 +48,12 @@ SPEC § 8 row 179 (size L). Rulings: SPEC § 7 2026-10-11 01:24, 2026-10-15 17:3
 | 2 | Recurring expenses API | L | done | 15d3a9db | api/src/Module/RecurringExpenses/**, api/src/Module/Expenses/** |
 | 3 | Recurring expenses web | L | done | 9b919fde | web/src/app/recurring-expenses/**, web/src/app/shared/schedule/** |
 | 4 | Recurring invoices widened | M | done | 6fe36b37 | api/src/Module/Recurring/**, web/src/app/recurring/** |
-| 5 | Move or skip one occurrence | M | todo | - | - |
+| 5 | Move or skip one occurrence (parked as row 331) | M | deferred | - | - |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
+- (Ruled § 7 2026-10-16 17:40: slice 5 is parked as row 331; row 179 closes with slices 1–4.)
 - Copy rules, anchor set and wording (slice 3 batch).
-- Slice 5 (move or skip one occurrence, without changing the series): build, drop or park as its own row? It rests on
-  the unratified 17:46 reading of « date-flexible »; asked in chat at 23:43 (the question tool was refused by the
-  unattended window). Row 179 stays doing until answered.
 ### Needs research
 ### Fragile
 - fr.json screen texts: 340 B left of 61,440 B gzipped (61,100 B at 6fe36b37); first page 999.35 kB of 1 MB (6fe36b37):
