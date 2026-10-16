@@ -94,6 +94,38 @@ test('a file is previewed before it is imported, and a refused row says why', as
   await retire(page, NUMBER);
 });
 
+// docs/SPEC.md § 7, 2026-10-15 20:00, Round 1 Q12: a CSV is read in the encoding it was written in, which the report
+// names, and the person may read it in another. Previewed only, so nothing is stored in the shared company. The page's
+// words come in its own part: a heading left as its key would mean the part never opened.
+test('a CSV from French Excel is read in its encoding, and may be read in another', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/imports/customers');
+  await expect(page.getByTestId('import-columns')).toBeVisible();
+  await expect(page.getByTestId('import-columns')).not.toContainText('import.customers.');
+  await expect(page.getByTestId('import-encoding')).toHaveCount(0);
+
+  // What French Excel writes: Windows-1252, where « é » is the one byte 0xE9.
+  await page.getByTestId('import-file').setInputFiles({
+    name: 'clients.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(`number,name,kind\n${NUMBER}-E,Société du Lac,individual\n`, 'latin1'),
+  });
+  await expect(page.getByTestId('import-encoding')).toBeVisible();
+  await page.getByTestId('import-preview').click();
+  await expect(page.getByTestId('import-read-as')).toContainText('Windows-1252 (français)');
+  await expect(page.getByTestId('import-created')).toContainText('1');
+
+  // Chosen otherwise, the file is read again in that encoding, and the preview before no longer stands.
+  await page.getByTestId('import-encoding-utf-8').locator('input').check();
+  await expect(page.getByTestId('import-store')).toBeDisabled();
+  await page.getByTestId('import-preview').click();
+  await expect(page.getByTestId('import-read-as')).toContainText('UTF-8');
+  await expect(page.getByTestId('import-rejections')).toContainText('caractères illisibles');
+});
+
 // docs/SPEC.md § 7, 2026-09-17 (3): a product file may leave the reference out; the preview says which one each new
 // product would be given. Previewed only, so nothing is stored in the shared company.
 test('a product file without references is previewed with the references it would give', async ({
