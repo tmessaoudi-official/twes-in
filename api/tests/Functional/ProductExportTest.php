@@ -12,9 +12,15 @@ namespace App\Tests\Functional;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
+use App\Module\Products\Domain\Barcode;
+use App\Module\Products\Domain\BarcodeLine;
+use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
+use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\VendorProfile;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -36,7 +42,20 @@ final class ProductExportTest extends ApiTestCase
         self::assertNotNull($unit);
         self::assertNotNull($tax);
         $now = new \DateTimeImmutable();
-        $goods = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', 'Un portable', ProductKind::Goods, '1250', self::COST), $unit, null, [$tax->getId()], $now);
+        $goods = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', 'Un portable', ProductKind::Goods, '1250', self::COST, 'Portables'), $unit, null, [$tax->getId()], $now);
+        $goods->track(ProductTracking::Lot, $now);
+        // Two packs and two suppliers' codes: a file row names one of each, and brought back keeps them all.
+        $sotumag = Vendor::create($this->company, 'F-001', new VendorProfile('Sotumag'), $now);
+        $sfax = Vendor::create($this->company, 'F-002', new VendorProfile('Quincaillerie Sfax'), $now);
+        $this->em()->persist($sotumag);
+        $this->em()->persist($sfax);
+        $goods->replaceBarcodes([
+            new BarcodeLine(BarcodeRole::Unit, new Barcode('6191234567897'), 1),
+            new BarcodeLine(BarcodeRole::Pack, new Barcode('16191234567894'), 12),
+            new BarcodeLine(BarcodeRole::Pack, new Barcode('26191234567891'), 144),
+            new BarcodeLine(BarcodeRole::Supplier, new Barcode('SF-883'), 1, $sotumag),
+            new BarcodeLine(BarcodeRole::Supplier, new Barcode('QS-12'), 1, $sfax),
+        ], $now);
         $service = Product::create($this->company, 'SRV-001', new ProductDetails('Pose', null, ProductKind::Service, '40'), $unit, null, [], $now);
         $service->revise('SRV-001', $service->getDetails(), $unit, null, [], false, $now);
         $this->em()->persist($goods);
@@ -62,6 +81,8 @@ final class ProductExportTest extends ApiTestCase
         $goods = $rows['ART-001'];
         self::assertSame(['Portable 14"', 'goods', 'C62', '1250.0000', self::COST, 'TVA19', 'yes'], [$goods['name'], $goods['kind'], $goods['unit_code'], $goods['unit_price_net'], $goods['cost_price'], $goods['default_tax_codes'], $goods['active']]);
         self::assertSame(['service', '', 'no'], [$rows['SRV-001']['kind'], $rows['SRV-001']['cost_price'], $rows['SRV-001']['active']]);
+        self::assertSame(['6191234567897', '16191234567894', '12', 'F-002', 'QS-12'], [$goods['barcode'], $goods['pack_barcode'] ?? null, $goods['pack_quantity'] ?? null, $goods['supplier_number'] ?? null, $goods['supplier_code'] ?? null], 'the first pack and the first supplier\'s code, in the order the product keeps them');
+        self::assertSame([['Portables', 'lot'], ['', 'none']], [[$goods['substitution_group'] ?? null, $goods['tracking'] ?? null], [$rows['SRV-001']['substitution_group'] ?? null, $rows['SRV-001']['tracking'] ?? null]]);
     }
 
     public function testTheSearchTheFiltersAndTheOrderOfTheScreenNarrowAndSortTheFile(): void
@@ -80,8 +101,8 @@ final class ProductExportTest extends ApiTestCase
         $this->signIn(['product.read']);
         foreach ([
             'kind[]=goods&kind[]=service' => 2,
-            'tracking[]=none' => 2,
-            'tracking[]=lot&tracking[]=serial' => 0,
+            'tracking[]=none' => 1,
+            'tracking[]=lot&tracking[]=serial' => 1,
             'unitPriceNet[min]=100' => 1,
             'unitPriceNet[max]=100&isActive=false' => 1,
         ] as $query => $rows) {

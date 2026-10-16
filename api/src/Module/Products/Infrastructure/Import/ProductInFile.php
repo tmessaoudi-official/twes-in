@@ -9,8 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Import;
 
+use App\Module\Products\Domain\Barcode;
 use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductBarcode;
 
 /**
  * A product as a file writes it, column by column, the way the import reads it back: what the export writes, and what
@@ -19,8 +21,14 @@ use App\Module\Products\Domain\Product;
  */
 final class ProductInFile
 {
-    /** @param array<string, string> $taxCodes by tax id */
-    public static function cell(Product $product, string $column, array $taxCodes): string
+    /**
+     * A product has several packs and several suppliers' codes, and a row of a file names one of each: the cells of a
+     * pack and of a supplier's code are those of the code `$pack` and `$supplierCode` name, blank when the product does
+     * not hold it, so a code a row adds shows as a change. Named by nothing, as an export is, they are the first held.
+     *
+     * @param array<string, string> $taxCodes by tax id
+     */
+    public static function cell(Product $product, string $column, array $taxCodes, ?string $pack = null, ?string $supplierCode = null): string
     {
         $details = $product->getDetails();
 
@@ -28,12 +36,18 @@ final class ProductInFile
             'reference' === $column => $product->getReference(),
             'name' === $column => $details->name,
             'kind' === $column => $details->kind->value,
+            'tracking' === $column => $product->getTracking()->value,
             'description' === $column => $details->description ?? '',
+            'substitution_group' === $column => $details->substitutionGroup ?? '',
             'unit_code' === $column => $product->getUnit()->getCode(),
             'category' === $column => $product->getCategory()?->getName() ?? '',
             'unit_price_net' === $column => $details->unitPriceNet,
             'cost_price' === $column => $details->costPrice ?? '',
             'barcode' === $column => self::unitBarcode($product),
+            'pack_barcode' === $column => self::held($product, BarcodeRole::Pack, $pack)?->getCode() ?? '',
+            'pack_quantity' === $column => (string) (self::held($product, BarcodeRole::Pack, $pack)?->getQuantity() ?? ''),
+            'supplier_number' === $column => self::held($product, BarcodeRole::Supplier, $supplierCode)?->getSupplier()?->getNumber() ?? '',
+            'supplier_code' === $column => self::held($product, BarcodeRole::Supplier, $supplierCode)?->getCode() ?? '',
             'default_tax_codes' === $column => implode(',', array_map(static fn (string $id): string => $taxCodes[$id] ?? '', $product->getDefaultTaxComponentIds())),
             'active' === $column => $product->isActive() ? 'yes' : 'no',
             str_starts_with($column, ProductImport::CUSTOM_PREFIX) => self::custom($product->getCustomFields()[substr($column, \strlen(ProductImport::CUSTOM_PREFIX))] ?? null),
@@ -50,6 +64,19 @@ final class ProductInFile
         }
 
         return '';
+    }
+
+    /** The code of this role the product holds under `$named`, or its first of the role when nothing is named. */
+    public static function held(Product $product, BarcodeRole $role, ?string $named): ?ProductBarcode
+    {
+        $key = null === $named ? null : Barcode::keyOf($named);
+        foreach ($product->getBarcodes() as $barcode) {
+            if ($role === $barcode->getRole() && (null === $key || $key === $barcode->getMatchKey())) {
+                return $barcode;
+            }
+        }
+
+        return null;
     }
 
     private static function custom(string|int|float|bool|null $value): string

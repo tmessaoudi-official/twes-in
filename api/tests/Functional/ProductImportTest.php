@@ -28,12 +28,16 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
+use App\Module\Products\Domain\ProductTracking;
+use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\VendorProfile;
 use App\ModuleRegistry\Domain\ModuleState;
 use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\EstablishmentRepository;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -445,6 +449,177 @@ Cheville 10 mm,6191234567897
         self::assertSame([[], [2]], [$this->json()['updated'], $this->json()['unchanged']]);
         $this->em()->clear();
         self::assertSame('Vis de 6', $this->product('VIS-6X40')->getDetails()->substitutionGroup);
+    }
+
+    /**
+     * A file names a product's substitution group and how its stock is told apart, as the product form does, the
+     * tracking in its code or as the screen says it; a blank cell keeps what the product has (F26).
+     */
+    public function testAFileNamesTheSubstitutionGroupAndTheTracking(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import("reference,name,unit_code,unit_price_net,substitution_group,tracking\nVIS-1,Vis 1,H87,1,Vis de 6,lot\nVIS-2,Vis 2,H87,1,,Par numéro de série\nVIS-3,Vis 3,H87,1,,\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 3, 4], $this->json()['created'], json_encode($this->json()['rejected']) ?: '');
+        $this->em()->clear();
+        $of = fn (string $reference): array => [$this->product($reference)->getDetails()->substitutionGroup, $this->product($reference)->getTracking()];
+        self::assertSame([['Vis de 6', ProductTracking::Lot], [null, ProductTracking::Serial], [null, ProductTracking::None]], [$of('VIS-1'), $of('VIS-2'), $of('VIS-3')]);
+
+        $this->import("reference,name,substitution_group,tracking\nVIS-1,Vis 1,,\nVIS-2,Vis 2,Vis de 6,\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[3], [2]], [$this->json()['updated'], $this->json()['unchanged']], 'a blank cell keeps what is set');
+        self::assertSame([['line' => 3, 'column' => 'substitution_group', 'before' => '', 'after' => 'Vis de 6']], $this->json()['changes']);
+        $this->em()->clear();
+        self::assertSame([['Vis de 6', ProductTracking::Lot], ['Vis de 6', ProductTracking::Serial]], [$of('VIS-1'), $of('VIS-2')]);
+    }
+
+    /** @return iterable<string, array{string, string, string, string, array<string, int|string>}> */
+    public static function refusedSheetCells(): iterable
+    {
+        yield 'a tracking that is none of the three' => ['goods', 'tracking', 'souvent', 'not_one_of', ['choices' => 'none, lot, serial']];
+        yield 'a service tracked by lot' => ['service', 'tracking', 'lot', 'service_untracked', []];
+        yield 'a group past its length' => ['goods', 'substitution_group', str_repeat('g', 81), 'invalid_text', ['max' => 80]];
+    }
+
+    /**
+     * Each cell is held to what the product form holds it to, and the row is refused naming the column.
+     *
+     * @param array<string, int|string> $params
+     */
+    #[DataProvider('refusedSheetCells')]
+    public function testASheetCellTheFormWouldRefuseIsRefusedOnItsColumn(string $kind, string $column, string $cell, string $code, array $params): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import("reference,name,kind,unit_code,unit_price_net,$column\nVIS-1,Vis 1,$kind,H87,1,$cell\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[2, $column, $code, $params]], $this->rejections());
+    }
+
+    /** Once stock moved, the tracking is the one it moved under: a file asking for another is refused on its cell. */
+    public function testATrackingStockAlreadyMovedUnderIsKept(): void
+    {
+        $this->stockKept();
+        $this->signedIn(['product.read', 'product.write', 'stock.write']);
+        $this->import("reference,name,unit_code,unit_price_net,stock_add\nVIS-1,Vis 1,H87,1,5\n");
+        self::assertResponseIsSuccessful();
+
+        $this->import("reference,name,tracking\nVIS-1,Vis 1,lot\n", mode: 'upsert', dryRun: true);
+
+        self::assertSame([[2, 'tracking', 'tracking_kept_by_stock', []]], $this->rejections());
+    }
+
+    /**
+     * A row names a pack and a supplier's code beside the unit code (F26): each is added, or the one the product
+     * already holds under that code is updated, and a code the row does not name is never removed, so a product with
+     * several packs or several suppliers keeps them all. The change list shows the code the row names.
+     */
+    public function testARowAddsOrUpdatesAPackAndASuppliersCode(): void
+    {
+        $this->aVendor('F-001', 'Sotumag');
+        $this->aVendor('F-002', 'Quincaillerie Sfax');
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $header = 'reference,name,unit_code,unit_price_net,barcode,pack_barcode,pack_quantity,supplier_number,supplier_code';
+
+        $this->import("$header\nVIS-1,Vis 1,H87,1,6191234567897,16191234567894,12,F-001,SF-883\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['created'], json_encode($this->json()['rejected']) ?: '');
+        $this->em()->clear();
+        self::assertSame([['unit', '6191234567897', 1, null], ['pack', '16191234567894', 12, null], ['supplier', 'SF-883', 1, 'F-001']], self::codesAndSuppliers($this->product('VIS-1')));
+
+        $this->import("reference,name,pack_barcode,pack_quantity,supplier_number,supplier_code\nVIS-1,Vis 1,16191234567894,24,F-002,SF-990\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['updated']);
+        self::assertSame([
+            ['line' => 2, 'column' => 'pack_quantity', 'before' => '12', 'after' => '24'],
+            ['line' => 2, 'column' => 'supplier_number', 'before' => '', 'after' => 'F-002'],
+            ['line' => 2, 'column' => 'supplier_code', 'before' => '', 'after' => 'SF-990'],
+        ], $this->json()['changes']);
+        $this->em()->clear();
+        self::assertSame([['unit', '6191234567897', 1, null], ['pack', '16191234567894', 24, null], ['supplier', 'SF-883', 1, 'F-001'], ['supplier', 'SF-990', 1, 'F-002']], self::codesAndSuppliers($this->product('VIS-1')));
+
+        $this->import("reference,name,pack_barcode,pack_quantity,supplier_number,supplier_code\nVIS-1,Vis 1,16191234567894,,F-002,SF-990\n", mode: 'upsert', dryRun: true);
+        self::assertSame([[], [2]], [$this->json()['updated'], $this->json()['unchanged']], 'a pack named without its quantity keeps the one it has');
+    }
+
+    /** @return iterable<string, array{string, string, string, array<string, int|string>}> */
+    public static function refusedCodeCells(): iterable
+    {
+        yield 'a pack without its quantity' => ['16191234567894,,,', 'pack_quantity', 'value_required', []];
+        yield 'a quantity without its pack' => [',12,,', 'pack_barcode', 'value_required', []];
+        yield 'a pack of one piece' => ['16191234567894,1,,', 'pack_quantity', 'invalid_pack_quantity', ['min' => 2, 'max' => 1000000]];
+        yield 'a pack that is no whole number' => ['16191234567894,"2,5",,', 'pack_quantity', 'invalid_pack_quantity', ['min' => 2, 'max' => 1000000]];
+        yield 'a supplier code without its supplier' => [',,,SF-883', 'supplier_number', 'value_required', []];
+        yield 'a supplier without its code' => [',,F-001,', 'supplier_code', 'value_required', []];
+        yield 'a supplier the company does not have' => [',,F-404,SF-883', 'supplier_number', 'unknown_vendor', ['number' => 'F-404']];
+        yield 'a pack code with a wrong check digit' => ['16191234567895,12,,', 'pack_barcode', 'invalid_barcode', []];
+    }
+
+    /**
+     * Each code cell is refused on its own column, the pair it belongs to named where one half is missing.
+     *
+     * @param array<string, int|string> $params
+     */
+    #[DataProvider('refusedCodeCells')]
+    public function testACodeCellIsRefusedOnItsOwnColumn(string $cells, string $column, string $code, array $params): void
+    {
+        $this->aVendor('F-001', 'Sotumag');
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import("reference,name,unit_code,unit_price_net,pack_barcode,pack_quantity,supplier_number,supplier_code\nVIS-1,Vis 1,H87,1,$cells\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[2, $column, $code, $params]], $this->rejections());
+    }
+
+    /**
+     * A supplier's code is a cost reader's to write (F23): the columns are not offered to anybody else, nor while the
+     * suppliers module is off, and an upsert by somebody who sees no cost keeps every supplier code and the cost.
+     */
+    public function testSupplierCodesAreACostReadersAndKeptFromAnybodyElse(): void
+    {
+        $this->aVendor('F-001', 'Sotumag');
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->import("reference,name,unit_code,unit_price_net,cost_price,supplier_number,supplier_code\nVIS-1,Vis 1,H87,1,0.4,F-001,SF-883\n");
+        self::assertResponseIsSuccessful();
+        self::assertContains('supplier_code', $this->guide());
+
+        $this->company = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('the company is there');
+        $this->createUser('writer@twes.local', 'password-1234', $this->company, ['product.read', 'product.write'], 'writer');
+        $this->login('writer@twes.local', 'password-1234');
+        self::assertNotContains('supplier_code', $this->guide());
+        $this->import("reference,name,pack_barcode,pack_quantity\nVIS-1,Vis 1 inox,16191234567894,6\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['updated'], json_encode($this->json()['rejected']) ?: '');
+        $this->em()->clear();
+        $screw = $this->product('VIS-1');
+        self::assertSame([['pack', '16191234567894', 6, null], ['supplier', 'SF-883', 1, 'F-001']], self::codesAndSuppliers($screw));
+        self::assertSame('0.4000', $screw->getDetails()->costPrice);
+
+        $this->company = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('the company is there');
+        $this->em()->persist(ModuleState::of($this->company, 'vendors', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->login('shop@twes.local', 'password-1234');
+        self::assertNotContains('supplier_code', $this->guide(), 'no supplier to name while the module is off');
+    }
+
+    private function aVendor(string $number, string $name): void
+    {
+        $this->em()->persist(Vendor::create($this->company, $number, new VendorProfile($name), new \DateTimeImmutable()));
+        $this->em()->flush();
+    }
+
+    /** @return list<array{string, string, int, string|null}> */
+    private static function codesAndSuppliers(Product $product): array
+    {
+        return array_map(static fn (ProductBarcode $row): array => [$row->getRole()->value, $row->getCode(), $row->getQuantity(), $row->getSupplier()?->getNumber()], $product->getBarcodes());
     }
 
     /**
