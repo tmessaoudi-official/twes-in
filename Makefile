@@ -198,6 +198,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/screen-texts-budget.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/build-version.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/move-classes.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/layout-order.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-instance.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-monitor.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/deploy.test.sh

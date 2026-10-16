@@ -32,19 +32,32 @@ snapshot() {
     "$(grep -c '"path"' "$out/routes.json")"
 }
 
+# A class moved into a folder of its own is discovered at another moment, so the OpenAPI document and the routes may
+# hold the same content in another order: layout-order.py tells that from a loss, and from two routes that changed
+# places and can match one request, which would change which answers.
 compare() {
-  local before=$1 after=$2 file differ=0
+  local before=$1 after=$2 file differ=0 reordered=0
   [[ "$before" == /* ]] || before="$root/$before"
   [[ "$after" == /* ]] || after="$root/$after"
   for file in openapi.json routes.json entities.txt schema.sql; do
     [[ -s "$before/$file" && -s "$after/$file" ]] || { echo "layout-oracle: $file is missing from a snapshot" >&2; return 2; }
-    if ! cmp -s "$before/$file" "$after/$file"; then
+    cmp -s "$before/$file" "$after/$file" && continue
+    if [[ "$file" == *.json ]]; then
+      reordered=1
+    else
       echo "layout-oracle: $file differs:"
       diff "$before/$file" "$after/$file" | head -n 20
       differ=1
     fi
   done
-  ((differ == 0)) && echo "layout-oracle: OK, the OpenAPI document, the routes, the entities and the schema are unchanged"
+  if ((reordered == 1)); then
+    python3 -I "$root/scripts/refactor/layout-order.py" "$before" "$after" || differ=1
+  fi
+  if ((differ == 0 && reordered == 0)); then
+    echo "layout-oracle: OK, the OpenAPI document, the routes, the entities and the schema are unchanged"
+  elif ((differ == 0)); then
+    echo "layout-oracle: OK, the entities and the schema are unchanged, the OpenAPI document and the routes reordered only"
+  fi
   return "$differ"
 }
 
