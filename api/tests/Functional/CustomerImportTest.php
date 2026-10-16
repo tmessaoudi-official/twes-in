@@ -214,6 +214,22 @@ final class CustomerImportTest extends ApiTestCase
         self::assertSame([8], $this->arrayAt($this->json(), 'created'), 'a country written in small letters is the same country');
     }
 
+    /** A customer stored before a rule is held to it when a file writes it again, under the column the rule names. */
+    public function testAFileUpdatingACustomerStoredBeforeARuleIsRefusedOnTheCellItBreaks(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->import("number,name,kind,email\nCLI-0001,Carthage Conseil,individual,compta@carthage.tn\n");
+        self::assertResponseIsSuccessful();
+        $this->em()->getConnection()->executeStatement("UPDATE customer SET email = 'compta@' WHERE number = 'CLI-0001'");
+
+        $this->import("number,name\nCLI-0001,Carthage Conseil Group\n", mode: 'upsert', dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        $rejected = $this->arrayAt($this->json(), 'rejected');
+        self::assertIsArray($rejected[0] ?? null);
+        self::assertSame([2, 'email', 'invalid_email'], [$rejected[0]['line'] ?? null, $rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null]);
+    }
+
     public function testCreateModeRefusesAKnownNumberAndUpsertFillsInOnlyTheCellsTheRowHas(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);

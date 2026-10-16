@@ -35,6 +35,8 @@ final class ContactRuleTest extends TestCase
         self::assertCount(0, $validator->validate('', new ContactRule(ContactRule::EMAIL)), 'an empty value is no value');
         self::assertCount(0, $validator->validate(null, new ContactRule(ContactRule::COUNTRY)));
         self::assertCount(1, $validator->validate('XX', new ContactRule(ContactRule::COUNTRY)));
+        self::assertCount(0, $validator->validate(' TN ', new ContactRule(ContactRule::COUNTRY)), 'judged as the domain keeps it, without its spaces');
+        self::assertCount(0, $validator->validate('  ', new ContactRule(ContactRule::PHONE)), 'spaces alone are no value');
     }
 
     public function testTheApiDocumentSaysWhatAFieldTakes(): void

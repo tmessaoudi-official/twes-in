@@ -42,9 +42,12 @@ final class ContactRules
     /** A phone number as an HTML form's pattern writes it, the whole value matched. */
     public const string PHONE_PATTERN = '\+?[0-9 ().\-]{3,40}';
     private const string PHONE = '/^'.self::PHONE_PATTERN.'$/D';
-    /** A web page's address: http or https, a host with at least one dot, an optional port, path, query and fragment. */
-    private const string WEBSITE = '~^https?://(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?\.)+[\p{L}\p{N}-]{1,63}(?::[0-9]{1,5})?(?:[/?#][^\s]*)?$~iuD';
-    /** ISO 9362: bank, country, place, and an optional branch. */
+    /**
+     * A web page's address: http or https, optional credentials, a host with at least one dot (an address of numbers
+     * alone is no host), an optional port, path, query and fragment.
+     */
+    private const string WEBSITE = '~^https?://(?:[_.\p{L}\p{N}-]+(?::[_.\p{L}\p{N}-]*)?@)?(?![0-9]{1,3}(?:\.[0-9]{1,3}){3}(?:[:/?#]|$))(?:[_\p{L}\p{N}](?:[_\p{L}\p{N}-]{0,61}[_\p{L}\p{N}])?\.)+[\p{L}\p{N}-]{1,63}\.?(?::[0-9]{1,5})?(?:[/?#][^\s]*)?$~iuD';
+    /** ISO 9362: bank, country, place, and an optional branch; spaces between them are not part of it. */
     private const string BIC = '/^[A-Z]{4}([A-Z]{2})[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/D';
     /** ISO 13616: country, check digits, then up to thirty letters or digits. */
     private const string IBAN = '/^([A-Z]{2})[0-9]{2}[A-Z0-9]{11,30}$/D';
@@ -75,7 +78,7 @@ final class ContactRules
 
     public static function bic(string $value): ?Refusal
     {
-        return 1 === preg_match(self::BIC, strtoupper($value), $parts) && null === self::country($parts[1])
+        return 1 === preg_match(self::BIC, strtoupper(str_replace(' ', '', $value)), $parts) && null === self::country($parts[1])
             ? null
             : new Refusal('invalid_bic', 'Not a BIC (ISO 9362).');
     }

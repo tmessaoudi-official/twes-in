@@ -32,25 +32,26 @@ final class ContactRulesTest extends TestCase
             yield "email $value" => ['email', $value, $email];
         }
         $url = new Assert\Url(requireTld: true);
-        foreach (['https://exemple.tn', 'http://www.exemple.com/chemin?x=1', 'https://exemple', 'ftp://exemple.tn', 'javascript:alert(1)', 'mailto:a@b.tn', 'exemple.tn', 'https://', 'https://sous.exemple.co.uk:8443/a', 'https://exemple.t', 'https://ex ample.tn'] as $value) {
+        foreach (['https://exemple.tn', 'http://www.exemple.com/chemin?x=1', 'https://exemple', 'ftp://exemple.tn', 'javascript:alert(1)', 'mailto:a@b.tn', 'exemple.tn', 'https://', 'https://sous.exemple.co.uk:8443/a', 'https://exemple.t', 'https://ex ample.tn', 'https://192.168.0.1', 'https://user:pass@exemple.tn', 'https://ex_ample.tn', 'https://exemple.tn.', 'https://123.456', 'https://exemple.tn/chemin avec espace', 'https://xn--exmple-cva.tn', 'https://exémple.tn', 'HTTPS://EXEMPLE.TN'] as $value) {
             yield "website $value" => ['website', $value, $url];
         }
         $phone = new Assert\Regex(pattern: '/^\+?[0-9 ().\-]{3,40}$/');
-        foreach (['+216 71 000 000', '(71) 123-456', '12', 'abc', '+33.1.23.45.67.89', '++216'] as $value) {
+        foreach (['+216 71 000 000', '(71) 123-456', '12', 'abc', '+33.1.23.45.67.89', '++216', "71000000\n"] as $value) {
             yield "phone $value" => ['phone', $value, $phone];
         }
         $bic = new Assert\Bic(mode: Assert\Bic::VALIDATION_MODE_CASE_INSENSITIVE);
-        foreach (['BIATTNTT', 'biattntt', 'BNPAFRPPXXX', 'BIATZZTT', 'BIAT1NTT', 'BIATTNT', 'BNPAFRPPXX'] as $value) {
+        foreach (['BIATTNTT', 'biattntt', 'BNPAFRPPXXX', 'BIATZZTT', 'BIAT1NTT', 'BIATTNT', 'BNPAFRPPXX', 'BIAT TN TT', ' BIATTNTT', 'BKOSXKPR', 'BIAT-TNTT'] as $value) {
             yield "bic $value" => ['bic', $value, $bic];
         }
     }
 
+    /** The domain is asked what it would keep: the value without its surrounding spaces. */
     #[DataProvider('values')]
     public function testADomainRuleAgreesWithTheConstraintTheFormHeldTheValueTo(string $rule, string $value, Constraint $constraint): void
     {
         $formAccepts = 0 === \count(Validation::createValidator()->validate($value, $constraint));
 
-        self::assertSame($formAccepts, null === ContactRules::$rule($value), $formAccepts ? 'refused what the form accepted' : 'accepted what the form refused');
+        self::assertSame($formAccepts, null === ContactRules::$rule(trim($value)), $formAccepts ? 'refused what the form accepted' : 'accepted what the form refused');
     }
 
     public function testTheCountriesAreTheStandardsOwnList(): void
