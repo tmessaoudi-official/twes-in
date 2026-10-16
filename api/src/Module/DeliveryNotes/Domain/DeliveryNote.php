@@ -72,6 +72,10 @@ class DeliveryNote implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $deliveryDate = null;
 
+    /** Whether the goods were handed over: a note invoiced straight from validated keeps the day it expected, no delivery. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $delivered = false;
+
     #[ORM\Embedded(class: PostalAddress::class, columnPrefix: 'delivery_')]
     private PostalAddress $deliveryAddress;
 
@@ -257,6 +261,7 @@ class DeliveryNote implements CompanyOwned
         }
 
         $this->deliveryDate = $deliveredAt->setTimezone(new \DateTimeZone('UTC'));
+        $this->delivered = true;
         $this->status = DeliveryNoteStatus::Delivered;
         $this->updatedAt = $now;
     }
@@ -345,10 +350,10 @@ class DeliveryNote implements CompanyOwned
         return null === $this->sellerSnapshot ? null : SellerSnapshot::fromArray($this->sellerSnapshot);
     }
 
-    /** When the goods arrived; null until the note is delivered, or invoiced after it was. */
+    /** When the goods arrived; null until they were, an invoiced note included. */
     public function getDeliveredAt(): ?\DateTimeImmutable
     {
-        return \in_array($this->status, [DeliveryNoteStatus::Delivered, DeliveryNoteStatus::Invoiced], true) ? $this->deliveryDate : null;
+        return $this->delivered ? $this->deliveryDate : null;
     }
 
     /** The header as a form holds it: the delivery as the company's day. */

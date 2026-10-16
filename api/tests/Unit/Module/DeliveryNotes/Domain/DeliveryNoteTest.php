@@ -387,7 +387,7 @@ final class DeliveryNoteTest extends TestCase
         $invoiceId = Uuid::v7();
         $today = new \DateTimeImmutable('2026-09-15 00:00:00', new \DateTimeZone('UTC'));
         $later = $this->now->modify('+1 hour');
-        $validated = $this->validated($this->customer, new DeliveryNoteHeader());
+        $validated = $this->validated($this->customer, new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-20')));
         $delivered = $this->validated($this->customer, new DeliveryNoteHeader());
         $delivered->deliver($this->now, $this->now);
         $cancelled = $this->validated($this->customer, new DeliveryNoteHeader());
@@ -403,6 +403,9 @@ final class DeliveryNoteTest extends TestCase
             self::assertEquals($later, $note->getUpdatedAt());
             self::assertSame([], $note->releaseEvents(), 'the invoice tells what it invoiced');
         }
+        // Invoiced without being delivered, a note keeps the day it expects and has no delivery to show.
+        self::assertSame(['2026-09-20', null], [$validated->getHeader()->deliveryDate?->format('Y-m-d'), $validated->getDeliveredAt()]);
+        self::assertEquals($this->now, $delivered->getDeliveredAt());
         self::assertNull($cancelled->getInvoicedByInvoiceId());
         foreach ([
             'invoiced again' => static fn () => $validated->markInvoiced(Uuid::v7(), $later),
