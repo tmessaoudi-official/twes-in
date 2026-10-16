@@ -7,13 +7,16 @@
 
 declare(strict_types=1);
 
-namespace App\Audit\Infrastructure\ApiPlatform;
+namespace App\Audit\Infrastructure\ApiPlatform\State\Provider;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\Audit\Application\ActivityEntry;
 use App\Audit\Application\ReadActivity;
+use App\Audit\Infrastructure\ApiPlatform\Payload\ActivitySearchReader;
+use App\Audit\Infrastructure\ApiPlatform\Resource\ActivityResource;
+use App\Audit\Infrastructure\ApiPlatform\Security\AuditPermission;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;

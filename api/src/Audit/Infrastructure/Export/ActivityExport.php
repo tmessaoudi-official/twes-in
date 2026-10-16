@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Audit\Infrastructure\Export;
 
 use App\Audit\Application\ReadActivity;
-use App\Audit\Infrastructure\ApiPlatform\ActivitySearchReader;
-use App\Audit\Infrastructure\ApiPlatform\AuditPermission;
+use App\Audit\Infrastructure\ApiPlatform\Payload\ActivitySearchReader;
+use App\Audit\Infrastructure\ApiPlatform\Security\AuditPermission;
 use App\ImportExport\Application\DeclaresExport;
 use App\ImportExport\Application\ExportQuery;
 use App\Shared\Domain\PageRequest;

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Architecture;
 
-use App\Audit\Domain\AuditLog;
+use App\Audit\Domain\Model\AuditLog;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Identity\Domain\Passkey;
 use App\Identity\Domain\PasswordReset;

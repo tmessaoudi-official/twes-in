@@ -14,9 +14,9 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\State\ProcessorInterface;
 use ApiPlatform\State\ProviderInterface;
-use App\Audit\Domain\AuditLog;
-use App\Audit\Infrastructure\ApiPlatform\ActivityCollectionProvider;
-use App\Audit\Infrastructure\ApiPlatform\ActivityResource;
+use App\Audit\Domain\Model\AuditLog;
+use App\Audit\Infrastructure\ApiPlatform\Resource\ActivityResource;
+use App\Audit\Infrastructure\ApiPlatform\State\Provider\ActivityCollectionProvider;
 use App\CustomFields\Infrastructure\ApiPlatform\CreateCustomFieldProcessor;
 use App\Files\Domain\AttachmentRepository;
 use App\Fiscal\Domain\Calculation\Rate;
@@ -75,7 +75,6 @@ final class SourceLayoutTest extends TestCase
      * only shrinks, one context per commit.
      */
     private const array NOT_YET_MOVED = [
-        'Audit',
         'CustomFields',
         'Erasure',
         'Files',

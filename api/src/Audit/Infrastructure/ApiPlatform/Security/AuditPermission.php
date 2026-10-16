@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Audit\Infrastructure\ApiPlatform;
+namespace App\Audit\Infrastructure\ApiPlatform\Security;
 
 /**
  * Who may read the company's « Journal d'activité » (docs/SPEC.md § 7, 2026-09-26 23:04): the owner and the
