@@ -3523,7 +3523,8 @@
       "paid_before_expense": "Payment date refused: the expense's day at the earliest.",
       "paid_after_today": "Payment date refused: today at the latest.",
       "invalid_withholding_rate": "Withholding refused: a percentage from 0 to 100, three decimals at most.",
-      "tej_outside_tunisia": "TEJ code refused: it applies only to a company under the Tunisian preset."
+      "tej_outside_tunisia": "TEJ code refused: it applies only to a company under the Tunisian preset.",
+      "too_many_decimals": "Too many decimals: {max, plural, =0 {a whole number} one {one decimal at most} other {{{max}} decimals at most}}."
     },
     "action": "Import"
   },

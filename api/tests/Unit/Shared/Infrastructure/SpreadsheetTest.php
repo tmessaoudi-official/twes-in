@@ -126,6 +126,24 @@ final class SpreadsheetTest extends TestCase
         );
     }
 
+    /**
+     * A cell Excel computes holds its formula and the value Excel last worked out, which is what the person saw: a price
+     * written « =A1*1.19 » is that price, never the formula's text.
+     */
+    public function testAComputedCellIsReadAsTheValueItShowed(): void
+    {
+        $path = $this->typed([[12.5, '=A1*1.19']]);
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path));
+        $sheet = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+        self::assertStringContainsString('<f>A1*1.19</f>', $sheet, 'the fixture holds the formula');
+        // What Excel stores beside a formula: the value it computed, here with a binary float's noise.
+        $zip->addFromString('xl/worksheets/sheet1.xml', str_replace('<f>A1*1.19</f>', '<f>A1*1.19</f><v>14.875000000000002</v>', $sheet));
+        $zip->close();
+
+        self::assertSame(['12.5', '14.875000000000002'], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx))[1]);
+    }
+
     /** A date cell is a date to Excel and a string to us, in the one notation every parser downstream agrees on. */
     public function testADateCellIsReadAsAnIsoDate(): void
     {

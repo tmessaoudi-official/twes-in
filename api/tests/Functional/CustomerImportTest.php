@@ -148,6 +148,25 @@ final class CustomerImportTest extends ApiTestCase
         self::assertSame([], $business->getProfile()->identifiers);
     }
 
+    /** The kind in the words the screen shows, and a day as people here write it. */
+    public function testAKindAndADayAreReadAsPeopleWriteThem(): void
+    {
+        $this->em()->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Customer, 'since', 'Client depuis', CustomFieldType::Date, false, [], 2, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import("number,name,kind,matricule_fiscal,custom.since\nCLI-0001,Carthage Conseil,Société,".self::MATRICULE.",15/03/2026\nCLI-0002,Amel Ben Ali,Particulier,,\nCLI-0003,Sfax Outillage,entreprise,".self::MATRICULE.",\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 3, 4], $this->json()['created'] ?? null);
+        self::assertSame(['company', 'individual', 'company'], [
+            $this->customer('CLI-0001')->getProfile()->kind->value,
+            $this->customer('CLI-0002')->getProfile()->kind->value,
+            $this->customer('CLI-0003')->getProfile()->kind->value,
+        ]);
+        self::assertSame('2026-03-15', $this->customer('CLI-0001')->getCustomFields()['since'] ?? null);
+    }
+
     /** A row that says nothing of its kind is a business when it carries an identifier, and a person otherwise. */
     public function testABlankKindIsABusinessOnlyWhenTheRowCarriesAnIdentifier(): void
     {

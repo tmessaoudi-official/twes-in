@@ -140,10 +140,10 @@ final class OpeningStockImportTest extends ApiTestCase
     {
         $this->signedIn(['stock.read', 'stock.write', 'product.cost.read']);
 
-        $this->import("reference,location_code,stock_add,unit_cost\nVIS-6X40,000,10,\"0,25\"\n");
+        $this->import("reference,location_code,stock_add,unit_cost\nVIS-6X40,000,10,\"0,2575\"\n");
 
         self::assertResponseIsSuccessful();
-        self::assertSame('0.2500', $this->em()->getConnection()->fetchOne("SELECT unit_cost FROM stock_movement WHERE source_type = 'receipt'"));
+        self::assertSame('0.2575', $this->em()->getConnection()->fetchOne("SELECT unit_cost FROM stock_movement WHERE source_type = 'receipt'"), 'a cost to the four decimals a price holds');
     }
 
     public function testSomebodyWhoCannotReadCostsIsNotAskedForOne(): void

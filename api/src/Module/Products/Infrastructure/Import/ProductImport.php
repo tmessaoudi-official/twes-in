@@ -16,6 +16,7 @@ use App\CustomFields\Domain\CustomFieldType;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\ImportExport\Application\DeclaresImport;
+use App\ImportExport\Application\ImportCells;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportContext;
 use App\ImportExport\Application\ImportHeading;
@@ -91,6 +92,8 @@ final readonly class ProductImport implements DeclaresImport
     ];
 
     private const array YES = ['yes', 'y', 'true', '1', 'oui', 'o'];
+    /** A kind by its code or as the screen names it, in French and in English. */
+    private const array KINDS = ['goods' => 'goods', 'bien' => 'goods', 'biens' => 'goods', 'service' => 'service', 'services' => 'service'];
     private const array NO = ['no', 'n', 'false', '0', 'non'];
 
     public function __construct(
@@ -301,8 +304,8 @@ final readonly class ProductImport implements DeclaresImport
         if ($context->ticked(self::IGNORE_QUANTITIES)) {
             return null;
         }
-        $add = self::decimal($record->value('stock_add'));
-        $count = self::decimal($record->value('stock_count'));
+        $add = ImportCells::decimal($record, 'stock_add', 3);
+        $count = ImportCells::decimal($record, 'stock_count', 3);
         if (null !== $add && null !== $count) {
             throw new RowRejected('stock_count', 'A row adds goods or counts them, not both: keep one of stock_add and stock_count.', 'stock_add_and_count');
         }
@@ -358,7 +361,7 @@ final readonly class ProductImport implements DeclaresImport
      */
     private function reorderPointOf(Company $company, ImportRecord $record, ?Uuid $homeLocationId): ?array
     {
-        $quantity = self::decimal($record->value('reorder_point'));
+        $quantity = ImportCells::decimal($record, 'reorder_point', 3);
         if (null === $quantity || '' === trim($quantity)) {
             return null;
         }
@@ -401,7 +404,7 @@ final readonly class ProductImport implements DeclaresImport
     {
         $held = $current?->getDetails();
         $kind = $record->value('kind');
-        $price = self::decimal($record->value('unit_price_net')) ?? $held?->unitPriceNet;
+        $price = ImportCells::decimal($record, 'unit_price_net', 4) ?? $held?->unitPriceNet;
 
         return new ProductInput(
             // Left out, a new product is given the next of the company's format and a product found by its code keeps its own.
@@ -409,9 +412,9 @@ final readonly class ProductImport implements DeclaresImport
             new ProductDetails(
                 $record->value('name') ?? $held->name ?? '',
                 $record->value('description') ?? $held?->description,
-                null === $kind ? ($held->kind ?? ProductKind::Goods) : (ProductKind::tryFrom(strtolower($kind)) ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))])),
+                null === $kind ? ($held->kind ?? ProductKind::Goods) : (ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))])),
                 $price ?? throw new RowRejected('unit_price_net', 'A product is sold at a price, so a new one needs one.', 'value_required'),
-                ($this->guard->may($company, ProductPermission::COST_READ) ? self::decimal($record->value('cost_price')) : null) ?? $held?->costPrice,
+                ($this->guard->may($company, ProductPermission::COST_READ) ? ImportCells::decimal($record, 'cost_price', 4) : null) ?? $held?->costPrice,
             ),
             $this->unitId($company, $record, $current),
             $this->categoryId($company, $record, $current),
@@ -503,6 +506,7 @@ final readonly class ProductImport implements DeclaresImport
             }
             $values[$field->getKey()] = match ($field->getType()) {
                 CustomFieldType::Number => self::number($cell) ?? throw new RowRejected($column, 'A number.', 'not_a_number'),
+                CustomFieldType::Date => ImportCells::day($cell),
                 CustomFieldType::Bool => self::yesNo($record, $column) ?? throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
                 default => $cell,
             };
@@ -596,12 +600,6 @@ final readonly class ProductImport implements DeclaresImport
             \in_array($cell, self::NO, true) => false,
             default => throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
         };
-    }
-
-    /** A decimal written with a point or, as a French or Tunisian spreadsheet writes it, a comma. */
-    private static function decimal(?string $cell): ?string
-    {
-        return null === $cell ? null : str_replace(',', '.', $cell);
     }
 
     private static function number(string $cell): int|float|null

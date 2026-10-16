@@ -111,8 +111,10 @@ final class RefusalReasonsTest extends KernelTestCase
         foreach ($files as $file) {
             \assert($file instanceof \SplFileInfo);
             $source = (string) file_get_contents($file->getPathname());
-            preg_match_all('/new (?:RowRejected|StockImportRefused)\((.*?)\);/s', $source, $statements);
-            foreach ($statements[1] as $arguments) {
+            // The arguments up to the parenthesis that closes them, quoted text and nested calls included: a statement
+            // ending `),` rather than `);` would otherwise run on into the next one's arguments.
+            preg_match_all('/new (?:RowRejected|StockImportRefused)(\(((?:[^()\'"]++|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|(?1))*)\))/s', $source, $statements);
+            foreach ($statements[2] as $arguments) {
                 preg_match_all("/, '([a-z]+(?:_[a-z]+)+)'(?=\\s*(?:[,)]|$))/", $arguments, $reasons);
                 foreach ($reasons[1] as $reason) {
                     $found[$reason][] = $file->getFilename();

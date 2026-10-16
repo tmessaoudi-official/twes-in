@@ -17,6 +17,7 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\ImportExport\Application\DeclaresImport;
+use App\ImportExport\Application\ImportCells;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportContext;
 use App\ImportExport\Application\ImportHeading;
@@ -100,6 +101,11 @@ final readonly class CustomerImport implements DeclaresImport
     ];
 
     private const array YES = ['yes', 'y', 'true', '1', 'oui', 'o'];
+    /** A kind by its code or as the screen names it, in French and in English. */
+    private const array KINDS = [
+        'company' => 'company', 'entreprise' => 'company', 'société' => 'company', 'societe' => 'company',
+        'individual' => 'individual', 'particulier' => 'individual',
+    ];
     private const array NO = ['no', 'n', 'false', '0', 'non'];
 
     public function __construct(
@@ -203,7 +209,7 @@ final readonly class CustomerImport implements DeclaresImport
         return new CustomerInput(
             $record->value('number') ?? '',
             new CustomerProfile(
-                null === $kind ? $blankKind : (CustomerKind::tryFrom(strtolower($kind)) ?? throw new RowRejected('kind', 'A customer is a "company" or an "individual".', 'not_one_of', ['choices' => implode(', ', array_column(CustomerKind::cases(), 'value'))])),
+                null === $kind ? $blankKind : (CustomerKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A customer is a "company" or an "individual".', 'not_one_of', ['choices' => implode(', ', array_column(CustomerKind::cases(), 'value'))])),
                 $record->value('name') ?? $profile->name ?? '',
                 $record->value('legal_name') ?? $profile?->legalName,
                 $identifiers,
@@ -212,7 +218,7 @@ final readonly class CustomerImport implements DeclaresImport
                 $record->value('website') ?? $profile?->website,
                 $this->address($company, $record, 'billing', $profile?->billingAddress) ?? new PostalAddress(countryCode: $company->getCountryCode()),
                 $this->address($company, $record, 'shipping', $profile?->shippingAddress),
-                self::decimal($record->value('default_discount_rate')) ?? $profile?->defaultDiscountRate,
+                ImportCells::decimal($record, 'default_discount_rate', 3) ?? $profile?->defaultDiscountRate,
                 $record->value('notes') ?? $profile?->notes,
             ),
             $this->groupId($company, $record, $current),
@@ -299,6 +305,7 @@ final readonly class CustomerImport implements DeclaresImport
             }
             $values[$field->getKey()] = match ($field->getType()) {
                 CustomFieldType::Number => self::number($cell) ?? throw new RowRejected($column, 'A number.', 'not_a_number'),
+                CustomFieldType::Date => ImportCells::day($cell),
                 CustomFieldType::Bool => self::yesNo($record, $column) ?? throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
                 default => $cell,
             };
@@ -438,12 +445,6 @@ final readonly class CustomerImport implements DeclaresImport
             \in_array($cell, self::NO, true) => false,
             default => throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
         };
-    }
-
-    /** A decimal written with a point or, as a French or Tunisian spreadsheet writes it, a comma. */
-    private static function decimal(?string $cell): ?string
-    {
-        return null === $cell ? null : str_replace(',', '.', $cell);
     }
 
     private static function number(string $cell): int|float|null

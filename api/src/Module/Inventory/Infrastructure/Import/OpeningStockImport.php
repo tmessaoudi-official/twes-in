@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Infrastructure\Import;
 
 use App\ImportExport\Application\DeclaresImport;
+use App\ImportExport\Application\ImportCells;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportContext;
 use App\ImportExport\Application\ImportMode;
@@ -117,9 +118,9 @@ final readonly class OpeningStockImport implements DeclaresImport
     {
         $product = $this->productOf($company, $record);
         $productColumn = null === $record->value('reference') ? 'barcode' : 'reference';
-        $add = self::decimal($record->value('stock_add'));
-        $count = self::decimal($record->value('stock_count'));
-        $cost = self::decimal($record->value('unit_cost'));
+        $add = ImportCells::decimal($record, 'stock_add', 3);
+        $count = ImportCells::decimal($record, 'stock_count', 3);
+        $cost = ImportCells::decimal($record, 'unit_cost', 4);
         if (null !== $add && null !== $count) {
             throw new RowRejected('stock_count', 'A row adds goods or counts them, not both: keep one of stock_add and stock_count.', 'stock_add_and_count');
         }
@@ -207,11 +208,5 @@ final readonly class OpeningStockImport implements DeclaresImport
                 $this->entityManager->detach($written);
             }
         }
-    }
-
-    /** A decimal written with a point or, as a French or Tunisian spreadsheet writes it, a comma. */
-    private static function decimal(?string $cell): ?string
-    {
-        return null === $cell ? null : str_replace(',', '.', $cell);
     }
 }
