@@ -22,8 +22,13 @@ final class InMemoryUsers implements UserRepository
     /** @var array<string, User> */
     private array $users = [];
 
+    /** How many times a user was read by id. */
+    public int $reads = 0;
+
     public function ofId(Uuid $id): ?User
     {
+        ++$this->reads;
+
         return $this->users[$id->toRfc4122()] ?? null;
     }
 

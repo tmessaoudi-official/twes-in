@@ -113,6 +113,42 @@ final class StagedLiveChangesTest extends TestCase
         self::assertSame(['invoice.payment_recorded', 'invoice.revised'], array_map(static fn (array $push) => $push['data']['action'], $this->publisher->pushed));
     }
 
+    /**
+     * A file of a thousand rows, or any other write of many records, says so once per kind and action: a screen reads
+     * its list again once, not a thousand times, and the actor's name is read once.
+     */
+    public function testManyChangesOfOneKindAreSaidOnceAsABulkChange(): void
+    {
+        $this->changes->begin();
+        for ($i = 0; $i < 11; ++$i) {
+            $this->changes->stage(new LiveChange('customer', Uuid::v7(), 'customer.created', $this->nadia->getId(), $this->company));
+        }
+        $this->changes->stage(new LiveChange('customer', Uuid::v7(), 'customer.revised', $this->nadia->getId(), $this->company));
+        $this->changes->commit();
+
+        self::assertSame([
+            ['kind' => 'customer', 'id' => null, 'action' => 'customer.created', 'bulk' => true, 'count' => 11],
+            ['kind' => 'customer', 'id' => 'one', 'action' => 'customer.revised', 'bulk' => null, 'count' => null],
+        ], array_map(static fn (array $push): array => ['kind' => $push['data']['kind'], 'id' => null === $push['data']['id'] ? null : 'one', 'action' => $push['data']['action'], 'bulk' => $push['data']['bulk'] ?? null, 'count' => $push['data']['count'] ?? null], $this->publisher->pushed));
+        self::assertSame(['id' => $this->nadia->getId()->toRfc4122(), 'name' => 'Nadia Belkacem'], $this->publisher->pushed[0]['data']['actor']);
+        self::assertSame(1, $this->users->reads, 'the actor is read once for the commit');
+    }
+
+    public function testTenChangesAreStillSaidOneByOneAndADeletionIsNeverFolded(): void
+    {
+        $this->changes->begin();
+        for ($i = 0; $i < 10; ++$i) {
+            $this->changes->stage(new LiveChange('vendor', Uuid::v7(), 'vendor.created', null, $this->company));
+        }
+        for ($i = 0; $i < 12; ++$i) {
+            $this->changes->stage(new LiveChange('vendor', Uuid::v7(), 'vendor.deleted', null, $this->company));
+        }
+        $this->changes->commit();
+
+        self::assertCount(22, $this->publisher->pushed, 'an open editor is told its own record is gone');
+        self::assertSame([], array_filter(array_column(array_column($this->publisher->pushed, 'data'), 'bulk')));
+    }
+
     public function testWhatBelongsToNoCompanyReachesItsActorsOwnChannelAndWhatHasNeitherReachesNobody(): void
     {
         $this->changes->begin();

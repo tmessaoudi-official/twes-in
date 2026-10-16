@@ -119,6 +119,34 @@ describe('liveRecord', () => {
     expect(page.form()?.controls['phone'].value).toBe('0698');
   });
 
+  it('reads the record again on a change of many records of its kind, since it may be one of them', async () => {
+    const page = setUp();
+
+    await page.savedElsewhere({ ...saved, phone: '0698' }, { id: null, bulk: true, count: 40 });
+
+    expect(reloads).toBe(1);
+    expect(page.form()?.controls['phone'].value).toBe('0698');
+    expect(page.feedback.said).toEqual([
+      { kind: 'notice', key: 'live.notice', params: { name: 'Nadia' } },
+    ]);
+  });
+
+  it('reads the record again on a change of many records, whatever the page says is its own', async () => {
+    const page = setUp(saved, [], (change) => change.id === 'setting-row-7');
+
+    await page.savedElsewhere({ ...saved, phone: '0698' }, { id: null, bulk: true, count: 40 });
+
+    expect(reloads).toBe(1);
+  });
+
+  it('lets a change naming no record and not of many records pass by', async () => {
+    const page = setUp();
+
+    await page.savedElsewhere({ ...saved, phone: '0698' }, { id: null });
+
+    expect(reloads).toBe(0);
+  });
+
   it('says someone changed it when the actor has no name', async () => {
     const page = setUp();
 
