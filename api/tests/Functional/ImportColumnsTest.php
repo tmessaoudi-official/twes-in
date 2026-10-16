@@ -146,7 +146,7 @@ final class ImportColumnsTest extends ApiTestCase
             $words = self::translations($language);
             foreach (explode('.', $key) as $step) {
                 self::assertIsArray($words, \sprintf('"%s" is a leaf before "%s" in %s', $key, $step, $language));
-                self::assertArrayHasKey($step, $words, \sprintf('"%s" is missing from web/public/i18n/%s.json', $key, $language));
+                self::assertArrayHasKey($step, $words, \sprintf('"%s" is missing from web/public/i18n/%s.json and its import part', $key, $language));
                 $words = $words[$step];
             }
             self::assertIsString($words, \sprintf('"%s" is not a sentence in %s', $key, $language));
@@ -162,10 +162,15 @@ final class ImportColumnsTest extends ApiTestCase
     private static function translations(string $language): array
     {
         if (!isset(self::$words[$language])) {
-            $path = \dirname(__DIR__, 3).'/web/public/i18n/'.$language.'.json';
-            self::assertFileExists($path);
-            $read = json_decode((string) file_get_contents($path), true, 512, \JSON_THROW_ON_ERROR);
-            self::assertIsArray($read);
+            // The guide is the import page's, which opens its own part over the language's file.
+            $read = [];
+            foreach (['/web/public/i18n/'.$language.'.json', '/web/public/i18n/import/'.$language.'.json'] as $file) {
+                $path = \dirname(__DIR__, 3).$file;
+                self::assertFileExists($path);
+                $part = json_decode((string) file_get_contents($path), true, 512, \JSON_THROW_ON_ERROR);
+                self::assertIsArray($part);
+                $read = array_replace_recursive($read, $part);
+            }
             $keyed = [];
             foreach ($read as $key => $value) {
                 $keyed[(string) $key] = $value;
