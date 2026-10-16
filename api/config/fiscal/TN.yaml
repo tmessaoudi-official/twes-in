@@ -21,7 +21,7 @@ identifiers:
     - key: matricule_fiscal
       label_key: fiscal.identifier.tn.matricule_fiscal
       pattern: '^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$'
-      example: '1234567A/A/M/000'
+      example: '1234567A/B/M/000'
       required_for: [company, business_customer]
 
 tax_components:

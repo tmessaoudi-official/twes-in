@@ -134,6 +134,12 @@ The preset names each identifier's check beside its pattern: `luhn` for the SIRE
 La Poste's SIREN 356000000 a digit sum divisible by five) and `fr_vat_key` for the VAT number, whose key is checked
 only when it is two digits. Unvalidated, like the rest of this section.
 
+Each identifier also carries an `example` the preset itself accepts (`123456782`, `12345678200010`, `FR11123456782`,
+synthetic numbers that pass their checks), which an import guide shows; the reader refuses a preset whose example its own
+pattern or check refuses. A customer's or supplier's number is kept without spaces and in capitals, as documents print it.
+A customer file may bring a business customer without its SIREN: the customer is created with a note in the preview, and
+the SIREN is still required on the invoice.
+
 ## 5a. Other member states' VAT numbers
 
 An intra-community customer is named on the invoice by its own VAT number, issued by its own state (CGI annexe II

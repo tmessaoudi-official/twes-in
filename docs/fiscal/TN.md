@@ -176,6 +176,11 @@ under `settings`, and a company may turn it off. Status: custom, unsourced as la
 | The establishment number is the establishment's code | `establishment.code_pattern` `^[0-9]{3}$`; a company's first establishment starts as `000`, which the company corrects if its matricule says otherwise | same | unvalidated |
 | The check letter has an algorithm | **not implemented** (no primary source) | none | unvalidated |
 
+The preset's `example` for the matricule is `1234567A/B/M/000`, the shape above, which an import guide shows. A
+customer's or supplier's matricule is kept without spaces and in capitals (« 1234567 a / b / m / 000 » is read as
+`1234567A/B/M/000`). A customer file may bring a business customer without its matricule: the customer is created with a
+note in the preview, and the matricule is still required on the invoice.
+
 ## 9. Customer tax regimes
 
 | Code | Excludes | Mention | Status |
