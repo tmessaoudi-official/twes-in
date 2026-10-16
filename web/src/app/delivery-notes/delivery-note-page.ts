@@ -66,11 +66,7 @@ import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { DeliverDialog } from './deliver-dialog';
 import { InvoicePartDialog, type InvoicePartLine } from './invoice-part-dialog';
-import {
-  InvoiceTargetDialog,
-  type InvoiceTarget,
-  type InvoiceTargetData,
-} from './invoice-target-dialog';
+import { askInvoiceTarget, type InvoiceTarget } from './invoice-target';
 import { type RecordLead, RecordView } from '../shared/form/record-view';
 import { taxNames } from '../invoices/tax-names';
 import { QuantityTotalsView } from '../shared/documents/quantity-totals';
@@ -853,15 +849,7 @@ export class DeliveryNotePage {
     );
     // A lookup that failed is said in `error`; the note then still starts a new invoice rather than going nowhere.
     if (drafts === null || drafts.length === 0) return { draftId: null };
-    const target = await firstValueFrom(
-      this.dialog
-        .open<InvoiceTargetDialog, InvoiceTargetData, InvoiceTarget | null>(InvoiceTargetDialog, {
-          data: { drafts, scale: this.scale() ?? 3 },
-          autoFocus: 'first-tabbable',
-        })
-        .afterClosed(),
-    );
-    return target ?? null;
+    return askInvoiceTarget(this.dialog, drafts, current.customerId, this.scale() ?? 3);
   }
 
   /** An invoice for part of the note: how much of each line is asked in a dialog, from what is left of it. */

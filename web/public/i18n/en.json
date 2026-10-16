@@ -1827,10 +1827,7 @@
     "credit_unchecked": "Credit limit not checked: the customer's position could not be read.",
     "invoice_target": {
       "title": "Where is this note invoiced?",
-      "help": "A new invoice, or added after the lines of a draft of this customer. An issued invoice is never changed: a credit note corrects it.",
-      "new": "A new invoice",
-      "draft": "Add to a draft of {{total}} ({{lines}} lines) {{reference}}",
-      "cancel": "Close"
+      "help": "A new invoice, or added after the lines of a draft of this customer. An issued invoice is never changed: a credit note corrects it."
     },
     "invoice_part": {
       "title": "Quantities to invoice",
@@ -4162,7 +4159,8 @@
       "customer": "Customer",
       "every_customer": "Every customer",
       "no_customer": "No customer found",
-      "draft": "{{customer}} · {{lines}} · {{total}}",
+      "draft": "{{lines}} · {{total}}",
+      "draft_of": "{{customer}} · {{lines}} · {{total}}",
       "lines": "{count, plural, =0 {no lines} one {one line} other {{{count}} lines}}",
       "none": "No open draft",
       "unreadable": "The drafts could not be read. A new draft is still possible.",

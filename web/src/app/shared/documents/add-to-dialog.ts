@@ -32,12 +32,16 @@ export interface AddToTarget {
 }
 
 export interface AddToData {
+  /** The question asked, a text key given the count. */
+  readonly title: string;
+  /** A text key saying more under the question, or null. */
+  readonly help: string | null;
   /** The kinds offered, in the order shown: only those the person may write, in modules switched on. */
   readonly targets: readonly AddToTarget[];
-  /** How many products are being added. */
+  /** How many things are being added. */
   readonly count: number;
   /** The customer the screen already knows, whose drafts alone are offered; null lets the person pick one. */
-  readonly customer: PickOption | null;
+  readonly customerId: string | null;
   /** The decimals of the company's currency. */
   readonly scale: number | null;
 }
@@ -67,10 +71,13 @@ export interface AddToChoice {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="add-to-title">
-      {{ 'documents.add_to.title' | translate: { count: data.count } }}
+      {{ data.title | translate: { count: data.count } }}
     </h2>
     <mat-dialog-content>
       <div class="flex flex-col gap-4">
+        @if (data.help) {
+          <p class="m-0 text-sm text-on-surface-variant">{{ data.help | translate }}</p>
+        }
         @if (data.targets.length > 1) {
           <mat-radio-group
             class="flex flex-wrap gap-x-4"
@@ -91,13 +98,13 @@ export interface AddToChoice {
         <button mat-flat-button type="button" (click)="close(null)" data-testid="add-to-new">
           {{ 'documents.add_to.new.' + kind() | translate }}
         </button>
-        @if (data.customer === null) {
+        @if (data.customerId === null) {
           <!-- A draft is found by its customer: a draft's number is given at issue, so its customer is all it has. -->
           <app-pick-field
             [label]="'documents.add_to.customer' | translate"
             testId="add-to-customer"
             [search]="customers"
-            [value]="customer()"
+            [value]="chosen()"
             [clearable]="true"
             [noneLabel]="'documents.add_to.every_customer' | translate"
             [noneFoundLabel]="'documents.add_to.no_customer' | translate"
@@ -124,8 +131,12 @@ export interface AddToChoice {
                     (click)="close(draft.id)"
                     [attr.data-testid]="'add-to-draft-' + draft.id"
                   >
+                    <!-- One customer's drafts need not name it on every row. -->
                     {{
-                      'documents.add_to.draft'
+                      (customerId() === null
+                        ? 'documents.add_to.draft_of'
+                        : 'documents.add_to.draft'
+                      )
                         | translate
                           : {
                               customer: draft.customerName ?? '',
@@ -157,7 +168,9 @@ export class AddToDialog {
   protected readonly data = inject<AddToData>(MAT_DIALOG_DATA);
 
   protected readonly kind = signal<AddToKind>(this.data.targets[0]!.kind);
-  protected readonly customer = signal<PickOption | null>(this.data.customer);
+  protected readonly customerId = signal<string | null>(this.data.customerId);
+  /** The customer picked in the field, which it shows. */
+  protected readonly chosen = signal<PickOption | null>(null);
   /** The open drafts read for the kind and customer shown; null while they are read. */
   protected readonly drafts = signal<readonly AddToDraft[] | null>(null);
   protected readonly unreadable = signal(false);
@@ -178,7 +191,8 @@ export class AddToDialog {
     this.target()?.customers(words) ?? Promise.resolve([]);
 
   protected pick(customer: PickOption | null): void {
-    this.customer.set(customer);
+    this.chosen.set(customer);
+    this.customerId.set(customer?.id ?? null);
     void this.read();
   }
 
@@ -192,7 +206,7 @@ export class AddToDialog {
     this.drafts.set(null);
     this.unreadable.set(false);
     try {
-      const drafts = (await target?.drafts(this.customer()?.id ?? null)) ?? [];
+      const drafts = (await target?.drafts(this.customerId())) ?? [];
       if (reading === this.reading) this.drafts.set(drafts);
     } catch {
       if (reading === this.reading) this.unreadable.set(true);

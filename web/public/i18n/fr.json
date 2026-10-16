@@ -1827,10 +1827,7 @@
     "credit_unchecked": "Plafond de crédit non vérifié : la position du client n’a pas pu être lue.",
     "invoice_target": {
       "title": "Sur quelle facture ce bon est-il facturé ?",
-      "help": "Une nouvelle facture, ou à la suite des lignes d’un brouillon de ce client. Une facture émise n’est jamais modifiée : un avoir la corrige.",
-      "new": "Une nouvelle facture",
-      "draft": "Ajouter à un brouillon de {{total}} ({{lines}} lignes) {{reference}}",
-      "cancel": "Fermer"
+      "help": "Une nouvelle facture, ou à la suite des lignes d’un brouillon de ce client. Une facture émise n’est jamais modifiée : un avoir la corrige."
     },
     "invoice_part": {
       "title": "Quantités à facturer",
@@ -4162,7 +4159,8 @@
       "customer": "Client",
       "every_customer": "Tous les clients",
       "no_customer": "Aucun client trouvé",
-      "draft": "{{customer}} · {{lines}} · {{total}}",
+      "draft": "{{lines}} · {{total}}",
+      "draft_of": "{{customer}} · {{lines}} · {{total}}",
       "lines": "{count, plural, =0 {aucune ligne} one {une ligne} other {{{count}} lignes}}",
       "none": "Aucun brouillon ouvert",
       "unreadable": "Les brouillons n’ont pas pu être lus. Un nouveau brouillon reste possible.",

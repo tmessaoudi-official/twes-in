@@ -377,7 +377,7 @@ test('a second note is added to the draft invoice the first one started', async 
 
     await validatedNote(page, customerNumber, `Second ${run}`);
     await page.getByTestId('document-action-invoice').click();
-    await page.getByTestId(`invoice-target-${invoiceId}`).click();
+    await page.getByTestId(`add-to-draft-${invoiceId}`).click();
     await expect(page).toHaveURL(invoiceUrl);
     await expect(page.getByTestId('line-0-description')).toHaveValue(`Premier ${run}`);
     await expect(page.getByTestId('line-1-description')).toHaveValue(`Second ${run}`);

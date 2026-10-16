@@ -3,7 +3,7 @@
 import { DOCUMENT } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
-import { AddToDocuments } from './add-to-documents';
+import { AddToDocuments } from '../shared/documents/add-to-documents';
 import { ProductBulk } from './product-bulk';
 
 describe('ProductBulk', () => {
@@ -16,10 +16,11 @@ describe('ProductBulk', () => {
 
   function bar(ids: string[]) {
     TestBed.configureTestingModule({
-      providers: [
-        provideTranslateService({ lang: 'fr' }),
-        { provide: AddToDocuments, useValue: addTo },
-      ],
+      providers: [provideTranslateService({ lang: 'fr' })],
+    });
+    // The bar provides « Ajouter à… » itself, so the stub replaces its own provider.
+    TestBed.overrideComponent(ProductBulk, {
+      add: { providers: [{ provide: AddToDocuments, useValue: addTo }] },
     });
     const fixture = TestBed.createComponent(ProductBulk);
     fixture.componentRef.setInput('ids', ids);
@@ -42,10 +43,11 @@ describe('ProductBulk', () => {
 
   it('opens the sheet of every selected product’s labels, in the order they were ticked, in a tab of its own', () => {
     TestBed.configureTestingModule({
-      providers: [
-        provideTranslateService({ lang: 'fr' }),
-        { provide: AddToDocuments, useValue: addTo },
-      ],
+      providers: [provideTranslateService({ lang: 'fr' })],
+    });
+    // The bar provides « Ajouter à… » itself, so the stub replaces its own provider.
+    TestBed.overrideComponent(ProductBulk, {
+      add: { providers: [{ provide: AddToDocuments, useValue: addTo }] },
     });
     const opened = vi
       .spyOn(TestBed.inject(DOCUMENT).defaultView!, 'open')

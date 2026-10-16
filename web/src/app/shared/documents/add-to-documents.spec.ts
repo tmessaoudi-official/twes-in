@@ -1,48 +1,71 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthFacade } from '../auth/auth-facade';
-import { DeliveryNotesApi } from '../delivery-notes/delivery-notes-api';
-import { InvoicesApi } from '../invoices/invoices-api';
-import { QuotesApi } from '../quotes/quotes-api';
-import type { AddToChoice, AddToData } from '../shared/documents/add-to-dialog';
+import { Session } from '../session/session';
+import type { AddToChoice, AddToData, AddToDraft } from './add-to-dialog';
 import { AddToDocuments } from './add-to-documents';
+import { ADD_TO_SOURCES, type AddToReader, type AddToSource } from './add-to-sources';
 
-const row = {
+const draft: AddToDraft = {
   id: 'd1',
   customerName: 'Carthage',
   customerReference: 'BC-12',
   total: '119.000',
-  lines: [{}, {}],
+  lineCount: 2,
 };
+
+const read = { drafts: vi.fn(), customers: vi.fn() };
+
+@Injectable({ providedIn: 'root' })
+class StubReader implements AddToReader {
+  drafts(companyId: string, customerId: string | null): Promise<readonly AddToDraft[]> {
+    return read.drafts(companyId, customerId);
+  }
+
+  customers(companyId: string, words: string) {
+    return read.customers(companyId, words);
+  }
+}
+
+const source = (kind: AddToSource['kind'], module: string, path: string): AddToSource => ({
+  kind,
+  module,
+  permission: `${kind}.write`,
+  path,
+  reader: async () => StubReader,
+});
 
 describe('AddToDocuments', () => {
   const granted = new Set<string>();
   const modules = new Set<string>();
-  const invoices = { invoices: vi.fn(), pickCustomers: vi.fn() };
-  const quotes = { quotes: vi.fn(), pickCustomers: vi.fn() };
-  const notes = { notes: vi.fn(), pickCustomers: vi.fn() };
   const dialog = { open: vi.fn() };
   const navigate = vi.fn();
 
   function configure(): void {
     TestBed.configureTestingModule({
       providers: [
+        AddToDocuments,
         {
-          provide: AuthFacade,
+          provide: Session,
           useValue: {
             me: () => ({ company: { id: 'c1' } }),
             hasPermission: (permission: string) => granted.has(permission),
             hasModule: (module: string) => modules.has(module),
           },
         },
-        { provide: InvoicesApi, useValue: invoices },
-        { provide: QuotesApi, useValue: quotes },
-        { provide: DeliveryNotesApi, useValue: notes },
+        {
+          provide: ADD_TO_SOURCES,
+          useValue: [
+            source('invoice', 'invoices', '/invoices'),
+            source('quote', 'quotes', '/quotes'),
+            source('delivery_note', 'delivery_notes', '/delivery-notes'),
+          ],
+        },
         { provide: MatDialog, useValue: dialog },
         { provide: Router, useValue: { navigate } },
       ],
@@ -62,12 +85,8 @@ describe('AddToDocuments', () => {
     modules.clear();
     for (const each of ['invoice.write', 'quote.write', 'delivery_note.write']) granted.add(each);
     for (const each of ['invoices', 'quotes', 'delivery_notes']) modules.add(each);
-    for (const list of [invoices.invoices, quotes.quotes, notes.notes]) {
-      list.mockReset().mockResolvedValue({ rows: [row], total: 1 });
-    }
-    for (const pick of [invoices.pickCustomers, quotes.pickCustomers, notes.pickCustomers]) {
-      pick.mockReset().mockResolvedValue([{ id: 'k1', number: 'C-7', name: 'Carthage' }]);
-    }
+    read.drafts.mockReset().mockResolvedValue([draft]);
+    read.customers.mockReset().mockResolvedValue([{ id: 'k1', code: 'C-7', name: 'Carthage' }]);
     dialog.open.mockReset();
     navigate.mockReset().mockResolvedValue(true);
     configure();
@@ -84,11 +103,20 @@ describe('AddToDocuments', () => {
     expect(service().kinds()).toEqual([]);
   });
 
+  it('asks nothing when there is nothing to add or nowhere to add it', async () => {
+    await service().open([]);
+    granted.clear();
+    await service().open(['p1']);
+    expect(dialog.open).not.toHaveBeenCalled();
+  });
+
   it('opens the document chosen with the products on its lines, a new one or an open draft', async () => {
     chooses({ kind: 'quote', draftId: null });
     await service().open(['p1', 'p2']);
 
     expect(data().count).toBe(2);
+    expect(data().title).toBe('documents.add_to.title');
+    expect(data().help).toBeNull();
     expect(data().targets.map((target) => target.kind)).toEqual([
       'invoice',
       'quote',
@@ -113,61 +141,21 @@ describe('AddToDocuments', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('reads the open drafts of the customer chosen, or of every customer', async () => {
+  it('reads drafts and customers through each kind’s reader, for the company acted for', async () => {
     chooses(null);
-    const known = { id: 'k1', code: 'C-7', name: 'Carthage' };
-    await service().open(['p1'], known);
-    expect(data().customer).toEqual(known);
-    const [invoice, quote, note] = data().targets;
+    await service().open(['p1'], 'k1');
+    expect(data().customerId).toBe('k1');
+    const [invoice] = data().targets;
 
-    expect(await invoice!.drafts('k1')).toEqual([
-      {
-        id: 'd1',
-        customerName: 'Carthage',
-        customerReference: 'BC-12',
-        total: '119.000',
-        lineCount: 2,
-      },
-    ]);
-    expect(invoices.invoices).toHaveBeenCalledWith(
-      'c1',
-      expect.objectContaining({
-        status: ['draft'],
-        documentType: ['invoice'],
-        customerIds: ['k1'],
-      }),
-    );
-    await quote!.drafts('k1');
-    expect(quotes.quotes).toHaveBeenCalledWith(
-      'c1',
-      expect.objectContaining({ status: ['draft'], customerIds: ['k1'] }),
-    );
-    await note!.drafts('k1');
-    expect(notes.notes).toHaveBeenCalledWith(
-      'c1',
-      expect.objectContaining({ status: ['draft'], customerIds: ['k1'] }),
-    );
-
-    await invoice!.drafts(null);
-    expect(invoices.invoices).toHaveBeenLastCalledWith(
-      'c1',
-      expect.objectContaining({ customerIds: [] }),
-    );
+    expect(await invoice!.drafts('k1')).toEqual([draft]);
+    expect(read.drafts).toHaveBeenCalledExactlyOnceWith('c1', 'k1');
+    await invoice!.customers('carth');
+    expect(read.customers).toHaveBeenCalledExactlyOnceWith('c1', 'carth');
   });
 
-  it('finds the customers through each kind’s own options', async () => {
+  it('lets the person pick the customer when the screen knows none', async () => {
     chooses(null);
     await service().open(['p1']);
-    expect(data().customer).toBeNull();
-    const [invoice, quote, note] = data().targets;
-
-    expect(await invoice!.customers('carth')).toEqual([
-      { id: 'k1', code: 'C-7', name: 'Carthage' },
-    ]);
-    expect(invoices.pickCustomers).toHaveBeenCalledExactlyOnceWith('c1', { words: 'carth' });
-    await quote!.customers('sous');
-    expect(quotes.pickCustomers).toHaveBeenCalledExactlyOnceWith('c1', { words: 'sous' });
-    await note!.customers('bizerte');
-    expect(notes.pickCustomers).toHaveBeenCalledExactlyOnceWith('c1', { words: 'bizerte' });
+    expect(data().customerId).toBeNull();
   });
 });

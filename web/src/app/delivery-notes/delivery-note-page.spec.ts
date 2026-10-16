@@ -1079,7 +1079,7 @@ describe('DeliveryNotePage', () => {
         validated.customerId,
         validated.establishmentId,
       );
-      expect(over('invoice-target-title')).toBeNull();
+      expect(over('add-to-title')).toBeNull();
       await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
     });
 
@@ -1092,9 +1092,11 @@ describe('DeliveryNotePage', () => {
 
       q('document-action-invoice')!.click();
       await settle();
-      expect(over('invoice-target-new')).not.toBeNull();
-      expect(over('invoice-target-d2')).not.toBeNull();
-      over('invoice-target-d1')!.click();
+      expect(over('add-to-new')).not.toBeNull();
+      await vi.waitFor(() => expect(over('add-to-draft-d2')).not.toBeNull());
+      // The note's customer is known: the drafts offered are theirs, with no customer to pick.
+      expect(over('add-to-customer')).toBeNull();
+      over('add-to-draft-d1')!.click();
 
       await vi.waitFor(() =>
         expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', undefined, 'd1'),
@@ -1110,13 +1112,15 @@ describe('DeliveryNotePage', () => {
 
       q('document-action-invoice')!.click();
       await settle();
-      over('invoice-target-cancel')!.click();
+      over('add-to-close')!.click();
+      // Asked only once the dialog has closed, or nothing it handed back has been read yet.
+      await vi.waitFor(() => expect(over('add-to-title')).toBeNull());
       await settle();
       expect(facade.invoice).not.toHaveBeenCalled();
 
       q('document-action-invoice')!.click();
       await settle();
-      over('invoice-target-new')!.click();
+      over('add-to-new')!.click();
       await vi.waitFor(() =>
         expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', undefined, undefined),
       );
@@ -1134,8 +1138,8 @@ describe('DeliveryNotePage', () => {
       q('document-action-invoice-part')!.click();
       await settle();
       over('invoice-part-confirm')!.click();
-      await vi.waitFor(() => expect(over('invoice-target-d2')).not.toBeNull());
-      over('invoice-target-d2')!.click();
+      await vi.waitFor(() => expect(over('add-to-draft-d2')).not.toBeNull());
+      over('add-to-draft-d2')!.click();
 
       await vi.waitFor(() =>
         expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', { l1: '10' }, 'd2'),
