@@ -40,6 +40,7 @@ const groups: CustomerGroupRow[] = [
 
 const carthage: CustomerRow = {
   id: 'c1',
+  version: 1,
   number: 'CLI-0001',
   kind: 'company',
   customerGroupId: 'g1',
@@ -234,6 +235,7 @@ describe('customer forms', () => {
     expect(input).toEqual({
       ...carthage,
       id: undefined,
+      version: undefined,
       shippingAddress: {
         line1: null,
         line2: null,

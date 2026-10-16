@@ -9,14 +9,17 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Doctrine;
 
+use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
 use App\Shared\Infrastructure\Realtime\StagedLiveChanges;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\OptimisticLockException;
 
 /**
  * A transaction on the Doctrine connection. Not EntityManager::wrapInTransaction(), which closes the entity manager
  * when the work throws: a refused request still answers its error through that same entity manager. What the work
- * changed is said to open screens once the outermost unit has committed, and never after a rollback.
+ * changed is said to open screens once the outermost unit has committed, and never after a rollback. A versioned record
+ * someone else saved after it was checked fails its `UPDATE … WHERE version`, and answers as RecordVersions does.
  */
 final readonly class DoctrineTransactions implements Transactions
 {
@@ -38,7 +41,7 @@ final readonly class DoctrineTransactions implements Transactions
             if ($connection->isTransactionActive()) {
                 $connection->rollBack();
             }
-            throw $failure;
+            throw $failure instanceof OptimisticLockException ? new RecordChanged($failure) : $failure;
         }
         $this->liveChanges->commit();
 

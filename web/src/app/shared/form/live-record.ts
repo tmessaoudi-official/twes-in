@@ -26,6 +26,8 @@ export interface LiveRecordOptions {
   readonly matches?: (change: LiveChange) => boolean;
   /** What the page edits outside the form and merges as one field each, such as a document's lines. */
   readonly parts?: readonly LivePart[];
+  /** The version of the record as it is now saved, which a save sends back; null for a record that has none yet. */
+  readonly version?: () => number | null;
 }
 
 /**
@@ -46,16 +48,33 @@ export interface LivePart {
 export class LiveRecord extends RecordSync {
   /** What each part showed when the form last stood on the saved version. */
   private readonly partBases = new Map<string, string>();
+  private baseVersion: number | null = null;
+
+  /**
+   * Reads the record again and merges it after a save was refused as made over a version saved since; liveRecord
+   * gives it what it needs to read and to say so.
+   */
+  savedElsewhere: () => Promise<void> = async () => undefined;
 
   constructor(
     private readonly parts: readonly LivePart[] = [],
     private readonly saved: () => FormValues | null = () => null,
+    private readonly savedVersion: () => number | null = () => null,
   ) {
     super();
   }
 
+  /**
+   * The version of the record the form stands on, which a save sends back: the API refuses it once someone else saved
+   * a later one. Not the version last read: a record read again without being merged is not what the form shows.
+   */
+  version(): number | null {
+    return this.baseVersion;
+  }
+
   override track(saved: FormValues): void {
     super.track(saved);
+    this.baseVersion = this.savedVersion();
     // What is saved, not what is shown: a page may still be filling a part from the record (its document taxes) when
     // the form it built is tracked.
     for (const part of this.parts) this.partBases.set(part.field, part.saved() ?? part.shown());
@@ -85,7 +104,10 @@ export class LiveRecord extends RecordSync {
       }
       this.partBases.set(part.field, theirs);
     }
-    return this.receive(form, incoming, actor, { updated, conflicts, typing });
+    const outcome = this.receive(form, incoming, actor, { updated, conflicts, typing });
+    // The form now stands on what it merged, whatever it took of it.
+    this.baseVersion = this.savedVersion();
+    return outcome;
   }
 
   override takeTheirs(form: DescriptorFormGroup, field: string): void {
@@ -145,9 +167,19 @@ export class LiveRecord extends RecordSync {
  * keeps what is typed and shows the banner. Call it in the page's injection context.
  */
 export function liveRecord(options: LiveRecordOptions): LiveRecord {
-  const sync = new LiveRecord(options.parts, options.saved);
+  const sync = new LiveRecord(options.parts, options.saved, options.version);
   const activity = inject(RequestActivity);
   const feedback = inject(Feedback);
+
+  // The announcement of that other save never reached this tab: what it changed is merged now, as it would have been,
+  // and nothing was saved here, which stays said until it is closed.
+  sync.savedElsewhere = async () => {
+    await activity.quietly(options.reload);
+    const form = options.form();
+    const incoming = options.saved();
+    if (form !== null && incoming !== null) sync.merge(form, incoming, null);
+    feedback.failure('live.saved_since');
+  };
 
   effect(() => {
     const form = options.form();

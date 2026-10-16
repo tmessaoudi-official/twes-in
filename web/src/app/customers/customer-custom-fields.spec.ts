@@ -24,6 +24,7 @@ const sector: CustomFieldDefinition = {
 };
 const row = {
   id: 'k1',
+  version: 1,
   number: 'CLI-1',
   kind: 'individual',
   customerGroupId: null,

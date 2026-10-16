@@ -7,12 +7,14 @@ import { firstValueFrom } from 'rxjs';
 import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import { isRecordChanged } from '../shared/errors/record-changed';
 import type {
   ApiCompaniesCompanyIdcustomersGetCollectionResponse,
   ContactContactRead,
   ContactContactWriteValidationContactWrite as ContactContactWrite,
   CustomerCustomerRead,
   CustomerCustomerWriteValidationCustomerWrite as CustomerCustomerWrite,
+  CustomerCustomerWriteRecordReviseValidationCustomerWriteRecordRevise as CustomerCustomerRevise,
   CustomerJsonldCustomerRead,
   CustomerGroupCustomerGroupRead,
   CustomerGroupCustomerGroupWriteValidationCustomerGroupWrite as CustomerGroupCustomerGroupWrite,
@@ -109,14 +111,18 @@ export class CustomersApi {
     );
   }
 
-  async reviseCustomer(companyId: string, id: string, input: CustomerInput): Promise<CustomerRow> {
+  /** `version` is the one the form was opened at: a later one saved elsewhere answers `record_changed`. */
+  async reviseCustomer(
+    companyId: string,
+    id: string,
+    input: CustomerInput,
+    version: number | null,
+  ): Promise<CustomerRow> {
+    const body: CustomerCustomerRevise = { ...toCustomerBody(input), version };
     return this.guard(async () =>
       toCustomer(
         await firstValueFrom(
-          this.http.put<CustomerCustomerRead>(
-            path(companyId, 'customers', id),
-            toCustomerBody(input),
-          ),
+          this.http.put<CustomerCustomerRead>(path(companyId, 'customers', id), body),
         ),
       ),
     );
@@ -300,7 +306,7 @@ function codeOf(error: unknown, conflict: CustomersError): CustomersError {
     case 404:
       return 'not_found';
     case 409:
-      return conflict;
+      return isRecordChanged(error.error) ? 'record_changed' : conflict;
     default:
       return 'invalid';
   }
@@ -337,6 +343,8 @@ function toCustomer(raw: CustomerCustomerRead | CustomerJsonldCustomerRead): Cus
   };
   return {
     id: raw.id ?? '',
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
     number: raw.number ?? '',
     kind: CUSTOMER_KINDS.find((kind) => kind === raw.kind) ?? 'company',
     customerGroupId: raw.customerGroupId ?? null,

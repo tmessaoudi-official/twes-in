@@ -116,8 +116,9 @@ export class CustomersFacade {
     companyId: string,
     id: string,
     input: CustomerInput,
+    version: number | null,
   ): Promise<CustomerRow | null> {
-    return this.save(() => this.api.reviseCustomer(companyId, id, input));
+    return this.save(() => this.api.reviseCustomer(companyId, id, input, version));
   }
 
   async createGroup(companyId: string, input: CustomerGroupInput): Promise<boolean> {

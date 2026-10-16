@@ -121,7 +121,7 @@ final class CustomFieldsTest extends ApiTestCase
         self::assertSame(['sector' => 'retail'], $customer['customFields']);
 
         $this->sendJson('PUT', $this->path($sector), [...self::sector(), 'isActive' => false]);
-        $this->sendJson('PUT', $customers.'/'.self::id($customer), self::customer([]));
+        $this->sendJson('PUT', $customers.'/'.self::id($customer), [...self::customer([]), 'version' => $customer['version']]);
         self::assertResponseIsSuccessful();
         self::assertSame(['sector' => 'retail'], $this->json()['customFields'], 'a retired field keeps what the customer holds');
     }

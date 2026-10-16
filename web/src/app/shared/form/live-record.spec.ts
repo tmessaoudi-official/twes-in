@@ -22,6 +22,7 @@ const saved = { name: 'Durand', phone: '0612' };
 describe('liveRecord', () => {
   let handlers: { kinds: readonly string[]; handler: (changes: readonly LiveChange[]) => void }[];
   let reloads: number;
+  let version: ReturnType<typeof signal<number | null>>;
 
   function setUp(
     initial: FormValues = saved,
@@ -30,6 +31,7 @@ describe('liveRecord', () => {
   ) {
     handlers = [];
     reloads = 0;
+    version = signal<number | null>(1);
     TestBed.configureTestingModule({
       providers: [
         ...provideQuietFeedback(),
@@ -56,6 +58,7 @@ describe('liveRecord', () => {
           current.set(next);
         },
         saved: current,
+        version,
         parts,
         ...(matches ? { matches } : {}),
       }),
@@ -68,6 +71,10 @@ describe('liveRecord', () => {
       sync,
       feedback,
       current,
+      /** What the record holds when it is next read, with nothing said about it. */
+      nowSaved: (values: FormValues) => {
+        next = values;
+      },
       savedElsewhere: async (values: FormValues | null, change: Partial<LiveChange> = {}) => {
         next = values;
         handlers[0].handler([
@@ -166,6 +173,45 @@ describe('liveRecord', () => {
     expect(page.form()?.controls['phone'].value).toBe('0613');
     expect(page.sync.changedBy()).toEqual(nadia);
     expect(page.feedback.said).toEqual([]);
+  });
+
+  describe('with the version a save sends back', () => {
+    it('stands on the version its form was built from, not on one read since', () => {
+      const page = setUp();
+
+      version.set(2);
+
+      expect(page.sync.version()).toBe(1);
+    });
+
+    it('moves to the version it merged, and to the one this tab saved', async () => {
+      const page = setUp();
+      version.set(2);
+      await page.savedElsewhere({ ...saved, phone: '0698' });
+      expect(page.sync.version()).toBe(2);
+
+      version.set(3);
+      page.sync.savedHere(page.form() as DescriptorFormGroup);
+
+      expect(page.sync.version()).toBe(3);
+    });
+
+    it('after a save refused as made over a version saved since, reads it again, merges it and says nothing was saved', async () => {
+      const page = setUp();
+      page.form()?.controls['name'].setValue('Durand & fils');
+      version.set(2);
+      page.nowSaved({ ...saved, phone: '0698' });
+
+      await page.sync.savedElsewhere();
+
+      expect(reloads).toBe(1);
+      expect(page.form()?.controls['name'].value).toBe('Durand & fils');
+      expect(page.form()?.controls['phone'].value).toBe('0698');
+      expect(page.sync.version()).toBe(2);
+      expect(page.feedback.said).toEqual([
+        { kind: 'failure', key: 'live.saved_since', params: undefined },
+      ]);
+    });
   });
 
   it('says the record was deleted, and merges nothing', async () => {

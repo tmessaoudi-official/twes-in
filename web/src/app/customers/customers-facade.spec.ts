@@ -63,7 +63,7 @@ const sector: CustomFieldDefinition = {
   sortOrder: 0,
   isActive: true,
 };
-const amel: CustomerRow = { ...input, id: 'k1' };
+const amel: CustomerRow = { ...input, id: 'k1', version: 1 };
 const wholesalers: CustomerGroupRow = {
   id: 'g1',
   name: 'Grossistes',
@@ -207,11 +207,11 @@ describe('CustomersFacade', () => {
   it('keeps the fields a save was refused on until the next save', async () => {
     const email = { field: 'email', reason: 'invalid_email', params: {} };
     api.reviseCustomer.mockRejectedValueOnce(new CustomersRefused('invalid', [email]));
-    expect(await facade.reviseCustomer('c1', 'k1', input)).toBeNull();
+    expect(await facade.reviseCustomer('c1', 'k1', input, 1)).toBeNull();
     expect(facade.refusals()).toEqual([email]);
 
     api.reviseCustomer.mockResolvedValueOnce(amel);
-    await facade.reviseCustomer('c1', 'k1', input);
+    await facade.reviseCustomer('c1', 'k1', input, 1);
     expect(facade.refusals()).toEqual([]);
   });
 

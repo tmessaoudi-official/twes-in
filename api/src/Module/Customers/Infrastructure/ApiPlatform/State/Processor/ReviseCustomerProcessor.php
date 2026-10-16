@@ -35,7 +35,7 @@ final readonly class ReviseCustomerProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CustomerPermission::WRITE);
 
         try {
-            $customer = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'customerId'), $data->input($company), $this->guard->account()->getId());
+            $customer = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'customerId'), $data->input($company), $this->guard->account()->getId(), $data->version);
         } catch (CustomerNotFound $absent) {
             throw new NotFoundHttpException('No such customer.', $absent);
         } catch (CustomerNumberTaken $taken) {

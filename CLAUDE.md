@@ -149,7 +149,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   "Architecture style"; `Shared/Domain/Service/CompanyOwned` marks an entity the `Shared/Infrastructure/Doctrine/CompanyFilter`
   scopes to the company a request acts for, and `tests/Architecture/CompanyColumnTest` requires it; a paged list's provider
   uses `Shared/Infrastructure/ApiPlatform/Payload/Paging`, its repository `ListOrder` and the `SEARCH_TEXT` expression its trigram
-  index is built on, and `SearchIndexesTest` names the pair). Each class sits in the folder of its role (docs/SPEC.md § 3 « Folders by role »; `SourceLayoutTest`
+  index is built on, and `SearchIndexesTest` names the pair; an editable record's revision sends back its `version`, checked
+  through `Shared/Application/RecordVersions` and refused as `/problems/record-changed`, which the web's `isRecordChanged`
+  (`shared/errors/`) reads, docs/SPEC.md § 3 « Saving over someone else », `RecordVersionsTest`). Each class sits in the folder of its role (docs/SPEC.md § 3 « Folders by role »; `SourceLayoutTest`
   reds on one out of place or a folder past 25 files; `scripts/refactor/move-classes.py` moves classes and
   `scripts/refactor/layout-oracle.sh` proves the move). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
   Application: use cases and ports (no framework import; `tests/Architecture/` enforces it). Infrastructure: Doctrine
@@ -543,3 +545,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   test's `mkdir` of a fixture folder are followed by hand. A class moved into a folder of its own changes API Platform's
   discovery order, which the oracle reads as another order, not another content; two routes that can match one request
   must not change places (2026-10-16; flagged for the next expertise refresh).
+- `make up`'s api and worker run the `api-vendor` volume, which only the one-shot `migrate` service's `composer install`
+  fills: after a Composer change the live api dies at boot until `make up` runs again (2026-10-16: « Rate limiter
+  "mfa_verify" requires the Lock component », five hours unhealthy while CI, on fresh images, was green).

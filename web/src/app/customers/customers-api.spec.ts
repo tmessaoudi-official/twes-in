@@ -62,6 +62,7 @@ describe('CustomersApi', () => {
     const pending = api.customer('c1', 'k 1');
     http.expectOne('/api/companies/c1/customers/k%201').flush({
       id: 'k 1',
+      version: 4,
       number: 'CLI-0001',
       kind: 'company',
       taxRegime: 'standard',
@@ -74,7 +75,7 @@ describe('CustomersApi', () => {
       isActive: true,
     });
 
-    expect(await pending).toEqual({ ...carthage, id: 'k 1' });
+    expect(await pending).toEqual({ ...carthage, id: 'k 1', version: 4 });
   });
 
   it('sends a customer with flat address fields', async () => {
@@ -112,11 +113,28 @@ describe('CustomersApi', () => {
       .flush({}, { status: 409, statusText: 'Conflict' });
     await expect(taken).rejects.toMatchObject({ code: 'number_taken' });
 
-    const refused = api.reviseCustomer('c1', 'k1', carthage);
+    const refused = api.reviseCustomer('c1', 'k1', carthage, 1);
     const request = http.expectOne('/api/companies/c1/customers/k1');
     expect(request.request.method).toBe('PUT');
     request.flush({ detail: 'taxRegime: no' }, { status: 422, statusText: 'Unprocessable' });
     await expect(refused).rejects.toMatchObject({ code: 'invalid', refusals: [] });
+  });
+
+  it('sends back the version revised, and tells a version saved since from a number taken', async () => {
+    const changed = api.reviseCustomer('c1', 'k1', carthage, 3);
+    const request = http.expectOne('/api/companies/c1/customers/k1');
+    expect(request.request.body).toMatchObject({ version: 3, number: carthage.number });
+    request.flush(
+      { type: '/problems/record-changed', status: 409 },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(changed).rejects.toMatchObject({ code: 'record_changed' });
+
+    const taken = api.reviseCustomer('c1', 'k1', carthage, 3);
+    http
+      .expectOne('/api/companies/c1/customers/k1')
+      .flush({ type: '/errors/409' }, { status: 409, statusText: 'Conflict' });
+    await expect(taken).rejects.toMatchObject({ code: 'number_taken' });
   });
 
   it('carries each field a save was refused on, as the API named it', async () => {
