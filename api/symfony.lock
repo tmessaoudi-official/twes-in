@@ -155,9 +155,11 @@
             "repo": "github.com/symfony/recipes",
             "branch": "main",
             "version": "8.1",
-            "ref": "5295b2b1ef2170b272383b2b0ae0b66702883822"
+            "ref": "d3714db4cc12adbfd4c0453cf854be32788ef549"
         },
         "files": [
+            ".editorconfig",
+            "AGENTS.md",
             "config/packages/cache.yaml",
             "config/packages/framework.yaml",
             "config/preload.php",
@@ -165,10 +167,7 @@
             "config/services.yaml",
             "public/index.php",
             "src/Controller/.gitignore",
-            "src/Kernel.php",
-            ".editorconfig",
-            "AGENTS.md",
-            "CLAUDE.md"
+            "src/Kernel.php"
         ]
     },
     "symfony/mailer": {
@@ -177,7 +176,7 @@
             "repo": "github.com/symfony/recipes",
             "branch": "main",
             "version": "4.3",
-            "ref": "09051cfde49476e3c12cd3a0e44289ace1c75a4f"
+            "ref": "710cae90ab3e5d3f4a747e9ce6ae33299d7ae83b"
         },
         "files": [
             "config/packages/mailer.yaml"
