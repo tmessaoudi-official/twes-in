@@ -82,11 +82,12 @@
             <mat-icon aria-hidden="true">menu</mat-icon>
             {{ 'inventory.plan.full.lists' | translate }}
           </button>
+          <!-- Named by the floor it shows; what it does is its tooltip and description (WCAG 2.5.3). -->
           <button
             mat-stroked-button
             type="button"
             [matMenuTriggerFor]="floorMenu"
-            [appLabel]="'inventory.plan.full.floor' | translate"
+            [matTooltip]="'inventory.plan.full.floor' | translate"
             class="shrink-0"
             data-testid="stock-map-full-floor"
           >
@@ -141,7 +142,7 @@
                   type="button"
                   class="min-h-9 whitespace-nowrap rounded-md px-3 text-sm text-on-surface-variant"
                   aria-disabled="true"
-                  [appLabel]="'inventory.plan.volume.read_only' | translate"
+                  [matTooltip]="'inventory.plan.volume.read_only' | translate"
                   data-testid="stock-map-view-volume"
                 >
                   {{ 'inventory.plan.view_names.volume' | translate }}
@@ -161,13 +162,14 @@
             } @else if (showComing() && !(full() && compact())) {
               <!--
                 Reached and named, never a dead end: a view that is not built says so where it will be, rather than
-                leaving a person looking for a promised view and finding nothing.
+                leaving a person looking for a promised view and finding nothing. Named by the words it shows; the
+                sentence is its tooltip and description (WCAG 2.5.3).
               -->
               <button
                 type="button"
                 class="flex min-h-9 items-center gap-2 whitespace-nowrap rounded-md px-3 text-sm text-on-surface-variant"
                 aria-disabled="true"
-                [appLabel]="'inventory.plan.view_coming.' + one | translate"
+                [matTooltip]="'inventory.plan.view_coming.' + one | translate"
                 [attr.data-testid]="'stock-map-view-' + one"
               >
                 {{ 'inventory.plan.view_names.' + one | translate }}
@@ -829,11 +831,13 @@
                     >
                       {{ layer.count }}
                     </span>
+                    <!-- Switches: their name says what they do, the word they show is their state. -->
                     <button
                       type="button"
                       class="rounded-md border border-outline-variant px-2 py-1 text-sm"
                       [class.bg-secondary-container]="!shown(layer.id)"
-                      [attr.aria-pressed]="!shown(layer.id)"
+                      role="switch"
+                      [attr.aria-checked]="shown(layer.id)"
                       (click)="toggleShown(layer.id)"
                       [appLabel]="'inventory.plan.layer_shown' | translate"
                       [attr.data-testid]="'stock-layer-shown-' + layer.id"
@@ -848,7 +852,8 @@
                         type="button"
                         class="rounded-md border border-outline-variant px-2 py-1 text-sm"
                         [class.bg-secondary-container]="isLocked(layer.id)"
-                        [attr.aria-pressed]="isLocked(layer.id)"
+                        role="switch"
+                        [attr.aria-checked]="isLocked(layer.id)"
                         (click)="toggleLocked(layer.id)"
                         [appLabel]="'inventory.plan.layer_locked' | translate"
                         [attr.data-testid]="'stock-layer-locked-' + layer.id"

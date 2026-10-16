@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, OnInit } f
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltip } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { NotificationsFacade } from '../notifications/notifications-facade';
 import { Label } from '../shared/a11y/label';
@@ -18,7 +19,15 @@ import { CompanyFacade } from './company-facade';
  */
 @Component({
   selector: 'app-company-switcher',
-  imports: [CountBadge, Label, MatButtonModule, MatIconModule, MatMenuModule, TranslatePipe],
+  imports: [
+    CountBadge,
+    Label,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    MatTooltip,
+    TranslatePipe,
+  ],
   templateUrl: './company-switcher.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

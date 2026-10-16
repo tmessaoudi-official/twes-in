@@ -10,7 +10,8 @@ import { LANGUAGE_NAMES, LanguageFacade, SUPPORTED_LANGUAGES } from './language-
 
 /**
  * The interface language: the current one's code on the button, and each language named in itself in the menu, with
- * its `lang` so a screen reader pronounces it rightly. No flags (docs/SPEC.md § 7, 2026-09-16 review).
+ * its `lang` so a screen reader pronounces it rightly. No flags (docs/SPEC.md § 7, 2026-09-16 review). The button's
+ * name ends with the code it shows, which is what a speech user reads off it (WCAG 2.5.3).
  */
 @Component({
   selector: 'app-language-menu',
@@ -21,7 +22,11 @@ import { LANGUAGE_NAMES, LanguageFacade, SUPPORTED_LANGUAGES } from './language-
       type="button"
       class="twes-language-button"
       [matMenuTriggerFor]="menu"
-      [appLabel]="'appearance.language_menu' | translate: { current: names[language.current()] }"
+      [appLabel]="
+        'appearance.language_menu'
+          | translate
+            : { current: names[language.current()], code: language.current().toUpperCase() }
+      "
       data-testid="language-menu"
     >
       <mat-icon aria-hidden="true">translate</mat-icon>

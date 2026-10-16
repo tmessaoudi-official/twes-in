@@ -220,9 +220,7 @@ describe('NotificationBell', () => {
     expect(bell(fixture).getAttribute('aria-label')).toBe('Notifications, 3 non lues');
   });
 
-  it('badges no icon hidden from assistive technology, in either of its forms', async () => {
-    // Audit 2026-10-06 V-24: Material warned on every page; the bell's name already says the count.
-    const warn = vi.spyOn(console, 'warn');
+  it('marks its icon outside assistive technology, in either of its forms, the count being in its name', async () => {
     unread.set(3);
     const icon = render();
     await settle(icon);
@@ -231,31 +229,60 @@ describe('NotificationBell', () => {
     row.componentRef.setInput('folded', true);
     await settle(row);
 
-    expect(warn.mock.calls.filter(([message]) => String(message).includes('matBadge'))).toEqual([]);
     for (const fixture of [icon, row]) {
-      const badged = bell(fixture).querySelector('.mat-badge');
-      expect(badged?.tagName.toLowerCase()).not.toBe('mat-icon');
-      expect(badged?.getAttribute('aria-hidden')).toBe('true');
-      expect(badged?.querySelector('.mat-badge-content')?.textContent?.trim()).toBe('3');
+      const mark = bell(fixture).querySelector('.twes-bell-mark');
+      expect(mark?.getAttribute('aria-hidden')).toBe('true');
+      expect(mark?.querySelector('mat-icon')).not.toBeNull();
     }
-    warn.mockRestore();
+    // Folded, a dot with no text: Material's small badge kept « 3 » as text the name does not say (WCAG 2.5.3).
+    const dot = bell(row).querySelector('[data-testid="notification-dot"]');
+    expect(dot).not.toBeNull();
+    expect(dot?.textContent).toBe('');
+    expect(bell(row).getAttribute('aria-label')).toBe('Notifications, 3 non lues');
+
+    unread.set(0);
+    await settle(row);
+    expect(bell(row).querySelector('[data-testid="notification-dot"]')).toBeNull();
   });
 
   it('shows how many notifications are unread as a number, never a bare dot, and 9+ above nine', async () => {
-    const badge = (fixture: ReturnType<typeof render>) =>
-      fixture.nativeElement.querySelector('.mat-badge-content') as HTMLElement | null;
+    const count = (fixture: ReturnType<typeof render>) =>
+      fixture.nativeElement.querySelector(
+        '[data-testid="notification-count"]',
+      ) as HTMLElement | null;
     unread.set(3);
     const fixture = render();
     await fixture.whenStable();
     fixture.detectChanges();
-    // A small Material badge draws a dot and hides its content: the count must be on a medium one.
-    expect(fixture.nativeElement.querySelector('.mat-badge-small')).toBeNull();
-    expect(badge(fixture)?.textContent?.trim()).toBe('3');
+    expect(count(fixture)?.getAttribute('data-glyph')).toBe('3');
 
     unread.set(12);
     fixture.detectChanges();
-    expect(badge(fixture)?.textContent?.trim()).toBe('9+');
+    expect(count(fixture)?.getAttribute('data-glyph')).toBe('9+');
     expect(bell(fixture).getAttribute('aria-label')).toBe('Notifications, 12 non lues');
+
+    unread.set(0);
+    fixture.detectChanges();
+    expect(count(fixture)).toBeNull();
+  });
+
+  it('draws its count rather than writing it, so the name is all a speech user reads off the bell', async () => {
+    // WCAG 2.5.3: text shown in a named control is its label and must be in its name; « 9+ » is not in
+    // « Notifications, 12 non lues ». Drawn by the stylesheet, the figure is no text of the bell's.
+    unread.set(12);
+    const icon = render();
+    await settle(icon);
+    const row = TestBed.createComponent(NotificationBell);
+    row.componentRef.setInput('variant', 'row');
+    row.componentRef.setInput('folded', false);
+    await settle(row);
+
+    // Only the icon's ligature is written on the phone's bell; on the row, the word the name starts with.
+    expect(bell(icon).textContent?.trim()).toBe('notifications');
+    const drawn = bell(row).querySelector('.twes-rail-count');
+    expect(drawn?.textContent).toBe('');
+    expect(drawn?.getAttribute('data-glyph')).toBe('9+');
+    expect(bell(row).querySelector('.twes-rail-label')?.textContent?.trim()).toBe('Notifications');
   });
 
   it('opens the centre as a named panel on the right, and Escape gives the focus back to the bell', async () => {

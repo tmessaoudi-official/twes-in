@@ -95,7 +95,7 @@ class StaticLoader implements TranslateLoader {
       },
       appearance: {
         scheme_menu: 'Thème : {{current}}',
-        language_menu: 'Langue : {{current}}',
+        language_menu: 'Langue : {{current}}, {{code}}',
         schemes: { auto: 'Automatique', light: 'Clair', dark: 'Sombre' },
       },
     });
@@ -497,7 +497,13 @@ describe('AppShell', () => {
     // The member row says who and in what role, the way the board draws it.
     expect(byTestId('user-menu')?.textContent).toContain('Amel Ben Salah');
     expect(byTestId('user-menu')?.textContent).toContain('Propriétaire');
-    expect(byTestId('user-menu')?.textContent).toContain('AS');
+    // Two words, not « Amel Ben SalahPropriétaire »: Angular drops the space between the lines unless it is kept.
+    expect(byTestId('user-menu')?.textContent?.replace(/\s+/g, ' ')).toContain(
+      'Salah Propriétaire',
+    );
+    expect(byTestId('user-menu')?.querySelector('.twes-avatar')?.getAttribute('data-glyph')).toBe(
+      'AS',
+    );
   });
 
   it('keeps the desktop sidebar open under Escape, which still closes the phone drawer', async () => {
@@ -561,7 +567,7 @@ describe('AppShell', () => {
     });
     const { byTestId } = await render();
     expect(byTestId('create-open')?.getAttribute('aria-keyshortcuts')).toBe('k');
-    expect(byTestId('create-open')?.querySelector('kbd')?.textContent).toBe('K');
+    expect(byTestId('create-open')?.querySelector('kbd')?.getAttribute('data-glyph')).toBe('K');
 
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true }));
     await pause();
@@ -665,7 +671,7 @@ describe('AppShell', () => {
     expect(search?.closest('[data-testid="shell-nav"]')).toBeNull();
     expect(search?.closest('[data-testid="top-bar-centre"]')).not.toBeNull();
     expect(search?.textContent).toContain('Rechercher…');
-    expect(search?.textContent).toContain('Ctrl K');
+    expect(search?.querySelector('kbd')?.getAttribute('data-glyph')).toBe('Ctrl K');
     expect(search?.getAttribute('aria-label')).toBe('Rechercher');
     expect(el.querySelectorAll('[data-testid^="command-open"]')).toHaveLength(1);
 
@@ -1648,8 +1654,14 @@ describe('AppShell', () => {
 
   it('names the signed-in user on the account menu', async () => {
     const { byTestId } = await render();
-    expect(byTestId('user-menu')?.textContent).toContain('AS');
+    expect(byTestId('user-menu')?.querySelector('.twes-avatar')?.getAttribute('data-glyph')).toBe(
+      'AS',
+    );
     expect(byTestId('user-menu')?.getAttribute('aria-label')).toContain('Amel Ben Salah');
+    // The role the row shows is said too, after the name as it is drawn (WCAG 2.5.3, Label in Name).
+    expect(byTestId('user-menu')?.getAttribute('aria-label')).toMatch(
+      /Amel Ben Salah, Propriétaire$/,
+    );
   });
 
   it('signs out from the account menu and goes to the login page', async () => {

@@ -10,7 +10,6 @@ import {
   input,
   untracked,
 } from '@angular/core';
-import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, type MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -27,7 +26,7 @@ import { Label } from '../shared/a11y/label';
  */
 @Component({
   selector: 'app-notification-bell',
-  imports: [Label, MatBadgeModule, MatButtonModule, MatIconModule, TranslatePipe],
+  imports: [Label, MatButtonModule, MatIconModule, TranslatePipe],
   templateUrl: './notification-bell.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

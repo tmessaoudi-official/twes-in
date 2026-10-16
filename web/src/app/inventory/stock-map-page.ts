@@ -22,6 +22,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltip } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom, map } from 'rxjs';
@@ -280,6 +281,7 @@ const PENDING_PIECE: StockStructureRow = {
     MatCardModule,
     MatIconModule,
     MatMenuModule,
+    MatTooltip,
     NgTemplateOutlet,
     RouterLink,
     AmountPipe,

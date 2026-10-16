@@ -69,7 +69,10 @@ describe('LineFiguresView', () => {
     expect(q('line-0-net')?.textContent?.trim()).toBe('~33.750');
     expect(q('line-0-total')?.textContent?.trim()).toBe('~36.057');
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(toggle.getAttribute('aria-label')).toBe('Détail de la ligne 1');
+    // Named by what it shows, after the line it is (WCAG 2.5.3): no aria-label of the line alone.
+    expect(toggle.getAttribute('aria-label')).toBeNull();
+    expect(toggle.querySelector('.sr-only')?.textContent?.trim()).toBe('Détail de la ligne 1');
+    expect(toggle.querySelector('.sr-only')).toBe(toggle.firstElementChild);
     expect(q('line-0-details')).toBeNull();
 
     toggle.click();
