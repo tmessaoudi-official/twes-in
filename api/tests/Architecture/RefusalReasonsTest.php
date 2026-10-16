@@ -97,6 +97,46 @@ final class RefusalReasonsTest extends KernelTestCase
         self::assertSame([], $untranslated);
     }
 
+    /**
+     * What an import refuses a row with by itself, and what the domain's own rules refuse a value with, reaches the
+     * report and the form as a reason: each has its screen text. A row's reason is an argument after its column, the
+     * engine's a row's `code`, the domain's a `Refusal`'s first.
+     */
+    public function testEveryReasonAnImportOrADomainRuleRefusesWithIsTranslated(): void
+    {
+        $root = \dirname(__DIR__, 2).'/src';
+        $translated = self::translated();
+        $found = [];
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS));
+        foreach ($files as $file) {
+            \assert($file instanceof \SplFileInfo);
+            $source = (string) file_get_contents($file->getPathname());
+            preg_match_all('/new (?:RowRejected|StockImportRefused)\((.*?)\);/s', $source, $statements);
+            foreach ($statements[1] as $arguments) {
+                preg_match_all("/, '([a-z]+(?:_[a-z]+)+)'(?=\\s*(?:[,)]|$))/", $arguments, $reasons);
+                foreach ($reasons[1] as $reason) {
+                    $found[$reason][] = $file->getFilename();
+                }
+            }
+            preg_match_all("/'code' => '([a-z]+(?:_[a-z]+)+)'/", $source, $codes);
+            preg_match_all("/new Refusal\\('([a-z]+(?:_[a-z]+)+)'/", $source, $refusals);
+            foreach ([...$codes[1], ...$refusals[1]] as $reason) {
+                $found[$reason][] = $file->getFilename();
+            }
+        }
+
+        self::assertArrayHasKey('too_many_cells', $found, 'the engine\'s own codes are found');
+        self::assertArrayHasKey('invalid_iban', $found, 'the domain\'s rules are found');
+        self::assertGreaterThan(34, \count($found), 'the import refusals are found');
+        $untranslated = [];
+        foreach ($found as $reason => $where) {
+            if (!\array_key_exists($reason, $translated)) {
+                $untranslated[] = $reason.' in '.implode(', ', array_unique($where));
+            }
+        }
+        self::assertSame([], $untranslated);
+    }
+
     /** @return array<mixed> the screens' texts for a refusal, by reason */
     private static function translated(): array
     {
