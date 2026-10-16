@@ -64,11 +64,14 @@ describe('ImportApi', () => {
       code: 'reference_given',
       params: { reference: 'ART-1' },
     };
+    const change = { line: 3, column: 'name', before: 'Carthage', after: 'Carthage Conseil' };
     request.flush({
       committed: false,
       created: [2],
-      updated: [],
+      updated: [3],
+      unchanged: [4],
       rejected: [],
+      changes: [change],
       notes: [note],
       alreadyImportedAt: null,
       encoding: 'utf-8',
@@ -77,8 +80,10 @@ describe('ImportApi', () => {
     expect(report).toEqual({
       committed: false,
       created: [2],
-      updated: [],
+      updated: [3],
+      unchanged: [4],
       rejected: [],
+      changes: [change],
       notes: [note],
       alreadyImportedAt: null,
       encoding: 'utf-8',

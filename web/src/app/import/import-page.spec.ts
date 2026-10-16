@@ -5,6 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import {
   provideTranslateLoader,
@@ -17,7 +18,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { Session } from '../shared/session/session';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { ImportFacade } from './import-facade';
-import { ImportPage } from './import-page';
+import { CHANGES_SHOWN, ImportPage } from './import-page';
 import type { ImportGuide, ImportRefusal, ImportReport } from './import-types';
 import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
 import { FormatFacade } from '../shared/i18n/format-facade';
@@ -33,6 +34,14 @@ class StaticLoader implements TranslateLoader {
         preview: 'Prévisualiser',
         store: 'Importer',
         rejected: '{{count}} refusés',
+        unchanged: '{{count}} inchangés',
+        line: 'Ligne',
+        column: 'Colonne',
+        changes_title: 'Ce qui change',
+        changes_by_column: '{{column}} : {{count}}',
+        changes_shown: 'Les {{shown}} premiers changements sur {{count}}.',
+        before: 'Avant',
+        after: 'Après',
         rejections: { duplicate_in_file: 'Déjà présent à la ligne {{line}} du fichier.' },
         notes: {
           reference_given: 'Référence donnée : {{reference}}.',
@@ -91,6 +100,24 @@ const CLEAN: ImportReport = {
   notes: [],
   alreadyImportedAt: null,
   encoding: null,
+  changes: [],
+  unchanged: [],
+};
+/** An upsert's preview: line 2 changes two columns, line 3 one, line 4 nothing. */
+const CHANGED: ImportReport = {
+  committed: false,
+  created: [],
+  updated: [2, 3],
+  rejected: [],
+  notes: [],
+  alreadyImportedAt: null,
+  encoding: null,
+  changes: [
+    { line: 2, column: 'name', before: 'Carthage', after: 'Carthage Conseil' },
+    { line: 2, column: 'email', before: '', after: 'contact@carthage.tn' },
+    { line: 3, column: 'name', before: 'Sousse Bois', after: 'Sousse Bois et Fils' },
+  ],
+  unchanged: [4],
 };
 const REJECTED: ImportReport = {
   committed: false,
@@ -102,6 +129,8 @@ const REJECTED: ImportReport = {
   notes: [],
   alreadyImportedAt: null,
   encoding: null,
+  changes: [],
+  unchanged: [],
 };
 
 describe('ImportPage', () => {
@@ -124,6 +153,7 @@ describe('ImportPage', () => {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
   };
+  const dialog = { open: vi.fn() };
   let fixture: ComponentFixture<ImportPage>;
   const width = signal<WindowClass>('expanded');
 
@@ -167,6 +197,7 @@ describe('ImportPage', () => {
     facade.forget.mockReset();
     auth.hasPermission.mockReset().mockReturnValue(true);
     width.set('expanded');
+    dialog.open.mockReset().mockReturnValue({ afterClosed: () => of(true) });
     TestBed.configureTestingModule({
       imports: [ImportPage],
       providers: [
@@ -184,6 +215,7 @@ describe('ImportPage', () => {
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: WINDOW_CLASS, useValue: width },
+        { provide: MatDialog, useValue: dialog },
         // The screen's decimal separator and a moment as words, as the working locale would write them.
         {
           provide: FormatFacade,
@@ -482,6 +514,8 @@ describe('ImportPage', () => {
         notes: [],
         alreadyImportedAt: null,
         encoding: null,
+        changes: [],
+        unchanged: [],
       }),
     );
     await click('import-preview');
@@ -505,6 +539,8 @@ describe('ImportPage', () => {
         notes: [],
         alreadyImportedAt: null,
         encoding: null,
+        changes: [],
+        unchanged: [],
       });
       TestBed.inject(Feedback).success('import.stored', { created: 2, updated: 0 });
     });
@@ -522,6 +558,104 @@ describe('ImportPage', () => {
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
       expect.objectContaining({ key: 'import.stored' }),
     );
+  });
+
+  /** Upsert, then a preview that answers `answer`: a change of mode forgets any preview before it. */
+  async function previewUpsert(answer: ImportReport): Promise<void> {
+    chooseFile();
+    await settle();
+    (
+      fixture.nativeElement.querySelector(
+        '[data-testid="import-mode"] mat-radio-button[value="upsert"] input',
+      ) as HTMLInputElement
+    ).click();
+    await settle();
+    facade.run.mockImplementation(async () => report.set(answer));
+    await click('import-preview');
+  }
+
+  it('says what an upsert changes in each record, column by column, and counts what it leaves alone', async () => {
+    await previewUpsert(CHANGED);
+
+    expect(q('import-unchanged')?.textContent).toContain('1 inchangés');
+    // Each column with the lines it changes, in the order the changes come.
+    const columns = [
+      ...fixture.nativeElement.querySelectorAll('[data-testid="import-changed-columns"] > li'),
+    ].map((item: Element) => item.textContent!.trim());
+    expect(columns).toEqual(['name : 2', 'email : 1']);
+    const rows = [
+      ...fixture.nativeElement.querySelectorAll('[data-testid="import-changes"] tbody tr'),
+    ].map((row: Element) =>
+      [...row.querySelectorAll('th, td')].map((cell) => cell.textContent!.trim()),
+    );
+    expect(rows).toEqual([
+      ['2', 'name', 'Carthage', 'Carthage Conseil'],
+      ['2', 'email', '', 'contact@carthage.tn'],
+      ['3', 'name', 'Sousse Bois', 'Sousse Bois et Fils'],
+    ]);
+    expect(q('import-changes-shown')).toBeNull();
+  });
+
+  it('lists the first changes only, and says how many there are in all', async () => {
+    const many = Array.from({ length: CHANGES_SHOWN + 5 }, (_, at) => ({
+      line: at + 2,
+      column: 'name',
+      before: `old ${at}`,
+      after: `new ${at}`,
+    }));
+    await previewUpsert({ ...CHANGED, updated: many.map((change) => change.line), changes: many });
+
+    expect(
+      fixture.nativeElement.querySelectorAll('[data-testid="import-changes"] tbody tr').length,
+    ).toBe(CHANGES_SHOWN);
+    expect(q('import-changes-shown')?.textContent).toContain(
+      `Les ${CHANGES_SHOWN} premiers changements sur ${CHANGES_SHOWN + 5}.`,
+    );
+    expect(q('import-changed-columns')?.textContent).toContain(`name : ${CHANGES_SHOWN + 5}`);
+  });
+
+  it('asks before an upsert changes records, naming how many and which columns, and imports nothing on « non »', async () => {
+    await previewUpsert(CHANGED);
+    dialog.open.mockReturnValue({ afterClosed: () => of(false) });
+    facade.run.mockClear();
+
+    await click('import-store');
+
+    expect(dialog.open.mock.calls.map(([, config]) => config.data)).toEqual([
+      {
+        kind: 'corrigeable',
+        title: 'import.confirm_changes.title',
+        message: 'import.confirm_changes.message',
+        messageParams: { records: '2', fields: 'name (2), email (1)' },
+        confirmLabel: 'import.confirm_changes.store',
+        keepLabel: 'import.confirm_changes.keep',
+      },
+    ]);
+    expect(facade.run).not.toHaveBeenCalled();
+
+    dialog.open.mockReturnValue({ afterClosed: () => of(true) });
+    await click('import-store');
+
+    expect(facade.run).toHaveBeenLastCalledWith(
+      'c1',
+      'opening-stock',
+      expect.anything(),
+      'upsert',
+      false,
+      [],
+      null,
+    );
+  });
+
+  it('imports without asking when the upsert changes nothing already there', async () => {
+    await previewUpsert({ ...CLEAN, unchanged: [4] });
+    facade.run.mockClear();
+
+    await click('import-store');
+
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(facade.run).toHaveBeenCalledTimes(1);
+    expect(q('import-changes')).toBeNull();
   });
 
   it('shows a file refused whole beside the form, naming what the reason names', async () => {

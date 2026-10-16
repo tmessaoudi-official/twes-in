@@ -168,6 +168,7 @@ function toReport(answer: unknown): ImportReport {
     committed: body['committed'] === true,
     created: lines(body['created']),
     updated: lines(body['updated']),
+    unchanged: lines(body['unchanged']),
     rejected: Array.isArray(body['rejected'])
       ? body['rejected'].map((row: Record<string, unknown>) => ({
           line: typeof row['line'] === 'number' ? row['line'] : 0,
@@ -175,6 +176,14 @@ function toReport(answer: unknown): ImportReport {
           code: typeof row['code'] === 'string' ? row['code'] : 'invalid_value',
           params: (row['params'] ?? {}) as Record<string, string | number>,
           message: typeof row['message'] === 'string' ? row['message'] : '',
+        }))
+      : [],
+    changes: Array.isArray(body['changes'])
+      ? body['changes'].map((row: Record<string, unknown>) => ({
+          line: typeof row['line'] === 'number' ? row['line'] : 0,
+          column: typeof row['column'] === 'string' ? row['column'] : '',
+          before: typeof row['before'] === 'string' ? row['before'] : '',
+          after: typeof row['after'] === 'string' ? row['after'] : '',
         }))
       : [],
     notes: Array.isArray(body['notes'])

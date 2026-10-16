@@ -87,13 +87,26 @@ export interface ImportNote {
   params: Record<string, string | number>;
 }
 
+/** One cell a row found again changes, as the file writes it: an empty value is one the record did not hold. */
+export interface ImportChange {
+  line: number;
+  column: string;
+  before: string;
+  after: string;
+}
+
 /** What a run did, or would do: a preview is the same run rolled back. */
 export interface ImportReport {
   committed: boolean;
   /** The file's own line numbers, its empty lines counted. */
   created: readonly number[];
+  /** The lines found again whose record changes. */
   updated: readonly number[];
+  /** The lines found again whose record the row leaves as it is. */
+  unchanged: readonly number[];
   rejected: readonly ImportRejection[];
+  /** What each line updated changes, cell by cell, in the order of the columns. */
+  changes: readonly ImportChange[];
   notes: readonly ImportNote[];
   /** When this very file was last imported into the subject; null when it never was. */
   alreadyImportedAt: string | null;
