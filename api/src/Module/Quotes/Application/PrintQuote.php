@@ -10,11 +10,11 @@ declare(strict_types=1);
 namespace App\Module\Quotes\Application;
 
 use App\Fiscal\Domain\Calculation\QuantityTotals;
-use App\Module\Customers\Domain\CustomerSnapshot;
-use App\Module\Quotes\Domain\Quote;
-use App\Module\Quotes\Domain\QuoteLine;
-use App\Module\Quotes\Domain\QuoteRepository;
-use App\Module\Quotes\Domain\QuoteStatus;
+use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
+use App\Module\Quotes\Domain\Model\Quote;
+use App\Module\Quotes\Domain\Model\QuoteLine;
+use App\Module\Quotes\Domain\Repository\QuoteRepository;
+use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
 use App\Settings\Application\ReadSetting;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;

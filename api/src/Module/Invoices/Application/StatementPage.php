@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Application;
 
-use App\Module\Customers\Domain\CustomerSnapshot;
+use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Shared\Domain\DocumentDesign;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\SellerSnapshot;

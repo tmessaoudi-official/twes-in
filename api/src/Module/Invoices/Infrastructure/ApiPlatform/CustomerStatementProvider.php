@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Customers\Application\CustomerNotFound;
-use App\Module\Customers\Infrastructure\ApiPlatform\CustomerPermission;
+use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
 use App\Module\Invoices\Application\InvalidStatementPeriod;
 use App\Module\Invoices\Application\StatementOfAccount;
 use App\Shared\Infrastructure\ApiPlatform\Paging;

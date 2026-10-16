@@ -10,11 +10,11 @@ declare(strict_types=1);
 namespace App\Module\Expenses\Application\Tej;
 
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Module\Expenses\Domain\Expense;
-use App\Module\Expenses\Domain\ExpenseRepository;
-use App\Module\Expenses\Domain\TejOperationCode;
-use App\Module\Expenses\Domain\WithholdingOperation;
-use App\Module\Vendors\Domain\Vendor;
+use App\Module\Expenses\Domain\Model\Expense;
+use App\Module\Expenses\Domain\Repository\ExpenseRepository;
+use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
+use App\Module\Expenses\Domain\ValueObject\WithholdingOperation;
+use App\Module\Vendors\Domain\Model\Vendor;
 use App\Tenancy\Domain\Company;
 
 /**

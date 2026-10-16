@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\PriceLists\Application;
 
-use App\Module\PriceLists\Domain\PriceListRepository;
+use App\Module\PriceLists\Domain\Repository\PriceListRepository;
 use App\Tenancy\Domain\Company;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;

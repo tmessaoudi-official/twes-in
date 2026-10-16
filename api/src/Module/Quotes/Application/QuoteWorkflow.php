@@ -11,11 +11,11 @@ namespace App\Module\Quotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\Quotes\Domain\InvalidQuote;
-use App\Module\Quotes\Domain\Quote;
-use App\Module\Quotes\Domain\QuoteNotDraft;
-use App\Module\Quotes\Domain\QuoteRepository;
-use App\Module\Quotes\Domain\QuoteTransitionRefused;
+use App\Module\Quotes\Domain\Exception\InvalidQuote;
+use App\Module\Quotes\Domain\Exception\QuoteNotDraft;
+use App\Module\Quotes\Domain\Exception\QuoteTransitionRefused;
+use App\Module\Quotes\Domain\Model\Quote;
+use App\Module\Quotes\Domain\Repository\QuoteRepository;
 use App\Settings\Application\ReadSetting;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Numbering\AllocateNumber;

@@ -34,7 +34,7 @@ use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductSearch;
 use App\Module\Products\Domain\ProductTracking;
-use App\Module\Vendors\Domain\VendorRepository;
+use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;

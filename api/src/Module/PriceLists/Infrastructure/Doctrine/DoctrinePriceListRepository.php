@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\PriceLists\Infrastructure\Doctrine;
 
-use App\Module\PriceLists\Domain\PriceList;
-use App\Module\PriceLists\Domain\PriceListRepository;
+use App\Module\PriceLists\Domain\Model\PriceList;
+use App\Module\PriceLists\Domain\Repository\PriceListRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

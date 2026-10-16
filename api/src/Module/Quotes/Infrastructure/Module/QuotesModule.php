@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Quotes\Infrastructure\Module;
 
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
-use App\Module\Quotes\Infrastructure\ApiPlatform\QuotePermission;
+use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
 use App\ModuleRegistry\Application\DeclaresModule;
 use App\ModuleRegistry\Application\ModuleManifest;
 

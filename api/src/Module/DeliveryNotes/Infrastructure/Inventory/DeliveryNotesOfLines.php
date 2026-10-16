@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Infrastructure\Inventory;
 
-use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\Inventory\Application\SourceDeliveryNotes;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Expenses\Infrastructure\Module;
 
-use App\Module\Expenses\Infrastructure\ApiPlatform\ExpensePermission;
+use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\ModuleRegistry\Application\DeclaresModule;
 use App\ModuleRegistry\Application\ModuleManifest;
 

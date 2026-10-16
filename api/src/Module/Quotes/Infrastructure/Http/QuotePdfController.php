@@ -11,7 +11,7 @@ namespace App\Module\Quotes\Infrastructure\Http;
 
 use App\Module\Quotes\Application\PrintQuote;
 use App\Module\Quotes\Application\QuoteNotFound;
-use App\Module\Quotes\Infrastructure\ApiPlatform\QuotePermission;
+use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;

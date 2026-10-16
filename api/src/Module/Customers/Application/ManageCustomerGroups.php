@@ -11,10 +11,10 @@ namespace App\Module\Customers\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\Customers\Domain\CustomerGroup;
-use App\Module\Customers\Domain\CustomerGroupRepository;
-use App\Module\Customers\Domain\CustomerRepository;
-use App\Module\Customers\Domain\InvalidCustomerGroup;
+use App\Module\Customers\Domain\Exception\InvalidCustomerGroup;
+use App\Module\Customers\Domain\Model\CustomerGroup;
+use App\Module\Customers\Domain\Repository\CustomerGroupRepository;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Application\Transactions;

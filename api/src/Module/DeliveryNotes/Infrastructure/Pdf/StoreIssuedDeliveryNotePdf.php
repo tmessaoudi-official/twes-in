@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Infrastructure\Pdf;
 
 use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteValidated;
+use App\Module\DeliveryNotes\Domain\Event\DeliveryNoteValidated;
 use App\Shared\Application\PdfRenderingFailed;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;

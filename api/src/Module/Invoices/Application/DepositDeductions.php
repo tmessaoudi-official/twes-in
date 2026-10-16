@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Invoices\Domain\Deduction;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Domain;
 
-use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\Model\Vendor;
 
 /**
  * What a goods receipt says about where the goods came from: the vendor, the number on the vendor's own delivery note or

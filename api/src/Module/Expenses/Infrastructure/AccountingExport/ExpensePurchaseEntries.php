@@ -13,9 +13,9 @@ use App\Module\AccountingExport\Application\DocumentTax;
 use App\Module\AccountingExport\Application\JournalPeriod;
 use App\Module\AccountingExport\Application\PurchaseEntries;
 use App\Module\AccountingExport\Application\PurchaseEntry;
-use App\Module\Expenses\Domain\Expense;
-use App\Module\Expenses\Domain\ExpenseStatus;
-use App\Module\Expenses\Domain\ExpenseTax;
+use App\Module\Expenses\Domain\Model\Expense;
+use App\Module\Expenses\Domain\Model\ExpenseTax;
+use App\Module\Expenses\Domain\ValueObject\ExpenseStatus;
 use App\Tenancy\Domain\Company;
 use Doctrine\ORM\EntityManagerInterface;
 

@@ -13,7 +13,7 @@ use App\Fiscal\Domain\Calculation\InvalidDocument;
 use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
 use App\Module\Invoices\Application\DepositQuotes;
 use App\Module\Quotes\Application\QuoteTotals;
-use App\Module\Quotes\Domain\QuoteRepository;
+use App\Module\Quotes\Domain\Repository\QuoteRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

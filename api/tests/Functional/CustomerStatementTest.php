@@ -14,7 +14,7 @@ use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\Model\Setting;

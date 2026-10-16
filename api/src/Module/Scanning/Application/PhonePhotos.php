@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Module\Scanning\Application;
 
 use App\Files\Application\Pictures;
-use App\Module\Scanning\Domain\ScanPairingRefused;
-use App\Module\Scanning\Domain\ScanPairingRepository;
-use App\Module\Scanning\Domain\ScanPhoto;
-use App\Module\Scanning\Domain\ScanPhotoRepository;
+use App\Module\Scanning\Domain\Exception\ScanPairingRefused;
+use App\Module\Scanning\Domain\Model\ScanPhoto;
+use App\Module\Scanning\Domain\Repository\ScanPairingRepository;
+use App\Module\Scanning\Domain\Repository\ScanPhotoRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;

@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Quotes\Infrastructure\Doctrine;
 
-use App\Module\Quotes\Domain\Quote;
-use App\Module\Quotes\Domain\QuoteRepository;
-use App\Module\Quotes\Domain\QuoteSearch;
-use App\Module\Quotes\Domain\QuoteStatus;
+use App\Module\Quotes\Domain\Model\Quote;
+use App\Module\Quotes\Domain\Repository\QuoteRepository;
+use App\Module\Quotes\Domain\ValueObject\QuoteSearch;
+use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;

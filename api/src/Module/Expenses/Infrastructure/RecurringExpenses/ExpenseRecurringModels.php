@@ -11,7 +11,7 @@ namespace App\Module\Expenses\Infrastructure\RecurringExpenses;
 
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Module\Expenses\Domain\Expense;
+use App\Module\Expenses\Domain\Model\Expense;
 use App\Module\RecurringExpenses\Application\RecurringExpenseModel;
 use App\Module\RecurringExpenses\Application\RecurringExpenseModels;
 use App\Tenancy\Domain\Company;

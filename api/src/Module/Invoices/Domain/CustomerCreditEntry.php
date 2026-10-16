@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Domain;
 
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;

@@ -11,9 +11,9 @@ namespace App\Module\Recurring\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\Recurring\Domain\InvalidRecurringInvoice;
-use App\Module\Recurring\Domain\RecurringInvoice;
-use App\Module\Recurring\Domain\RecurringInvoiceRepository;
+use App\Module\Recurring\Domain\Exception\InvalidRecurringInvoice;
+use App\Module\Recurring\Domain\Model\RecurringInvoice;
+use App\Module\Recurring\Domain\Repository\RecurringInvoiceRepository;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\InvalidSchedule;
 use App\Shared\Domain\Schedule;

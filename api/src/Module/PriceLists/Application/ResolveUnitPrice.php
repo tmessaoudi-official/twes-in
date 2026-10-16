@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\PriceLists\Application;
 
-use App\Module\Customers\Domain\CustomerRepository;
-use App\Module\PriceLists\Domain\PriceList;
-use App\Module\PriceLists\Domain\PriceListItem;
-use App\Module\PriceLists\Domain\PriceListRepository;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
+use App\Module\PriceLists\Domain\Model\PriceList;
+use App\Module\PriceLists\Domain\Model\PriceListItem;
+use App\Module\PriceLists\Domain\Repository\PriceListRepository;
 use App\Module\Products\Domain\Product;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;

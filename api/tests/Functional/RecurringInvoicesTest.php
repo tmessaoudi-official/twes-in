@@ -13,7 +13,7 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Recurring\Application\ManageRecurringInvoices;
 use App\Module\Recurring\Application\RunRecurringInvoices;
 use App\Module\Recurring\Infrastructure\Scheduler\RunRecurringInvoicesEveryHour;

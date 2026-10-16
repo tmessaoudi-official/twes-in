@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Invoices;
 
-use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveredQuantity;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
 use App\Module\Inventory\Application\SourceDeliveryNotes;
 use App\Module\Inventory\Application\TellStockKeepers;

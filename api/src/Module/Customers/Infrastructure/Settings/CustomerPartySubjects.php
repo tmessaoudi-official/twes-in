@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Infrastructure\Settings;
 
-use App\Module\Customers\Domain\CustomerGroupRepository;
-use App\Module\Customers\Domain\CustomerRepository;
+use App\Module\Customers\Domain\Repository\CustomerGroupRepository;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Settings\Application\PartySubject;

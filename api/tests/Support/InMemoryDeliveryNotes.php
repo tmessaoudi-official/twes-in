@@ -9,11 +9,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\DeliveryNotes\Domain\DeliveryNote;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
+use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteSearch;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;

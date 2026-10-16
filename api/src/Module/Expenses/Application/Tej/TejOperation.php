@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Expenses\Application\Tej;
 
-use App\Module\Expenses\Domain\TejOperationCode;
+use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
 
 /**
  * One operation of a TEJ certificate: every amount in millimes, whole, as the cahier des charges asks ("en millimes

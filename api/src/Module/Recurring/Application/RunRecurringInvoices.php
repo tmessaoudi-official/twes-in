@@ -11,7 +11,7 @@ namespace App\Module\Recurring\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\Recurring\Domain\RecurringInvoiceRepository;
+use App\Module\Recurring\Domain\Repository\RecurringInvoiceRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;

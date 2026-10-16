@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Quotes\Application;
 
-use App\Module\Quotes\Domain\QuoteHeader;
+use App\Module\Quotes\Domain\ValueObject\QuoteHeader;
 use Symfony\Component\Uid\Uuid;
 
 /** A quote as it is written: its customer and establishment by id (none: the company's default), its header and its lines. */

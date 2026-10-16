@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Module\Customers\Application\CustomerNotFound;
-use App\Module\Customers\Domain\CustomerRepository;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

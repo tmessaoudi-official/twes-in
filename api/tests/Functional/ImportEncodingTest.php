@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutWriter;
 use App\Tenancy\Domain\Company;

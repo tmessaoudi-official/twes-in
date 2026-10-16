@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Vendors\Infrastructure\Import;
 
-use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\Model\Vendor;
 
 /**
  * A vendor as a file writes it, column by column, the way the import reads it back: what the export writes, and what

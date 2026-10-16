@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Inventory\Application;
 
 use App\Fiscal\Domain\Model\Unit;
-use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveredQuantity;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;

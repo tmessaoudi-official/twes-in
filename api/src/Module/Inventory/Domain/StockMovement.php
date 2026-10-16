@@ -12,7 +12,7 @@ namespace App\Module\Inventory\Domain;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
-use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\Model\Vendor;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use BcMath\Number;

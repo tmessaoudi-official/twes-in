@@ -16,7 +16,7 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
-use App\Module\Customers\Domain\CustomerSnapshot;
+use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceRepository;

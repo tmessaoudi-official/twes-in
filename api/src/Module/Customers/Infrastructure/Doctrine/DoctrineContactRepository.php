@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Infrastructure\Doctrine;
 
-use App\Module\Customers\Domain\Contact;
-use App\Module\Customers\Domain\ContactRepository;
+use App\Module\Customers\Domain\Model\Contact;
+use App\Module\Customers\Domain\Repository\ContactRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Console;
 
-use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
+use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;

@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerRepository;
-use App\Module\Customers\Domain\CustomerSearch;
+use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
+use App\Module\Customers\Domain\ValueObject\CustomerSearch;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;

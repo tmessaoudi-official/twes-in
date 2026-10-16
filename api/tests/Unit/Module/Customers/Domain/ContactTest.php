@@ -10,12 +10,12 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Customers\Domain;
 
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
-use App\Module\Customers\Domain\Contact;
-use App\Module\Customers\Domain\ContactDetails;
-use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerKind;
-use App\Module\Customers\Domain\CustomerProfile;
-use App\Module\Customers\Domain\InvalidContact;
+use App\Module\Customers\Domain\Exception\InvalidContact;
+use App\Module\Customers\Domain\Model\Contact;
+use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\ValueObject\ContactDetails;
+use App\Module\Customers\Domain\ValueObject\CustomerKind;
+use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\TestCase;
 

@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Module\Customers\Application\CustomerNotFound;
-use App\Module\Customers\Domain\CustomerRepository;
-use App\Module\Customers\Domain\CustomerSnapshot;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
+use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;

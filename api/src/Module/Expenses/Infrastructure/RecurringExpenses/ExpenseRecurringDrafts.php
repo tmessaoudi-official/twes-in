@@ -11,7 +11,7 @@ namespace App\Module\Expenses\Infrastructure\RecurringExpenses;
 
 use App\Module\Expenses\Application\ExpenseNotFound;
 use App\Module\Expenses\Application\ManageExpenses;
-use App\Module\Expenses\Domain\InvalidExpense;
+use App\Module\Expenses\Domain\Exception\InvalidExpense;
 use App\Module\RecurringExpenses\Application\RecurringExpenseDrafts;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;

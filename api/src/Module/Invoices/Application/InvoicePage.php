@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Domain\Calculation\QuantityTotal;
-use App\Module\Customers\Domain\CustomerSnapshot;
+use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceChain;
 use App\Module\Invoices\Domain\InvoiceFigures;

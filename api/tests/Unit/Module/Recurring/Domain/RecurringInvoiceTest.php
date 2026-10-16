@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Recurring\Domain;
 
-use App\Module\Recurring\Domain\RecurringInvoice;
+use App\Module\Recurring\Domain\Model\RecurringInvoice;
 use App\Shared\Domain\InvalidSchedule;
 use App\Shared\Domain\Schedule;
 use App\Shared\Domain\ScheduleAnchor;

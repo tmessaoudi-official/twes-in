@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Module\Expenses\Domain\ExpenseCategory;
-use App\Module\Vendors\Domain\Vendor;
-use App\Module\Vendors\Domain\VendorProfile;
+use App\Module\Expenses\Domain\Model\ExpenseCategory;
+use App\Module\Vendors\Domain\Model\Vendor;
+use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;

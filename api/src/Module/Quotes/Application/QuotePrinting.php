@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Quotes\Application;
 
-use App\Module\Quotes\Domain\Quote;
-use App\Module\Quotes\Domain\QuotePrint;
+use App\Module\Quotes\Domain\Model\Quote;
+use App\Module\Quotes\Domain\ValueObject\QuotePrint;
 use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Domain;
 
-use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\Model\Vendor;
 
 /**
  * A code as a product sheet writes it: its role, the code, how many pieces one scan of it enters, and for a

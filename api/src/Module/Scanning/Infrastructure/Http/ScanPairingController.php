@@ -15,7 +15,7 @@ use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Module\Scanning\Application\PairingEcho;
 use App\Module\Scanning\Application\PhonePairings;
 use App\Module\Scanning\Application\PhonePhotos;
-use App\Module\Scanning\Domain\ScanPairingRefused;
+use App\Module\Scanning\Domain\Exception\ScanPairingRefused;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Bundle\SecurityBundle\Security;

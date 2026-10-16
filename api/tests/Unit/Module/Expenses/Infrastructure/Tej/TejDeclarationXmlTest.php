@@ -12,7 +12,7 @@ namespace App\Tests\Unit\Module\Expenses\Infrastructure\Tej;
 use App\Module\Expenses\Application\Tej\TejCertificate;
 use App\Module\Expenses\Application\Tej\TejDeclaration;
 use App\Module\Expenses\Application\Tej\TejOperation;
-use App\Module\Expenses\Domain\TejOperationCode;
+use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
 use App\Module\Expenses\Infrastructure\Tej\TejDeclarationXml;
 use PHPUnit\Framework\TestCase;
 

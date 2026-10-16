@@ -54,7 +54,7 @@ use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductTracking;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
-use App\Module\Vendors\Domain\VendorRepository;
+use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;

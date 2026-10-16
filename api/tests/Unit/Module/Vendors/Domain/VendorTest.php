@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Vendors\Domain;
 
-use App\Module\Vendors\Domain\InvalidVendor;
-use App\Module\Vendors\Domain\Vendor;
-use App\Module\Vendors\Domain\VendorProfile;
+use App\Module\Vendors\Domain\Exception\InvalidVendor;
+use App\Module\Vendors\Domain\Model\Vendor;
+use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\DataProvider;

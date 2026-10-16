@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\DeliveryNotes;
 
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Module\DeliveryNotes\Application\InvoiceDrafts;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Invoice;

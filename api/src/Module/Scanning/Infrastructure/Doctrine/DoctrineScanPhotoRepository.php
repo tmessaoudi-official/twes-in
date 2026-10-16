@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Scanning\Infrastructure\Doctrine;
 
-use App\Module\Scanning\Domain\ScanPhoto;
-use App\Module\Scanning\Domain\ScanPhotoRepository;
+use App\Module\Scanning\Domain\Model\ScanPhoto;
+use App\Module\Scanning\Domain\Repository\ScanPhotoRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

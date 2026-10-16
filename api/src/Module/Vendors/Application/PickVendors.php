@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Vendors\Application;
 
-use App\Module\Vendors\Domain\Vendor;
-use App\Module\Vendors\Domain\VendorRepository;
+use App\Module\Vendors\Domain\Model\Vendor;
+use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

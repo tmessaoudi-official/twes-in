@@ -11,7 +11,7 @@ namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Module\Customers\Domain\CustomerRepository;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\Invoices\Domain\InvoiceReminder;
 use App\Module\Invoices\Domain\InvoiceReminderRepository;
 use App\Module\Invoices\Domain\InvoiceRepository;

@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Customers\Application\CustomerNotFound;
-use App\Module\Customers\Infrastructure\ApiPlatform\CustomerPermission;
+use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
 use App\Module\Invoices\Application\ReadCustomerAccount;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;

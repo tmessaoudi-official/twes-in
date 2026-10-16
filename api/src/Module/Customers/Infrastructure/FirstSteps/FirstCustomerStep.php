@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Customers\Infrastructure\FirstSteps;
 
 use App\FirstSteps\Application\DeclaresFirstStep;
-use App\Module\Customers\Infrastructure\ApiPlatform\CustomerPermission;
+use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Connection;

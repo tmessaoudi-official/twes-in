@@ -12,8 +12,8 @@ namespace App\Tests\Functional;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Module\Vendors\Domain\Vendor;
-use App\Module\Vendors\Domain\VendorProfile;
+use App\Module\Vendors\Domain\Model\Vendor;
+use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 

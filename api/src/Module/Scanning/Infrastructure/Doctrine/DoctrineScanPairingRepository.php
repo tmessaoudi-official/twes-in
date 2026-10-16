@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Scanning\Infrastructure\Doctrine;
 
-use App\Module\Scanning\Domain\ScanPairing;
-use App\Module\Scanning\Domain\ScanPairingRepository;
+use App\Module\Scanning\Domain\Model\ScanPairing;
+use App\Module\Scanning\Domain\Repository\ScanPairingRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;

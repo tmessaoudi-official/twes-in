@@ -11,11 +11,11 @@ namespace App\Tests\Unit\Module\Customers\Domain;
 
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
-use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerGroup;
-use App\Module\Customers\Domain\CustomerKind;
-use App\Module\Customers\Domain\CustomerProfile;
-use App\Module\Customers\Domain\InvalidCustomer;
+use App\Module\Customers\Domain\Exception\InvalidCustomer;
+use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\Model\CustomerGroup;
+use App\Module\Customers\Domain\ValueObject\CustomerKind;
+use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\DataProvider;

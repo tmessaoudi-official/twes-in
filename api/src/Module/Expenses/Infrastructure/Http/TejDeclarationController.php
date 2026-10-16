@@ -11,7 +11,7 @@ namespace App\Module\Expenses\Infrastructure\Http;
 
 use App\Module\Expenses\Application\Tej\DeclareTejWithholdings;
 use App\Module\Expenses\Application\Tej\TejDeclarationRefused;
-use App\Module\Expenses\Infrastructure\ApiPlatform\ExpensePermission;
+use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\Module\Expenses\Infrastructure\Tej\TejDeclarationXml;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
