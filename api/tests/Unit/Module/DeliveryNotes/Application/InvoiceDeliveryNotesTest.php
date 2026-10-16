@@ -102,7 +102,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
             new DeliveryNoteLineDetails(null, 'Portable 14"', '2', $this->unit('C62'), '1250', [$this->tax('FODEC'), $this->tax('TVA19')]),
             new DeliveryNoteLineDetails(null, 'Transport', '1', $this->unit('C62'), '30', [$this->tax('TVA19')]),
         ], new DeliveryNoteHeader(customerReference: 'PO-7'));
-        $first->deliver(new \DateTimeImmutable('2026-09-15'), new \DateTimeImmutable('2026-09-15'), $this->clock->now());
+        $first->deliver($this->clock->now(), $this->clock->now());
         $second = $this->note('BL-2026-00002', header: new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-12'), customerReference: 'PO-7'));
         $actor = Uuid::v7();
 

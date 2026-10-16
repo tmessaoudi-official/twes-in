@@ -26,13 +26,18 @@ export class DayPipe implements PipeTransform {
   }
 }
 
-/** `{{ entry.createdAt | moment }}`: a moment's day and time in the viewer's time zone; no value shows nothing. */
+/**
+ * `{{ entry.createdAt | moment }}`: a moment's day and time in the viewer's time zone, or in the one given
+ * (`| moment: company.timezone`, what a document's own clock reads); no value shows nothing.
+ */
 @Pipe({ name: 'moment', pure: false })
 export class MomentPipe implements PipeTransform {
   private readonly format = inject(FormatFacade);
 
-  transform(value: string | null | undefined): string {
-    return value === null || value === undefined ? '' : this.format.moment(value);
+  transform(value: string | null | undefined, timeZone?: string | null): string {
+    return value === null || value === undefined
+      ? ''
+      : this.format.moment(value, timeZone ?? undefined);
   }
 }
 

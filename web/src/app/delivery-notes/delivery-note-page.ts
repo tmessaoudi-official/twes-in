@@ -24,7 +24,7 @@ import { liveRecord } from '../shared/form/live-record';
 import { PartConflict } from '../shared/form/part-conflict';
 import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
-import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
+import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { StatusBadge } from '../shared/ui/status-badge';
 import {
   deliveryNoteForm,
@@ -96,6 +96,7 @@ export const DELIVERY_NOTE_PLANNED: readonly PlannedAction[] = [
     TranslatePipe,
     AmountPipe,
     DayPipe,
+    MomentPipe,
     DescriptorForm,
     DeliveryNoteLines,
     DeliveryNoteCreditNotice,
@@ -153,7 +154,6 @@ export class DeliveryNotePage {
     this.auth.hasPermission('delivery_note.validate'),
   );
   protected readonly confirmingCancel = signal(false);
-  protected readonly deliveredOn = signal('');
 
   /** Null while a new note is filled in; undefined until the note asked for has been read. */
   protected readonly current = computed(() => {
@@ -701,10 +701,6 @@ export class DeliveryNotePage {
     this.customerMissing.set(customer === null);
   }
 
-  protected onDeliveredOn(event: Event): void {
-    this.deliveredOn.set((event.target as HTMLInputElement).value);
-  }
-
   protected async save(): Promise<void> {
     const companyId = this.company()?.id;
     const input = this.collect();
@@ -767,23 +763,23 @@ export class DeliveryNotePage {
   /** Asked in a dialog, so the bar carries actions and not a date field (design review finding 3). */
   protected async openDeliver(): Promise<void> {
     if (this.busy()) return;
-    const day = await firstValueFrom(
+    const moment = await firstValueFrom(
       this.dialog
-        .open<DeliverDialog, string, string | null>(DeliverDialog, {
-          data: this.deliveredOn(),
+        .open<DeliverDialog, string | null, string | null>(DeliverDialog, {
+          data: this.company()?.timezone ?? null,
           autoFocus: 'first-tabbable',
         })
         .afterClosed(),
     );
-    if (day !== null && day !== undefined) await this.deliver(day);
+    if (moment !== null && moment !== undefined) await this.deliver(moment);
   }
 
-  protected async deliver(on: string): Promise<void> {
+  /** At the moment written on the company's clock, or now for ''. */
+  protected async deliver(at: string): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
-    const day = on.trim();
-    await this.facade.deliver(companyId, id, day === '' ? null : day);
+    await this.facade.deliver(companyId, id, at === '' ? null : at);
   }
 
   protected async invoice(): Promise<void> {

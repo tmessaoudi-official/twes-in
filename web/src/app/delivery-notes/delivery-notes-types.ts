@@ -139,7 +139,10 @@ export interface DeliveryNoteRow {
   /** The customer as it reads TODAY, so a form shows who the note is for without the company's whole book. */
   customerName: string;
   issueDate: string | null;
+  /** The day expected, or once delivered the company's day the goods arrived. */
   deliveryDate: string | null;
+  /** When the goods arrived, in UTC; null until delivered. */
+  deliveredAt: string | null;
   deliveryAddress: PostalAddress;
   customerReference: string | null;
   remarksPrinted: string | null;

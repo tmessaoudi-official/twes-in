@@ -13,6 +13,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Shared\Domain\InvalidFilter;
 use App\Shared\Domain\ListFilters;
+use App\Tenancy\Domain\Company;
 
 /**
  * The one reading of a delivery notes list's query string, for the list, its status counts and its CSV and Excel files,
@@ -26,7 +27,7 @@ final class DeliveryNoteSearchReader
      *
      * @throws InvalidFilter
      */
-    public static function read(array $parameters, ?string $text, array $order): DeliveryNoteSearch
+    public static function read(array $parameters, ?string $text, array $order, Company $company): DeliveryNoteSearch
     {
         $filters = new ListFilters($parameters);
         $issueDate = $filters->dateRange('issueDate');
@@ -39,6 +40,7 @@ final class DeliveryNoteSearchReader
             $order,
             $issueDate->isOpen() ? null : $issueDate,
             $deliveryDate->isOpen() ? null : $deliveryDate,
+            $company->getTimezone(),
         );
     }
 }

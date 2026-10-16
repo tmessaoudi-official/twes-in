@@ -64,7 +64,12 @@ class DeliveryNote implements CompanyOwned
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $issueDate = null;
 
-    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    /**
+     * The moment the goods arrived, in UTC to the second; on a note not yet delivered, the day it expects them, as the
+     * company's midnight. One moment rather than a day, so several deliveries of one day keep their order and a dispute
+     * has its time (docs/SPEC.md § 7, 2026-09-21 17:45).
+     */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $deliveryDate = null;
 
     #[ORM\Embedded(class: PostalAddress::class, columnPrefix: 'delivery_')]
@@ -232,27 +237,26 @@ class DeliveryNote implements CompanyOwned
     }
 
     /**
-     * A validated note's goods reached the customer on a day from its issue day to the company's today, which becomes
-     * its delivery date.
+     * A validated note's goods reached the customer at a moment from its issue day, the company's, to now. Stamped now
+     * unless told otherwise, and correctable: the deliveries of a round are often recorded together at its end.
      *
      * @throws DeliveryNoteTransitionRefused
      * @throws InvalidDeliveryNote
      */
-    public function deliver(\DateTimeImmutable $deliveredOn, \DateTimeImmutable $today, \DateTimeImmutable $now): void
+    public function deliver(\DateTimeImmutable $deliveredAt, \DateTimeImmutable $now): void
     {
         if (DeliveryNoteStatus::Validated !== $this->status) {
             throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a validated note is delivered.', $this->reference(), $this->status->value));
         }
         $issued = $this->issueDate ?? throw new \LogicException('A validated delivery note has an issue day.');
-        $day = self::day($deliveredOn);
-        if ($day < $issued) {
-            throw new InvalidDeliveryNote('deliveredOn', \sprintf('Goods are delivered on or after the issue day, %s.', $issued->format('Y-m-d')));
+        if ($this->localDay($deliveredAt) < $issued) {
+            throw new InvalidDeliveryNote('deliveredAt', \sprintf('Goods are delivered on or after the issue day, %s.', $issued->format('Y-m-d')));
         }
-        if ($day > self::day($today)) {
-            throw new InvalidDeliveryNote('deliveredOn', 'A delivery is confirmed once it happened, today at the latest.');
+        if ($deliveredAt > $now) {
+            throw new InvalidDeliveryNote('deliveredAt', 'A delivery is confirmed once it happened, now at the latest.');
         }
 
-        $this->deliveryDate = $day;
+        $this->deliveryDate = $deliveredAt->setTimezone(new \DateTimeZone('UTC'));
         $this->status = DeliveryNoteStatus::Delivered;
         $this->updatedAt = $now;
     }
@@ -341,9 +345,16 @@ class DeliveryNote implements CompanyOwned
         return null === $this->sellerSnapshot ? null : SellerSnapshot::fromArray($this->sellerSnapshot);
     }
 
+    /** When the goods arrived; null until the note is delivered, or invoiced after it was. */
+    public function getDeliveredAt(): ?\DateTimeImmutable
+    {
+        return \in_array($this->status, [DeliveryNoteStatus::Delivered, DeliveryNoteStatus::Invoiced], true) ? $this->deliveryDate : null;
+    }
+
+    /** The header as a form holds it: the delivery as the company's day. */
     public function getHeader(): DeliveryNoteHeader
     {
-        return new DeliveryNoteHeader($this->deliveryDate, $this->deliveryAddress, $this->customerReference, $this->remarksPrinted, $this->notesInternal);
+        return new DeliveryNoteHeader(null === $this->deliveryDate ? null : $this->localDay($this->deliveryDate), $this->deliveryAddress, $this->customerReference, $this->remarksPrinted, $this->notesInternal);
     }
 
     /** @return list<DeliveryNoteLine> in order */
@@ -354,7 +365,8 @@ class DeliveryNote implements CompanyOwned
 
     private function apply(DeliveryNoteHeader $header): void
     {
-        $this->deliveryDate = $header->deliveryDate;
+        // A day a draft expects is the company's midnight, so it reads back as the same day wherever it is read.
+        $this->deliveryDate = null === $header->deliveryDate ? null : new \DateTimeImmutable($header->deliveryDate->format('Y-m-d'), $this->zone())->setTimezone(new \DateTimeZone('UTC'));
         $this->deliveryAddress = $header->deliveryAddress;
         $this->customerReference = $header->customerReference;
         $this->remarksPrinted = $header->remarksPrinted;
@@ -380,6 +392,17 @@ class DeliveryNote implements CompanyOwned
     private function reference(): string
     {
         return $this->number ?? $this->id->toRfc4122();
+    }
+
+    /** A moment's day where the company is, as the days here are held: midnight in UTC. */
+    private function localDay(\DateTimeImmutable $moment): \DateTimeImmutable
+    {
+        return self::day($moment->setTimezone($this->zone()));
+    }
+
+    private function zone(): \DateTimeZone
+    {
+        return new \DateTimeZone($this->company->getTimezone());
     }
 
     private static function day(\DateTimeImmutable $moment): \DateTimeImmutable

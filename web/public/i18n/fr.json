@@ -1944,6 +1944,7 @@
       "invoice": "Facturer ce bon",
       "invoice_part": "Facturer une partie…",
       "delivered_on": "Livré le",
+      "delivered_time": "Heure",
       "cancel": "Annuler le bon",
       "cancel_title": "Annuler ce bon ?",
       "cancel_message": "Un bon annulé ne peut plus être validé ni facturé.",

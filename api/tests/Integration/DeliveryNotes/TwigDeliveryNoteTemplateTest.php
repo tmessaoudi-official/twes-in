@@ -100,6 +100,21 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         }
     }
 
+    /**
+     * A delivered note prints when, to the minute, on its company's clock: 14:32 UTC is 15:32 in Tunis. The seconds are
+     * kept and never printed, as nobody signing a paper observed them (docs/SPEC.md § 7, 2026-09-21 17:45).
+     */
+    public function testADeliveredNotePrintsItsDayAndTimeToTheMinuteOnTheCompanysClock(): void
+    {
+        $this->note->deliver(new \DateTimeImmutable('2026-09-15 14:32:07', new \DateTimeZone('UTC')), new \DateTimeImmutable('2026-09-16 09:00:00'));
+
+        $html = $this->html(null, true, 'fr', '');
+
+        self::assertStringContainsString('15/09/2026 15:32', $html);
+        self::assertStringNotContainsString('15:32:07', $html);
+        self::assertStringNotContainsString('20/09/2026', $html, 'the day it was expected gives way to the moment it came');
+    }
+
     public function testTheCompanysDateAndNumberFormatWinOverTheLanguage(): void
     {
         $html = $this->html(null, true, 'fr', '', dateFormat: 'ymd', numberFormat: 'comma-dot');

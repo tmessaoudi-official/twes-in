@@ -32,13 +32,16 @@ final readonly class DeliverDeliveryNoteProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): DeliveryNoteResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::WRITE);
-        $deliveredOn = $data->deliveredOn;
+        $delivered = null === $data->delivered ? null : \DateTimeImmutable::createFromFormat('!'.DeliveryNoteResource::LOCAL_MOMENT, $data->delivered, new \DateTimeZone($company->getTimezone()));
+        if (false === $delivered) {
+            throw new UnprocessableEntityHttpException('delivered: not a day and a time.');
+        }
 
         try {
             $note = $this->workflow->deliver(
                 $company,
                 CompanyPath::identifier($uriVariables, 'deliveryNoteId'),
-                null === $deliveredOn ? null : new \DateTimeImmutable($deliveredOn, new \DateTimeZone('UTC')),
+                $delivered,
                 $this->guard->account()->getId(),
             );
         } catch (DeliveryNoteNotFound $absent) {
@@ -46,7 +49,9 @@ final readonly class DeliverDeliveryNoteProcessor implements ProcessorInterface
         } catch (DeliveryNoteTransitionRefused $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidDeliveryNote $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            // The moment refused is the one this request sent, under its own name.
+            $field = 'deliveredAt' === $refused->field ? 'delivered' : $refused->field;
+            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $field, $refused->getMessage()), $refused);
         }
 
         return DeliveryNoteResource::of($note, $this->totals->of($note));

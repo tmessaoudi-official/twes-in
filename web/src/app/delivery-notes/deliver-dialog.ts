@@ -9,11 +9,13 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
+import { formatTime, todayIn } from '../shared/i18n/format';
 
 /**
- * The day a note was delivered, asked when delivering rather than sitting as a field in the action bar. Empty is a
- * real answer — the API then takes today — so the dialog closes on a string, and on `null` only when nothing was
- * asked of it.
+ * When a note was delivered, asked when delivering rather than sitting as a field in the action bar. It opens on now
+ * on the company's clock (its zone is the dialog's data); left as it opened, or emptied, it closes on '' and the API
+ * stamps its own now, which a browser clock running ahead cannot push past. Changed, it closes on the moment written,
+ * `YYYY-MM-DDTHH:MM` on the company's clock; on `null` only when nothing was asked of it.
  */
 @Component({
   selector: 'app-deliver-dialog',
@@ -33,21 +35,36 @@ import { DayInput } from '../shared/form/day-input';
       {{ 'delivery_notes.actions.deliver' | translate }}
     </h2>
     <mat-dialog-content>
-      <mat-form-field subscriptSizing="dynamic" class="w-full">
-        <mat-label>{{ 'delivery_notes.actions.delivered_on' | translate }}</mat-label>
-        <input
-          matInput
-          appDay
-          #dayField="appDay"
-          type="text"
-          inputmode="numeric"
-          autocomplete="off"
-          [ngModel]="day()"
-          (ngModelChange)="day.set($event)"
-          data-testid="delivery-note-delivered-on"
-        />
-        <app-day-calendar-button matSuffix [field]="dayField" />
-      </mat-form-field>
+      <div class="flex flex-wrap gap-3 pt-2">
+        <mat-form-field subscriptSizing="dynamic" class="min-w-48 flex-1">
+          <mat-label>{{ 'delivery_notes.actions.delivered_on' | translate }}</mat-label>
+          <input
+            matInput
+            appDay
+            #dayField="appDay"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            [ngModel]="day()"
+            (ngModelChange)="day.set($event)"
+            data-testid="delivery-note-delivered-on"
+          />
+          <app-day-calendar-button matSuffix [field]="dayField" />
+        </mat-form-field>
+        <mat-form-field subscriptSizing="dynamic" class="w-32">
+          <mat-label>{{ 'delivery_notes.actions.delivered_time' | translate }}</mat-label>
+          <input
+            matInput
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            maxlength="5"
+            [ngModel]="time()"
+            (ngModelChange)="time.set($event)"
+            data-testid="delivery-note-delivered-time"
+          />
+        </mat-form-field>
+      </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="ref.close(null)" data-testid="deliver-cancel">
@@ -57,7 +74,7 @@ import { DayInput } from '../shared/form/day-input';
         mat-flat-button
         type="button"
         [disabled]="!valid()"
-        (click)="ref.close(day())"
+        (click)="ref.close(moment())"
         data-testid="delivery-note-deliver"
       >
         {{ 'delivery_notes.actions.deliver' | translate }}
@@ -67,9 +84,37 @@ import { DayInput } from '../shared/form/day-input';
 })
 export class DeliverDialog {
   protected readonly ref = inject<MatDialogRef<DeliverDialog, string | null>>(MatDialogRef);
-  protected readonly day = signal(inject<string>(MAT_DIALOG_DATA));
+  private readonly zone = inject<string | null>(MAT_DIALOG_DATA);
+  private readonly opened = {
+    day: todayIn(this.zone),
+    time: formatTime(new Date().toISOString(), 'en-GB', this.zone ?? undefined),
+  };
+  protected readonly day = signal(this.opened.day);
+  protected readonly time = signal(this.opened.time);
+
+  /** The time as the API takes it, `HH:MM`, from what was typed; null when it is not a time of day. */
+  private readonly clock = computed(() => wallClock(this.time()));
 
   protected readonly valid = computed(
-    () => this.day() === '' || /^\d{4}-\d{2}-\d{2}$/.test(this.day()),
+    () =>
+      (this.day() === '' && this.time().trim() === '') ||
+      (/^\d{4}-\d{2}-\d{2}$/.test(this.day()) && this.clock() !== null),
   );
+
+  /** '' for now, or the moment written. */
+  protected moment(): string {
+    const [day, time] = [this.day(), this.time().trim()];
+    const untouched = day === this.opened.day && time === this.opened.time;
+    return untouched || (day === '' && time === '') ? '' : `${day}T${this.clock()}`;
+  }
+}
+
+/** A time of day on 24 hours as a person writes it, « 9h05 », « 9:05 » or « 0905 », as `HH:MM`; null otherwise. */
+function wallClock(text: string): string | null {
+  const match = /^(\d{1,2})[:hH.]?(\d{2})$/.exec(text.trim());
+  if (match === null) return null;
+  const [hours, minutes] = [Number(match[1]), Number(match[2])];
+  return hours < 24 && minutes < 60
+    ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+    : null;
 }

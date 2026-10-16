@@ -29,7 +29,7 @@ final readonly class DeliveryNoteStatusCountsProvider implements ProviderInterfa
 
         return DeliveryNoteStatusCountsResource::of($this->manage->statusCounts(
             $company,
-            DeliveryNoteSearchReader::read(Paging::parameters($context), Paging::text($operation), [])->withoutStatus(),
+            DeliveryNoteSearchReader::read(Paging::parameters($context), Paging::text($operation), [], $company)->withoutStatus(),
         ));
     }
 }
