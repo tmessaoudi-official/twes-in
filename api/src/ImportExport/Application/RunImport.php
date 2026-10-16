@@ -81,6 +81,11 @@ final readonly class RunImport
         /** @var array<string, int> $firstLineOf the first line naming each identity */
         $firstLineOf = [];
         foreach ($records as $record) {
+            if (null !== $record->overflow) {
+                // Read without the value it has no column for, the row would store less than it says.
+                $rejected[] = ['line' => $record->line, 'column' => null, 'code' => 'too_many_cells', 'params' => $record->overflow, 'message' => \sprintf('The row has values in %d columns; the header has %d.', $record->overflow['count'], $record->overflow['expected'])];
+                continue;
+            }
             $identity = $declaration->identityOf($company, $record);
             if (null !== $identity && isset($firstLineOf[$identity->key])) {
                 $rejected[] = ['line' => $record->line, 'column' => $identity->column, 'code' => 'duplicate_in_file', 'params' => ['line' => $firstLineOf[$identity->key]], 'message' => \sprintf('Line %d of the file already has this %s.', $firstLineOf[$identity->key], $identity->named)];
@@ -119,6 +124,7 @@ final readonly class RunImport
     private function records(ImportSubject $subject, iterable $rows): array
     {
         $header = null;
+        $width = 0;
         $records = [];
         $blank = 0;
         foreach ($rows as $line => $cells) {
@@ -133,6 +139,7 @@ final readonly class RunImport
             }
             if (null === $header) {
                 $header = $this->header($subject, $cells);
+                $width = \count($cells);
                 continue;
             }
             if (\count($records) === $this->maxRows) {
@@ -142,7 +149,9 @@ final readonly class RunImport
             foreach ($header as $position => $key) {
                 $values[$key] = $cells[$position] ?? '';
             }
-            $records[] = new ImportRecord($line, $values);
+            // A blank header cell is a column ignored, so only a value past the header row itself has nowhere to go.
+            $last = array_key_last(array_filter($cells, static fn (string $cell): bool => '' !== $cell)) ?? 0;
+            $records[] = new ImportRecord($line, $values, $last >= $width ? ['count' => $last + 1, 'expected' => $width] : null);
         }
 
         if ([] === $records) {

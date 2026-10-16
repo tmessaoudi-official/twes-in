@@ -196,6 +196,16 @@ final class RunImportTest extends TestCase
         self::assertSame(['number' => 'A-1', 'name' => 'Alpha'], $this->declaration->seen[2]);
     }
 
+    /** A value past the header's last column has no column to go to: the row is refused, never read without it. */
+    public function testARowWithValuesPastTheHeaderIsRefusedNamingHowMany(): void
+    {
+        $report = $this->importRows([1 => ['number', 'name', ''], 2 => ['A-1', 'Alpha', '', 'Lyon', ''], 3 => ['A-2', 'Beta', '', '', ''], 4 => ['A-3', 'Gamma', 'stray']]);
+
+        self::assertSame([3, 4], $report->created, 'blank cells past the header, and a value under a blank header cell, are no values');
+        self::assertSame([['line' => 2, 'column' => null, 'code' => 'too_many_cells', 'params' => ['count' => 4, 'expected' => 3], 'message' => 'The row has values in 4 columns; the header has 3.']], $report->rejected);
+        self::assertArrayNotHasKey(2, $this->declaration->seen, 'the row never reaches the subject');
+    }
+
     /**
      * @param array<int, list<string>> $rows
      * @param list<string>             $ticked
