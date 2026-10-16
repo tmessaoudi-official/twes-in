@@ -60,6 +60,7 @@ const options: ProductOptions = {
 };
 const laptop: ProductRow = {
   id: 'p1',
+  version: 1,
   reference: 'ART-001',
   name: 'Portable 14"',
   description: null,
@@ -490,6 +491,44 @@ describe('ProductPage', () => {
     expect(facade.loadSubstitutionGroups).not.toHaveBeenCalled();
   });
 
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    product.set(laptop);
+    await open('p1');
+    facade.reviseProduct.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.clearError.mockImplementationOnce(() => error.set(null));
+    facade.loadProduct.mockImplementationOnce(async () =>
+      product.set({ ...laptop, version: 2, name: 'Portable 15"' }),
+    );
+
+    type('field-unitPriceNet', '1300');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect((q('field-name') as HTMLInputElement).value).toBe('Portable 15"'),
+    );
+
+    expect((q('field-unitPriceNet') as HTMLInputElement).value).toBe('1300');
+    expect(q('product-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseProduct).toHaveBeenLastCalledWith(
+      'c1',
+      'p1',
+      expect.objectContaining({ unitPriceNet: '1300', name: 'Portable 15"' }),
+      2,
+    );
+  });
+
   it('revises a product shown at the currency scale and says it was saved', async () => {
     product.set(laptop);
     await open('p1');
@@ -507,6 +546,7 @@ describe('ProductPage', () => {
       'c1',
       'p1',
       expect.objectContaining({ unitPriceNet: '1300', defaultTaxComponentIds: ['t1'] }),
+      1,
     );
     expect(successToasts()).toContain('products.saved');
 
@@ -732,6 +772,7 @@ describe('ProductPage', () => {
       'c1',
       'p1',
       expect.objectContaining({ unitPriceNet: '1300' }),
+      1,
     );
   });
 

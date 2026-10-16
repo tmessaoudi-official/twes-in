@@ -53,6 +53,7 @@ const gaming: ProductCategoryRow = {
 };
 const laptop: ProductRow = {
   id: 'p1',
+  version: 1,
   reference: 'ART-001',
   name: 'Portable 14"',
   description: 'Processeur 8 cœurs',

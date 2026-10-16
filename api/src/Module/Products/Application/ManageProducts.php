@@ -38,6 +38,8 @@ use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\Tree;
 use App\Shared\Domain\ValueObject\Page;
@@ -74,6 +76,7 @@ final readonly class ManageProducts
         private ReadSetting $settings,
         private ProductCostChangeRepository $costChanges,
         private ProductReferences $references,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -178,15 +181,21 @@ final readonly class ManageProducts
     }
 
     /**
+     * `$version` is the one the editor opened; an import, which revises what it finds, names none.
+     *
      * @throws ProductNotFound
      * @throws ProductReferenceTaken
      * @throws ProductBarcodeTaken
      * @throws InvalidProduct
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, ProductInput $input, ?Uuid $actorUserId): Product
+    public function revise(Company $company, Uuid $id, ProductInput $input, ?Uuid $actorUserId, ?int $version = null): Product
     {
-        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Product {
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): Product {
             $product = $this->get($company, $id);
+            if (null !== $version) {
+                $this->versions->expect($product, $version);
+            }
             $holder = $this->products->ofReferenceInCompany(trim($input->reference), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($product->getId())) {
                 throw new ProductReferenceTaken();

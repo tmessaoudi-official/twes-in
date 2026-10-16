@@ -140,7 +140,7 @@ final class ProductsTest extends ApiTestCase
 
         // A revision refuses in the same shape.
         $id = $this->created($this->product());
-        $this->sendJson('PUT', $this->path($id), $this->product(['unitId' => $absent]));
+        $this->sendJson('PUT', $this->path($id), $this->product(['version' => 1, 'unitId' => $absent]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame([['propertyPath' => 'unitId', 'reason' => 'unknown_choice', 'params' => []]], $this->refusals());
     }
@@ -168,7 +168,7 @@ final class ProductsTest extends ApiTestCase
         $this->postJson($this->path(), $this->product(['reference' => '', 'name' => 'Third']));
         self::assertSame('ART-00003', $this->json()['reference']);
 
-        $this->sendJson('PUT', $this->path($createdId), $this->product(['reference' => '']));
+        $this->sendJson('PUT', $this->path($createdId), $this->product(['version' => 1, 'reference' => '']));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a product keeps a reference');
         self::assertStringContainsString('reference', (string) $this->client->getResponse()->getContent());
         $this->getJson($this->companyPath().'/product-reference-preview');
@@ -255,7 +255,7 @@ final class ProductsTest extends ApiTestCase
         self::assertSame($codes, $this->json()['barcodes']);
         self::assertSame('{"fields": ["barcodes"]}', $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'product.revised'"));
 
-        $this->sendJson('PUT', $this->path($id), $this->product(['name' => 'Renommé', 'barcodes' => []]));
+        $this->sendJson('PUT', $this->path($id), $this->product(['version' => 2, 'name' => 'Renommé', 'barcodes' => []]));
         self::assertResponseIsSuccessful();
         self::assertSame($codes, $this->json()['barcodes'], 'a revision of the product keeps its codes, whatever it sends');
         $this->getJson($this->path($id));
@@ -370,13 +370,72 @@ final class ProductsTest extends ApiTestCase
         $this->postJson($this->path(), $this->product());
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id), $this->product(['unitPriceNet' => '1300', 'unitId' => $this->unitId('HUR'), 'kind' => 'service', 'isActive' => false]));
+        $this->sendJson('PUT', $this->path($id), $this->product(['version' => 1, 'unitPriceNet' => '1300', 'unitId' => $this->unitId('HUR'), 'kind' => 'service', 'isActive' => false]));
 
         self::assertResponseIsSuccessful();
         self::assertSame(['1300.0000', 'service', false], [$this->json()['unitPriceNet'], $this->json()['kind'], $this->json()['isActive']]);
         $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'product.revised'");
         self::assertIsString($changes);
         self::assertSame(['fields' => ['kind', 'unitPriceNet', 'unitId', 'isActive']], json_decode($changes, true));
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->postJson($this->path(), $this->product());
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->product(['version' => 1, 'unitPriceNet' => '1300']));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->product(['version' => 1, 'unitPriceNet' => '1400']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path($id));
+        self::assertSame(['1300.0000', 2], [$this->json()['unitPriceNet'], $this->json()['version']]);
+    }
+
+    public function testAChangeOfItsCodesMovesTheVersionTheProductFormIsCheckedAgainst(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->postJson($this->path(), $this->product());
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id).'/barcodes', ['barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->path($id));
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->product(['version' => 1, 'name' => 'Renommé']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->postJson($this->path(), $this->product());
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->product(['version' => 1]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+    }
+
+    public function testARevisionSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->postJson($this->path(), $this->product());
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->product(['unitPriceNet' => '1300']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     public function testAProductsCustomFieldsAreTheCompanysFieldsForProducts(): void
@@ -418,7 +477,7 @@ final class ProductsTest extends ApiTestCase
         $this->login('reader@twes.local', 'password-1234');
         $this->getJson($this->path($mine));
         self::assertResponseIsSuccessful();
-        $this->sendJson('PUT', $this->path($mine), $this->product());
+        $this->sendJson('PUT', $this->path($mine), $this->product(['version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson($this->path(), $this->product(['reference' => 'ART-002']));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

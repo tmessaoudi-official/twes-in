@@ -253,6 +253,7 @@ describe('ProductsApi', () => {
     const pending = api.product('c1', 'p 1');
     http.expectOne('/api/companies/c1/products/p%201').flush({
       id: 'p 1',
+      version: 4,
       reference: 'ART-001',
       name: 'Portable',
       kind: 'service',
@@ -263,6 +264,7 @@ describe('ProductsApi', () => {
 
     expect(await pending).toEqual({
       id: 'p 1',
+      version: 4,
       reference: 'ART-001',
       name: 'Portable',
       description: null,
@@ -416,11 +418,29 @@ describe('ProductsApi', () => {
     post.flush({ ...laptop, id: 'p1', unitPriceNet: '1250.5000' });
     expect((await created).unitPriceNet).toBe('1250.5000');
 
-    const revised = api.reviseProduct('c1', 'p1', laptop);
+    const revised = api.reviseProduct('c1', 'p1', laptop, 2);
     const put = http.expectOne('/api/companies/c1/products/p1');
     expect(put.request.method).toBe('PUT');
-    put.flush({ ...laptop, id: 'p1' });
-    await revised;
+    expect(put.request.body).toEqual({ ...laptop, version: 2 });
+    put.flush({ ...laptop, id: 'p1', version: 3 });
+    expect((await revised).version).toBe(3);
+  });
+
+  it('tells a version saved since from a reference taken', async () => {
+    const changed = api.reviseProduct('c1', 'p1', laptop, 2);
+    http
+      .expectOne('/api/companies/c1/products/p1')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toMatchObject({ code: 'record_changed' });
+
+    const taken = api.reviseProduct('c1', 'p1', laptop, 2);
+    http
+      .expectOne('/api/companies/c1/products/p1')
+      .flush({ type: '/errors/409' }, { status: 409, statusText: 'Conflict' });
+    await expect(taken).rejects.toMatchObject({ code: 'reference_taken' });
   });
 
   it('reads one page of products as the API searched, narrowed and sorted it, with the total', async () => {
@@ -457,7 +477,7 @@ describe('ProductsApi', () => {
   });
 
   it('answers each refusal with the code the screens translate', async () => {
-    const kept = api.reviseProduct('c1', 'p1', { ...laptop, tracking: 'lot' });
+    const kept = api.reviseProduct('c1', 'p1', { ...laptop, tracking: 'lot' }, 1);
     http.expectOne('/api/companies/c1/products/p1').flush(
       {
         detail: 'tracking: Stock of ART-001 was moved without lots, so it stays that way.',
@@ -500,7 +520,7 @@ describe('ProductsApi', () => {
       .flush(null, { status: 409, statusText: 'Conflict' });
     await expect(taken).rejects.toEqual(new ProductsRefused('reference_taken'));
 
-    const invalid = api.reviseProduct('c1', 'p1', laptop);
+    const invalid = api.reviseProduct('c1', 'p1', laptop, 1);
     http
       .expectOne('/api/companies/c1/products/p1')
       .flush(null, { status: 422, statusText: 'Unprocessable' });

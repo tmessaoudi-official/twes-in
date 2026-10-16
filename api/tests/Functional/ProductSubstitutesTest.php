@@ -89,12 +89,12 @@ final class ProductSubstitutesTest extends ApiTestCase
         $id = $this->stringAt($this->json(), 'id');
 
         $body = ['reference' => 'KB-1', 'name' => 'Clavier', 'kind' => 'goods', 'unitId' => $this->unit->getId()->toRfc4122(), 'unitPriceNet' => '10'];
-        $this->sendJson('PUT', $this->path($id), [...$body, 'substitutionGroup' => null]);
+        $this->sendJson('PUT', $this->path($id), [...$body, 'version' => 1, 'substitutionGroup' => null]);
         self::assertResponseIsSuccessful();
         self::assertNull($this->json()['substitutionGroup']);
         self::assertSame('{"fields": ["substitutionGroup"]}', $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'product.revised'"));
 
-        $this->sendJson('PUT', $this->path($id), [...$body, 'substitutionGroup' => str_repeat('a', 81)]);
+        $this->sendJson('PUT', $this->path($id), [...$body, 'version' => 2, 'substitutionGroup' => str_repeat('a', 81)]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('substitutionGroup', (string) $this->client->getResponse()->getContent());
     }

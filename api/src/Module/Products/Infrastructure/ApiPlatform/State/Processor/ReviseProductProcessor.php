@@ -38,7 +38,7 @@ final readonly class ReviseProductProcessor implements ProcessorInterface
 
         try {
             $seesCosts = $this->guard->may($company, ProductPermission::COST_READ);
-            $product = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'productId'), $data->input($seesCosts), $this->guard->account()->getId());
+            $product = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'productId'), $data->input($seesCosts), $this->guard->account()->getId(), $data->version);
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException('No such product.', $absent);
         } catch (ProductReferenceTaken|ProductBarcodeTaken $taken) {

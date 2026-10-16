@@ -49,6 +49,7 @@ use App\Tests\Support\InMemoryProductCostChanges;
 use App\Tests\Support\InMemoryProductReferenceSequences;
 use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemoryProductStockHistory;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
@@ -93,7 +94,7 @@ final class ManageProductsTest extends TestCase
         $this->costHistory = new InMemoryProductCostChanges();
         $products = new InMemoryProducts();
         $this->references = new ProductReferences(new InMemoryProductReferenceSequences(), $products, $this->categories, new ReadSetting($resolve), $transactions);
-        $this->manage = new ManageProducts($products, $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions, $this->vendors, new ReadSetting($resolve), $this->costHistory, $this->references);
+        $this->manage = new ManageProducts($products, $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions, $this->vendors, new ReadSetting($resolve), $this->costHistory, $this->references, new InMemoryRecordVersions());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);
