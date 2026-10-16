@@ -170,7 +170,7 @@ final class VendorsTest extends ApiTestCase
         $this->postJson($this->path(), $this->vendor());
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id), $this->vendor(['email' => 'compta@sotumag.tn', 'city' => 'Sfax', 'isActive' => false]));
+        $this->sendJson('PUT', $this->path($id), $this->vendor(['version' => 1, 'email' => 'compta@sotumag.tn', 'city' => 'Sfax', 'isActive' => false]));
 
         self::assertResponseIsSuccessful();
         self::assertFalse($this->json()['isActive']);
@@ -178,6 +178,49 @@ final class VendorsTest extends ApiTestCase
         $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'vendor.revised'");
         self::assertIsString($changes);
         self::assertSame(['fields' => ['email', 'address', 'isActive']], json_decode($changes, true));
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->postJson($this->path(), $this->vendor());
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->vendor(['version' => 1, 'city' => 'Sfax']));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->vendor(['version' => 1, 'city' => 'Sousse']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path($id));
+        self::assertSame(['Sfax', 2], [$this->json()['city'], $this->json()['version']]);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->postJson($this->path(), $this->vendor());
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->vendor(['version' => 1]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+    }
+
+    public function testARevisionSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->postJson($this->path(), $this->vendor());
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->vendor(['city' => 'Sfax']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     public function testAReaderOnlyReadsAndSomeoneSignedOutReadsNothing(): void
@@ -194,7 +237,7 @@ final class VendorsTest extends ApiTestCase
         $this->login('reader@twes.local', 'password-1234');
         $this->getJson($this->path($mine));
         self::assertResponseIsSuccessful();
-        $this->sendJson('PUT', $this->path($mine), $this->vendor());
+        $this->sendJson('PUT', $this->path($mine), $this->vendor(['version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson($this->path(), $this->vendor(['number' => 'FRN-0002']));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
@@ -210,7 +253,7 @@ final class VendorsTest extends ApiTestCase
 
         $this->getJson($this->path($theirs->getId()->toRfc4122()));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        $this->sendJson('PUT', $this->path($theirs->getId()->toRfc4122()), $this->vendor());
+        $this->sendJson('PUT', $this->path($theirs->getId()->toRfc4122()), $this->vendor(['version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/vendors');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

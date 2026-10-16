@@ -31,7 +31,7 @@ const input: VendorInput = {
   isActive: true,
   defaultExpenseCategoryId: null,
 };
-const sotumag: VendorRow = { ...input, id: 'v1' };
+const sotumag: VendorRow = { ...input, id: 'v1', version: 1 };
 const options: VendorOptions = { countryCode: 'TN', identifiers: [], expenseCategories: null };
 
 // The proof dialog is answered by the test; `retrying` itself is StepUp's own.
@@ -107,18 +107,18 @@ describe('VendorsFacade', () => {
     expect(facade.busy()).toBe(false);
 
     api.reviseVendor.mockResolvedValue(sotumag);
-    expect(await facade.reviseVendor('c1', 'v1', input)).toEqual(sotumag);
+    expect(await facade.reviseVendor('c1', 'v1', input, 1)).toEqual(sotumag);
     expect([facade.error(), facade.vendor()]).toEqual([null, sotumag]);
   });
 
   it('keeps the fields a save was refused on until the next save', async () => {
     const iban = { field: 'iban', reason: 'invalid_iban', params: {} };
     api.reviseVendor.mockRejectedValueOnce(new VendorsRefused('invalid', [iban]));
-    expect(await facade.reviseVendor('c1', 'v1', input)).toBeNull();
+    expect(await facade.reviseVendor('c1', 'v1', input, 1)).toBeNull();
     expect(facade.refusals()).toEqual([iban]);
 
     api.reviseVendor.mockResolvedValueOnce(sotumag);
-    await facade.reviseVendor('c1', 'v1', input);
+    await facade.reviseVendor('c1', 'v1', input, 1);
     expect(facade.refusals()).toEqual([]);
   });
 
@@ -129,7 +129,7 @@ describe('VendorsFacade', () => {
       .mockRejectedValueOnce(new VendorsRefused('step_up_required'))
       .mockResolvedValueOnce(sotumag);
 
-    expect(await facade.reviseVendor('c1', 'v1', input)).toEqual(sotumag);
+    expect(await facade.reviseVendor('c1', 'v1', input, 1)).toEqual(sotumag);
     expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
     expect(api.reviseVendor).toHaveBeenCalledTimes(2);
   });

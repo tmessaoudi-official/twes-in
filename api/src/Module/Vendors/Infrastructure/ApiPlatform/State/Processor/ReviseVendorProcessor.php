@@ -49,7 +49,7 @@ final readonly class ReviseVendorProcessor implements ProcessorInterface
             if (null !== $held && $input->profile->changesBankDetailsOf($held->getProfile())) {
                 $this->proof->demand($this->guard->account()->getId());
             }
-            $vendor = $this->manage->revise($company, $vendorId, $input, $this->guard->account()->getId());
+            $vendor = $this->manage->revise($company, $vendorId, $input, $this->guard->account()->getId(), $data->version);
         } catch (VendorNotFound $absent) {
             throw new NotFoundHttpException('No such vendor.', $absent);
         } catch (VendorNumberTaken $taken) {

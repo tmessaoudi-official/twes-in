@@ -73,8 +73,13 @@ export class VendorsFacade {
     return this.save(() => this.api.createVendor(companyId, input));
   }
 
-  async reviseVendor(companyId: string, id: string, input: VendorInput): Promise<VendorRow | null> {
-    return this.save(() => this.api.reviseVendor(companyId, id, input));
+  async reviseVendor(
+    companyId: string,
+    id: string,
+    input: VendorInput,
+    version: number | null,
+  ): Promise<VendorRow | null> {
+    return this.save(() => this.api.reviseVendor(companyId, id, input, version));
   }
 
   clearError(): void {

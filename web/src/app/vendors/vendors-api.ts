@@ -8,6 +8,7 @@ import type {
   VendorJsonldVendorRead,
   VendorOptionsVendorOptionsRead,
   VendorVendorRead,
+  VendorVendorWriteRecordReviseValidationVendorWriteRecordRevise as VendorVendorRevise,
   VendorVendorWriteValidationVendorWrite as VendorVendorWrite,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
@@ -22,6 +23,7 @@ import type {
   VendorsError,
 } from './vendors-types';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
+import { isRecordChanged } from '../shared/errors/record-changed';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class VendorsRefused extends Error {
@@ -92,12 +94,17 @@ export class VendorsApi {
     );
   }
 
-  async reviseVendor(companyId: string, id: string, input: VendorInput): Promise<VendorRow> {
+  /** `version` is the one the form was opened at: a later one saved elsewhere answers `record_changed`. */
+  async reviseVendor(
+    companyId: string,
+    id: string,
+    input: VendorInput,
+    version: number | null,
+  ): Promise<VendorRow> {
+    const body: VendorVendorRevise = { ...toVendorBody(input), version };
     return this.guard(async () =>
       toVendor(
-        await firstValueFrom(
-          this.http.put<VendorVendorRead>(path(companyId, 'vendors', id), toVendorBody(input)),
-        ),
+        await firstValueFrom(this.http.put<VendorVendorRead>(path(companyId, 'vendors', id), body)),
       ),
     );
   }
@@ -121,7 +128,7 @@ function codeOf(error: unknown): VendorsError {
     case 404:
       return 'not_found';
     case 409:
-      return 'number_taken';
+      return isRecordChanged(error.error) ? 'record_changed' : 'number_taken';
     default:
       return 'invalid';
   }
@@ -145,6 +152,8 @@ function toSearchParams(search: VendorSearch): HttpParams {
 function toVendor(raw: VendorVendorRead | VendorJsonldVendorRead): VendorRow {
   return {
     id: raw.id ?? '',
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
     number: raw.number ?? '',
     name: raw.name ?? '',
     legalName: raw.legalName ?? null,

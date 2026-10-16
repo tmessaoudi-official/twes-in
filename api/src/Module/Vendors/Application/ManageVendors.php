@@ -17,6 +17,8 @@ use App\Module\Vendors\Domain\Exception\InvalidVendor;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\Module\Vendors\Domain\ValueObject\VendorSearch;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
@@ -43,6 +45,7 @@ final readonly class ManageVendors
         private ClockInterface $clock,
         private ExpenseCategoryDirectory $expenseCategories,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -87,14 +90,20 @@ final readonly class ManageVendors
     }
 
     /**
+     * `$version` is the one the editor opened; an import, which revises what it finds, names none.
+     *
      * @throws VendorNotFound
      * @throws VendorNumberTaken
      * @throws InvalidVendor
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, VendorInput $input, ?Uuid $actorUserId): Vendor
+    public function revise(Company $company, Uuid $id, VendorInput $input, ?Uuid $actorUserId, ?int $version = null): Vendor
     {
-        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Vendor {
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): Vendor {
             $vendor = $this->get($company, $id);
+            if (null !== $version) {
+                $this->versions->expect($vendor, $version);
+            }
             $holder = $this->vendors->ofNumberInCompany(trim($input->number), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($vendor->getId())) {
                 throw new VendorNumberTaken();
