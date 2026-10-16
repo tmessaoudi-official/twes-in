@@ -99,6 +99,7 @@ final class DemoFixturesTest extends ApiTestCase
                 $this->column('SELECT DISTINCT status FROM delivery_note WHERE company_id = ? ORDER BY status', [$id]),
                 "$name has a delivery note in every state",
             );
+            self::assertSame(1, $this->numberOf("SELECT COUNT(*) FROM delivery_note WHERE company_id = ? AND status = 'delivered' AND issue_date = delivery_date", [$id]), "$name has a note validated and delivered in one step");
             self::assertSame(['draft', 'paid', 'recorded'], $this->column('SELECT DISTINCT status FROM expense WHERE company_id = ? ORDER BY status', [$id]));
             self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM recurring_expense WHERE company_id = ? AND variable_amount AND NOT paused AND drafted > 0 AND next_on > CURRENT_DATE', [$id]), "$name has a monthly bill that recurs and has drafted");
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM expense WHERE company_id = ? AND status = 'draft' AND amount_to_check", [$id]), "$name has a draft whose amount is to be checked");

@@ -522,7 +522,7 @@ final class DemoCompanies extends Fixture
      */
     private function planDeliveryNotes(Timeline $timeline, \Closure $company, array $customerIds, array $goods, array $tracked, Uuid $actor): void
     {
-        /** @var list<array{customer: int, day: int, validate: bool, deliver?: int, cancel?: int, invoice?: int}> $plan */
+        /** @var list<array{customer: int, day: int, validate: bool, deliver?: int, cancel?: int, invoice?: int, both?: true}> $plan */
         $plan = [
             ['customer' => 0, 'day' => -120, 'validate' => true, 'deliver' => -118, 'invoice' => -110],
             ['customer' => 7, 'day' => -80, 'validate' => true, 'deliver' => -78],
@@ -530,6 +530,8 @@ final class DemoCompanies extends Fixture
             ['customer' => 9, 'day' => -40, 'validate' => true],
             ['customer' => 12, 'day' => -25, 'validate' => true, 'deliver' => -24],
             ['customer' => 2, 'day' => -8, 'validate' => false],
+            // Numbered and delivered in the one step « Valider et livrer » takes, as the goods leave at once.
+            ['customer' => 5, 'day' => -15, 'validate' => false, 'both' => true],
         ];
         /** @var array<int, Uuid> $ids */
         $ids = [];
@@ -546,6 +548,9 @@ final class DemoCompanies extends Fixture
                 $ids[$n] = $this->deliveryNotes->create($company(), new DeliveryNoteInput($customerId, null, new DeliveryNoteHeader(), $lines), $actor)->getId();
                 if ($note['validate']) {
                     $this->deliveryNoteWorkflow->validate($company(), $ids[$n], $actor);
+                }
+                if (isset($note['both'])) {
+                    $this->deliveryNoteWorkflow->validateAndDeliver($company(), $ids[$n], $actor);
                 }
             });
             if (isset($note['deliver'])) {
