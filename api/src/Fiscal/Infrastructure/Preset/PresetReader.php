@@ -133,12 +133,19 @@ final readonly class PresetReader
             if ([] !== $foreign && 1 !== preg_match('/^\^.*\$$/', $pattern)) {
                 $this->refuse("$path.pattern", 'must be anchored at both ends when other states\' patterns join it');
             }
+            $check = \is_string($node['check'] ?? null) ? IdentifierCheck::from($node['check']) : null;
+            // Shown to whoever fills in a file, so it is a number the preset itself accepts.
+            $example = $this->string($node, 'example', "$path.example");
+            if (1 !== preg_match("\x01".$pattern."\x01u", $example) || (null !== $check && !$check->accepts($example))) {
+                $this->refuse("$path.example", 'must be a number the pattern and the check accept');
+            }
             $identifiers[] = new PresetIdentifier(
                 $this->string($node, 'key', "$path.key"),
                 $this->translationKey($node, 'label_key', "$path.label_key"),
                 $pattern,
+                $example,
                 $this->strings($node, 'required_for', "$path.required_for"),
-                \is_string($node['check'] ?? null) ? IdentifierCheck::from($node['check']) : null,
+                $check,
                 $foreign,
             );
         }

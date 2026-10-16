@@ -54,6 +54,7 @@ final class FiscalPresetConfiguration implements ConfigurationInterface
                         ->scalarNode('key')->isRequired()->cannotBeEmpty()->end()
                         ->scalarNode('label_key')->isRequired()->cannotBeEmpty()->end()
                         ->scalarNode('pattern')->isRequired()->cannotBeEmpty()->end()
+                        ->scalarNode('example')->isRequired()->cannotBeEmpty()->end()
                         ->arrayNode('required_for')->scalarPrototype()->end()->end()
                         ->enumNode('check')->values(array_map(static fn (IdentifierCheck $check) => $check->value, IdentifierCheck::cases()))->end()
                         ->arrayNode('foreign_patterns')->normalizeKeys(false)->useAttributeAsKey('prefix')->scalarPrototype()->end()->end()

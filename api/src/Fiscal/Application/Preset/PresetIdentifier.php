@@ -16,6 +16,7 @@ final readonly class PresetIdentifier
 {
     /**
      * @param string                $pattern         a regular expression the whole value matches, without delimiters
+     * @param string                $example         a number the pattern and the check accept, which a guide shows
      * @param list<string>          $requiredFor     who must carry it: company, business_customer
      * @param array<string, string> $foreignPatterns the same number as other states issue it, by the prefix it starts
      *                                               with: a customer or a supplier abroad holds its own country's, the
@@ -25,6 +26,7 @@ final readonly class PresetIdentifier
         public string $key,
         public string $labelKey,
         public string $pattern,
+        public string $example,
         public array $requiredFor,
         public ?IdentifierCheck $check = null,
         public array $foreignPatterns = [],

@@ -14,6 +14,7 @@ use App\CustomFields\Domain\CustomFieldDefinitionRepository;
 use App\CustomFields\Domain\CustomFieldEntity;
 use App\CustomFields\Domain\CustomFieldType;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\ImportExport\Application\DeclaresImport;
 use App\ImportExport\Application\ImportColumn;
@@ -158,14 +159,12 @@ final readonly class CustomerImport implements DeclaresImport
 
         $written = null;
         try {
-            if (null === $existing) {
-                $written = $this->manage->create($company, $this->input($company, $record, null), $actorUserId);
+            $written = null === $existing
+                ? $this->manage->create($company, $this->input($company, $record, null), $actorUserId)
+                : $this->manage->revise($company, $existing->getId(), $this->input($company, $record, $existing), $actorUserId);
+            $this->noteMissingIdentifiers($company, $written, $notes);
 
-                return RowImported::Created;
-            }
-            $written = $this->manage->revise($company, $existing->getId(), $this->input($company, $record, $existing), $actorUserId);
-
-            return RowImported::Updated;
+            return null === $existing ? RowImported::Created : RowImported::Updated;
         } catch (InvalidCustomer $refused) {
             throw new RowRejected(self::columnOf($refused->field), $refused->getMessage(), $refused->reason, $refused->params);
         } catch (CustomerNumberTaken) {
@@ -193,14 +192,18 @@ final readonly class CustomerImport implements DeclaresImport
         $profile = $current?->getProfile();
         $kind = $record->value('kind');
         $identifiers = $profile->identifiers ?? [];
+        $carriesOne = false;
         foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
+            $carriesOne = $carriesOne || null !== $record->value($identifier->key);
             $identifiers[$identifier->key] = $record->value($identifier->key) ?? $identifiers[$identifier->key] ?? null;
         }
+        // A row silent on its kind is a business when it names one by its registration number, and a person otherwise.
+        $blankKind = $profile->kind ?? ($carriesOne ? CustomerKind::Company : CustomerKind::Individual);
 
         return new CustomerInput(
             $record->value('number') ?? '',
             new CustomerProfile(
-                null === $kind ? ($profile->kind ?? CustomerKind::Company) : (CustomerKind::tryFrom(strtolower($kind)) ?? throw new RowRejected('kind', 'A customer is a "company" or an "individual".', 'not_one_of', ['choices' => implode(', ', array_column(CustomerKind::cases(), 'value'))])),
+                null === $kind ? $blankKind : (CustomerKind::tryFrom(strtolower($kind)) ?? throw new RowRejected('kind', 'A customer is a "company" or an "individual".', 'not_one_of', ['choices' => implode(', ', array_column(CustomerKind::cases(), 'value'))])),
                 $record->value('name') ?? $profile->name ?? '',
                 $record->value('legal_name') ?? $profile?->legalName,
                 $identifiers,
@@ -217,7 +220,22 @@ final readonly class CustomerImport implements DeclaresImport
             $this->taxIds($company, $record, $current),
             self::yesNo($record, 'active') ?? $current?->isActive() ?? true,
             $this->customValues($company, $record, $current),
+            identifiersMayFollow: true,
         );
+    }
+
+    /** A business customer stored without the number the preset requires of one: it cannot be invoiced until it has it. */
+    private function noteMissingIdentifiers(Company $company, Customer $written, RowNotes $notes): void
+    {
+        $profile = $written->getProfile();
+        if (!$profile->isDomesticBusiness($company->getCountryCode())) {
+            return;
+        }
+        foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
+            if (\in_array(IdentifierRules::BUSINESS_CUSTOMER, $identifier->requiredFor, true) && !isset($profile->identifiers[$identifier->key])) {
+                $notes->note($identifier->key, 'identifier_missing', ['identifier' => $identifier->key]);
+            }
+        }
     }
 
     /** The address the row fills in over the one held, in the company's country when neither names one. */
@@ -333,7 +351,7 @@ final readonly class CustomerImport implements DeclaresImport
     {
         $columns = [];
         foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
-            $columns[] = new ImportColumn($identifier->key, $identifier->labelKey, false, null, 'import.identifier_note', ImportHeading::FiscalLabel);
+            $columns[] = new ImportColumn($identifier->key, $identifier->labelKey, false, $identifier->example, 'import.identifier_note', ImportHeading::FiscalLabel);
         }
 
         return $columns;

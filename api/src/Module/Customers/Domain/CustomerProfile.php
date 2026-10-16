@@ -12,6 +12,7 @@ namespace App\Module\Customers\Domain;
 use App\Shared\Domain\ContactRules;
 use App\Shared\Domain\PostalAddress;
 use App\Shared\Domain\Refusal;
+use App\Shared\Domain\RegistrationNumbers;
 use BcMath\Number;
 
 /**
@@ -66,15 +67,7 @@ final readonly class CustomerProfile
         }
         $this->name = $name;
         $this->legalName = self::text($legalName);
-        $kept = [];
-        foreach ($identifiers as $key => $value) {
-            $value = self::text($value);
-            if (null !== $value) {
-                $kept[(string) $key] = $value;
-            }
-        }
-        ksort($kept, \SORT_STRING);
-        $this->identifiers = $kept;
+        $this->identifiers = RegistrationNumbers::kept($identifiers);
         $this->email = self::text($email);
         $this->phone = self::text($phone);
         $this->website = self::text($website);

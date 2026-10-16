@@ -169,6 +169,9 @@ final class YamlFiscalPresetsTest extends TestCase
         yield 'a name missing its English' => ['tax_components.0.names.en', self::REMOVE, 'en'];
         yield 'an identifier pattern that does not compile' => ['identifiers.0.pattern', '([0-9]', 'pattern'];
         yield 'an identifier check the product does not implement' => ['identifiers.0.check', 'mod23', 'check'];
+        yield 'an identifier without the example a guide shows' => ['identifiers.0.example', self::REMOVE, 'example'];
+        yield 'an identifier example its own pattern refuses' => ['identifiers.0.example', '1234567A', 'example'];
+        yield 'an identifier example its own check refuses' => ['identifiers.0.check', 'luhn', 'example'];
         yield 'a foreign pattern for the preset’s own country' => ['identifiers.0.foreign_patterns', ['TN' => '^TN[0-9]{9}$'], 'foreign_patterns.TN'];
         yield 'a foreign pattern that is not its prefix’s' => ['identifiers.0.foreign_patterns', ['DE' => '^AT[0-9]{9}$'], 'foreign_patterns.DE'];
         yield 'a foreign pattern open at its end' => ['identifiers.0.foreign_patterns', ['DE' => '^DE[0-9]{9}'], 'foreign_patterns.DE'];

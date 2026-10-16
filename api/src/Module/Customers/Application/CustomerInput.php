@@ -18,6 +18,10 @@ final readonly class CustomerInput
     /**
      * @param list<Uuid>              $defaultTaxComponentIds
      * @param array<array-key, mixed> $customFields           values by the company's custom field keys, checked by the use case
+     * @param bool                    $identifiersMayFollow   a file's business customer may come without the registration
+     *                                                        number the preset requires of one: the law asks for it on the
+     *                                                        invoice, where it is refused, and a shop's trade customers
+     *                                                        would otherwise be as many refused rows
      */
     public function __construct(
         public string $number,
@@ -27,6 +31,7 @@ final readonly class CustomerInput
         public array $defaultTaxComponentIds,
         public bool $isActive,
         public array $customFields = [],
+        public bool $identifiersMayFollow = false,
     ) {
     }
 }
