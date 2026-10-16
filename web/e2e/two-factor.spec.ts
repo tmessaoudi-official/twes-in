@@ -157,7 +157,7 @@ test('a company that requires two-step verification sends its owner to set it up
   page,
   request,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(210_000);
   const owner = `mfa-owner-${Date.now()}@twes.local`;
   const name = `Secure ${Date.now()}`;
 
@@ -218,6 +218,17 @@ test('a company that requires two-step verification sends its owner to set it up
   await page.getByTestId('two-factor-continue').click();
   await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
 
+  // Every factor can be removed but the last one a company requires (docs/SPEC.md § 7, 2026-09-22 09:12).
+  await page.goto('/two-factor');
+  await page.getByTestId('two-factor-app-remove').click();
+  const refused = page.getByTestId('two-factor-app-remove-error');
+  await proveIfAsked(page, NEW_PASSWORD, refused);
+  await expect(refused).toContainText('exige');
+  await page.screenshot({ path: test.info().outputPath('two-factor-kept.png'), fullPage: true });
+  await expect(page.getByTestId('two-factor-app-remove')).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
+
   // Turning the requirement off weakens every member's sign-in, so it waits for a proof, which a sign-in never
   // carries: a fresh sign-in is asked, a declined proof leaves the requirement on, and a given one turns it off.
   await signOut(page);
@@ -236,4 +247,17 @@ test('a company that requires two-step verification sends its owner to set it up
   await requirement.click();
   await prove(page, NEW_PASSWORD);
   await expect(requirement).toHaveAttribute('aria-checked', 'false');
+
+  // Required no more, the authenticator goes, a phone lost or replaced, and the page offers to set one up again.
+  await page.goto('/two-factor');
+  await page.getByTestId('two-factor-app-remove').click();
+  const scan = page.getByTestId('two-factor-qr');
+  await proveIfAsked(page, NEW_PASSWORD, scan);
+  await expect(scan.locator('svg')).toBeVisible();
+  await expectAccessible(page, 'two-factor, after removing the authenticator');
+  await page.screenshot({ path: test.info().outputPath('two-factor-removed.png'), fullPage: true });
+  await page.getByTestId('two-factor-logout').click();
+  await expect(page).toHaveURL(/\/login$/);
+  await signIn(page, owner, NEW_PASSWORD);
+  await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
 });

@@ -51,6 +51,8 @@ export class TwoFactorPage {
   protected readonly error = signal<LoginError | null>(null);
   protected readonly passkeys = signal<PasskeySummary[]>([]);
   protected readonly passkeyError = signal<LoginError | null>(null);
+  /** Said under its own button, so a refused removal never reads as the recovery codes' form failing. */
+  protected readonly removeError = signal<LoginError | null>(null);
   protected readonly submitting = signal(false);
   protected readonly form = new FormGroup({
     code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -156,6 +158,25 @@ export class TwoFactorPage {
     this.passkeyForm.reset();
     if (outcome.recoveryCodes.length > 0) {
       this.recoveryCodes.set(outcome.recoveryCodes);
+    }
+  }
+
+  /** A phone lost or replaced: its authenticator goes, and another is set up as the first was. */
+  protected async removeAuthenticator(): Promise<void> {
+    if (this.submitting()) {
+      return;
+    }
+    this.submitting.set(true);
+    this.removeError.set(null);
+    const outcome = await this.proven(() => this.auth.removeAuthenticator());
+    this.submitting.set(false);
+    if (outcome.ok) {
+      this.regenerateForm.reset();
+      if (!this.enrolled()) {
+        await this.begin();
+      }
+    } else if (outcome.error !== 'step_up_required') {
+      this.removeError.set(outcome.error);
     }
   }
 

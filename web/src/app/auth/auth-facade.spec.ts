@@ -52,6 +52,7 @@ describe('AuthFacade', () => {
     registerPasskey: vi.fn(),
     listPasskeys: vi.fn(),
     removePasskey: vi.fn(),
+    removeAuthenticator: vi.fn(),
     passkeyLoginOptions: vi.fn(),
     finishPasskeyLogin: vi.fn(),
     lockCustomerScreen: vi.fn(),
@@ -383,6 +384,21 @@ describe('AuthFacade', () => {
       totp: false,
       passkeys: 0,
     });
+  });
+
+  it('removes the authenticator and stops counting it, or says why it stays', async () => {
+    api.me.mockResolvedValue({
+      ...owner,
+      mfa: { enrolled: true, required: false, totp: true, passkeys: 1 },
+    });
+    await facade.load();
+    api.removeAuthenticator.mockRejectedValueOnce(new AuthRefused('mfa_last_factor'));
+    expect(await facade.removeAuthenticator()).toEqual({ ok: false, error: 'mfa_last_factor' });
+    expect(facade.me()?.mfa.totp).toBe(true);
+
+    api.removeAuthenticator.mockResolvedValue(undefined);
+    expect(await facade.removeAuthenticator()).toEqual({ ok: true });
+    expect(facade.me()?.mfa).toEqual({ enrolled: true, required: false, totp: false, passkeys: 1 });
   });
 
   it('finishes a pending login with a passkey, or reports the refusal', async () => {

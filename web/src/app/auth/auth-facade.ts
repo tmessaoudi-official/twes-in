@@ -9,6 +9,7 @@ import { type StepUpOutcome, StepUpProof } from '../shared/step-up/step-up-proof
 import { AuthApi, AuthRefused } from './auth-api';
 import { ALWAYS_PERMITTED } from './auth-types';
 import type {
+  AuthenticatorRemoved,
   AuthStatus,
   CompanyAccess,
   ConfirmationOutcome,
@@ -274,6 +275,23 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
           mfa: { ...state.mfa, passkeys, enrolled: state.mfa.totp || passkeys > 0 },
         };
       });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: codeOf(error) };
+    }
+  }
+
+  async removeAuthenticator(): Promise<AuthenticatorRemoved> {
+    try {
+      await this.api.removeAuthenticator();
+      this.stateSignal.update((state) =>
+        state === null
+          ? state
+          : {
+              ...state,
+              mfa: { ...state.mfa, totp: false, enrolled: state.mfa.passkeys > 0 },
+            },
+      );
       return { ok: true };
     } catch (error) {
       return { ok: false, error: codeOf(error) };

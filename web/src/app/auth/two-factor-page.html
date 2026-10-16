@@ -71,6 +71,21 @@
               }}
             </button>
           </form>
+          <button
+            mat-button
+            type="button"
+            class="self-start"
+            (click)="removeAuthenticator()"
+            [disabled]="submitting()"
+            data-testid="two-factor-app-remove"
+          >
+            {{ 'auth.two_factor.app_remove' | translate }}
+          </button>
+          @if (removeError(); as errorCode) {
+            <p role="alert" class="twes-auth-error" data-testid="two-factor-app-remove-error">
+              {{ 'auth.errors.' + errorCode | translate }}
+            </p>
+          }
         } @else if (enrolment(); as pending) {
           <p>{{ 'auth.two_factor.scan' | translate }}</p>
           <div class="mx-auto w-56" data-testid="two-factor-qr">

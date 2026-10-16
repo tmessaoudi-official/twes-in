@@ -41,6 +41,7 @@
       "invalid_passkey": "Cette clé d’accès n’a pas pu être vérifiée. Réessayez ou utilisez un autre moyen de connexion.",
       "mfa_last_factor": "Une entreprise dont vous êtes membre exige la vérification en deux étapes : votre dernier moyen de vérification ne peut pas être supprimé.",
       "passkey_not_found": "Cette clé d’accès n’existe plus.",
+      "totp_not_enrolled": "Aucune application d’authentification n’est configurée.",
       "passkey_cancelled": "Aucune clé d’accès n’a été utilisée. Réessayez en suivant les indications de votre appareil.",
       "passkey_already_registered": "Cet appareil contient déjà une clé d’accès pour ce compte."
     },
@@ -79,6 +80,7 @@
       "app_title": "Application d’authentification",
       "app_intro": "Ajoutez une application d’authentification comme autre moyen de vérification, pour quand votre clé d’accès n’est pas à portée de main.",
       "app_start": "Configurer une application d’authentification",
+      "app_remove": "Supprimer l’application",
       "passkeys_title": "Clés d’accès",
       "passkeys_intro": "Une clé d’accès confirme que c’est bien vous grâce à votre empreinte, votre visage ou le code de votre appareil, au lieu d’un code.",
       "passkeys_none": "Aucune clé d’accès pour le moment.",
@@ -4551,7 +4553,8 @@
         "password_changed": "a changé son mot de passe",
         "password_reset": "a réinitialisé son mot de passe",
         "recovery_codes_regenerated": "a renouvelé ses codes de secours",
-        "step_up": "a confirmé son identité"
+        "step_up": "a confirmé son identité",
+        "totp_removed": "a supprimé son application d’authentification"
       },
       "company": {
         "profile_revised": "a modifié le profil de la société",

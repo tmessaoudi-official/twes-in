@@ -55,6 +55,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'auth.password_reset',
   'auth.recovery_codes_regenerated',
   'auth.step_up',
+  'auth.totp_removed',
   'company.profile_revised',
   'company.logo_changed',
   'company.logo_removed',

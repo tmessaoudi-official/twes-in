@@ -62,6 +62,7 @@ describe('TwoFactorPage', () => {
     listPasskeys: ReturnType<typeof vi.fn>;
     addPasskey: ReturnType<typeof vi.fn>;
     removePasskey: ReturnType<typeof vi.fn>;
+    removeAuthenticator: ReturnType<typeof vi.fn>;
   };
   let stepUp: { request: ReturnType<typeof vi.fn> };
 
@@ -85,6 +86,7 @@ describe('TwoFactorPage', () => {
       listPasskeys: vi.fn().mockResolvedValue({ ok: true, passkeys }),
       addPasskey: vi.fn(),
       removePasskey: vi.fn(),
+      removeAuthenticator: vi.fn(),
     };
     stepUp = { request: vi.fn().mockResolvedValue(true) };
     shapeBegin(facade.beginTotpEnrolment, stepUp.request);
@@ -335,6 +337,45 @@ describe('TwoFactorPage', () => {
     expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);
     expect(rendered.query('two-factor-qr')).not.toBeNull();
     expect(rendered.query('two-factor-logout')).not.toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-22 09:12: every factor is manageable, the authenticator included.
+  it('removes the authenticator, and offers to set one up again', async () => {
+    const rendered = await render({ enrolled: true, required: true, totp: true, passkeys: 1 }, [
+      laptop,
+    ]);
+    facade.removeAuthenticator.mockResolvedValueOnce({ ok: false, error: 'mfa_last_factor' });
+    rendered.query<HTMLButtonElement>('two-factor-app-remove')?.click();
+    await settle(rendered.fixture);
+    expect(rendered.query('two-factor-app-remove-error')?.textContent).toContain('Dernier facteur');
+    expect(rendered.query('two-factor-error')).toBeNull();
+
+    facade.removeAuthenticator.mockImplementation(async () => {
+      facade.me.set(signedIn({ enrolled: true, required: true, totp: false, passkeys: 1 }));
+      return { ok: true };
+    });
+    rendered.query<HTMLButtonElement>('two-factor-app-remove')?.click();
+    await settle(rendered.fixture);
+
+    expect(facade.removeAuthenticator).toHaveBeenCalledTimes(2);
+    expect(rendered.query('two-factor-app-remove')).toBeNull();
+    expect(rendered.query('two-factor-app-remove-error')).toBeNull();
+    expect(rendered.query('two-factor-app-start')).not.toBeNull();
+    expect(facade.beginTotpEnrolment).not.toHaveBeenCalled();
+  });
+
+  it('starts the set-up again once the authenticator, the last factor, is removed', async () => {
+    const rendered = await render({ enrolled: true, required: false, totp: true, passkeys: 0 });
+    facade.removeAuthenticator.mockImplementation(async () => {
+      facade.me.set(signedIn({ enrolled: false, required: false, totp: false, passkeys: 0 }));
+      return { ok: true };
+    });
+
+    rendered.query<HTMLButtonElement>('two-factor-app-remove')?.click();
+    await settle(rendered.fixture);
+
+    expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);
+    expect(rendered.query('two-factor-qr')).not.toBeNull();
   });
 
   it('removes a passkey from the list, and says why the last one stays', async () => {
