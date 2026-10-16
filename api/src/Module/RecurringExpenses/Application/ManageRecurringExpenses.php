@@ -11,9 +11,9 @@ namespace App\Module\RecurringExpenses\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\RecurringExpenses\Domain\InvalidRecurringExpense;
-use App\Module\RecurringExpenses\Domain\RecurringExpense;
-use App\Module\RecurringExpenses\Domain\RecurringExpenseRepository;
+use App\Module\RecurringExpenses\Domain\Exception\InvalidRecurringExpense;
+use App\Module\RecurringExpenses\Domain\Model\RecurringExpense;
+use App\Module\RecurringExpenses\Domain\Repository\RecurringExpenseRepository;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\InvalidSchedule;
 use App\Shared\Domain\Schedule;

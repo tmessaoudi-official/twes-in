@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Recurring\Infrastructure\Doctrine;
 
-use App\Module\Recurring\Domain\RecurringInvoice;
-use App\Module\Recurring\Domain\RecurringInvoiceRepository;
+use App\Module\Recurring\Domain\Model\RecurringInvoice;
+use App\Module\Recurring\Domain\Repository\RecurringInvoiceRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Expenses\Infrastructure\Watch;
 
-use App\Module\Expenses\Infrastructure\ApiPlatform\ExpensePermission;
+use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\Module\Expenses\Infrastructure\Module\ExpensesModule;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;

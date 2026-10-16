@@ -9,19 +9,19 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Shared;
 
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Infrastructure\Doctrine\DoctrineCustomerRepository;
-use App\Module\DeliveryNotes\Domain\DeliveryNote;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Infrastructure\Doctrine\DoctrineDeliveryNoteRepository;
-use App\Module\Expenses\Domain\Expense;
+use App\Module\Expenses\Domain\Model\Expense;
 use App\Module\Expenses\Infrastructure\Doctrine\DoctrineExpenseRepository;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Infrastructure\Doctrine\DoctrineInvoiceRepository;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Infrastructure\Doctrine\DoctrineProductRepository;
-use App\Module\Quotes\Domain\Quote;
+use App\Module\Quotes\Domain\Model\Quote;
 use App\Module\Quotes\Infrastructure\Doctrine\DoctrineQuoteRepository;
-use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Infrastructure\Doctrine\DoctrineVendorRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;

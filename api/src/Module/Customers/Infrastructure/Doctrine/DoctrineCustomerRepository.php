@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Infrastructure\Doctrine;
 
-use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerKind;
-use App\Module\Customers\Domain\CustomerRepository;
-use App\Module\Customers\Domain\CustomerSearch;
+use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
+use App\Module\Customers\Domain\ValueObject\CustomerKind;
+use App\Module\Customers\Domain\ValueObject\CustomerSearch;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;

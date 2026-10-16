@@ -11,8 +11,8 @@ namespace App\Module\Customers\Application;
 
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
-use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerRepository;
+use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

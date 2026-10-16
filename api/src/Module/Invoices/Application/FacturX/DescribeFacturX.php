@@ -14,7 +14,7 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\PresetRegime;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
-use App\Module\Customers\Domain\CustomerSnapshot;
+use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Domain\Invoice;

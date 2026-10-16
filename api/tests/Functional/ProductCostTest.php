@@ -17,8 +17,8 @@ use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
-use App\Module\Vendors\Domain\Vendor;
-use App\Module\Vendors\Domain\VendorProfile;
+use App\Module\Vendors\Domain\Model\Vendor;
+use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 

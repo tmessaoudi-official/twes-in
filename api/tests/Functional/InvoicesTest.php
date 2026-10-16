@@ -15,7 +15,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Products\Domain\Product;

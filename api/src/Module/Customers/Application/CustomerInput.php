@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Application;
 
-use App\Module\Customers\Domain\CustomerProfile;
+use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use Symfony\Component\Uid\Uuid;
 
 /** A customer as it is written: its number and profile, and the group, regime and taxes it names by id or code. */

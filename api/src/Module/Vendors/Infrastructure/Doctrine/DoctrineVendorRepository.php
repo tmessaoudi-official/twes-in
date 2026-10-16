@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Vendors\Infrastructure\Doctrine;
 
-use App\Module\Vendors\Domain\Vendor;
-use App\Module\Vendors\Domain\VendorRepository;
-use App\Module\Vendors\Domain\VendorSearch;
+use App\Module\Vendors\Domain\Model\Vendor;
+use App\Module\Vendors\Domain\Repository\VendorRepository;
+use App\Module\Vendors\Domain\ValueObject\VendorSearch;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;

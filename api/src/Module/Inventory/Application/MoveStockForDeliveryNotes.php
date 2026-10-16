@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Application;
 
-use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveredQuantity;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\LotOnHand;
 use App\Module\Inventory\Domain\LotPicking;

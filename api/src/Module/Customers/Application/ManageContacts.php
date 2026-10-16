@@ -11,11 +11,11 @@ namespace App\Module\Customers\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\Customers\Domain\Contact;
-use App\Module\Customers\Domain\ContactDetails;
-use App\Module\Customers\Domain\ContactRepository;
-use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerRepository;
+use App\Module\Customers\Domain\Model\Contact;
+use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\Repository\ContactRepository;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
+use App\Module\Customers\Domain\ValueObject\ContactDetails;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;

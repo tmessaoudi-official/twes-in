@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Customers\Domain;
 
-use App\Module\Customers\Domain\CustomerGroup;
-use App\Module\Customers\Domain\InvalidCustomerGroup;
+use App\Module\Customers\Domain\Exception\InvalidCustomerGroup;
+use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\TestCase;
 

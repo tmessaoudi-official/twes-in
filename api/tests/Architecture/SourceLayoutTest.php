@@ -23,8 +23,8 @@ use App\Fiscal\Domain\Calculation\Rate;
 use App\Identity\Domain\ValueObject\Email;
 use App\Identity\Infrastructure\ApiPlatform\OpenApi\OpenApiExtras;
 use App\Identity\Infrastructure\Security\UserProvider;
-use App\Module\Customers\Domain\CustomerKind;
-use App\Module\Customers\Domain\InvalidContact;
+use App\Module\Customers\Domain\Exception\InvalidContact;
+use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Invoices\Domain\InvoiceIssued;
 use App\Shared\Domain\DomainEvent;
 use Doctrine\ORM\Mapping\Embeddable;
@@ -75,18 +75,9 @@ final class SourceLayoutTest extends TestCase
      * only shrinks, one context per commit.
      */
     private const array NOT_YET_MOVED = [
-        'Module/Customers',
-        'Module/DeliveryNotes',
-        'Module/Expenses',
         'Module/Inventory',
         'Module/Invoices',
-        'Module/PriceLists',
         'Module/Products',
-        'Module/Quotes',
-        'Module/Recurring',
-        'Module/RecurringExpenses',
-        'Module/Scanning',
-        'Module/Vendors',
         'Shared',
         'Tenancy',
     ];

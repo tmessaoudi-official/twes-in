@@ -11,8 +11,8 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
-use App\Module\Customers\Domain\CustomerSnapshot;
-use App\Module\DeliveryNotes\Domain\DeliveryNote;
+use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Shared\Domain\DocumentDesign;
 use App\Tenancy\Domain\SellerSnapshot;
 

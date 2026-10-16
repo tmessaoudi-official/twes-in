@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Expenses\Infrastructure\Doctrine;
 
-use App\Module\Expenses\Domain\ExpenseCategory;
-use App\Module\Expenses\Domain\ExpenseCategoryRepository;
+use App\Module\Expenses\Domain\Model\ExpenseCategory;
+use App\Module\Expenses\Domain\Repository\ExpenseCategoryRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

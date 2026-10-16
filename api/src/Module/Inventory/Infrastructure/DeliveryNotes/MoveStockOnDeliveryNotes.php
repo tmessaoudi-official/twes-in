@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\DeliveryNotes;
 
-use App\Module\DeliveryNotes\Domain\DeliveryNoteCancelled;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteValidated;
+use App\Module\DeliveryNotes\Domain\Event\DeliveryNoteCancelled;
+use App\Module\DeliveryNotes\Domain\Event\DeliveryNoteValidated;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
 use App\Module\Inventory\Application\TellStockKeepers;
 use Psr\Log\LoggerInterface;

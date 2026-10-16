@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Expenses\Infrastructure\Doctrine;
 
-use App\Module\Expenses\Domain\Expense;
-use App\Module\Expenses\Domain\ExpenseRepository;
-use App\Module\Expenses\Domain\ExpenseSearch;
-use App\Module\Expenses\Domain\ExpenseStatus;
+use App\Module\Expenses\Domain\Model\Expense;
+use App\Module\Expenses\Domain\Repository\ExpenseRepository;
+use App\Module\Expenses\Domain\ValueObject\ExpenseSearch;
+use App\Module\Expenses\Domain\ValueObject\ExpenseStatus;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Domain\PaymentMethod;

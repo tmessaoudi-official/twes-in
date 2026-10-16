@@ -28,12 +28,12 @@ final class ModuleBoundariesTest extends TestCase
      * concrete calls the ruling named. Each is either converted to a port or ruled a sanctioned read; none is added.
      */
     private const array AWAITING_A_RULING = [
-        'DeliveryNotes/Infrastructure/ApiPlatform/DeliveryNoteCustomerPickProvider.php' => 'App\Module\Customers\Application\PickCustomers',
+        'DeliveryNotes/Infrastructure/ApiPlatform/State/Provider/DeliveryNoteCustomerPickProvider.php' => 'App\Module\Customers\Application\PickCustomers',
         'Invoices/Infrastructure/ApiPlatform/InvoiceCustomerPickProvider.php' => 'App\Module\Customers\Application\PickCustomers',
-        'DeliveryNotes/Infrastructure/ApiPlatform/DeliveryNoteProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
+        'DeliveryNotes/Infrastructure/ApiPlatform/State/Provider/DeliveryNoteProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
         'Inventory/Infrastructure/ApiPlatform/StockProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
         'Invoices/Infrastructure/ApiPlatform/InvoiceProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
-        'Expenses/Infrastructure/ApiPlatform/ExpenseVendorPickProvider.php' => 'App\Module\Vendors\Application\PickVendors',
+        'Expenses/Infrastructure/ApiPlatform/State/Provider/ExpenseVendorPickProvider.php' => 'App\Module\Vendors\Application\PickVendors',
         'Inventory/Infrastructure/ApiPlatform/StockVendorPickProvider.php' => 'App\Module\Vendors\Application\PickVendors',
     ];
 

@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Module\Vendors\Domain\Vendor;
-use App\Module\Vendors\Domain\VendorProfile;
+use App\Module\Vendors\Domain\Model\Vendor;
+use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;

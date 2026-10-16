@@ -11,12 +11,12 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\DeliveryNotes\Domain\DeliveryNote;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteNotDraft;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
-use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
+use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteNotDraft;
+use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;
+use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
+use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Settings\Application\ReadSetting;
 use App\Shared\Application\DomainEvents;

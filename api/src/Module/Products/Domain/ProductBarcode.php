@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Domain;
 
-use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\Model\Vendor;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;

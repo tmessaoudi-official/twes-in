@@ -11,12 +11,12 @@ namespace App\Module\Expenses\Application;
 
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\ValueObject\TaxKind;
-use App\Module\Expenses\Domain\Expense;
-use App\Module\Expenses\Domain\ExpenseDetails;
-use App\Module\Expenses\Domain\ExpenseLine;
-use App\Module\Expenses\Domain\ExpenseLineTax;
-use App\Module\Expenses\Domain\ExpenseTax;
-use App\Module\Expenses\Domain\InvalidExpense;
+use App\Module\Expenses\Domain\Exception\InvalidExpense;
+use App\Module\Expenses\Domain\Model\Expense;
+use App\Module\Expenses\Domain\Model\ExpenseLine;
+use App\Module\Expenses\Domain\Model\ExpenseLineTax;
+use App\Module\Expenses\Domain\Model\ExpenseTax;
+use App\Module\Expenses\Domain\ValueObject\ExpenseDetails;
 use Symfony\Component\Uid\Uuid;
 
 /**

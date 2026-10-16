@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Application;
 
-use App\Module\DeliveryNotes\Domain\DeliveryNote;
-use App\Module\DeliveryNotes\Domain\DeliveryNotePrint;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNotePrint;
 use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;

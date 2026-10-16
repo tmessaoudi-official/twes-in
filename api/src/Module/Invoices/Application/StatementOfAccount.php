@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Application;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Application\CustomerNotFound;
-use App\Module\Customers\Domain\CustomerRepository;
+use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

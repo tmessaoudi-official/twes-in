@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Infrastructure\Module;
 
-use App\Module\Customers\Infrastructure\ApiPlatform\CustomerPermission;
+use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
 use App\ModuleRegistry\Application\DeclaresModule;
 use App\ModuleRegistry\Application\ModuleManifest;
 

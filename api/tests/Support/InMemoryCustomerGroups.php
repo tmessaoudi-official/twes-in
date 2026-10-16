@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Customers\Domain\CustomerGroup;
-use App\Module\Customers\Domain\CustomerGroupRepository;
+use App\Module\Customers\Domain\Model\CustomerGroup;
+use App\Module\Customers\Domain\Repository\CustomerGroupRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryCustomerGroups implements CustomerGroupRepository

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Infrastructure\Doctrine;
 
-use App\Module\Customers\Domain\CustomerGroup;
-use App\Module\Customers\Domain\CustomerGroupRepository;
+use App\Module\Customers\Domain\Model\CustomerGroup;
+use App\Module\Customers\Domain\Repository\CustomerGroupRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

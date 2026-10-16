@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Application;
 
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;

@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\PriceLists\Domain;
 
 use App\Fiscal\Domain\Model\Unit;
-use App\Module\PriceLists\Domain\InvalidPriceList;
-use App\Module\PriceLists\Domain\PriceList;
-use App\Module\PriceLists\Domain\PriceListItem;
+use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
+use App\Module\PriceLists\Domain\Model\PriceList;
+use App\Module\PriceLists\Domain\Model\PriceListItem;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;

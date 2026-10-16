@@ -11,9 +11,9 @@ namespace App\Module\Expenses\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\Expenses\Domain\ExpenseCategory;
-use App\Module\Expenses\Domain\ExpenseCategoryRepository;
-use App\Module\Expenses\Domain\InvalidExpense;
+use App\Module\Expenses\Domain\Exception\InvalidExpense;
+use App\Module\Expenses\Domain\Model\ExpenseCategory;
+use App\Module\Expenses\Domain\Repository\ExpenseCategoryRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;

@@ -14,7 +14,7 @@ use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
-use App\Module\Customers\Domain\CustomerGroup;
+use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 

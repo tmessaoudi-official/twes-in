@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Application;
 
-use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteHeader;
 use Symfony\Component\Uid\Uuid;
 
 /** A delivery note as it is written: its customer and establishment by id (none: the company's default), its header and its lines. */

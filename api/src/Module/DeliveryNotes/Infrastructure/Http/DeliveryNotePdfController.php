@@ -11,7 +11,7 @@ namespace App\Module\DeliveryNotes\Infrastructure\Http;
 
 use App\Module\DeliveryNotes\Application\DeliveryNoteNotFound;
 use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
-use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\DeliveryNotePermission;
+use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;

@@ -13,7 +13,7 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Invoices\Application\RemindLateInvoices;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;

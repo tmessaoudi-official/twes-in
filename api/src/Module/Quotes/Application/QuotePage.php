@@ -11,8 +11,8 @@ namespace App\Module\Quotes\Application;
 
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
-use App\Module\Customers\Domain\CustomerSnapshot;
-use App\Module\Quotes\Domain\Quote;
+use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
+use App\Module\Quotes\Domain\Model\Quote;
 use App\Shared\Domain\DocumentDesign;
 use App\Tenancy\Domain\SellerSnapshot;
 

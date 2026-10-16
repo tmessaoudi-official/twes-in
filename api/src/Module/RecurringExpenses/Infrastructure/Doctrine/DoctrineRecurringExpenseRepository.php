@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\RecurringExpenses\Infrastructure\Doctrine;
 
-use App\Module\RecurringExpenses\Domain\RecurringExpense;
-use App\Module\RecurringExpenses\Domain\RecurringExpenseRepository;
+use App\Module\RecurringExpenses\Domain\Model\RecurringExpense;
+use App\Module\RecurringExpenses\Domain\Repository\RecurringExpenseRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;

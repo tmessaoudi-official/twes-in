@@ -11,7 +11,7 @@ namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Tenancy\Application\Company\SellerIdentity;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;

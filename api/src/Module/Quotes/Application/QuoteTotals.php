@@ -21,10 +21,10 @@ use App\Fiscal\Domain\Calculation\Rate;
 use App\Fiscal\Domain\Calculation\TaxBasis;
 use App\Fiscal\Domain\Calculation\TaxInput;
 use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
-use App\Module\Quotes\Domain\InvalidQuote;
-use App\Module\Quotes\Domain\Quote;
-use App\Module\Quotes\Domain\QuoteLine;
-use App\Module\Quotes\Domain\QuoteLineTax;
+use App\Module\Quotes\Domain\Exception\InvalidQuote;
+use App\Module\Quotes\Domain\Model\Quote;
+use App\Module\Quotes\Domain\Model\QuoteLine;
+use App\Module\Quotes\Domain\Model\QuoteLineTax;
 
 /**
  * What a quote comes to, worked out by the calculator every document shares, the way the invoice it becomes will:

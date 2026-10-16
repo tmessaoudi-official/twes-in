@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Infrastructure\Module;
 
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
-use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\DeliveryNotePermission;
+use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\ModuleRegistry\Application\DeclaresModule;
 use App\ModuleRegistry\Application\ModuleManifest;

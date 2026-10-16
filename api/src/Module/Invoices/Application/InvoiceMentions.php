@@ -11,7 +11,7 @@ namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
-use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Module\Invoices\Domain\OperationCategory;
 use App\Settings\Application\ReadSetting;

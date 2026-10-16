@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
-use App\Module\Scanning\Domain\ScanPairing;
-use App\Module\Scanning\Domain\ScanPhoto;
+use App\Module\Scanning\Domain\Model\ScanPairing;
+use App\Module\Scanning\Domain\Model\ScanPhoto;
 use App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Shared\Application\RealtimePublisher;

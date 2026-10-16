@@ -21,10 +21,10 @@ use App\Fiscal\Domain\Calculation\Rate;
 use App\Fiscal\Domain\Calculation\TaxBasis;
 use App\Fiscal\Domain\Calculation\TaxInput;
 use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
-use App\Module\DeliveryNotes\Domain\DeliveryNote;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteLineTax;
-use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
+use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLineTax;
 
 /**
  * What a delivery note's lines come to, worked out by the calculator every document shares: prices net of tax, the
