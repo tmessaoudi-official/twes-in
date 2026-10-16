@@ -139,6 +139,8 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-16 00:35] ASSUMED (review): The address leaves out size only when it equals the person's own opening size, so a link carries any size the person changed to; a link without one opens at its reader's own. The e2e suite answers the browser's « leave the page? » by leaving, in signIn (leaveWhenAsked), as the ruling asked it be taught. Basis: the 14:35 ruling keeps the URL parameter so a shared link carries its size; the 18:20 ruling names the e2e cost. Alternatives: always write size; a listener per spec.
 - [2026-10-16 01:01] ASSUMED (review): « Annuler » ruling (§ 7 2026-10-11 08:26) applied to the quote as the invoice slice 53df9fd0 did: action « Classer sans suite… », confirm « Classer sans suite », status, toast and read-only line « classé sans suite », activity « a classé le devis sans suite »; English « Close as not pursued… », status « Not pursued » (no clash with Draft/Sent/Expired/Accepted/Refused, one root word across action, status and toast; advisor agreed). Every « Annuler » that closes a panel or dialog says « Fermer » (each handler read: all close, none keeps the panel open), the overpayment dialog's too; the document design's discard reads form.revert « Rétablir ». Alternatives: « Abandonner le devis », « Dropped », a keep word per dialog.
 - [2026-10-16 02:22] ASSUMED (review): « Valider et livrer » sits in the draft's bar as an outlined action beside the filled « Valider et numéroter », which stays the next step; it is shown under the same condition as validating (a draft, delivery_note.validate and .write) and confirmed with the same kind (corrigeable). Basis: the ruling of § 7 2026-09-21 17:25 keeps the separate actions; the bar has one filled next step (§ 7 2026-10-11 08:26). Alternatives: make it the filled next step; fold it into « ⋮ ».
+- [2026-10-16 02:50] ASSUMED (review): Removing the authenticator asks no consequence dialog of its own: the step-up proof is asked when the sign-in has none, as removing a passkey on the same page already does (§ 7 2026-09-22 09:12 names the fresh proof as the check). Basis: one behaviour for both factors on one page. Alternative: a « définitif » confirmation before either removal, which would change the passkey's too.
+- [2026-10-16 02:59] ASSUMED (review): SUPERSEDES the 02:50 entry: removing the authenticator and removing a passkey each get a « définitif » consequence dialog before the step-up, through the shared confirm dialog, in the next batch. Basis: § 7 2026-09-26 23:04 (2), what cannot be undone is previewed first, saying what will happen; a removed factor cannot be put back. Alternative kept by the 02:50 entry: the step-up alone, which names no consequence.
 
 ## Formal Plan
 
@@ -319,11 +321,26 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
   (recognise a regular, reward him), not the QR surface. Is `guests` still the 02:50 Guest (then `guests` → `service`,
   `ratings` → `guests`, `service`), or loyalty, with the QR surface left without a planned module (then `ratings` →
   `service` alone, since § 7 2026-09-20 02:38 has the tab prove what was served)? Parked: no ruling decides it.
+- Signature block on invoices and credit notes (§ 7 2026-10-03 20:58, row 122): offered, off by default, but the
+  ruling names no legend for them (« Réception » on a delivery note, « Bon pour accord » on a quote, « Approuvé par »
+  on a supplier order). Options: « Bon pour accord »; « Reçu par »; « Signature du client ». Parked.
+- Price decimals display setting (§ 7 2026-09-21 17:55): which level sets it (company, or each person's presentation),
+  its default (the 4 stored, the currency's 3, or « trim trailing zeros »), and whether printed documents follow it
+  or only screens. Parked.
+- A delivery note drawn from an issued invoice (§ 7 2026-09-21 13:44 (3)): what status it reaches once delivered (its
+  lines are already billed), how it is kept out of « Facturer » (a link from each line to the invoice line?), and
+  whether a second note from the same invoice is refused or takes only the lines no live note covers. Parked.
 ### Needs research
 - Whether the law names voiding a delivery note « annuler » (the 08:26 ruling keeps « Annuler le bon » only if
   so): `docs/fiscal/TN.md` and `FR.md` say nothing on it, so every `delivery_notes.*` « annul » text stays as is.
 ### Fragile
 ### Known issues
+- The first page is at 999.94 kB of its 1 MB budget after f00dad1a (`auth-facade.ts` is on it): the next change to
+  anything the first page loads must measure first (`--stats-json`, Lessons) and move a constant or a call out.
+- D1 finding L28 (step-up missing on bank details, members and role permissions) was CHECKED AND WITHDRAWN: built
+  since the audit's commit. `RecentProof::demand` guards the bank details (`ReviseCompanyProfileProcessor`, on an IBAN
+  or BIC change only), inviting and removing a member, creating, revising and deleting a role, and every export
+  (`ExportController`, which serves the accounting journals too); `PlatformWriteStepUpListener` guards every platform write.
 - D1 finding L53 (`presentation.sidebar-settings` « declared, read by no web code, default `rail` ») was CHECKED AND
   WITHDRAWN: `ThemeFacade` reads it (`settingsSidebar`, `theme-facade.ts:65`, `:121`) and `app-shell.ts:375` folds the
   settings area by it; its default `expanded` follows the later ruling § 7 2026-09-25 17:22 (the settings board opens
