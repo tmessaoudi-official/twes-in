@@ -5214,23 +5214,35 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-16 09:47] AGREED: **what one list gains, every list of its kind is judged for** (the developer: only the invoices list has a selection, among 27 lists): a list × action matrix for every list not yet ruled goes on a marking page for the developer's ruling, and a stance gate makes every list page declare, for selection, bulk actions, row actions, import and export, that it offers it or why not (the way `live-reload.sh` lists its exceptions with their reasons), red when it finds no list (developer, the recommended option)
 - [2026-10-16 09:47] AGREED: **round 2 gains two lenses beside the gates**: 54 « one pattern everywhere » (a pattern built on one screen reaches every screen of its kind; level 2½'s consistency, asked as a question of every screen) and 55 « code layout and architecture conformance » (the rounds had no lens on how the code is organised: the ledger's 376 findings name it once); both rulings reach the expertise pack by its refresh, never by hand (developer, the recommended option)
 - [2026-10-16 13:12] NOTED: **the source layout landed** (419c0077 the test, the mover and the oracle; 73d54130, fb562a92, 64b7a375, b8bf5375, 7af7391d and 8217b242 the moves): every context's classes sit in the folders of their role (§ 3 « Folders by role »), `SourceLayoutTest` reds on a class out of place or a folder past 25 files, and its list of contexts not yet moved is gone with the last of them. Every move left the entities and the schema as they were; the stock map's resources, read from a folder of their own, moved the OpenAPI document's tags and 125 route pairs into another order, none of which can match the same request, which `scripts/refactor/layout-order.py` now tells the oracle. The mover once rewrote a class moved into a folder of its own name twice; it now rewrites every name in one pass. The seven layout picks stay ASSUMED (review) in `docs/plans/source-layout.plan.md` until ruled.
+- [2026-10-16 17:17] AGREED: **the list × action matrix is ruled** (plan source-layout step 7, the developer's marks of 14:31–14:37 on the marking page): every list offers selection, bulk actions, row actions, import and export as marked, except where a ruling refuses it, challenged and accepted: the activity log takes no import (it is evidence; its bulk is an export of the selection, its row action opens the record); « À surveiller » takes no import (its conditions are worked out); a numbering series takes an import only while it has issued nothing (gapless, given at issue); importing issued invoices, quotes, delivery notes and the portfolio, and the preset-bound taxes and regimes, are asked as design questions before they are built; members' import and the platform's company import and bulk act after a dry-run preview (invitations are mailed, a company's signing key is made).
+- [2026-10-16 17:17] AGREED: **the web gets a partial source-layout refactor, not the API's**: sub-feature folders inside the largest features (products, company, invoices, inventory), files still named by role (§ 3 keeps « no subdirectory per kind of code »), the shell's manifests turned into tokens features provide, which breaks the shell ↔ feature cycle, and gates: an import-cycle rule, pages reaching the API only through their facade, and at most 25 files a folder, specs aside.
+- [2026-10-16 17:17] AGREED: **the 507 `ASSUMED (review)` picks go on a marking page** (agree, reject, note; grouped by row, oldest first), read back here as AGREED (ratified ASSUMED) or REJECTED.
+- [2026-10-16 17:17] AGREED: **after « Ajouter à… », the technical work starts with optimistic locking and one refusal contract** (a version on every editable record answering 409 when it changed since it was opened; one problem+json refusal with a stable reason, and one web mapper in place of the per-feature copies), within a wider pass on each tool's own recommended way, whose scope is asked first; the invitation token's rate limit and `var/share` on a volume are fixed regardless.
+- [2026-10-16 17:24] AGREED: **every tool is audited against its own documentation** (Angular, TypeScript, Symfony, PHP, API Platform, Doctrine, Monolog, Messenger and Scheduler, PostgreSQL, Docker, nginx, Caddy, Playwright, Vitest, Tailwind, Material, GitHub Actions): each finding is fixed, or recorded here as a departure with its reason (the 2026-09-17 ruling); a findings page is ranked by the developer, and optimistic locking and the refusal contract are its first two fixes.
+- [2026-10-16 17:24] AGREED: **everything moves to its latest stable release**, majors included: packages, images, tools and CI actions, one ecosystem a commit, each through the gate, e2e, the production image and the deploy check; the TypeScript 7 hold stays; a licence that changes stops that bump and is asked.
+- [2026-10-16 17:24] AGREED: **the order from here**: « Ajouter à… » steps 2–5 (with its import cycle broken), the version updates, the tool-by-tool audit, then its fixes; the invitation token's rate limit and `var/share` on a volume first. Where the maturity rounds fall in it is asked next.
+- [2026-10-16 17:25] AGREED: **round 2 of the maturity rounds runs once the version updates, the tool-by-tool audit's fixes and the web's partial split have landed**, on a frozen commit, so its findings judge the product as it stays; the developer rules its proposals, then Stage 2. Lens 55 « code layout and architecture conformance » folds into the tool-by-tool audit; round 2 keeps lens 54 and its screen lenses.
+- [2026-10-16 17:25] AGREED: **« Ajouter à… » stops at its step 2** (the picker's import cycle broken through a token each document feature provides, and the delivery note's « Facturer » folded into the picker); steps 3–5 (the scan card and the stock map, « Ajouter à un tarif », a quote's lines onto an open invoice) are built inside Stage 2 as the module contract's first users, since its one action bar and bulk declared on the record type would rebuild their entry points.
+- [2026-10-16 17:25] AGREED: **the one build order is rewritten with today's rulings** (§ 8, head), superseding the 2026-10-12 00:23 order's sequence while keeping its stages.
 
 ## 8. Status
 
-**The one build order** (§ 7 2026-10-12 00:23; it supersedes the order of the 2026-10-06 audit and the « Next » of
-2026-10-11 09:16). The North star (§ 1) first: real businesses on what exists, then the platform. The research and its
-verdict: https://claude.ai/artifact/2AUhf7V1Nuro3kqR1RKdN6 (sources in `var/claude/platform-design/`, not kept in git).
+**The one build order** (§ 7 2026-10-16 17:25, which supersedes the sequence of 2026-10-12 00:23 and keeps its stages).
+The North star (§ 1) first: real businesses on what exists, then the platform. The stages' research and verdict:
+https://claude.ai/artifact/2AUhf7V1Nuro3kqR1RKdN6 (sources in `var/claude/platform-design/`, not kept in git).
 
-0. Stage 0, quick fixes (row 269).
-1. Stage 1, the fourteen pilot blockers (row 270) and the hash chain over issued invoices (row 271); what others do runs
-   beside it (row 272: the entity, the lawyer, the accountant, the INPDP, the region). A free Tunisian pilot starts here.
-2. Stage 2, the module contract (row 273); it absorbs row 260's remaining slices (one action bar, bulk declared on the
-   record type).
-3. Stage 3, the four visibility layers, the dashboard of module widgets, the trade templates and the price catalogue
-   (row 274), then appointments slices 0 to 2 built on the contract (row 268).
-4. Stage 4, every screen to one canon (row 275), with 256, 257, 258, 259 and 263 placed inside it.
-5. Stage 5, after the pilot: the glue between modules, the preset editor, surviving a short drop, Arabic (row 96), the
-   RGAA audit, the pentest before the first paying customer; the France track beside it (row 276).
+1. « Ajouter à… » step 2 (row 259), then the invitation token's rate limit and `var/share` on a volume.
+2. Every package, image, tool and CI action to its latest stable release, one ecosystem a commit (§ 7 2026-10-16 17:24).
+3. The tool-by-tool audit against each tool's own documentation, then its fixes, optimistic locking and the refusal
+   contract first (§ 7 2026-10-16 17:24); it carries round 2's former lens 55.
+4. The web's partial split and its gates (§ 7 2026-10-16 17:17); the 507 `ASSUMED (review)` picks on a marking page.
+5. Maturity round 2 on a frozen commit (row 260's plan `screens-maturity`), then the developer rules its proposals.
+6. Stage 2, the module contract (row 273), with row 260's remaining slices and « Ajouter à… » steps 3–5.
+7. Stage 3 (row 274), then appointments slices 0 to 2 (row 268); Stage 4, every screen to one canon (row 275, with 256,
+   257, 258 and 263 inside it); Stage 5 after the pilot (row 276 beside it).
+
+Beside all of it, whenever the outside parties allow: Stage 1, the pilot blockers (row 270) and what others do (row 272);
+Stage 0's quick fixes (row 269) are done or folded into step 2 above.
 
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |

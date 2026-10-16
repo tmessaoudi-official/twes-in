@@ -77,9 +77,9 @@ Work in flight is rebased on the new paths only after the move of its context la
 | 4 | Move context by context | L | done | 8217b242 | api/src/** api/tests/** |
 | 5 | Docs and the expertise refresh | S | done | 1d6a0beb | CLAUDE.md docs/** .claude/** |
 | 6 | List stance gate | M | done | e209cd8f | scripts/gates/** web/src/app/** |
-| 7 | List × action matrix for ruling | S | doing | - | var/claude/** |
+| 7 | List × action matrix for ruling (ruled § 7 2026-10-16 17:17) | S | done | - | var/claude/** |
 | 8 | Ruled bulk actions | L | doing | - | api/src/** web/src/app/** |
-| 9 | Lenses 54 and 55 in round 2's brief | S | todo | - | docs/plans/** var/claude/** |
+| 9 | Lens 54 in round 2's brief; lens 55 folded into the tool-by-tool audit (§ 7 2026-10-16 17:25) | S | todo | - | docs/plans/** var/claude/** |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
