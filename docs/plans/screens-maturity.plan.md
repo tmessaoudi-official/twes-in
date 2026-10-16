@@ -156,6 +156,7 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-16 09:47] AGREED: Order (developer, 2026-10-16): F26 slice 3 lands first, then the layout move context by context (one commit and one gate each, the OpenAPI export byte-identical), then the ruled bulk actions (invoices, products, delivery notes, « Ajouter à… »), then row 251's remaining P3s.
 - [2026-10-16 09:47] AGREED: Lists (developer, 2026-10-16): a list × action matrix for every list not yet ruled is published on a marking page for the developer to rule, and a stance gate makes every list page declare supported or not applicable, with its reason, for selection, bulk actions, row actions, import and export; what one list gains, every list of its kind is judged for.
 - [2026-10-16 09:47] AGREED: Rounds (developer, 2026-10-16): the gates above AND two new lenses for round 2: 54 « one pattern everywhere » (a pattern built on one screen reaches every screen of its kind) and 55 « code layout and architecture conformance »; both rulings go to SPEC § 7 and the expertise pack is refreshed from it.
+- [2026-10-16 22:03] AGREED: Round 2 rates every screen 0 to 4 per dimension after its instruments are built (throttled, offline, dependency-down runs); open findings fixed by kind after round 2 (developer, SPEC § 7 2026-10-16 22:03).
 
 ## Formal Plan
 
@@ -320,6 +321,7 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
 |---|------|------|-------|----------|-------|
 | 0 | Round 0: the instruments (inventory, gallery, timings, axe, route × role matrix) | L | done | 5f0b6440 | scripts/** var/claude/maturity/** |
 | 1 | Rounds to maturity + unified artifact | L | doing | - | var/claude/maturity/** |
+| 1a | Round 2 instruments: throttled and offline gallery runs, a dependency-down run (§ 7 2026-10-16 22:03) | M | todo | - | scripts/** var/claude/maturity/** |
 | 2 | Developer rules the proposals | M | todo | - | - |
 | 3 | Screen texts split per feature | L | todo | - | web/** scripts/gates/** |
 | 4 | Build the ruled proposals screen by screen | L | todo | - | web/** api/** |

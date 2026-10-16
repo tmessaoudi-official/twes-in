@@ -5238,6 +5238,9 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-16 17:44] AGREED: **the stock map's walk-through is a page marked asynchronously**, not a meeting: the map as built is published with captures and the open choices for its drawing model and its façade, each with a recommendation; the developer marks it when they can, and rows 248, 250, 257 and 265 follow its read-back (row 83).
 - [2026-10-16 17:44] AGREED: **the guides' voice is parked**: the guides ship silent in fr / en / ar, captions and tours unchanged; the voice comes back when a speech key is given (row 228).
 - [2026-10-16 19:56] AGREED: the Angular CLI's dev-only MCP packages (`@modelcontextprotocol/core` and `/server`, 2.0.0 → 2.3.1, pinned by `@angular/cli` 22.2.3) move from MIT to the project's transition licence, new code Apache-2.0, the rest MIT until relicensed, documentation CC-BY-4.0: accepted, as both code licences are permitted and nothing of it ships.
+- [2026-10-16 22:03] AGREED: After the tool audit's sweep the ruled order stands: its fixes, optimistic locking then the one refusal contract, then the web's partial split, then maturity round 2; the pilot blockers stay beside it (developer, status report).
+- [2026-10-16 22:03] AGREED: The open maturity findings are fixed by kind after round 2, as ruled 2026-10-13; only data loss, security and wrong money are fixed at once (developer, status report).
+- [2026-10-16 22:03] AGREED: Round 2 rates every screen 0 to 4 per dimension, and the instruments it needs are built first: a throttled and an offline run of the gallery and a dependency-down run (Gotenberg, Centrifugo, Mailpit stopped in turn), so a level is measured, not judged (developer, status report).
 
 ## 8. Status
 
