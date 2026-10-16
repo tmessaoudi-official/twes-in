@@ -62,6 +62,7 @@ import {
   OPERATION_CATEGORIES,
   type OperationCategory,
   type Payment,
+  type ProductOption,
 } from './invoices-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
@@ -86,6 +87,7 @@ import {
   toDocumentFigures,
 } from '../shared/documents/document-figures';
 import { QuantityTotalsView } from '../shared/documents/quantity-totals';
+import { productsIntoLines, takeInAdded, type TakenIn } from '../shared/documents/add-to';
 
 /**
  * One invoice or credit note: a new draft to fill in, a draft to revise, issue or cancel, or an issued document to
@@ -165,6 +167,11 @@ export class InvoicePage {
    * once the document is read, where one is still owed, then forgotten by the address.
    */
   readonly pay = input<string | undefined>(undefined);
+  /**
+   * `?add=<id>&add=<id>`: the products « Ajouter à… » sent here, put on the lines once as scans would be, unsaved until
+   * the person saves, then forgotten by the address.
+   */
+  readonly add = input<string | readonly string[] | undefined>(undefined);
 
   protected readonly id = computed(() => this.invoiceId() ?? null);
   protected readonly options = this.facade.options;
@@ -654,6 +661,28 @@ export class InvoicePage {
    * product in the same unit counts one more, anything else starts a line. Anywhere else — an issued invoice, somebody
    * who may not read the products, a code no product holds — the card of what it names takes the scan instead.
    */
+  /** The products « Ajouter à… » sent here, put on the lines as scans would be: priced and taxed by this document's rule. */
+  private async takeIn(asked: readonly string[]): Promise<TakenIn | null> {
+    const lines = this.lines();
+    const options = this.options();
+    const companyId = this.company()?.id;
+    if (lines === null || options === null || !companyId) return null;
+    const found = await this.facade.pickProducts(companyId, { ids: [...asked] });
+    const customer = this.customer();
+    return productsIntoLines<LineGroup, ProductOption>(
+      lines,
+      (line) => line.controls,
+      asked,
+      found,
+      (product) => {
+        const line = lineGroup(null, options, customer);
+        applyProduct(line, product, options, customer?.excludedFamilies ?? []);
+        return line;
+      },
+      (line, product) => this.linesEditor()?.scanned(line, product),
+    );
+  }
+
   private async scanned(scan: Scan): Promise<ScanOutcome> {
     const lines = this.lines();
     const options = this.options();
@@ -801,6 +830,17 @@ export class InvoicePage {
           replaceUrl: true,
         });
       });
+    });
+    takeInAdded({
+      add: this.add,
+      ready: () => {
+        const current = this.current();
+        if (this.lines() === null) return null;
+        // An open draft's lines wait for the customer it names, whose regime says which taxes a line takes.
+        if (current && this.editable() && this.customer()?.id !== current.customerId) return null;
+        return { id: current?.id ?? null, editable: this.editable() };
+      },
+      take: (asked) => this.takeIn(asked),
     });
     let payAskedFor: string | null = null;
     effect(() => {

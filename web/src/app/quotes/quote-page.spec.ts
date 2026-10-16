@@ -27,6 +27,7 @@ import {
 import {
   effectToasts,
   offeredNext,
+  noticeToasts,
   provideQuietFeedback,
   RecordedFeedback,
   successToasts,
@@ -168,7 +169,9 @@ describe('QuotePage', () => {
     pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
     ),
-    productPrice: vi.fn(async () => null),
+    productPrice: vi.fn(
+      async (): Promise<{ unitPriceNet: string; priceListName: string | null } | null> => null,
+    ),
     create: vi.fn(),
     revise: vi.fn(),
     reviseAndSend: vi.fn(),
@@ -613,5 +616,93 @@ describe('QuotePage', () => {
     await open('q1');
 
     expect((q('quote-savings')?.textContent ?? '').replace(/\s+/g, ' ')).toContain('75,000');
+  });
+
+  describe('products sent here by « Ajouter à… »', () => {
+    const paper: ProductOption = {
+      id: 'p2',
+      reference: 'PAP-1',
+      name: 'Papier',
+      unitId: 'u1',
+      unitPriceNet: '4.5000',
+      defaultTaxComponentIds: [],
+      tracking: 'none',
+      mainPhotoId: null,
+    };
+    const readById = () =>
+      facade.pickProducts.mock.calls
+        .filter(([, asked]) => 'ids' in asked)
+        .map(([, asked]) => asked);
+    const quantityOf = (line: number) =>
+      (q(`line-${line}-quantity`) as HTMLInputElement | null)?.value ?? null;
+
+    beforeEach(() => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.pickProducts.mockClear();
+      facade.pickProducts.mockImplementation(async (_companyId: string, asked: PickAsked) =>
+        'ids' in asked ? [...products, paper].filter((each) => asked.ids.includes(each.id)) : [],
+      );
+    });
+
+    it('puts them on an open quote as a scan would, unsaved', async () => {
+      quote.set(draft);
+      fixture = TestBed.createComponent(QuotePage);
+      fixture.componentRef.setInput('quoteId', 'q1');
+      fixture.componentRef.setInput('add', ['p1', 'p2']);
+      await settle();
+      await vi.waitFor(() => expect(readById()).not.toEqual([]));
+      await settle();
+
+      expect(readById()).toEqual([{ ids: ['p1', 'p2'] }]);
+      expect(quantityOf(0)).toBe('3');
+      expect((q('line-1-description') as HTMLInputElement).value).toBe('Papier');
+      expect(facade.revise).not.toHaveBeenCalled();
+      expect(noticeToasts()).toEqual([{ key: 'documents.add_to.taken_in', params: { count: 2 } }]);
+    });
+
+    it('waits for the customer the draft names, whose regime says the taxes', async () => {
+      let customerRead: () => void = () => undefined;
+      const usual = facade.pickCustomers.getMockImplementation()!;
+      onTestFinished(() => void facade.pickCustomers.mockImplementation(usual));
+      facade.pickCustomers.mockImplementation(async (companyId: string, asked: PickAsked) => {
+        if ('ids' in asked) await new Promise<void>((resolve) => (customerRead = resolve));
+        return usual(companyId, asked);
+      });
+      quote.set(draft);
+      fixture = TestBed.createComponent(QuotePage);
+      fixture.componentRef.setInput('quoteId', 'q1');
+      fixture.componentRef.setInput('add', ['p2']);
+      await settle();
+      await settle();
+      expect(readById()).toEqual([]);
+
+      customerRead();
+      await vi.waitFor(() => expect(readById()).toEqual([{ ids: ['p2'] }]));
+    });
+
+    it('prices each one as a scan, from the customer’s list', async () => {
+      modules.add('price_lists');
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '4.0000', priceListName: 'Gros' });
+      quote.set(draft);
+      fixture = TestBed.createComponent(QuotePage);
+      fixture.componentRef.setInput('quoteId', 'q1');
+      fixture.componentRef.setInput('add', ['p2']);
+      await settle();
+      await vi.waitFor(() =>
+        expect(facade.productPrice).toHaveBeenCalledWith('c1', 'p2', 'k1', '1'),
+      );
+    });
+
+    it('adds nothing to a quote already sent', async () => {
+      quote.set(sent);
+      fixture = TestBed.createComponent(QuotePage);
+      fixture.componentRef.setInput('quoteId', sent.id);
+      fixture.componentRef.setInput('add', 'p2');
+      await settle();
+      await vi.waitFor(() =>
+        expect(noticeToasts()).toEqual([{ key: 'documents.add_to.not_draft' }]),
+      );
+      expect(readById()).toEqual([]);
+    });
   });
 });

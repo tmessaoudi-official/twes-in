@@ -9,6 +9,7 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -18,14 +19,22 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { InvoiceLines } from '../invoices/invoice-lines';
-import { figuresReady, linesArray, pickedCustomer } from '../invoices/invoice-forms';
+import {
+  applyProduct,
+  figuresReady,
+  lineGroup,
+  linesArray,
+  type LineGroup,
+  pickedCustomer,
+} from '../invoices/invoice-forms';
 import {
   liveFigures,
   negated,
   savesSomething,
   toDocumentFigures,
 } from '../shared/documents/document-figures';
-import type { CustomerOption } from '../invoices/invoices-types';
+import type { CustomerOption, ProductOption } from '../invoices/invoices-types';
+import { productsIntoLines, takeInAdded, type TakenIn } from '../shared/documents/add-to';
 import { LineCatalogue } from '../invoices/line-catalogue';
 import { taxNames } from '../invoices/tax-names';
 import type { PlannedAction } from '../shared/actions/planned-actions';
@@ -109,6 +118,12 @@ export class QuotePage {
   readonly quoteId = input<string | undefined>(undefined);
   /** `?customerId=` on a new quote: the customer « Nouveau devis » on a customer's page names, chosen once as if picked. */
   readonly customerId = input<string | undefined>(undefined);
+  /**
+   * `?add=<id>&add=<id>`: the products « Ajouter à… » sent here, put on the lines once as scans would be, unsaved until
+   * the person saves, then forgotten by the address.
+   */
+  readonly add = input<string | readonly string[] | undefined>(undefined);
+  private readonly linesEditor = viewChild(InvoiceLines);
 
   protected readonly id = computed(() => this.quoteId() ?? null);
   protected readonly options = this.facade.options;
@@ -444,6 +459,17 @@ export class QuotePage {
   constructor() {
     this.unsaved.declare(this.customerChanges);
     inject(ScreenActions).declare(this.actions);
+    takeInAdded({
+      add: this.add,
+      ready: () => {
+        const current = this.current();
+        if (this.lines() === null) return null;
+        // An open draft's lines wait for the customer it names, whose regime says which taxes a line takes.
+        if (current && this.editable() && this.customer()?.id !== current.customerId) return null;
+        return { id: current?.id ?? null, editable: this.editable() };
+      },
+      take: (asked) => this.takeIn(asked),
+    });
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();
@@ -693,5 +719,27 @@ export class QuotePage {
       return null;
     }
     return quoteInput(form.getRawValue(), lines, customerId);
+  }
+
+  /** The products « Ajouter à… » sent here, put on the lines as scans would be: priced and taxed as a quote's line is. */
+  private async takeIn(asked: readonly string[]): Promise<TakenIn | null> {
+    const lines = this.lines();
+    const options = this.options();
+    const companyId = this.company()?.id;
+    if (lines === null || options === null || !companyId) return null;
+    const found = await this.facade.pickProducts(companyId, { ids: [...asked] });
+    const customer = this.customer();
+    return productsIntoLines<LineGroup, ProductOption>(
+      lines,
+      (line) => line.controls,
+      asked,
+      found,
+      (product) => {
+        const line = lineGroup(null, options, customer);
+        applyProduct(line, product, options, customer?.excludedFamilies ?? []);
+        return line;
+      },
+      (line, product) => this.linesEditor()?.scanned(line, product),
+    );
   }
 }

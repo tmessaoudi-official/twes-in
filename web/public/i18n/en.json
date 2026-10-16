@@ -4144,6 +4144,32 @@
       "forbidden": "The preview shows an invoice: reading invoices is needed as well.",
       "failed": "The preview could not be prepared. Try again in a moment.",
       "network": "The server cannot be reached."
+    },
+    "add_to": {
+      "action": "Add to…",
+      "title": "{count, plural, one {Add one product to…} other {Add {{count}} products to…}}",
+      "kind": "Document",
+      "kinds": {
+        "invoice": "Invoice",
+        "quote": "Quote",
+        "delivery_note": "Delivery note"
+      },
+      "new": {
+        "invoice": "New invoice",
+        "quote": "New quote",
+        "delivery_note": "New delivery note"
+      },
+      "customer": "Customer",
+      "every_customer": "Every customer",
+      "no_customer": "No customer found",
+      "draft": "{{customer}} · {{lines}} · {{total}}",
+      "lines": "{count, plural, =0 {no lines} one {one line} other {{{count}} lines}}",
+      "none": "No open draft",
+      "unreadable": "The drafts could not be read. A new draft is still possible.",
+      "close": "Close",
+      "taken_in": "{count, plural, one {One product added to the lines, to be saved} other {{{count}} products added to the lines, to be saved}}",
+      "left_out": "{count, plural, one {One product not found was not added} other {{{count}} products not found were not added}}",
+      "not_draft": "This document is no longer a draft: nothing was added to it."
     }
   },
   "quotes": {

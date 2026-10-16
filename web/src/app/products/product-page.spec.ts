@@ -38,6 +38,7 @@ import type {
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { Feedback } from '../shared/feedback/feedback';
+import { AddToDocuments } from './add-to-documents';
 import type { RecordedFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
@@ -77,6 +78,7 @@ const laptop: ProductRow = {
 };
 
 describe('ProductPage', () => {
+  const addTo = { kinds: vi.fn(() => ['invoice']), open: vi.fn(async () => undefined) };
   const error = signal<ProductsError | null>(null);
   const refusals = signal<readonly FieldRefusal[]>([]);
   const product = signal<ProductRow | null>(null);
@@ -168,6 +170,7 @@ describe('ProductPage', () => {
     TestBed.configureTestingModule({
       imports: [ProductPage],
       providers: [
+        { provide: AddToDocuments, useValue: addTo },
         ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -222,6 +225,39 @@ describe('ProductPage', () => {
     expect(labels).toMatchObject({ rare: true, shown: true });
     labels!.run!();
     expect(opened).toHaveBeenCalledWith(`/print/product-labels/${laptop.id}`, '_blank');
+  });
+
+  it('offers « Ajouter à… » on a saved product, which goes to the document chosen', async () => {
+    addTo.kinds.mockReturnValue(['invoice']);
+    addTo.open.mockClear();
+    product.set(laptop);
+    await open(laptop.id);
+    const addToAction = TestBed.inject(ScreenActions)
+      .actions()
+      .find((each) => each.id === 'add_to');
+    expect(addToAction).toMatchObject({ label: 'documents.add_to.action', shown: true });
+    addToAction!.run!();
+    expect(addTo.open).toHaveBeenCalledExactlyOnceWith([laptop.id]);
+  });
+
+  it('offers no « Ajouter à… » on a product not saved yet, or to someone who may write no document', async () => {
+    addTo.kinds.mockReturnValue(['invoice']);
+    await open(undefined);
+    expect(
+      TestBed.inject(ScreenActions)
+        .actions()
+        .map((each) => each.id),
+    ).not.toContain('add_to');
+
+    fixture.destroy();
+    addTo.kinds.mockReturnValue([]);
+    product.set(laptop);
+    await open(laptop.id);
+    expect(
+      TestBed.inject(ScreenActions)
+        .actions()
+        .map((each) => each.id),
+    ).not.toContain('add_to');
   });
 
   it('offers no labels for a product not saved yet', async () => {

@@ -51,8 +51,10 @@ import {
   DELIVERY_NOTE_STATUS_TONES,
   DELIVERY_NOTE_STATUS_STAGES,
   type DeliveryNoteInput,
+  type ProductOption,
   type TaxFamily,
 } from './delivery-notes-types';
+import { productsIntoLines, takeInAdded, type TakenIn } from '../shared/documents/add-to';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { unsavedChanges } from '../shared/form/dirty-count';
@@ -135,6 +137,11 @@ export class DeliveryNotePage {
    * on the first line by the same rule as any scan — a pack enters its count (docs/SPEC.md § 7, 2026-09-23, slice 2).
    */
   readonly scan = input<string | undefined>(undefined);
+  /**
+   * `?add=<id>&add=<id>`: the products « Ajouter à… » sent here, put on the lines once as scans would be, unsaved until
+   * the person saves, then forgotten by the address.
+   */
+  readonly add = input<string | readonly string[] | undefined>(undefined);
 
   protected readonly id = computed(() => this.deliveryNoteId() ?? null);
   protected readonly scale = computed(() => this.options()?.currencyScale ?? null);
@@ -535,6 +542,28 @@ export class DeliveryNotePage {
    * A scan on a draft puts its product on the lines as a till does (docs/SPEC.md § 7, 2026-09-23 09:30), the same
    * rule the invoice follows. Anywhere else the card of what it names takes the scan.
    */
+  /** The products « Ajouter à… » sent here, put on the lines as scans would be: priced and taxed as a note's line is. */
+  private async takeIn(asked: readonly string[]): Promise<TakenIn | null> {
+    const lines = this.lines();
+    const options = this.options();
+    const companyId = this.company()?.id;
+    if (lines === null || options === null || !companyId) return null;
+    const found = await this.facade.pickProducts(companyId, { ids: [...asked] });
+    const excluded = this.excludedFamilies();
+    return productsIntoLines<LineGroup, ProductOption>(
+      lines,
+      (line) => line.controls,
+      asked,
+      found,
+      (product) => {
+        const line = lineGroup(null, options);
+        applyProduct(line, product, options, excluded);
+        return line;
+      },
+      (line, product) => this.linesEditor()?.scanned(line, product),
+    );
+  }
+
   private async scanned(scan: Scan): Promise<ScanOutcome> {
     const lines = this.lines();
     const options = this.options();
@@ -605,6 +634,17 @@ export class DeliveryNotePage {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
     // declaration, so an action cannot be offered in one of them and missing from another.
     inject(ScreenActions).declare(this.actions);
+    takeInAdded({
+      add: this.add,
+      ready: () => {
+        const current = this.current();
+        if (this.lines() === null) return null;
+        // An open draft's lines wait for the customer it names, whose regime says which taxes a line takes.
+        if (current && this.editable() && this.customer()?.id !== current.customerId) return null;
+        return { id: current?.id ?? null, editable: this.editable() };
+      },
+      take: (asked) => this.takeIn(asked),
+    });
     const scans = inject(ScanBus);
     scans.handle((scan) => this.scanned(scan));
     effect(() => {

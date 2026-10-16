@@ -40,9 +40,9 @@ export async function aProduct(page: Page, reference: string): Promise<string> {
   );
 }
 
-/** Creates an individual customer through the API; a customer is never deleted, so each run leaves one. */
-export async function aCustomer(page: Page, number: string): Promise<void> {
-  await page.evaluate(
+/** Creates an individual customer through the API, and says its id; a customer is never deleted, so each run leaves one. */
+export async function aCustomer(page: Page, number: string): Promise<string> {
+  return page.evaluate(
     async ([csrf, customerNumber]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
       const created = await fetch(`/api/companies/${me.company.id}/customers`, {
@@ -56,6 +56,7 @@ export async function aCustomer(page: Page, number: string): Promise<void> {
         }),
       });
       if (!created.ok) throw new Error(`creating ${customerNumber} answered ${created.status}`);
+      return ((await created.json()) as { id: string }).id;
     },
     [CSRF, number] as const,
   );
