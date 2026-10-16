@@ -18,7 +18,7 @@ use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Gotenberg's own Factur-X route (`/forms/pdfengines/factur-x`, in the pinned 8.37.0): it embeds the XML as
+ * Gotenberg's own Factur-X route (`/forms/pdfengines/factur-x`, in the pinned 8.38.1): it embeds the XML as
  * `factur-x.xml` with the Alternative relationship, writes the Factur-X XMP metadata at the conformance level asked and
  * converts the PDF to PDF/A-3b. The parts go up unencoded, as the renderer's do.
  */

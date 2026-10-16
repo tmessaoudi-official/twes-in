@@ -163,7 +163,7 @@ services:
   # `docker compose up` leaves it off. Development only.
   lan:
     logging: *logging
-    image: caddy:2.11.6-alpine
+    image: caddy:2.11.7-alpine
     profiles: [lan]
     environment:
       LAN_HOST: "${LAN_HOST:-localhost}"
@@ -179,7 +179,7 @@ services:
   # Renders PDFs from HTML (docs/SPEC.md § 2 PDF). Only the api calls it; the host port serves a host-side api process.
   gotenberg:
     logging: *logging
-    image: gotenberg/gotenberg:8.37.0
+    image: gotenberg/gotenberg:8.38.1
     ports:
       - "127.0.0.1:${GOTENBERG_PORT:-8094}:3000"
     healthcheck:
@@ -190,7 +190,7 @@ services:
 
   mailpit:
     logging: *logging
-    image: axllent/mailpit:v1.31.4
+    image: axllent/mailpit:v1.31.6
     ports:
       - "127.0.0.1:${MAILPIT_UI_PORT:-8092}:8025"
       - "127.0.0.1:${MAILPIT_SMTP_PORT:-8093}:1025"

@@ -8,6 +8,7 @@ Procedure: docs/UPDATE.md, "After every bump" for each commit.
 - [2026-10-16 18:44] AGREED: one ecosystem a commit; TypeScript 7 stays held; a licence change stops the bump (SPEC § 7 2026-10-16 17:24).
 - [2026-10-16 19:01] ASSUMED (review): the framework-bundle recipe's AGENTS.md and CLAUDE.md stay out of api/, as G1a removed them (459a705c): the project's own CLAUDE.md and SPEC carry the process, and the recipe's generic conventions (AbstractController, ask before generating) contradict the code's. Upstream's only change since install drops the CLAUDE.md shim, so recipes:update brings neither back. Alternatives: a two-line AGENTS.md pointing at CLAUDE.md (advisor's suggestion), or the recipe's file verbatim.
 - [2026-10-16 19:56] AGREED: the MCP packages' MIT → Apache-2.0 transition, dev-only under @angular/cli 22.2.3, is accepted (SPEC § 7, asked under the 17:24 ruling)
+- [2026-10-16 21:15] ASSUMED (review): axe 4.14 turns on label-content-name-mismatch (WCAG 2.5.3, RGAA 6.1.5): the flagged controls are fixed, not the rule silenced. Key hints, avatar initials and capped counts (« 9+ ») are drawn by the stylesheet (data-glyph) as non-text content, the exact figure staying in the name per the count-badge ruling; the folded bell's Material small badge becomes a text-free dot; controls that show words and had a sentence as aria-label (floor, read-only and coming stock views, company rail, line figures) are named by their words with the sentence as tooltip/description or a leading sr-only phrase; the layer show/lock toggles become switches; the member row is named with its role, the language button with its code. Basis: ACT 2ee8b8 (symbolic text is non-text, aria-hidden text still counts) and the advisor's read. Alternatives: the shortcut and initials written into each name; disabling the rule (refused: RGAA).
 
 ## Formal Plan
 Inventory on 2026-10-16 (`composer outdated --direct`, `npm outdated`, Packagist): Symfony 8.1.9 is the newest
@@ -31,6 +32,8 @@ is out and held.
    against its release notes' sha1). Current: centrifugo v6.9.7, postgres 18.6-trixie, seaweedfs 4.48, composer 2.10.3,
    gatus v5.37.0, glitchtip 6.2.6; pgBackRest and restic are trixie packages, moved only with Debian.
 5. GitHub Actions: each `uses:` against its releases.
+   Read 2026-10-16 20:31: `actions/checkout@v7` (latest v7.0.1) and `actions/upload-artifact@v7` (latest v7.0.2), the
+   only two, are on their latest major, which their tags follow: nothing moves. Pinning by commit is the tool audit's to weigh.
 
 ## Status
 <!-- progress-block v1 -->
@@ -38,9 +41,10 @@ is out and held.
 |---|------|------|-------|----------|-------|
 | 1 | PHP packages | M | done | 45a5e43f | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
 | 2 | npm packages (zxing-wasm apart) | M | done | 16a2593d | web/package.json web/package-lock.json infra/web/tools.Dockerfile THIRD-PARTY-NOTICES.md |
-| 3 | zxing-wasm | S | doing | - | web/package.json web/package-lock.json web/src/third-party/** |
-| 4 | Docker images | M | todo | - | compose*.yaml infra/** |
-| 5 | GitHub Actions | S | todo | - | .github/workflows/** |
+| 3 | zxing-wasm | S | done | 775e4d9a | web/package.json web/package-lock.json web/src/third-party/** |
+| 4 | Docker images | M | done | - | compose*.yaml infra/** |
+| 6 | axe 4.14's Label in Name on master | S | done | 9b0f9d05 | web/src/** web/e2e/** web/public/i18n/** |
+| 5 | GitHub Actions | S | done | - | .github/workflows/** |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
