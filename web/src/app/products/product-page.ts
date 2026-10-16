@@ -25,7 +25,8 @@ import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import type { FormGroup } from '@angular/forms';
-import { AddToDocuments } from './add-to-documents';
+import { AddToDocuments } from '../shared/documents/add-to-documents';
+import { PRODUCTS_ADD_TO } from './add-to-kinds';
 import { ArticleDefaults } from './article-defaults';
 import { PriceCalculator } from './price-calculator';
 import { ProductBarcodesSection } from './product-barcodes';
@@ -84,6 +85,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     ProductSubstitutes,
     ProductCostHistory,
     ProductPhotos,
+    ...PRODUCTS_ADD_TO,
   ],
 })
 export class ProductPage {

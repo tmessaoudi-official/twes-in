@@ -10,6 +10,9 @@ import { PickField } from '../form/pick-field';
 import { FormatFacade } from '../i18n/format-facade';
 import { AddToDialog, type AddToData, type AddToDraft, type AddToTarget } from './add-to-dialog';
 
+/** What every case shares: the products' question, no help. */
+const asked = { title: 'documents.add_to.title', help: null } as const;
+
 const carthage: AddToDraft = {
   id: 'i1',
   customerName: 'Carthage',
@@ -45,7 +48,10 @@ describe('AddToDialog', () => {
       ],
     });
     const texts = TestBed.inject(TranslateService);
-    texts.setTranslation('fr', { documents: { add_to: { draft: '{{customer}} · {{total}}' } } });
+    texts.setTranslation('fr', {
+      documents: { add_to: { draft: '{{total}}', draft_of: '{{customer}} · {{total}}' } },
+      delivery_notes: { invoice_target: { help: 'Une facture émise n’est jamais modifiée' } },
+    });
     texts.use('fr');
     fixture = TestBed.createComponent(AddToDialog);
     await settled();
@@ -64,7 +70,7 @@ describe('AddToDialog', () => {
 
   it('offers a new draft or an open one of the only kind there is, and closes on the one chosen', async () => {
     const invoices = target('invoice', [carthage]);
-    await open({ targets: [invoices], count: 2, scale: 3, customer: null });
+    await open({ ...asked, targets: [invoices], count: 2, scale: 3, customerId: null });
 
     expect(invoices.drafts).toHaveBeenCalledExactlyOnceWith(null);
     // One kind: nothing to choose between.
@@ -83,7 +89,7 @@ describe('AddToDialog', () => {
   it('reads the drafts of the kind chosen, and of the customer chosen', async () => {
     const invoices = target('invoice', [carthage]);
     const quotes = target('quote', [{ ...carthage, id: 'q1', customerName: 'Sousse' }]);
-    await open({ targets: [invoices, quotes], count: 1, scale: 3, customer: null });
+    await open({ ...asked, targets: [invoices, quotes], count: 1, scale: 3, customerId: null });
 
     q('add-to-kind-quote')!.querySelector('input')!.click();
     await settled();
@@ -126,7 +132,7 @@ describe('AddToDialog', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         {
           provide: MAT_DIALOG_DATA,
-          useValue: { targets: [invoices], count: 1, scale: 3, customer: null },
+          useValue: { ...asked, targets: [invoices], count: 1, scale: 3, customerId: null },
         },
         { provide: MatDialogRef, useValue: { close } },
         { provide: FormatFacade, useValue: { amount: (value: string) => `~${value}` } },
@@ -154,14 +160,27 @@ describe('AddToDialog', () => {
       targets: [notes],
       count: 1,
       scale: 3,
-      customer: { id: 'k1', code: 'C-7', name: 'Carthage' },
+      customerId: 'k1',
+      title: 'delivery_notes.invoice_target.title',
+      help: 'delivery_notes.invoice_target.help',
     });
     expect(notes.drafts).toHaveBeenCalledExactlyOnceWith('k1');
     expect(q('add-to-customer')).toBeNull();
+    // Every row is that customer's: it is not named again on each.
+    expect(q('add-to-draft-i1')?.textContent).not.toContain('Carthage');
+    expect(q('add-to-draft-i1')?.textContent).toContain('~119.000');
+    expect(q('add-to-title')?.textContent).toContain('delivery_notes.invoice_target.title');
+    expect(fixture.nativeElement.textContent).toContain('Une facture émise n’est jamais modifiée');
   });
 
   it('says when there is no open draft, and when the drafts could not be read', async () => {
-    await open({ targets: [target('delivery_note', [])], count: 1, scale: 3, customer: null });
+    await open({
+      ...asked,
+      targets: [target('delivery_note', [])],
+      count: 1,
+      scale: 3,
+      customerId: null,
+    });
     expect(q('add-to-none')).not.toBeNull();
     expect(q('add-to-unreadable')).toBeNull();
 
@@ -170,7 +189,7 @@ describe('AddToDialog', () => {
       ...target('invoice', []),
       drafts: vi.fn(async () => Promise.reject(new Error('down'))),
     };
-    await open({ targets: [failing], count: 1, scale: 3, customer: null });
+    await open({ ...asked, targets: [failing], count: 1, scale: 3, customerId: null });
     expect(q('add-to-unreadable')).not.toBeNull();
     expect(q('add-to-none')).toBeNull();
     // A new draft needs nothing read.
@@ -179,7 +198,13 @@ describe('AddToDialog', () => {
   });
 
   it('closes on nothing chosen', async () => {
-    await open({ targets: [target('invoice', [])], count: 1, scale: 3, customer: null });
+    await open({
+      ...asked,
+      targets: [target('invoice', [])],
+      count: 1,
+      scale: 3,
+      customerId: null,
+    });
     q('add-to-close')!.click();
     expect(close).toHaveBeenCalledExactlyOnceWith(null);
   });

@@ -12,11 +12,7 @@ import { BulkSkippedDialog, type BulkSkippedDialogData } from '../shared/list/bu
 import { DeliveryNotesRefused } from './delivery-notes-api';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import type { InvoicingCheck } from './delivery-notes-types';
-import {
-  InvoiceTargetDialog,
-  type InvoiceTarget,
-  type InvoiceTargetData,
-} from './invoice-target-dialog';
+import { askInvoiceTarget, type InvoiceTarget } from './invoice-target';
 
 /**
  * What the delivery notes list offers on the rows a person selected: « Facturer »
@@ -115,14 +111,6 @@ export class DeliveryNoteBulk {
   ): Promise<InvoiceTarget | null> {
     const drafts = await this.facade.draftsToAddTo(companyId, customerId, establishmentId);
     if (drafts.length === 0) return { draftId: null };
-    const target = await firstValueFrom(
-      this.dialog
-        .open<InvoiceTargetDialog, InvoiceTargetData, InvoiceTarget | null>(InvoiceTargetDialog, {
-          data: { drafts, scale: this.scale() ?? 3 },
-          autoFocus: 'first-tabbable',
-        })
-        .afterClosed(),
-    );
-    return target ?? null;
+    return askInvoiceTarget(this.dialog, drafts, customerId, this.scale() ?? 3);
   }
 }

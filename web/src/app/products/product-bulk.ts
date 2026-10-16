@@ -4,7 +4,8 @@ import { ChangeDetectionStrategy, Component, DOCUMENT, inject, input } from '@an
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
-import { AddToDocuments } from './add-to-documents';
+import { AddToDocuments } from '../shared/documents/add-to-documents';
+import { PRODUCTS_ADD_TO } from './add-to-kinds';
 
 /**
  * What the products list offers on the rows a person selected, in its selection bar: « Ajouter à… » puts them on a
@@ -16,6 +17,7 @@ import { AddToDocuments } from './add-to-documents';
   selector: 'app-product-bulk',
   imports: [MatButtonModule, MatIconModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: PRODUCTS_ADD_TO,
   host: { class: 'flex flex-wrap gap-2' },
   template: `
     @if (mayAddTo) {

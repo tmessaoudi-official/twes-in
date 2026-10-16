@@ -176,7 +176,7 @@ describe('DeliveryNoteBulk', () => {
 
     await invoice(fixture);
     expect(facade.invoiceNotes).not.toHaveBeenCalled();
-    body('invoice-target-d1')!.click();
+    body('add-to-draft-d1')!.click();
     await settle();
 
     expect(facade.invoiceNotes).toHaveBeenCalledExactlyOnceWith('c1', ['a', 'b'], 'd1');
@@ -189,7 +189,7 @@ describe('DeliveryNoteBulk', () => {
     const fixture = create(['a']);
 
     await invoice(fixture);
-    body('invoice-target-cancel')!.click();
+    body('add-to-close')!.click();
     await settle();
 
     expect(facade.invoiceNotes).not.toHaveBeenCalled();

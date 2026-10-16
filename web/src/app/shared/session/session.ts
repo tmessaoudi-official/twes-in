@@ -23,4 +23,8 @@ export interface SessionState {
 export abstract class Session {
   /** null while nobody is signed in or before the API has answered */
   abstract readonly me: Signal<SessionState | null>;
+  /** Whether the person holds the permission in the company acted for. */
+  abstract hasPermission(permission: string): boolean;
+  /** Whether the company acted for has the module switched on. */
+  abstract hasModule(module: string): boolean;
 }

@@ -38,7 +38,7 @@ import type {
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { Feedback } from '../shared/feedback/feedback';
-import { AddToDocuments } from './add-to-documents';
+import { AddToDocuments } from '../shared/documents/add-to-documents';
 import type { RecordedFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
@@ -170,7 +170,6 @@ describe('ProductPage', () => {
     TestBed.configureTestingModule({
       imports: [ProductPage],
       providers: [
-        { provide: AddToDocuments, useValue: addTo },
         ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -190,6 +189,10 @@ describe('ProductPage', () => {
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         // Customer view is remembered per tab: on the real session storage it outlives this spec and hides columns in others.
       ],
+    });
+    // The page provides « Ajouter à… » itself, so the stub replaces its own provider.
+    TestBed.overrideComponent(ProductPage, {
+      add: { providers: [{ provide: AddToDocuments, useValue: addTo }] },
     });
   });
 
