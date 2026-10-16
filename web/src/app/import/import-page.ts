@@ -18,7 +18,13 @@ import { AuthFacade } from '../auth/auth-facade';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { ImportApi } from './import-api';
 import { ImportFacade } from './import-facade';
-import type { ImportMode, ImportNote, ImportRejection } from './import-types';
+import {
+  TEXT_ENCODINGS,
+  type ImportMode,
+  type ImportNote,
+  type ImportRejection,
+  type TextEncoding,
+} from './import-types';
 import { FileDrop } from '../shared/form/file-drop';
 import { IMPORT_MAX_BYTES } from '../shared/form/file-limits';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
@@ -74,6 +80,13 @@ export class ImportPage {
   /** The chosen file, if any: its name is shown back so a person knows which one is about to run. */
   protected readonly file = signal<File | null>(null);
   protected readonly mode = signal<ImportMode>('create');
+  /** What a CSV is read as, when the person chose it; null lets the API find it on the file. */
+  protected readonly encoding = signal<TextEncoding | null>(null);
+  protected readonly encodings = TEXT_ENCODINGS;
+  /** Only a CSV has an encoding to choose: a workbook's text is UTF-8 whatever wrote it. */
+  protected readonly isCsv = computed(
+    () => this.file()?.name.toLowerCase().endsWith('.csv') === true,
+  );
   /** The switches of the file ticked for this run, by key; each is off until ticked. */
   protected readonly ticked = signal<readonly string[]>([]);
   /** A preview that came back with nothing rejected: only then is importing more than a guess. */
@@ -155,12 +168,21 @@ export class ImportPage {
 
   protected chooseFile(file: File): void {
     this.file.set(file);
+    // Another file may be written in another encoding: it is found on that file until chosen again.
+    this.encoding.set(null);
     this.previewed.set(false);
     this.facade.forget();
   }
 
   protected chooseMode(mode: ImportMode): void {
     this.mode.set(mode);
+    this.previewed.set(false);
+    this.facade.forget();
+  }
+
+  /** Read in another encoding, the file says other things: the preview before no longer stands. */
+  protected chooseEncoding(encoding: TextEncoding | null): void {
+    this.encoding.set(encoding);
     this.previewed.set(false);
     this.facade.forget();
   }
@@ -193,6 +215,14 @@ export class ImportPage {
     const companyId = this.company()?.id;
     const file = this.file();
     if (companyId === undefined || file === null) return;
-    await this.facade.run(companyId, this.subject(), file, this.mode(), dryRun, this.ticked());
+    await this.facade.run(
+      companyId,
+      this.subject(),
+      file,
+      this.mode(),
+      dryRun,
+      this.ticked(),
+      this.encoding(),
+    );
   }
 }

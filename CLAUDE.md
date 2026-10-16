@@ -526,3 +526,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - `app.routes.ts` is on the first page, so a constant it imports from a feature's module brings that whole module with it:
   `SCHEDULE_TEXTS` from `schedule.ts` put the first page 2.77 kB over its 1 MB. Keep such a constant in a file of its own
   (`shared/schedule/schedule-texts.ts`), and measure the first page before a web slice, not after (2026-10-15).
+- PHP's mbstring has no Windows-1256 (Excel's Arabic CSV): `mb_convert_encoding(…, 'Windows-1256')` throws; glibc's iconv
+  `CP1256` converts it. mbstring maps Windows-1252's five undefined bytes to C1 controls, where iconv fails on them, and keeps
+  a UTF-16 byte-order mark as EF BB BF; a lone UTF-16 high surrogate becomes « ? » (2026-10-16, `CsvTranscoder`).

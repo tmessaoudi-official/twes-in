@@ -11,6 +11,7 @@ namespace App\Shared\Infrastructure\Spreadsheet;
 
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetReader;
+use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
 use OpenSpout\Reader\CSV\Reader as CsvReader;
 use OpenSpout\Reader\XLSX\Options as XlsxOptions;
@@ -23,16 +24,53 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  */
 final class OpenSpoutReader implements SpreadsheetReader
 {
-    /** @param int $maxInflatedBytes what a workbook's parts may inflate to, together: a few kilobytes of zip can hold gigabytes */
-    public function __construct(#[Autowire(param: 'app.import.max_inflated_bytes')] private readonly int $maxInflatedBytes)
+    /**
+     * @param int    $maxInflatedBytes what a workbook's parts may inflate to, together: a few kilobytes of zip can hold gigabytes
+     * @param string $copies           where a CSV in another encoding is written out in UTF-8 while it is read; empty for
+     *                                 the system's temporary directory
+     */
+    public function __construct(
+        #[Autowire(param: 'app.import.max_inflated_bytes')] private readonly int $maxInflatedBytes,
+        private readonly string $copies = '',
+    ) {
+    }
+
+    public function encodingOf(string $path, SpreadsheetFormat $format): ?TextEncoding
     {
+        return SpreadsheetFormat::Csv === $format ? CsvSniffer::encodingOf($path) : null;
     }
 
     /**
      * Excel keeps a number as a float and a date as a number of days. Both are converted here rather than downstream,
      * so that every importer parses text and only text.
      */
-    public function rows(string $path, SpreadsheetFormat $format): iterable
+    public function rows(string $path, SpreadsheetFormat $format, ?TextEncoding $encoding = null): iterable
+    {
+        if (SpreadsheetFormat::Csv !== $format || TextEncoding::Utf8 === ($encoding ??= CsvSniffer::encodingOf($path))) {
+            yield from $this->read($path, $format);
+
+            return;
+        }
+
+        $copy = tempnam('' === $this->copies ? sys_get_temp_dir() : $this->copies, 'twes-csv-');
+        if (false === $copy) {
+            throw new UnreadableSpreadsheet(\sprintf('"%s" could not be read.', basename($path)));
+        }
+        // Removed however the reading ends: finished, refused, or left halfway by a caller that stopped asking.
+        try {
+            CsvTranscoder::toUtf8($path, $copy, $encoding);
+            yield from $this->read($copy, $format);
+        } finally {
+            unlink($copy);
+        }
+    }
+
+    /**
+     * @return iterable<int, list<string>>
+     *
+     * @throws UnreadableSpreadsheet
+     */
+    private function read(string $path, SpreadsheetFormat $format): iterable
     {
         $reader = match ($format) {
             SpreadsheetFormat::Csv => new CsvReader(CsvSniffer::optionsFor($path)),

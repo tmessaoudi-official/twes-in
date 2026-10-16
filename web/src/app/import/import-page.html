@@ -45,6 +45,30 @@
         <mat-radio-button value="upsert">{{ 'import.mode_upsert' | translate }}</mat-radio-button>
       </mat-radio-group>
 
+      @if (isCsv()) {
+        <div class="flex flex-col gap-1">
+          <span id="import-encoding-label" class="text-sm font-medium">{{
+            'import.encoding.label' | translate
+          }}</span>
+          <mat-radio-group
+            class="flex flex-wrap gap-x-4 gap-y-1"
+            [value]="encoding() ?? 'auto'"
+            (change)="chooseEncoding($event.value === 'auto' ? null : $event.value)"
+            aria-labelledby="import-encoding-label"
+            data-testid="import-encoding"
+          >
+            <mat-radio-button value="auto">{{
+              'import.encoding.auto' | translate
+            }}</mat-radio-button>
+            @for (choice of encodings; track choice) {
+              <mat-radio-button [value]="choice" [attr.data-testid]="'import-encoding-' + choice">{{
+                'import.encoding.' + choice | translate
+              }}</mat-radio-button>
+            }
+          </mat-radio-group>
+        </div>
+      }
+
       @if (guide.switches.length > 0) {
         <div
           class="flex flex-col gap-2"
@@ -112,6 +136,16 @@
       <h2 class="text-xl font-semibold">
         {{ (report.committed ? 'import.stored_title' : 'import.preview_title') | translate }}
       </h2>
+      @if (report.encoding; as encoding) {
+        <!-- First, before the counts: the preview shows no cell, so this line is how a misread file shows. -->
+        <p class="flex items-center gap-2" data-testid="import-read-as">
+          <mat-icon aria-hidden="true">translate</mat-icon>
+          {{
+            'import.encoding.read_as'
+              | translate: { encoding: ('import.encoding.' + encoding | translate) }
+          }}
+        </p>
+      }
       @if (report.alreadyImportedAt; as at) {
         <p class="flex items-center gap-2" data-testid="import-already-imported">
           <mat-icon aria-hidden="true">history</mat-icon>
