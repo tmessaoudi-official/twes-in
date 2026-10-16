@@ -12,7 +12,7 @@ namespace App\Erasure\Infrastructure;
 use App\Erasure\Application\ErasureConflict;
 use App\Erasure\Application\ErasureReference;
 use App\Erasure\Application\ErasureStore;
-use App\Erasure\Domain\DataErasureRow;
+use App\Erasure\Domain\Model\DataErasureRow;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\DBAL\Exception\NotNullConstraintViolationException;

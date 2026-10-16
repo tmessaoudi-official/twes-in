@@ -14,8 +14,8 @@ use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Domain\StockLocationKind;
 use App\Tenancy\Domain\Company;
 use App\Venue\Application\ArrangeVenue;
-use App\Venue\Domain\PlanRect;
-use App\Venue\Domain\StructureKind;
+use App\Venue\Domain\ValueObject\PlanRect;
+use App\Venue\Domain\ValueObject\StructureKind;
 use Symfony\Component\Uid\Uuid;
 
 /**

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Infrastructure\Doctrine;
 
-use App\ImportExport\Domain\ImportRun;
-use App\ImportExport\Domain\ImportRunRepository;
+use App\ImportExport\Domain\Model\ImportRun;
+use App\ImportExport\Domain\Repository\ImportRunRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

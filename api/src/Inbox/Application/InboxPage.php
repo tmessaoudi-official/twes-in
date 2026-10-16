@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Inbox\Application;
 
-use App\Inbox\Domain\InboxItem;
+use App\Inbox\Domain\Model\InboxItem;
 
 final readonly class InboxPage
 {

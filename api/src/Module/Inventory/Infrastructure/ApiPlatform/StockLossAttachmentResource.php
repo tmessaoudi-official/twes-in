@@ -13,7 +13,7 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
-use App\Files\Domain\Attachment;
+use App\Files\Domain\Model\Attachment;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**

@@ -14,9 +14,9 @@ use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationKind;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
-use App\Venue\Domain\PlanRect;
-use App\Venue\Domain\VenueArea;
-use App\Venue\Domain\VenueSpot;
+use App\Venue\Domain\Model\VenueArea;
+use App\Venue\Domain\Model\VenueSpot;
+use App\Venue\Domain\ValueObject\PlanRect;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

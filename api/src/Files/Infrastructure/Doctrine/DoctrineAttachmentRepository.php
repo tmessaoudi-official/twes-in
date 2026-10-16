@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Files\Infrastructure\Doctrine;
 
-use App\Files\Domain\Attachment;
-use App\Files\Domain\AttachmentRepository;
+use App\Files\Domain\Model\Attachment;
+use App\Files\Domain\Repository\AttachmentRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

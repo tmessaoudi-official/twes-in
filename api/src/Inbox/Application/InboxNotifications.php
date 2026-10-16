@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Inbox\Application;
 
 use App\Identity\Domain\UserRepository;
-use App\Inbox\Domain\InboxItem;
-use App\Inbox\Domain\InboxRepository;
+use App\Inbox\Domain\Model\InboxItem;
+use App\Inbox\Domain\Repository\InboxRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\RealtimePublisher;

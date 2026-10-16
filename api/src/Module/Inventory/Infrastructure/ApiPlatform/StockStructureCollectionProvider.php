@@ -15,7 +15,7 @@ use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use App\Venue\Application\ArrangeVenue;
 use App\Venue\Application\VenueAreaNotFound;
-use App\Venue\Domain\VenueStructure;
+use App\Venue\Domain\Model\VenueStructure;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProviderInterface<StockStructureResource> */

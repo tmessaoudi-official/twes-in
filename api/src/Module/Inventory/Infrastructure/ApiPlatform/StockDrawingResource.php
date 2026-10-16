@@ -16,7 +16,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use App\Module\Inventory\Domain\StockLocation;
-use App\Venue\Domain\VenueSpot;
+use App\Venue\Domain\Model\VenueSpot;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 

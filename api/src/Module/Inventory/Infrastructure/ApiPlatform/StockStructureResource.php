@@ -15,8 +15,8 @@ use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
-use App\Venue\Domain\StructureKind;
-use App\Venue\Domain\VenueStructure;
+use App\Venue\Domain\Model\VenueStructure;
+use App\Venue\Domain\ValueObject\StructureKind;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 

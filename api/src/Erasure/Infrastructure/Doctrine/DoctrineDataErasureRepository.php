@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Erasure\Infrastructure\Doctrine;
 
-use App\Erasure\Domain\DataErasure;
-use App\Erasure\Domain\DataErasureRepository;
-use App\Erasure\Domain\ErasureState;
+use App\Erasure\Domain\Model\DataErasure;
+use App\Erasure\Domain\Repository\DataErasureRepository;
+use App\Erasure\Domain\ValueObject\ErasureState;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

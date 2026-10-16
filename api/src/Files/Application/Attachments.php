@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Files\Application;
 
-use App\Files\Domain\Attachment;
-use App\Files\Domain\AttachmentRepository;
-use App\Files\Domain\StoredFile;
+use App\Files\Domain\Model\Attachment;
+use App\Files\Domain\Model\StoredFile;
+use App\Files\Domain\Repository\AttachmentRepository;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;

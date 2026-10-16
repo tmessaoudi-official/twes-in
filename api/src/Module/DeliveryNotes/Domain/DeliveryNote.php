@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Domain;
 
-use App\Files\Domain\StoredFile;
+use App\Files\Domain\Model\StoredFile;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Shared\Domain\CompanyOwned;

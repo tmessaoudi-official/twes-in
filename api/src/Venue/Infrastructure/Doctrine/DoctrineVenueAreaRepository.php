@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Venue\Infrastructure\Doctrine;
 
-use App\Venue\Domain\VenueArea;
-use App\Venue\Domain\VenueAreaRepository;
+use App\Venue\Domain\Model\VenueArea;
+use App\Venue\Domain\Repository\VenueAreaRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

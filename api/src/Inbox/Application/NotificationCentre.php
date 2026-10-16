@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Inbox\Application;
 
-use App\Inbox\Domain\InboxRepository;
+use App\Inbox\Domain\Repository\InboxRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;

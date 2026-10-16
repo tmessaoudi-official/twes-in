@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Files\Domain\Attachment;
-use App\Files\Domain\AttachmentRepository;
+use App\Files\Domain\Model\Attachment;
+use App\Files\Domain\Repository\AttachmentRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryAttachments implements AttachmentRepository

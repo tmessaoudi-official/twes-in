@@ -11,11 +11,11 @@ namespace App\Tests\Unit\Venue\Domain;
 
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
-use App\Venue\Domain\InvalidVenue;
-use App\Venue\Domain\PlanRect;
-use App\Venue\Domain\StructureKind;
-use App\Venue\Domain\VenueArea;
-use App\Venue\Domain\VenueStructure;
+use App\Venue\Domain\Exception\InvalidVenue;
+use App\Venue\Domain\Model\VenueArea;
+use App\Venue\Domain\Model\VenueStructure;
+use App\Venue\Domain\ValueObject\PlanRect;
+use App\Venue\Domain\ValueObject\StructureKind;
 use PHPUnit\Framework\TestCase;
 
 /**

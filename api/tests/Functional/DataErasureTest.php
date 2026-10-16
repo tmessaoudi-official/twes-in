@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Erasure\Application\EndDueErasures;
 use App\Erasure\Application\UndoErasure;
-use App\Erasure\Domain\ErasureNoLongerPending;
+use App\Erasure\Domain\Exception\ErasureNoLongerPending;
 use App\Files\Application\FileStorage;
 use App\Files\Application\StoredFileMissing;
 use App\Fiscal\Application\Company\ProvisionCompany;

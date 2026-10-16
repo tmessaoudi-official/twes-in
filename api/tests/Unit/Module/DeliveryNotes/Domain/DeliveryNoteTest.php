@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\DeliveryNotes\Domain;
 
-use App\Files\Domain\StoredFile;
+use App\Files\Domain\Model\StoredFile;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\TaxComponent;

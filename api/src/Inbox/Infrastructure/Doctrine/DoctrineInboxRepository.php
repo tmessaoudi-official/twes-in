@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Inbox\Infrastructure\Doctrine;
 
-use App\Inbox\Domain\InboxItem;
-use App\Inbox\Domain\InboxRepository;
-use App\Inbox\Domain\NotificationPreference;
+use App\Inbox\Domain\Model\InboxItem;
+use App\Inbox\Domain\Model\NotificationPreference;
+use App\Inbox\Domain\Repository\InboxRepository;
 use App\Tenancy\Domain\Membership;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
