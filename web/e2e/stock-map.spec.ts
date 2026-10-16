@@ -244,6 +244,8 @@ test.describe('the drawn stock map', () => {
       await expect(page.getByTestId(`stock-drawing-${posed}`)).toBeVisible();
       await toast(page).getByRole('button', { name: 'Annuler' }).click();
       await expect(page.getByTestId(`stock-drawing-${posed}`)).toHaveCount(0);
+      // The rectangle goes first and its place after it; « annulée » is said once both are gone.
+      await expect(toast(page)).toContainText('Modification du plan annulée');
       const codesLeft = await page.evaluate(async (companyId) => {
         const answer = await fetch(`/api/companies/${companyId}/stock-locations`);
         if (!answer.ok) throw new Error(`the locations answered ${answer.status}`);
