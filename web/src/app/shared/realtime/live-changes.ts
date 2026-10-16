@@ -10,13 +10,16 @@ export const LIVE_BATCH_MS = 150;
 /**
  * That something another tab or person changed, never what it now holds: a screen reads it again through the API,
  * under this session's permissions (docs/SPEC.md § 7, 2026-09-17). The kind is the API's audit entity type
- * (`customer`, `invoice`, `setting`…), plus `stock` for a stock movement.
+ * (`customer`, `invoice`, `setting`…), plus `stock` for a stock movement. A change of many records at once, as a
+ * file's import makes, is `bulk`: it names none of them, only how many.
  */
 export interface LiveChange {
   readonly kind: string;
   readonly id: string | null;
   readonly action: string;
   readonly actor: { readonly id: string; readonly name: string | null } | null;
+  readonly bulk?: true;
+  readonly count?: number;
 }
 
 /** The change a realtime publication announces, or null for a notification, this tab's own echo, or anything malformed. */
@@ -29,13 +32,15 @@ export function readLiveChange(data: unknown, tab: string): LiveChange | null {
     if (!isRecord(actor) || typeof actor['id'] !== 'string') return null;
     if (actor['name'] !== null && typeof actor['name'] !== 'string') return null;
   }
-  return {
+  const change: LiveChange = {
     kind,
     id,
     action,
     actor:
       actor === null ? null : { id: actor['id'] as string, name: actor['name'] as string | null },
   };
+  const { bulk, count } = data;
+  return bulk === true && typeof count === 'number' ? { ...change, bulk, count } : change;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

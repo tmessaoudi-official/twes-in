@@ -39,6 +39,22 @@ describe('readLiveChange', () => {
     });
   });
 
+  it('reads a change of many records at once, which names none of them but how many', () => {
+    expect(
+      readLiveChange(
+        customer({ id: null, action: 'customer.created', bulk: true, count: 40 }),
+        'this-tab',
+      ),
+    ).toEqual<LiveChange>({
+      kind: 'customer',
+      id: null,
+      action: 'customer.created',
+      actor: { id: 'u1', name: 'Nadia' },
+      bulk: true,
+      count: 40,
+    });
+  });
+
   it('is not a change: a notification, or anything malformed', () => {
     for (const data of [
       { type: 'membership.added', payload: {} },

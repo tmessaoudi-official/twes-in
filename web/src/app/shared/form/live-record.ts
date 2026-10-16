@@ -156,8 +156,9 @@ export function liveRecord(options: LiveRecordOptions): LiveRecord {
 
   const receive = async (changes: readonly LiveChange[]): Promise<void> => {
     const id = options.id();
-    const matches = options.matches ?? ((candidate: LiveChange) => candidate.id === id);
-    const change = changes.filter(matches).at(-1);
+    const own = options.matches ?? ((candidate: LiveChange) => candidate.id === id);
+    // A change of many records names none of them, and this one may be among them.
+    const change = changes.filter((candidate) => candidate.bulk === true || own(candidate)).at(-1);
     if (change === undefined || (options.matches === undefined && id === null)) return;
     const name = change.actor?.name;
     const said = name ? { name } : {};
