@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Doctrine;
 
-use App\Module\Products\Domain\ProductCategory;
-use App\Module\Products\Domain\ProductCategoryRepository;
+use App\Module\Products\Domain\Model\ProductCategory;
+use App\Module\Products\Domain\Repository\ProductCategoryRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

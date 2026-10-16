@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Products\Domain;
 
-use App\Module\Products\Domain\Gs1Scan;
+use App\Module\Products\Domain\ValueObject\Gs1Scan;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

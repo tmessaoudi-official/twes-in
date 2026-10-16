@@ -11,7 +11,7 @@ namespace App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Module\Quotes\Application\QuoteInvoicingRefused;
 use App\Module\Quotes\Application\QuoteNotFound;

@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Pdf;
 
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Module\Invoices\Application\DepositWording;
+use App\Module\Invoices\Application\Deposit\DepositWording;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** The words of deposit lines as a printed document says them: `translations/pdf.<language>.yaml`, `invoice.*`. */

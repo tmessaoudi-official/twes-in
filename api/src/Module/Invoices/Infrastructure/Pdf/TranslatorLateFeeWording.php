@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Pdf;
 
-use App\Module\Invoices\Application\LateFeeWording;
+use App\Module\Invoices\Application\Reminder\LateFeeWording;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** The late fee's line as a printed document says it: `translations/pdf.<language>.yaml`, `invoice.late_fee_line`. */

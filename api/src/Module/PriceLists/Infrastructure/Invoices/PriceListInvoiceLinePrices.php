@@ -12,7 +12,7 @@ namespace App\Module\PriceLists\Infrastructure\Invoices;
 use App\Module\Invoices\Application\InvoiceLinePrices;
 use App\Module\PriceLists\Application\ResolveUnitPrice;
 use App\Module\PriceLists\Infrastructure\Module\PriceListsModule;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 use App\ModuleRegistry\Application\ModuleStates;
 use BcMath\Number;
 use Psr\Clock\ClockInterface;

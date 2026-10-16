@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Infrastructure\AccountingExport;
 use App\Module\AccountingExport\Application\JournalPeriod;
 use App\Module\AccountingExport\Application\PaymentEntries;
 use App\Module\AccountingExport\Application\PaymentEntry;
-use App\Module\Invoices\Domain\Payment;
+use App\Module\Invoices\Domain\Model\Payment;
 use App\Tenancy\Domain\Company;
 use Doctrine\ORM\EntityManagerInterface;
 

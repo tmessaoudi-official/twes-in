@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Pdf;
 
-use App\Module\Invoices\Application\MentionWording;
+use App\Module\Invoices\Application\Print\MentionWording;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Translation\TranslatorBagInterface;
 

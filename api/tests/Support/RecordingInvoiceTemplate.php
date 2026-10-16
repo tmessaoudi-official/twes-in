@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Module\Invoices\Application\InvoicePage;
-use App\Module\Invoices\Application\InvoiceTemplate;
+use App\Module\Invoices\Application\Print\InvoiceTemplate;
 
 /** Keeps every page it was asked to lay out and answers a line naming it. */
 final class RecordingInvoiceTemplate implements InvoiceTemplate

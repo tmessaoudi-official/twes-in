@@ -11,9 +11,9 @@ namespace App\Module\Invoices\Infrastructure\Http;
 
 use App\Module\Customers\Application\CustomerNotFound;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
-use App\Module\Invoices\Application\InvalidStatementPeriod;
-use App\Module\Invoices\Application\PrintStatement;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
+use App\Module\Invoices\Application\Statement\InvalidStatementPeriod;
+use App\Module\Invoices\Application\Statement\PrintStatement;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;

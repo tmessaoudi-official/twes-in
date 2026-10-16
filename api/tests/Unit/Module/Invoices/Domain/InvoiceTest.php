@@ -17,21 +17,21 @@ use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
-use App\Module\Invoices\Domain\InvalidInvoice;
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Domain\InvoiceHeader;
-use App\Module\Invoices\Domain\InvoiceLineDetails;
-use App\Module\Invoices\Domain\InvoiceNotDraft;
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceTax;
-use App\Module\Invoices\Domain\InvoiceTransitionRefused;
-use App\Module\Invoices\Domain\InvoiceType;
-use App\Module\Invoices\Domain\PaymentDetails;
-use App\Module\Products\Domain\LotCode;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductDetails;
-use App\Module\Products\Domain\ProductKind;
-use App\Module\Products\Domain\ProductTracking;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
+use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
+use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\Model\InvoiceTax;
+use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
+use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
+use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Service\LotCode;
+use App\Module\Products\Domain\ValueObject\ProductDetails;
+use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Shared\Domain\PaymentMethod;
 use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
@@ -190,8 +190,8 @@ final class InvoiceTest extends TestCase
         $asked = 0;
 
         $invoice->issue(
-            new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15 23:30:00'), 30, 'en', ['fiscal.mention.tn.export'], 'Pénalité de retard : 1 %', 'Merci', $issuedBy, new PrintSettings('', 'auto', 'auto')),
-            function (Invoice $issuing) use (&$asked): \App\Module\Invoices\Domain\InvoiceFigures {
+            new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15 23:30:00'), 30, 'en', ['fiscal.mention.tn.export'], 'Pénalité de retard : 1 %', 'Merci', $issuedBy, new PrintSettings('', 'auto', 'auto')),
+            function (Invoice $issuing) use (&$asked): \App\Module\Invoices\Domain\ValueObject\InvoiceFigures {
                 ++$asked;
 
                 return $this->figures();
@@ -207,11 +207,11 @@ final class InvoiceTest extends TestCase
         self::assertEquals($this->figures(), $invoice->getIssuedFigures());
         $events = $invoice->releaseEvents();
         self::assertCount(1, $events);
-        self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $events[0]);
+        self::assertInstanceOf(\App\Module\Invoices\Domain\Event\InvoiceIssued::class, $events[0]);
         self::assertSame(['FAC-2026-00001', InvoiceType::Invoice, []], [$events[0]->number, $events[0]->type, $events[0]->sourceDeliveryNoteLineIds]);
 
         foreach ([
-            'issued again' => fn () => $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00002', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(), $this->now),
+            'issued again' => fn () => $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00002', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(), $this->now),
             'revised' => fn () => $invoice->revise($this->establishment(), $this->customer($this->company), new InvoiceHeader(), [], [], $this->now),
         ] as $case => $attempt) {
             try {
@@ -230,7 +230,7 @@ final class InvoiceTest extends TestCase
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine(taxes: [$this->tax('TVA19')])], [], $this->now);
         self::assertNull($invoice->getSellerSnapshot(), 'a draft prints the seller as it is today');
 
-        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(), $this->now);
+        $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(), $this->now);
         $this->company->reviseProfile(new \App\Tenancy\Domain\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
 
         $seller = $invoice->getSellerSnapshot();
@@ -242,7 +242,7 @@ final class InvoiceTest extends TestCase
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [], [], $this->now);
         self::assertSame([null, null, null, null], [$invoice->getIssuedFigures(), $invoice->getDueDate(), $invoice->getCustomerSnapshot(), $invoice->getLanguage()]);
 
-        $this->assertRefused('lines', fn () => $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), static fn (Invoice $i) => throw new \LogicException('never asked'), $this->now));
+        $this->assertRefused('lines', fn () => $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), static fn (Invoice $i) => throw new \LogicException('never asked'), $this->now));
         self::assertSame([InvoiceStatus::Draft, null], [$invoice->getStatus(), $invoice->getNumber()]);
     }
 
@@ -251,7 +251,7 @@ final class InvoiceTest extends TestCase
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine(), $this->pieceLine()], [], $this->now);
 
         $this->expectException(\LogicException::class);
-        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(), $this->now);
+        $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(), $this->now);
     }
 
     public function testAPaymentLowersWhatIsDueAndTheStatusFollowsWhatIsPaidBothWays(): void
@@ -324,7 +324,7 @@ final class InvoiceTest extends TestCase
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(new \DateTimeImmutable('2026-09-10'), 30, 'PO-77', 'Merci', 'VIP', '1'), [
             new InvoiceLineDetails($this->product($this->company), 'Portable 14"', '2', $this->unit('C62'), '1250', '10', [$this->tax('FODEC'), $vat]),
         ], [$stamp, $this->tax('RS1')], $this->now);
-        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(), $this->now);
+        $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(), $this->now);
         $vat->revise($vat->getName(), '7', null, null, false, $vat->isDefault(), true, null, $vat->getSortOrder(), 3, $this->now);
 
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
@@ -345,7 +345,7 @@ final class InvoiceTest extends TestCase
         ], [$stamp], $this->now);
         $vat13->revise($vat13->getName(), '12', null, null, false, $vat13->isDefault(), true, null, $vat13->getSortOrder(), 3, $this->now);
         $stamp->revise($stamp->getName(), null, '2', null, false, $stamp->isDefault(), true, null, $stamp->getSortOrder(), 3, $this->now);
-        $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures('-12.900', '0.000', '-12.900', lines: 2), $this->now);
+        $credit->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures('-12.900', '0.000', '-12.900', lines: 2), $this->now);
 
         self::assertSame([[['FODEC', '1.000'], ['TVA19', '19.000']], [['TVA13', '12.000']]], $this->rates($credit), 'issuing charges what the invoice charged, and a tax it did not carry as it stands that day');
         self::assertSame([['TIMBRE', '1.000']], array_map(static fn (InvoiceTax $tax): array => [$tax->getCode(), $tax->getAmount()], $credit->getDocumentTaxes()));
@@ -363,14 +363,14 @@ final class InvoiceTest extends TestCase
         ], [], $this->now);
         self::assertSame([null, null, null, null], array_map(static fn ($line): ?string => $line->getUnitCost(), $invoice->getLines()), 'a draft freezes nothing');
 
-        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(lines: 4), $this->now);
+        $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(lines: 4), $this->now);
         $costed->revise('ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '40', '30'), $this->unit('C62'), null, [], true, $this->now);
 
         self::assertSame(['22.5000', null, null, null], array_map(static fn ($line): ?string => $line->getUnitCost(), $invoice->getLines()), 'the cost as it stood at issue, only in the product\'s own unit, which is the only one it is known in');
 
         // A credit note freezes the cost as it stands when IT is issued, not what its invoice froze (PROVISIONAL, § 7).
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
-        $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures('-12.900', '0.000', '-12.900', lines: 4), $this->now);
+        $credit->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures('-12.900', '0.000', '-12.900', lines: 4), $this->now);
         self::assertSame(['30.0000', null, null, null], array_map(static fn ($line): ?string => $line->getUnitCost(), $credit->getLines()));
     }
 
@@ -395,7 +395,7 @@ final class InvoiceTest extends TestCase
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
 
         $this->assertRefused('customerId', fn () => $credit->revise($this->establishment(), $this->customer($this->company, 'CLI-0002'), new InvoiceHeader(), [$this->pieceLine()], [], $this->now));
-        $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures('-12.900', '0.000', '-12.900'), $this->now);
+        $credit->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures('-12.900', '0.000', '-12.900'), $this->now);
 
         foreach ([
             'a draft credited' => fn () => Invoice::creditNoteFor($draft, 'Retour', $this->now),
@@ -478,10 +478,10 @@ final class InvoiceTest extends TestCase
         self::assertSame([], $invoice->revise($invoice->getEstablishment(), $invoice->getCustomer(), new InvoiceHeader(), [$line($second), $line(null), $line($first)], [], $this->now));
         $this->assertRefused('lines[2].sourceDeliveryNoteLineId', fn () => $invoice->revise($invoice->getEstablishment(), $invoice->getCustomer(), new InvoiceHeader(), [$line($second), $line(null), $line($second)], [], $this->now));
 
-        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(lines: 3), $this->now);
+        $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(lines: 3), $this->now);
 
         $events = $invoice->releaseEvents();
-        self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $events[0]);
+        self::assertInstanceOf(\App\Module\Invoices\Domain\Event\InvoiceIssued::class, $events[0]);
         self::assertEquals([$second, $first], $events[0]->sourceDeliveryNoteLineIds, 'the delivery note lines its lines came from, in order');
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
         self::assertSame([null, null, null], array_map(static fn ($copied): ?Uuid => $copied->getSourceDeliveryNoteLineId(), $credit->getLines()), 'a credit note invoices no delivery note');
@@ -508,7 +508,7 @@ final class InvoiceTest extends TestCase
         self::assertSame(['lines'], $invoice->revise($invoice->getEstablishment(), $invoice->getCustomer(), new InvoiceHeader(), [$line($lotted, 'L-13'), $line($lotted, null)], [], $this->now), 'the lot is part of what a line says');
         self::assertSame([null, null], array_map(static fn ($copied): ?string => $copied->getLotCode(), Invoice::duplicateOf($invoice, $this->now)->getLines()), 'a duplicate is a new sale, of pieces not chosen yet');
 
-        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(lines: 2), $this->now);
+        $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(lines: 2), $this->now);
         self::assertSame(['L-13', null], array_map(static fn ($copied): ?string => $copied->getLotCode(), Invoice::creditNoteFor($invoice, 'Retour', $this->now)->getLines()), 'a credit note corrects the goods its invoice named');
     }
 
@@ -519,23 +519,23 @@ final class InvoiceTest extends TestCase
         $lotted->track(ProductTracking::Lot, $this->now);
         $service = Product::create($this->company, 'ART-002', new ProductDetails('Pose', null, ProductKind::Service, '40'), $this->unit('C62'), null, [], $this->now);
         $line = fn (?Product $product, ?string $lot = null, ?Uuid $from = null): InvoiceLineDetails => new InvoiceLineDetails($product, 'Pièce', '2', $this->unit('C62'), '10', null, [], $from, $lot);
-        $issue = new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'));
+        $issue = new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'));
 
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$line($goods, null, Uuid::v7()), $line($goods), $line($lotted, 'L-12'), $line(null), $line($service)], [], $this->now);
         $invoice->issue($issue, fn (Invoice $i) => $this->figures(lines: 5), $this->now);
 
         $event = $invoice->releaseEvents()[0];
-        self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $event);
+        self::assertInstanceOf(\App\Module\Invoices\Domain\Event\InvoiceIssued::class, $event);
         self::assertEquals(
             [[$goods->getId(), '2.000', null], [$lotted->getId(), '2.000', 'L-12'], [$service->getId(), '2.000', null]],
-            array_map(static fn (\App\Module\Invoices\Domain\InvoicedQuantity $each): array => [$each->productId, $each->quantity, $each->lotCode], $event->directLines),
+            array_map(static fn (\App\Module\Invoices\Domain\ValueObject\InvoicedQuantity $each): array => [$each->productId, $each->quantity, $each->lotCode], $event->directLines),
             'a line from a delivery note, and a line with no product, name no stock to move',
         );
 
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
-        $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(lines: 5), $this->now);
+        $credit->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('AV-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(lines: 5), $this->now);
         $returned = $credit->releaseEvents()[0];
-        self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $returned);
+        self::assertInstanceOf(\App\Module\Invoices\Domain\Event\InvoiceIssued::class, $returned);
         self::assertSame([], $returned->directLines, 'a credit note takes nothing out');
     }
 
@@ -544,7 +544,7 @@ final class InvoiceTest extends TestCase
         $goods = $this->product($this->company);
         $other = Product::create($this->company, 'ART-004', new ProductDetails('Souris', null, ProductKind::Goods, '10'), $this->unit('C62'), null, [], $this->now);
         $line = fn (?Product $product, bool $returned = false): InvoiceLineDetails => new InvoiceLineDetails($product, 'Pièce', '2', $this->unit('C62'), '10', null, [], null, null, $returned);
-        $issue = static fn (string $number): \App\Module\Invoices\Domain\InvoiceIssue => new \App\Module\Invoices\Domain\InvoiceIssue($number, new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'));
+        $issue = static fn (string $number): \App\Module\Invoices\Domain\ValueObject\InvoiceIssue => new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue($number, new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'));
 
         $this->assertRefused('lines[0].returned', fn () => Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$line($goods, true)], [], $this->now), 'an invoice returns nothing');
         $this->assertRefused('returned', static fn () => $line(null, true), 'a line with no product has no goods to return');
@@ -562,10 +562,10 @@ final class InvoiceTest extends TestCase
 
         $credit->issue($issue('AV-2026-00001'), fn (Invoice $i) => $this->figures(lines: 3), $this->now);
         $event = $credit->releaseEvents()[0];
-        self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $event);
+        self::assertInstanceOf(\App\Module\Invoices\Domain\Event\InvoiceIssued::class, $event);
         self::assertEquals(
             [$invoice->getId(), [[$goods->getId(), '2.000', null]]],
-            [$event->correctsInvoiceId, array_map(static fn (\App\Module\Invoices\Domain\InvoicedQuantity $each): array => [$each->productId, $each->quantity, $each->lotCode], $event->returnedLines)],
+            [$event->correctsInvoiceId, array_map(static fn (\App\Module\Invoices\Domain\ValueObject\InvoicedQuantity $each): array => [$each->productId, $each->quantity, $each->lotCode], $event->returnedLines)],
         );
         self::assertSame([], $event->directLines);
     }
@@ -573,7 +573,7 @@ final class InvoiceTest extends TestCase
     private function issuedCreditNote(Invoice $invoice, string $due): Invoice
     {
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
-        $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures($due, '0.000', $due), $this->now);
+        $credit->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures($due, '0.000', $due), $this->now);
 
         return $credit;
     }
@@ -587,7 +587,7 @@ final class InvoiceTest extends TestCase
     private function issued(string $total, string $withheld, string $due): Invoice
     {
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
-        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15 08:00:00'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures($total, $withheld, $due), $this->now);
+        $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15 08:00:00'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures($total, $withheld, $due), $this->now);
 
         return $invoice;
     }
@@ -601,9 +601,9 @@ final class InvoiceTest extends TestCase
         return [$invoice->getStatus(), $figures->amountPaid, $figures->amountDue, $figures->amountCredited];
     }
 
-    private function figures(string $total = '12.900', string $withheld = '0.000', string $due = '12.900', int $lines = 1): \App\Module\Invoices\Domain\InvoiceFigures
+    private function figures(string $total = '12.900', string $withheld = '0.000', string $due = '12.900', int $lines = 1): \App\Module\Invoices\Domain\ValueObject\InvoiceFigures
     {
-        return new \App\Module\Invoices\Domain\InvoiceFigures(
+        return new \App\Module\Invoices\Domain\ValueObject\InvoiceFigures(
             subtotalNet: '10.000',
             documentDiscount: '0.000',
             totalNet: '10.000',

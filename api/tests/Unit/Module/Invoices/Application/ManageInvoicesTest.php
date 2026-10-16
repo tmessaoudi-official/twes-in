@@ -23,17 +23,17 @@ use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
-use App\Module\Invoices\Domain\InvalidInvoice;
-use App\Module\Invoices\Domain\InvoiceHeader;
-use App\Module\Invoices\Domain\InvoiceLineDetails;
-use App\Module\Invoices\Domain\InvoiceLineTax;
-use App\Module\Invoices\Domain\InvoiceNotDraft;
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceTax;
-use App\Module\Invoices\Domain\InvoiceTransitionRefused;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductDetails;
-use App\Module\Products\Domain\ProductKind;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
+use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
+use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
+use App\Module\Invoices\Domain\Model\InvoiceLineTax;
+use App\Module\Invoices\Domain\Model\InvoiceTax;
+use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
+use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\ValueObject\ProductDetails;
+use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tests\Support\FakeTransactions;
@@ -358,7 +358,7 @@ final class ManageInvoicesTest extends TestCase
     }
 
     /**
-     * @param list<\App\Module\Invoices\Domain\InvoiceLine> $lines
+     * @param list<\App\Module\Invoices\Domain\Model\InvoiceLine> $lines
      *
      * @return list<Uuid|null>
      */

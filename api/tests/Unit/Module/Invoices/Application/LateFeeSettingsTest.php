@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Invoices\Application;
 
-use App\Module\Invoices\Application\LateFeeSettings;
+use App\Module\Invoices\Application\Reminder\LateFeeSettings;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

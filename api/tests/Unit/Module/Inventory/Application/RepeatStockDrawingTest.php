@@ -9,13 +9,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Application;
 
-use App\Module\Inventory\Application\DrawStockMap;
-use App\Module\Inventory\Application\ManageStockLocations;
-use App\Module\Inventory\Application\StockLocationCodeTaken;
-use App\Module\Inventory\Application\StockLocationNotFound;
-use App\Module\Inventory\Domain\InvalidStockLocation;
-use App\Module\Inventory\Domain\StockLocation;
-use App\Module\Inventory\Domain\StockLocationKind;
+use App\Module\Inventory\Application\Location\ManageStockLocations;
+use App\Module\Inventory\Application\Location\StockLocationCodeTaken;
+use App\Module\Inventory\Application\Location\StockLocationNotFound;
+use App\Module\Inventory\Application\StockMap\DrawStockMap;
+use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
+use App\Module\Inventory\Domain\Model\StockLocation;
+use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tests\Support\FakeTransactions;

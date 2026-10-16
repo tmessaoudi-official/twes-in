@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Application;
 
-use App\Module\Inventory\Domain\StockMovementRepository;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductRepository;
+use App\Module\Inventory\Domain\Repository\StockMovementRepository;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Tenancy\Application\Establishment\EstablishmentNotFound;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;

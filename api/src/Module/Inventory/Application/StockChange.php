@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Application;
 
-use App\Module\Inventory\Domain\StockMovement;
+use App\Module\Inventory\Domain\Model\StockMovement;
 
 /** What one row of a file did to the stock of one place: before and after, and the movement that did it. */
 final readonly class StockChange

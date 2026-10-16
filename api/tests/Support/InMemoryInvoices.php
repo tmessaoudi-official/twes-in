@@ -10,12 +10,12 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Domain\InvoiceLine;
-use App\Module\Invoices\Domain\InvoiceRepository;
-use App\Module\Invoices\Domain\InvoiceSearch;
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\Model\InvoiceLine;
+use App\Module\Invoices\Domain\Repository\InvoiceRepository;
+use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;

@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Http;
 
 use App\Module\Invoices\Application\NothingToPreview;
-use App\Module\Invoices\Application\PrintInvoice;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
+use App\Module\Invoices\Application\Print\PrintInvoice;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Infrastructure\ApiPlatform\Security\SettingAccess;

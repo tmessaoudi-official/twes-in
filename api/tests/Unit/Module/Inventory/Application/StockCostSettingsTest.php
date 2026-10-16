@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Application;
 
-use App\Module\Inventory\Application\StockCostSettings;
-use App\Module\Inventory\Domain\CostOnReceive;
+use App\Module\Inventory\Application\ReceiptCost\StockCostSettings;
+use App\Module\Inventory\Domain\ValueObject\CostOnReceive;
 use PHPUnit\Framework\TestCase;
 
 final class StockCostSettingsTest extends TestCase

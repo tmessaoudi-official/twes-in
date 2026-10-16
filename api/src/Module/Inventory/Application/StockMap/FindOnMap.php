@@ -1,0 +1,185 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Module\Inventory\Application\StockMap;
+
+use App\Module\Inventory\Domain\Model\StockLocation;
+use App\Module\Inventory\Domain\Repository\StockLocationRepository;
+use App\Module\Inventory\Domain\Repository\StockMovementRepository;
+use App\Tenancy\Domain\Company;
+use BcMath\Number;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * Where goods are, as the stock map lights them: what a place holds counts for the nearest drawn place at or above
+ * it, so a bin's goods light its rack. What lies under no drawn place is one more answer, never left out: the map is
+ * only as true as what it says it cannot show.
+ */
+final readonly class FindOnMap
+{
+    public function __construct(
+        private StockMovementRepository $movements,
+        private StockLocationRepository $locations,
+    ) {
+    }
+
+    /**
+     * For each product asked, in the order asked: the drawn places holding some, ground floor first and by code within a
+     * floor, then the undrawn rest if there is any. A place whose movements cancel out holds none and is no answer. The
+     * places are read once for every product, since a delivery note asks for all of its lines together.
+     *
+     * @param list<Uuid> $productIds
+     *
+     * @return array<string, list<MapHolding>> by the product's id
+     */
+    public function of(Company $company, array $productIds): array
+    {
+        $byId = [];
+        foreach ($this->locations->ofCompany($company->getId()) as $location) {
+            $byId[$location->getId()->toRfc4122()] = $location;
+        }
+
+        $found = [];
+        foreach ($productIds as $productId) {
+            $found[$productId->toRfc4122()] = $this->holdings($company, $productId, $byId);
+        }
+
+        return $found;
+    }
+
+    /**
+     * How many products each of the drawn places holds, what the places under it hold included and a product held in
+     * both counted once: what a shelf says on the board before anyone presses it. A place holding nothing is left out.
+     *
+     * @param list<StockLocation> $places drawn places, those of one floor
+     *
+     * @return array<string, int> by the place's id, in the order the places came
+     */
+    public function countsAt(Company $company, array $places): array
+    {
+        $wanted = [];
+        foreach ($places as $place) {
+            $wanted[$place->getId()->toRfc4122()] = [];
+        }
+        if ([] === $wanted) {
+            return [];
+        }
+
+        $byId = [];
+        foreach ($this->locations->ofCompany($company->getId()) as $location) {
+            $byId[$location->getId()->toRfc4122()] = $location;
+        }
+
+        foreach ($this->movements->productsHeld($company->getId()) as $locationId => $products) {
+            $location = $byId[$locationId] ?? null;
+            $place = null === $location ? null : self::drawnAbove($location);
+            $key = $place?->getId()->toRfc4122();
+            if (null === $key || !\array_key_exists($key, $wanted)) {
+                continue;
+            }
+            foreach ($products as $product) {
+                $wanted[$key][$product] = true;
+            }
+        }
+
+        return array_filter(array_map(\count(...), $wanted), static fn (int $count): bool => $count > 0);
+    }
+
+    /**
+     * @param array<string, StockLocation> $byId
+     *
+     * @return list<MapHolding>
+     */
+    private function holdings(Company $company, Uuid $productId, array $byId): array
+    {
+        $held = [];
+        foreach ($this->movements->levelsOf($company->getId(), $productId) as $level) {
+            $key = $level->locationId->toRfc4122();
+            $held[$key] = ($held[$key] ?? new Number('0'))->add(self::number($level->quantity));
+        }
+
+        $drawn = [];
+        $undrawn = [];
+        foreach ($held as $key => $quantity) {
+            $location = $byId[$key] ?? null;
+            if (null === $location || 0 === $quantity->compare(0)) {
+                continue;
+            }
+            $line = new MapHoldingLine($location, self::scaled($quantity));
+            $place = self::drawnAbove($location);
+            if (null === $place) {
+                $undrawn[] = $line;
+            } else {
+                $drawn[$place->getId()->toRfc4122()][] = $line;
+            }
+        }
+
+        $holdings = [];
+        foreach ($drawn as $key => $lines) {
+            $holdings[] = new MapHolding($byId[$key], self::total($lines), self::byCode($lines));
+        }
+        usort($holdings, static fn (MapHolding $one, MapHolding $other): int => [$one->place?->getSpot()?->getArea()->getLevel(), $one->place?->getCode()] <=> [$other->place?->getSpot()?->getArea()->getLevel(), $other->place?->getCode()]);
+        if ([] !== $undrawn) {
+            $holdings[] = new MapHolding(null, self::total($undrawn), self::byCode($undrawn));
+        }
+
+        return $holdings;
+    }
+
+    private static function drawnAbove(StockLocation $location): ?StockLocation
+    {
+        // A tree is acyclic by construction; the bound only keeps a corrupted one from turning this into a hang.
+        for ($at = $location, $steps = 0; null !== $at && $steps < 64; $at = $at->getParent(), ++$steps) {
+            if (null !== $at->getSpot()) {
+                return $at;
+            }
+        }
+
+        return null;
+    }
+
+    /** @param list<MapHoldingLine> $lines */
+    private static function total(array $lines): string
+    {
+        $sum = new Number('0');
+        foreach ($lines as $line) {
+            $sum = $sum->add(self::number($line->quantity));
+        }
+
+        return self::scaled($sum);
+    }
+
+    /**
+     * @param list<MapHoldingLine> $lines
+     *
+     * @return list<MapHoldingLine>
+     */
+    private static function byCode(array $lines): array
+    {
+        usort($lines, static fn (MapHoldingLine $one, MapHoldingLine $other): int => $one->location->getCode() <=> $other->location->getCode());
+
+        return $lines;
+    }
+
+    /** A quantity as the database sums it; anything else is a fault upstream, never a number to guess at. */
+    private static function number(string $quantity): Number
+    {
+        if (!is_numeric($quantity)) {
+            throw new \UnexpectedValueException(\sprintf('A stock quantity reads "%s".', $quantity));
+        }
+
+        return new Number($quantity);
+    }
+
+    /** Three decimals, the scale every stock quantity is kept at, whatever the sum came to. */
+    private static function scaled(Number $quantity): string
+    {
+        return $quantity->round(3)->value;
+    }
+}

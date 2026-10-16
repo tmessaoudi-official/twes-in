@@ -1,0 +1,1620 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Module\Invoices\Domain\Model;
+
+use App\Files\Domain\Model\StoredFile;
+use App\Fiscal\Domain\Calculation\Decimal;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\ValueObject\TaxKind;
+use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
+use App\Module\Invoices\Domain\Event\InvoiceIssued;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
+use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
+use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
+use App\Module\Invoices\Domain\Service\InvoiceChain;
+use App\Module\Invoices\Domain\ValueObject\InvoicedQuantity;
+use App\Module\Invoices\Domain\ValueObject\InvoiceFigures;
+use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
+use App\Module\Invoices\Domain\ValueObject\InvoiceIssue;
+use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
+use App\Module\Invoices\Domain\ValueObject\OperationCategory;
+use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Service\LotCode;
+use App\Shared\Domain\CompanyOwned;
+use App\Shared\Domain\DomainEvent;
+use App\Shared\Domain\PrintSettings;
+use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\SellerSnapshot;
+use BcMath\Number;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * What an establishment of a company bills a customer, or a credit note correcting such an
+ * invoice. A draft names its establishment, its customer, its lines and its document taxes, every one of them its own
+ * company's, and changes freely; issuing numbers it and fixes what it says.
+ */
+#[ORM\Entity]
+#[ORM\Table(name: 'invoice')]
+#[ORM\Index(name: 'idx_invoice_company', columns: ['company_id'])]
+// The list's own order, the newest first, read from the end: without it a page sorts every invoice of the company (198,565
+// buffers for a million; docs/SPEC.md § 7).
+#[ORM\Index(name: 'idx_invoice_company_created', columns: ['company_id', 'created_at', 'id'])]
+#[ORM\Index(name: 'idx_invoice_open_due', columns: ['company_id', 'due_date', 'customer_id', 'amount_due'], options: ['where' => "(((document_type)::text = 'invoice'::text) AND ((status)::text = ANY ((ARRAY['issued'::character varying, 'partially_paid'::character varying])::text[])))"])]
+#[ORM\Index(name: 'idx_invoice_establishment', columns: ['establishment_id'])]
+#[ORM\Index(name: 'idx_invoice_customer', columns: ['customer_id'])]
+#[ORM\Index(name: 'idx_invoice_corrects', columns: ['corrects_invoice_id'])]
+#[ORM\Index(name: 'idx_invoice_pdf_file', columns: ['pdf_file_id'])]
+#[ORM\Index(name: 'idx_invoice_quote', columns: ['company_id', 'quote_id'], options: ['where' => '(quote_id IS NOT NULL)'])]
+#[ORM\UniqueConstraint(name: 'uniq_invoice_company_type_number', columns: ['company_id', 'document_type', 'number'])]
+// One document per place of a series' chain: a fork is refused by the database, whoever writes. Also the head's index.
+// What a series has issued and not chained yet, asked on every issue under the series' lock: almost always nothing,
+// so the index stays empty and the question never reads the series.
+#[ORM\Index(name: 'idx_invoice_unsealed', columns: ['company_id', 'establishment_id', 'document_type'], options: ['where' => '((chain_hash IS NULL) AND (number IS NOT NULL))'])]
+#[ORM\UniqueConstraint(name: 'uniq_invoice_chain_position', columns: ['company_id', 'establishment_id', 'document_type', 'chain_position'], options: ['where' => '(chain_position IS NOT NULL)'])]
+class Invoice implements CompanyOwned
+{
+    /** The decimals of every stored amount column; the currency's scale is applied when the figures are read. */
+    private const int STORED_SCALE = 3;
+
+    /** The longest reason a credit note states, in characters. */
+    public const int CREDIT_NOTE_REASON_MAX = 500;
+
+    #[ORM\Id]
+    #[ORM\Column(type: 'uuid')]
+    private Uuid $id;
+
+    #[ORM\ManyToOne(targetEntity: Company::class)]
+    #[ORM\JoinColumn(name: 'company_id', nullable: false, onDelete: 'CASCADE')]
+    private Company $company;
+
+    #[ORM\Column(length: 16, enumType: InvoiceType::class)]
+    private InvoiceType $documentType;
+
+    #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'corrections')]
+    #[ORM\JoinColumn(name: 'corrects_invoice_id', nullable: true)]
+    private ?Invoice $correctsInvoice = null;
+
+    /** A facture d'acompte: an invoice of part of an operation, given back on the invoice of the whole. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $deposit = false;
+
+    /** The quote it was drafted from, a deposit or the invoice of the whole; an id, quotes being their own module. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $quoteId = null;
+
+    /** Why a credit note corrects its invoice, stated when it is created; null on an invoice. */
+    #[ORM\Column(name: 'credit_note_reason', length: self::CREDIT_NOTE_REASON_MAX, nullable: true)]
+    private ?string $creditNoteReason = null;
+
+    #[ORM\ManyToOne(targetEntity: Establishment::class)]
+    #[ORM\JoinColumn(name: 'establishment_id', nullable: false)]
+    private Establishment $establishment;
+
+    #[ORM\ManyToOne(targetEntity: Customer::class)]
+    #[ORM\JoinColumn(name: 'customer_id', nullable: false)]
+    private Customer $customer;
+
+    #[ORM\Column(length: 16, enumType: InvoiceStatus::class)]
+    private InvoiceStatus $status;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $number = null;
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $issueDate = null;
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $supplyDate = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $paymentTermsDays = null;
+
+    #[ORM\Column(length: InvoiceHeader::REFERENCE_MAX, nullable: true)]
+    private ?string $customerReference = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $notesPrinted = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $notesInternal = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $discountAmount = null;
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $dueDate = null;
+
+    #[ORM\Column(length: 8, nullable: true)]
+    private ?string $language = null;
+
+    /** @var array<string, mixed>|null CustomerSnapshot::toArray(), written by issuing */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $customerSnapshot = null;
+
+    /** @var array<string, mixed>|null SellerSnapshot::toArray(), written by issuing */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $sellerSnapshot = null;
+
+    /** @var array<string, mixed>|null PrintSettings::toArray(), written by issuing */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $printSettings = null;
+
+    #[ORM\Column(name: 'footer_snapshot', type: Types::TEXT, nullable: true)]
+    private ?string $footer = null;
+
+    /** @var array<string, mixed>|null {keys: list<string>, latePenaltyText: string|null, parameters?: array<string, array<string, string>>}, written by issuing */
+    #[ORM\Column(name: 'mentions_snapshot', type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $mentions = null;
+
+    /**
+     * What its operations are, where its country's law asks: on a draft the category chosen (null: its lines' at issue),
+     * on an issued document the one it states. Null where the law asks for none.
+     */
+    #[ORM\Column(length: 16, nullable: true, enumType: OperationCategory::class)]
+    private ?OperationCategory $operationCategory = null;
+
+    /** Whether the company had opted to pay VAT on the débits when it was issued; null on a draft and where the law asks nothing. */
+    #[ORM\Column(nullable: true)]
+    private ?bool $vatOnDebits = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $issuedAt = null;
+
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $issuedBy = null;
+
+    /** Its place in its series' chain, from 1 (`InvoiceChain`); null on a draft and until it is sealed. */
+    #[ORM\Column(nullable: true)]
+    private ?int $chainPosition = null;
+
+    /** The hash of the document before it in its series; null for the first one and until it is sealed. */
+    #[ORM\Column(length: 64, nullable: true, options: ['fixed' => true])]
+    private ?string $chainPrevious = null;
+
+    #[ORM\Column(length: 64, nullable: true, options: ['fixed' => true])]
+    private ?string $chainHash = null;
+
+    /** The `InvoiceChain` version it was sealed with, which it is checked against. */
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    private ?int $chainVersion = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $subtotalNet = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $documentDiscount = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $totalNet = null;
+
+    /** What the discounts took off, written at issue; null on a draft and on a document issued before it was kept. */
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $savings = null;
+
+    /** @var list<array<string, mixed>>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $taxBreakdown = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $totalTax = null;
+
+    /** @var list<array<string, mixed>>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $fixedTaxes = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $totalGross = null;
+
+    /** @var list<array<string, mixed>>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $withholdings = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $withholdingAmount = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, options: ['default' => '0'])]
+    private string $amountPaid = '0.000';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, options: ['default' => '0'])]
+    private string $amountCredited = '0.000';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $amountDue = null;
+
+    /** The PDF as the document was issued; null until it is stored. */
+    #[ORM\ManyToOne(targetEntity: StoredFile::class)]
+    #[ORM\JoinColumn(name: 'pdf_file_id', nullable: true)]
+    private ?StoredFile $pdfFile = null;
+
+    /** @var list<DomainEvent> recorded since they were last released; never stored */
+    private array $events = [];
+
+    /** @var Collection<int, InvoiceLine> */
+    #[ORM\OneToMany(targetEntity: InvoiceLine::class, mappedBy: 'invoice', cascade: ['persist'], orphanRemoval: true)]
+    #[ORM\OrderBy(['position' => 'ASC'])]
+    private Collection $lines;
+
+    /** @var Collection<int, InvoiceTax> */
+    #[ORM\OneToMany(targetEntity: InvoiceTax::class, mappedBy: 'invoice', cascade: ['persist'], orphanRemoval: true)]
+    #[ORM\OrderBy(['position' => 'ASC'])]
+    private Collection $documentTaxes;
+
+    /** @var Collection<int, Payment> */
+    #[ORM\OneToMany(targetEntity: Payment::class, mappedBy: 'invoice', cascade: ['persist'], orphanRemoval: true)]
+    private Collection $payments;
+
+    /** @var Collection<int, Invoice> the credit notes correcting this invoice, drafts among them */
+    #[ORM\OneToMany(targetEntity: self::class, mappedBy: 'correctsInvoice')]
+    private Collection $corrections;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    private \DateTimeImmutable $createdAt;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    private \DateTimeImmutable $updatedAt;
+
+    private function __construct(Company $company, \DateTimeImmutable $now)
+    {
+        $this->id = Uuid::v7();
+        $this->company = $company;
+        // Set here, not as property defaults: a default naming an enum case leaves the class's defaults to resolve at
+        // runtime, which Doctrine's lazy ghost of a corrected invoice skips (the local debug PHP aborts on it).
+        $this->documentType = InvoiceType::Invoice;
+        $this->status = InvoiceStatus::Draft;
+        $this->lines = new ArrayCollection();
+        $this->documentTaxes = new ArrayCollection();
+        $this->payments = new ArrayCollection();
+        $this->corrections = new ArrayCollection();
+        $this->createdAt = $now;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * @param list<InvoiceLineDetails> $lines
+     * @param list<TaxComponent>       $documentTaxes
+     *
+     * @throws InvalidInvoice
+     */
+    public static function create(Company $company, Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $documentTaxes, \DateTimeImmutable $now, ?Uuid $quoteId = null, bool $deposit = false): self
+    {
+        $invoice = new self($company, $now);
+        $invoice->deposit = $deposit;
+        $invoice->quoteId = $quoteId;
+        $invoice->establishment = $invoice->establishmentOfThisCompany($establishment);
+        $invoice->customer = $invoice->customerOfThisCompany($customer);
+        $invoice->apply($header);
+        $invoice->writeLines($invoice->deductionsFor($invoice->linesOfThisCompany($lines), $invoice->customer));
+        $invoice->writeDocumentTaxes($invoice->documentTaxesOfThisCompany($documentTaxes));
+
+        return $invoice;
+    }
+
+    /**
+     * A copy of a document as a new draft: the same parties, the same lines, the same document taxes and the same
+     * typing. What the original EARNED is not copied — its number, its state, its payments, its corrections — and
+     * neither is its supply date, which is a fiscal claim about a particular day and would be silently wrong on a
+     * copy made weeks later. A credit note refuses: it belongs to the invoice it corrects, and a copy of it would
+     * correct that invoice a second time.
+     *
+     * @throws InvoiceTransitionRefused
+     * @throws InvalidInvoice
+     */
+    public static function duplicateOf(self $invoice, \DateTimeImmutable $now): self
+    {
+        if (InvoiceType::Invoice !== $invoice->documentType) {
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s corrects another document: it is not duplicated.', $invoice->documentType->value, $invoice->reference()));
+        }
+        $copy = new self($invoice->company, $now);
+        $copy->establishment = $invoice->establishment;
+        $copy->customer = $invoice->customer;
+        $header = $invoice->getHeader();
+        $copy->apply(new InvoiceHeader(
+            null,
+            $header->paymentTermsDays,
+            $header->customerReference,
+            $header->notesPrinted,
+            $header->notesInternal,
+            $header->discountAmount,
+            // The same sale, so what its operations were said to be, stated or still chosen, is the copy's choice.
+            $invoice->operationCategory,
+        ));
+        // A copy is a new sale: what the original gave back of a deposit is not given back a second time. A section such
+        // a line opened is kept, opened by the next line copied.
+        $lines = [];
+        $carried = null;
+        foreach ($invoice->getLines() as $line) {
+            if (null !== $line->getDeduction()) {
+                $carried = $line->getSection() ?? $carried;
+
+                continue;
+            }
+            $lines[] = new InvoiceLineDetails(
+                $line->getProduct(),
+                $line->getDescription(),
+                $line->getQuantity(),
+                $line->getUnit(),
+                $line->getUnitPriceNet(),
+                $line->getDiscountRate(),
+                array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
+                discountAmount: $line->getDiscountAmount(),
+                section: $line->getSection() ?? $carried,
+            );
+            $carried = null;
+        }
+        $copy->writeLines($lines);
+        $copy->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
+        $copy->retakeTaxes();
+
+        return $copy;
+    }
+
+    /**
+     * A credit note drafted for an issued invoice: the invoice's establishment, customer,
+     * header but its discount, lines and document taxes, each tax charged as the invoice charged it. Its figures are the
+     * negative of what it copies until it is revised, less what earlier credit notes already gave back of the
+     * invoice's discounts and stamp.
+     *
+     * It states why, as EN 16931 asks a correction to (BG-3 names the invoice it corrects; the reason is required when
+     * it is created).
+     *
+     * @throws InvoiceTransitionRefused when the document is not an issued invoice
+     * @throws InvalidInvoice           when the reason is blank or longer than CREDIT_NOTE_REASON_MAX
+     */
+    public static function creditNoteFor(self $invoice, string $reason, \DateTimeImmutable $now): self
+    {
+        if (InvoiceType::Invoice !== $invoice->documentType || !$invoice->isIssued()) {
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is corrected by a credit note.', $invoice->documentType->value, $invoice->reference(), $invoice->status->value));
+        }
+        $reason = trim($reason);
+        if ('' === $reason) {
+            throw new InvalidInvoice('creditNoteReason', 'A credit note states why it corrects its invoice.');
+        }
+        if (mb_strlen($reason) > self::CREDIT_NOTE_REASON_MAX) {
+            throw new InvalidInvoice('creditNoteReason', \sprintf('A credit note\'s reason is at most %d characters.', self::CREDIT_NOTE_REASON_MAX));
+        }
+        $credit = new self($invoice->company, $now);
+        $credit->documentType = InvoiceType::CreditNote;
+        $credit->correctsInvoice = $invoice;
+        $credit->creditNoteReason = $reason;
+        // Held on both sides here rather than left to Doctrine to fill on a load: what a correction withholds is
+        // decided from the siblings correcting the same invoice, and an invoice never loaded has none of them.
+        $invoice->corrections->add($credit);
+        $credit->establishment = $invoice->establishment;
+        $credit->customer = $invoice->customer;
+        // The document discount is the invoice's: each credit note gives back its share of it, worked out by its totals.
+        $header = $invoice->getHeader();
+        $credit->apply(new InvoiceHeader($header->supplyDate, $header->paymentTermsDays, $header->customerReference, $header->notesPrinted, $header->notesInternal, null, $header->operationCategory));
+        $credit->writeLines(array_map(self::creditOf(...), $invoice->getLines()));
+        $credit->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
+        $credit->retakeTaxes();
+
+        return $credit;
+    }
+
+    /**
+     * A line of an invoice as its credit note first gives it back. The lot sold is the lot credited; a duplicate, a new
+     * sale, names none. Each line names the one it gives back, but a deposit given back, whose lines are the deposit's.
+     *
+     * @throws InvalidInvoice
+     */
+    private static function creditOf(InvoiceLine $line): InvoiceLineDetails
+    {
+        return new InvoiceLineDetails(
+            $line->getProduct(),
+            $line->getDescription(),
+            $line->getQuantity(),
+            $line->getUnit(),
+            $line->getUnitPriceNet(),
+            $line->getDiscountRate(),
+            array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
+            null,
+            LotCode::carried($line->getProduct(), $line->getLotCode()),
+            deduction: $line->getDeduction(),
+            discountAmount: $line->getDiscountAmount(),
+            section: $line->getSection(),
+            creditedLineId: null === $line->getDeduction() ? $line->getId() : null,
+        );
+    }
+
+    /**
+     * @param list<InvoiceLineDetails> $lines
+     * @param list<TaxComponent>       $documentTaxes
+     *
+     * @return list<string> the fields that changed, none when the revision says what the invoice already says
+     *
+     * @throws InvoiceNotDraft
+     * @throws InvalidInvoice
+     */
+    public function revise(Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $documentTaxes, \DateTimeImmutable $now): array
+    {
+        $this->assertDraft('changes');
+        $this->assertOwnDiscount($header);
+        [$establishment, $customer, $lines, $documentTaxes] = $this->checkedRevision($establishment, $customer, $lines, $documentTaxes);
+
+        $changed = [];
+        if (!$establishment->getId()->equals($this->establishment->getId())) {
+            $changed[] = 'establishmentId';
+        }
+        if (!$customer->getId()->equals($this->customer->getId())) {
+            $changed[] = 'customerId';
+        }
+        $changed = [...$changed, ...$header->differencesFrom($this->getHeader())];
+        $taxesChanged = self::taxIds($documentTaxes) !== self::taxIds(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $this->getDocumentTaxes()));
+        if ($taxesChanged) {
+            $changed[] = 'documentTaxComponentIds';
+        }
+        $linesChanged = array_map(static fn (InvoiceLineDetails $line): array => $line->values(), $lines) !== array_map(static fn (InvoiceLine $line): array => $line->values(), $this->getLines());
+        if ($linesChanged) {
+            $changed[] = 'lines';
+        }
+        if ([] === $changed) {
+            return [];
+        }
+
+        $this->establishment = $establishment;
+        $this->customer = $customer;
+        $this->apply($header);
+        if ($taxesChanged) {
+            $this->writeDocumentTaxes($documentTaxes);
+        }
+        if ($linesChanged) {
+            $this->writeLines($lines);
+        }
+        if (null !== $this->correctsInvoice) {
+            $this->retakeTaxes();
+        }
+        $this->updatedAt = $now;
+
+        return $changed;
+    }
+
+    /**
+     * What this draft would be once revised as given, worked out apart from it, for its figures while it is typed: a
+     * document of the same kind, correcting the same invoice, checked as `revise` checks a revision. It is never saved
+     * and nothing holds it: no collection of the invoice it corrects names it, so nothing of it can be written.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     * @param list<TaxComponent>       $documentTaxes
+     *
+     * @throws InvoiceNotDraft
+     * @throws InvalidInvoice
+     */
+    public function previewOf(Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $documentTaxes, \DateTimeImmutable $now): self
+    {
+        $this->assertDraft('changes');
+        $this->assertOwnDiscount($header);
+        [$establishment, $customer, $lines, $documentTaxes] = $this->checkedRevision($establishment, $customer, $lines, $documentTaxes);
+        $preview = new self($this->company, $now);
+        $preview->documentType = $this->documentType;
+        $preview->correctsInvoice = $this->correctsInvoice;
+        $preview->deposit = $this->deposit;
+        $preview->quoteId = $this->quoteId;
+        $preview->establishment = $establishment;
+        $preview->customer = $customer;
+        $preview->apply($header);
+        $preview->writeDocumentTaxes($documentTaxes);
+        $preview->writeLines($lines);
+        if (null !== $preview->correctsInvoice) {
+            $preview->retakeTaxes();
+        }
+
+        return $preview;
+    }
+
+    /**
+     * A credit note gives back its share of its invoice's document discount, worked out by its totals: it takes none of
+     * its own.
+     *
+     * @throws InvalidInvoice
+     */
+    private function assertOwnDiscount(InvoiceHeader $header): void
+    {
+        if (null !== $this->correctsInvoice && null !== $header->discountAmount) {
+            throw new InvalidInvoice('discountAmount', 'A credit note gives back its share of its invoice\'s discount: it takes none of its own.');
+        }
+    }
+
+    /**
+     * Writes on this draft credit note what each of its lines gives back of the discount of the invoice line it names,
+     * worked out from the invoice and the credit notes already issued, in place of what was typed.
+     *
+     * @param array<string, string> $amounts by this draft's line id
+     *
+     * @throws InvoiceNotDraft
+     */
+    public function giveBackLineDiscounts(array $amounts): void
+    {
+        $this->assertDraft('changes');
+        foreach ($this->getLines() as $line) {
+            if (isset($amounts[$line->getId()->toRfc4122()])) {
+                $line->giveBackDiscount($amounts[$line->getId()->toRfc4122()]);
+            }
+        }
+    }
+
+    /**
+     * A revision's parties, lines and document taxes, checked against what this draft is.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     * @param list<TaxComponent>       $documentTaxes
+     *
+     * @return array{Establishment, Customer, list<InvoiceLineDetails>, list<TaxComponent>}
+     *
+     * @throws InvalidInvoice
+     */
+    private function checkedRevision(Establishment $establishment, Customer $customer, array $lines, array $documentTaxes): array
+    {
+        $establishment = $this->establishmentOfThisCompany($establishment);
+        $customer = $this->customerOfThisCompany($customer);
+        if (null !== $this->correctsInvoice && !$customer->getId()->equals($this->correctsInvoice->getCustomer()->getId())) {
+            throw new InvalidInvoice('customerId', 'A credit note goes to the customer of the invoice it corrects.');
+        }
+        $lines = $this->deductionsFor($this->depositsCredited($this->linesOfThisCompany($lines)), $customer);
+        $documentTaxes = $this->documentTaxesOfThisCompany($documentTaxes);
+        // Delivery notes are invoiced to their customer, numbered in their establishment's series: a draft that still
+        // invoices note lines keeps both, or one customer's delivered goods are invoiced to another.
+        if (array_any($lines, static fn (InvoiceLineDetails $line): bool => null !== $line->sourceDeliveryNoteLineId)) {
+            if (!$customer->getId()->equals($this->customer->getId())) {
+                throw new InvalidInvoice('customerId', 'An invoice of delivery notes stays with their customer: take their lines off first.');
+            }
+            if (!$establishment->getId()->equals($this->establishment->getId())) {
+                throw new InvalidInvoice('establishmentId', 'An invoice of delivery notes stays with their establishment: take their lines off first.');
+            }
+        }
+
+        return [$establishment, $customer, $lines, $documentTaxes];
+    }
+
+    /**
+     * Lines added after the ones a draft already has, as a delivery note's lines are (docs/SPEC.md § 7, 2026-10-04): what
+     * the draft says otherwise is kept, and the lines it had keep their order and what they name.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @throws InvoiceNotDraft
+     * @throws InvalidInvoice  when the document is not an invoice, or a line names something of another company
+     */
+    public function addLines(array $lines, \DateTimeImmutable $now): void
+    {
+        $this->assertDraft('changes');
+        if (InvoiceType::Invoice !== $this->documentType) {
+            throw new InvalidInvoice('lines', 'Only an invoice takes the lines of delivery notes.');
+        }
+        $added = $this->linesOfThisCompany($lines);
+        if ([] === $added) {
+            return;
+        }
+        $kept = array_map(static fn (InvoiceLine $line): InvoiceLineDetails => self::detailsOf($line, $line->getQuantity()), $this->getLines());
+        // A document invoices a note line once: the rest of a line it already took part of joins that line, which a
+        // revision of the draft would otherwise refuse.
+        $bySource = [];
+        foreach ($this->getLines() as $index => $line) {
+            $source = $line->getSourceDeliveryNoteLineId();
+            if (null !== $source) {
+                $bySource[$source->toRfc4122()] = $index;
+            }
+        }
+        $appended = [];
+        foreach ($added as $line) {
+            $index = $bySource[$line->sourceDeliveryNoteLineId?->toRfc4122() ?? ''] ?? null;
+            if (null === $index) {
+                $appended[] = $line;
+                continue;
+            }
+            $existing = $this->getLines()[$index];
+            $kept[$index] = self::detailsOf($existing, Decimal::format(Decimal::of($existing->getQuantity())->add(Decimal::of($line->quantity)), InvoiceLineDetails::QUANTITY_DECIMALS));
+        }
+        $this->writeLines([...$kept, ...$appended]);
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * What its lines giving this deposit back say, as they say it.
+     *
+     * @return list<InvoiceLineDetails>
+     */
+    public function linesGivingBack(Uuid $depositId): array
+    {
+        return array_values(array_map(
+            static fn (InvoiceLine $line): InvoiceLineDetails => self::detailsOf($line, $line->getQuantity()),
+            array_filter($this->getLines(), static fn (InvoiceLine $line): bool => true === $line->getDeduction()?->deposit->getId()->equals($depositId)),
+        ));
+    }
+
+    /** What a line of this draft says, with the quantity given. */
+    private static function detailsOf(InvoiceLine $line, string $quantity): InvoiceLineDetails
+    {
+        return new InvoiceLineDetails(
+            $line->getProduct(),
+            $line->getDescription(),
+            $quantity,
+            $line->getUnit(),
+            $line->getUnitPriceNet(),
+            $line->getDiscountRate(),
+            array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
+            $line->getSourceDeliveryNoteLineId(),
+            $line->getLotCode(),
+            $line->isReturned(),
+            $line->getDeduction(),
+            $line->getDiscountAmount(),
+            $line->getSection(),
+            $line->getCreditedLineId(),
+        );
+    }
+
+    /**
+     * Numbers a draft with lines and fixes what it says: its taxes take their rates of the
+     * issue day, then the figures those give are written once and answered from then on; what the customer was called,
+     * the language, the mentions, the footer and the due day (the issue day plus the terms) are kept as they stand.
+     * Records `invoice.issued`.
+     *
+     * @param \Closure(self): InvoiceFigures $figures what the document comes to, asked once its taxes are the issue day's
+     *
+     * @throws InvoiceNotDraft
+     * @throws InvalidInvoice
+     */
+    public function issue(InvoiceIssue $issue, \Closure $figures, \DateTimeImmutable $now): void
+    {
+        $this->assertDraft('is issued');
+        if ($this->lines->isEmpty()) {
+            throw new InvalidInvoice('lines', 'An invoice is issued with at least one line.');
+        }
+
+        $this->retakeTaxes();
+        $fixed = $figures($this);
+        $lines = $this->getLines();
+        if (\count($fixed->lines) !== \count($lines)) {
+            throw new \LogicException(\sprintf('Figures for %d lines were given to an invoice of %d.', \count($fixed->lines), \count($lines)));
+        }
+        foreach ($lines as $index => $line) {
+            $line->fix($fixed->lines[$index]);
+        }
+        $this->subtotalNet = $fixed->subtotalNet;
+        $this->documentDiscount = $fixed->documentDiscount;
+        $this->totalNet = $fixed->totalNet;
+        $this->savings = $fixed->savings;
+        $this->taxBreakdown = $fixed->taxes;
+        $this->totalTax = $fixed->totalTax;
+        $this->fixedTaxes = $fixed->fixedTaxes;
+        $this->totalGross = $fixed->total;
+        $this->withholdings = $fixed->withholdings;
+        $this->withholdingAmount = $fixed->withholdingAmount;
+        $this->amountDue = $fixed->amountDue;
+
+        $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
+        $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
+        $this->printSettings = $issue->print->toArray();
+        $this->status = InvoiceStatus::Issued;
+        $this->number = $issue->number;
+        $this->issueDate = self::day($issue->issueDate);
+        $this->paymentTermsDays = $issue->paymentTermsDays;
+        $this->dueDate = $this->issueDate->modify(\sprintf('+%d days', $issue->paymentTermsDays));
+        $this->language = $issue->language;
+        $this->mentions = ['keys' => $issue->mentionKeys, 'latePenaltyText' => $issue->latePenaltyText, 'parameters' => $issue->mentionParameters];
+        $this->operationCategory = $issue->operationCategory;
+        $this->vatOnDebits = $issue->vatOnDebits;
+        $this->footer = $issue->footer;
+        $this->issuedAt = $now;
+        $this->issuedBy = $issue->issuedBy;
+        $this->updatedAt = $now;
+        $sources = array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $this->getLines())));
+        $direct = InvoiceType::Invoice !== $this->documentType ? [] : array_values(array_filter(array_map(
+            static fn (InvoiceLine $line): ?InvoicedQuantity => null === $line->getProduct() || null !== $line->getSourceDeliveryNoteLineId() ? null : new InvoicedQuantity($line->getProduct()->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode()),
+            $this->getLines(),
+        )));
+        $returned = InvoiceType::CreditNote !== $this->documentType ? [] : array_values(array_filter(array_map(
+            static fn (InvoiceLine $line): ?InvoicedQuantity => null === $line->getProduct() || !$line->isReturned() ? null : new InvoicedQuantity($line->getProduct()->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode()),
+            $this->getLines(),
+        )));
+        // What the corrected invoice sold through delivery notes is returned against those notes' own movements.
+        $correctedSources = null === $this->correctsInvoice || [] === $returned ? [] : array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $this->correctsInvoice->getLines())));
+        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, $sources, $direct, $this->correctsInvoice?->getId(), $returned, $correctedSources);
+    }
+
+    /**
+     * A draft that will not be issued. An issued document is never cancelled: a credit note corrects it.
+     *
+     * @throws InvoiceTransitionRefused
+     */
+    public function cancel(\DateTimeImmutable $now): void
+    {
+        if (InvoiceStatus::Draft !== $this->status) {
+            throw new InvoiceTransitionRefused(\sprintf('The invoice %s is %s: only a draft is cancelled, and an issued invoice is corrected by a credit note.', $this->reference(), $this->status->value));
+        }
+        $this->status = InvoiceStatus::Cancelled;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * Money the customer paid: an issued invoice takes a payment dated from its issue day
+     * to the company's today, of an amount the currency can count and at most what is still due; what is due and the
+     * status follow.
+     *
+     * @param \DateTimeImmutable $today the company's today, in its time zone
+     * @param int                $scale the decimals of the company's currency
+     *
+     * @throws InvoiceTransitionRefused when the invoice is not issued
+     * @throws InvalidInvoice           on `amount` or `date`
+     */
+    public function recordPayment(PaymentDetails $details, \DateTimeImmutable $today, int $scale, ?Uuid $recordedBy, \DateTimeImmutable $now): Payment
+    {
+        if (InvoiceType::Invoice !== $this->documentType || !$this->isIssued() || null === $this->issueDate) {
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is paid.', $this->documentType->value, $this->reference(), $this->status->value));
+        }
+        $amount = Decimal::of($details->amount);
+        if (0 !== Decimal::round($amount, $scale)->compare($amount)) {
+            throw new InvalidInvoice('amount', \sprintf('The currency %s has %d decimals.', $this->company->getCurrency(), $scale));
+        }
+        $due = Decimal::of($this->amountDue ?? '0');
+        if ($amount->compare($due) > 0) {
+            throw new InvalidInvoice('amount', \sprintf('A payment is at most what is still due, %s.', Decimal::format($due, $scale)));
+        }
+        $day = $details->date->format('Y-m-d');
+        if ($day < $this->issueDate->format('Y-m-d')) {
+            throw new InvalidInvoice('date', \sprintf('A payment is dated from the issue day, %s.', $this->issueDate->format('Y-m-d')));
+        }
+        if ($day > $today->format('Y-m-d')) {
+            throw new InvalidInvoice('date', \sprintf('A payment is dated today at the latest, %s.', $today->format('Y-m-d')));
+        }
+
+        $payment = new Payment($this, $details, $recordedBy, $now);
+        $this->payments->add($payment);
+        $this->settle($now);
+
+        return $payment;
+    }
+
+    /**
+     * Whether money received on `$day` may be kept to the customer's credit as paid beyond this invoice: an issued
+     * invoice with nothing left due, the day from its issue day on. What is still due is paid on it first.
+     *
+     * @throws InvoiceTransitionRefused when this is not an issued invoice, or something is still due on it
+     * @throws InvalidInvoice           on `date`
+     */
+    public function assertPaidBeyond(\DateTimeImmutable $day): void
+    {
+        if (InvoiceType::Invoice !== $this->documentType || !$this->isIssued() || null === $this->issueDate) {
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is paid beyond.', $this->documentType->value, $this->reference(), $this->status->value));
+        }
+        if (Decimal::of($this->amountDue ?? '0')->compare(0) > 0) {
+            throw new InvoiceTransitionRefused(\sprintf('The invoice %s still has %s due: that is paid on it first.', $this->reference(), $this->amountDue));
+        }
+        if ($day->format('Y-m-d') < $this->issueDate->format('Y-m-d')) {
+            throw new InvalidInvoice('date', \sprintf('Money paid beyond an invoice is dated from its issue day, %s.', $this->issueDate->format('Y-m-d')));
+        }
+    }
+
+    /**
+     * Takes an issued credit note of this invoice off what it still has due: what the
+     * credit note comes to is added to what was credited, and the status follows.
+     *
+     * @throws InvalidInvoice on `amountDue` when the credit note comes to more than the invoice invoiced less its earlier credit notes
+     */
+    public function credit(self $creditNote, \DateTimeImmutable $now): void
+    {
+        $figures = $creditNote->getIssuedFigures();
+        if (InvoiceType::CreditNote !== $creditNote->documentType || InvoiceStatus::Issued !== $creditNote->status || null === $figures
+            || !($creditNote->correctsInvoice?->getId()->equals($this->id) ?? false)) {
+            throw new \LogicException(\sprintf('The invoice %s is credited by an issued credit note of its own.', $this->reference()));
+        }
+        $amount = $this->creditThatFits($figures->amountDue);
+        $this->amountCredited = Decimal::format(Decimal::of($this->amountCredited)->add($amount), self::STORED_SCALE);
+        $this->settle($now);
+    }
+
+    /**
+     * What a credit note of these figures takes beyond what the invoice still has due: money already paid that is the
+     * customer's again and has to go somewhere. Zero when the invoice still has due all the credit note comes to.
+     *
+     * @throws InvalidInvoice on `amountDue` when it comes to more than the invoice invoiced less its earlier credit notes
+     */
+    public function creditExcess(InvoiceFigures $figures): string
+    {
+        $amount = $this->creditThatFits($figures->amountDue);
+        $due = Decimal::of($this->amountDue ?? '0');
+
+        return Decimal::format($amount->compare($due) > 0 ? $amount->sub($due) : Decimal::zero(), self::STORED_SCALE);
+    }
+
+    /**
+     * The figures of a credit note of this invoice, once they fit what the invoice invoiced less its earlier credit notes.
+     *
+     * @throws InvalidInvoice on `amountDue`
+     */
+    public function fitsCredit(InvoiceFigures $figures): InvoiceFigures
+    {
+        $this->creditThatFits($figures->amountDue);
+
+        return $figures;
+    }
+
+    /** One of its payments; null when it has none of this id. */
+    public function payment(Uuid $id): ?Payment
+    {
+        foreach ($this->payments as $payment) {
+            if ($payment->getId()->equals($id)) {
+                return $payment;
+            }
+        }
+
+        return null;
+    }
+
+    /** Deletes one of its payments: what it paid is due again, and the status follows. */
+    public function removePayment(Payment $payment, \DateTimeImmutable $now): void
+    {
+        if (!$this->payments->removeElement($payment)) {
+            throw new \LogicException('An invoice deletes a payment of its own.');
+        }
+        $this->settle($now);
+    }
+
+    /** @return list<Payment> by day, then in the order they were recorded */
+    public function getPayments(): array
+    {
+        $payments = array_values($this->payments->toArray());
+        usort($payments, static fn (Payment $a, Payment $b): int => [$a->getDate()->format('Y-m-d'), $a->getCreatedAt(), $a->getId()->toRfc4122()] <=> [$b->getDate()->format('Y-m-d'), $b->getCreatedAt(), $b->getId()->toRfc4122()]);
+
+        return $payments;
+    }
+
+    /** Keeps the PDF a numbered document was issued with; a document keeps one, and never replaces it. */
+    public function attachPdf(StoredFile $file): void
+    {
+        if (null === $this->number) {
+            throw new \LogicException('Only a numbered invoice keeps the PDF it was issued with.');
+        }
+        if (null !== $this->pdfFile) {
+            throw new \LogicException(\sprintf('The invoice %s already keeps the PDF it was issued with.', $this->number));
+        }
+        if (!$file->getCompany()->getId()->equals($this->company->getId())) {
+            throw new \LogicException('An invoice keeps a file of its own company.');
+        }
+        $this->pdfFile = $file;
+    }
+
+    public function getPdfFile(): ?StoredFile
+    {
+        return $this->pdfFile;
+    }
+
+    /** @return list<DomainEvent> what happened since the last call, each once */
+    public function releaseEvents(): array
+    {
+        $events = $this->events;
+        $this->events = [];
+
+        return $events;
+    }
+
+    public function getHeader(): InvoiceHeader
+    {
+        return new InvoiceHeader($this->supplyDate, $this->paymentTermsDays, $this->customerReference, $this->notesPrinted, $this->notesInternal, $this->discountAmount, $this->isIssued() ? null : $this->operationCategory);
+    }
+
+    /**
+     * What its operations are: the category it states once issued; on a draft, its corrected invoice's for a credit note,
+     * else the one chosen, else what its lines' products say, a line giving a deposit back counting for nothing; null when nothing can be said.
+     */
+    public function operations(): ?OperationCategory
+    {
+        // A correction concerns the operations of the invoice it corrects, whatever its own lines still name.
+        $corrected = $this->isIssued() ? null : $this->correctsInvoice?->getOperationCategory();
+        if (null !== $corrected) {
+            return $corrected;
+        }
+        if (null !== $this->operationCategory) {
+            return $this->operationCategory;
+        }
+        $sold = array_filter($this->getLines(), static fn (InvoiceLine $line): bool => null === $line->getDeduction());
+
+        return OperationCategory::ofProducts(array_map(static fn (InvoiceLine $line): ?Product => $line->getProduct(), $sold));
+    }
+
+    /** The category an issued document states; null on a draft and where the law asks for none. */
+    public function getOperationCategory(): ?OperationCategory
+    {
+        return $this->isIssued() ? $this->operationCategory : null;
+    }
+
+    /** Whether the company had opted to pay VAT on the débits when it was issued; null on a draft and where the law asks nothing. */
+    public function getVatOnDebits(): ?bool
+    {
+        return $this->vatOnDebits;
+    }
+
+    /** @return list<InvoiceLine> in order */
+    public function getLines(): array
+    {
+        return array_values($this->lines->toArray());
+    }
+
+    /** @return list<InvoiceTax> in order */
+    public function getDocumentTaxes(): array
+    {
+        return array_values($this->documentTaxes->toArray());
+    }
+
+    /** What issuing wrote, as the columns hold it; null while the document is a draft or was cancelled as one. */
+    public function getIssuedFigures(): ?InvoiceFigures
+    {
+        if (null === $this->subtotalNet || null === $this->documentDiscount || null === $this->totalNet || null === $this->totalTax
+            || null === $this->totalGross || null === $this->withholdingAmount || null === $this->amountDue) {
+            return null;
+        }
+        $lines = [];
+        foreach ($this->getLines() as $line) {
+            $lines[] = $line->getFixedFigures() ?? throw new \LogicException(\sprintf('A line of the issued invoice %s has no figures.', $this->reference()));
+        }
+
+        return new InvoiceFigures(
+            $this->subtotalNet,
+            $this->documentDiscount,
+            $this->totalNet,
+            self::rated($this->taxBreakdown ?? []),
+            $this->totalTax,
+            array_map(static fn (array $charge): array => ['code' => self::text($charge, 'code'), 'amount' => self::text($charge, 'amount')], $this->fixedTaxes ?? []),
+            $this->totalGross,
+            self::rated($this->withholdings ?? []),
+            $this->withholdingAmount,
+            $this->amountDue,
+            $lines,
+            $this->amountPaid,
+            $this->amountCredited,
+            $this->savings,
+        );
+    }
+
+    /** What its customer was called the day it was issued; null while it is a draft or was cancelled as one. */
+    public function getCustomerSnapshot(): ?CustomerSnapshot
+    {
+        return null === $this->customerSnapshot ? null : CustomerSnapshot::fromArray($this->customerSnapshot);
+    }
+
+    /** The notes and formats the document printed the day it was issued; null while it is a draft, or for one issued before this was kept. */
+    public function getPrintSettings(): ?PrintSettings
+    {
+        return null === $this->printSettings ? null : PrintSettings::fromArray($this->printSettings);
+    }
+
+    /** The seller as the document printed it the day it was issued; null while it is a draft or was cancelled as one. */
+    public function getSellerSnapshot(): ?SellerSnapshot
+    {
+        return null === $this->sellerSnapshot ? null : SellerSnapshot::fromArray($this->sellerSnapshot);
+    }
+
+    public function getDueDate(): ?\DateTimeImmutable
+    {
+        return $this->dueDate;
+    }
+
+    /** The language it prints in, fixed at issue; null on a draft. */
+    public function getLanguage(): ?string
+    {
+        return $this->language;
+    }
+
+    /** @return list<string> the translation keys of the mentions it prints, fixed at issue */
+    public function getMentionKeys(): array
+    {
+        $keys = $this->mentions['keys'] ?? [];
+
+        return \is_array($keys) ? array_values(array_filter($keys, is_string(...))) : [];
+    }
+
+    /**
+     * What filled each mention's placeholders at issue, by key; empty for a document issued before mentions were filled,
+     * whose waiting mentions were left out.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function getMentionParameters(): array
+    {
+        $parameters = [];
+        $kept = $this->mentions['parameters'] ?? [];
+        foreach (\is_array($kept) ? $kept : [] as $key => $values) {
+            if (!\is_string($key) || !\is_array($values)) {
+                continue;
+            }
+            foreach ($values as $name => $value) {
+                if (\is_string($name) && \is_string($value)) {
+                    $parameters[$key][$name] = $value;
+                }
+            }
+        }
+
+        return $parameters;
+    }
+
+    /** The company's late penalty text as it read at issue; null when it had none or on a draft. */
+    public function getLatePenaltyText(): ?string
+    {
+        $text = $this->mentions['latePenaltyText'] ?? null;
+
+        return \is_string($text) ? $text : null;
+    }
+
+    /** The company's invoice footer as it read at issue; null when it had none or on a draft. */
+    public function getFooter(): ?string
+    {
+        return $this->footer;
+    }
+
+    public function getIssuedAt(): ?\DateTimeImmutable
+    {
+        return $this->issuedAt;
+    }
+
+    public function getIssuedBy(): ?Uuid
+    {
+        return $this->issuedBy;
+    }
+
+    /**
+     * Chains an issued document after the one before it in its series, once: what it says is then held by its hash.
+     *
+     * @throws \LogicException on a draft, or a document already sealed
+     */
+    public function seal(int $position, ?string $previous): void
+    {
+        if (!$this->isIssued() || null !== $this->chainHash) {
+            throw new \LogicException(\sprintf('The document %s is %s: only an issued one is sealed, once.', $this->reference(), null === $this->chainHash ? $this->status->value : 'sealed'));
+        }
+        if ($position < 1 || (1 === $position) !== (null === $previous)) {
+            throw new \LogicException(\sprintf('Place %d of a chain %s a hash before it.', $position, null === $previous ? 'needs' : 'has no'));
+        }
+        $this->chainPosition = $position;
+        $this->chainPrevious = $previous;
+        $this->chainVersion = InvoiceChain::VERSION;
+        $this->chainHash = InvoiceChain::hash(InvoiceChain::VERSION, $position, $previous, $this->chained());
+    }
+
+    /** Whether what it says still gives the hash it was sealed with; false when it was never sealed. */
+    public function chainHolds(): bool
+    {
+        if (null === $this->chainHash || null === $this->chainPosition || null === $this->chainVersion) {
+            return false;
+        }
+
+        return hash_equals($this->chainHash, InvoiceChain::hash($this->chainVersion, $this->chainPosition, $this->chainPrevious, $this->chained()));
+    }
+
+    public function getChainPosition(): ?int
+    {
+        return $this->chainPosition;
+    }
+
+    public function getChainPrevious(): ?string
+    {
+        return $this->chainPrevious;
+    }
+
+    public function getChainHash(): ?string
+    {
+        return $this->chainHash;
+    }
+
+    /**
+     * What the chain holds of it, all of which issuing fixed and nothing after moves.
+     *
+     * @return array{
+     *     company: string, establishment: string, type: string, id: string, number: string, issueDate: string,
+     *     customer: string, corrects: string|null, totalNet: string, totalTax: string, totalGross: string,
+     *     withholding: string, lines: list<array{position: int, description: string, quantity: string, unitPriceNet: string, net: string, tax: string, gross: string}>
+     * }
+     */
+    private function chained(): array
+    {
+        $lines = [];
+        foreach ($this->getLines() as $line) {
+            $figures = $line->getFixedFigures() ?? throw new \LogicException('An issued line has its figures.');
+            $lines[] = [
+                'position' => $line->getPosition(),
+                'description' => $line->getDescription(),
+                'quantity' => $line->getQuantity(),
+                'unitPriceNet' => $line->getUnitPriceNet(),
+                'net' => $figures['net'],
+                'tax' => $figures['tax'],
+                'gross' => $figures['gross'],
+            ];
+        }
+
+        return [
+            'company' => $this->company->getId()->toRfc4122(),
+            'establishment' => $this->establishment->getId()->toRfc4122(),
+            'type' => $this->documentType->value,
+            'id' => $this->id->toRfc4122(),
+            'number' => $this->number ?? throw new \LogicException('An issued document has its number.'),
+            'issueDate' => ($this->issueDate ?? throw new \LogicException('An issued document has its day.'))->format('Y-m-d'),
+            'customer' => $this->customer->getId()->toRfc4122(),
+            'corrects' => $this->correctsInvoice?->getId()->toRfc4122(),
+            'totalNet' => $this->totalNet ?? throw new \LogicException('An issued document has its figures.'),
+            'totalTax' => $this->totalTax ?? throw new \LogicException('An issued document has its figures.'),
+            'totalGross' => $this->totalGross ?? throw new \LogicException('An issued document has its figures.'),
+            'withholding' => $this->withholdingAmount ?? '0',
+            'lines' => $lines,
+        ];
+    }
+
+    /**
+     * What is due is the total less what is withheld, paid and credited; nothing paid or credited is `issued`, nothing
+     * due `paid`, anything between `partially_paid`.
+     */
+    private function settle(\DateTimeImmutable $now): void
+    {
+        if (null === $this->totalGross || null === $this->withholdingAmount) {
+            throw new \LogicException(\sprintf('The invoice %s has no figures to settle.', $this->reference()));
+        }
+        $paid = Decimal::sum(array_map(static fn (Payment $payment) => Decimal::of($payment->getAmount()), $this->getPayments()));
+        $credited = Decimal::of($this->amountCredited);
+        $due = Decimal::of($this->totalGross)->sub(Decimal::of($this->withholdingAmount))->sub($paid)->sub($credited);
+        // What was paid beyond what a credit note left due is the customer's again and lives in their credit balance.
+        if ($due->compare(0) < 0) {
+            $due = Decimal::zero();
+        }
+
+        $this->amountPaid = Decimal::format($paid, self::STORED_SCALE);
+        $this->amountDue = Decimal::format($due, self::STORED_SCALE);
+        $this->status = match (true) {
+            0 === $paid->compare(0) && 0 === $credited->compare(0) => InvoiceStatus::Issued,
+            0 === $due->compare(0) => InvoiceStatus::Paid,
+            default => InvoiceStatus::PartiallyPaid,
+        };
+        $this->updatedAt = $now;
+    }
+
+    private function isIssued(): bool
+    {
+        return \in_array($this->status, [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid], true);
+    }
+
+    /**
+     * A credit note takes at most what the invoice invoiced to be paid less its earlier credit notes, paid or not: what
+     * was already paid beyond what is due after it is the excess, which `creditExcess` names.
+     */
+    private function creditThatFits(string $creditNoteAmountDue): Number
+    {
+        $amount = Decimal::absolute(Decimal::of($creditNoteAmountDue));
+        $creditable = Decimal::of($this->totalGross ?? '0')->sub(Decimal::of($this->withholdingAmount ?? '0'))->sub(Decimal::of($this->amountCredited));
+        if ($amount->compare($creditable) > 0) {
+            throw new InvalidInvoice('amountDue', \sprintf('A credit note takes at most what the invoice %s invoiced less its earlier credit notes, %s.', $this->reference(), Decimal::format($creditable, self::STORED_SCALE)));
+        }
+
+        return $amount;
+    }
+
+    /**
+     * Each tax's code, rate, amount and threshold as its component has them now; on a credit note, a tax its invoice
+     * charged is charged as the invoice charged it, so a correction never disagrees with what it corrects.
+     */
+    private function retakeTaxes(): void
+    {
+        $corrected = $this->correctsInvoice;
+        foreach ($this->getLines() as $line) {
+            foreach ($line->getTaxes() as $tax) {
+                $tax->retakeFrom($corrected?->lineTaxCharged($tax->getTaxComponent()));
+            }
+        }
+        foreach ($this->getDocumentTaxes() as $tax) {
+            $tax->retakeFrom($corrected?->documentTaxCharged($tax->getTaxComponent()));
+        }
+    }
+
+    private function lineTaxCharged(TaxComponent $component): ?InvoiceLineTax
+    {
+        foreach ($this->getLines() as $line) {
+            foreach ($line->getTaxes() as $tax) {
+                if ($tax->getTaxComponent()->getId()->equals($component->getId())) {
+                    return $tax;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function documentTaxCharged(TaxComponent $component): ?InvoiceTax
+    {
+        foreach ($this->getDocumentTaxes() as $tax) {
+            if ($tax->getTaxComponent()->getId()->equals($component->getId())) {
+                return $tax;
+            }
+        }
+
+        return null;
+    }
+
+    private function apply(InvoiceHeader $header): void
+    {
+        $this->supplyDate = $header->supplyDate;
+        $this->paymentTermsDays = $header->paymentTermsDays;
+        $this->customerReference = $header->customerReference;
+        $this->notesPrinted = $header->notesPrinted;
+        $this->notesInternal = $header->notesInternal;
+        $this->discountAmount = $header->discountAmount;
+        $this->operationCategory = $header->operationCategory;
+    }
+
+    /** @param list<InvoiceLineDetails> $lines */
+    private function writeLines(array $lines): void
+    {
+        $this->lines->clear();
+        foreach ($lines as $index => $details) {
+            $this->lines->add(new InvoiceLine($this, $index + 1, $details));
+        }
+    }
+
+    /** @param list<TaxComponent> $taxes */
+    private function writeDocumentTaxes(array $taxes): void
+    {
+        $this->documentTaxes->clear();
+        foreach ($taxes as $index => $tax) {
+            $this->documentTaxes->add(new InvoiceTax($this, $index + 1, $tax));
+        }
+    }
+
+    /**
+     * @param list<TaxComponent> $taxes
+     *
+     * @return list<string>
+     */
+    private static function taxIds(array $taxes): array
+    {
+        return array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $taxes);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $stored
+     *
+     * @return list<array{code: string, rate: string, base: string, amount: string}>
+     */
+    private static function rated(array $stored): array
+    {
+        return array_map(static fn (array $each): array => ['code' => self::text($each, 'code'), 'rate' => self::text($each, 'rate'), 'base' => self::text($each, 'base'), 'amount' => self::text($each, 'amount')], $stored);
+    }
+
+    /** @param array<string, mixed> $stored */
+    private static function text(array $stored, string $key): string
+    {
+        $value = $stored[$key] ?? null;
+
+        return \is_string($value) ? $value : throw new \LogicException(\sprintf('A stored figure has no %s.', $key));
+    }
+
+    private static function day(\DateTimeImmutable $moment): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable($moment->format('Y-m-d'), new \DateTimeZone('UTC'));
+    }
+
+    public function assertDraft(string $what): void
+    {
+        if (InvoiceStatus::Draft !== $this->status) {
+            throw new InvoiceNotDraft(\sprintf('The invoice %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what));
+        }
+    }
+
+    private function reference(): string
+    {
+        return $this->number ?? $this->id->toRfc4122();
+    }
+
+    private function establishmentOfThisCompany(Establishment $establishment): Establishment
+    {
+        if (!$establishment->getCompany()->getId()->equals($this->company->getId())) {
+            throw new InvalidInvoice('establishmentId', 'An invoice is issued by an establishment of its own company.');
+        }
+
+        return $establishment;
+    }
+
+    private function customerOfThisCompany(Customer $customer): Customer
+    {
+        if (!$customer->getCompany()->getId()->equals($this->company->getId())) {
+            throw new InvalidInvoice('customerId', 'An invoice goes to a customer of its own company.');
+        }
+
+        return $customer;
+    }
+
+    /**
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<InvoiceLineDetails>
+     */
+    private function linesOfThisCompany(array $lines): array
+    {
+        $companyId = $this->company->getId();
+        $sources = [];
+        foreach ($lines as $index => $line) {
+            if ($line->returned && InvoiceType::CreditNote !== $this->documentType) {
+                throw new InvalidInvoice("lines[$index].returned", 'Only a credit note returns goods to stock.');
+            }
+            if (null !== $line->creditedLineId && !\in_array($line->creditedLineId->toRfc4122(), array_map(static fn (InvoiceLine $credited): string => $credited->getId()->toRfc4122(), $this->correctsInvoice?->getLines() ?? []), true)) {
+                throw new InvalidInvoice("lines[$index].creditedLineId", 'A credit note\'s line gives back a line of the invoice it corrects.');
+            }
+            $source = $line->sourceDeliveryNoteLineId?->toRfc4122();
+            if (null !== $source && isset($sources[$source])) {
+                throw new InvalidInvoice("lines[$index].sourceDeliveryNoteLineId", 'A document invoices a delivery note line once.');
+            }
+            $sources[$source ?? ''] = true;
+            if (null !== $line->product && !$line->product->getCompany()->getId()->equals($companyId)) {
+                throw new InvalidInvoice("lines[$index].productId", 'A line sells a product of its own company.');
+            }
+            if (!$line->unit->getCompany()->getId()->equals($companyId)) {
+                throw new InvalidInvoice("lines[$index].unitId", 'A line counts in a unit of its own company.');
+            }
+            foreach ($line->taxes as $tax) {
+                if (!$tax->getCompany()->getId()->equals($companyId)) {
+                    throw new InvalidInvoice("lines[$index].taxComponentIds", 'A line carries taxes of its own company.');
+                }
+            }
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Lines giving deposits back, each of a deposit of the same company and customer, and only on an invoice that is not
+     * itself a deposit: a credit note carries them from the invoice it corrects. Whether a deposit may still be given
+     * back is the use case's to say, which sees the company's other invoices.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<InvoiceLineDetails>
+     */
+    private function deductionsFor(array $lines, Customer $customer): array
+    {
+        foreach ($lines as $index => $line) {
+            $deposit = $line->deduction?->deposit;
+            if (null === $deposit) {
+                continue;
+            }
+            if ($this->deposit) {
+                throw new InvalidInvoice("lines[$index].deductsInvoiceId", 'A deposit invoice gives no other deposit back.');
+            }
+            if (!$deposit->company->getId()->equals($this->company->getId()) || !$deposit->customer->getId()->equals($customer->getId())) {
+                throw new InvalidInvoice("lines[$index].deductsInvoiceId", 'An invoice gives back the deposits of its own customer.');
+            }
+        }
+
+        return $lines;
+    }
+
+    /**
+     * A credit note gives its invoice's deposits back only when it gives back the whole invoice, every line it sold
+     * charged as it was: a return of part of it is credited at what the goods returned cost, the deposit staying taken
+     * off what is kept, and what the final invoice no longer owes is corrected on the deposit invoice (docs/fiscal TN.md
+     * § 2b). The deposit lines are then the invoice's, whichever of them the screen sent back; on a part, a section one
+     * of them opened is opened by the next line, as a duplicate does.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<InvoiceLineDetails>
+     *
+     * @throws InvalidInvoice
+     */
+    private function depositsCredited(array $lines): array
+    {
+        return array_map(static fn (array $kept): InvoiceLineDetails => $kept[0], $this->keptFrom($lines));
+    }
+
+    /**
+     * Where each line a revision of this draft keeps was sent from, by its position among `$lines`, in the order it
+     * keeps them: null for a deposit line a credit note of the whole invoice adds itself. The screen places a preview's
+     * figures by it, as the lines it sent may be fewer, or in another order, than the ones kept.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<int|null>
+     *
+     * @throws InvalidInvoice
+     */
+    public function linesSentFrom(array $lines): array
+    {
+        return array_map(static fn (array $kept): ?int => $kept[1], $this->keptFrom($lines));
+    }
+
+    /**
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<array{InvoiceLineDetails, int|null}>
+     *
+     * @throws InvalidInvoice
+     */
+    private function keptFrom(array $lines): array
+    {
+        $sentAt = array_map(static fn (InvoiceLineDetails $line, int $index): array => [$line, $index], $lines, array_keys($lines));
+        $given = array_values(array_filter($this->correctsInvoice?->getLines() ?? [], static fn (InvoiceLine $line): bool => null !== $line->getDeduction()));
+        if (null === $this->correctsInvoice || [] === $given) {
+            return $sentAt;
+        }
+        $sold = array_values(array_filter($sentAt, static fn (array $sent): bool => null === $sent[0]->deduction));
+        if ($this->givesBackWhole($this->correctsInvoice, array_map(static fn (array $sent): InvoiceLineDetails => $sent[0], $sold))) {
+            $sent = array_values(array_filter(array_map(static fn (InvoiceLineDetails $line): ?string => $line->deduction?->deposit->getId()->toRfc4122(), $lines)));
+            $owed = array_values(array_filter(array_map(static fn (InvoiceLine $line): ?string => $line->getDeduction()?->deposit->getId()->toRfc4122(), $given)));
+            sort($sent);
+            sort($owed);
+
+            return $sent === $owed ? $sentAt : [...$sold, ...array_map(static fn (InvoiceLine $line): array => [self::creditOf($line), null], $given)];
+        }
+        $part = [];
+        $carried = null;
+        foreach ($sentAt as [$line, $index]) {
+            if (null !== $line->deduction) {
+                $carried = $line->section ?? $carried;
+
+                continue;
+            }
+            $part[] = [null === $line->section && null !== $carried ? $line->opening($carried) : $line, $index];
+            $carried = null;
+        }
+
+        return $part;
+    }
+
+    /**
+     * Whether a credit note's lines give back each line `$invoice` sold, once, charged as it was: the product, the
+     * quantity, the unit, the price, the rate discount and the taxes. Its wording, lot and sections may differ; a
+     * discount by amount follows from the quantity credited.
+     *
+     * @param list<InvoiceLineDetails> $sold
+     *
+     * @throws InvalidInvoice
+     */
+    private function givesBackWhole(self $invoice, array $sold): bool
+    {
+        $charged = static function (InvoiceLineDetails $line): array {
+            $taxes = array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $line->taxes);
+            sort($taxes);
+
+            return [$line->product?->getId()->toRfc4122(), $line->quantity, $line->unit->getId()->toRfc4122(), $line->unitPriceNet, $line->discountRate, $taxes];
+        };
+        $byLine = [];
+        foreach ($sold as $line) {
+            $id = $line->creditedLineId?->toRfc4122();
+            if (null === $id || isset($byLine[$id])) {
+                return false;
+            }
+            $byLine[$id] = $charged($line);
+        }
+        $invoiced = array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => null === $line->getDeduction());
+
+        return \count($invoiced) === \count($byLine) && array_all(
+            $invoiced,
+            static fn (InvoiceLine $line): bool => ($byLine[$line->getId()->toRfc4122()] ?? null) === $charged(self::creditOf($line)),
+        );
+    }
+
+    /**
+     * Fixed charges and withholdings of its own company, each once.
+     *
+     * @param list<TaxComponent> $taxes
+     *
+     * @return list<TaxComponent>
+     */
+    private function documentTaxesOfThisCompany(array $taxes): array
+    {
+        $ids = [];
+        foreach ($taxes as $tax) {
+            if (TaxKind::PercentageLine === $tax->getKind()) {
+                throw new InvalidInvoice('documentTaxComponentIds', \sprintf('%s is charged on lines, not on a whole document.', $tax->getCode()));
+            }
+            if (!$tax->getCompany()->getId()->equals($this->company->getId())) {
+                throw new InvalidInvoice('documentTaxComponentIds', 'A document carries taxes of its own company.');
+            }
+            $id = $tax->getId()->toRfc4122();
+            if (isset($ids[$id])) {
+                throw new InvalidInvoice('documentTaxComponentIds', \sprintf('A document carries %s once.', $tax->getCode()));
+            }
+            $ids[$id] = true;
+        }
+
+        return $taxes;
+    }
+
+    public function getId(): Uuid
+    {
+        return $this->id;
+    }
+
+    public function getCompany(): Company
+    {
+        return $this->company;
+    }
+
+    public function getType(): InvoiceType
+    {
+        return $this->documentType;
+    }
+
+    /** Whether it is a facture d'acompte, given back on the invoice of the whole operation. */
+    public function isDeposit(): bool
+    {
+        return $this->deposit;
+    }
+
+    /** The quote it was drafted from; null for a document written otherwise. */
+    public function getQuoteId(): ?Uuid
+    {
+        return $this->quoteId;
+    }
+
+    /**
+     * Whether another invoice may give this deposit back: issued, and not corrected by an issued credit note, which
+     * would leave it giving back more than it still charges.
+     */
+    public function isDeductible(): bool
+    {
+        return $this->deposit && $this->isIssued()
+            && !array_any($this->getCorrections(), static fn (self $credit): bool => $credit->isIssued());
+    }
+
+    /** The invoice a credit note corrects; null for an invoice. */
+    public function getCorrectedInvoice(): ?self
+    {
+        return $this->correctsInvoice;
+    }
+
+    /** Why a credit note corrects its invoice; null for an invoice, and for a credit note drafted before it was asked. */
+    public function getCreditNoteReason(): ?string
+    {
+        return $this->creditNoteReason;
+    }
+
+    /** @return list<self> the credit notes correcting this invoice, drafts among them */
+    public function getCorrections(): array
+    {
+        return array_values($this->corrections->toArray());
+    }
+
+    public function getEstablishment(): Establishment
+    {
+        return $this->establishment;
+    }
+
+    public function getCustomer(): Customer
+    {
+        return $this->customer;
+    }
+
+    public function getStatus(): InvoiceStatus
+    {
+        return $this->status;
+    }
+
+    public function getNumber(): ?string
+    {
+        return $this->number;
+    }
+
+    public function getIssueDate(): ?\DateTimeImmutable
+    {
+        return $this->issueDate;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function getUpdatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+}

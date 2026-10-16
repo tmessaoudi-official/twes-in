@@ -9,14 +9,15 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Application;
 
-use App\Module\Inventory\Domain\InvalidStockMovement;
-use App\Module\Inventory\Domain\ProductHomeLocationRepository;
-use App\Module\Inventory\Domain\StockLocation;
-use App\Module\Inventory\Domain\StockLocationRepository;
-use App\Module\Inventory\Domain\StockMovement;
-use App\Module\Inventory\Domain\StockMovementRepository;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductTracking;
+use App\Module\Inventory\Application\Location\ManageStockLocations;
+use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
+use App\Module\Inventory\Domain\Model\StockLocation;
+use App\Module\Inventory\Domain\Model\StockMovement;
+use App\Module\Inventory\Domain\Repository\ProductHomeLocationRepository;
+use App\Module\Inventory\Domain\Repository\StockLocationRepository;
+use App\Module\Inventory\Domain\Repository\StockMovementRepository;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
 use BcMath\Number;

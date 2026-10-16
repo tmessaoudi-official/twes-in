@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Module\Invoices\Domain\InvoiceNotDraft;
-use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
+use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Tenancy\Application\Numbering\NextNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\Company;

@@ -11,9 +11,9 @@ namespace App\Module\Invoices\Infrastructure\Doctrine;
 
 use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Invoices\Application\InvoiceSummarySource;
-use App\Module\Invoices\Domain\CreditEntryKind;
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Invoices\Domain\ValueObject\CreditEntryKind;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;

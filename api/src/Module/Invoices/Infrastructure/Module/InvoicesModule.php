@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Module;
 
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\ModuleRegistry\Application\DeclaresModule;
 use App\ModuleRegistry\Application\ModuleManifest;

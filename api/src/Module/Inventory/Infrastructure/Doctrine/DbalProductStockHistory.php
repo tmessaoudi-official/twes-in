@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Doctrine;
 
-use App\Module\Products\Application\ProductStockHistory;
+use App\Module\Products\Application\Stock\ProductStockHistory;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 

@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
-use App\Module\Inventory\Application\DrawStockMap;
-use App\Module\Inventory\Application\ManageStockLocations;
-use App\Module\Inventory\Domain\StockLocationKind;
+use App\Module\Inventory\Application\Location\ManageStockLocations;
+use App\Module\Inventory\Application\StockMap\DrawStockMap;
+use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Tenancy\Domain\Company;
 use App\Venue\Application\ArrangeVenue;
 use App\Venue\Domain\ValueObject\PlanRect;

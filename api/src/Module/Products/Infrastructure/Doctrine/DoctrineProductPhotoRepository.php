@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Doctrine;
 
-use App\Module\Products\Domain\ProductPhoto;
-use App\Module\Products\Domain\ProductPhotoRepository;
+use App\Module\Products\Domain\Model\ProductPhoto;
+use App\Module\Products\Domain\Repository\ProductPhotoRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

@@ -11,7 +11,7 @@ namespace App\Module\PriceLists\Infrastructure\DeliveryNotes;
 
 use App\Module\DeliveryNotes\Application\DeliveryNoteLinePrices;
 use App\Module\PriceLists\Infrastructure\StartingPrices;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 use Symfony\Component\Uid\Uuid;
 
 /** Answers the delivery notes module's `DeliveryNoteLinePrices` port out of this module. */

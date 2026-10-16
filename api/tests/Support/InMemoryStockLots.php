@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Inventory\Domain\StockLot;
-use App\Module\Inventory\Domain\StockLotRepository;
+use App\Module\Inventory\Domain\Model\StockLot;
+use App\Module\Inventory\Domain\Repository\StockLotRepository;
 use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
 

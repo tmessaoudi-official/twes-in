@@ -13,8 +13,8 @@ use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Model\Unit;
 use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
-use App\Module\Products\Domain\LotCode;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Service\LotCode;
 
 /**
  * One line as it is written: what is delivered, how much of it in which unit, its net unit price and the taxes charged

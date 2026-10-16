@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Module;
 
-use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
+use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\ModuleRegistry\Application\DeclaresModule;
 use App\ModuleRegistry\Application\ModuleManifest;
 

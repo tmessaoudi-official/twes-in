@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Invoices\Domain;
 
-use App\Module\Invoices\Domain\InvoiceFigures;
+use App\Module\Invoices\Domain\ValueObject\InvoiceFigures;
 use PHPUnit\Framework\TestCase;
 
 /**

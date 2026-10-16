@@ -25,7 +25,7 @@ use App\Identity\Infrastructure\ApiPlatform\OpenApi\OpenApiExtras;
 use App\Identity\Infrastructure\Security\UserProvider;
 use App\Module\Customers\Domain\Exception\InvalidContact;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
-use App\Module\Invoices\Domain\InvoiceIssued;
+use App\Module\Invoices\Domain\Event\InvoiceIssued;
 use App\Shared\Domain\DomainEvent;
 use Doctrine\ORM\Mapping\Embeddable;
 use Doctrine\ORM\Mapping\Entity;
@@ -75,9 +75,6 @@ final class SourceLayoutTest extends TestCase
      * only shrinks, one context per commit.
      */
     private const array NOT_YET_MOVED = [
-        'Module/Inventory',
-        'Module/Invoices',
-        'Module/Products',
         'Shared',
         'Tenancy',
     ];

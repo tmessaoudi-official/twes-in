@@ -11,7 +11,7 @@ namespace App\Module\Scanning\Infrastructure\Http;
 
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Infrastructure\Security\SecurityUser;
-use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
+use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Module\Scanning\Application\PairingEcho;
 use App\Module\Scanning\Application\PhonePairings;
 use App\Module\Scanning\Application\PhonePhotos;

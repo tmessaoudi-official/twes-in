@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Application;
 
-use App\Module\Invoices\Domain\InvoiceHeader;
+use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use Symfony\Component\Uid\Uuid;
 
 /**

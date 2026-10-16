@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Application;
 
-use App\Module\Products\Domain\ProductDetails;
-use App\Module\Products\Domain\ProductTracking;
+use App\Module\Products\Domain\ValueObject\ProductDetails;
+use App\Module\Products\Domain\ValueObject\ProductTracking;
 use Symfony\Component\Uid\Uuid;
 
 /** A product as it is written: its reference and details, the unit, category and taxes it names by id, its codes. */

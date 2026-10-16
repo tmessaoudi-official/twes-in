@@ -24,12 +24,12 @@ use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
 use App\Fiscal\Domain\ValueObject\ChargeLeftOut;
 use App\Fiscal\Domain\ValueObject\StampOnCorrection;
 use App\Fiscal\Domain\ValueObject\TaxKind;
-use App\Module\Invoices\Domain\InvalidInvoice;
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Domain\InvoiceFigures;
-use App\Module\Invoices\Domain\InvoiceLine;
-use App\Module\Invoices\Domain\InvoiceLineTax;
-use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\Model\InvoiceLine;
+use App\Module\Invoices\Domain\Model\InvoiceLineTax;
+use App\Module\Invoices\Domain\ValueObject\InvoiceFigures;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 

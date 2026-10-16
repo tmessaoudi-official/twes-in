@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Application;
 
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 use Symfony\Component\Uid\Uuid;
 
 /**

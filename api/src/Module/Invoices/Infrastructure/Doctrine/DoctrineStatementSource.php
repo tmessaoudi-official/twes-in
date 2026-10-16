@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
-use App\Module\Invoices\Application\StatementSource;
+use App\Module\Invoices\Application\Statement\StatementSource;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

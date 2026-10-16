@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
-use App\Module\Invoices\Domain\InvoiceReminder;
-use App\Module\Invoices\Domain\InvoiceReminderRepository;
+use App\Module\Invoices\Domain\Model\InvoiceReminder;
+use App\Module\Invoices\Domain\Repository\InvoiceReminderRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

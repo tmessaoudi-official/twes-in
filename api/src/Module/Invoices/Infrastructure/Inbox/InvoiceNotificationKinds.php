@@ -12,8 +12,8 @@ namespace App\Module\Invoices\Infrastructure\Inbox;
 use App\Inbox\Application\DeclaresNotificationKinds;
 use App\Inbox\Application\NotificationAudience;
 use App\Inbox\Application\NotificationKind;
-use App\Module\Invoices\Application\RemindLateInvoices;
-use App\Module\Invoices\Application\TellCreditWatchers;
+use App\Module\Invoices\Application\Credit\TellCreditWatchers;
+use App\Module\Invoices\Application\Reminder\RemindLateInvoices;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 
 /** What invoicing tells whoever issues invoices: a customer over its credit limit, a reminder due, a late fee drafted. */

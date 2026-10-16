@@ -11,11 +11,11 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Invoices\Application\InvoiceNotFound;
-use App\Module\Invoices\Domain\InvalidInvoice;
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Domain\InvoiceHeader;
-use App\Module\Invoices\Domain\InvoiceLineDetails;
-use App\Module\Invoices\Domain\InvoiceNotDraft;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
+use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
+use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use Symfony\Component\Uid\Uuid;

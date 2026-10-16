@@ -128,6 +128,31 @@ out=$(run "$d" --apply "$d/map.txt"); check "two classes move together" $? 0 "$o
 lacks "together, they need no import of each other" "$d/$A/Resource/OrderResource.php" 'use App\Shop\Infrastructure\ApiPlatform\Resource\OrderView;'
 lacks "nor of their old place" "$d/$A/Resource/OrderView.php" 'use App\Shop\Infrastructure\ApiPlatform\OrderResource;'
 
+# A class moved into a folder of its own name, with a sibling moved there first: the sibling's new name starts with
+# the class's old one, and is no use of it.
+d=$(tree)
+printf '<?php\n\nnamespace App\\Shop\\Domain;\n\nfinal class Cost\n{\n}\n' > "$d/api/src/Shop/Domain/Cost.php"
+printf '<?php\n\nnamespace App\\Shop\\Domain;\n\nfinal class ReadCost\n{\n}\n' > "$d/api/src/Shop/Domain/ReadCost.php"
+printf '<?php\n\nuse App\\Shop\\Domain\\ReadCost;\nuse App\\Shop\\Domain\\Cost;\n\n$n = '"'"'App\\\\Shop\\\\Domain\\\\ReadCost'"'"';\n' > "$d/api/tests/CostTest.php"
+git -C "$d" add -A && git -C "$d" -c user.name=t -c user.email=t@t commit -qm costs
+printf '%s\n' 'Shop/Domain/ReadCost.php -> Shop/Domain/Cost' 'Shop/Domain/Cost.php -> Shop/Domain/Cost' > "$d/map.txt"
+out=$(run "$d" --apply "$d/map.txt"); check "a class moves into a folder of its own name" $? 0 "$out" "moved 2"
+has "the sibling moved first keeps its own new name" "$d/api/tests/CostTest.php" 'use App\Shop\Domain\Cost\ReadCost;'
+has "the class takes its own" "$d/api/tests/CostTest.php" 'use App\Shop\Domain\Cost\Cost;'
+lacks "neither is renamed twice" "$d/api/tests/CostTest.php" 'Cost\Cost\ReadCost'
+has "a name in doubled backslashes takes its new name" "$d/api/tests/CostTest.php" 'App\\Shop\\Domain\\Cost\\ReadCost'
+lacks "nor is it renamed twice" "$d/api/tests/CostTest.php" 'Cost\\Cost\\ReadCost'
+
+# A folder already named like a class that moves holds classes of its own: their names start with the class's.
+d=$(tree)
+mkdir -p "$d/api/src/Shop/Domain/Order"
+printf '<?php\n\nnamespace App\\Shop\\Domain\\Order;\n\nfinal class Extra\n{\n}\n' > "$d/api/src/Shop/Domain/Order/Extra.php"
+printf '<?php\n\nuse App\\Shop\\Domain\\Order\\Extra;\n' > "$d/api/tests/ExtraTest.php"
+git -C "$d" add -A && git -C "$d" -c user.name=t -c user.email=t@t commit -qm extra
+printf 'Shop/Domain/Order.php -> Shop/Domain/Model\n' > "$d/map.txt"
+out=$(run "$d" --apply "$d/map.txt"); check "a class moves beside a folder of its name" $? 0 "$out" "moved 1"
+has "what that folder holds keeps its name" "$d/api/tests/ExtraTest.php" 'use App\Shop\Domain\Order\Extra;'
+
 # A class moved next to one it imported drops that import, now of its own namespace.
 d=$(tree)
 printf 'Shop/Infrastructure/ApiPlatform/OrderResource.php -> Shop/Domain\n' > "$d/map.txt"

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Invoices\Application;
 
-use App\Module\Invoices\Application\ReminderSettings;
-use App\Module\Invoices\Application\RemindLateInvoices;
+use App\Module\Invoices\Application\Reminder\ReminderSettings;
+use App\Module\Invoices\Application\Reminder\RemindLateInvoices;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

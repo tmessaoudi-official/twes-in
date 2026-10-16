@@ -11,7 +11,7 @@ namespace App\Module\Quotes\Infrastructure\Invoices;
 
 use App\Fiscal\Domain\Calculation\InvalidDocument;
 use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
-use App\Module\Invoices\Application\DepositQuotes;
+use App\Module\Invoices\Application\Deposit\DepositQuotes;
 use App\Module\Quotes\Application\QuoteTotals;
 use App\Module\Quotes\Domain\Repository\QuoteRepository;
 use App\Tenancy\Domain\Company;

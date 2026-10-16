@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Module\Invoices\Domain\CreditEntryKind;
-use App\Module\Invoices\Domain\CustomerCreditEntry;
-use App\Module\Invoices\Domain\CustomerCreditRepository;
+use App\Module\Invoices\Domain\Model\CustomerCreditEntry;
+use App\Module\Invoices\Domain\Repository\CustomerCreditRepository;
+use App\Module\Invoices\Domain\ValueObject\CreditEntryKind;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryCustomerCredits implements CustomerCreditRepository

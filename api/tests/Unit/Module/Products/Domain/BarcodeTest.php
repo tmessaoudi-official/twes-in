@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Products\Domain;
 
-use App\Module\Products\Domain\Barcode;
-use App\Module\Products\Domain\InvalidProduct;
+use App\Module\Products\Domain\Exception\InvalidProduct;
+use App\Module\Products\Domain\ValueObject\Barcode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

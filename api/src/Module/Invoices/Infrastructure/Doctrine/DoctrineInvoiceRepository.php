@@ -9,13 +9,13 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Domain\InvoiceKind;
-use App\Module\Invoices\Domain\InvoiceLine;
-use App\Module\Invoices\Domain\InvoiceRepository;
-use App\Module\Invoices\Domain\InvoiceSearch;
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\Model\InvoiceLine;
+use App\Module\Invoices\Domain\Repository\InvoiceRepository;
+use App\Module\Invoices\Domain\ValueObject\InvoiceKind;
+use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;

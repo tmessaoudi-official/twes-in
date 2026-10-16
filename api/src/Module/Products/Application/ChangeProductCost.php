@@ -11,12 +11,12 @@ namespace App\Module\Products\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\Products\Domain\CostChangeSource;
-use App\Module\Products\Domain\InvalidProduct;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductCostChange;
-use App\Module\Products\Domain\ProductCostChangeRepository;
-use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\Exception\InvalidProduct;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Model\ProductCostChange;
+use App\Module\Products\Domain\Repository\ProductCostChangeRepository;
+use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Module\Products\Domain\ValueObject\CostChangeSource;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;

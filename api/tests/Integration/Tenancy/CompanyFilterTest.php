@@ -12,7 +12,7 @@ namespace App\Tests\Integration\Tenancy;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
 use App\Identity\Infrastructure\Security\SecurityUser;
-use App\Module\Products\Domain\ProductCategory;
+use App\Module\Products\Domain\Model\ProductCategory;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;

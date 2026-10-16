@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Inventory;
 
-use App\Module\Inventory\Application\ReceiptCosts;
+use App\Module\Inventory\Application\ReceiptCost\ReceiptCosts;
 use App\Module\Products\Application\ChangeProductCost;
-use App\Module\Products\Domain\CostChangeSource;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\ValueObject\CostChangeSource;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

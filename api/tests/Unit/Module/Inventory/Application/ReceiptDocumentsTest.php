@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Application;
 
-use App\Module\Inventory\Application\ReceiptDocuments;
-use App\Module\Inventory\Domain\InvalidStockMovement;
+use App\Module\Inventory\Application\ReceiptCost\ReceiptDocuments;
+use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Module\Vendors\Infrastructure\Module\VendorsModule;

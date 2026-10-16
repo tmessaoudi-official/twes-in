@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Domain;
 
-use App\Module\Inventory\Domain\LateCost;
+use App\Module\Inventory\Domain\Service\LateCost;
 use PHPUnit\Framework\TestCase;
 
 /** A late receipt cost split between the stock left and the sales since (docs/SPEC.md § 7, the B-F4 ruling). */

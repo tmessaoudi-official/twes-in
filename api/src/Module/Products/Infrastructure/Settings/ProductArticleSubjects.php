@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Settings;
 
-use App\Module\Products\Domain\ProductCategoryRepository;
-use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\Repository\ProductCategoryRepository;
+use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Settings\Application\ArticleSubject;

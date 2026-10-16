@@ -11,12 +11,12 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Module\Products\Domain\Barcode;
-use App\Module\Products\Domain\BarcodeLine;
-use App\Module\Products\Domain\BarcodeRole;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductDetails;
-use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\ValueObject\Barcode;
+use App\Module\Products\Domain\ValueObject\BarcodeLine;
+use App\Module\Products\Domain\ValueObject\BarcodeRole;
+use App\Module\Products\Domain\ValueObject\ProductDetails;
+use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Tenancy\Domain\Company;

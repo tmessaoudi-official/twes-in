@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Inventory\Domain\ProductHomeLocation;
-use App\Module\Inventory\Domain\ProductHomeLocationRepository;
+use App\Module\Inventory\Domain\Model\ProductHomeLocation;
+use App\Module\Inventory\Domain\Repository\ProductHomeLocationRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryProductHomeLocations implements ProductHomeLocationRepository

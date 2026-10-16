@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Watch;
 
 use App\Module\Invoices\Application\InvoiceWatchSettings;
-use App\Module\Invoices\Domain\InstrumentStatus;
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceType;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
+use App\Module\Invoices\Domain\ValueObject\InstrumentStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;

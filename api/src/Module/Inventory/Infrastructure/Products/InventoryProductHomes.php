@@ -10,11 +10,11 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Infrastructure\Products;
 
 use App\Module\Inventory\Application\KeepProductHomes;
-use App\Module\Inventory\Domain\ProductHomeLocationRepository;
-use App\Module\Inventory\Domain\StockLocation;
-use App\Module\Inventory\Domain\StockLocationRepository;
+use App\Module\Inventory\Domain\Model\StockLocation;
+use App\Module\Inventory\Domain\Repository\ProductHomeLocationRepository;
+use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
-use App\Module\Products\Application\ProductHomes;
+use App\Module\Products\Application\Stock\ProductHomes;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\Company;
 use Doctrine\ORM\EntityManagerInterface;

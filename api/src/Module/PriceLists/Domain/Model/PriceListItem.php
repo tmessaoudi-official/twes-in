@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\PriceLists\Domain\Model;
 
 use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use BcMath\Number;

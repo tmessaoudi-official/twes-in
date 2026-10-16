@@ -1,0 +1,246 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Module\Invoices\Domain\ValueObject;
+
+use App\Fiscal\Domain\Calculation\Decimal;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\TaxKind;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Service\LotCode;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * One line as it is written: what is sold, how much of it in which unit, its net unit price, a discount reducing its tax
+ * base, as a rate or as the line's whole amount but never both, and the taxes charged on it. A quantity is positive and never finer than its unit counts; the quantity
+ * is kept with three decimals, the price with four, the discount as a percentage with three. Only a line tax sits on a
+ * line, each at most once. A line drafted from a delivery note names the delivery note line it invoices. On a credit
+ * note, a line with a product may say its goods came back to stock. A line giving a deposit invoice back names no
+ * product, counts one, takes no discount and states what the deposit charged of each of its taxes. A line may open a
+ * section of the document under a title, which runs to the next titled line. A credit note's line may name the line of
+ * its invoice it gives back, which its document checks.
+ */
+final readonly class InvoiceLineDetails
+{
+    public const int DESCRIPTION_MAX = 5000;
+    public const int SECTION_MAX = 120;
+    public const int QUANTITY_DECIMALS = 3;
+    public const int PRICE_DECIMALS = 4;
+    private const string QUANTITY = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
+    private const string PRICE = '/^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$/';
+    private const string RATE = '/^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$/';
+    private const string AMOUNT = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
+
+    public string $description;
+    public string $quantity;
+    public string $unitPriceNet;
+    /** A percentage with three decimals; null for no discount, or one given as an amount. */
+    public ?string $discountRate;
+    /**
+     * The line's whole discount as an amount, with three decimals; null for none, or one given as a rate. Its currency's
+     * scale and that it is at most the line are the document's to check, which knows both.
+     */
+    public ?string $discountAmount;
+    /** @var list<TaxComponent> */
+    public array $taxes;
+    /** The lot or serial sold, for a product tracked by one; null when the line names none. */
+    public ?string $lotCode;
+    /** The title of the section this line opens; null for a line that opens none. */
+    public ?string $section;
+
+    /**
+     * @param list<TaxComponent> $taxes
+     * @param Uuid|null          $sourceDeliveryNoteLineId the delivery note line it invoices; null for a line written by hand
+     * @param string|null        $lotCode                  the lot or serial sold; blank or null for none
+     * @param bool               $returned                 the goods of a credit note's line came back to stock; only a credit note may say so, which its document checks
+     * @param Deduction|null     $deduction                the deposit invoice this line gives back; its document checks whose it is
+     * @param string|null        $discountAmount           the line's whole discount as an amount, in place of a rate; blank or null for none
+     * @param string|null        $section                  the title of the section the line opens; blank or null for none
+     * @param Uuid|null          $creditedLineId           on a credit note, the line of its invoice it gives back; null for none
+     *
+     * @throws InvalidInvoice
+     */
+    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null, public bool $returned = false, public ?Deduction $deduction = null, ?string $discountAmount = null, ?string $section = null, public ?Uuid $creditedLineId = null)
+    {
+        if ($returned && null === $product) {
+            throw new InvalidInvoice('returned', 'A line returns goods to stock only when it names a product.');
+        }
+        $description = trim($description);
+        if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
+            throw new InvalidInvoice('description', \sprintf('A line says what it sells in 1 to %d characters.', self::DESCRIPTION_MAX));
+        }
+        $this->description = $description;
+        $this->quantity = self::quantity(trim($quantity), $unit);
+        $this->unitPriceNet = self::price(trim($unitPriceNet));
+        $this->discountRate = self::rate(trim($discountRate ?? ''));
+        $this->discountAmount = self::amount(trim($discountAmount ?? ''));
+        if (null !== $this->discountRate && null !== $this->discountAmount) {
+            throw new InvalidInvoice('discountAmount', 'A line\'s discount is a rate or an amount, not both.');
+        }
+
+        $ids = [];
+        foreach ($taxes as $tax) {
+            if (TaxKind::PercentageLine !== $tax->getKind()) {
+                throw new InvalidInvoice('taxComponentIds', \sprintf('%s is charged on a document, not on a line.', $tax->getCode()));
+            }
+            $id = $tax->getId()->toRfc4122();
+            if (isset($ids[$id])) {
+                throw new InvalidInvoice('taxComponentIds', \sprintf('A line carries %s once.', $tax->getCode()));
+            }
+            $ids[$id] = true;
+        }
+        $this->taxes = $taxes;
+        $this->lotCode = self::lotCode($product, $lotCode);
+        $this->section = self::section($section);
+        if (null !== $deduction) {
+            $this->assertGivesBack($deduction);
+        }
+    }
+
+    /** @throws InvalidInvoice */
+    private function assertGivesBack(Deduction $deduction): void
+    {
+        if (null !== $this->product || null !== $this->discountRate || null !== $this->discountAmount || null !== $this->lotCode || $this->returned || null !== $this->sourceDeliveryNoteLineId || null !== $this->creditedLineId || '1.000' !== $this->quantity) {
+            throw new InvalidInvoice('deductsInvoiceId', 'A line giving a deposit back counts one, names no product, lot or delivery note and takes no discount.');
+        }
+        $codes = array_map(static fn (TaxComponent $tax): string => $tax->getCode(), $this->taxes);
+        $stated = array_map(strval(...), array_keys($deduction->taxes));
+        sort($codes);
+        sort($stated);
+        if ($codes !== $stated) {
+            throw new InvalidInvoice('deductsInvoiceId', 'A line giving a deposit back states what the deposit charged of each of its taxes.');
+        }
+    }
+
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null, string|null, string|null} what two lines are compared on */
+    public function values(): array
+    {
+        return [
+            $this->product?->getId()->toRfc4122(),
+            $this->description,
+            $this->quantity,
+            $this->unit->getId()->toRfc4122(),
+            $this->unitPriceNet,
+            $this->discountRate,
+            array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $this->taxes),
+            $this->sourceDeliveryNoteLineId?->toRfc4122(),
+            $this->lotCode,
+            $this->returned,
+            $this->deduction?->values(),
+            $this->discountAmount,
+            $this->section,
+            $this->creditedLineId?->toRfc4122(),
+        ];
+    }
+
+    /**
+     * The same line opening the section titled `$section`, or none.
+     *
+     * @throws InvalidInvoice
+     */
+    public function opening(?string $section): self
+    {
+        return new self($this->product, $this->description, $this->quantity, $this->unit, $this->unitPriceNet, $this->discountRate, $this->taxes, $this->sourceDeliveryNoteLineId, $this->lotCode, $this->returned, $this->deduction, $this->discountAmount, $section, $this->creditedLineId);
+    }
+
+    /**
+     * The same line of a credit note giving back `$amount` of the discount of the invoice line it names, in place of
+     * what it said.
+     *
+     * @throws InvalidInvoice
+     */
+    public function givingBack(string $amount): self
+    {
+        return new self($this->product, $this->description, $this->quantity, $this->unit, $this->unitPriceNet, null, $this->taxes, $this->sourceDeliveryNoteLineId, $this->lotCode, $this->returned, $this->deduction, $amount, $this->section, $this->creditedLineId);
+    }
+
+    /** @throws InvalidInvoice */
+    private static function section(?string $title): ?string
+    {
+        $title = trim($title ?? '');
+        if ('' === $title) {
+            return null;
+        }
+        if (mb_strlen($title) > self::SECTION_MAX) {
+            throw new InvalidInvoice('section', \sprintf('A section\'s title is at most %d characters.', self::SECTION_MAX));
+        }
+
+        return $title;
+    }
+
+    private static function quantity(string $quantity, Unit $unit): string
+    {
+        if (1 !== preg_match(self::QUANTITY, $quantity)) {
+            throw new InvalidInvoice('quantity', 'A quantity is a decimal number with at most three decimals.');
+        }
+        [$units, $decimals] = [...explode('.', $quantity), ''];
+        if ('' === trim($units.$decimals, '0')) {
+            throw new InvalidInvoice('quantity', 'A line sells a positive quantity.');
+        }
+        if (\strlen(rtrim($decimals, '0')) > $unit->getDecimals()) {
+            throw new InvalidInvoice('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()));
+        }
+
+        return $units.'.'.str_pad($decimals, self::QUANTITY_DECIMALS, '0');
+    }
+
+    /** @throws InvalidInvoice */
+    private static function lotCode(?Product $product, ?string $code): ?string
+    {
+        $code = trim($code ?? '');
+        if ('' === $code) {
+            return null;
+        }
+        if (!LotCode::namedFor($product)) {
+            throw new InvalidInvoice('lotCode', 'A lot or serial is named on a line of a product tracked by one.');
+        }
+        if (!LotCode::isWellFormed($code)) {
+            throw new InvalidInvoice('lotCode', \sprintf('A lot code is 1 to %d printable characters without space or accent.', LotCode::MAX));
+        }
+
+        return $code;
+    }
+
+    private static function price(string $price): string
+    {
+        if (1 !== preg_match(self::PRICE, $price)) {
+            throw new InvalidInvoice('unitPriceNet', 'A price is a decimal number from 0 to 9999999999.9999, with at most four decimals.');
+        }
+        [$units, $decimals] = [...explode('.', $price), ''];
+
+        return $units.'.'.str_pad($decimals, self::PRICE_DECIMALS, '0');
+    }
+
+    /** @throws InvalidInvoice */
+    private static function amount(string $amount): ?string
+    {
+        if ('' === $amount) {
+            return null;
+        }
+        if (1 !== preg_match(self::AMOUNT, $amount)) {
+            throw new InvalidInvoice('discountAmount', 'A discount amount is a decimal number from 0 with at most three decimals.');
+        }
+
+        return Decimal::format(Decimal::of($amount), 3);
+    }
+
+    private static function rate(string $rate): ?string
+    {
+        if ('' === $rate) {
+            return null;
+        }
+        if (1 !== preg_match(self::RATE, $rate) || Decimal::of($rate)->compare(100) > 0) {
+            throw new InvalidInvoice('discountRate', 'A discount is a percentage from 0 to 100 with at most three decimals.');
+        }
+
+        return Decimal::format(Decimal::of($rate), 3);
+    }
+}

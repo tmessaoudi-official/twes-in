@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Scheduler;
 
-use App\Module\Invoices\Application\RemindLateInvoices;
+use App\Module\Invoices\Application\Reminder\RemindLateInvoices;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\CompanyRepository;

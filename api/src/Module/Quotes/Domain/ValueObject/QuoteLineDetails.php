@@ -13,7 +13,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Model\Unit;
 use App\Fiscal\Domain\ValueObject\TaxKind;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 use App\Module\Quotes\Domain\Exception\InvalidQuote;
 
 /**

@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Quotes\Domain\Model;
 
 use App\Fiscal\Domain\Model\Unit;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 use App\Module\Quotes\Domain\Exception\InvalidQuote;
 use App\Module\Quotes\Domain\ValueObject\QuoteLineDetails;
 use App\Shared\Domain\CompanyOwned;

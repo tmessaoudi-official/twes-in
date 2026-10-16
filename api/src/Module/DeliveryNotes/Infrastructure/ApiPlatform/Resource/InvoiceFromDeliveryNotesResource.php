@@ -14,7 +14,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\AddDeliveryNotesToDraftProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\DraftInvoiceFromDeliveryNotesProcessor;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoiceResource;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 

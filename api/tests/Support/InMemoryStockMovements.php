@@ -9,17 +9,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Inventory\Domain\LotOnHand;
-use App\Module\Inventory\Domain\RunningValue;
-use App\Module\Inventory\Domain\StockLevel;
-use App\Module\Inventory\Domain\StockLevelSearch;
-use App\Module\Inventory\Domain\StockLocationKind;
-use App\Module\Inventory\Domain\StockMovement;
-use App\Module\Inventory\Domain\StockMovementRepository;
-use App\Module\Inventory\Domain\StockMovementSearch;
-use App\Module\Inventory\Domain\StockValue;
-use App\Module\Inventory\Domain\TypedCost;
-use App\Module\Products\Domain\Product;
+use App\Module\Inventory\Domain\Model\StockMovement;
+use App\Module\Inventory\Domain\Repository\StockMovementRepository;
+use App\Module\Inventory\Domain\ValueObject\LotOnHand;
+use App\Module\Inventory\Domain\ValueObject\RunningValue;
+use App\Module\Inventory\Domain\ValueObject\StockLevel;
+use App\Module\Inventory\Domain\ValueObject\StockLevelSearch;
+use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
+use App\Module\Inventory\Domain\ValueObject\StockMovementSearch;
+use App\Module\Inventory\Domain\ValueObject\StockValue;
+use App\Module\Inventory\Domain\ValueObject\TypedCost;
+use App\Module\Products\Domain\Model\Product;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\DateRange;
 use App\Shared\Domain\Page;

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Doctrine;
 
-use App\Module\Inventory\Domain\ProductHomeLocation;
-use App\Module\Inventory\Domain\ProductHomeLocationRepository;
+use App\Module\Inventory\Domain\Model\ProductHomeLocation;
+use App\Module\Inventory\Domain\Repository\ProductHomeLocationRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

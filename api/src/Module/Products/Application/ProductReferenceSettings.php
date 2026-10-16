@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Application;
 
-use App\Module\Products\Domain\ReferenceFormat;
+use App\Module\Products\Domain\ValueObject\ReferenceFormat;
 use App\Settings\Application\DeclaresSettings;
 use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingDefinition;

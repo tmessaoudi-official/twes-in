@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Inventory\Domain\StockLocation;
-use App\Module\Inventory\Domain\StockLocationRepository;
+use App\Module\Inventory\Domain\Model\StockLocation;
+use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryStockLocations implements StockLocationRepository

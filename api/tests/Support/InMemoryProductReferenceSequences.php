@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Products\Domain\ProductReferenceSequence;
-use App\Module\Products\Domain\ProductReferenceSequenceRepository;
+use App\Module\Products\Domain\Model\ProductReferenceSequence;
+use App\Module\Products\Domain\Repository\ProductReferenceSequenceRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

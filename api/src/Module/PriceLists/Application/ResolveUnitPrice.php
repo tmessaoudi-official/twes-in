@@ -13,7 +13,7 @@ use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\PriceLists\Domain\Model\PriceList;
 use App\Module\PriceLists\Domain\Model\PriceListItem;
 use App\Module\PriceLists\Domain\Repository\PriceListRepository;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 

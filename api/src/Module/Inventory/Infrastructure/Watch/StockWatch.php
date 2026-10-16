@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Infrastructure\Watch;
 
 use App\Module\Inventory\Application\StockWatchSettings;
-use App\Module\Inventory\Domain\StockLocationKind;
-use App\Module\Inventory\Domain\StockMovement;
-use App\Module\Inventory\Domain\StockMovementKind;
-use App\Module\Inventory\Infrastructure\ApiPlatform\StockPermission;
+use App\Module\Inventory\Domain\Model\StockMovement;
+use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
+use App\Module\Inventory\Domain\ValueObject\StockMovementKind;
+use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;

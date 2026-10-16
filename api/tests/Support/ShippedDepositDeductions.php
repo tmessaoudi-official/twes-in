@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Invoices\Application\DepositDeductions;
+use App\Module\Invoices\Application\Deposit\DepositDeductions;
 use App\Module\Invoices\Application\InvoiceTotals;
-use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Infrastructure\Pdf\TranslatorDepositWording;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ReadSetting;

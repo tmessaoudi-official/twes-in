@@ -9,13 +9,13 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Http;
 
+use App\Module\Products\Application\Photo\ProductPhotoNotFound;
+use App\Module\Products\Application\Photo\ProductPhotoRefused;
+use App\Module\Products\Application\Photo\ProductPhotos;
 use App\Module\Products\Application\ProductNotFound;
-use App\Module\Products\Application\ProductPhotoNotFound;
-use App\Module\Products\Application\ProductPhotoRefused;
-use App\Module\Products\Application\ProductPhotos;
-use App\Module\Products\Domain\PhotoSize;
-use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
-use App\Module\Products\Infrastructure\ApiPlatform\ProductPhotoResource;
+use App\Module\Products\Domain\ValueObject\PhotoSize;
+use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductPhotoResource;
+use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
