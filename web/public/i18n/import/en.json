@@ -165,7 +165,8 @@
       "reference_given": "Reference given: {{reference}}.",
       "name_shared": "A product already has this name ({{reference}}): with neither a reference nor a barcode, this row makes another one.",
       "stock_change": "Stock at {{location}}: {{before}} → {{after}}.",
-      "name_held": "Another product already has this name ({{reference}})."
+      "name_held": "Another product already has this name ({{reference}}).",
+      "identifier_missing": "Without this registration number, this customer cannot be invoiced: add it before issuing one."
     },
     "stock": {
       "stock_add": "Quantity to add",

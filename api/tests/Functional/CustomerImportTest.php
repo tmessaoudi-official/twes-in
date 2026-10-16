@@ -125,17 +125,53 @@ final class CustomerImportTest extends ApiTestCase
         self::assertSame(0, $this->customers(), 'the valid row was not stored either');
     }
 
-    public function testThePresetsRuleRejectsTheRowOnTheIdentifiersColumn(): void
+    /**
+     * The law asks for the matricule fiscal on the invoice, not on the customer: a business customer a file brings
+     * without it is created, and the preview says it is missing, so that a shop's three hundred trade customers are not
+     * three hundred refusals (docs/SPEC.md § 7, 2026-10-09 10:40, question 3).
+     */
+    public function testABusinessCustomerWithoutItsIdentifierIsImportedWithAWarning(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);
 
-        $this->import(self::HEADER."\nCLI-0001,Carthage Conseil,company,,,,,,,\n", dryRun: true);
+        $this->import(self::HEADER."\nCLI-0001,Carthage Conseil,company,,,,,,,\n");
 
         self::assertResponseIsSuccessful();
-        $rejected = $this->arrayAt($this->json(), 'rejected');
-        self::assertIsArray($rejected[0] ?? null);
-        self::assertSame('matricule_fiscal', $rejected[0]['column'] ?? null);
-        self::assertSame(['identifier_required', ['identifier' => 'matricule_fiscal']], [$rejected[0]['code'] ?? null, $rejected[0]['params'] ?? null]);
+        self::assertSame([2], $this->json()['created'] ?? null);
+        self::assertSame([], $this->json()['rejected'] ?? null);
+        self::assertSame(
+            [['line' => 2, 'column' => 'matricule_fiscal', 'code' => 'identifier_missing', 'params' => ['identifier' => 'matricule_fiscal']]],
+            $this->json()['notes'] ?? null,
+        );
+        $business = $this->customer('CLI-0001');
+        self::assertSame('company', $business->getProfile()->kind->value);
+        self::assertSame([], $business->getProfile()->identifiers);
+    }
+
+    /** A row that says nothing of its kind is a business when it carries an identifier, and a person otherwise. */
+    public function testABlankKindIsABusinessOnlyWhenTheRowCarriesAnIdentifier(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import(self::HEADER."\nCLI-0001,Carthage Conseil,,".self::MATRICULE.",,,,,,\nCLI-0002,Amel Ben Ali,,,,,,,,\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 3], $this->json()['created'] ?? null);
+        self::assertSame([], $this->json()['notes'] ?? null, 'a person is asked for no identifier');
+        self::assertSame('company', $this->customer('CLI-0001')->getProfile()->kind->value);
+        self::assertSame('individual', $this->customer('CLI-0002')->getProfile()->kind->value);
+    }
+
+    /** As a spreadsheet writes it: spaced out, in lower case. Kept as the preset writes it. */
+    public function testAnIdentifierIsReadWithoutItsSpacesAndInCapitals(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import(self::HEADER."\nCLI-0001,Carthage Conseil,company,\"1234567 a / b / m / 000\",,,,,,\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['created'] ?? null);
+        self::assertSame(['matricule_fiscal' => self::MATRICULE], $this->customer('CLI-0001')->getProfile()->identifiers);
     }
 
     /**

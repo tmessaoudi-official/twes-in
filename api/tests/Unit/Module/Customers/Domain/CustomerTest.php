@@ -54,7 +54,8 @@ final class CustomerTest extends TestCase
             kind: CustomerKind::Company,
             name: ' Carthage Conseil ',
             legalName: ' ',
-            identifiers: ['matricule_fiscal' => ' 1234567A/B/M/000 ', 'other' => ' '],
+            // As a spreadsheet or a person writes it: spaced out, a no-break space among them, in lower case.
+            identifiers: ['matricule_fiscal' => " 1234567\u{00A0}a / b / m\u{202F}/ 000 ", 'other' => ' '],
             billingAddress: new PostalAddress(city: ' Tunis ', countryCode: 'tn'),
             shippingAddress: new PostalAddress(' ', null, null, null, null),
             defaultDiscountRate: '5.5',

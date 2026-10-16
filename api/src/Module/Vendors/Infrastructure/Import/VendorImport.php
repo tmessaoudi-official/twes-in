@@ -277,7 +277,7 @@ final readonly class VendorImport implements DeclaresImport
     {
         $columns = [];
         foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
-            $columns[] = new ImportColumn($identifier->key, $identifier->labelKey, false, null, 'import.identifier_note', ImportHeading::FiscalLabel);
+            $columns[] = new ImportColumn($identifier->key, $identifier->labelKey, false, $identifier->example, 'import.identifier_note', ImportHeading::FiscalLabel);
         }
 
         return $columns;

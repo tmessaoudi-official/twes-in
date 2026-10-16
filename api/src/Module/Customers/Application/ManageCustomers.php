@@ -164,7 +164,8 @@ final readonly class ManageCustomers
         }
 
         $domesticBusiness = $input->profile->isDomesticBusiness($company->getCountryCode());
-        $refusal = IdentifierRules::refusal($preset, $input->profile->identifiers, $domesticBusiness ? IdentifierRules::BUSINESS_CUSTOMER : '');
+        $requiredOf = $domesticBusiness && !$input->identifiersMayFollow ? IdentifierRules::BUSINESS_CUSTOMER : '';
+        $refusal = IdentifierRules::refusal($preset, $input->profile->identifiers, $requiredOf);
         if (null !== $refusal) {
             throw new InvalidCustomer($refusal->field, $refusal->message, $refusal->reason, $refusal->params);
         }

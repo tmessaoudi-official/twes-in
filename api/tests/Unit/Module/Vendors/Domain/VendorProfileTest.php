@@ -16,13 +16,13 @@ use PHPUnit\Framework\TestCase;
 
 final class VendorProfileTest extends TestCase
 {
-    public function testBankCodesAreKeptUppercaseWithoutSpacesAndBlanksAreNoValue(): void
+    public function testBankCodesAndRegistrationNumbersAreKeptUppercaseWithoutSpacesAndBlanksAreNoValue(): void
     {
-        $profile = new VendorProfile(' Sotumag ', '  ', ['matricule_fiscal' => ' ', 'other' => ' 1 '], iban: 'tn59 1000 6035 1835 9847 8831', bic: ' stbk tntt ', notes: '');
+        $profile = new VendorProfile(' Sotumag ', '  ', ['matricule_fiscal' => ' ', 'other' => ' 1 ', 'siren' => "552\u{00A0}100 554"], iban: 'tn59 1000 6035 1835 9847 8831', bic: ' stbk tntt ', notes: '');
 
         self::assertSame('Sotumag', $profile->name);
         self::assertNull($profile->legalName);
-        self::assertSame(['other' => '1'], $profile->identifiers);
+        self::assertSame(['other' => '1', 'siren' => '552100554'], $profile->identifiers, 'a registration number kept without its spaces');
         self::assertSame('TN5910006035183598478831', $profile->iban);
         self::assertSame('STBKTNTT', $profile->bic);
         self::assertNull($profile->notes);
