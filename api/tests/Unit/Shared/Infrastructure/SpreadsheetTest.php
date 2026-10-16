@@ -10,8 +10,11 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Shared\Infrastructure;
 
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
+use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
+use App\Shared\Infrastructure\Spreadsheet\CsvSniffer;
+use App\Shared\Infrastructure\Spreadsheet\CsvTranscoder;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutReader;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutWriter;
 use OpenSpout\Common\Entity\Cell;
@@ -28,6 +31,8 @@ use PHPUnit\Framework\TestCase;
  * what a number, a date and an empty row turn into, and that a row keeps the number it has in the file.
  */
 #[CoversClass(OpenSpoutReader::class)]
+#[CoversClass(CsvTranscoder::class)]
+#[CoversClass(CsvSniffer::class)]
 #[CoversClass(OpenSpoutWriter::class)]
 final class SpreadsheetTest extends TestCase
 {
@@ -143,6 +148,87 @@ final class SpreadsheetTest extends TestCase
             [1 => ['reference', 'name'], 2 => ['ART-001', 'Écran café']],
             iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Csv)),
         );
+    }
+
+    /**
+     * The encoding is found on the whole file, never on its first pages, and an Arabic word tells Windows-1256 from
+     * Windows-1252: Arabic writes letters in runs, French writes its accents alone or doubled.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function encodedFiles(): iterable
+    {
+        yield 'a short French file whose one accent is a Spanish name\'s' => ["number;name\nCLI-0001;MUÑOZ\n", 'Windows-1252'];
+        yield 'French with guillemets, a no-break space and « créée »' => ["number;name\nCLI-0001;« Économie » créée à Nîmes\n", 'Windows-1252'];
+        yield 'mostly ASCII with one three-letter Arabic word' => ["number;name\nCLI-0001;Quincaillerie Ben Salah\nCLI-0002;Atelier Mansour\nCLI-0003;نهج\n", 'CP1256'];
+        yield 'Arabic and Latin side by side' => ["number;name\nCLI-0001;Quincaillerie الأمل Sfax\n", 'CP1256'];
+        yield 'accents only past the first pages' => ["number;name\n".str_repeat("CLI-0001;Client\n", 5000)."CLI-0002;Société\n", 'Windows-1252'];
+    }
+
+    #[DataProvider('encodedFiles')]
+    public function testACsvIsReadInTheEncodingItWasWrittenIn(string $text, string $encoding): void
+    {
+        $path = $this->path('csv');
+        $bytes = 'CP1256' === $encoding ? iconv('UTF-8', 'CP1256', $text) : mb_convert_encoding($text, $encoding, 'UTF-8');
+        file_put_contents($path, $bytes);
+
+        $rows = iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Csv));
+
+        self::assertSame(array_map(static fn (string $line): array => explode(';', $line), explode("\n", rtrim($text, "\n"))), array_values($rows));
+    }
+
+    /** A character a chunk's edge cuts in two is judged whole: a long UTF-8 file stays UTF-8, a UTF-16 pair stays one. */
+    public function testACharacterCutByTheEdgeOfAChunkIsReadWhole(): void
+    {
+        $utf8 = $this->path('csv');
+        $text = "name\n".str_repeat("é😀ج\n", 30000);
+        file_put_contents($utf8, $text);
+        $utf16 = $this->path('csv');
+        file_put_contents($utf16, "\xFF\xFE".mb_convert_encoding($text, 'UTF-16LE', 'UTF-8'));
+        $reader = new OpenSpoutReader(self::MAX_INFLATED_BYTES);
+
+        foreach ([$utf8, $utf16] as $path) {
+            $rows = iterator_to_array($reader->rows($path, SpreadsheetFormat::Csv));
+            self::assertCount(30001, $rows);
+            self::assertSame([], array_filter($rows, static fn (array $row): bool => $row !== ['name'] && $row !== ['é😀ج']));
+        }
+    }
+
+    /** The copy holds the text alone: a byte-order mark is no letter, and kept it would open the first column's name. */
+    public function testTheUtf8CopyOfAUtf16FileCarriesNoByteOrderMark(): void
+    {
+        foreach (["\xFF\xFE" => 'UTF-16LE', "\xFE\xFF" => 'UTF-16BE'] as $mark => $encoding) {
+            $from = $this->path('csv');
+            file_put_contents($from, $mark.mb_convert_encoding("name\nشركة\n", $encoding, 'UTF-8'));
+            $to = $this->path('csv');
+
+            CsvTranscoder::toUtf8($from, $to, TextEncoding::Utf16);
+
+            self::assertSame("name\nشركة\n", file_get_contents($to), $encoding);
+        }
+    }
+
+    /** A file read in another encoding is read from a UTF-8 copy, gone once the reading ends, finished or not. */
+    public function testTheCopyOfAFileReadInAnotherEncodingIsGoneOnceTheReadingEnds(): void
+    {
+        $copies = sys_get_temp_dir().'/twes-copies-'.bin2hex(random_bytes(6));
+        mkdir($copies);
+        $path = $this->path('csv');
+        file_put_contents($path, mb_convert_encoding("name\nSociété\nCafé\n", 'Windows-1252', 'UTF-8'));
+        $reader = new OpenSpoutReader(self::MAX_INFLATED_BYTES, $copies);
+
+        $rows = $reader->rows($path, SpreadsheetFormat::Csv);
+        foreach ($rows as $row) {
+            self::assertSame(['name'], $row);
+            self::assertCount(1, (array) glob($copies.'/*'), 'read from a copy');
+            break;
+        }
+        unset($rows);
+        $finished = iterator_to_array($reader->rows($path, SpreadsheetFormat::Csv));
+
+        self::assertSame(['Café'], $finished[3]);
+        self::assertSame([], glob($copies.'/*'));
+        rmdir($copies);
     }
 
     /**

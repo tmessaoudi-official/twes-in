@@ -17,6 +17,7 @@ use App\ImportExport\Application\UnknownImportSubject;
 use App\ImportExport\Application\UnreadableImport;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetReader;
+use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
@@ -76,6 +77,14 @@ final readonly class ImportController
             return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        // A CSV's encoding, as the person chose it; none chosen is found on the file. A workbook has none to choose.
+        $chosen = $request->request->getString('encoding');
+        $encoding = '' === $chosen ? null : TextEncoding::tryFrom($chosen);
+        if ('' !== $chosen && null === $encoding) {
+            return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $encoding = SpreadsheetFormat::Csv === $format ? ($encoding ?? $this->reader->encodingOf($file->getPathname(), $format)) : null;
+
         $dryRun = $request->request->getBoolean('dryRun');
         $switches = [];
         foreach ($request->request->all('switches') as $switch) {
@@ -94,7 +103,7 @@ final readonly class ImportController
                 $declaration,
                 $columns,
                 $company,
-                $this->reader->rows($file->getPathname(), $format),
+                $this->reader->rows($file->getPathname(), $format, $encoding),
                 $mode,
                 $dryRun,
                 $this->guard->account()->getId(),
@@ -102,15 +111,15 @@ final readonly class ImportController
                 $switches,
             );
         } catch (UnreadableSpreadsheet) {
-            return new JsonResponse(['error' => UnreadableImport::UNREADABLE, 'columns' => []], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return new JsonResponse(['error' => UnreadableImport::UNREADABLE, 'columns' => [], 'encoding' => $encoding?->value], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (UnreadableImport $refused) {
-            return new JsonResponse(['error' => $refused->reason, 'columns' => $refused->columns, 'limit' => $refused->limit], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return new JsonResponse(['error' => $refused->reason, 'columns' => $refused->columns, 'limit' => $refused->limit, 'encoding' => $encoding?->value], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (StepUpRequired) {
             return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         }
 
         return new JsonResponse(
-            ['committed' => $report->committed, 'created' => $report->created, 'updated' => $report->updated, 'rejected' => $report->rejected, 'notes' => $report->notes, 'alreadyImportedAt' => $report->alreadyImportedAt?->format(\DATE_ATOM)],
+            ['committed' => $report->committed, 'created' => $report->created, 'updated' => $report->updated, 'rejected' => $report->rejected, 'notes' => $report->notes, 'alreadyImportedAt' => $report->alreadyImportedAt?->format(\DATE_ATOM), 'encoding' => $encoding?->value],
             // A preview that finds rejected rows has done its job; an import that stopped on them has not.
             $dryRun || $report->committed ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY,
         );

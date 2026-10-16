@@ -81,6 +81,11 @@ final readonly class RunImport
         /** @var array<string, int> $firstLineOf the first line naming each identity */
         $firstLineOf = [];
         foreach ($records as $record) {
+            if ($record->unreadable) {
+                // Its bytes are no text: named by its line alone, none of them echoed.
+                $rejected[] = ['line' => $record->line, 'column' => null, 'code' => 'invalid_encoding', 'params' => [], 'message' => 'The row holds bytes the encoding the file is read in cannot read.'];
+                continue;
+            }
             if (null !== $record->overflow) {
                 // Read without the value it has no column for, the row would store less than it says.
                 $rejected[] = ['line' => $record->line, 'column' => null, 'code' => 'too_many_cells', 'params' => $record->overflow, 'message' => \sprintf('The row has values in %d columns; the header has %d.', $record->overflow['count'], $record->overflow['expected'])];
@@ -137,13 +142,21 @@ final readonly class RunImport
                 }
                 continue;
             }
+            $readable = mb_check_encoding(implode('', $cells), 'UTF-8');
             if (null === $header) {
+                if (!$readable) {
+                    throw new UnreadableImport(UnreadableImport::UNREADABLE_ENCODING);
+                }
                 $header = $this->header($subject, $cells);
                 $width = \count($cells);
                 continue;
             }
             if (\count($records) === $this->maxRows) {
                 throw new UnreadableImport(UnreadableImport::TOO_MANY_ROWS, [], $this->maxRows);
+            }
+            if (!$readable) {
+                $records[] = new ImportRecord($line, [], unreadable: true);
+                continue;
             }
             $values = [];
             foreach ($header as $position => $key) {

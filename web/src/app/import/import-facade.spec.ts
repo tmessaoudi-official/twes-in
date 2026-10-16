@@ -24,6 +24,7 @@ describe('ImportFacade', () => {
     rejected,
     notes: [],
     alreadyImportedAt: null,
+    encoding: null,
   });
 
   beforeEach(() => {
@@ -55,7 +56,12 @@ describe('ImportFacade', () => {
 
   it('holds a file refused whole as the refusal, with no report beside it', async () => {
     api.run.mockRejectedValue(
-      new ImportNotKept(null, { reason: 'too_many_rows', columns: [], limit: 2000 }),
+      new ImportNotKept(null, {
+        reason: 'too_many_rows',
+        columns: [],
+        limit: 2000,
+        encoding: 'utf-8',
+      }),
     );
 
     await facade.run('c1', 'customers', new File(['x'], 'f.csv'), 'create', false);
@@ -73,6 +79,7 @@ describe('ImportFacade', () => {
       rejected: [],
       notes: [],
       alreadyImportedAt: null,
+      encoding: null,
     });
     await facade.run('c1', 'customers', new File(['x'], 'f.csv'), 'create', true);
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
@@ -84,6 +91,7 @@ describe('ImportFacade', () => {
       rejected: [],
       notes: [],
       alreadyImportedAt: null,
+      encoding: null,
     });
     await facade.run('c1', 'customers', new File(['x'], 'f.csv'), 'create', false);
 
@@ -98,7 +106,32 @@ describe('ImportFacade', () => {
 
     await facade.run('c1', 'opening-stock', file, 'upsert', true, ['recount']);
 
-    expect(api.run).toHaveBeenCalledWith('c1', 'opening-stock', file, 'upsert', true, ['recount']);
+    expect(api.run).toHaveBeenCalledWith(
+      'c1',
+      'opening-stock',
+      file,
+      'upsert',
+      true,
+      ['recount'],
+      null,
+    );
+  });
+
+  it('hands the encoding chosen for a CSV to the API with the run', async () => {
+    api.run.mockResolvedValueOnce(report([]));
+    const file = new File(['x'], 'f.csv');
+
+    await facade.run('c1', 'customers', file, 'create', true, [], 'windows-1256');
+
+    expect(api.run).toHaveBeenCalledWith(
+      'c1',
+      'customers',
+      file,
+      'create',
+      true,
+      [],
+      'windows-1256',
+    );
   });
 
   it('keeps a request that never ran as an error, and drops the answer before it', async () => {
@@ -126,7 +159,7 @@ describe('ImportFacade', () => {
 
     expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
     expect(api.run).toHaveBeenCalledTimes(2);
-    expect(api.run).toHaveBeenLastCalledWith('c1', 'vendors', file, 'upsert', false, []);
+    expect(api.run).toHaveBeenLastCalledWith('c1', 'vendors', file, 'upsert', false, [], null);
     expect(facade.report()).toEqual(kept);
   });
 

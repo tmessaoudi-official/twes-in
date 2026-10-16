@@ -122,6 +122,15 @@
     "mode": "How to read the file",
     "mode_create": "Create only: a row already known is refused.",
     "mode_upsert": "Create and update: a row already known is changed, and a blank cell keeps what is there.",
+    "encoding": {
+      "label": "File encoding",
+      "auto": "Automatic",
+      "utf-8": "UTF-8",
+      "windows-1252": "Windows-1252 (French)",
+      "windows-1256": "Windows-1256 (Arabic)",
+      "utf-16": "UTF-16 (Excel’s Unicode text)",
+      "read_as": "File read as {{encoding}}. Unreadable letters? Choose the file’s encoding."
+    },
     "preview": "Preview",
     "store": "Import",
     "preview_first": "Preview first: nothing will be stored.",
@@ -148,7 +157,8 @@
       "unknown_columns": "Unknown columns: {{columns}}. Start again from the template.",
       "duplicate_columns": "Columns given twice: {{columns}}.",
       "missing_columns": "Missing columns: {{columns}}.",
-      "too_many_rows": "The file is longer than {{limit}} rows. Split it into several files."
+      "too_many_rows": "The file is longer than {{limit}} rows. Split it into several files.",
+      "unreadable_encoding": "The file’s header cannot be read in this encoding: choose the file’s own."
     },
     "notes_title": "Good to know",
     "notes": {

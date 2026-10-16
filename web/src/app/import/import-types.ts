@@ -7,6 +7,17 @@ export type ImportError =
 /** How a file is read: only new things, or new things and the ones already there. */
 export type ImportMode = 'create' | 'upsert';
 
+/** What a CSV's bytes are written in, as the API names it; a workbook has none. */
+export type TextEncoding = 'utf-8' | 'windows-1252' | 'windows-1256' | 'utf-16';
+
+/** The encodings a person may choose for a CSV, in the order the screen offers them. */
+export const TEXT_ENCODINGS: readonly TextEncoding[] = [
+  'utf-8',
+  'windows-1252',
+  'windows-1256',
+  'utf-16',
+];
+
 /** A file refused WHOLE, before any row ran: its reason, and whatever that reason names. */
 export interface ImportRefusal {
   reason:
@@ -16,11 +27,14 @@ export interface ImportRefusal {
     | 'unknown_columns'
     | 'duplicate_columns'
     | 'missing_columns'
-    | 'too_many_rows';
+    | 'too_many_rows'
+    | 'unreadable_encoding';
   /** The columns the reason names, empty when it names none. */
   columns: readonly string[];
   /** The row cap, for `too_many_rows`. */
   limit: number | null;
+  /** What a CSV was read as; null for a workbook. */
+  encoding: TextEncoding | null;
 }
 
 /** One column of the file, described as the person filling it in reads it. */
@@ -83,4 +97,6 @@ export interface ImportReport {
   notes: readonly ImportNote[];
   /** When this very file was last imported into the subject; null when it never was. */
   alreadyImportedAt: string | null;
+  /** What a CSV was read as, found on the file or chosen; null for a workbook. */
+  encoding: TextEncoding | null;
 }

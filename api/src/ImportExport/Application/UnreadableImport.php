@@ -27,6 +27,8 @@ final class UnreadableImport extends \RuntimeException
     public const string DUPLICATE_COLUMNS = 'duplicate_columns';
     /** More rows than one import takes. */
     public const string TOO_MANY_ROWS = 'too_many_rows';
+    /** A header the encoding the file is read in cannot read: no column can be named, so none is. */
+    public const string UNREADABLE_ENCODING = 'unreadable_encoding';
 
     /** @param list<string> $columns */
     public function __construct(

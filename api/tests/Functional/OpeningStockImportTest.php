@@ -83,7 +83,7 @@ final class OpeningStockImportTest extends ApiTestCase
         self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => [
             ['line' => 2, 'column' => 'stock_count', 'code' => 'stock_change', 'params' => ['location' => '000', 'before' => '0', 'after' => '120']],
             ['line' => 3, 'column' => 'stock_count', 'code' => 'stock_change', 'params' => ['location' => 'Z1', 'before' => '0.000', 'after' => '7.500']],
-        ], 'alreadyImportedAt' => null], $this->json());
+        ], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(0, $this->movements());
         self::assertSame(0, $this->number('SELECT COUNT(*) FROM import_run'), 'a preview is not an import');
     }

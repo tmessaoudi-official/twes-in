@@ -22,6 +22,8 @@ final readonly class ImportRecord
         public array $values,
         /** @var array{count: int, expected: int}|null the columns the row has values in past the header's, so it is refused */
         public ?array $overflow = null,
+        /** Bytes the encoding the file is read in cannot read, so its cells are not text and are never read */
+        public bool $unreadable = false,
     ) {
     }
 

@@ -3453,6 +3453,7 @@
       "already_counted": "This product already has stock at this location. Import in “create and update” to count it again.",
       "duplicate_in_file": "Already on line {{line}} of the file.",
       "too_many_cells": "Values in {{count}} columns, while the header has only {{expected}}: a value is extra or shifted.",
+      "invalid_encoding": "This row holds characters the chosen encoding cannot read.",
       "invalid_value": "Value refused.",
       "not_one_of": "Expected: {{choices}}.",
       "not_yes_or_no": "Expected: yes or no.",

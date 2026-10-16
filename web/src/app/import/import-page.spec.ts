@@ -40,6 +40,16 @@ class StaticLoader implements TranslateLoader {
         stock: { recount: 'Recompter', recount_note: 'Compte à nouveau.' },
         already_imported: 'Ce fichier a déjà été importé le {{date}}.',
         refusals: { unknown_columns: 'Colonnes inconnues : {{columns}}.' },
+        encoding: {
+          label: 'Encodage du fichier',
+          auto: 'Automatique',
+          'utf-8': 'UTF-8',
+          'windows-1252': 'Windows-1252 (français)',
+          'windows-1256': 'Windows-1256 (arabe)',
+          'utf-16': 'UTF-16 (Texte Unicode d’Excel)',
+          read_as:
+            'Fichier lu en {{encoding}}. Des lettres illisibles ? Choisissez l’encodage du fichier.',
+        },
       },
     });
   }
@@ -79,6 +89,7 @@ const CLEAN: ImportReport = {
   rejected: [],
   notes: [],
   alreadyImportedAt: null,
+  encoding: null,
 };
 const REJECTED: ImportReport = {
   committed: false,
@@ -89,6 +100,7 @@ const REJECTED: ImportReport = {
   ],
   notes: [],
   alreadyImportedAt: null,
+  encoding: null,
 };
 
 describe('ImportPage', () => {
@@ -137,7 +149,10 @@ describe('ImportPage', () => {
   function chooseFile(name = 'stocks.csv'): void {
     const file = new File(['reference,quantity\n'], name, { type: 'text/csv' });
     const input = q('import-file') as HTMLInputElement;
-    Object.defineProperty(input, 'files', { value: { item: () => file, length: 1 } });
+    Object.defineProperty(input, 'files', {
+      value: { item: () => file, length: 1 },
+      configurable: true,
+    });
     input.dispatchEvent(new Event('change'));
   }
 
@@ -247,6 +262,7 @@ describe('ImportPage', () => {
       'create',
       true,
       [],
+      null,
     );
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
   });
@@ -272,6 +288,79 @@ describe('ImportPage', () => {
       'create',
       true,
       ['recount'],
+      null,
+    );
+  });
+
+  it('offers the encoding for a CSV only, found on the file until one is chosen', async () => {
+    expect(q('import-encoding')).toBeNull();
+    chooseFile('stocks.xlsx');
+    await settle();
+    expect(q('import-encoding')).toBeNull();
+
+    chooseFile('stocks.csv');
+    await settle();
+    expect(q('import-encoding')?.textContent).toContain('Windows-1256 (arabe)');
+    await click('import-preview');
+    expect(facade.run).toHaveBeenLastCalledWith(
+      'c1',
+      'opening-stock',
+      expect.anything(),
+      'create',
+      true,
+      [],
+      null,
+    );
+  });
+
+  it('sends the encoding chosen, which asks for a new preview, and a new file starts from none', async () => {
+    chooseFile();
+    await settle();
+    facade.run.mockImplementation(async () => report.set(CLEAN));
+    await click('import-preview');
+    expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
+
+    (q('import-encoding-windows-1256')!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+
+    expect((q('import-store') as HTMLButtonElement).disabled).toBe(true);
+    await click('import-preview');
+    expect(facade.run).toHaveBeenLastCalledWith(
+      'c1',
+      'opening-stock',
+      expect.anything(),
+      'create',
+      true,
+      [],
+      'windows-1256',
+    );
+
+    chooseFile('other.csv');
+    await settle();
+    await click('import-preview');
+    expect(facade.run).toHaveBeenLastCalledWith(
+      'c1',
+      'opening-stock',
+      expect.anything(),
+      'create',
+      true,
+      [],
+      null,
+    );
+  });
+
+  it('says first what a CSV was read as, and what to do when its letters do not read', async () => {
+    chooseFile();
+    await settle();
+    facade.run.mockImplementation(async () => report.set({ ...CLEAN, encoding: 'windows-1252' }));
+    await click('import-preview');
+
+    const said = q('import-read-as');
+    expect(said?.textContent).toContain(
+      'Fichier lu en Windows-1252 (français). Des lettres illisibles',
+    );
+    expect(said?.compareDocumentPosition(q('import-created')!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
     );
   });
 
@@ -370,6 +459,7 @@ describe('ImportPage', () => {
         ],
         notes: [],
         alreadyImportedAt: null,
+        encoding: null,
       }),
     );
     await click('import-preview');
@@ -392,6 +482,7 @@ describe('ImportPage', () => {
         rejected: [],
         notes: [],
         alreadyImportedAt: null,
+        encoding: null,
       });
       TestBed.inject(Feedback).success('import.stored', { created: 2, updated: 0 });
     });
@@ -404,6 +495,7 @@ describe('ImportPage', () => {
       'create',
       false,
       [],
+      null,
     );
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
       expect.objectContaining({ key: 'import.stored' }),
@@ -411,7 +503,12 @@ describe('ImportPage', () => {
   });
 
   it('shows a file refused whole beside the form, naming what the reason names', async () => {
-    refusal.set({ reason: 'unknown_columns', columns: ['nom', 'prenom'], limit: null });
+    refusal.set({
+      reason: 'unknown_columns',
+      columns: ['nom', 'prenom'],
+      limit: null,
+      encoding: null,
+    });
     await settle();
 
     expect(q('import-refusal')?.textContent).toContain('nom, prenom');

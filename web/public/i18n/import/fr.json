@@ -122,6 +122,15 @@
     "mode": "Comment lire le fichier",
     "mode_create": "Créer seulement : une ligne déjà connue est refusée.",
     "mode_upsert": "Créer et mettre à jour : une ligne déjà connue est modifiée, les cellules vides gardent ce qui est là.",
+    "encoding": {
+      "label": "Encodage du fichier",
+      "auto": "Automatique",
+      "utf-8": "UTF-8",
+      "windows-1252": "Windows-1252 (français)",
+      "windows-1256": "Windows-1256 (arabe)",
+      "utf-16": "UTF-16 (Texte Unicode d’Excel)",
+      "read_as": "Fichier lu en {{encoding}}. Des lettres illisibles ? Choisissez l’encodage du fichier."
+    },
     "preview": "Prévisualiser",
     "store": "Importer",
     "preview_first": "Prévisualisez d’abord : rien ne sera enregistré.",
@@ -148,7 +157,8 @@
       "unknown_columns": "Colonnes inconnues : {{columns}}. Repartez du modèle.",
       "duplicate_columns": "Colonnes en double : {{columns}}.",
       "missing_columns": "Colonnes manquantes : {{columns}}.",
-      "too_many_rows": "Le fichier dépasse {{limit}} lignes. Coupez-le en plusieurs fichiers."
+      "too_many_rows": "Le fichier dépasse {{limit}} lignes. Coupez-le en plusieurs fichiers.",
+      "unreadable_encoding": "L’en-tête du fichier ne se lit pas dans cet encodage : choisissez celui du fichier."
     },
     "notes_title": "À savoir",
     "notes": {

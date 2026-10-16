@@ -71,6 +71,7 @@ describe('ImportApi', () => {
       rejected: [],
       notes: [note],
       alreadyImportedAt: null,
+      encoding: 'utf-8',
     });
     const report = await pending;
     expect(report).toEqual({
@@ -80,6 +81,7 @@ describe('ImportApi', () => {
       rejected: [],
       notes: [note],
       alreadyImportedAt: null,
+      encoding: 'utf-8',
     });
   });
 
@@ -129,7 +131,7 @@ describe('ImportApi', () => {
     http
       .expectOne('/api/companies/c1/imports/customers')
       .flush(
-        { error: 'unknown_columns', columns: ['nom', 'prenom'], limit: null },
+        { error: 'unknown_columns', columns: ['nom', 'prenom'], limit: null, encoding: 'ebcdic' },
         { status: 422, statusText: 'Unprocessable Content' },
       );
 
@@ -140,6 +142,39 @@ describe('ImportApi', () => {
       reason: 'unknown_columns',
       columns: ['nom', 'prenom'],
       limit: null,
+      encoding: null,
+    });
+  });
+
+  it('sends the encoding chosen for a CSV, none when the API is to find it, and reads the one used', async () => {
+    const file = new File(['x'], 'clients.csv', { type: 'text/csv' });
+    const chosen = api.run('c1', 'customers', file, 'create', true, [], 'windows-1256');
+    const sent = http.expectOne('/api/companies/c1/imports/customers');
+    expect((sent.request.body as FormData).get('encoding')).toBe('windows-1256');
+    sent.flush({
+      committed: false,
+      created: [2],
+      updated: [],
+      rejected: [],
+      notes: [],
+      alreadyImportedAt: null,
+      encoding: 'windows-1256',
+    });
+    expect((await chosen).encoding).toBe('windows-1256');
+
+    const found = api.run('c1', 'customers', file, 'create', true);
+    const asked = http.expectOne('/api/companies/c1/imports/customers');
+    expect((asked.request.body as FormData).has('encoding')).toBe(false);
+    asked.flush(
+      { error: 'unreadable_encoding', columns: [], limit: null, encoding: 'utf-8' },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    const refused = (await found.catch((error: unknown) => error)) as ImportNotKept;
+    expect(refused.refusal).toEqual({
+      reason: 'unreadable_encoding',
+      columns: [],
+      limit: null,
+      encoding: 'utf-8',
     });
   });
 

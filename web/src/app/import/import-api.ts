@@ -5,12 +5,14 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { ImportGuideImportGuideRead } from '../api/types.gen';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
-import type {
-  ImportError,
-  ImportGuide,
-  ImportMode,
-  ImportRefusal,
-  ImportReport,
+import {
+  TEXT_ENCODINGS,
+  type ImportError,
+  type ImportGuide,
+  type ImportMode,
+  type ImportRefusal,
+  type ImportReport,
+  type TextEncoding,
 } from './import-types';
 
 /** Thrown when the API refuses the request itself; carries the code the screen translates. */
@@ -63,12 +65,15 @@ export class ImportApi {
     mode: ImportMode,
     dryRun: boolean,
     switches: readonly string[] = [],
+    encoding: TextEncoding | null = null,
   ): Promise<ImportReport> {
     const body = new FormData();
     body.append('file', file, file.name);
     body.append('mode', mode);
     body.append('dryRun', dryRun ? '1' : '0');
     for (const key of switches) body.append('switches[]', key);
+    // None chosen: the API finds it on the file.
+    if (encoding !== null) body.append('encoding', encoding);
 
     return this.guard(async () =>
       toReport(
@@ -125,7 +130,12 @@ function notKept(body: unknown): Error {
     reason: reason as ImportRefusal['reason'],
     columns: Array.isArray(answer?.['columns']) ? (answer['columns'] as string[]) : [],
     limit: typeof answer?.['limit'] === 'number' ? answer['limit'] : null,
+    encoding: encodingOf(answer?.['encoding']),
   });
+}
+
+function encodingOf(value: unknown): TextEncoding | null {
+  return TEXT_ENCODINGS.find((encoding) => encoding === value) ?? null;
 }
 
 function toGuide(answer: ImportGuideImportGuideRead): ImportGuide {
@@ -177,6 +187,7 @@ function toReport(answer: unknown): ImportReport {
       : [],
     alreadyImportedAt:
       typeof body['alreadyImportedAt'] === 'string' ? body['alreadyImportedAt'] : null,
+    encoding: encodingOf(body['encoding']),
   };
 }
 
