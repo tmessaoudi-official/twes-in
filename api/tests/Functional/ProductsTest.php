@@ -12,11 +12,13 @@ namespace App\Tests\Functional;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Module\Products\Application\ChangeProductCost;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Domain\ValueObject\Barcode;
 use App\Module\Products\Domain\ValueObject\BarcodeLine;
 use App\Module\Products\Domain\ValueObject\BarcodeRole;
+use App\Module\Products\Domain\ValueObject\CostChangeSource;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
@@ -24,6 +26,7 @@ use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 final class ProductsTest extends ApiTestCase
 {
@@ -377,6 +380,27 @@ final class ProductsTest extends ApiTestCase
         $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'product.revised'");
         self::assertIsString($changes);
         self::assertSame(['fields' => ['kind', 'unitPriceNet', 'unitId', 'isActive']], json_decode($changes, true));
+    }
+
+    /**
+     * A write that is not a person's form, as the cost a goods receipt brings, reads the row under a lock: one saved
+     * by someone else since the product was read is waited for and read again, never refused as changed.
+     */
+    public function testACostFromAReceiptLandsOnAProductSavedSinceItWasRead(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->postJson($this->path(), $this->product());
+        $id = $this->stringAt($this->json(), 'id');
+        $product = $this->em()->find(Product::class, Uuid::fromString($id)) ?? self::fail('The product is gone.');
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('Acme is gone.');
+        // Another request saves the same product after this one read it.
+        $this->em()->getConnection()->executeStatement('UPDATE product SET version = version + 1, name = ? WHERE id = ?', ['Saved since', $id]);
+
+        $changed = static::getContainer()->get(ChangeProductCost::class)->handle($company, $product, '12.5', CostChangeSource::Receipt, null, null);
+
+        self::assertTrue($changed);
+        $row = $this->em()->getConnection()->fetchAssociative('SELECT cost_price, name, version FROM product WHERE id = ?', [$id]);
+        self::assertSame(['cost_price' => '12.5000', 'name' => 'Saved since', 'version' => 3], $row);
     }
 
     public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void

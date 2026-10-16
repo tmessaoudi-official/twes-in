@@ -9,6 +9,7 @@
 - [2026-10-16 22:43] ASSUMED (review): Left out of the version check, each listed in the gate with its reason: a person's own toggles where the last word is the intent (module interest, the company opened at sign-in) and the company's single switches (second factor required, period closing), which still bump the company's version that the profile form checks; item POST actions and deletes stay out of « edit » as the 17:17 ruling wrote it, a follow-on under Needs input. Alternatives: every company PUT checked.
 - [2026-10-17 01:03] AGREED: All 62 findings marked « fix » by the developer (no notes, no reordering); step 2 done.
 - [2026-10-17 01:03] ASSUMED (review): Step 5 follows the findings page's ranked order (unchanged by the developer's marks; advisor agreed).
+- [2026-10-17 01:14] AGREED: System writes lock the versioned row (SELECT … FOR UPDATE); the product's save and the cost on receipt first (SPEC § 7).
 
 ## Formal Plan
 

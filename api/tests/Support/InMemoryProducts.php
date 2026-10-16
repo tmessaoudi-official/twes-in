@@ -95,6 +95,11 @@ final class InMemoryProducts implements ProductRepository
         return array_values(array_filter($this->ofCompany($companyId), static fn (Product $product): bool => \in_array($product->getId()->toRfc4122(), $wanted, true)));
     }
 
+    public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Product
+    {
+        return $this->ofIdInCompany($id, $companyId);
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Product
     {
         foreach ($this->ofCompany($companyId) as $product) {
