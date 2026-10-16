@@ -335,8 +335,14 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
   so): `docs/fiscal/TN.md` and `FR.md` say nothing on it, so every `delivery_notes.*` « annul » text stays as is.
 ### Fragile
 ### Known issues
-- The first page is at 999.94 kB of its 1 MB budget after f00dad1a (`auth-facade.ts` is on it): the next change to
-  anything the first page loads must measure first (`--stats-json`, Lessons) and move a constant or a call out.
+- The first page is at 999.79 kB of its 1 MB budget after 4bd347ed (`auth-facade.ts` is on it; the two-factor page's
+  texts moved into a part and `textsPart` takes a route's guards, which bought 150 B): the next change to anything the
+  first page loads must measure first (`--stats-json`, Lessons) and move a constant or a call out.
+- D1 finding L57 (the import row cap as a platform setting, § 7 2026-09-21 18:05) was WITHDRAWN as superseded: § 7
+  2026-10-09 10:40 (8), later and AGREED, keeps the cap a container parameter until imports run on the worker (row 264),
+  then a platform setting with its declared maximum. Built and then reverted before commit: the patch, with its tests and
+  5 of 5 mutants killed, is `var/claude/import-cap/row-264-import-cap-setting.patch` (ceiling 5,000 rows, from the
+  10.4 s for 2,500 rows recorded on 2026-09-19; on the worker the ceiling is the 12 MB upload instead, § 7 2026-09-19 (3)).
 - D1 finding L28 (step-up missing on bank details, members and role permissions) was CHECKED AND WITHDRAWN: built
   since the audit's commit. `RecentProof::demand` guards the bank details (`ReviseCompanyProfileProcessor`, on an IBAN
   or BIC change only), inviting and removing a member, creating, revising and deleting a role, and every export
