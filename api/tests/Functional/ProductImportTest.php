@@ -425,9 +425,28 @@ Cheville 10 mm,6191234567897
     }
 
     /**
-     * Where a product normally lives, named by the code of a stock location (docs/SPEC.md row 101). The
-     * establishment falls out of the location, so the file never carries one.
+     * What the product holds that no column of the file writes is kept by an upsert, as a blank cell keeps what it
+     * names: a file that does not mention substitution groups does not take a product out of its group.
      */
+    public function testAnUpsertKeepsTheSubstitutionGroupNoColumnWrites(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->import($this->twoProducts());
+        self::assertResponseIsSuccessful();
+        $screw = $this->product('VIS-6X40');
+        $held = $screw->getDetails();
+        $screw->revise($screw->getReference(), new ProductDetails($held->name, $held->description, $held->kind, $held->unitPriceNet, $held->costPrice, 'Vis de 6'), $screw->getUnit(), $screw->getCategory(), array_map(\Symfony\Component\Uid\Uuid::fromString(...), $screw->getDefaultTaxComponentIds()), $screw->isActive(), new \DateTimeImmutable());
+        $this->em()->flush();
+        $this->em()->clear();
+
+        $this->import("reference,name\nVIS-6X40,Vis 6x40 zinguée\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[], [2]], [$this->json()['updated'], $this->json()['unchanged']]);
+        $this->em()->clear();
+        self::assertSame('Vis de 6', $this->product('VIS-6X40')->getDetails()->substitutionGroup);
+    }
+
     /**
      * A file writes one code, the UNIT code (docs/SPEC.md § 7, 2026-09-22 11:05): a new one replaces the unit row and
      * leaves the product's pack alone, which the file has no column for.

@@ -470,6 +470,8 @@ final readonly class ProductImport implements DeclaresImport
                 null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods),
                 $price,
                 ($this->guard->may($company, ProductPermission::COST_READ) ? $faults->read(static fn (): ?string => ImportCells::decimal($record, 'cost_price', 4)) : null) ?? $held?->costPrice,
+                // No column writes it, so the file says nothing about it: an upsert keeps it.
+                $held?->substitutionGroup,
             ),
             $faults->read(fn (): Uuid => $this->unitId($company, $record, $current), Uuid::v7()),
             $faults->read(fn (): ?Uuid => $this->categoryId($company, $record, $current), $current?->getCategory()?->getId()),
