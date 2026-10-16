@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Domain;
 
+use App\Shared\Domain\ContactRules;
 use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\Refusal;
 use BcMath\Number;
 
 /**
@@ -21,6 +23,10 @@ use BcMath\Number;
 final readonly class CustomerProfile
 {
     public const int NAME_MAX = 200;
+    public const int LEGAL_NAME_MAX = 200;
+    public const int NOTES_MAX = 5000;
+    /** An address part as the form names it after « billing » or « shipping ». */
+    private const array ADDRESS_FIELDS = ['line1' => 'AddressLine1', 'line2' => 'AddressLine2', 'postalCode' => 'PostalCode', 'city' => 'City', 'countryCode' => 'CountryCode'];
     private const string RATE = '/^(0|[1-9][0-9]{0,2})(?:\.([0-9]{1,3}))?$/';
 
     public string $name;
@@ -78,6 +84,21 @@ final readonly class CustomerProfile
     }
 
     /**
+     * Holds what is written to the rules the form holds it to, each refusal under the form field it names. Asked by the
+     * customer as it is created or revised, never as a profile is read back from a stored row.
+     *
+     * @throws InvalidCustomer
+     */
+    public function check(): void
+    {
+        foreach ($this->refusals() as $field => $refusal) {
+            if (null !== $refusal) {
+                throw new InvalidCustomer($field, $refusal->message, $refusal->reason, $refusal->params);
+            }
+        }
+    }
+
+    /**
      * A company billed at the seller's own country, the customer a preset may require registration numbers of: one
      * abroad is registered under another country's rules, and a billing address with no country is taken as home.
      */
@@ -112,6 +133,24 @@ final readonly class CustomerProfile
             'defaultDiscountRate' => $this->defaultDiscountRate,
             'notes' => $this->notes,
         ];
+    }
+
+    /** @return iterable<string, ?Refusal> each field the form holds, in the form's order, and what it refuses there */
+    private function refusals(): iterable
+    {
+        if (null !== $this->legalName && null !== ContactRules::text($this->legalName, self::LEGAL_NAME_MAX)) {
+            yield 'legalName' => new Refusal('invalid_legal_name', \sprintf('A legal name is at most %d characters.', self::LEGAL_NAME_MAX));
+        }
+        yield 'email' => null === $this->email ? null : ContactRules::email($this->email);
+        yield 'phone' => null === $this->phone ? null : ContactRules::phone($this->phone);
+        yield 'website' => null === $this->website ? null : ContactRules::website($this->website);
+        foreach (['billing' => $this->billingAddress, 'shipping' => $this->shippingAddress] as $which => $address) {
+            $part = $address?->refusal();
+            if (null !== $part) {
+                yield $which.self::ADDRESS_FIELDS[$part[0]] => $part[1];
+            }
+        }
+        yield 'notes' => null === $this->notes ? null : ContactRules::text($this->notes, self::NOTES_MAX);
     }
 
     private static function rate(?string $rate): ?string

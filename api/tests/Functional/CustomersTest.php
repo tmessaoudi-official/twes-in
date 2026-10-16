@@ -107,17 +107,39 @@ final class CustomersTest extends ApiTestCase
 
         foreach ([
             'email' => [['email' => 'nobody@nowhere'], 'invalid_email', []],
+            'a long email' => [['email' => str_repeat('a', 250).'@b.tn'], 'invalid_email', []],
+            'phone' => [['phone' => 'abc'], 'invalid_phone', []],
+            'website' => [['website' => 'javascript:alert(1)'], 'invalid_website', []],
             'legalName' => [['legalName' => str_repeat('a', 201)], 'invalid_legal_name', []],
+            'shippingCountryCode' => [['shippingCity' => 'Paris', 'shippingCountryCode' => 'FX'], 'invalid_country', []],
+            'notes' => [['notes' => str_repeat('a', 5001)], 'invalid_text', ['max' => 5000]],
             'billingAddressLine1' => [['billingAddressLine1' => str_repeat('a', 201)], 'invalid_text', ['max' => 200]],
             'billingCountryCode' => [['billingCountryCode' => 'XX'], 'invalid_country', []],
             'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '123']], 'identifier_shape', ['identifier' => 'matricule_fiscal']],
             'defaultTaxComponentIds' => [['taxRegime' => 'exempt', 'defaultTaxComponentIds' => [$this->taxId('TVA19')]], 'regime_excludes_tax', ['tax' => 'TVA 19 %']],
-        ] as $field => [$change, $reason, $params]) {
+        ] as $case => [$change, $reason, $params]) {
+            $field = 'a long email' === $case ? 'email' : $case;
             $this->postJson($this->path(), $this->customer($change));
 
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
-            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals(), $field);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
+            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals(), $case);
         }
+    }
+
+    /** The domain stops at a profile's first fault; the form holds the same rules and names every fault in one answer. */
+    public function testAFormIsToldEveryFaultInOneAnswer(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->postJson($this->path(), $this->customer(['email' => 'nobody@nowhere', 'phone' => 'abc', 'website' => 'exemple.tn', 'billingCountryCode' => 'XX']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([
+            ['propertyPath' => 'email', 'reason' => 'invalid_email', 'params' => []],
+            ['propertyPath' => 'phone', 'reason' => 'invalid_phone', 'params' => []],
+            ['propertyPath' => 'website', 'reason' => 'invalid_website', 'params' => []],
+            ['propertyPath' => 'billingCountryCode', 'reason' => 'invalid_country', 'params' => []],
+        ], $this->refusals());
     }
 
     public function testANumberAnotherCustomerHasAnswersConflict(): void

@@ -133,7 +133,7 @@ final class DeclareTejWithholdingsTest extends TestCase
         $this->paid('1500', '2026-09-02', '1', TejOperationCode::Rs7_000002);
         $uncoded = $this->paid('1500', '2026-09-03', '1');
         $anonymous = $this->paid('1500', '2026-09-04', '1', TejOperationCode::Rs7_000001, vendor: false);
-        $bare = Vendor::create($this->acme, 'FRN-0002', new VendorProfile('Kiosque', email: 'pas-un-courriel'), $this->now);
+        $bare = Vendor::create($this->acme, 'FRN-0002', new VendorProfile('Kiosque', email: 'ali!compta@exemple.tn'), $this->now);
         $unreachable = $this->paid('1500', '2026-09-05', '1.125', TejOperationCode::Rs7_000001, vendor: $bare);
 
         $refused = $this->refused(2026, 9);
@@ -149,7 +149,7 @@ final class DeclareTejWithholdingsTest extends TestCase
 
     public function testAVendorWhoseMatriculeNamesNoKnownCategoryIsNamed(): void
     {
-        $odd = Vendor::create($this->acme, 'FRN-0003', new VendorProfile('Odd', identifiers: ['matricule_fiscal' => '7654321B/A/X/000'], email: 'a@b.tn', phone: '1', address: new PostalAddress('1 rue', null, null, 'Tunis')), $this->now);
+        $odd = Vendor::create($this->acme, 'FRN-0003', new VendorProfile('Odd', identifiers: ['matricule_fiscal' => '7654321B/A/X/000'], email: 'a@b.tn', phone: '71 000 000', address: new PostalAddress('1 rue', null, null, 'Tunis')), $this->now);
         $expense = $this->paid('1500', '2026-09-02', '1', TejOperationCode::Rs7_000002, vendor: $odd);
 
         self::assertSame([$expense->getId()->toRfc4122() => ['vendor_category_unknown']], array_column($this->refused(2026, 9)->expenses, 'problems', 'expenseId'));

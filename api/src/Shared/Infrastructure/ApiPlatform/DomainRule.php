@@ -24,11 +24,18 @@ final class DomainRule extends Constraint
     /** @param array<string, string|int> $params */
     public static function refused(string $field, string $message, string $reason, array $params = [], ?\Throwable $previous = null): ValidationException
     {
+        return new ValidationException(new ConstraintViolationList([self::violation($field, $message, $reason, $params)]), previous: $previous);
+    }
+
+    /**
+     * The violation a domain refusal makes of a field, as a form's own validation adds it.
+     *
+     * @param array<string, string|int> $params
+     */
+    public static function violation(string $field, string $message, string $reason, array $params = [], mixed $root = null, mixed $invalidValue = null): ConstraintViolation
+    {
         $rule = new self(payload: [] === $params ? ['reason' => $reason] : ['reason' => $reason, 'params' => $params]);
 
-        return new ValidationException(
-            new ConstraintViolationList([new ConstraintViolation($message, null, [], null, $field, null, null, $reason, $rule)]),
-            previous: $previous,
-        );
+        return new ConstraintViolation($message, null, [], $root, $field, $invalidValue, null, $reason, $rule);
     }
 }

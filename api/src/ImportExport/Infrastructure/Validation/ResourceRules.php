@@ -13,10 +13,10 @@ use App\ImportExport\Application\RowRejected;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
- * Holds a file's cells to the rules a resource's own form is held to. What the domain does not check itself — an
- * address, an e-mail, an IBAN, a country, a length — is declared once, on the resource's properties; a cell is
- * checked against the constraints of the property it fills, in the group a write is validated in, so a file can never
- * store what the form refuses, nor reach a column that cannot hold it.
+ * Holds a file's cells to the rules a resource's own form is held to: the domain's own, which a property names through
+ * `ContactRule`, and what only the form adds, such as an IBAN's length in its country. A cell is checked against the
+ * constraints of the property it fills, in the group a write is validated in, so a file can never store what the form
+ * refuses, nor reach a column that cannot hold it.
  */
 final readonly class ResourceRules
 {

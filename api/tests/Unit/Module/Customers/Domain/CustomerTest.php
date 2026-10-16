@@ -161,6 +161,56 @@ final class CustomerTest extends TestCase
         self::assertFalse($customer->isActive());
     }
 
+    /** @return iterable<string, array{CustomerProfile, string, string, array<string, string|int>}> */
+    public static function refusedProfiles(): iterable
+    {
+        $at = static fn (PostalAddress $billing, ?PostalAddress $shipping = null): CustomerProfile => new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', billingAddress: $billing, shippingAddress: $shipping);
+        yield 'an e-mail' => [self::profile('ali@'), 'email', 'invalid_email', []];
+        yield 'a phone' => [new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', phone: 'abc'), 'phone', 'invalid_phone', []];
+        yield 'a website' => [new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', website: 'javascript:alert(1)'), 'website', 'invalid_website', []];
+        yield 'a legal name' => [new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', legalName: str_repeat('x', 201)), 'legalName', 'invalid_legal_name', []];
+        yield 'notes' => [new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', notes: str_repeat('x', 5001)), 'notes', 'invalid_text', ['max' => 5000]];
+        yield 'a billing line' => [$at(new PostalAddress(str_repeat('x', 201))), 'billingAddressLine1', 'invalid_text', ['max' => 200]];
+        yield 'a billing postal code' => [$at(new PostalAddress(postalCode: str_repeat('1', 21))), 'billingPostalCode', 'invalid_text', ['max' => 20]];
+        yield 'a billing city' => [$at(new PostalAddress(city: str_repeat('x', 121))), 'billingCity', 'invalid_text', ['max' => 120]];
+        yield 'a billing country' => [$at(new PostalAddress(countryCode: 'xx')), 'billingCountryCode', 'invalid_country', []];
+        yield 'a shipping line' => [$at(new PostalAddress(city: 'Tunis'), new PostalAddress(null, str_repeat('x', 201))), 'shippingAddressLine2', 'invalid_text', ['max' => 200]];
+        yield 'a shipping country' => [$at(new PostalAddress(city: 'Tunis'), new PostalAddress(city: 'Paris', countryCode: 'FX')), 'shippingCountryCode', 'invalid_country', []];
+    }
+
+    /**
+     * What the form holds a customer to, the domain holds every writer to, under the form field it names and the reason a
+     * screen or a file's report translates (docs/SPEC.md § 7, 2026-10-09 10:40 (1)).
+     *
+     * @param array<string, string|int> $params
+     */
+    #[DataProvider('refusedProfiles')]
+    public function testAProfileIsRefusedWhereverItIsWrittenUnderTheFieldItNames(CustomerProfile $profile, string $field, string $reason, array $params): void
+    {
+        foreach (['created' => fn () => Customer::create($this->company, 'CLI-0001', $profile, null, $this->standard, [], $this->now), 'revised' => fn () => Customer::create($this->company, 'CLI-0001', self::profile(), null, $this->standard, [], $this->now)->revise('CLI-0001', $profile, null, $this->standard, [], true, $this->now)] as $how => $write) {
+            try {
+                $write();
+                self::fail("$field accepted when $how");
+            } catch (InvalidCustomer $refused) {
+                self::assertSame([$field, $reason, $params], [$refused->field, $refused->reason, $refused->params], $how);
+            }
+        }
+    }
+
+    /** A rule holds what is written from now on: a row stored before it still reads, and is refused only if written again. */
+    public function testACustomerStoredBeforeARuleStillReads(): void
+    {
+        $customer = Customer::create($this->company, 'CLI-0001', self::profile('ali@exemple.tn'), null, $this->standard, [], $this->now);
+        new \ReflectionProperty(Customer::class, 'email')->setValue($customer, 'ali@');
+
+        $profile = $customer->getProfile();
+
+        self::assertSame('ali@', $profile->email);
+        self::assertSame([], $customer->revise('CLI-0001', $profile, null, $this->standard, [], true, $this->now), 'saying again what is stored writes nothing');
+        $this->expectException(InvalidCustomer::class);
+        $customer->revise('CLI-0002', $profile, null, $this->standard, [], true, $this->now);
+    }
+
     private static function profile(?string $email = null): CustomerProfile
     {
         return new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', email: $email, billingAddress: new PostalAddress(city: 'Tunis', countryCode: 'TN'));

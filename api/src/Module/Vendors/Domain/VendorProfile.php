@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Vendors\Domain;
 
+use App\Shared\Domain\ContactRules;
 use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\Refusal;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -22,6 +24,10 @@ final readonly class VendorProfile
 {
     public const int NAME_MAX = 200;
     public const int PAYMENT_TERMS_MAX = 365;
+    public const int LEGAL_NAME_MAX = 200;
+    public const int NOTES_MAX = 5000;
+    /** An address part as the form names it. */
+    private const array ADDRESS_FIELDS = ['line1' => 'addressLine1', 'line2' => 'addressLine2', 'postalCode' => 'postalCode', 'city' => 'city', 'countryCode' => 'countryCode'];
 
     public string $name;
     public ?string $legalName;
@@ -122,6 +128,39 @@ final readonly class VendorProfile
             'notes' => $this->notes,
             'defaultExpenseCategoryId' => $this->defaultExpenseCategoryId?->toRfc4122(),
         ];
+    }
+
+    /**
+     * Holds what is written to the rules the form holds it to, each refusal under the form field it names. Asked by the
+     * vendor as it is created or revised, never as a profile is read back from a stored row.
+     *
+     * @throws InvalidVendor
+     */
+    public function check(): void
+    {
+        foreach ($this->refusals() as $field => $refusal) {
+            if (null !== $refusal) {
+                throw new InvalidVendor($field, $refusal->message, $refusal->reason, $refusal->params);
+            }
+        }
+    }
+
+    /** @return iterable<string, ?Refusal> each field the form holds, in the form's order, and what it refuses there */
+    private function refusals(): iterable
+    {
+        if (null !== $this->legalName && null !== ContactRules::text($this->legalName, self::LEGAL_NAME_MAX)) {
+            yield 'legalName' => new Refusal('invalid_legal_name', \sprintf('A legal name is at most %d characters.', self::LEGAL_NAME_MAX));
+        }
+        yield 'email' => null === $this->email ? null : ContactRules::email($this->email);
+        yield 'phone' => null === $this->phone ? null : ContactRules::phone($this->phone);
+        yield 'website' => null === $this->website ? null : ContactRules::website($this->website);
+        $part = $this->address->refusal();
+        if (null !== $part) {
+            yield self::ADDRESS_FIELDS[$part[0]] => $part[1];
+        }
+        yield 'iban' => null === $this->iban ? null : ContactRules::iban($this->iban);
+        yield 'bic' => null === $this->bic ? null : ContactRules::bic($this->bic);
+        yield 'notes' => null === $this->notes ? null : ContactRules::text($this->notes, self::NOTES_MAX);
     }
 
     private static function text(?string $value): ?string
