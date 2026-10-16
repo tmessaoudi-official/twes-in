@@ -37,8 +37,8 @@ is out and held.
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
 | 1 | PHP packages | M | done | 45a5e43f | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
-| 2 | npm packages (zxing-wasm apart) | M | todo | - | web/package.json web/package-lock.json infra/web/tools.Dockerfile THIRD-PARTY-NOTICES.md |
-| 3 | zxing-wasm | S | todo | - | web/package.json web/package-lock.json web/src/third-party/** |
+| 2 | npm packages (zxing-wasm apart) | M | done | 16a2593d | web/package.json web/package-lock.json infra/web/tools.Dockerfile THIRD-PARTY-NOTICES.md |
+| 3 | zxing-wasm | S | doing | - | web/package.json web/package-lock.json web/src/third-party/** |
 | 4 | Docker images | M | todo | - | compose*.yaml infra/** |
 | 5 | GitHub Actions | S | todo | - | .github/workflows/** |
 <!-- /progress-block -->

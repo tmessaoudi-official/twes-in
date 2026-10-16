@@ -785,7 +785,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | yocto-queue | 0.1.0 | MIT | dev |
 | yoctocolors | 2.2.0 | MIT | dev |
 | zod | 4.6.6 | MIT | runtime |
-| zxing-wasm | 3.1.4 | MIT | runtime |
+| zxing-wasm | 3.1.5 | MIT | runtime |
 
 ## Vendored fonts — 2
 
@@ -796,7 +796,7 @@ Shipped unmodified, each with its licence text in the same directory.
 | web/public/fonts/inter | OFL-1.1 | inter-latin-ext-wght-normal.woff2, inter-latin-wght-normal.woff2 |
 | web/public/fonts/manrope | OFL-1.1 | manrope-latin-ext-wght-normal.woff2, manrope-latin-wght-normal.woff2 |
 
-## Compiled into zxing-wasm 3.1.4 — dist/reader/zxing_reader.wasm
+## Compiled into zxing-wasm 3.1.5 — dist/reader/zxing_reader.wasm
 
 The package's lock entry names its own licence only. What its WebAssembly compiles in, as audited from that tarball
 (`web/src/third-party/zxing-reader/COMPONENTS.json`); each licence text ships beside the wasm.
