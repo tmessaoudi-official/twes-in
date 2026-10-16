@@ -96,7 +96,7 @@ real publish workflow.
   developer rules the review's proposals). 3f, per the 15:54 entries: Me's company gains closedDownAt/retainUntil/reopenUntil; « Fermer l'entreprise » (kind
   définitif à terme, the company's name typed, kept apart from « Clôture » of a period); a closed status wins over access; reads plus
   accounting.export only; a `company_closed` interceptor; the shell read-only with a banner; e2e on a company the operator creates.
-  Proposed, to be ruled: the data erasure is final after its delay too (its banner says « Définitif le … »), so its preview would
+  Ruled § 7 2026-10-16 17:40: the data erasure is final after its delay too (its banner says « Définitif le … »), so its preview would
   move to the shared dialog with `definitif_a_terme` and the company's name typed (the 17:01 entry already asks a typed word for it).
   Budget: about 1.5 kB left on the first page, and the `company_closed` interceptor sits in `app.config`: measure before and after
   with the stats walk, lazy-load what it pulls in.
