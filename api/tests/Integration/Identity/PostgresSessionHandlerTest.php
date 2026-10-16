@@ -185,7 +185,7 @@ final class PostgresSessionHandlerTest extends KernelTestCase
     private function sessionBackends(): array
     {
         $statement = $this->connection()->prepare("SELECT pid FROM pg_stat_activity WHERE application_name = 'twes-session' AND datname = current_database() ORDER BY pid");
-        for ($attempt = 0; $attempt < 20; ++$attempt) {
+        foreach (range(1, 20) as $attempt) {
             $statement->execute();
             $pids = [];
             foreach ($statement->fetchAll(\PDO::FETCH_COLUMN) as $pid) {
