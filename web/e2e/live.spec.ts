@@ -84,14 +84,19 @@ test('a change made in one tab reaches a list open in another without a reload',
   ).toBe(true);
 });
 
-/** Saves the customer numbered `number` from `page` through the API, changing `changes`, as another person would. */
+/**
+ * Saves the customer numbered `number` from `page` through the API, changing `changes`, as another person would. Given
+ * a tab's name, the save claims to come from that tab, whose page then takes the announcement for its own echo and
+ * never hears of it.
+ */
 async function reviseCustomer(
   page: Page,
   number: string,
   changes: Record<string, unknown>,
+  tab?: string,
 ): Promise<void> {
   await page.evaluate(
-    async ([csrf, customerNumber, fields]) => {
+    async ([csrf, customerNumber, fields, asTab]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
       // The list is paged: the customer is found by its number, then read whole as the single record it is.
       const customerNumbered = async (company: string, wanted: string) => {
@@ -112,12 +117,16 @@ async function reviseCustomer(
       const { id, ...saved } = found;
       const revised = await fetch(`${base}/${id}`, {
         method: 'PUT',
-        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        headers: {
+          'content-type': 'application/json',
+          'csrf-token': csrf,
+          ...(asTab === undefined ? {} : { 'X-Tab': asTab }),
+        },
         body: JSON.stringify({ ...saved, ...fields }),
       });
       if (!revised.ok) throw new Error(`revising ${customerNumber} answered ${revised.status}`);
     },
-    [CSRF, number, changes] as const,
+    [CSRF, number, changes, tab] as const,
   );
 }
 
@@ -130,6 +139,11 @@ test('an open customer takes what another person saved, and keeps what is being 
   const watcher = await (await browser.newContext()).newPage();
   await signIn(writer);
   await signIn(watcher);
+  // The watcher's tab is named in memory only; its requests carry the name.
+  let watcherTab: string | undefined;
+  watcher.on('request', (request) => {
+    watcherTab = request.headers()['x-tab'] ?? watcherTab;
+  });
 
   await watcher.goto('/customers/new');
   await watcher.getByTestId('field-number').fill(number);
@@ -157,6 +171,24 @@ test('an open customer takes what another person saved, and keeps what is being 
     await watcher.getByTestId('field-take-theirs-name').click();
     await expect(watcher.getByTestId('field-name')).toHaveValue(`Theirs ${run}`);
     await expect(watcher.getByTestId('field-conflict-name')).toHaveCount(0);
+
+    // The form now stands on the version it merged: a change typed over it is saved, not refused.
+    await watcher.getByTestId('field-email').fill(`live-${run.toLowerCase()}@example.tn`);
+    await watcher.getByTestId('record-save').click();
+    await expect(toast(watcher)).toContainText('Le client a été enregistré.');
+
+    // A save whose announcement never reached this tab: the next save here is refused, what it changed is merged,
+    // what is typed stays, and saving again goes through.
+    expect(watcherTab).toBeDefined();
+    await reviseCustomer(writer, number, { phone: '71000003' }, watcherTab);
+    await watcher.getByTestId('field-name').fill(`Again ${run}`);
+    await watcher.getByTestId('record-save').click();
+    await expect(toast(watcher)).toContainText('Rien n’a été enregistré');
+    await expect(watcher.getByTestId('field-phone')).toHaveValue('71000003');
+    await expect(watcher.getByTestId('field-name')).toHaveValue(`Again ${run}`);
+    await watcher.getByTestId('record-save').click();
+    await expect(toast(watcher)).toContainText('Le client a été enregistré.');
+    await expect(watcher.getByTestId('field-phone')).toHaveValue('71000003');
 
     expect(
       await watcher.evaluate(() => (window as unknown as { liveMarker?: boolean }).liveMarker),
