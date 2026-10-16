@@ -35,6 +35,15 @@ is out and held.
    Read 2026-10-16 20:31: `actions/checkout@v7` (latest v7.0.1) and `actions/upload-artifact@v7` (latest v7.0.2), the
    only two, are on their latest major, which their tags follow: nothing moves. Pinning by commit is the tool audit's to weigh.
 
+## Completion note
+- Certified by CI only, never run locally: the full e2e (`stock-map.spec.ts:429` included), the production images, the
+  deploy check and the staging check, all green on 3d0767f9 (six workflows of six).
+- Certified locally: `make gate` (API 3,256 tests, web 3,495, licences, budgets), the six Label in Name mutants killed,
+  the before and after captures identical to the pixel.
+- Step 5 confirmed currency only: `actions/checkout@v7` and `actions/upload-artifact@v7` are the majors of the latest
+  releases (v7.0.1, v7.0.2, `gh release list` 2026-10-16); no commit was needed. Pinning by tag rather than by commit is
+  the tool audit's finding D-2.
+
 ## Status
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
