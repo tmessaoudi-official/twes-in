@@ -20,6 +20,7 @@ import type {
   ProductBarcodesProductBarcodesWriteValidationProductBarcodesWrite as ProductBarcodesProductBarcodesWrite,
   ProductProductRead,
   ProductReferencePreviewProductReferencePreviewRead,
+  ProductProductWriteRecordReviseValidationProductWriteRecordRevise as ProductProductRevise,
   ProductProductWriteValidationProductWrite as ProductProductWrite,
   ProductScanProductScanRead,
   ProductCostChangeProductCostChangeRead,
@@ -28,6 +29,7 @@ import type {
   StockTotalStockTotalRead,
   ProductLabelProductLabelRead,
 } from '../api/types.gen';
+import { isRecordChanged } from '../shared/errors/record-changed';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import { apiRangeKey } from '../shared/list/list-filters';
@@ -198,11 +200,18 @@ export class ProductsApi {
     );
   }
 
-  async reviseProduct(companyId: string, id: string, input: ProductInput): Promise<ProductRow> {
+  /** `version` is the one the form was opened at: a later one saved elsewhere answers `record_changed`. */
+  async reviseProduct(
+    companyId: string,
+    id: string,
+    input: ProductInput,
+    version: number | null,
+  ): Promise<ProductRow> {
+    const body: ProductProductRevise = { ...toProductBody(input), version };
     return this.saving(async () =>
       toProduct(
         await firstValueFrom(
-          this.http.put<ProductProductRead>(path(companyId, 'products', id), toProductBody(input)),
+          this.http.put<ProductProductRead>(path(companyId, 'products', id), body),
         ),
       ),
     );
@@ -513,7 +522,7 @@ function codeOf(error: unknown, conflict: ProductsError): ProductsError {
     case 404:
       return 'not_found';
     case 409:
-      return conflict;
+      return isRecordChanged(error.error) ? 'record_changed' : conflict;
     default:
       return 'invalid';
   }
@@ -569,6 +578,8 @@ function toSearchParams(search: ProductSearch): HttpParams {
 function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductRow {
   return {
     id: raw.id ?? '',
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
     reference: raw.reference ?? '',
     name: raw.name ?? '',
     description: raw.description ?? null,

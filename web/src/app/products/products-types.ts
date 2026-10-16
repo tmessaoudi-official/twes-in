@@ -10,7 +10,8 @@ export type ProductsError =
   | 'name_taken'
   | 'in_use'
   | 'invalid'
-  | 'barcode_taken';
+  | 'barcode_taken'
+  | 'record_changed';
 
 export type ProductKind = 'goods' | 'service';
 export const PRODUCT_KINDS: readonly ProductKind[] = ['goods', 'service'];
@@ -41,6 +42,8 @@ export interface ProductSearch {
 
 export interface ProductRow {
   id: string;
+  /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
+  version: number;
   reference: string;
   name: string;
   description: string | null;
@@ -105,7 +108,7 @@ export function trackingOf(value: string): ProductTracking {
 export const LOT_CODE_PATTERN = /^[\x21-\x7E]{1,40}$/;
 
 /** What a save sends: the main photo is the gallery's to say, never the form's. */
-export type ProductInput = Omit<ProductRow, 'id' | 'barcodes' | 'mainPhotoId'>;
+export type ProductInput = Omit<ProductRow, 'id' | 'version' | 'barcodes' | 'mainPhotoId'>;
 
 /**
  * What a code stands for (docs/SPEC.md § 7, 2026-09-22 11:05): the piece it is sold by, a pack entering several at

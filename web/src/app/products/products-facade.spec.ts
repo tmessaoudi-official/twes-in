@@ -45,6 +45,7 @@ const input: ProductInput = {
 const laptop: ProductRow = {
   ...input,
   id: 'p1',
+  version: 1,
   unitPriceNet: '1250.0000',
   barcodes: [],
   mainPhotoId: null,
@@ -192,7 +193,7 @@ describe('ProductsFacade', () => {
     expect(facade.product()).toEqual(laptop);
 
     api.reviseProduct.mockRejectedValueOnce(new ProductsRefused('reference_taken'));
-    expect(await facade.reviseProduct('c1', 'p1', input)).toBeNull();
+    expect(await facade.reviseProduct('c1', 'p1', input, 1)).toBeNull();
     expect(facade.error()).toBe('reference_taken');
 
     facade.clearError();
@@ -206,7 +207,7 @@ describe('ProductsFacade', () => {
     expect(facade.refusals()).toEqual([unit]);
 
     api.reviseProduct.mockResolvedValueOnce(laptop);
-    await facade.reviseProduct('c1', 'p1', input);
+    await facade.reviseProduct('c1', 'p1', input, 1);
     expect(facade.refusals()).toEqual([]);
   });
 

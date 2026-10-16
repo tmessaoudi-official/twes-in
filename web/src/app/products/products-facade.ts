@@ -135,8 +135,9 @@ export class ProductsFacade {
     companyId: string,
     id: string,
     input: ProductInput,
+    version: number | null,
   ): Promise<ProductRow | null> {
-    return this.save(() => this.api.reviseProduct(companyId, id, input));
+    return this.save(() => this.api.reviseProduct(companyId, id, input, version));
   }
 
   async createCategory(companyId: string, input: ProductCategoryInput): Promise<boolean> {

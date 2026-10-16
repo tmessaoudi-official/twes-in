@@ -27,6 +27,7 @@ use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\CreateProduct
 use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\ReviseProductProcessor;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Provider\ProductCollectionProvider;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Provider\ProductItemProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -81,8 +82,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: self::NORMALIZATION,
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
     ],
 )]
@@ -100,6 +101,12 @@ final class ProductResource
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
     public ?string $id = null;
+
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
 
     /**
      * Letters, digits and . _ / -, up to 32 characters, unique in the company. Left empty on a new product, it is given
@@ -197,6 +204,7 @@ final class ProductResource
         $details = $product->getDetails();
         $resource = new self();
         $resource->id = $product->getId()->toRfc4122();
+        $resource->version = $product->getVersion();
         $resource->reference = $product->getReference();
         $resource->name = $details->name;
         $resource->description = $details->description;

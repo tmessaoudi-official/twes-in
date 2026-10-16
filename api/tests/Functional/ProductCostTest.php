@@ -88,7 +88,7 @@ final class ProductCostTest extends ApiTestCase
     {
         $this->signedIn(['product.read', 'product.write']);
 
-        $this->sendJson('PUT', $this->path(), $this->body(['name' => 'Vis 6x40 zinguée', 'costPrice' => '5']));
+        $this->sendJson('PUT', $this->path(), $this->body(['version' => 1, 'name' => 'Vis 6x40 zinguée', 'costPrice' => '5']));
 
         self::assertResponseIsSuccessful();
         self::assertNull($this->json()['costPrice']);

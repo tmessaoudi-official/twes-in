@@ -856,7 +856,7 @@ final class InventoryTest extends ApiTestCase
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($hour);
         self::assertNotNull($piece);
-        $laptop = ['reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $hour->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'barcodes' => [], 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true];
+        $laptop = ['version' => 1, 'reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $hour->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'barcodes' => [], 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true];
 
         foreach (['unitId' => $laptop, 'kind' => [...$laptop, 'unitId' => $piece->getId()->toRfc4122(), 'kind' => 'service']] as $field => $body) {
             $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.$this->laptopId, $body);
@@ -907,22 +907,22 @@ final class InventoryTest extends ApiTestCase
 
         $this->getJson($products.'/'.$this->laptopId);
         self::assertSame('none', $this->json()['tracking']);
-        $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'tracking' => 'serial']);
+        $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'version' => $this->versionOf($this->laptopId), 'tracking' => 'serial']);
         self::assertResponseIsSuccessful();
         self::assertSame('serial', $this->json()['tracking']);
-        $this->sendJson('PUT', $products.'/'.$this->laptopId, $laptop);
+        $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'version' => $this->versionOf($this->laptopId)]);
         self::assertSame('serial', $this->json()['tracking'], 'a body without tracking keeps it');
-        $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'tracking' => 'batch']);
+        $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'version' => $this->versionOf($this->laptopId), 'tracking' => 'batch']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
 
         $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '1', 'lotCode' => 'SN-0001']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'tracking' => 'lot']);
+        $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'version' => $this->versionOf($this->laptopId), 'tracking' => 'lot']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('tracking', (string) $this->client->getResponse()->getContent());
         self::assertSame('serial', $this->em()->getConnection()->fetchOne('SELECT tracking FROM product WHERE id = ?', [$this->laptopId]));
 
-        $this->sendJson('PUT', $products.'/'.$this->supportId, [...$laptop, 'reference' => 'SRV-001', 'name' => 'Assistance', 'kind' => 'service', 'unitPriceNet' => '50', 'tracking' => 'lot']);
+        $this->sendJson('PUT', $products.'/'.$this->supportId, [...$laptop, 'version' => $this->versionOf($this->supportId), 'reference' => 'SRV-001', 'name' => 'Assistance', 'kind' => 'service', 'unitPriceNet' => '50', 'tracking' => 'lot']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a service tracks nothing');
     }
 
@@ -932,7 +932,7 @@ final class InventoryTest extends ApiTestCase
         $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.$this->laptopId, ['reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $piece->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true, 'tracking' => 'lot']);
+        $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.$this->laptopId, ['version' => 1, 'reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $piece->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true, 'tracking' => 'lot']);
         self::assertResponseIsSuccessful();
         $receipt = ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId()];
         foreach ([['L-2408', '4'], ['L-2409', '2'], ['L-2408', '1']] as [$lot, $quantity]) {
@@ -956,7 +956,7 @@ final class InventoryTest extends ApiTestCase
         $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.$this->laptopId, ['reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $piece->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true, 'tracking' => 'lot']);
+        $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.$this->laptopId, ['version' => 1, 'reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $piece->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true, 'tracking' => 'lot']);
         self::assertResponseIsSuccessful();
         $site = $this->defaultLocationId();
         $receipt = ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site];
@@ -1479,7 +1479,7 @@ final class InventoryTest extends ApiTestCase
         // Goods that left before any arrived: the level falls below zero, as a delivery may make it.
         $this->em()->persist(StockMovement::delivery($cable, $siteLocation, '2', Uuid::v7(), $now));
         $this->em()->flush();
-        $this->sendJson('PUT', '/api/companies/'.$company->getId()->toRfc4122().'/products/'.$this->laptopId, ['reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true, 'tracking' => 'lot']);
+        $this->sendJson('PUT', '/api/companies/'.$company->getId()->toRfc4122().'/products/'.$this->laptopId, ['version' => 1, 'reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true, 'tracking' => 'lot']);
         self::assertResponseIsSuccessful();
         $today = new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone()));
         $day = static fn (string $shift): string => $today->modify($shift)->format('Y-m-d');
@@ -1564,5 +1564,14 @@ final class InventoryTest extends ApiTestCase
         $this->createUser('stock@twes.local', 'password-1234', $this->company, $permissions, 'member');
         $this->login('stock@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
+    }
+
+    /** The version a product is stored at, which a revision of it sends back. */
+    private function versionOf(string $productId): int
+    {
+        $version = $this->em()->getConnection()->fetchOne('SELECT version FROM product WHERE id = ?', [$productId]);
+        self::assertIsInt($version);
+
+        return $version;
     }
 }
