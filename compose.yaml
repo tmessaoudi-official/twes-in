@@ -64,6 +64,8 @@ services:
     volumes:
       # Stored files (issued PDFs) outlive the container.
       - api-files:/app/var/files
+      # So do the rate limiters' counters and the scheduler's last runs, or a redeploy resets every budget.
+      - api-share:/app/var/share
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -104,6 +106,7 @@ services:
     environment: *api-environment
     volumes:
       - api-files:/app/var/files
+      - api-share:/app/var/share
     # The image's check asks the web server, which this container does not run. The consumer is process 1 (the
     # entrypoint execs it), so this says it is still running; `up --wait` needs a check to wait on.
     healthcheck:
@@ -264,5 +267,6 @@ services:
 volumes:
   postgres-data:
   api-files:
+  api-share:
   # The lan service's local certificate authority, kept so a phone that trusted its root keeps trusting it.
   lan-data:

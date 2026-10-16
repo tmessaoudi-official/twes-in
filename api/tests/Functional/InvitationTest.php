@@ -127,6 +127,31 @@ final class InvitationTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testOneClientOpeningLinkAfterLinkIsTurnedAwayPastItsBudget(): void
+    {
+        for ($i = 0; $i < 20; ++$i) {
+            $this->getJson('/api/invitations/'.str_repeat('a', 63).dechex($i % 16));
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        }
+
+        $this->getJson('/api/invitations/'.str_repeat('b', 64));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+    }
+
+    public function testAcceptingSpendsTheSameBudgetAndIsRefusedBeforeTheLinkIsRead(): void
+    {
+        $token = $this->inviteAndReadTheToken();
+        for ($i = 0; $i < 20; ++$i) {
+            $this->getJson('/api/invitations/'.str_repeat('a', 64));
+        }
+
+        $this->postJson('/api/invitations/'.$token.'/accept', ['displayName' => 'New Person', 'password' => self::PASSWORD]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertNull($this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('stranger@twes.local')]), 'nothing was accepted');
+    }
+
     public function testAcceptingCreatesTheAccountAndJoinsTheCompany(): void
     {
         $token = $this->inviteAndReadTheToken();

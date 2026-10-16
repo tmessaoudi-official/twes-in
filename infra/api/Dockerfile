@@ -97,9 +97,9 @@ RUN composer dump-autoload --no-dev --classmap-authoritative \
 # The server runs as a user of its own, as FrankenPHP's documentation describes: a flaw in PHP, Caddy or the code then
 # reaches what that user may touch, not the whole container. The base image already lets frankenphp bind port 80 (its
 # file capability). The user owns Caddy's data and config and var/, where the cache, the logs and the stored files are
-# written; var/files exists here so a new volume mounted on it starts owned by the user too.
+# written; var/files and var/share exist here so a new volume mounted on either starts owned by the user too.
 RUN useradd --system --uid 10001 --user-group --no-create-home --shell /usr/sbin/nologin twes \
- && mkdir -p var/files \
+ && mkdir -p var/files var/share \
  && chown -R twes:twes /data/caddy /config/caddy var
 USER twes
 
