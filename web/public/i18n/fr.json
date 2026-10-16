@@ -1985,6 +1985,9 @@
       "validate_title": "Valider ce bon ?",
       "validate_message": "Il reçoit son numéro et ses lignes ne se modifient plus.",
       "confirm_validate": "Valider",
+      "validate_deliver": "Valider et livrer",
+      "validate_deliver_title": "Valider et livrer ce bon ?",
+      "validate_deliver_message": "Il reçoit son numéro et il est livré aujourd’hui.",
       "on_map": "Voir sur le plan"
     },
     "errors": {
@@ -1995,6 +1998,7 @@
       "customer_unavailable": "Ce client a été désactivé depuis : choisissez-en un autre, ou réactivez-le dans sa fiche."
     },
     "validated": "Le bon a été validé.",
+    "validated_delivered": "Le bon a été validé et livré.",
     "cancelled": "Le bon a été annulé.",
     "suggest": {
       "invoice": "Facturer ce bon"

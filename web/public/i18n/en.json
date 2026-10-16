@@ -1985,6 +1985,9 @@
       "validate_title": "Validate this note?",
       "validate_message": "It receives its number and its lines no longer change.",
       "confirm_validate": "Validate",
+      "validate_deliver": "Validate and deliver",
+      "validate_deliver_title": "Validate and deliver this note?",
+      "validate_deliver_message": "It receives its number and is delivered today.",
       "on_map": "See on the plan"
     },
     "errors": {
@@ -1995,6 +1998,7 @@
       "customer_unavailable": "This customer has been deactivated since: choose another, or reactivate it on its record."
     },
     "validated": "The note was validated.",
+    "validated_delivered": "The note was validated and delivered.",
     "cancelled": "The note was cancelled.",
     "suggest": {
       "invoice": "Invoice this note"

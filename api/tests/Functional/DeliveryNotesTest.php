@@ -222,6 +222,48 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    // docs/SPEC.md § 7, 2026-09-21 17:25: the step people want to skip is an action doing both moves, not a setting.
+    public function testAValidatorValidatesAndDeliversADraftInOneStep(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $id = $this->draftWithALine();
+
+        $this->postJson($this->path($id).'/validate-and-deliver', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $note = $this->json();
+        self::assertSame(['delivered', $today, $today], [$note['status'], $note['issueDate'], $note['deliveryDate']]);
+        self::assertMatchesRegularExpression('/^BL-\d{4}-\d{2}-00001$/', $this->stringAt($note, 'number'));
+        $actions = $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE action IN ('delivery_note.validated', 'delivery_note.delivered') ORDER BY action");
+        self::assertSame(['delivery_note.delivered', 'delivery_note.validated'], $actions);
+
+        $this->postJson($this->path($id).'/validate-and-deliver', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a note is numbered once');
+        $this->postJson($this->path(), $this->note());
+        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/validate-and-deliver', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a note without a line is not validated');
+        $this->postJson($this->path(self::ABSENT).'/validate-and-deliver', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testValidatingAndDeliveringNeedsBothPermissions(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write']);
+        $id = $this->draftWithALine();
+        $this->postJson($this->path($id).'/validate-and-deliver', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'validating needs delivery_note.validate');
+
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
+        $this->createUser('validator@twes.local', 'password-1234', $company, ['delivery_note.read', 'delivery_note.validate'], 'validator');
+        $this->login('validator@twes.local', 'password-1234');
+        $this->postJson($this->path($id).'/validate-and-deliver', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'delivering needs delivery_note.write');
+
+        $this->getJson($this->path($id));
+        self::assertSame(['draft', null], [$this->json()['status'], $this->json()['number']]);
+    }
+
     public function testAWriterDraftsButNeitherValidatesNorCancels(): void
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write']);

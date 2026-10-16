@@ -63,21 +63,32 @@ final readonly class DeliveryNoteWorkflow
      */
     public function validate(Company $company, Uuid $id, ?Uuid $actorUserId): DeliveryNote
     {
-        $note = $this->transactions->run(function () use ($company, $id, $actorUserId): DeliveryNote {
-            // Held until this transaction ends and read as it stands, before the series: a request that read the draft
-            // before another validated it is refused here, and takes no number.
-            $note = $this->locked($company, $id);
-            $note->assertDraft('is validated');
-            $allocated = $this->numbers->allocate($company, $note->getEstablishment(), self::DOCUMENT_TYPE);
-            if ($this->notes->numberTaken($company->getId(), $allocated->number)) {
-                throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()));
-            }
-            $note->validate($allocated->number, $allocated->issueDate, DeliveryNotePrinting::today($this->settings, $note), $this->clock->now());
-            $this->totals->checked($note);
-            $this->notes->save($note);
-            $this->record($company, $note, self::VALIDATED, ['number' => $allocated->number], $actorUserId);
+        // Held until this transaction ends and read as it stands, before the series: a request that read the draft
+        // before another validated it is refused here, and takes no number.
+        $note = $this->transactions->run(fn (): DeliveryNote => $this->numbered($company, $this->locked($company, $id), $actorUserId));
+        $this->events->publish(...$note->releaseEvents());
 
-            return $note;
+        return $note;
+    }
+
+    /**
+     * Numbers a draft and marks it delivered now, in one transaction recording both moves: the two steps a shop that
+     * hands the goods over as it writes the note would otherwise take one after the other. Either both happen or none.
+     *
+     * @throws DeliveryNoteNotFound
+     * @throws DeliveryNoteNotDraft
+     * @throws InvalidDeliveryNote
+     * @throws NoNumberingSeries
+     * @throws InvalidNumbering
+     * @throws DeliveryNoteNumberTaken
+     * @throws DeliveryNoteTransitionRefused
+     */
+    public function validateAndDeliver(Company $company, Uuid $id, ?Uuid $actorUserId): DeliveryNote
+    {
+        $note = $this->transactions->run(function () use ($company, $id, $actorUserId): DeliveryNote {
+            $note = $this->numbered($company, $this->locked($company, $id), $actorUserId);
+
+            return $this->delivered($company, $note, null, $actorUserId);
         });
         $this->events->publish(...$note->releaseEvents());
 
@@ -93,16 +104,7 @@ final readonly class DeliveryNoteWorkflow
      */
     public function deliver(Company $company, Uuid $id, ?\DateTimeImmutable $deliveredOn, ?Uuid $actorUserId): DeliveryNote
     {
-        $note = $this->transactions->run(function () use ($company, $id, $deliveredOn, $actorUserId): DeliveryNote {
-            $note = $this->locked($company, $id);
-            $now = $this->clock->now();
-            $today = new \DateTimeImmutable($now->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'), new \DateTimeZone('UTC'));
-            $note->deliver($deliveredOn ?? $today, $today, $now);
-            $this->notes->save($note);
-            $this->record($company, $note, self::DELIVERED, ['deliveryDate' => $note->getHeader()->deliveryDate?->format('Y-m-d')], $actorUserId);
-
-            return $note;
-        });
+        $note = $this->transactions->run(fn (): DeliveryNote => $this->delivered($company, $this->locked($company, $id), $deliveredOn, $actorUserId));
         $this->events->publish(...$note->releaseEvents());
 
         return $note;
@@ -129,6 +131,32 @@ final readonly class DeliveryNoteWorkflow
             return $note;
         });
         $this->events->publish(...$note->releaseEvents());
+
+        return $note;
+    }
+
+    private function numbered(Company $company, DeliveryNote $note, ?Uuid $actorUserId): DeliveryNote
+    {
+        $note->assertDraft('is validated');
+        $allocated = $this->numbers->allocate($company, $note->getEstablishment(), self::DOCUMENT_TYPE);
+        if ($this->notes->numberTaken($company->getId(), $allocated->number)) {
+            throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()));
+        }
+        $note->validate($allocated->number, $allocated->issueDate, DeliveryNotePrinting::today($this->settings, $note), $this->clock->now());
+        $this->totals->checked($note);
+        $this->notes->save($note);
+        $this->record($company, $note, self::VALIDATED, ['number' => $allocated->number], $actorUserId);
+
+        return $note;
+    }
+
+    private function delivered(Company $company, DeliveryNote $note, ?\DateTimeImmutable $deliveredOn, ?Uuid $actorUserId): DeliveryNote
+    {
+        $now = $this->clock->now();
+        $today = new \DateTimeImmutable($now->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'), new \DateTimeZone('UTC'));
+        $note->deliver($deliveredOn ?? $today, $today, $now);
+        $this->notes->save($note);
+        $this->record($company, $note, self::DELIVERED, ['deliveryDate' => $note->getHeader()->deliveryDate?->format('Y-m-d')], $actorUserId);
 
         return $note;
     }

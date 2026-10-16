@@ -168,6 +168,18 @@ export class DeliveryNotesFacade {
     });
   }
 
+  /** Saves what is on screen, then numbers it and marks it delivered today in one step. */
+  async reviseValidateAndDeliver(
+    companyId: string,
+    id: string,
+    input: DeliveryNoteInput,
+  ): Promise<DeliveryNoteRow | null> {
+    return this.step(async () => {
+      this.noteSignal.set(await this.api.revise(companyId, id, input));
+      return this.api.validateAndDeliver(companyId, id);
+    });
+  }
+
   /** Delivered on the day given, or on the company's today when none is. */
   async deliver(
     companyId: string,

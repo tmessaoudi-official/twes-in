@@ -55,6 +55,7 @@ describe('DeliveryNotesFacade', () => {
     create: vi.fn(),
     revise: vi.fn(),
     validate: vi.fn(),
+    validateAndDeliver: vi.fn(),
     deliver: vi.fn(),
     cancel: vi.fn(),
     invoice: vi.fn(),
@@ -167,6 +168,22 @@ describe('DeliveryNotesFacade', () => {
     expect(await facade.reviseAndValidate('c1', 'n1', input)).toBeNull();
     expect(facade.error()).toBe('conflict');
     expect(facade.note()).toEqual(draft);
+  });
+
+  it('saves what is on screen, then validates and delivers it in one step', async () => {
+    const delivered = { ...draft, status: 'delivered' as const, number: 'BL-2026-00001' };
+    api.revise.mockResolvedValue(draft);
+    api.validateAndDeliver.mockResolvedValue(delivered);
+    expect(await facade.reviseValidateAndDeliver('c1', 'n1', input)).toEqual(delivered);
+    expect(api.revise).toHaveBeenCalledWith('c1', 'n1', input);
+    expect(api.validateAndDeliver).toHaveBeenCalledWith('c1', 'n1');
+    expect(facade.note()).toEqual(delivered);
+
+    api.validateAndDeliver.mockClear();
+    api.revise.mockRejectedValue(new DeliveryNotesRefused('invalid'));
+    expect(await facade.reviseValidateAndDeliver('c1', 'n1', input)).toBeNull();
+    expect(api.validateAndDeliver).not.toHaveBeenCalled();
+    expect(facade.error()).toBe('invalid');
   });
   it('answers the id of the invoice drafted from a note, or null with the reason', async () => {
     api.invoice.mockResolvedValue('i7');

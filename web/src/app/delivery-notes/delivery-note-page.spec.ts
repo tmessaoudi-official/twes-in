@@ -154,6 +154,7 @@ describe('DeliveryNotePage', () => {
     create: vi.fn(),
     revise: vi.fn(),
     reviseAndValidate: vi.fn(),
+    reviseValidateAndDeliver: vi.fn(),
     deliver: vi.fn(),
     cancel: vi.fn(),
     invoice: vi.fn(),
@@ -285,6 +286,9 @@ describe('DeliveryNotePage', () => {
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'n9' });
     facade.revise.mockReset().mockResolvedValue(draft);
     facade.reviseAndValidate.mockReset().mockResolvedValue(validated);
+    facade.reviseValidateAndDeliver
+      .mockReset()
+      .mockResolvedValue({ ...validated, status: 'delivered' });
     facade.deliver.mockReset().mockResolvedValue({ ...validated, status: 'delivered' });
     facade.cancel.mockReset().mockResolvedValue({ ...validated, status: 'cancelled' });
     TestBed.configureTestingModule({
@@ -750,6 +754,40 @@ describe('DeliveryNotePage', () => {
     await vi.waitFor(() =>
       expect(effectToasts()).toEqual(['delivery_notes.validated:corrigeable']),
     );
+  });
+
+  // docs/SPEC.md § 7, 2026-09-21 17:25: the step people skip is one action doing both moves, beside the two.
+  it('validates and delivers what is on screen in one step, asked first', async () => {
+    note.set(draft);
+    await open('n1');
+    expect(q('document-action-validate')).not.toBeNull();
+    type('line-0-quantity', '5');
+    q('document-action-validate-deliver')!.click();
+    await settle();
+    expect(facade.reviseValidateAndDeliver).not.toHaveBeenCalled();
+    expect(over('confirm-run')?.textContent).toContain('delivery_notes.actions.validate_deliver');
+    over('confirm-run')!.click();
+    await settle();
+    expect(facade.reviseValidateAndDeliver).toHaveBeenCalledWith(
+      'c1',
+      'n1',
+      expect.objectContaining({ lines: [expect.objectContaining({ quantity: '5' })] }),
+    );
+    expect(facade.reviseAndValidate).not.toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(effectToasts()).toEqual(['delivery_notes.validated_delivered:corrigeable']),
+    );
+  });
+
+  it('offers validating and delivering only to whoever may do both, on a draft', async () => {
+    note.set(draft);
+    granted.delete('delivery_note.validate');
+    await open('n1');
+    expect(q('document-action-validate-deliver')).toBeNull();
+    granted.add('delivery_note.validate');
+    note.set(validated);
+    await settle();
+    expect(q('document-action-validate-deliver')).toBeNull();
   });
 
   it('counts what is typed on a note, so leaving it asks first (RCH-01)', async () => {
