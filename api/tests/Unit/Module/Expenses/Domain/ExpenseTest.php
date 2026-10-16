@@ -22,8 +22,8 @@ use App\Module\Expenses\Domain\ValueObject\ExpenseStatus;
 use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
-use App\Shared\Domain\PaymentMethod;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\TestCase;
 
 final class ExpenseTest extends TestCase

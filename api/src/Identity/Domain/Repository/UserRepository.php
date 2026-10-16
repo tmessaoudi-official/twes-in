@@ -12,8 +12,8 @@ namespace App\Identity\Domain\Repository;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\AccountSearch;
 use App\Identity\Domain\ValueObject\Email;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface UserRepository

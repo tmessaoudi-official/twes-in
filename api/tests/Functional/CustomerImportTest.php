@@ -23,7 +23,7 @@ use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutWriter;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;

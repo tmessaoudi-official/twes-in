@@ -25,12 +25,12 @@ use App\Module\Expenses\Domain\ValueObject\ExpenseStatus;
 use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Shared\Domain\PaymentMethod;
-use App\Shared\Domain\PostalAddress;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyProfile;
+use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 

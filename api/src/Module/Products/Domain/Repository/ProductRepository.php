@@ -14,8 +14,8 @@ use App\Module\Products\Domain\Model\ProductBarcode;
 use App\Module\Products\Domain\ValueObject\Barcode;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductSearch;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface ProductRepository

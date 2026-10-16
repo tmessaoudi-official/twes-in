@@ -17,7 +17,7 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Invoices\Application\Chain\ChainBreak;
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
 use App\Module\Invoices\Application\Chain\VerifyInvoiceChains;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Component\HttpFoundation\Response;

@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Customers\Infrastructure\Import;
 
 use App\Module\Customers\Domain\Model\Customer;
-use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\Model\PostalAddress;
 
 /**
  * A customer as a file writes it, column by column, the way the import reads it back: what the export writes, and

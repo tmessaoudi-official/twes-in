@@ -11,7 +11,7 @@ namespace App\Tests\Unit\Module\Customers\Domain;
 
 use App\Module\Customers\Domain\Exception\InvalidCustomerGroup;
 use App\Module\Customers\Domain\Model\CustomerGroup;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\TestCase;
 
 final class CustomerGroupTest extends TestCase

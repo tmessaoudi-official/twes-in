@@ -14,7 +14,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Recurring\Application\RecurringModel;
 use App\Module\Recurring\Application\RecurringModels;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

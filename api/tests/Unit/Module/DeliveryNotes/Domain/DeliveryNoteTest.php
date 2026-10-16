@@ -33,10 +33,10 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
-use App\Shared\Domain\PostalAddress;
-use App\Shared\Domain\PrintSettings;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryTaxComponents;
@@ -95,14 +95,14 @@ final class DeliveryNoteTest extends TestCase
 
     public function testValidatingFreezesTheSellerAsTheNotePrintsIt(): void
     {
-        $this->company->reviseProfile(new \App\Tenancy\Domain\CompanyProfile(legalName: 'Acme SARL', addressLine1: '10 rue de Marseille', city: 'Tunis'));
+        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme SARL', addressLine1: '10 rue de Marseille', city: 'Tunis'));
         $note = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [
             new DeliveryNoteLineDetails(null, 'Pose', '1', $this->unit('C62'), '40', []),
         ], $this->now);
         self::assertNull($note->getSellerSnapshot(), 'a draft prints the seller as it is today');
 
         $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $this->now);
-        $this->company->reviseProfile(new \App\Tenancy\Domain\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
+        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
 
         self::assertSame(['Acme SARL', 'Tunis'], [$note->getSellerSnapshot()?->name, $note->getSellerSnapshot()?->address->city]);
     }

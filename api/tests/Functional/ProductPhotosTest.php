@@ -12,7 +12,7 @@ namespace App\Tests\Functional;
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\MakesPictures;
 use Symfony\Component\HttpFoundation\Response;
 

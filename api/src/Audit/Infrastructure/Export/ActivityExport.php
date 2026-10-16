@@ -14,8 +14,8 @@ use App\Audit\Infrastructure\ApiPlatform\Payload\ActivitySearchReader;
 use App\Audit\Infrastructure\ApiPlatform\Security\AuditPermission;
 use App\ImportExport\Application\DeclaresExport;
 use App\ImportExport\Application\ExportQuery;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The activity journal as a file (docs/SPEC.md § 7, 2026-09-26 23:04), under the filters its screen shows and within

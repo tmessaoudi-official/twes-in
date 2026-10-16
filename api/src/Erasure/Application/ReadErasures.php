@@ -12,7 +12,7 @@ namespace App\Erasure\Application;
 use App\Erasure\Domain\Model\DataErasure;
 use App\Erasure\Domain\Repository\DataErasureRepository;
 use App\Identity\Application\StepUp\StepUpRequired;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

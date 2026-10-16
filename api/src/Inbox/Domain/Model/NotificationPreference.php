@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Inbox\Domain\Model;
 
 use App\Identity\Domain\Model\User;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 

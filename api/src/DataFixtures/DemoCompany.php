@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
-use App\Tenancy\Domain\CompanyProfile;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 
 /**
  * One demo company as data: who it is and what it keeps. `DemoCompanies` writes it through the use cases; nothing

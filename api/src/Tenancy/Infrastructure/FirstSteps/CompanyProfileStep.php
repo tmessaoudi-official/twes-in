@@ -12,8 +12,8 @@ namespace App\Tenancy\Infrastructure\FirstSteps;
 use App\FirstSteps\Application\DeclaresFirstStep;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Tenancy\Application\Company\SellerIdentity;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyProfileResource;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyProfileResource;
 
 /**
  * « Profil et matricule »: what every document prints about the company — its legal name, its address, and each

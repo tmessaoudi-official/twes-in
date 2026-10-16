@@ -21,7 +21,7 @@ use App\Module\PriceLists\Domain\Model\PriceListItem;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\InMemoryCustomers;
 use App\Tests\Support\InMemoryPriceLists;
 use PHPUnit\Framework\TestCase;

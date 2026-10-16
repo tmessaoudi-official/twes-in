@@ -18,9 +18,9 @@ use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\Module\Vendors\Domain\ValueObject\VendorSearch;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

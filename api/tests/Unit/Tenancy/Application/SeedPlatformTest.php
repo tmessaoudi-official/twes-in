@@ -19,7 +19,7 @@ use App\Tenancy\Application\Seed\InvalidOperatorTotpSecret;
 use App\Tenancy\Application\Seed\OperatorPasswordRequired;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Application\Seed\SeedRequest;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Role;
 use App\Tests\Support\InMemoryCompanies;
 use App\Tests\Support\InMemoryCustomerTaxRegimes;
 use App\Tests\Support\InMemoryMemberships;
@@ -148,7 +148,7 @@ final class SeedPlatformTest extends TestCase
 
     public function testACustomCompanyRoleWithABuiltInNameIsNotTouched(): void
     {
-        $company = new \App\Tenancy\Domain\Company('Other', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new \App\Tenancy\Domain\Model\Company('Other', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $custom = new Role(Role::ADMIN, ['company.read'], $company, new \DateTimeImmutable());
         $this->roles->save($custom);
 
@@ -195,7 +195,7 @@ final class SeedPlatformTest extends TestCase
     public function testEveryCompanyCreatedBeforeTheFiscalPresetsGetsItsTaxesAndUnitsOnTheNextRun(): void
     {
         // The migration records a preset for every existing company but cannot read the preset files.
-        $other = new \App\Tenancy\Domain\Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $other = new \App\Tenancy\Domain\Model\Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->companies->save($other);
 
         $created = $this->seed->seed($this->request(password: 'secret'));
@@ -210,7 +210,7 @@ final class SeedPlatformTest extends TestCase
 
     public function testACompanySeededBeforeTheFiscalPresetsGetsItsTaxesOnTheNextRun(): void
     {
-        $this->companies->save(new \App\Tenancy\Domain\Company('Seeded', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+        $this->companies->save(new \App\Tenancy\Domain\Model\Company('Seeded', 'TN', 'TND', 'fr', 'Africa/Tunis'));
 
         $created = $this->seed->seed($this->request(password: 'secret'));
 

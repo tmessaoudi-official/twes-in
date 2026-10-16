@@ -27,8 +27,8 @@ use App\Module\Invoices\Domain\Repository\CustomerCreditRepository;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\PaymentMethod;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

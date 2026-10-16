@@ -11,7 +11,7 @@ namespace App\Tests\Unit\Files\Application;
 
 use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\InMemoryFileStorage;
 use App\Tests\Support\InMemoryStoredFiles;
 use PHPUnit\Framework\TestCase;

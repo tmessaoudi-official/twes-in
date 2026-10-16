@@ -11,8 +11,8 @@ namespace App\Module\Products\Domain\Model;
 
 use App\Files\Domain\Model\StoredFile;
 use App\Module\Products\Domain\ValueObject\PhotoSize;
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;

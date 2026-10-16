@@ -16,7 +16,7 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\CostChangeSource;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryProductCostChanges;

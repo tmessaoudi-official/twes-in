@@ -12,7 +12,7 @@ namespace App\Tests\Unit\Files\Application;
 use App\Files\Application\AttachmentRefused;
 use App\Files\Application\Attachments;
 use App\Files\Application\Files;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\InMemoryAttachments;
 use App\Tests\Support\InMemoryFileStorage;
 use App\Tests\Support\InMemoryStoredFiles;

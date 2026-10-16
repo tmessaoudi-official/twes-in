@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Application;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Shared\Application\MonthSoFar;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Psr\Clock\ClockInterface;
 

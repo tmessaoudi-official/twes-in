@@ -10,12 +10,12 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\Http;
 
 use App\Identity\Application\StepUp\StepUpRequired;
-use App\Tenancy\Application\Company\CloseDownCompany;
-use App\Tenancy\Application\Company\NotClosedDown;
-use App\Tenancy\Application\Company\OwnerOnly;
-use App\Tenancy\Application\Company\ReopenPeriodOver;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Application\Closing\CloseDownCompany;
+use App\Tenancy\Application\Closing\NotClosedDown;
+use App\Tenancy\Application\Closing\ReopenPeriodOver;
+use App\Tenancy\Application\Member\OwnerOnly;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;

@@ -42,8 +42,8 @@ use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\Customers\Infrastructure\ApiPlatform\Resource\CustomerResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
-use App\Shared\Domain\PostalAddress;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Model\PostalAddress;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

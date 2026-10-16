@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Tenancy\Domain;
 
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyProfile;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 

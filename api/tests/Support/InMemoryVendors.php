@@ -12,8 +12,8 @@ namespace App\Tests\Support;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\Module\Vendors\Domain\ValueObject\VendorSearch;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryVendors implements VendorRepository

@@ -15,11 +15,11 @@ use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\Module\RecurringExpenses\Application\ManageRecurringExpenses;
 use App\Module\RecurringExpenses\Application\RecurringExpenseNotFound;
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\Resource\RecurringExpenseResource;
-use App\Shared\Domain\InvalidSchedule;
-use App\Shared\Infrastructure\ApiPlatform\DomainRule;
-use App\Shared\Infrastructure\ApiPlatform\RequestedSchedule;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Domain\Exception\InvalidSchedule;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RequestedSchedule;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProcessorInterface<RecurringExpenseResource, RecurringExpenseResource> */

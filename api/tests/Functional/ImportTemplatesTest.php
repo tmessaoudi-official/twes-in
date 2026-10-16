@@ -18,8 +18,8 @@ use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutReader;
 use App\Tenancy\Application\Seed\SeedPlatform;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Role;
 use Symfony\Component\HttpFoundation\Response;
 
 /** The empty file a person fills in to import customers (docs/SPEC.md § 7, 2026-09-17). */

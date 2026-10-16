@@ -14,8 +14,8 @@ use App\Identity\Domain\Repository\UserRepository;
 use App\Inbox\Domain\Model\NotificationPreference;
 use App\Inbox\Domain\Repository\NotificationPreferenceRepository;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Domain\CompanyRepository;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**

@@ -11,8 +11,8 @@ namespace App\Module\DeliveryNotes\Domain\Repository;
 
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteSearch;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface DeliveryNoteRepository

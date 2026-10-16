@@ -20,9 +20,9 @@ use App\Module\Customers\Domain\ValueObject\CustomerSearch;
 use App\Module\Customers\Infrastructure\ApiPlatform\Payload\CustomerSearchReader;
 use App\Module\Customers\Infrastructure\ApiPlatform\Resource\CustomerResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * One page of a company's customers, searched, narrowed and sorted in the database (docs/SPEC.md § 7, lists at scale).

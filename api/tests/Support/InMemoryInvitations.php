@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Tenancy\Domain\Invitation;
-use App\Tenancy\Domain\InvitationRepository;
+use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Repository\InvitationRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryInvitations implements InvitationRepository

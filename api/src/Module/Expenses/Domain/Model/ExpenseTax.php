@@ -11,8 +11,8 @@ namespace App\Module\Expenses\Domain\Model;
 
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\ValueObject\TaxKind;
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;

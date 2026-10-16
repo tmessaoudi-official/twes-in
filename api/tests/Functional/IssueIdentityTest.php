@@ -16,9 +16,9 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
-use App\Shared\Domain\PostalAddress;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyProfile;
+use App\Shared\Domain\Model\PostalAddress;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

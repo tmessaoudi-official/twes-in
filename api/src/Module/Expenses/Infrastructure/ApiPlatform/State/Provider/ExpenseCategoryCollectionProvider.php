@@ -14,8 +14,8 @@ use ApiPlatform\State\ProviderInterface;
 use App\Module\Expenses\Application\ManageExpenseCategories;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Resource\ExpenseCategoryResource;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<ExpenseCategoryResource> */
 final readonly class ExpenseCategoryCollectionProvider implements ProviderInterface

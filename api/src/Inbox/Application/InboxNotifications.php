@@ -15,9 +15,9 @@ use App\Inbox\Domain\Repository\InboxRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\RealtimePublisher;
-use App\Tenancy\Domain\CompanyRepository;
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

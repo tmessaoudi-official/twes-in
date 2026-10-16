@@ -21,9 +21,9 @@ use App\Module\Vendors\Infrastructure\Import\VendorImport;
 use App\Module\Vendors\Infrastructure\Import\VendorInFile;
 use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * The vendors list as a file, under the columns the import reads (docs/SPEC.md § 7, row 60), so what a company exports

@@ -13,7 +13,7 @@ use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
 use App\Module\Scanning\Domain\Exception\ScanPairingRefused;
 use App\Module\Scanning\Domain\Model\ScanPairing;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 

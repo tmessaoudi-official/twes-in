@@ -17,8 +17,8 @@ use App\Module\Expenses\Application\ManageExpenses;
 use App\Module\Expenses\Domain\Exception\ExpenseTransitionRefused;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Resource\ExpenseAttachmentResource;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 

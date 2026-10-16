@@ -13,7 +13,7 @@ use App\Inbox\Application\DeclaresNotificationKinds;
 use App\Inbox\Application\NotificationAudience;
 use App\Inbox\Application\NotificationKind;
 use App\Licensing\Application\ManagePayments;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Role;
 
 /**
  * A payment declared tells the operators, who decide it; how it was decided tells the company's owners. Both have a

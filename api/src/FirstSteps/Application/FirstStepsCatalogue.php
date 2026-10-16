@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\FirstSteps\Application;
 
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /** Every context's first step, collected once (docs/SPEC.md § 3, the same shape as settings, imports and watches). */

@@ -17,7 +17,7 @@ use App\Settings\Application\UnknownSetting;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Infrastructure\ApiPlatform\Payload\SettingKey;
 use App\Settings\Infrastructure\ApiPlatform\Security\SettingAccess;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;

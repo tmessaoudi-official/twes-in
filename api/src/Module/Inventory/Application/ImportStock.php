@@ -18,8 +18,8 @@ use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\EstablishmentRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 

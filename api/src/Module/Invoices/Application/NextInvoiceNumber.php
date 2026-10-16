@@ -14,8 +14,8 @@ use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Tenancy\Application\Numbering\NextNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\InvalidNumbering;
+use App\Tenancy\Domain\Exception\InvalidNumbering;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Products\Domain\Model;
 
 use App\Module\Products\Domain\ValueObject\CostChangeSource;
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;

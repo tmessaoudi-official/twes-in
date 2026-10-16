@@ -14,7 +14,7 @@ use App\Tenancy\Application\Company\CompanyNameTaken;
 use App\Tenancy\Application\Company\CreateCompany;
 use App\Tenancy\Application\Company\NewCompany;
 use App\Tenancy\Application\Company\NoFiscalPreset;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCompanies;

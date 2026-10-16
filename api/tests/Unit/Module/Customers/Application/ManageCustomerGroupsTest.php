@@ -20,7 +20,7 @@ use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomerGroups;

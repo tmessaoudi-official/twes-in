@@ -17,9 +17,9 @@ use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Shared\Infrastructure\ApiPlatform\DomainRule;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /** @implements ProcessorInterface<ProductResource, ProductResource> */

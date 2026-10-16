@@ -15,8 +15,8 @@ use App\Module\Customers\Application\ManageCustomerGroups;
 use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Module\Customers\Infrastructure\ApiPlatform\Resource\CustomerGroupResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<CustomerGroupResource> */
 final readonly class CustomerGroupCollectionProvider implements ProviderInterface

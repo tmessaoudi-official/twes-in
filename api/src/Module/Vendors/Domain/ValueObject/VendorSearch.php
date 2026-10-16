@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Vendors\Domain\ValueObject;
 
-use App\Shared\Domain\DateRange;
+use App\Shared\Domain\ValueObject\DateRange;
 
 /**
  * What a vendors list asks for (docs/SPEC.md § 7, lists at scale, and 2026-10-06 00:15): words found in the number,

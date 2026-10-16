@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Doctrine;
 
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

@@ -25,7 +25,7 @@ use App\ImportExport\Application\RunImport;
 use App\ImportExport\Application\UnreadableImport;
 use App\ImportExport\Domain\Model\ImportRun;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

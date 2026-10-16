@@ -11,8 +11,8 @@ namespace App\Module\Inventory\Application;
 
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**

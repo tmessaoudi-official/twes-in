@@ -20,8 +20,8 @@ use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Module\Products\Infrastructure\Import\ProductImport;
 use App\Module\Products\Infrastructure\Import\ProductInFile;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The products list as a file, under the columns the import reads (docs/SPEC.md § 7, row 60), so what a company exports

@@ -36,7 +36,7 @@ use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\RecordExpense
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\ReviseExpenseProcessor;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Provider\ExpenseCollectionProvider;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Provider\ExpenseItemProvider;
-use App\Shared\Domain\PaymentMethod;
+use App\Shared\Domain\ValueObject\PaymentMethod;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;

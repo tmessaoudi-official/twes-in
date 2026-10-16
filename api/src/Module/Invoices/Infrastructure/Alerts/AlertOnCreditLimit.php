@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Infrastructure\Alerts;
 use App\Module\Invoices\Application\Credit\TellCreditWatchers;
 use App\Module\Invoices\Domain\Event\InvoiceIssued;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
-use App\Tenancy\Domain\CompanyRepository;
+use App\Tenancy\Domain\Repository\CompanyRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 

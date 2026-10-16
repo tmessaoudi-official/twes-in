@@ -13,8 +13,8 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Invoices\Domain\Model\PaymentInstrument;
 use App\Module\Invoices\Domain\Repository\PaymentInstrumentRepository;
 use App\Module\Invoices\Domain\ValueObject\InstrumentPortfolioSearch;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryPaymentInstruments implements PaymentInstrumentRepository

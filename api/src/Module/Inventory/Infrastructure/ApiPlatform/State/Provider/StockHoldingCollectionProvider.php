@@ -15,8 +15,8 @@ use App\Module\Inventory\Application\StockMap\DrawStockMap;
 use App\Module\Inventory\Application\StockMap\FindOnMap;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockHoldingResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Venue\Application\VenueAreaNotFound;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 

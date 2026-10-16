@@ -15,7 +15,7 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Infrastructure\ApiPlatform\Resource\SettingResource;
 use App\Settings\Infrastructure\ApiPlatform\Security\SettingAccess;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /** @implements ProviderInterface<SettingResource> */

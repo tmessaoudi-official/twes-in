@@ -12,12 +12,12 @@ namespace App\Tenancy\Application\Numbering;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\InvalidNumbering;
-use App\Tenancy\Domain\NumberFormat;
-use App\Tenancy\Domain\NumberingSeries;
-use App\Tenancy\Domain\NumberingSeriesRepository;
-use App\Tenancy\Domain\ResetPeriod;
+use App\Tenancy\Domain\Exception\InvalidNumbering;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\NumberingSeries;
+use App\Tenancy\Domain\Repository\NumberingSeriesRepository;
+use App\Tenancy\Domain\ValueObject\NumberFormat;
+use App\Tenancy\Domain\ValueObject\ResetPeriod;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

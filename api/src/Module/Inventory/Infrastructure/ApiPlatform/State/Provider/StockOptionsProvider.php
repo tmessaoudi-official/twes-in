@@ -18,10 +18,10 @@ use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockOptionsResourc
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\EstablishmentRepository;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<StockOptionsResource> */
 final readonly class StockOptionsProvider implements ProviderInterface

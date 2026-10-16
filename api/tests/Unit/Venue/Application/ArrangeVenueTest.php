@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Venue\Application;
 
 use App\Audit\Application\AuditEntry;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;

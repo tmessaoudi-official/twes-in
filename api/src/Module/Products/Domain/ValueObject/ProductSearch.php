@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Domain\ValueObject;
 
-use App\Shared\Domain\DecimalRange;
+use App\Shared\Domain\ValueObject\DecimalRange;
 use Symfony\Component\Uid\Uuid;
 
 /**

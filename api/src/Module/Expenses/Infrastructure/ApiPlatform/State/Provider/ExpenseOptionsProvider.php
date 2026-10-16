@@ -20,8 +20,8 @@ use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Resource\ExpenseOptionsResource;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Resource\ExpenseResource;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<ExpenseOptionsResource> */
 final readonly class ExpenseOptionsProvider implements ProviderInterface

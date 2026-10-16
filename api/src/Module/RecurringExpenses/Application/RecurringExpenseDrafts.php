@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\RecurringExpenses\Application;
 
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /** Drafting an occurrence: a copy of the model as a new draft expense, which the expenses write and audit. */

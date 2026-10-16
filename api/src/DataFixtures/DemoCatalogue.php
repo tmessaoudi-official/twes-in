@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
-use App\Tenancy\Domain\CompanyProfile;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 
 /**
  * The two demo companies: a Tunisian consultancy that also sells office equipment, and a French cabinetmaker's

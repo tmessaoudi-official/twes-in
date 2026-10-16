@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Module\Customers\Domain\ValueObject;
 
 use App\Module\Customers\Domain\Exception\InvalidCustomer;
-use App\Shared\Domain\ContactRules;
-use App\Shared\Domain\PostalAddress;
-use App\Shared\Domain\Refusal;
-use App\Shared\Domain\RegistrationNumbers;
+use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\Service\ContactRules;
+use App\Shared\Domain\Service\RegistrationNumbers;
+use App\Shared\Domain\ValueObject\Refusal;
 use BcMath\Number;
 
 /**

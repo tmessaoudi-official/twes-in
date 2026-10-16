@@ -15,8 +15,8 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Tenancy\Application\Support\SupportAccess;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Membership;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Membership;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\Response;
 

@@ -14,10 +14,10 @@ use App\Tenancy\Application\Establishment\EstablishmentCodeTaken;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\EstablishmentNotFound;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\InvalidEstablishment;
-use App\Tenancy\Domain\NumberingSeries;
+use App\Tenancy\Domain\Exception\InvalidEstablishment;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Model\NumberingSeries;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
@@ -67,7 +67,7 @@ final class ManageEstablishmentsTest extends TestCase
     {
         $default = $this->manage->list($this->company)[0];
         $invoices = $this->seriesOf($default, 'invoice');
-        $invoices->revise(new \App\Tenancy\Domain\NumberFormat('F{EST}{YY}-{SEQ:4}'), $invoices->getResetPeriod(), 40, new \DateTimeImmutable());
+        $invoices->revise(new \App\Tenancy\Domain\ValueObject\NumberFormat('F{EST}{YY}-{SEQ:4}'), $invoices->getResetPeriod(), 40, new \DateTimeImmutable());
 
         $sfax = $this->manage->create($this->company, self::details('001', 'Agence de Sfax', city: 'Sfax'), null);
 
@@ -86,7 +86,7 @@ final class ManageEstablishmentsTest extends TestCase
     {
         $default = $this->manage->list($this->company)[0];
         $invoices = $this->seriesOf($default, 'invoice');
-        $invoices->revise(new \App\Tenancy\Domain\NumberFormat('FAC-{YYYY}-{SEQ:5}'), $invoices->getResetPeriod(), 1, new \DateTimeImmutable());
+        $invoices->revise(new \App\Tenancy\Domain\ValueObject\NumberFormat('FAC-{YYYY}-{SEQ:5}'), $invoices->getResetPeriod(), 1, new \DateTimeImmutable());
 
         $sfax = $this->manage->create($this->company, self::details('001', 'Agence de Sfax', city: 'Sfax'), null);
 

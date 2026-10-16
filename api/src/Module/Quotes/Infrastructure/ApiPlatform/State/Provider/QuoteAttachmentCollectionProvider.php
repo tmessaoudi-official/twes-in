@@ -15,8 +15,8 @@ use App\Module\Quotes\Application\ManageQuotes;
 use App\Module\Quotes\Application\QuoteNotFound;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteAttachmentResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProviderInterface<QuoteAttachmentResource> */

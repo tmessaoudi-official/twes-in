@@ -15,9 +15,9 @@ use App\Module\Quotes\Application\ManageQuotes;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Payload\QuoteSearchReader;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteStatusCountsResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<QuoteStatusCountsResource> */
 final readonly class QuoteStatusCountsProvider implements ProviderInterface

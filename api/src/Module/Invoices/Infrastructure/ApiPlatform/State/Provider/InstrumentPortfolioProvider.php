@@ -17,9 +17,9 @@ use App\Module\Invoices\Domain\ValueObject\InstrumentPortfolioSearch;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Payload\InstrumentPortfolioSearchReader;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InstrumentPortfolioRowResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * One page of the company's cheques and traites, narrowed by status and sorted in the database (docs/SPEC.md § 7, lists

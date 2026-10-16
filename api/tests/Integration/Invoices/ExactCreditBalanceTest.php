@@ -17,7 +17,7 @@ use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\Invoices\Domain\Repository\CustomerCreditRepository;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 

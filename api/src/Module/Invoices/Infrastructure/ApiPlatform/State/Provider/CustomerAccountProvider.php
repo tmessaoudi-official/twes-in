@@ -16,8 +16,8 @@ use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
 use App\Module\Invoices\Application\Credit\ReadCustomerAccount;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\CustomerAccountResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProviderInterface<CustomerAccountResource> */

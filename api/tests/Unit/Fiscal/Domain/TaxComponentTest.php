@@ -13,7 +13,7 @@ use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Fiscal\Domain\ValueObject\TaxKind;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

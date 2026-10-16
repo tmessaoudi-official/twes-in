@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Tenancy\Domain;
 
 use App\Identity\Domain\ValueObject\Email;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Invitation;
-use App\Tenancy\Domain\InvitationToken;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\ValueObject\InvitationToken;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 

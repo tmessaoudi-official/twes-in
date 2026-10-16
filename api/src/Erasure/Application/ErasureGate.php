@@ -11,9 +11,9 @@ namespace App\Erasure\Application;
 
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**

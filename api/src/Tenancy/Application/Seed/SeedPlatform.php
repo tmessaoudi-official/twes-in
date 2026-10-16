@@ -17,13 +17,13 @@ use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\Email;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyRepository;
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\Permission;
-use App\Tenancy\Domain\Role;
-use App\Tenancy\Domain\RoleRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
+use App\Tenancy\Domain\Repository\RoleRepository;
+use App\Tenancy\Domain\ValueObject\Permission;
 use Psr\Clock\ClockInterface;
 
 /**

@@ -13,8 +13,8 @@ use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\Quotes\Domain\Model\Quote;
-use App\Shared\Domain\DocumentDesign;
-use App\Tenancy\Domain\SellerSnapshot;
+use App\Shared\Domain\ValueObject\DocumentDesign;
+use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 
 /**
  * What a printed quote shows: the quote, its figures, its customer and seller as the quote names them (as they were

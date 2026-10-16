@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\EstablishmentRepository;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryEstablishments implements EstablishmentRepository

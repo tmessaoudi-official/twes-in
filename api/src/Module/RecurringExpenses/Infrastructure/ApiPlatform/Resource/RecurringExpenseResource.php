@@ -23,8 +23,8 @@ use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Processor\Dele
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Processor\ReviseRecurringExpenseProcessor;
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Provider\RecurringExpenseCollectionProvider;
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Provider\RecurringExpenseItemProvider;
-use App\Shared\Infrastructure\ApiPlatform\RequestedSchedule;
-use App\Shared\Infrastructure\ApiPlatform\ScheduleRequest;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RequestedSchedule;
+use App\Shared\Infrastructure\ApiPlatform\Payload\ScheduleRequest;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 

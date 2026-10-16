@@ -6,8 +6,8 @@ api_platform:
         ApiPlatform\Metadata\Exception\InvalidArgumentException: 400
         Doctrine\ORM\OptimisticLockException: 409
         Doctrine\DBAL\Exception\UniqueConstraintViolationException: 422
-        App\Shared\Domain\InvalidFilter: 422
-        App\Tenancy\Domain\PeriodClosed: 422
+        App\Shared\Domain\Exception\InvalidFilter: 422
+        App\Tenancy\Domain\Exception\PeriodClosed: 422
     # A violation carries the reason a screen translates, and that text's parameters, from its constraint's payload:
     # a form and an import file then say the same refusal in the person's language, never in the API's English.
     validator:
@@ -17,7 +17,7 @@ api_platform:
     # Plain JSON in and out, except a list: a list is paged, and plain JSON has nowhere to say which page it is and how
     # many rows the list holds, so a collection operation answers Hydra (JSON-LD) with `totalItems` and `view`
     # (docs/SPEC.md § 7, lists at scale). JSON-LD is registered here and a collection operation names it as its only
-    # `outputFormats`; App\Shared\Infrastructure\ApiPlatform\JsonLdOnlyWhereNamed takes it off every other operation,
+    # `outputFormats`; App\Shared\Infrastructure\ApiPlatform\Metadata\JsonLdOnlyWhereNamed takes it off every other operation,
     # since a default format list would be merged into the operation's own rather than replace it. Docs formats keep the
     # OpenAPI JSON export and the HTML page.
     formats:

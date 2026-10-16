@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Module\Products\Domain\Model\ProductCategory;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

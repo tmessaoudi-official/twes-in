@@ -13,7 +13,7 @@ use App\DataFixtures\Scale\Rows;
 use App\DataFixtures\Scale\ScaleGenerator;
 use App\DataHealth\Infrastructure\CompanyReferences;
 use App\Module\Invoices\Application\Chain\VerifyInvoiceChains;
-use App\Tenancy\Domain\NumberingSeries;
+use App\Tenancy\Domain\Model\NumberingSeries;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\ApplicationTester;

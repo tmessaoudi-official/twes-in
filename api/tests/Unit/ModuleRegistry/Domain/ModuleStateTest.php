@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\ModuleRegistry\Domain;
 
 use App\ModuleRegistry\Domain\Model\ModuleState;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\TestCase;
 
 final class ModuleStateTest extends TestCase

@@ -21,8 +21,8 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Settings\Application\ReadSetting;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\SellerSnapshot;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 use Symfony\Component\Uid\Uuid;
 
 /**

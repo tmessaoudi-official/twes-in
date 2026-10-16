@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Domain\ValueObject;
 
-use App\Shared\Domain\DateRange;
-use App\Shared\Domain\DecimalRange;
+use App\Shared\Domain\ValueObject\DateRange;
+use App\Shared\Domain\ValueObject\DecimalRange;
 use Symfony\Component\Uid\Uuid;
 
 /**

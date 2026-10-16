@@ -11,8 +11,8 @@ namespace App\Module\Products\Infrastructure\Http;
 
 use App\Identity\Application\CustomerScreen\CustomerScreenLock;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;

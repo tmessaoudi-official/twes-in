@@ -16,8 +16,8 @@ use App\Module\Inventory\Application\ProductNotInCompany;
 use App\Module\Inventory\Domain\Model\ProductHomeLocation;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\ProductHomeResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProviderInterface<ProductHomeResource> */

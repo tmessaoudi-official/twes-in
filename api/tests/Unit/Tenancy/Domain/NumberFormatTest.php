@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Tenancy\Domain;
 
-use App\Tenancy\Domain\InvalidNumbering;
-use App\Tenancy\Domain\NumberFormat;
+use App\Tenancy\Domain\Exception\InvalidNumbering;
+use App\Tenancy\Domain\ValueObject\NumberFormat;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

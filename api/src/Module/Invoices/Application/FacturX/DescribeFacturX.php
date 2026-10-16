@@ -24,8 +24,8 @@ use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Domain\ValueObject\InvoiceFigures;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\SellerSnapshot;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 

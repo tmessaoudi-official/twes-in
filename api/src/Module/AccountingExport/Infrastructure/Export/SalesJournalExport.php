@@ -14,7 +14,7 @@ use App\ImportExport\Application\ExportQuery;
 use App\Module\AccountingExport\Application\SalesDocuments;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportModule;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportPermission;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The sales journal of a period: one row per tax each issued invoice and credit note carries, its base and amount, with

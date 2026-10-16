@@ -16,7 +16,7 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;

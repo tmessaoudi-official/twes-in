@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /** A company's units: listed by anyone who may read the fiscal setup, added and revised by whoever may write it. */

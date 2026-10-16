@@ -13,7 +13,7 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductPhotoRepository;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\BarcodeRole;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

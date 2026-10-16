@@ -11,8 +11,8 @@ namespace App\Module\Invoices\Domain\Repository;
 
 use App\Module\Invoices\Domain\Model\PaymentInstrument;
 use App\Module\Invoices\Domain\ValueObject\InstrumentPortfolioSearch;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 /** The cheques and traites received (docs/SPEC.md § 7, 2026-09-21 18:40). */

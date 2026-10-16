@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Domain;
 
-use App\Shared\Domain\InvalidSchedule;
-use App\Shared\Domain\Schedule;
-use App\Shared\Domain\ScheduleAnchor;
-use App\Shared\Domain\ScheduleUnit;
+use App\Shared\Domain\Exception\InvalidSchedule;
+use App\Shared\Domain\Model\Schedule;
+use App\Shared\Domain\ValueObject\ScheduleAnchor;
+use App\Shared\Domain\ValueObject\ScheduleUnit;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

@@ -15,8 +15,8 @@ use App\Module\Products\Application\Category\ManageProductCategories;
 use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductCategoryResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<ProductCategoryResource> */
 final readonly class ProductCategoryCollectionProvider implements ProviderInterface

@@ -17,9 +17,9 @@ use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceNextNumberResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
-use App\Tenancy\Domain\InvalidNumbering;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Domain\Exception\InvalidNumbering;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 

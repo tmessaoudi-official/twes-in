@@ -20,10 +20,10 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteOptionsResource;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\EstablishmentRepository;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<DeliveryNoteOptionsResource> */
 final readonly class DeliveryNoteOptionsProvider implements ProviderInterface

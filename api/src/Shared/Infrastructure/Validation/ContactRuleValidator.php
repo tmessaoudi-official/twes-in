@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Validation;
 
-use App\Shared\Domain\ContactRules;
-use App\Shared\Infrastructure\ApiPlatform\DomainRule;
+use App\Shared\Domain\Service\ContactRules;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;

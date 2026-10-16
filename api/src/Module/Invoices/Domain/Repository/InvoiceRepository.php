@@ -12,8 +12,8 @@ namespace App\Module\Invoices\Domain\Repository;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface InvoiceRepository

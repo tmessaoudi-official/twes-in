@@ -12,7 +12,7 @@ namespace App\Tests\Functional;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /** The expenses list exported as a file, under the search, status, vendor and order the screen shows (docs/SPEC.md § 7, row 60). */

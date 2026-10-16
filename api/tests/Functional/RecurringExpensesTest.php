@@ -14,7 +14,7 @@ use App\Module\RecurringExpenses\Application\RunRecurringExpenses;
 use App\Module\RecurringExpenses\Infrastructure\Scheduler\RunRecurringExpensesEveryHour;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Clock\NativeClock;

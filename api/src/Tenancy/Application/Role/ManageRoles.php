@@ -13,12 +13,12 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Permission\KnownPermissions;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\InvitationRepository;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\Permission;
-use App\Tenancy\Domain\Role;
-use App\Tenancy\Domain\RoleRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\InvitationRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
+use App\Tenancy\Domain\Repository\RoleRepository;
+use App\Tenancy\Domain\ValueObject\Permission;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

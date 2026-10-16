@@ -11,7 +11,7 @@ namespace App\Licensing\Infrastructure\ApiPlatform\Output;
 
 use ApiPlatform\Metadata\ApiProperty;
 use App\Licensing\Domain\ValueObject\Standing;
-use App\Tenancy\Infrastructure\ApiPlatform\PlatformCompanyResource;
+use App\Tenancy\Infrastructure\ApiPlatform\Resource\PlatformCompanyResource;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /** Where a company stands in its subscription, as the platform's company list shows it. */

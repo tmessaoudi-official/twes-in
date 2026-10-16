@@ -11,9 +11,9 @@ namespace App\Module\Customers\Infrastructure\ApiPlatform\Payload;
 
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerSearch;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\ListFilters;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The one reading of a customers list's query string, for the list and its CSV and Excel files, so that what the

@@ -15,8 +15,8 @@ use App\Fiscal\Application\TaxComponent\ManageTaxComponents;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Infrastructure\ApiPlatform\Resource\TaxComponentResource;
 use App\Fiscal\Infrastructure\ApiPlatform\Security\FiscalPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<TaxComponentResource> */
 final readonly class TaxComponentCollectionProvider implements ProviderInterface

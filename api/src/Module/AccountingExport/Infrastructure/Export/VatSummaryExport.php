@@ -17,7 +17,7 @@ use App\Module\AccountingExport\Application\PurchaseEntries;
 use App\Module\AccountingExport\Application\SalesDocuments;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportModule;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportPermission;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The VAT summary of a period: per tax on a rate, the base and the tax of the sales journal and of the purchases

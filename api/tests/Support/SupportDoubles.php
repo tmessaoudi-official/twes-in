@@ -17,7 +17,7 @@ use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Application\Support\RecordSupportVisit;
 use App\Tenancy\Application\Support\SupportAccess;
 use App\Tenancy\Application\Support\SupportVisits;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 

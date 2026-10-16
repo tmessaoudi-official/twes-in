@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Session;
 
-use App\Tenancy\Application\Company\NotAMember;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Application\Member\NotAMember;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**

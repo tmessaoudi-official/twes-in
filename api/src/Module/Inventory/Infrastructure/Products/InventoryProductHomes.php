@@ -16,7 +16,7 @@ use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Module\Products\Application\Stock\ProductHomes;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

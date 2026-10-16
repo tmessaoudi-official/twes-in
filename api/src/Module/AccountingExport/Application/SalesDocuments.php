@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\AccountingExport\Application;
 
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /** The invoices and credit notes a company issued in a period: the port the sales module answers. */
 interface SalesDocuments

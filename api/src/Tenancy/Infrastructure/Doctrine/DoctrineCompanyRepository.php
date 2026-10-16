@@ -9,15 +9,15 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Doctrine;
 
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyRepository;
-use App\Tenancy\Domain\CompanySearch;
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\ValueObject\CompanySearch;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;

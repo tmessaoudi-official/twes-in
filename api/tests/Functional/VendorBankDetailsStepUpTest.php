@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Clock\NativeClock;

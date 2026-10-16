@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Numbering;
 
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\InvalidNumbering;
-use App\Tenancy\Domain\NumberingSeriesRepository;
+use App\Tenancy\Domain\Exception\InvalidNumbering;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Repository\NumberingSeriesRepository;
 use Psr\Clock\ClockInterface;
 
 /**

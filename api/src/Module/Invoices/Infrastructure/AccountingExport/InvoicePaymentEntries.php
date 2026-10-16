@@ -13,7 +13,7 @@ use App\Module\AccountingExport\Application\JournalPeriod;
 use App\Module\AccountingExport\Application\PaymentEntries;
 use App\Module\AccountingExport\Application\PaymentEntry;
 use App\Module\Invoices\Domain\Model\Payment;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 
 /** The payments journal's entries: every payment the company recorded on an invoice, on the day it was received. */

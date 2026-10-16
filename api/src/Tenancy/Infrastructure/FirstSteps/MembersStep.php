@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\FirstSteps;
 
 use App\FirstSteps\Application\DeclaresFirstStep;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Infrastructure\ApiPlatform\MemberPermission;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
 use Doctrine\DBAL\Connection;
 
 /**

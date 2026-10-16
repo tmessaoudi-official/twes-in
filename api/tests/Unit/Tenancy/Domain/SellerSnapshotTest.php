@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Tenancy\Domain;
 
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyProfile;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\SellerSnapshot;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
+use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 use PHPUnit\Framework\TestCase;
 
 /** The seller as an issued document prints it, frozen at issue: a company that moves or renames later changes none. */

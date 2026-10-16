@@ -12,7 +12,7 @@ namespace App\Tenancy\Application\Support;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\SupportGrant;
+use App\Tenancy\Domain\Model\SupportGrant;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

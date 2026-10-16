@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Application;
 
 use App\Module\Customers\Domain\Model\Customer;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * A customer's account as a delivery weighs it: the credit limit that applies to them and what they owe. A port this

@@ -17,9 +17,9 @@ use App\Module\Inventory\Domain\Repository\ProductReorderPointRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\EstablishmentRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

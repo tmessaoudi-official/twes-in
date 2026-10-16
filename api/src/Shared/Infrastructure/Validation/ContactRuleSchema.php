@@ -11,7 +11,7 @@ namespace App\Shared\Infrastructure\Validation;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Symfony\Validator\Metadata\Property\Restriction\PropertySchemaRestrictionMetadataInterface;
-use App\Shared\Domain\ContactRules;
+use App\Shared\Domain\Service\ContactRules;
 use Symfony\Component\Validator\Constraint;
 
 /**

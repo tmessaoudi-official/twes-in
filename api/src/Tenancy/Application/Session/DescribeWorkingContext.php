@@ -13,8 +13,8 @@ use App\Shared\Application\CurrentCompany;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Application\Support\SupportAccess;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DescribeWorkingContext

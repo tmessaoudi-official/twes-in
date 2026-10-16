@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Session;
 
 use App\Shared\Application\CurrentCompany;
-use App\Tenancy\Application\Company\NotAMember;
+use App\Tenancy\Application\Member\NotAMember;
 use App\Tenancy\Application\Support\RecordSupportVisit;
 use App\Tenancy\Application\Support\SupportAccess;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

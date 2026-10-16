@@ -16,8 +16,8 @@ use App\Module\Customers\Application\ManageContacts;
 use App\Module\Customers\Domain\Exception\InvalidContact;
 use App\Module\Customers\Infrastructure\ApiPlatform\Resource\ContactResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 

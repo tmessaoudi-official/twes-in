@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Doctrine;
 
-use App\Tenancy\Domain\Role;
-use App\Tenancy\Domain\RoleRepository;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\RoleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

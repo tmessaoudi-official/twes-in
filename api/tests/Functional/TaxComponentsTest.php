@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 

@@ -14,7 +14,7 @@ use App\ImportExport\Application\ExportQuery;
 use App\Module\AccountingExport\Application\PaymentEntries;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportModule;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportPermission;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /** The payments journal of a period: one row per payment received on an invoice, on the day it was received. */
 final readonly class PaymentsJournalExport implements DeclaresExport

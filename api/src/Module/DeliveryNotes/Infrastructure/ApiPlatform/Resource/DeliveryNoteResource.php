@@ -39,7 +39,7 @@ use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\Validate
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\ValidateDeliveryNoteProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Provider\DeliveryNoteCollectionProvider;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Provider\DeliveryNoteItemProvider;
-use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\Model\PostalAddress;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;

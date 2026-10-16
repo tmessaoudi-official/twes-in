@@ -21,8 +21,8 @@ use App\Module\Products\Application\Stock\ProductStockRefused;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

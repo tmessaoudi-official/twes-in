@@ -18,7 +18,7 @@ use App\Module\AccountingExport\Application\SalesDocuments;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**

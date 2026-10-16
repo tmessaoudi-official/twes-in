@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Invitation;
 
 use App\Tenancy\Application\Company\CompanyNotFound;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyRepository;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -30,7 +30,7 @@ final readonly class InviteOwnerFromPlatform
     ) {
     }
 
-    /** @throws CompanyNotFound|CompanyHasOwners|\App\Tenancy\Application\Company\AlreadyAMember|\App\Tenancy\Application\Company\RoleNotManageable */
+    /** @throws CompanyNotFound|CompanyHasOwners|\App\Tenancy\Application\Member\AlreadyAMember|\App\Tenancy\Application\Member\RoleNotManageable */
     public function handle(Uuid $companyId, string $email, Uuid $operatorId): InviteOutcome
     {
         $company = $this->companies->ofId($companyId)

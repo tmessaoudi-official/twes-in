@@ -11,7 +11,7 @@ namespace App\Tests\Support;
 
 use App\Module\Products\Domain\Model\ProductReferenceSequence;
 use App\Module\Products\Domain\Repository\ProductReferenceSequenceRepository;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryProductReferenceSequences implements ProductReferenceSequenceRepository

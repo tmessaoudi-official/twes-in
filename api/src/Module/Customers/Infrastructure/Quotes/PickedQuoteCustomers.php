@@ -11,7 +11,7 @@ namespace App\Module\Customers\Infrastructure\Quotes;
 
 use App\Module\Customers\Application\PickCustomers;
 use App\Module\Quotes\Application\QuoteCustomers;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /** Answers the quotes module's `QuoteCustomers` port out of this module. */
 final readonly class PickedQuoteCustomers implements QuoteCustomers

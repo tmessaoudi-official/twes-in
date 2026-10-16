@@ -18,14 +18,14 @@ use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Application\Company\UnknownRole;
-use App\Tenancy\Domain\CompanyRepository;
-use App\Tenancy\Domain\Invitation;
-use App\Tenancy\Domain\InvitationRepository;
-use App\Tenancy\Domain\InvitationToken;
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Application\Member\UnknownRole;
+use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\Repository\InvitationRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
+use App\Tenancy\Domain\ValueObject\InvitationToken;
 use Psr\Clock\ClockInterface;
 
 /**

@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\ImportExport\Application;
 
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /** Every module's export declaration, collected once, the same shape as the imports. */

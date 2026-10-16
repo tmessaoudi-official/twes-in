@@ -15,7 +15,7 @@ use App\Module\Expenses\Domain\Repository\ExpenseRepository;
 use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
 use App\Module\Expenses\Domain\ValueObject\WithholdingOperation;
 use App\Module\Vendors\Domain\Model\Vendor;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The withholdings a Tunisian company operated on its suppliers in one month, as the TEJ platform takes them

@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Watch;
 
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Infrastructure\ApiPlatform\MemberPermission;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
 use App\Watch\Application\DeclaresWatch;
 use App\Watch\Application\WatchItem;
 use Doctrine\DBAL\Connection;

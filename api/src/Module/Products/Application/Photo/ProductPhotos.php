@@ -22,7 +22,7 @@ use App\Module\Products\Domain\Repository\ProductPhotoRepository;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\PhotoSize;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;

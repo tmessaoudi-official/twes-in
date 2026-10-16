@@ -12,8 +12,8 @@ namespace App\Tests\Unit\Fiscal\Application;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyProfile;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 

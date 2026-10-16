@@ -14,7 +14,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\OverpaymentProcessor;
-use App\Shared\Domain\PaymentMethod;
+use App\Shared\Domain\ValueObject\PaymentMethod;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 

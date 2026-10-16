@@ -18,7 +18,7 @@ use App\Module\Products\Domain\ValueObject\ReferenceFormat;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

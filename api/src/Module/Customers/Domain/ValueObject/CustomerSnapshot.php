@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Customers\Domain\ValueObject;
 
 use App\Module\Customers\Domain\Model\Customer;
-use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\Model\PostalAddress;
 
 /**
  * What a customer was called, where it was billed and under which tax regime, the day a note to it was validated

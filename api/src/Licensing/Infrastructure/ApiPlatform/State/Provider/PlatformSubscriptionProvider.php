@@ -15,7 +15,7 @@ use App\Licensing\Application\CompanyStandings;
 use App\Licensing\Application\ManageSubscriptions;
 use App\Licensing\Infrastructure\ApiPlatform\Resource\PlatformSubscriptionResource;
 use App\Tenancy\Application\Company\CompanyNotFound;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**

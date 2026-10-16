@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Role;
 use Doctrine\DBAL\Schema\Schema;
 use DoctrineMigrations\Version20261006100000;
 use Psr\Log\NullLogger;

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\AccountingExport\Application;
 
-use App\Shared\Domain\InvalidFilter;
+use App\Shared\Domain\Exception\InvalidFilter;
 
 /**
  * The days an accountant's file covers, both included, in order and no more than a year apart, so a file is always a

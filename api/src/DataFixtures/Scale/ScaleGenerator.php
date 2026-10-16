@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\DataFixtures\Scale;
 
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
-use App\Tenancy\Domain\NumberingSeries;
+use App\Tenancy\Domain\Model\NumberingSeries;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;

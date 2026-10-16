@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Signup;
 
 use App\Identity\Domain\Repository\UserRepository;
-use App\Tenancy\Domain\Signup;
-use App\Tenancy\Domain\SignupRepository;
-use App\Tenancy\Domain\SignupToken;
+use App\Tenancy\Domain\Model\Signup;
+use App\Tenancy\Domain\Repository\SignupRepository;
+use App\Tenancy\Domain\ValueObject\SignupToken;
 use Psr\Clock\ClockInterface;
 
 /**

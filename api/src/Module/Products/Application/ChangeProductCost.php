@@ -18,7 +18,7 @@ use App\Module\Products\Domain\Repository\ProductCostChangeRepository;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\CostChangeSource;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

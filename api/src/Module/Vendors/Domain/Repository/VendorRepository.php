@@ -11,8 +11,8 @@ namespace App\Module\Vendors\Domain\Repository;
 
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorSearch;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface VendorRepository

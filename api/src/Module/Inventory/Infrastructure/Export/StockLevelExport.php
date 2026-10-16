@@ -21,8 +21,8 @@ use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

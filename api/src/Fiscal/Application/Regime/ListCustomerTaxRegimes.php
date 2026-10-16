@@ -11,7 +11,7 @@ namespace App\Fiscal\Application\Regime;
 
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /** The regimes a company's customers may be under: those of the company's fiscal preset. */
 final readonly class ListCustomerTaxRegimes

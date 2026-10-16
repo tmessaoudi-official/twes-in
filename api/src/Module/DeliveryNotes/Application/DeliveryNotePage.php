@@ -13,8 +13,8 @@ use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
-use App\Shared\Domain\DocumentDesign;
-use App\Tenancy\Domain\SellerSnapshot;
+use App\Shared\Domain\ValueObject\DocumentDesign;
+use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 
 /**
  * What a printed delivery note shows: the note, its figures, its customer as the note names it (as it was the day the

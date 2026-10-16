@@ -18,7 +18,7 @@ use App\Module\Inventory\Domain\Model\ProductReorderPoint;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\ClearProductReorderPointProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\SetProductReorderPointProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Provider\ProductReorderPointCollectionProvider;
-use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\Model\Establishment;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 

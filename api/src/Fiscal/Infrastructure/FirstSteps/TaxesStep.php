@@ -12,7 +12,7 @@ namespace App\Fiscal\Infrastructure\FirstSteps;
 use App\FirstSteps\Application\DeclaresFirstStep;
 use App\Fiscal\Application\TaxComponent\ManageTaxComponents;
 use App\Fiscal\Infrastructure\ApiPlatform\Security\FiscalPermission;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Connection;
 
 /**

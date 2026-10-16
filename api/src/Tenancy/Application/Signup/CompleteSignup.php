@@ -20,15 +20,15 @@ use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNameTaken;
 use App\Tenancy\Application\Company\CreateCompany;
 use App\Tenancy\Application\Company\NewCompany;
-use App\Tenancy\Application\Company\UnknownRole;
 use App\Tenancy\Application\Invitation\AcceptInvitation;
 use App\Tenancy\Application\Invitation\PasswordBreached;
-use App\Tenancy\Domain\CompanyRepository;
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Domain\Role;
-use App\Tenancy\Domain\RoleRepository;
-use App\Tenancy\Domain\SignupRepository;
+use App\Tenancy\Application\Member\UnknownRole;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
+use App\Tenancy\Domain\Repository\RoleRepository;
+use App\Tenancy\Domain\Repository\SignupRepository;
 use Psr\Clock\ClockInterface;
 
 /**

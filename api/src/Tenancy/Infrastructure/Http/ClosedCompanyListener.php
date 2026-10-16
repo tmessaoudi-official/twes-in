@@ -11,9 +11,9 @@ namespace App\Tenancy\Infrastructure\Http;
 
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Shared\Infrastructure\Http\RoutedPath;
-use App\Tenancy\Domain\CompanyRepository;
-use App\Tenancy\Domain\MembershipRepository;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
+use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;

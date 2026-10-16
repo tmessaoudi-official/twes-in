@@ -12,8 +12,8 @@ namespace App\Tests\Support;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\Customers\Domain\ValueObject\CustomerSearch;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryCustomers implements CustomerRepository

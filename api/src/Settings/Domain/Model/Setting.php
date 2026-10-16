@@ -11,7 +11,7 @@ namespace App\Settings\Domain\Model;
 
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Settings\Domain\ValueObject\SettingLevel;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;

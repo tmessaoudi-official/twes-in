@@ -15,7 +15,7 @@ use App\Inbox\Application\NotificationCentre;
 use App\Inbox\Domain\Model\InboxItem;
 use App\Shared\Application\RealtimeTokens;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;

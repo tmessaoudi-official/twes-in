@@ -29,10 +29,10 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Shared\Domain\PaymentMethod;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

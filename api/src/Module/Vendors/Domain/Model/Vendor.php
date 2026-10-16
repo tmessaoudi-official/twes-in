@@ -11,9 +11,9 @@ namespace App\Module\Vendors\Domain\Model;
 
 use App\Module\Vendors\Domain\Exception\InvalidVendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
-use App\Shared\Domain\CompanyOwned;
-use App\Shared\Domain\PostalAddress;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;

@@ -14,7 +14,7 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ProductCategoriesTest extends ApiTestCase

@@ -14,9 +14,9 @@ use ApiPlatform\State\ProviderInterface;
 use App\Module\PriceLists\Application\OpenPromotions;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\Resource\CustomerScreenPromotionsResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Psr\Clock\ClockInterface;
 
 /** @implements ProviderInterface<CustomerScreenPromotionsResource> */

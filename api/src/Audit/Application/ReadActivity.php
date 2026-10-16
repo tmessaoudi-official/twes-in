@@ -11,9 +11,9 @@ namespace App\Audit\Application;
 
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 
 /**

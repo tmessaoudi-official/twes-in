@@ -11,8 +11,8 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform\Security;
 
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;
 

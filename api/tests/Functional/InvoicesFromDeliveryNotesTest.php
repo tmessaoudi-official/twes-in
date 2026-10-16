@@ -23,9 +23,9 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
-use App\Shared\Domain\PrintSettings;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\EstablishmentRepository;
+use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use Symfony\Component\HttpFoundation\Response;
 
 /** docs/SPEC.md § 7 (2026-09-14): an invoice drafted from delivery notes, and the notes it invoices once it is issued. */

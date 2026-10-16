@@ -15,8 +15,8 @@ use App\Module\DeliveryNotes\Application\DeliveryNoteNotFound;
 use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteLeftResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProviderInterface<DeliveryNoteLeftResource> */

@@ -21,7 +21,7 @@ use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Application\Company\CompanyLogo;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 

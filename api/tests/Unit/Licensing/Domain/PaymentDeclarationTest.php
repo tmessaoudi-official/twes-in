@@ -22,7 +22,7 @@ use App\Licensing\Domain\ValueObject\PeriodUnit;
 use App\Licensing\Domain\ValueObject\Stage;
 use App\Licensing\Domain\ValueObject\SubscriptionTerms;
 use App\Licensing\Domain\ValueObject\UnpaidMode;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

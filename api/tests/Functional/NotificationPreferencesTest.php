@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
 use App\Inbox\Domain\Model\InboxItem;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

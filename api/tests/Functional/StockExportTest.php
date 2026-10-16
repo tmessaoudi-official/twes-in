@@ -16,7 +16,7 @@ use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /** The stock levels and the stock movements lists exported as files, without any cost (docs/SPEC.md § 7, row 60). */

@@ -15,8 +15,8 @@ use App\Module\Vendors\Application\ManageVendors;
 use App\Module\Vendors\Application\VendorNotFound;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Resource\VendorResource;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Security\VendorPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProviderInterface<VendorResource> */

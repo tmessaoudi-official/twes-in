@@ -14,7 +14,7 @@ use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /** Answers the delivery notes' `InvoiceAnswer` port with the invoice resource this module answers everywhere else. */
 final readonly class InvoiceResourceAnswer implements InvoiceAnswer

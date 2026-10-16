@@ -11,8 +11,8 @@ namespace App\Module\Expenses\Domain\Repository;
 
 use App\Module\Expenses\Domain\Model\Expense;
 use App\Module\Expenses\Domain\ValueObject\ExpenseSearch;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface ExpenseRepository

@@ -14,7 +14,7 @@ use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

@@ -11,9 +11,9 @@ namespace App\Tenancy\Application\Signup;
 
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\Email;
-use App\Tenancy\Domain\Signup;
-use App\Tenancy\Domain\SignupRepository;
-use App\Tenancy\Domain\SignupToken;
+use App\Tenancy\Domain\Model\Signup;
+use App\Tenancy\Domain\Repository\SignupRepository;
+use App\Tenancy\Domain\ValueObject\SignupToken;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 

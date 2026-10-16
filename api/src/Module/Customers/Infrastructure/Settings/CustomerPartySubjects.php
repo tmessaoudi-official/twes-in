@@ -15,7 +15,7 @@ use App\Module\Customers\Infrastructure\Module\CustomersModule;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Settings\Application\PartySubject;
 use App\Settings\Application\PartySubjects;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

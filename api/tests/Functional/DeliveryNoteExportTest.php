@@ -20,7 +20,7 @@ use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /** The delivery notes list exported as a file, under the search, status, customer and order the screen shows (docs/SPEC.md § 7, row 60). */

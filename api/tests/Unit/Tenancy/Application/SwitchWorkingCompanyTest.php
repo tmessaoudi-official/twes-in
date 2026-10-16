@@ -11,12 +11,12 @@ namespace App\Tests\Unit\Tenancy\Application;
 
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
-use App\Tenancy\Application\Company\NotAMember;
+use App\Tenancy\Application\Member\NotAMember;
 use App\Tenancy\Application\Session\SwitchWorkingCompany;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\Permission;
-use App\Tenancy\Domain\Role;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\ValueObject\Permission;
 use App\Tests\Support\InMemoryCurrentCompany;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\SupportDoubles;

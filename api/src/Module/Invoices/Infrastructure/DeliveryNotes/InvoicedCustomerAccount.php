@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Infrastructure\DeliveryNotes;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\DeliveryNotes\Application\CustomerAccount;
 use App\Module\Invoices\Application\Statement\RunningAccount;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /** Answers the delivery notes' `CustomerAccount` port out of this module's own reading of the account. */
 final readonly class InvoicedCustomerAccount implements CustomerAccount

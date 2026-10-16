@@ -23,8 +23,8 @@ use App\Module\Customers\Infrastructure\Import\CustomerImport;
 use App\Module\Customers\Infrastructure\Import\CustomerInFile;
 use App\Module\Customers\Infrastructure\Import\CustomerSettingCells;
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The customers list as a file, under the columns the import reads (docs/SPEC.md § 7, row 60), so what a company

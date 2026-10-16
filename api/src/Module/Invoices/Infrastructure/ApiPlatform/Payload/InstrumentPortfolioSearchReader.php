@@ -12,8 +12,8 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform\Payload;
 use App\Module\Invoices\Domain\ValueObject\InstrumentKind;
 use App\Module\Invoices\Domain\ValueObject\InstrumentPortfolioSearch;
 use App\Module\Invoices\Domain\ValueObject\InstrumentStatus;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\ListFilters;
 
 /**
  * The one reading of the portfolio's query string (docs/SPEC.md § 7, 2026-10-06). `open` is not a status an instrument

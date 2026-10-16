@@ -56,9 +56,9 @@ use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\EstablishmentRepository;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

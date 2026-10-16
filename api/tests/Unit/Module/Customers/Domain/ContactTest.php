@@ -16,7 +16,7 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\ContactDetails;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\TestCase;
 
 final class ContactTest extends TestCase

@@ -18,8 +18,8 @@ use App\ModuleRegistry\Application\ModuleRequired;
 use App\ModuleRegistry\Application\UnknownModule;
 use App\ModuleRegistry\Infrastructure\ApiPlatform\Resource\ModuleResource;
 use App\ModuleRegistry\Infrastructure\ApiPlatform\Security\ModulePermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 

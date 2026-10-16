@@ -18,9 +18,9 @@ use App\Module\Vendors\Domain\ValueObject\VendorSearch;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Payload\VendorSearchReader;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Resource\VendorResource;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Security\VendorPermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * One page of a company's vendors, searched, narrowed and sorted in the database (docs/SPEC.md § 7, lists at scale).

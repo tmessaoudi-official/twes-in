@@ -24,8 +24,8 @@ use App\Module\Customers\Infrastructure\ApiPlatform\Output\CustomerRegimeOption;
 use App\Module\Customers\Infrastructure\ApiPlatform\Output\CustomerTaxOption;
 use App\Module\Customers\Infrastructure\ApiPlatform\Resource\CustomerOptionsResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** @implements ProviderInterface<CustomerOptionsResource> */

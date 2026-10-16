@@ -11,8 +11,8 @@ namespace App\Module\Quotes\Domain\Repository;
 
 use App\Module\Quotes\Domain\Model\Quote;
 use App\Module\Quotes\Domain\ValueObject\QuoteSearch;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface QuoteRepository

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Doctrine;
 
-use App\Shared\Domain\CompanyOwned;
+use App\Shared\Domain\Service\CompanyOwned;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Query\Filter\SQLFilter;
 

@@ -13,7 +13,7 @@ use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Domain\Model\ImportRun;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;

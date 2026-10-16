@@ -13,7 +13,7 @@ use App\Module\Products\Domain\Model\ProductBarcode;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\Barcode;
 use App\Module\Products\Domain\ValueObject\Gs1Scan;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * What one scan names (docs/SPEC.md § 7, 2026-09-20 04:15, 2026-09-22 11:05 and 11:10): the one product holding the

@@ -19,8 +19,8 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Payload\InvoiceSearchReader;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The invoices and credit notes list as a file (docs/SPEC.md § 7, row 60): one row per document, under the search,

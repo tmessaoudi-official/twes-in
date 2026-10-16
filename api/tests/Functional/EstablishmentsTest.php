@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 final class EstablishmentsTest extends ApiTestCase
@@ -148,7 +148,7 @@ final class EstablishmentsTest extends ApiTestCase
     {
         $globex = $this->createCompany('Globex');
         static::getContainer()->get(ProvisionCompany::class)->handle($globex);
-        $theirs = $this->em()->getRepository(\App\Tenancy\Domain\Establishment::class)->findOneBy(['company' => $globex]);
+        $theirs = $this->em()->getRepository(\App\Tenancy\Domain\Model\Establishment::class)->findOneBy(['company' => $globex]);
         self::assertNotNull($theirs);
         $this->signedIn(['company.read', 'company.settings']);
 

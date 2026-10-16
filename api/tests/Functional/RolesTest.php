@@ -11,14 +11,14 @@ namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Invitation;
-use App\Tenancy\Domain\InvitationToken;
-use App\Tenancy\Domain\Membership;
-use App\Tenancy\Domain\Permission;
-use App\Tenancy\Domain\Role;
-use App\Tenancy\Infrastructure\ApiPlatform\MemberPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\RoleResource;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\ValueObject\InvitationToken;
+use App\Tenancy\Domain\ValueObject\Permission;
+use App\Tenancy\Infrastructure\ApiPlatform\Resource\RoleResource;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 

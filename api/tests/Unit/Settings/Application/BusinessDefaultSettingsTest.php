@@ -14,8 +14,8 @@ use App\Settings\Application\SettingCatalog;
 use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
-use App\Shared\Domain\DocumentDesign;
-use App\Shared\Domain\DocumentLayout;
+use App\Shared\Domain\ValueObject\DocumentDesign;
+use App\Shared\Domain\ValueObject\DocumentLayout;
 use PHPUnit\Framework\TestCase;
 
 final class BusinessDefaultSettingsTest extends TestCase

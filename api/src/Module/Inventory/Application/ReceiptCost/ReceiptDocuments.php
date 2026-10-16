@@ -13,7 +13,7 @@ use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\ValueObject\ReceiptDocument;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

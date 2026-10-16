@@ -32,10 +32,10 @@ use App\Module\Products\Domain\Service\LotCode;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
-use App\Shared\Domain\PaymentMethod;
-use App\Shared\Domain\PrintSettings;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
+use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryTaxComponents;
@@ -226,12 +226,12 @@ final class InvoiceTest extends TestCase
 
     public function testIssuingFreezesTheSellerAsTheDocumentPrintsIt(): void
     {
-        $this->company->reviseProfile(new \App\Tenancy\Domain\CompanyProfile(legalName: 'Acme SARL', addressLine1: '10 rue de Marseille', city: 'Tunis'));
+        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme SARL', addressLine1: '10 rue de Marseille', city: 'Tunis'));
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine(taxes: [$this->tax('TVA19')])], [], $this->now);
         self::assertNull($invoice->getSellerSnapshot(), 'a draft prints the seller as it is today');
 
         $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(), $this->now);
-        $this->company->reviseProfile(new \App\Tenancy\Domain\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
+        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
 
         $seller = $invoice->getSellerSnapshot();
         self::assertSame(['Acme SARL', '10 rue de Marseille', 'Tunis', 'TND'], [$seller?->name, $seller?->address->line1, $seller?->address->city, $seller?->currency]);

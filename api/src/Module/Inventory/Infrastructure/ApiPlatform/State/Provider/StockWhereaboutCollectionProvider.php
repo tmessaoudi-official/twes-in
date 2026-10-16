@@ -15,9 +15,9 @@ use App\Module\Inventory\Application\StockMap\FindOnMap;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockWhereaboutResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Module\Products\Domain\Repository\ProductRepository;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * A product of no company of ours has no stock of ours either, so it is answered as found nowhere rather than 404:

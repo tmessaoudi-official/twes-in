@@ -12,7 +12,7 @@ namespace App\DataFixtures;
 use App\Module\Inventory\Application\Location\ManageStockLocations;
 use App\Module\Inventory\Application\StockMap\DrawStockMap;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Venue\Application\ArrangeVenue;
 use App\Venue\Domain\ValueObject\PlanRect;
 use App\Venue\Domain\ValueObject\StructureKind;

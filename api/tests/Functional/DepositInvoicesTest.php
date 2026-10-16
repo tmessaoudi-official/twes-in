@@ -24,9 +24,9 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
-use App\Shared\Domain\PostalAddress;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyProfile;
+use App\Shared\Domain\Model\PostalAddress;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

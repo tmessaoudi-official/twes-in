@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Session;
 
 use App\Shared\Application\CurrentCompany;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**

@@ -14,7 +14,7 @@ use App\ImportExport\Application\ExportQuery;
 use App\Module\AccountingExport\Application\PurchaseEntries;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportModule;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportPermission;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The purchases journal of a period: one row per tax each expense entered in the books carries, its base and amount

@@ -17,10 +17,10 @@ use App\Audit\Application\ReadActivity;
 use App\Audit\Infrastructure\ApiPlatform\Payload\ActivitySearchReader;
 use App\Audit\Infrastructure\ApiPlatform\Resource\ActivityResource;
 use App\Audit\Infrastructure\ApiPlatform\Security\AuditPermission;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
-use App\Tenancy\Infrastructure\ApiPlatform\MemberPermission;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
 
 /**
  * One page of the company's journal. A sign-in address is a person's whereabouts, so it is left out for a reader who

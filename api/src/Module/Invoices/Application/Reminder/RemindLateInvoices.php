@@ -19,8 +19,8 @@ use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

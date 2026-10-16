@@ -17,7 +17,7 @@ use App\Module\Invoices\Application\Print\PrintedInvoice;
 use App\Module\Invoices\Application\Print\PrintInvoice;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**

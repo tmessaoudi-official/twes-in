@@ -12,7 +12,7 @@ namespace App\Inbox\Infrastructure\Doctrine;
 use App\Inbox\Domain\Model\InboxItem;
 use App\Inbox\Domain\Model\NotificationPreference;
 use App\Inbox\Domain\Repository\InboxRepository;
-use App\Tenancy\Domain\Membership;
+use App\Tenancy\Domain\Model\Membership;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

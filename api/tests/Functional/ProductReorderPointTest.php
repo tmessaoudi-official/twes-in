@@ -11,8 +11,8 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\EstablishmentRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 

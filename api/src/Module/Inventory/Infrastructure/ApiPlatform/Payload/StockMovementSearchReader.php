@@ -13,9 +13,9 @@ use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\StockLossReason;
 use App\Module\Inventory\Domain\ValueObject\StockMovementKind;
 use App\Module\Inventory\Domain\ValueObject\StockMovementSearch;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\ListFilters;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The one reading of a movements list's query string, for the list and its CSV and Excel files, so that what the

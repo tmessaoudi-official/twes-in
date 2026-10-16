@@ -17,7 +17,7 @@ use App\CustomFields\Domain\Repository\CustomFieldDefinitionRepository;
 use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use App\CustomFields\Domain\ValueObject\CustomFieldRule;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

@@ -17,8 +17,8 @@ use App\Module\Inventory\Domain\ValueObject\StockMovementSearch;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Payload\StockMovementSearchReader;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
 
 /**
  * The stock movements list as a file (docs/SPEC.md § 7, row 60): one row per movement, under the product, location,

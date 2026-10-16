@@ -15,8 +15,8 @@ use App\Module\Customers\Application\CustomerNotFound;
 use App\Module\Customers\Application\ManageCustomers;
 use App\Module\Customers\Infrastructure\ApiPlatform\Resource\CustomerResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProviderInterface<CustomerResource> */

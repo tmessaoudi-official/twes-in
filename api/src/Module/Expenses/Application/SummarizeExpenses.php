@@ -13,7 +13,7 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Expenses\Domain\Repository\ExpenseRepository;
 use App\Shared\Application\MonthSoFar;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 
 /**

@@ -15,8 +15,8 @@ use App\Module\PriceLists\Application\ManagePriceLists;
 use App\Module\PriceLists\Domain\Model\PriceList;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\Resource\PriceListResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /** @implements ProviderInterface<PriceListResource> */
 final readonly class PriceListCollectionProvider implements ProviderInterface

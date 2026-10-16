@@ -12,7 +12,7 @@ namespace App\Tests\Unit\Erasure\Domain;
 use App\Erasure\Domain\Exception\ErasureNoLongerPending;
 use App\Erasure\Domain\Model\DataErasure;
 use App\Erasure\Domain\ValueObject\ErasureState;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 

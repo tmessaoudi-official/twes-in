@@ -15,7 +15,7 @@ use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Module\Customers\Domain\Model\CustomerGroup;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /** A customers list exported as a file, with the search, filters and order the screen shows (docs/SPEC.md § 7, row 60). */

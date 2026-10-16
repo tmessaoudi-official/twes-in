@@ -38,7 +38,7 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomFieldDefinitions;

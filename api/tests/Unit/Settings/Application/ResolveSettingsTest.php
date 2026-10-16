@@ -19,7 +19,7 @@ use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingLevel;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\InMemorySettings;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;

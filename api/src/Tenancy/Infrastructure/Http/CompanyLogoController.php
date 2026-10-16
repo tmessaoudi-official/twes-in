@@ -11,9 +11,9 @@ namespace App\Tenancy\Infrastructure\Http;
 
 use App\Files\Application\AttachmentRefused;
 use App\Tenancy\Application\Company\CompanyLogo;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyProfileResource;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyProfileResource;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;

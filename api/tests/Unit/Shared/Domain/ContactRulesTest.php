@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Domain;
 
-use App\Shared\Domain\ContactRules;
-use App\Shared\Domain\Refusal;
+use App\Shared\Domain\Service\ContactRules;
+use App\Shared\Domain\ValueObject\Refusal;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Intl\Countries;

@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Domain;
 
-use App\Shared\Domain\DocumentDesign;
-use App\Shared\Domain\DocumentLayout;
-use App\Shared\Domain\PrintSettings;
+use App\Shared\Domain\ValueObject\DocumentDesign;
+use App\Shared\Domain\ValueObject\DocumentLayout;
+use App\Shared\Domain\ValueObject\PrintSettings;
 use PHPUnit\Framework\TestCase;
 
 /** What an issued document keeps of how it was printed survives its trip through the database. */

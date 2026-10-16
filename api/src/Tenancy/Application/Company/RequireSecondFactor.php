@@ -12,8 +12,8 @@ namespace App\Tenancy\Application\Company;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Shared\Application\Transactions;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\CompanyRepository;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\CompanyRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

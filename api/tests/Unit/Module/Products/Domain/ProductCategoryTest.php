@@ -11,7 +11,7 @@ namespace App\Tests\Unit\Module\Products\Domain;
 
 use App\Module\Products\Domain\Exception\InvalidProductCategory;
 use App\Module\Products\Domain\Model\ProductCategory;
-use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\TestCase;
 
 final class ProductCategoryTest extends TestCase

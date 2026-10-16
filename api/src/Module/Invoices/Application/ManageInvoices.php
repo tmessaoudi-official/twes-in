@@ -35,11 +35,11 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\Page;
-use App\Shared\Domain\PageRequest;
-use App\Tenancy\Domain\Company;
-use App\Tenancy\Domain\Establishment;
-use App\Tenancy\Domain\EstablishmentRepository;
+use App\Shared\Domain\ValueObject\Page;
+use App\Shared\Domain\ValueObject\PageRequest;
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
+use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

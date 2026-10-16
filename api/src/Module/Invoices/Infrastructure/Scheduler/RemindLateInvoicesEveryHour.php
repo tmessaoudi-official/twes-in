@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Infrastructure\Scheduler;
 use App\Module\Invoices\Application\Reminder\RemindLateInvoices;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Tenancy\Domain\CompanyRepository;
+use App\Tenancy\Domain\Repository\CompanyRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Scheduler\Attribute\AsPeriodicTask;
 

@@ -14,9 +14,9 @@ use ApiPlatform\State\ProviderInterface;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceProductPickResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Products\Application\PickProducts;
-use App\Shared\Infrastructure\ApiPlatform\Paging;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * A few products for the invoice form's picker, under the invoice's own permission (see the resource beside this).

@@ -12,8 +12,8 @@ namespace App\Module\Products\Infrastructure\ApiPlatform\Payload;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductSearch;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
-use App\Shared\Domain\InvalidFilter;
-use App\Shared\Domain\ListFilters;
+use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\ValueObject\ListFilters;
 
 /**
  * The one reading of a products list's query string, for the list and its CSV and Excel files, so that what the

@@ -13,7 +13,7 @@ use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Domain\ValueObject\SettingType;
-use App\Shared\Domain\DocumentDesign;
+use App\Shared\Domain\ValueObject\DocumentDesign;
 
 /**
  * The business defaults a company sets once and its customers, products and documents override (docs/SPEC.md § 3

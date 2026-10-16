@@ -11,8 +11,8 @@ namespace App\Module\Scanning\Domain\Model;
 
 use App\Identity\Domain\Model\User;
 use App\Module\Scanning\Domain\Exception\ScanPairingRefused;
-use App\Shared\Domain\CompanyOwned;
-use App\Tenancy\Domain\Company;
+use App\Shared\Domain\Service\CompanyOwned;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
