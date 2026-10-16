@@ -390,7 +390,8 @@ make reset
 It asks you to type `yes`, then:
 
 1. `docker compose down --volumes --remove-orphans`, which **deletes the database** (`twes` and `twes_test`) and
-   the **stored files** (issued PDFs, attachments): the two volumes `postgres-data` and `api-files`;
+   the **stored files** (issued PDFs, attachments): the volumes `postgres-data` and `api-files`, and `api-share`, where
+   the rate limiters' counters and the scheduler's last runs outlive a redeploy;
 2. deletes the host-side caches that could otherwise serve stale state: `api/var/cache`, `api/var/openapi.json`,
    the generated `web/src/app/api`, and Playwright's saved operator session `web/playwright/.auth`;
 3. runs `make up`, which builds, migrates an empty database and seeds it (§ 2, § 4).

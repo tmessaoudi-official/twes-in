@@ -17,18 +17,30 @@ use App\Tenancy\Application\Invitation\AccountDetailsRequired;
 use App\Tenancy\Application\Invitation\InvitationNotUsable;
 use App\Tenancy\Application\Invitation\PasswordBreached;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\InvitationResource;
+use Symfony\Component\DependencyInjection\Attribute\Target;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 /** @implements ProcessorInterface<InvitationResource, InvitationResource> */
 final readonly class AcceptInvitationProcessor implements ProcessorInterface
 {
-    public function __construct(private AcceptInvitation $accept)
-    {
+    public function __construct(
+        private AcceptInvitation $accept,
+        private RequestStack $requests,
+        #[Target('invitation_link')]
+        private RateLimiterFactoryInterface $limiter,
+    ) {
     }
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): InvitationResource
     {
+        // The same budget as reading the link, spent before it is looked up.
+        if (!$this->limiter->create($this->requests->getMainRequest()?->getClientIp() ?? '')->consume()->isAccepted()) {
+            throw new TooManyRequestsHttpException(null, 'Too many attempts.');
+        }
         $token = $uriVariables['token'] ?? null;
         if (!\is_string($token)) {
             throw new NotFoundHttpException('That invitation cannot be used.');
