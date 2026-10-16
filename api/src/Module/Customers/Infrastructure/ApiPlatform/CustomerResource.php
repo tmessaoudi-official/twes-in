@@ -22,6 +22,7 @@ use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Customers\Domain\InvalidCustomer;
 use App\Shared\Domain\PostalAddress;
+use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
@@ -96,7 +97,6 @@ final class CustomerResource
         AbstractNormalizer::CALLBACKS => ['identifiers' => [self::class, 'asObject'], 'customFields' => [self::class, 'asObject']],
     ];
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
-    private const string PHONE = '/^\+?[0-9 ().\-]{3,40}$/';
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
@@ -127,7 +127,7 @@ final class CustomerResource
     #[Groups([self::READ, self::WRITE])]
     public string $name = '';
 
-    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_legal_name'])]
+    #[Assert\Length(max: CustomerProfile::LEGAL_NAME_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_legal_name'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $legalName = null;
 
@@ -137,57 +137,55 @@ final class CustomerResource
     #[Groups([self::READ, self::WRITE])]
     public array $identifiers = [];
 
-    #[Assert\Email(groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
-    #[Assert\Length(max: 254, groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
+    #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;
 
-    #[Assert\Regex(pattern: self::PHONE, groups: [self::WRITE], payload: ['reason' => 'invalid_phone'])]
+    #[ContactRule(ContactRule::PHONE, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $phone = null;
 
-    #[Assert\Url(requireTld: true, groups: [self::WRITE], payload: ['reason' => 'invalid_website'])]
-    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_website'])]
+    #[ContactRule(ContactRule::WEBSITE, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $website = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
+    #[Assert\Length(max: PostalAddress::LINE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::LINE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $billingAddressLine1 = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
+    #[Assert\Length(max: PostalAddress::LINE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::LINE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $billingAddressLine2 = null;
 
-    #[Assert\Length(max: 20, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 20]])]
+    #[Assert\Length(max: PostalAddress::POSTAL_CODE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::POSTAL_CODE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $billingPostalCode = null;
 
-    #[Assert\Length(max: 120, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 120]])]
+    #[Assert\Length(max: PostalAddress::CITY_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::CITY_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $billingCity = null;
 
-    #[Assert\Country(groups: [self::WRITE], payload: ['reason' => 'invalid_country'])]
+    #[ContactRule(ContactRule::COUNTRY, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $billingCountryCode = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
+    #[Assert\Length(max: PostalAddress::LINE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::LINE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $shippingAddressLine1 = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
+    #[Assert\Length(max: PostalAddress::LINE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::LINE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $shippingAddressLine2 = null;
 
-    #[Assert\Length(max: 20, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 20]])]
+    #[Assert\Length(max: PostalAddress::POSTAL_CODE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::POSTAL_CODE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $shippingPostalCode = null;
 
-    #[Assert\Length(max: 120, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 120]])]
+    #[Assert\Length(max: PostalAddress::CITY_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::CITY_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $shippingCity = null;
 
-    #[Assert\Country(groups: [self::WRITE], payload: ['reason' => 'invalid_country'])]
+    #[ContactRule(ContactRule::COUNTRY, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $shippingCountryCode = null;
 
@@ -202,7 +200,7 @@ final class CustomerResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $defaultDiscountRate = null;
 
-    #[Assert\Length(max: 5000, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 5000]])]
+    #[Assert\Length(max: CustomerProfile::NOTES_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => CustomerProfile::NOTES_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notes = null;
 

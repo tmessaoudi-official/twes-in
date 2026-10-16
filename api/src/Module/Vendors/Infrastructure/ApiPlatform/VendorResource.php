@@ -21,6 +21,7 @@ use App\Module\Vendors\Domain\InvalidVendor;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorProfile;
 use App\Shared\Domain\PostalAddress;
+use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
@@ -93,7 +94,6 @@ final class VendorResource
         AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true,
         AbstractNormalizer::CALLBACKS => ['identifiers' => [self::class, 'asObject']],
     ];
-    private const string PHONE = '/^\+?[0-9 ().\-]{3,40}$/';
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
@@ -109,7 +109,7 @@ final class VendorResource
     #[Groups([self::READ, self::WRITE])]
     public string $name = '';
 
-    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_legal_name'])]
+    #[Assert\Length(max: VendorProfile::LEGAL_NAME_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_legal_name'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $legalName = null;
 
@@ -119,45 +119,44 @@ final class VendorResource
     #[Groups([self::READ, self::WRITE])]
     public array $identifiers = [];
 
-    #[Assert\Email(groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
-    #[Assert\Length(max: 254, groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
+    #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;
 
-    #[Assert\Regex(pattern: self::PHONE, groups: [self::WRITE], payload: ['reason' => 'invalid_phone'])]
+    #[ContactRule(ContactRule::PHONE, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $phone = null;
 
-    #[Assert\Url(requireTld: true, groups: [self::WRITE], payload: ['reason' => 'invalid_website'])]
-    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_website'])]
+    #[ContactRule(ContactRule::WEBSITE, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $website = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
+    #[Assert\Length(max: PostalAddress::LINE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::LINE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $addressLine1 = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
+    #[Assert\Length(max: PostalAddress::LINE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::LINE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $addressLine2 = null;
 
-    #[Assert\Length(max: 20, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 20]])]
+    #[Assert\Length(max: PostalAddress::POSTAL_CODE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::POSTAL_CODE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $postalCode = null;
 
-    #[Assert\Length(max: 120, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 120]])]
+    #[Assert\Length(max: PostalAddress::CITY_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PostalAddress::CITY_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $city = null;
 
-    #[Assert\Country(groups: [self::WRITE], payload: ['reason' => 'invalid_country'])]
+    #[ContactRule(ContactRule::COUNTRY, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $countryCode = null;
 
+    // Each country's own length on top of the shape and checksum the domain holds every IBAN to.
     #[Assert\Iban(groups: [self::WRITE], payload: ['reason' => 'invalid_iban'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $iban = null;
 
-    #[Assert\Bic(mode: Assert\Bic::VALIDATION_MODE_CASE_INSENSITIVE, groups: [self::WRITE], payload: ['reason' => 'invalid_bic'])]
+    #[ContactRule(ContactRule::BIC, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $bic = null;
 
@@ -166,7 +165,7 @@ final class VendorResource
     #[Groups([self::READ, self::WRITE])]
     public ?int $paymentTermsDays = null;
 
-    #[Assert\Length(max: 5000, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 5000]])]
+    #[Assert\Length(max: VendorProfile::NOTES_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => VendorProfile::NOTES_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notes = null;
 

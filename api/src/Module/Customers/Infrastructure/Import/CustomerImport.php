@@ -66,7 +66,7 @@ final readonly class CustomerImport implements DeclaresImport
     /** A custom field's key is the company's own, so it is prefixed to keep it out of the fixed columns' namespace. */
     public const string CUSTOM_PREFIX = 'custom.';
 
-    /** The column each field a refusal names is read from. */
+    /** The column each field a refusal names is read from, beside the cells the form's rules hold. */
     private const array COLUMN_OF = [
         'number' => 'number',
         'name' => 'name',
@@ -77,8 +77,8 @@ final readonly class CustomerImport implements DeclaresImport
     ];
 
     /**
-     * The cells the domain does not check, by the resource property whose rules each is held to; the property's
-     * constraints give the reason a refusal carries, as they do on the form.
+     * The cells the form's rules hold, by the resource property whose rules each is held to: a file meets every rule
+     * the form does, the domain's among them, before the use case, and a refusal carries the reason the form gives.
      */
     private const array CELL_RULES = [
         'legalName' => 'legal_name',
@@ -381,7 +381,7 @@ final readonly class CustomerImport implements DeclaresImport
             return self::CUSTOM_PREFIX.substr($field, \strlen('customFields.'));
         }
 
-        return self::COLUMN_OF[$field] ?? null;
+        return self::COLUMN_OF[$field] ?? self::CELL_RULES[$field] ?? null;
     }
 
     /**

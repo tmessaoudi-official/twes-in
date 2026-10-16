@@ -13,12 +13,17 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * A postal address as documents print it: two lines, a postal code, a city and a country (ISO 3166-1 alpha-2). Kept
- * without stray spaces, an empty part is no part, so an address typed twice compares equal; whether the country
- * exists and how long each part may be is checked where the address is received.
+ * without stray spaces, an empty part is no part, so an address typed twice compares equal. How long each part may be
+ * and whether the country exists is `refusal()`'s to say, asked by whoever writes an address, never when one is read
+ * back: an address stored before a rule still reads.
  */
 #[ORM\Embeddable]
 final class PostalAddress
 {
+    public const int LINE_MAX = 200;
+    public const int POSTAL_CODE_MAX = 20;
+    public const int CITY_MAX = 120;
+
     #[ORM\Column(name: 'line1', length: 200, nullable: true)]
     public private(set) ?string $line1;
 
@@ -42,6 +47,20 @@ final class PostalAddress
         $this->city = self::text($city);
         $country = self::text($countryCode);
         $this->countryCode = null === $country ? null : strtoupper($country);
+    }
+
+    /** @return array{0: 'line1'|'line2'|'postalCode'|'city'|'countryCode', 1: Refusal}|null the first part refused */
+    public function refusal(): ?array
+    {
+        foreach (['line1' => [$this->line1, self::LINE_MAX], 'line2' => [$this->line2, self::LINE_MAX], 'postalCode' => [$this->postalCode, self::POSTAL_CODE_MAX], 'city' => [$this->city, self::CITY_MAX]] as $part => [$value, $max]) {
+            $refused = null === $value ? null : ContactRules::text($value, $max);
+            if (null !== $refused) {
+                return [$part, $refused];
+            }
+        }
+        $refused = null === $this->countryCode ? null : ContactRules::country($this->countryCode);
+
+        return null === $refused ? null : ['countryCode', $refused];
     }
 
     public function isEmpty(): bool

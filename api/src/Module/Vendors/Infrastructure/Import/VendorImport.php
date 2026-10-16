@@ -58,23 +58,17 @@ final readonly class VendorImport implements DeclaresImport
 {
     public const string KEY = 'vendors';
 
-    /** The column each field a refusal names is read from, and the code that refusal carries. */
-    private const array REFUSAL_OF = [
-        'number' => ['number', 'invalid_number'],
-        'name' => ['name', 'invalid_name'],
-        'legalName' => ['legal_name', 'invalid_legal_name'],
-        'email' => ['email', 'invalid_email'],
-        'phone' => ['phone', 'invalid_phone'],
-        'website' => ['website', 'invalid_website'],
-        'iban' => ['iban', 'invalid_iban'],
-        'bic' => ['bic', 'invalid_bic'],
-        'paymentTermsDays' => ['payment_terms_days', 'invalid_payment_terms'],
-        'defaultExpenseCategoryId' => ['expense_category', 'unknown_expense_category'],
+    /** The column each field a refusal names is read from, beside the cells the form's rules hold. */
+    private const array COLUMN_OF = [
+        'number' => 'number',
+        'name' => 'name',
+        'paymentTermsDays' => 'payment_terms_days',
+        'defaultExpenseCategoryId' => 'expense_category',
     ];
 
     /**
-     * The cells the domain does not check, by the resource property whose rules each is held to; the property's
-     * constraints give the reason a refusal carries, as they do on the form.
+     * The cells the form's rules hold, by the resource property whose rules each is held to: a file meets every rule
+     * the form does, the domain's among them, before the use case, and a refusal carries the reason the form gives.
      */
     private const array CELL_RULES = [
         'legalName' => 'legal_name',
@@ -163,9 +157,7 @@ final readonly class VendorImport implements DeclaresImport
 
             return RowImported::Updated;
         } catch (InvalidVendor $refused) {
-            [$column, $code] = self::refusalOf($refused->field);
-
-            throw new RowRejected($column, $refused->getMessage(), 'invalid_value' === $refused->reason ? $code : $refused->reason, $refused->params);
+            throw new RowRejected(self::columnOf($refused->field), $refused->getMessage(), $refused->reason, $refused->params);
         } catch (VendorNumberTaken) {
             throw new RowRejected('number', 'A vendor already has this number.', 'already_exists');
         } finally {
@@ -291,17 +283,13 @@ final readonly class VendorImport implements DeclaresImport
         return $columns;
     }
 
-    /** @return array{0: ?string, 1: string} */
-    private static function refusalOf(string $field): array
+    private static function columnOf(string $field): ?string
     {
         if (str_starts_with($field, 'identifiers.')) {
-            return [substr($field, \strlen('identifiers.')), 'invalid_identifier'];
-        }
-        if (str_starts_with($field, 'address.')) {
-            return [substr($field, \strlen('address.')), 'invalid_address'];
+            return substr($field, \strlen('identifiers.'));
         }
 
-        return self::REFUSAL_OF[$field] ?? [null, 'invalid_value'];
+        return self::COLUMN_OF[$field] ?? self::CELL_RULES[$field] ?? null;
     }
 
     /**
