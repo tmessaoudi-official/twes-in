@@ -46,6 +46,7 @@ import type {
 import type { PickAsked } from '../shared/form/pick-api';
 import {
   effectToasts,
+  noticeToasts,
   offeredNext,
   provideQuietFeedback,
   successToasts,
@@ -1916,6 +1917,153 @@ describe('InvoicePage', () => {
     invoice.set(draft);
     await open('i1');
     expect(text('invoice-error')).toContain('Refusé.');
+  });
+
+  describe('products sent here by « Ajouter à… »', () => {
+    const paper: ProductOption = {
+      id: 'p2',
+      reference: 'PAP-1',
+      name: 'Papier',
+      unitId: 'u1',
+      unitPriceNet: '4.5000',
+      defaultTaxComponentIds: ['t1'],
+      tracking: 'none',
+      mainPhotoId: null,
+    };
+    const quantityOf = (line: number) =>
+      (q(`line-${line}-quantity`) as HTMLInputElement | null)?.value ?? null;
+    /** The products read by id, which is how what was sent here is read; the line picker reads by words. */
+    const readById = () =>
+      facade.pickProducts.mock.calls
+        .filter(([, asked]) => 'ids' in asked)
+        .map(([, asked]) => asked);
+    let navigate: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.pickProducts.mockImplementation(async (_companyId: string, asked: PickAsked) =>
+        'ids' in asked ? [...products, paper].filter((each) => asked.ids.includes(each.id)) : [],
+      );
+    });
+
+    async function openWith(invoiceId: string | undefined, add: string | string[]): Promise<void> {
+      fixture = TestBed.createComponent(InvoicePage);
+      if (invoiceId !== undefined) fixture.componentRef.setInput('invoiceId', invoiceId);
+      fixture.componentRef.setInput('add', add);
+      await settle();
+      await vi.waitFor(() => expect(readById()).not.toEqual([]));
+      await settle();
+      await settle();
+    }
+
+    it('puts them on an open draft as a scan would, unsaved, and the address forgets them', async () => {
+      invoice.set(draft);
+      await openWith('i1', ['p1', 'p2']);
+
+      expect(readById()).toEqual([{ ids: ['p1', 'p2'] }]);
+      // The product already on a line counts one more; another starts its own line, filled from the product.
+      expect(quantityOf(0)).toBe('2');
+      expect((q('line-1-description') as HTMLInputElement).value).toBe('Papier');
+      expect(quantityOf(1)).toBe('1');
+      expect(q('line-2')).toBeNull();
+      expect(facade.revise).not.toHaveBeenCalled();
+      expect(noticeToasts()).toEqual([{ key: 'documents.add_to.taken_in', params: { count: 2 } }]);
+      // A reload of the address does not add them a second time.
+      expect(navigate).toHaveBeenCalledWith(
+        [],
+        expect.objectContaining({ queryParams: { add: null }, replaceUrl: true }),
+      );
+      await settle();
+      expect(readById()).toHaveLength(1);
+    });
+
+    it('takes them in once, though the address asks again before it forgets them', async () => {
+      invoice.set(draft);
+      await openWith('i1', ['p2']);
+      fixture.componentRef.setInput('add', ['p2']);
+      await settle();
+      await settle();
+
+      expect(readById()).toHaveLength(1);
+      expect(q('line-2')).toBeNull();
+    });
+
+    it('takes a product sent twice once', async () => {
+      invoice.set(draft);
+      await openWith('i1', ['p2', 'p2']);
+
+      expect(readById()).toEqual([{ ids: ['p2'] }]);
+      expect(quantityOf(1)).toBe('1');
+      expect(q('line-2')).toBeNull();
+    });
+
+    it('prices each one as a scan, from the customer’s list', async () => {
+      modulesOn.add('price_lists');
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '4.0000', priceListName: 'Gros' });
+      invoice.set(draft);
+      await openWith('i1', ['p2']);
+      await vi.waitFor(() =>
+        expect(facade.productPrice).toHaveBeenCalledWith('c1', 'p2', 'k1', '1'),
+      );
+      await settle();
+
+      expect((q('line-1-price') as HTMLInputElement).value).toBe('4,000');
+    });
+
+    it('waits for the customer the draft names, whose regime says the taxes', async () => {
+      let customerRead: () => void = () => undefined;
+      const usual = facade.pickCustomers.getMockImplementation()!;
+      onTestFinished(() => void facade.pickCustomers.mockImplementation(usual));
+      facade.pickCustomers.mockImplementation(async (_companyId: string, asked: PickAsked) => {
+        if (!('ids' in asked)) return customers;
+        await new Promise<void>((resolve) => (customerRead = resolve));
+        return customers.filter((each) => asked.ids.includes(each.id));
+      });
+      invoice.set(draft);
+      fixture = TestBed.createComponent(InvoicePage);
+      fixture.componentRef.setInput('invoiceId', 'i1');
+      fixture.componentRef.setInput('add', ['p2']);
+      await settle();
+      await settle();
+      expect(readById()).toEqual([]);
+
+      customerRead();
+      await vi.waitFor(() => expect(readById()).toEqual([{ ids: ['p2'] }]));
+    });
+
+    it('starts a new invoice with them in place of its empty line', async () => {
+      await openWith(undefined, 'p2');
+
+      expect((q('line-0-description') as HTMLInputElement).value).toBe('Papier');
+      expect(q('line-1')).toBeNull();
+    });
+
+    it('names how many were not found, and takes the others', async () => {
+      invoice.set(draft);
+      await openWith('i1', ['gone', 'p2']);
+
+      expect((q('line-1-description') as HTMLInputElement).value).toBe('Papier');
+      expect(noticeToasts()).toEqual([
+        { key: 'documents.add_to.taken_in', params: { count: 1 } },
+        { key: 'documents.add_to.left_out', params: { count: 1 } },
+      ]);
+    });
+
+    it('adds nothing to a document that is no longer a draft, and says why', async () => {
+      invoice.set(issued);
+      fixture = TestBed.createComponent(InvoicePage);
+      fixture.componentRef.setInput('invoiceId', issued.id);
+      fixture.componentRef.setInput('add', ['p2']);
+      await settle();
+      await vi.waitFor(() =>
+        expect(noticeToasts()).toEqual([{ key: 'documents.add_to.not_draft' }]),
+      );
+      expect(readById()).toEqual([]);
+      expect(navigate).toHaveBeenCalledWith(
+        [],
+        expect.objectContaining({ queryParams: { add: null } }),
+      );
+    });
   });
 
   describe('a scan on the screen', () => {

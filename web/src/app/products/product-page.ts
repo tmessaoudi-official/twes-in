@@ -25,6 +25,7 @@ import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import type { FormGroup } from '@angular/forms';
+import { AddToDocuments } from './add-to-documents';
 import { ArticleDefaults } from './article-defaults';
 import { PriceCalculator } from './price-calculator';
 import { ProductBarcodesSection } from './product-barcodes';
@@ -102,6 +103,7 @@ export class ProductPage {
   readonly add = input<string | undefined>(undefined);
 
   private readonly document = inject(DOCUMENT);
+  private readonly addTo = inject(AddToDocuments);
   protected readonly id = computed(() => this.productId() ?? null);
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
@@ -386,7 +388,18 @@ export class ProductPage {
         shown: may && changes > 0,
       },
       {
-        // Printed labels (docs/SPEC.md § 7, 2026-09-23 slice 8), in a tab of their own to print.
+        // Onto a new or open draft, where the document's editor shows it on its lines, unsaved.
+        id: 'add_to',
+        label: 'documents.add_to.action',
+        icon: 'add_box',
+        run: () => {
+          const id = this.id();
+          if (id !== null) void this.addTo.open([id]);
+        },
+        shown: this.id() !== null && this.addTo.kinds().length > 0,
+      },
+      {
+        // Printed labels, in a tab of their own to print.
         id: 'labels',
         label: 'products.labels.open',
         icon: 'label',
