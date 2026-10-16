@@ -8,7 +8,7 @@ Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, Frank
 backup image installs (pgBackRest, MIT; restic, BSD-2-Clause; supercronic, MIT; curl, curl; see `docs/UPDATE.md`), are
 aggregated, not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 115 runtime, 55 dev
+## api (Composer) — 116 runtime, 55 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -132,6 +132,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | symfony/http-foundation | 8.1.9 | MIT | runtime |
 | symfony/http-kernel | 8.1.9 | MIT | runtime |
 | symfony/intl | 8.1.5 | MIT | runtime |
+| symfony/lock | 8.1.9 | MIT | runtime |
 | symfony/mailer | 8.1.7 | MIT | runtime |
 | symfony/maker-bundle | 1.68.0 | MIT | dev |
 | symfony/messenger | 8.1.9 | MIT | runtime |

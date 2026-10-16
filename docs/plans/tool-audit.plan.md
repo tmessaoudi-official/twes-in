@@ -3,6 +3,7 @@
 ## Decisions Log
 - [2026-10-16 21:51] ASSUMED (review): The sweep's five research agents run on the session's model (no agent override is set: model-override.sh get agent is empty), unnamed, read-only on the tree, each writing its report to var/claude/tool-audit/raw/ and returning one line. Alternatives: a cheaper model per group (riskier on documentation reading).
 - [2026-10-16 22:17] ASSUMED (review): E-12 fixed at once (P1, wrong stock under a fault): the publisher guards every domain-event listener; advisor agreed at 3C. Alternatives: per-listener catches with an architecture test.
+- [2026-10-16 22:35] ASSUMED (review): B-6 fixed at once (security): symfony/lock on flock for every rate limiter; the advisor placed it after the page. Alternatives: PostgreSQL advisory locks, or a recorded departure.
 
 ## Formal Plan
 
