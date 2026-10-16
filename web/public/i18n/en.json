@@ -3526,7 +3526,9 @@
       "invalid_withholding_rate": "Withholding refused: a percentage from 0 to 100, three decimals at most.",
       "tej_outside_tunisia": "TEJ code refused: it applies only to a company under the Tunisian preset.",
       "too_many_decimals": "Too many decimals: {max, plural, =0 {a whole number} one {one decimal at most} other {{{max}} decimals at most}}.",
-      "percent_sign": "Write 5 for 5%."
+      "percent_sign": "Write 5 for 5%.",
+      "unknown_vendor": "The company has no supplier numbered “{{number}}”.",
+      "invalid_pack_quantity": "A pack counts 2 to 1,000,000 pieces, as a whole number."
     },
     "action": "Import"
   },

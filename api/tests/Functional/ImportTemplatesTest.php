@@ -76,11 +76,11 @@ final class ImportTemplatesTest extends ApiTestCase
      */
     public function testTheXlsxTemplateFormatsEveryCodeColumnAsText(): void
     {
-        $this->signedIn(['customer.read', 'customer.write', 'product.read', 'product.write', 'vendor.read', 'vendor.write', 'stock.read', 'stock.write']);
+        $this->signedIn(['customer.read', 'customer.write', 'product.read', 'product.write', 'product.cost.read', 'vendor.read', 'vendor.write', 'stock.read', 'stock.write']);
         $codes = [
             'customers' => ['number', 'phone', 'billing_postal_code', 'shipping_postal_code', 'matricule_fiscal'],
             'vendors' => ['number', 'phone', 'postal_code', 'iban', 'bic', 'matricule_fiscal'],
-            'products' => ['reference', 'barcode', 'home_location', 'location'],
+            'products' => ['reference', 'barcode', 'pack_barcode', 'supplier_number', 'supplier_code', 'home_location', 'location'],
             'opening-stock' => ['reference', 'barcode', 'location_code'],
         ];
 

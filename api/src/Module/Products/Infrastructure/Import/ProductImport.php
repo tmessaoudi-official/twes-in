@@ -40,16 +40,19 @@ use App\Module\Products\Application\ProductReorderPoints;
 use App\Module\Products\Application\ProductStockRefused;
 use App\Module\Products\Application\ReorderPointRefused;
 use App\Module\Products\Domain\Barcode;
+use App\Module\Products\Domain\BarcodeLine;
 use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductCategoryRepository;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\ProductTracking;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
+use App\Module\Vendors\Domain\VendorRepository;
+use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -90,6 +93,8 @@ final readonly class ProductImport implements DeclaresImport
         'unitId' => ['unit_code', 'unknown_unit'],
         'categoryId' => ['category', 'unknown_category'],
         'defaultTaxComponentIds' => ['default_tax_codes', 'unknown_tax_code'],
+        'substitutionGroup' => ['substitution_group', 'invalid_text'],
+        'tracking' => ['tracking', 'invalid_value'],
     ];
 
     /** What the inventory answers for: where goods lie, the reorder point and the stock, compared through its ports. */
@@ -98,6 +103,14 @@ final readonly class ProductImport implements DeclaresImport
     /** A kind by its code or as the screen names it, in French and in English. */
     private const array KINDS = ['goods' => 'goods', 'bien' => 'goods', 'biens' => 'goods', 'service' => 'service', 'services' => 'service'];
     private const array NO = ['no', 'n', 'false', '0', 'non'];
+    /** How many pieces a pack holds, as `BarcodeLine` holds it. */
+    private const array PACK_BOUNDS = ['min' => 2, 'max' => BarcodeLine::QUANTITY_MAX];
+    /** How stock is told apart, by its code or as the screen says it, in French and in English. */
+    private const array TRACKINGS = [
+        'none' => 'none', 'aucun' => 'none', 'sans suivi' => 'none',
+        'lot' => 'lot', 'par lot' => 'lot',
+        'serial' => 'serial', 'série' => 'serial', 'serie' => 'serial', 'numéro de série' => 'serial', 'par numéro de série' => 'serial',
+    ];
 
     public function __construct(
         private CustomFieldDefinitionRepository $customFields,
@@ -112,6 +125,8 @@ final readonly class ProductImport implements DeclaresImport
         private EstablishmentRepository $establishments,
         private CompanyGuard $guard,
         private ProductFileStock $stock,
+        private VendorRepository $vendors,
+        private ModuleStates $modules,
     ) {
     }
 
@@ -208,13 +223,16 @@ final readonly class ProductImport implements DeclaresImport
         $reorderPoint = $faults->read(fn (): ?array => $this->reorderPointOf($company, $record, $home));
         $quantity = $faults->read(fn (): ?array => $this->quantityOf($record, $context));
 
+        $seesCosts = $this->guard->may($company, ProductPermission::COST_READ);
+        $codes = $this->codes($company, $record, $existing, $seesCosts, $faults);
+
         $written = null;
         try {
-            $input = $this->input($company, $record, $existing, $faults);
+            $input = $this->input($company, $record, $existing, $faults, array_column($codes, 0), $seesCosts);
             $faults->stopIfAny();
             \assert(false !== $home);
             // Rendered before the write, which changes the product in place.
-            $before = null === $existing ? [] : $this->inFile($company, $existing, $context);
+            $before = null === $existing ? [] : $this->inFile($company, $existing, $context, $record);
             if (null === $existing) {
                 $written = $this->manage->create($company, $input, $actorUserId);
                 $this->settleHome($company, $written, $home, $actorUserId);
@@ -227,7 +245,7 @@ final readonly class ProductImport implements DeclaresImport
                 return RowImported::Created;
             }
             $written = $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
-            $after = $this->inFile($company, $written, $context);
+            $after = $this->inFile($company, $written, $context, $record);
             $moved = [
                 'home_location' => $this->settleHome($company, $written, $home, $actorUserId),
                 'reorder_point' => $this->settleReorderPoint($company, $written, $reorderPoint, $actorUserId),
@@ -243,11 +261,17 @@ final readonly class ProductImport implements DeclaresImport
 
             return $notes->changedBetween($before, $after) ? RowImported::Updated : RowImported::Unchanged;
         } catch (InvalidProduct $refused) {
-            // The one code a file writes is the unit code, first in the list: every refusal of a row of it is that cell's.
-            $field = str_starts_with($refused->field, 'barcodes.') ? 'barcode' : $refused->field;
-            [$column, $code] = str_starts_with($field, 'customFields.')
-                ? [self::CUSTOM_PREFIX.substr($field, \strlen('customFields.')), 'invalid_value']
-                : self::REFUSAL_OF[$field] ?? [null, 'invalid_value'];
+            if (1 === preg_match('/^barcodes\.(\d+)\.(\w+)$/', $refused->field, $at)) {
+                // A code's refusal is the cell it came from, the product's own codes the file did not name the unit code's.
+                [$column, $code] = 'quantity' === $at[2]
+                    ? [$codes[(int) $at[1]][1]['quantity'] ?? 'barcode', 'invalid_pack_quantity']
+                    : [$codes[(int) $at[1]][1][$at[2]] ?? $codes[(int) $at[1]][1]['code'] ?? 'barcode', 'code' === $at[2] ? 'invalid_barcode' : 'invalid_value'];
+
+                throw new RowRejected($column, $refused->getMessage(), $refused->reason ?? $code, 'invalid_pack_quantity' === $code ? self::PACK_BOUNDS : $refused->params);
+            }
+            [$column, $code] = str_starts_with($refused->field, 'customFields.')
+                ? [self::CUSTOM_PREFIX.substr($refused->field, \strlen('customFields.')), 'invalid_value']
+                : self::REFUSAL_OF[$refused->field] ?? [null, 'invalid_value'];
 
             throw new RowRejected($column, $refused->getMessage(), $refused->reason ?? $code, $refused->params);
         } catch (ProductStockRefused $refused) {
@@ -261,7 +285,7 @@ final readonly class ProductImport implements DeclaresImport
         } catch (ProductBarcodeTaken $taken) {
             // Named, not merely refused: the file's author needs to know which of their products already carries
             // the code, and the row they are looking at does not say it. Another mode would not help: it is that product's.
-            throw new RowRejected('barcode', $taken->getMessage(), 'barcode_taken', ['reference' => $taken->heldBy]);
+            throw new RowRejected($codes[$taken->index][1]['code'] ?? 'barcode', $taken->getMessage(), 'barcode_taken', ['reference' => $taken->heldBy]);
         } finally {
             // Doctrine's batch processing: every flush walks every managed entity, so a row's product stays out of the
             // unit of work once written, or a file costs the square of its length. Nothing reads it back here.
@@ -379,7 +403,7 @@ final readonly class ProductImport implements DeclaresImport
      *
      * @return array<string, string> by column
      */
-    private function inFile(Company $company, Product $product, ImportContext $context): array
+    private function inFile(Company $company, Product $product, ImportContext $context, ImportRecord $record): array
     {
         $codes = [];
         foreach ($this->taxes->ofCompany($company->getId()) as $tax) {
@@ -387,7 +411,7 @@ final readonly class ProductImport implements DeclaresImport
         }
         $cells = [];
         foreach (array_diff($context->columns, self::STOCK_COLUMNS) as $column) {
-            $cells[$column] = ProductInFile::cell($product, $column, $codes);
+            $cells[$column] = ProductInFile::cell($product, $column, $codes, $record->value('pack_barcode'), $record->value('supplier_code'));
         }
 
         return $cells;
@@ -454,7 +478,8 @@ final readonly class ProductImport implements DeclaresImport
      *
      * @throws InvalidProduct
      */
-    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults): ProductInput
+    /** @param list<BarcodeInput> $codes */
+    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults, array $codes, bool $seesCosts): ProductInput
     {
         $held = $current?->getDetails();
         $kind = $record->value('kind');
@@ -470,40 +495,158 @@ final readonly class ProductImport implements DeclaresImport
                 null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods),
                 $price,
                 ($this->guard->may($company, ProductPermission::COST_READ) ? $faults->read(static fn (): ?string => ImportCells::decimal($record, 'cost_price', 4)) : null) ?? $held?->costPrice,
-                // No column writes it, so the file says nothing about it: an upsert keeps it.
-                $held?->substitutionGroup,
+                $record->value('substitution_group') ?? $held?->substitutionGroup,
             ),
             $faults->read(fn (): Uuid => $this->unitId($company, $record, $current), Uuid::v7()),
             $faults->read(fn (): ?Uuid => $this->categoryId($company, $record, $current), $current?->getCategory()?->getId()),
             $faults->read(fn (): array => $this->taxIds($company, $record, $current), []),
             $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
             $this->customValues($company, $record, $current, $faults),
-            self::barcodes($record, $current),
+            $codes,
+            // Left blank, the product keeps its own; a new one follows what its category or company says.
+            $faults->read(static fn (): ?ProductTracking => self::tracking($record)),
+            // Somebody who sees no cost is shown no supplier's code, so the product form's rule keeps them as stored.
+            seesCosts: $seesCosts,
         );
     }
 
-    /**
-     * The file's one code is the product's UNIT code (docs/SPEC.md § 7, 2026-09-22 11:05): given, it becomes the
-     * unit row, first; its packs, supplier and internal codes are kept, since the file has no column for them and a
-     * blank is not an instruction to remove them. Left blank, every code stays as it is.
-     *
-     * @return list<BarcodeInput>
-     */
-    private static function barcodes(ImportRecord $record, ?Product $current): array
+    /** @throws RowRejected */
+    private static function tracking(ImportRecord $record): ?ProductTracking
     {
-        $held = array_map(
-            static fn (ProductBarcode $row): BarcodeInput => new BarcodeInput($row->getRole()->value, $row->getCode(), $row->getQuantity(), $row->getSupplier()?->getId()),
-            $current?->getBarcodes() ?? [],
-        );
-        $unit = $record->value('barcode');
-        if (null === $unit) {
-            return $held;
+        $cell = $record->value('tracking');
+        if (null === $cell) {
+            return null;
         }
 
-        return [
-            new BarcodeInput(BarcodeRole::Unit->value, $unit, 1),
-            ...array_values(array_filter($held, static fn (BarcodeInput $row): bool => BarcodeRole::Unit->value !== $row->role)),
-        ];
+        return ProductTracking::tryFrom(self::TRACKINGS[mb_strtolower(trim($cell))] ?? '')
+            ?? throw new RowRejected('tracking', 'Stock is told apart by "none", "lot" or "serial".', 'not_one_of', ['choices' => implode(', ', array_column(ProductTracking::cases(), 'value'))]);
+    }
+
+    /**
+     * The codes the product is written with (docs/SPEC.md § 7, 2026-09-22 11:05, F26): the unit code the row gives
+     * replaces the unit row and comes first; the pack and the supplier's code it gives are added, or update the one the
+     * product holds under that code; nothing the row does not name is removed. A supplier's code is only for somebody
+     * who sees costs: for anybody else the product's are left out here and kept as stored by the use case.
+     *
+     * @return list<array{BarcodeInput, array<string, string>}> each code, with the column each of its fields came from
+     */
+    private function codes(Company $company, ImportRecord $record, ?Product $current, bool $seesCosts, RowFaults $faults): array
+    {
+        $codes = [];
+        foreach ($current?->getBarcodes() ?? [] as $row) {
+            if ($seesCosts || BarcodeRole::Supplier !== $row->getRole()) {
+                $codes[] = [new BarcodeInput($row->getRole()->value, $row->getCode(), $row->getQuantity(), $row->getSupplier()?->getId()), []];
+            }
+        }
+        $unit = $record->value('barcode');
+        if (null !== $unit) {
+            $codes = [
+                [new BarcodeInput(BarcodeRole::Unit->value, $unit, 1), self::cellsOf('barcode')],
+                ...array_values(array_filter($codes, static fn (array $code): bool => BarcodeRole::Unit->value !== $code[0]->role)),
+            ];
+        }
+
+        $pack = $record->value('pack_barcode');
+        $quantity = $faults->read(static fn (): ?int => self::packQuantity($record), false);
+        if (null === $pack && \is_int($quantity)) {
+            $faults->read(static fn () => throw new RowRejected('pack_barcode', 'A pack\'s quantity goes with the pack\'s code.', 'value_required'));
+        }
+        if (null !== $pack && false !== $quantity) {
+            $at = self::heldAt($codes, BarcodeRole::Pack, $pack);
+            $quantity ??= null === $at ? null : $codes[$at][0]->quantity;
+            if (null === $quantity) {
+                $faults->read(static fn () => throw new RowRejected('pack_quantity', 'A new pack says how many pieces it holds.', 'value_required'));
+            } else {
+                $codes = self::placed($codes, $at, [new BarcodeInput(BarcodeRole::Pack->value, $pack, $quantity), self::cellsOf('pack_barcode', ['quantity' => 'pack_quantity'])]);
+            }
+        }
+
+        $number = $record->value('supplier_number');
+        $code = $record->value('supplier_code');
+        if (null !== $number || null !== $code) {
+            $supplier = $faults->read(fn (): Uuid => $this->supplierId($company, $number, $code));
+            if (null !== $supplier && null !== $code) {
+                $codes = self::placed($codes, self::heldAt($codes, BarcodeRole::Supplier, $code), [new BarcodeInput(BarcodeRole::Supplier->value, $code, 1, $supplier), self::cellsOf('supplier_code', ['supplierId' => 'supplier_number'])]);
+            }
+        }
+
+        return $codes;
+    }
+
+    /**
+     * The column each field of a code came from: its code's own, and the others the row names it with.
+     *
+     * @param array<string, string> $others
+     *
+     * @return array<string, string>
+     */
+    private static function cellsOf(string $column, array $others = []): array
+    {
+        return ['code' => $column, ...$others];
+    }
+
+    /**
+     * The supplier the row names by number, both halves of the pair given.
+     *
+     * @throws RowRejected
+     */
+    private function supplierId(Company $company, ?string $number, ?string $code): Uuid
+    {
+        if (null === $number || null === $code) {
+            throw new RowRejected(null === $number ? 'supplier_number' : 'supplier_code', 'A supplier\'s code goes with the supplier\'s number.', 'value_required');
+        }
+
+        return $this->vendors->ofNumberInCompany($number, $company->getId())?->getId()
+            ?? throw new RowRejected('supplier_number', \sprintf('The company has no supplier numbered "%s".', $number), 'unknown_vendor', ['number' => $number]);
+    }
+
+    /**
+     * How many pieces the row's pack holds: a whole number from two, as the product form takes it.
+     *
+     * @throws RowRejected
+     */
+    private static function packQuantity(ImportRecord $record): ?int
+    {
+        $cell = $record->value('pack_quantity');
+        if (null === $cell) {
+            return null;
+        }
+        $digits = str_replace([' ', "\u{A0}", "\u{202F}"], '', $cell);
+        if (1 !== preg_match('/^\d{1,7}$/', $digits) || (int) $digits < self::PACK_BOUNDS['min'] || (int) $digits > self::PACK_BOUNDS['max']) {
+            throw new RowRejected('pack_quantity', \sprintf('A pack holds %d to %d pieces.', self::PACK_BOUNDS['min'], self::PACK_BOUNDS['max']), 'invalid_pack_quantity', self::PACK_BOUNDS);
+        }
+
+        return (int) $digits;
+    }
+
+    /** @param list<array{BarcodeInput, array<string, string>}> $codes */
+    private static function heldAt(array $codes, BarcodeRole $role, string $code): ?int
+    {
+        $key = Barcode::keyOf($code);
+        foreach ($codes as $index => [$row]) {
+            if ($role->value === $row->role && $key === Barcode::keyOf($row->code)) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param list<array{BarcodeInput, array<string, string>}> $codes
+     * @param array{BarcodeInput, array<string, string>}       $code
+     *
+     * @return list<array{BarcodeInput, array<string, string>}>
+     */
+    private static function placed(array $codes, ?int $at, array $code): array
+    {
+        if (null === $at) {
+            $codes[] = $code;
+        } else {
+            $codes[$at] = $code;
+        }
+
+        return $codes;
     }
 
     /** The unit the row names by code. A product is sold in one, so a row creating one names it. */
@@ -591,7 +734,9 @@ final readonly class ProductImport implements DeclaresImport
             new ImportColumn('reference', 'import.products.reference', false, 'VIS-6X40', 'import.products.reference_optional_note', code: true),
             new ImportColumn('name', 'import.products.name', true, 'Vis 6x40 zinguée'),
             new ImportColumn('kind', 'import.products.kind', false, 'goods', 'import.products.kind_note'),
+            new ImportColumn('tracking', 'import.products.tracking', false, 'none', 'import.products.tracking_note'),
             new ImportColumn('description', 'import.products.description'),
+            new ImportColumn('substitution_group', 'import.products.substitution_group', false, null, 'import.products.substitution_group_note'),
             new ImportColumn('unit_code', 'import.products.unit_code', false, 'H87', 'import.products.unit_code_note'),
             new ImportColumn('category', 'import.products.category', false, null, 'import.products.category_note'),
             new ImportColumn('unit_price_net', 'import.products.unit_price_net', false, '0.4500', 'import.products.price_note'),
@@ -599,6 +744,15 @@ final readonly class ProductImport implements DeclaresImport
                 ? [new ImportColumn('cost_price', 'import.products.cost_price', false, '0.2200', 'import.products.cost_note')]
                 : [],
             new ImportColumn('barcode', 'import.products.barcode', false, '6191234567897', 'import.products.barcode_note', code: true),
+            new ImportColumn('pack_barcode', 'import.products.pack_barcode', false, '16191234567894', 'import.products.pack_barcode_note', code: true),
+            new ImportColumn('pack_quantity', 'import.products.pack_quantity', false, '12', 'import.products.pack_quantity_note'),
+            // A supplier's code is a cost reader's, and names one of the company's suppliers.
+            ...$this->guard->may($company, ProductPermission::COST_READ) && $this->modules->isEnabled($company->getId(), 'vendors')
+                ? [
+                    new ImportColumn('supplier_number', 'import.products.supplier_number', false, 'FRN-0001', 'import.products.supplier_number_note', code: true),
+                    new ImportColumn('supplier_code', 'import.products.supplier_code', false, 'SF-883', 'import.products.supplier_code_note', code: true),
+                ]
+                : [],
             new ImportColumn('default_tax_codes', 'import.products.default_taxes', false, null, 'import.products.default_taxes_note'),
             new ImportColumn('active', 'import.products.active', false, 'yes', 'import.boolean_note'),
             ...$this->homes->offered($company)
