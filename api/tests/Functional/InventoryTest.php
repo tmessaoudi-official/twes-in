@@ -16,6 +16,7 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\Model\StockMovement;
+use App\Module\Invoices\Domain\Event\InvoiceIssued;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
@@ -32,6 +33,7 @@ use App\Tests\Support\MakesPictures;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -536,6 +538,25 @@ final class InventoryTest extends ApiTestCase
 
         self::assertSame(['5.000'], array_column($this->levels(), 'quantity'), 'the note took those goods out already');
         self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM stock_movement WHERE source_type = 'invoice'"));
+    }
+
+    public function testAnIssuedInvoiceStillTakesItsGoodsOutWhenAnotherOfItsListenersFails(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
+        $customerId = $this->customer();
+        // Kept across the request, and heard before the module's own listeners: the storage of a PDF that fails.
+        $this->client->disableReboot();
+        $dispatcher = static::getContainer()->get('event_dispatcher');
+        self::assertInstanceOf(EventDispatcherInterface::class, $dispatcher);
+        $dispatcher->addListener(InvoiceIssued::class, static function (): never {
+            throw new \RuntimeException('the file storage is down');
+        }, 1000);
+
+        $direct = $this->issuedInvoice($customerId, [['productId' => $this->laptopId, 'quantity' => '3']]);
+
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'), 'the issue is committed, and so is what it moves');
+        self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM stock_movement WHERE source_type = 'invoice' AND source_id = ?", [$direct]));
     }
 
     public function testAReceiptMovesTheProductsCostAsTheCompanysSettingSaysAndKeepsItsHistory(): void
