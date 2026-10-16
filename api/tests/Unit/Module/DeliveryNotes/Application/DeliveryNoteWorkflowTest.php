@@ -250,6 +250,47 @@ final class DeliveryNoteWorkflowTest extends TestCase
         $this->workflow->deliver($this->globex, $delivered->getId(), null, null);
     }
 
+    public function testValidatingAndDeliveringIsOneTransactionRecordingBothMoves(): void
+    {
+        $note = $this->draft();
+        $actor = Uuid::v7();
+
+        self::assertSame($note, $this->workflow->validateAndDeliver($this->company, $note->getId(), $actor));
+
+        self::assertSame(
+            [DeliveryNoteStatus::Delivered, 'BL-2026-09-00001', '2026-09-15', '2026-09-15'],
+            [$note->getStatus(), $note->getNumber(), $note->getIssueDate()?->format('Y-m-d'), $note->getHeader()->deliveryDate?->format('Y-m-d')],
+        );
+        self::assertSame(1, $this->transactions->committed);
+        self::assertSame(
+            [['delivery_note.validated', ['number' => 'BL-2026-09-00001'], $actor], ['delivery_note.delivered', ['deliveryDate' => '2026-09-15'], $actor]],
+            array_map(static fn ($entry): array => [$entry->action, $entry->changes, $entry->actorUserId], $this->audit->entries),
+        );
+        self::assertInstanceOf(DeliveryNoteValidated::class, $this->events->published[0]);
+        self::assertNotContains(true, $this->events->whileInTransaction, 'published once the transaction is over');
+    }
+
+    public function testWhatCannotBeValidatedIsNeitherNumberedNorDelivered(): void
+    {
+        $empty = $this->draft([]);
+        try {
+            $this->workflow->validateAndDeliver($this->company, $empty->getId(), null);
+            self::fail('a note without a line was validated and delivered');
+        } catch (InvalidDeliveryNote $refused) {
+            self::assertSame('lines', $refused->field);
+        }
+        $validated = $this->workflow->validate($this->company, $this->draft()->getId(), null);
+        try {
+            $this->workflow->validateAndDeliver($this->company, $validated->getId(), null);
+            self::fail('a note already validated was validated again');
+        } catch (DeliveryNoteNotDraft) {
+        }
+
+        self::assertSame([DeliveryNoteStatus::Draft, null], [$empty->getStatus(), $empty->getNumber()]);
+        self::assertSame(DeliveryNoteStatus::Validated, $validated->getStatus());
+        self::assertSame(['delivery_note.validated'], array_map(static fn ($entry): string => $entry->action, $this->audit->entries));
+    }
+
     public function testARequestThatReadTheNoteBeforeAnotherChangedItIsRefusedOnceItHoldsTheNote(): void
     {
         $note = $this->draft();

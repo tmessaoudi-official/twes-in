@@ -368,6 +368,17 @@ describe('DeliveryNotesApi', () => {
       .flush({ id: 'n1', status: 'delivered' }, { status: 200, statusText: 'OK' });
     await today;
 
+    const both = api.validateAndDeliver('c1', 'n1');
+    const validateAndDeliver = http.expectOne(
+      '/api/companies/c1/delivery-notes/n1/validate-and-deliver',
+    );
+    expect([validateAndDeliver.request.method, validateAndDeliver.request.body]).toEqual([
+      'POST',
+      null,
+    ]);
+    validateAndDeliver.flush({ id: 'n1', status: 'delivered', number: 'BL-2026-00002' });
+    expect((await both).status).toBe('delivered');
+
     const cancelled = api.cancel('c1', 'n1');
     const cancel = http.expectOne('/api/companies/c1/delivery-notes/n1/cancel');
     expect(cancel.request.method).toBe('POST');

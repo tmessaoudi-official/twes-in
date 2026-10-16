@@ -403,6 +403,21 @@ export class DeliveryNotePage {
         },
       },
       {
+        id: 'validate-deliver',
+        label: 'delivery_notes.actions.validate_deliver',
+        icon: 'local_shipping',
+        disabled: busy,
+        run: () => void this.validateAndDeliver(),
+        shown: this.canValidate(),
+        confirm: {
+          kind: 'corrigeable',
+          title: 'delivery_notes.actions.validate_deliver_title',
+          message: 'delivery_notes.actions.validate_deliver_message',
+          confirmLabel: 'delivery_notes.actions.validate_deliver',
+          keepLabel: 'delivery_notes.actions.keep',
+        },
+      },
+      {
         id: 'deliver',
         shortcut: 'l',
         next: true,
@@ -733,6 +748,20 @@ export class DeliveryNotePage {
       ? { key: 'delivery_notes.suggest.invoice', run: () => void this.invoice() }
       : undefined;
     this.feedback.effect('delivery_notes.validated', {}, kind, next);
+  }
+
+  protected async validateAndDeliver(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    const input = this.collect();
+    if (!companyId || id === null || input === null) return;
+    const kind = kindAmong(this.actions(), 'validate-deliver');
+    const delivered = await this.facade.reviseValidateAndDeliver(companyId, id, input);
+    if (delivered === null || kind === undefined) return;
+    const next = this.invoiceable(delivered.status)
+      ? { key: 'delivery_notes.suggest.invoice', run: () => void this.invoice() }
+      : undefined;
+    this.feedback.effect('delivery_notes.validated_delivered', {}, kind, next);
   }
 
   /** Asked in a dialog, so the bar carries actions and not a date field (design review finding 3). */

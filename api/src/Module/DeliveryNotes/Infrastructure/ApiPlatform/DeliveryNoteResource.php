@@ -133,6 +133,15 @@ use Symfony\Component\Validator\Constraints as Assert;
             validationContext: ['groups' => [self::DELIVER]],
         ),
         new Post(
+            uriTemplate: '/companies/{companyId}/delivery-notes/{deliveryNoteId}/validate-and-deliver',
+            status: 200,
+            processor: ValidateAndDeliverDeliveryNoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            input: false,
+            normalizationContext: self::NORMALIZATION,
+        ),
+        new Post(
             uriTemplate: '/companies/{companyId}/delivery-notes/{deliveryNoteId}/cancel',
             status: 200,
             processor: CancelDeliveryNoteProcessor::class,

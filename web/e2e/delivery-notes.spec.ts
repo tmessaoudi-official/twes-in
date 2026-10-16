@@ -211,6 +211,40 @@ async function validatedNote(
   await expect(page.getByTestId('delivery-note-title')).toHaveText(/BL-\d{4}-(\d{2}-)?\d{5}/);
 }
 
+// docs/SPEC.md § 7, 2026-09-21 17:25: one action numbers the draft and delivers it today, beside the two steps.
+test('a draft is validated and delivered in one step', async ({ page }) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-DNB-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    await page.goto('/delivery-notes/new');
+    await page.getByTestId('delivery-note-customer').fill(customerNumber);
+    await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+    await page.getByTestId('line-0-description').fill(`Livré d’un coup ${run}`);
+    await page.getByTestId('line-0-quantity').fill('1');
+    await page.getByTestId('line-0-price').fill('100');
+    await choose(page, 'line-0-taxes', /19/);
+    await page.getByTestId('document-action-save').click();
+    await expect(page).toHaveURL(/\/delivery-notes\/[0-9a-f-]{36}$/);
+    await page.getByTestId('document-action-validate-deliver').click();
+    await expect(page.getByTestId('confirm-run')).toHaveText(
+      /Valider et livrer|Validate and deliver/,
+    );
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.screenshot({ path: test.info().outputPath('validate-deliver-asked.png') });
+    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('delivery-note-title')).toHaveText(/BL-\d{4}-(\d{2}-)?\d{5}/);
+    await expect(page.getByTestId('delivery-note-status')).toContainText(/Livré|Delivered/);
+    await page.screenshot({ path: test.info().outputPath('validate-deliver-done.png') });
+    await expect(page.getByTestId('document-action-validate-deliver')).toHaveCount(0);
+    await expect(page.getByTestId('document-action-deliver')).toHaveCount(0);
+  } finally {
+    await retire(page, customerNumber);
+  }
+});
+
 test('the lines say what they carry in each unit as they are typed', async ({ page }) => {
   const run = Date.now().toString(36).toUpperCase();
   const customerNumber = `E2E-DNQ-${run}`;

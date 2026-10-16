@@ -240,6 +240,11 @@ export class DeliveryNotesApi {
     return this.step(companyId, id, 'validate', null);
   }
 
+  /** Numbers a draft and marks it delivered today, both or neither; refused as `validate` refuses. */
+  async validateAndDeliver(companyId: string, id: string): Promise<DeliveryNoteRow> {
+    return this.step(companyId, id, 'validate-and-deliver', null);
+  }
+
   /** Marks a validated note delivered on a day, or on the company's today when the day is left out. */
   async deliver(
     companyId: string,
@@ -320,7 +325,7 @@ export class DeliveryNotesApi {
   private async step(
     companyId: string,
     id: string,
-    action: 'validate' | 'deliver' | 'cancel',
+    action: 'validate' | 'validate-and-deliver' | 'deliver' | 'cancel',
     body: DeliveryNoteDeliveryNoteDeliver | null,
   ): Promise<DeliveryNoteRow> {
     return this.guard(async () =>
