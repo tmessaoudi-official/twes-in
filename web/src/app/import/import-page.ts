@@ -98,6 +98,10 @@ export class ImportPage {
    */
   protected readonly subjectKey = computed(() => this.subject().replace(/-/g, '_'));
   protected readonly compact = computed(() => this.windowClass() === 'compact');
+  /** The rows refused: a row says every fault it holds, and the count beside « créés » counts rows. */
+  protected readonly rejectedRows = computed(
+    () => new Set(this.report()?.rejected.map((rejection) => rejection.line)).size,
+  );
 
   /**
    * The columns a row is found again by, each named as its heading reads with its key beside it, as the file writes

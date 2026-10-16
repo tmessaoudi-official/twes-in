@@ -228,6 +228,27 @@ final class OpeningStockImportTest extends ApiTestCase
         ], $this->rejected());
     }
 
+    /**
+     * A refused row says every fault it holds at once, in the template's column order (docs/SPEC.md § 7, 2026-10-09
+     * 10:40, ruling 9). A product the company has not is not followed by its place, which is found through the
+     * product; a quantity refused is not followed by a « fill one in ».
+     */
+    public function testARefusedRowListsEveryFaultAtOnce(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+
+        $this->import(self::HEADER."\nMO-TOUR,,ZZZ,1,1\nINCONNU,,ZZZ,5%,\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            [2, 'reference', 'not_stocked'],
+            [2, 'location_code', 'unknown_location'],
+            [2, 'stock_count', 'stock_add_and_count'],
+            [3, 'reference', 'unknown_product'],
+            [3, 'stock_add', 'percent_sign'],
+        ], array_map(static fn (array $row): array => \array_slice($row, 0, 3), $this->rejected()));
+    }
+
     /** A quantity is refused saying what its unit counts in, and what a count or a receipt takes. */
     public function testAQuantityIsRefusedSayingWhatItsUnitAndItsWayIn(): void
     {

@@ -422,6 +422,25 @@ final class CustomerImportTest extends ApiTestCase
         self::assertSame([[2, $column, $code, $params]], array_map(static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null, $row['params'] ?? null] : [], $rejected));
     }
 
+    /**
+     * A refused row says every fault it holds at once, the form's rules and the cells read alike, in the order of its
+     * columns, so a person fixes a file in one pass rather than one fault per try (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 9).
+     */
+    public function testARefusedRowListsEveryFaultAtOnce(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import("number,name,kind,email,website,customer_group,default_discount_rate,payment_terms_days,active\nCLI-0001,Carthage Conseil,cooperative,not-an-email,not a website,Nowhere,5%,366,peut-être\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(
+            [[2, 'kind', 'not_one_of'], [2, 'email', 'invalid_email'], [2, 'website', 'invalid_website'], [2, 'customer_group', 'unknown_group'], [2, 'default_discount_rate', 'percent_sign'], [2, 'payment_terms_days', 'invalid_payment_terms'], [2, 'active', 'not_yes_or_no']],
+            $this->rejectedCells(),
+            'in the order of the template’s columns',
+        );
+        self::assertSame(0, $this->customers());
+    }
+
     public function testWhatIsNotASpreadsheetIsRefused(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);
@@ -441,6 +460,15 @@ final class CustomerImportTest extends ApiTestCase
         $this->import($this->twoCustomers(), dryRun: true);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /** @return list<array{mixed, mixed, mixed}> each rejection's line, column and code, in the report's order */
+    private function rejectedCells(): array
+    {
+        $rejected = $this->json()['rejected'];
+        self::assertIsArray($rejected);
+
+        return array_values(array_map(static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null] : [null, null, null], $rejected));
     }
 
     /**

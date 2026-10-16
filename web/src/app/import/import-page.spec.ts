@@ -32,6 +32,7 @@ class StaticLoader implements TranslateLoader {
         identity: 'Une ligne est retrouvée par : {{columns}}. Au plus {{rows}} lignes par fichier.',
         preview: 'Prévisualiser',
         store: 'Importer',
+        rejected: '{{count}} refusés',
         rejections: { duplicate_in_file: 'Déjà présent à la ligne {{line}} du fichier.' },
         notes: {
           reference_given: 'Référence donnée : {{reference}}.',
@@ -437,6 +438,27 @@ describe('ImportPage', () => {
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(true);
     expect(q('import-nothing-stored')).not.toBeNull();
     expect(q('import-rejections')?.textContent).toContain('Déjà présent à la ligne 2 du fichier.');
+  });
+
+  /** A row says every fault it holds, so the count beside « créés » counts rows, as it does, not faults. */
+  it('lists each fault of a row and counts the rows refused', async () => {
+    chooseFile();
+    await settle();
+    facade.run.mockImplementation(async () =>
+      report.set({
+        ...REJECTED,
+        rejected: [
+          { line: 3, column: 'email', code: 'invalid_value', params: {}, message: 'x' },
+          { line: 3, column: 'website', code: 'invalid_value', params: {}, message: 'x' },
+          { line: 3, column: null, code: 'invalid_value', params: {}, message: 'x' },
+          { line: 4, column: 'email', code: 'invalid_value', params: {}, message: 'x' },
+        ],
+      }),
+    );
+    await click('import-preview');
+
+    expect(q('import-rejected-count')?.textContent?.trim()).toBe('2 refusés');
+    expect(q('import-rejections')?.querySelectorAll('tbody tr').length).toBe(4);
   });
 
   /** A code this screen does not translate yet must still read as a sentence, not as the code itself. */

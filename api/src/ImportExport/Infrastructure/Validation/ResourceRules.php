@@ -28,11 +28,12 @@ final readonly class ResourceRules
      * @param class-string                                         $resource
      * @param array<string, array{column: string, value: ?string}> $cells    by the property each fills
      *
-     * @throws RowRejected naming the first cell refused, under the reason its constraint gives a screen and that text's
-     *                     parameters, so a file and a form say the same refusal
+     * @throws RowRejected naming every cell refused, each under the reason its constraint gives a screen and that
+     *                     text's parameters, so a file and a form say the same refusal
      */
     public function hold(string $resource, string $group, array $cells): void
     {
+        $refused = [];
         foreach ($cells as $property => ['column' => $column, 'value' => $value]) {
             if (null === $value) {
                 continue;
@@ -46,7 +47,10 @@ final readonly class ResourceRules
             $payload = \is_array($payload) ? $payload : [];
             $reason = $payload['reason'] ?? null;
 
-            throw new RowRejected($column, (string) $violation->getMessage(), \is_string($reason) ? $reason : 'invalid_value', self::params($payload['params'] ?? null));
+            $refused[] = new RowRejected($column, (string) $violation->getMessage(), \is_string($reason) ? $reason : 'invalid_value', self::params($payload['params'] ?? null));
+        }
+        if ([] !== $refused) {
+            throw RowRejected::together($refused);
         }
     }
 

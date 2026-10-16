@@ -19,6 +19,7 @@ use App\ImportExport\Application\ImportHeading;
 use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
+use App\ImportExport\Application\RowFaults;
 use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
@@ -140,11 +141,14 @@ final readonly class VendorImport implements DeclaresImport
         if (null !== $existing && ImportMode::Create === $mode) {
             throw new RowRejected('number', 'A vendor already has this number. Import in "create and update" mode to update it.', 'already_exists');
         }
-        $this->rules->hold(VendorResource::class, VendorResource::WRITE, self::cells($record));
+        // Every cell is read before anything is written, and every fault found is said at once (ruling 9).
+        $faults = new RowFaults();
+        $faults->read(fn () => $this->rules->hold(VendorResource::class, VendorResource::WRITE, self::cells($record)));
 
         $written = null;
         try {
-            $input = $this->input($company, $record, $existing);
+            $input = $this->input($company, $record, $existing, $faults);
+            $faults->stopIfAny();
             if (!$context->dryRun && $input->profile->changesBankDetailsOf($existing?->getProfile()) && (null === $actorUserId || !$this->stepUp->isRecent($actorUserId))) {
                 throw new StepUpRequired();
             }
@@ -175,10 +179,11 @@ final readonly class VendorImport implements DeclaresImport
      * The vendor the row describes: every cell it fills in, and for an existing vendor what it already holds wherever
      * the row leaves a cell blank.
      *
+     * A refused cell is kept among the row's faults and leaves what the vendor holds in its place.
+     *
      * @throws InvalidVendor
-     * @throws RowRejected
      */
-    private function input(Company $company, ImportRecord $record, ?Vendor $current): VendorInput
+    private function input(Company $company, ImportRecord $record, ?Vendor $current, RowFaults $faults): VendorInput
     {
         $held = $current?->getProfile();
         $identifiers = $held->identifiers ?? [];
@@ -198,11 +203,11 @@ final readonly class VendorImport implements DeclaresImport
                 $this->address($company, $record, $held?->address),
                 $record->value('iban') ?? $held?->iban,
                 $record->value('bic') ?? $held?->bic,
-                self::wholeNumber($record, 'payment_terms_days') ?? $held?->paymentTermsDays,
+                $faults->read(static fn (): ?int => self::wholeNumber($record, 'payment_terms_days')) ?? $held?->paymentTermsDays,
                 $record->value('notes') ?? $held?->notes,
-                $this->expenseCategoryId($company, $record, $held),
+                $faults->read(fn (): ?Uuid => $this->expenseCategoryId($company, $record, $held), $held?->defaultExpenseCategoryId),
             ),
-            self::yesNo($record, 'active') ?? $current?->isActive() ?? true,
+            $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
         );
     }
 

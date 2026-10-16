@@ -87,6 +87,27 @@ final class VendorImportTest extends ApiTestCase
         ], $rejected);
     }
 
+    /** A refused row says every fault it holds at once, in the order of its columns (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 9). */
+    public function testARefusedRowListsEveryFaultAtOnce(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+
+        $this->import("number,name,email,iban,payment_terms_days,expense_category,active\nFRN-0020,Tout faux,pas-un-courriel,TN00 1234,bientôt,Inconnue,peut-être\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        $rejected = array_map(
+            static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null] : [],
+            $this->arrayAt($this->json(), 'rejected'),
+        );
+        self::assertSame([
+            [2, 'email', 'invalid_email'],
+            [2, 'iban', 'invalid_iban'],
+            [2, 'payment_terms_days', 'not_a_whole_number'],
+            [2, 'expense_category', 'unknown_expense_category'],
+            [2, 'active', 'not_yes_or_no'],
+        ], $rejected);
+    }
+
     /**
      * A file is held to the vendor form's own rules for what the domain does not check: bank details, contact details,
      * the country and every length. A country the column cannot hold was a server error on the preview.
