@@ -18,8 +18,10 @@ use App\ImportExport\Application\RowRejected;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
+use App\Settings\Domain\SettingAddress;
 use App\Settings\Domain\SettingDefinition;
 use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\SettingRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 
@@ -54,7 +56,14 @@ final readonly class CustomerSettingCells
         private SettingCatalog $catalog,
         private ChangeSettings $settings,
         private CurrencyScales $scales,
+        private SettingRepository $stored,
     ) {
+    }
+
+    /** Whether the column is one of a customer's own settings. */
+    public static function covers(string $column): bool
+    {
+        return \array_key_exists($column, self::SETTING_OF);
     }
 
     /** @return list<ImportColumn> */
@@ -119,6 +128,37 @@ final readonly class CustomerSettingCells
         foreach ($values as $key => $value) {
             $this->settings->change($context, $key, SettingLevel::Customer, $value, $actorUserId);
         }
+    }
+
+    /**
+     * What each customer holds of its own, written as a file writes it, so an export brought back changes nothing: a
+     * value the customer inherits is left out, as a blank cell keeps it. One read for the whole batch.
+     *
+     * @param list<Uuid> $customerIds
+     *
+     * @return array<string, array<string, string>> by customer id, then column
+     */
+    public function shown(Company $company, array $customerIds): array
+    {
+        $columnOf = array_flip(self::SETTING_OF);
+        $addresses = array_map(static fn (Uuid $id): SettingAddress => SettingAddress::customer($company, $id), $customerIds);
+        $shown = [];
+        foreach ($this->stored->at($addresses) as $setting) {
+            $column = $columnOf[$setting->getKey()] ?? null;
+            $value = $setting->getValue();
+            if (null === $column || !\is_scalar($value)) {
+                continue;
+            }
+            foreach ($customerIds as $index => $id) {
+                if ($setting->isAt($addresses[$index])) {
+                    $shown[$id->toRfc4122()][$column] = (string) $value;
+
+                    break;
+                }
+            }
+        }
+
+        return $shown;
     }
 
     /** Why a cell is refused, in the words the column's own refusals use, with the bounds its setting declares. */
