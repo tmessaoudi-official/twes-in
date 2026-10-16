@@ -5249,7 +5249,7 @@ The North star (§ 1) first: real businesses on what exists, then the platform. 
 https://claude.ai/artifact/2AUhf7V1Nuro3kqR1RKdN6 (sources in `var/claude/platform-design/`, not kept in git).
 
 1. Done: « Ajouter à… » step 2 (row 259), then the invitation link's budget and `var/share` on a volume (row 335).
-2. Every package, image, tool and CI action to its latest stable release, one ecosystem a commit (§ 7 2026-10-16 17:24).
+2. Done (3d0767f9, CI green): every package, image, tool and CI action to its latest stable release, one ecosystem a commit (§ 7 2026-10-16 17:24).
 3. The tool-by-tool audit against each tool's own documentation, then its fixes, optimistic locking and the refusal
    contract first (§ 7 2026-10-16 17:24); it carries round 2's former lens 55.
 4. The web's partial split and its gates (§ 7 2026-10-16 17:17); the 507 `ASSUMED (review)` picks on a marking page.
