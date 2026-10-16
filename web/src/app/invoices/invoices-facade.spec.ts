@@ -15,6 +15,7 @@ const options: InvoiceOptions = {
 };
 const draft: InvoiceRow = {
   id: 'i1',
+  version: 1,
   type: 'invoice',
   correctsInvoiceId: null,
   creditNoteReason: null,
@@ -191,15 +192,21 @@ describe('InvoicesFacade', () => {
     api.revise.mockImplementation(async () => (calls.push('revise'), draft));
     api.issue.mockImplementation(async () => (calls.push('issue'), issued));
 
-    expect(await facade.reviseAndIssue('c1', 'i1', input)).toEqual(issued);
-    expect(calls).toEqual(['revise', 'issue']);
+    expect(await facade.reviseAndIssue('c1', 'i1', input, 3, () => calls.push('revised'))).toEqual(
+      issued,
+    );
+    expect(api.revise).toHaveBeenCalledWith('c1', 'i1', input, 3);
+    // The form is told the save was kept before issuing answers, whatever issuing then says.
+    expect(calls).toEqual(['revise', 'revised', 'issue']);
     expect(facade.invoice()).toEqual(issued);
   });
 
   it('does not issue when the revision is refused, and says why', async () => {
     api.revise.mockRejectedValue(new InvoicesRefused('invalid'));
+    const revised = vi.fn();
 
-    expect(await facade.reviseAndIssue('c1', 'i1', input)).toBeNull();
+    expect(await facade.reviseAndIssue('c1', 'i1', input, 3, revised)).toBeNull();
+    expect(revised).not.toHaveBeenCalled();
     expect(api.issue).not.toHaveBeenCalled();
     expect(facade.error()).toBe('invalid');
   });

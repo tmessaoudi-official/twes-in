@@ -105,6 +105,7 @@ final class PrintInvoiceTest extends TestCase
             new ReadSetting($resolve),
             $this->clock,
             ShippedFiscalPresets::presets(),
+            new FakeTransactions(),
         );
     }
 

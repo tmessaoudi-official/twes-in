@@ -38,7 +38,7 @@ final readonly class ReviseInvoiceProcessor implements ProcessorInterface
         $this->creditNotes->check($company, CompanyPath::identifier($uriVariables, 'invoiceId'));
 
         try {
-            $invoice = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'invoiceId'), $data->input(), $this->guard->account()->getId());
+            $invoice = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'invoiceId'), $data->input(), $this->guard->account()->getId(), $data->version);
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvoiceNotDraft $fixed) {

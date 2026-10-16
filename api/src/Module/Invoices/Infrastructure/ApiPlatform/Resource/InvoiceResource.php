@@ -41,6 +41,7 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\ReviseInvoice
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider\InvoiceCollectionProvider;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider\InvoiceItemProvider;
 use App\Module\Products\Domain\Service\LotCode;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -102,8 +103,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: self::NORMALIZATION,
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/invoices/preview',
@@ -194,6 +195,12 @@ final class InvoiceResource
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
     public ?string $id = null;
+
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
 
     /** An invoice, or a credit note correcting one. */
     #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => ['invoice', 'credit_note']])]
@@ -537,6 +544,7 @@ final class InvoiceResource
         $header = $invoice->getHeader();
         $resource = new self();
         $resource->id = $invoice->getId()->toRfc4122();
+        $resource->version = $invoice->getVersion();
         $resource->type = $invoice->getType()->value;
         $resource->correctsInvoiceId = $invoice->getCorrectedInvoice()?->getId()->toRfc4122();
         $resource->deposit = $invoice->isDeposit();

@@ -20,6 +20,7 @@ import type { InvoiceRow } from './invoices-types';
 
 const base: InvoiceRow = {
   id: 'i1',
+  version: 1,
   type: 'invoice',
   correctsInvoiceId: null,
   creditNoteReason: null,

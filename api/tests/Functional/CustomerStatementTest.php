@@ -408,7 +408,7 @@ final class CustomerStatementTest extends ApiTestCase
     {
         $this->postJson($this->companyPath().'/invoices/'.$invoiceId.'/credit-notes', ['creditNoteReason' => 'Retour']);
         $id = $this->stringAt($this->json(), 'id');
-        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$id, $this->invoiceBody($net, $this->customerId));
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$id, ['version' => $this->storedVersion('invoice', $id)] + $this->invoiceBody($net, $this->customerId));
         self::assertResponseIsSuccessful();
         $this->postJson($this->companyPath().'/invoices/'.$id.'/issue', null);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);

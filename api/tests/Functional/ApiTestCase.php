@@ -70,6 +70,18 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
+     * The version a record is stored at, which its revision sends back: a test of something other than the version
+     * revises the record as it stands.
+     */
+    protected function storedVersion(string $table, string $id): int
+    {
+        $version = $this->em()->getConnection()->fetchOne(\sprintf('SELECT version FROM %s WHERE id = ?', $table), [$id]);
+        self::assertIsInt($version, "$table $id carries a version");
+
+        return $version;
+    }
+
+    /**
      * An operator gets an authenticator unless `$authenticator` says otherwise: every operator must carry one
      * (docs/SPEC.md § 7, 2026-09-15, S3), so a test of anything else signs them in the way they really sign in.
      *

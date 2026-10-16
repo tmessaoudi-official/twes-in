@@ -151,8 +151,13 @@ export class InvoicesFacade {
     return this.step(() => this.api.create(companyId, input));
   }
 
-  async revise(companyId: string, id: string, input: InvoiceInput): Promise<InvoiceRow | null> {
-    return this.step(() => this.api.revise(companyId, id, input));
+  async revise(
+    companyId: string,
+    id: string,
+    input: InvoiceInput,
+    version: number | null,
+  ): Promise<InvoiceRow | null> {
+    return this.step(() => this.api.revise(companyId, id, input, version));
   }
 
   /**
@@ -171,15 +176,21 @@ export class InvoicesFacade {
     }
   }
 
-  /** Saves what is on screen, then issues it: a document is never issued with content other than the one shown. */
+  /**
+   * Saves what is on screen, then issues it: a document is never issued with content other than the one shown.
+   * `revised` is told once the save is kept, whatever issuing then answers, so the form stands on what was saved.
+   */
   async reviseAndIssue(
     companyId: string,
     id: string,
     input: InvoiceInput,
+    version: number | null,
+    revised: () => void,
     excessTo?: CreditExcessTo,
   ): Promise<InvoiceRow | null> {
     return this.step(async () => {
-      this.invoiceSignal.set(await this.api.revise(companyId, id, input));
+      this.invoiceSignal.set(await this.api.revise(companyId, id, input, version));
+      revised();
       return this.api.issue(companyId, id, excessTo);
     });
   }

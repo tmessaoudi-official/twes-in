@@ -414,10 +414,12 @@ describe('InvoicesApi', () => {
     post.flush({ ...issued, status: 'draft', number: null });
     expect((await created).number).toBeNull();
 
-    const revised = api.revise('c1', 'i1', input);
+    const revised = api.revise('c1', 'i1', input, 4);
     const put = http.expectOne('/api/companies/c1/invoices/i1');
     expect(put.request.method).toBe('PUT');
     expect(put.request.body).not.toHaveProperty('id');
+    // The version the form stands on, which the API refuses once someone else saved a later one.
+    expect(put.request.body).toEqual({ ...input, version: 4 });
     put.flush(issued);
     await revised;
   });
@@ -491,6 +493,17 @@ describe('InvoicesApi', () => {
         .flush({}, { status, statusText: 'Refused' });
       await expect(pending).rejects.toEqual(new InvoicesRefused(code));
     }
+  });
+
+  it('tells a save over a version saved since from a document no longer a draft', async () => {
+    const changed = api.revise('c1', 'i1', input, 1);
+    http
+      .expectOne('/api/companies/c1/invoices/i1')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toEqual(new InvoicesRefused('record_changed'));
   });
 
   it('tells a customer that can no longer be invoiced from any other refusal, by the field the API named', async () => {

@@ -9,6 +9,8 @@ export type InvoicesError =
   | 'network'
   | 'not_found'
   | 'conflict'
+  /** Saved over a version someone else saved since: nothing was saved, and what they saved is to be merged. */
+  | 'record_changed'
   | 'invalid'
   | 'excess_to'
   | 'customer_unavailable'
@@ -280,6 +282,8 @@ export interface BulkPaid {
 
 export interface InvoiceRow {
   id: string;
+  /** The version read, which a revision sends back; one saved since is refused as `record_changed`. */
+  version: number;
   type: InvoiceType;
   /** The invoice a credit note corrects; null for an invoice. */
   correctsInvoiceId: string | null;

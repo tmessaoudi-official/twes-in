@@ -31,6 +31,7 @@ use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\AmountInWords;
 use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Tenancy\Domain\Model\Company;
@@ -56,6 +57,7 @@ final readonly class PrintInvoice
         private ReadSetting $settings,
         private ClockInterface $clock,
         private FiscalPresets $presets,
+        private Transactions $transactions,
     ) {
     }
 
@@ -133,11 +135,21 @@ final readonly class PrintInvoice
             return $this->files->contents($stored);
         }
 
+        // Rendered before the row is held, which is not kept waiting on the renderer: what an issued document says no
+        // longer changes. Then held, as a payment may have saved it since it was read, and read again as it stands.
         $contents = $this->render($invoice, null);
-        $invoice->attachPdf($this->files->store($invoice->getCompany(), self::fileName($invoice), 'application/pdf', $contents, null));
-        $this->invoices->save($invoice);
 
-        return $contents;
+        return $this->transactions->run(function () use ($invoice, $contents): string {
+            $held = $this->invoices->lockedOfIdInCompany($invoice->getId(), $invoice->getCompany()->getId()) ?? throw new InvoiceNotFound();
+            $stored = $held->getPdfFile();
+            if (null !== $stored) {
+                return $this->files->contents($stored);
+            }
+            $held->attachPdf($this->files->store($held->getCompany(), self::fileName($held), 'application/pdf', $contents, null));
+            $this->invoices->save($held);
+
+            return $contents;
+        });
     }
 
     /** @param InvoicePage::DRAFT|InvoicePage::CANCELLED|InvoicePage::DUPLICATE|InvoicePage::COPY|null $watermark */

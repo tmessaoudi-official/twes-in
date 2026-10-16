@@ -283,6 +283,7 @@ export class InvoicePage {
       const options = this.options();
       return current && options ? invoiceValues(current, options) : null;
     },
+    version: () => this.current()?.version ?? null,
     // The lines and the document taxes are one field: a line is never merged with another person's.
     parts: [
       {
@@ -637,10 +638,26 @@ export class InvoicePage {
     const id = this.id();
     const input = this.collect();
     if (!companyId || id === null || input === null) return false;
-    if ((await this.facade.revise(companyId, id, input)) === null) return false;
+    if ((await this.facade.revise(companyId, id, input, this.sync.version())) === null) {
+      await this.refused();
+      return false;
+    }
+    this.revisedHere();
+    return true;
+  }
+
+  /** The form now stands on what this tab saved, before anything else is asked of the document. */
+  private readonly revisedHere = (): void => {
     const form = this.form();
     if (form !== null) this.sync.savedHere(form);
-    return true;
+  };
+
+  /** A save made over a version saved since is merged and said; any other refusal stays as the screen shows it. */
+  private async refused(): Promise<void> {
+    if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
+    }
   }
 
   private readonly rights = computed(() => this.invoiceActions.rights());
@@ -976,10 +993,11 @@ export class InvoicePage {
         this.handedOver = true;
         await this.router.navigate(['/invoices', created.id], { replaceUrl: true });
       }
-    } else if ((await this.facade.revise(companyId, id, input)) !== null) {
-      const form = this.form();
-      if (form !== null) this.sync.savedHere(form);
+    } else if ((await this.facade.revise(companyId, id, input, this.sync.version())) !== null) {
+      this.revisedHere();
       this.feedback.success('invoices.saved');
+    } else {
+      await this.refused();
     }
   }
 
@@ -991,7 +1009,13 @@ export class InvoicePage {
     // Read before issuing: once issued, the screen declares what an issued document offers.
     const kind = kindAmong(this.actions(), 'issue');
     const key = this.isCreditNote() ? 'invoices.credit_note_issued' : 'invoices.issued';
-    let issued = await this.facade.reviseAndIssue(companyId, id, input);
+    let issued = await this.facade.reviseAndIssue(
+      companyId,
+      id,
+      input,
+      this.sync.version(),
+      this.revisedHere,
+    );
     if (issued === null && this.facade.error() === 'excess_to') {
       // The credit note gives back money already paid: say where it goes, then issue it again with that.
       this.facade.clearError();
@@ -1004,8 +1028,16 @@ export class InvoicePage {
           .afterClosed(),
       );
       if (!excessTo) return;
-      issued = await this.facade.reviseAndIssue(companyId, id, input, excessTo);
+      issued = await this.facade.reviseAndIssue(
+        companyId,
+        id,
+        input,
+        this.sync.version(),
+        this.revisedHere,
+        excessTo,
+      );
     }
+    if (issued === null) await this.refused();
     if (issued === null || kind === undefined) return;
     // Its next step, to whoever may take it (docs/SPEC.md § 7, 2026-09-26, row 139).
     const next = this.owes(issued)

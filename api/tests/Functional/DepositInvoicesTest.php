@@ -167,18 +167,18 @@ final class DepositInvoicesTest extends ApiTestCase
         self::assertSame(['Acomptes', null, null], array_column($this->rows($this->json(), 'lines'), 'section'), 'the first line written from the deposit keeps the title');
         self::assertSame([['Acomptes', 0, 3]], array_map(static fn (array $section): array => [$section['title'], $section['firstLine'], $section['lineCount']], $this->rows($this->json(), 'sections')));
 
-        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$handId, $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Avances'], ['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Reste'], $solde]));
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$handId, ['version' => $this->storedVersion('invoice', $handId)] + $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Avances'], ['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Reste'], $solde]));
         self::assertResponseIsSuccessful();
         self::assertSame(['Avances', 'Reste', null], array_column($this->rows($this->json(), 'lines'), 'section'), 'each line written from the deposit takes the title sent in its place');
 
         // The screen may take one row of the deposit off: the API writes the whole deposit again, and a title the
         // document already holds stays on its own line rather than sliding onto the line that took the row's place.
-        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$handId, $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Reste'], $solde]));
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$handId, ['version' => $this->storedVersion('invoice', $handId)] + $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Reste'], $solde]));
         self::assertResponseIsSuccessful();
         self::assertSame(['Avances', 'Reste', null], array_column($this->rows($this->json(), 'lines'), 'section'), 'a row taken off moves no title');
 
         // A title refused names the line it was sent on.
-        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$handId, $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Avances'], ['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => str_repeat('é', 121)], $solde]));
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$handId, ['version' => $this->storedVersion('invoice', $handId)] + $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Avances'], ['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => str_repeat('é', 121)], $solde]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringStartsWith('lines[1].section', $this->stringAt($this->json(), 'detail'));
 
@@ -711,7 +711,7 @@ final class DepositInvoicesTest extends ApiTestCase
      */
     private function editable(array $body): array
     {
-        return array_intersect_key($body, array_flip(['customerId', 'establishmentId', 'supplyDate', 'paymentTermsDays', 'customerReference', 'notesPrinted', 'notesInternal', 'discountAmount', 'documentTaxComponentIds']));
+        return [...array_intersect_key($body, array_flip(['customerId', 'establishmentId', 'supplyDate', 'paymentTermsDays', 'customerReference', 'notesPrinted', 'notesInternal', 'discountAmount', 'documentTaxComponentIds'])), 'version' => $this->storedVersion('invoice', $this->stringAt($body, 'id'))];
     }
 
     /**

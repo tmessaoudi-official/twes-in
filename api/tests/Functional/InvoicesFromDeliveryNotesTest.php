@@ -556,7 +556,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
      */
     private function invoiceBody(array $invoice): array
     {
-        return array_intersect_key($invoice, array_flip(['customerId', 'establishmentId', 'supplyDate', 'paymentTermsDays', 'customerReference', 'notesPrinted', 'notesInternal', 'discountAmount', 'documentTaxComponentIds', 'lines']));
+        return [...array_intersect_key($invoice, array_flip(['customerId', 'establishmentId', 'supplyDate', 'paymentTermsDays', 'customerReference', 'notesPrinted', 'notesInternal', 'discountAmount', 'documentTaxComponentIds', 'lines'])), 'version' => $this->storedVersion('invoice', $this->stringAt($invoice, 'id'))];
     }
 
     private function customer(string $number, ?Company $company = null): Customer

@@ -5,6 +5,7 @@ import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular
 import type { PreviewBody } from '../shared/documents/document-figures';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import { isPeriodClosed } from '../shared/documents/period-closed';
+import { isRecordChanged } from '../shared/errors/record-changed';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { filenameOf } from '../shared/files/save-file';
@@ -19,6 +20,7 @@ import type {
   InvoiceInvoiceCreditValidationInvoiceCredit as InvoiceInvoiceCredit,
   InvoiceInvoiceRead,
   InvoiceJsonldInvoiceRead,
+  InvoiceInvoiceWriteRecordReviseValidationInvoiceWriteRecordRevise as InvoiceInvoiceRevise,
   InvoiceInvoiceWriteValidationInvoiceWrite as InvoiceInvoiceWrite,
   InvoiceCustomerPickInvoiceCustomerPickRead,
   InvoiceNextNumberInvoiceNextNumberRead,
@@ -240,13 +242,20 @@ export class InvoicesApi {
     );
   }
 
-  /** 409 once the document is no longer a draft. */
-  async revise(companyId: string, id: string, input: InvoiceInput): Promise<InvoiceRow> {
+  /**
+   * 409 once the document is no longer a draft; `version` is the one the form was opened at, and a later one saved
+   * elsewhere answers `record_changed`.
+   */
+  async revise(
+    companyId: string,
+    id: string,
+    input: InvoiceInput,
+    version: number | null,
+  ): Promise<InvoiceRow> {
+    const body: InvoiceInvoiceRevise = { ...toBody(input), version };
     return this.guard(async () =>
       toInvoice(
-        await firstValueFrom(
-          this.http.put<InvoiceInvoiceRead>(invoicePath(companyId, id), toBody(input)),
-        ),
+        await firstValueFrom(this.http.put<InvoiceInvoiceRead>(invoicePath(companyId, id), body)),
       ),
     );
   }
@@ -469,7 +478,7 @@ export function codeOf(error: unknown): InvoicesError {
     case 404:
       return 'not_found';
     case 409:
-      return 'conflict';
+      return isRecordChanged(error.error) ? 'record_changed' : 'conflict';
     default:
       // A credit note that gives back money already paid is refused until it says where that money goes.
       if (isExcessRefusal(error)) return 'excess_to';
@@ -570,6 +579,8 @@ function toCountParams(search: InvoiceSearch): HttpParams {
 function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceRow {
   return {
     id: raw.id ?? '',
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
     type: raw.type === 'credit_note' ? 'credit_note' : 'invoice',
     correctsInvoiceId: raw.correctsInvoiceId ?? null,
     creditNoteReason: raw.creditNoteReason ?? null,
