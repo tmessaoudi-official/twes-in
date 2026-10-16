@@ -11,8 +11,8 @@ namespace App\Legal\Infrastructure\Drafts;
 
 use App\Legal\Application\LegalDraft;
 use App\Legal\Application\LegalDrafts;
-use App\Legal\Domain\LegalLanguage;
-use App\Legal\Domain\LegalPage;
+use App\Legal\Domain\ValueObject\LegalLanguage;
+use App\Legal\Domain\ValueObject\LegalPage;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**

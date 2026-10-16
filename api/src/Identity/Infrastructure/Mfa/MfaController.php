@@ -9,16 +9,16 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Mfa;
 
-use App\Identity\Application\Mfa\AuthenticatorNotEnrolled;
-use App\Identity\Application\Mfa\BeginTotpEnrolment;
-use App\Identity\Application\Mfa\ConfirmTotpEnrolment;
 use App\Identity\Application\Mfa\LastSecondFactor;
 use App\Identity\Application\Mfa\RegenerateRecoveryCodes;
-use App\Identity\Application\Mfa\RemoveAuthenticator;
 use App\Identity\Application\Mfa\SecondFactorAlreadyEnrolled;
 use App\Identity\Application\Mfa\SecondFactorLockout;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\SecondFactorUnreadable;
+use App\Identity\Application\Mfa\Totp\AuthenticatorNotEnrolled;
+use App\Identity\Application\Mfa\Totp\BeginTotpEnrolment;
+use App\Identity\Application\Mfa\Totp\ConfirmTotpEnrolment;
+use App\Identity\Application\Mfa\Totp\RemoveAuthenticator;
 use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Infrastructure\Security\PendingSecondFactor;

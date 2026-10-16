@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Application\Regime;
 
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Tenancy\Domain\Company;
 
 /** The regimes a company's customers may be under: those of the company's fiscal preset. */

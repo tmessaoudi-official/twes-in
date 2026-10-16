@@ -11,13 +11,13 @@ namespace App\Tests\Functional;
 
 use App\Files\Application\Attachments;
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
-use App\ModuleRegistry\Domain\ModuleState;
-use App\Settings\Domain\Setting;
-use App\Settings\Domain\SettingAddress;
+use App\ModuleRegistry\Domain\Model\ModuleState;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\MakesPictures;
 use Symfony\Component\HttpFoundation\Response;

@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Tenancy\Infrastructure;
 
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Identity\Infrastructure\Security\SecurityUser;
-use App\Licensing\Domain\Access;
+use App\Licensing\Domain\ValueObject\Access;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;

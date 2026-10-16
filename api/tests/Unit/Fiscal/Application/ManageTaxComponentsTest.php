@@ -14,7 +14,7 @@ use App\Fiscal\Application\TaxComponent\TaxComponentChanges;
 use App\Fiscal\Application\TaxComponent\TaxComponentCodeTaken;
 use App\Fiscal\Application\TaxComponent\TaxComponentDraft;
 use App\Fiscal\Application\TaxComponent\TaxComponentNotFound;
-use App\Fiscal\Domain\InvalidFiscalValue;
+use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;

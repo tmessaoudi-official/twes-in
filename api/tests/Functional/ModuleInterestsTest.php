@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\ModuleRegistry\Domain\ModuleInterest;
+use App\ModuleRegistry\Domain\Model\ModuleInterest;
 use App\Tenancy\Domain\Company;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;

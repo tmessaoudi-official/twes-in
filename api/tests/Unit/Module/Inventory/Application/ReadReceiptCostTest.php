@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Application;
 
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Application\ReadReceiptCost;
@@ -24,8 +24,8 @@ use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
-use App\Settings\Domain\Setting;
-use App\Settings\Domain\SettingAddress;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tests\Support\FakeTransactions;

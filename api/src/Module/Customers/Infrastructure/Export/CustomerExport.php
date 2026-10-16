@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Customers\Infrastructure\Export;
 
 use App\Fiscal\Application\Regime\ListCustomerTaxRegimes;
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\TaxComponentRepository;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\ImportExport\Application\DeclaresExport;
 use App\ImportExport\Application\ExportQuery;
 use App\Module\Customers\Application\ManageCustomers;

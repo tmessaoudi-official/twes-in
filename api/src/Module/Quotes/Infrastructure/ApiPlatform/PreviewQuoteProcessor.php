@@ -12,7 +12,7 @@ namespace App\Module\Quotes\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Fiscal\Application\CurrencyScales;
-use App\Fiscal\Infrastructure\ApiPlatform\DocumentPreview;
+use App\Fiscal\Infrastructure\ApiPlatform\Output\DocumentPreview;
 use App\Module\Quotes\Application\ManageQuotes;
 use App\Module\Quotes\Application\QuoteNotFound;
 use App\Module\Quotes\Domain\InvalidQuote;

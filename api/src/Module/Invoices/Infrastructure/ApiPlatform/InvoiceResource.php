@@ -18,7 +18,7 @@ use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\Fiscal\Domain\Calculation\SectionSubtotals;
-use App\Fiscal\Infrastructure\ApiPlatform\DocumentPreview;
+use App\Fiscal\Infrastructure\ApiPlatform\Output\DocumentPreview;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Domain\InvalidInvoice;

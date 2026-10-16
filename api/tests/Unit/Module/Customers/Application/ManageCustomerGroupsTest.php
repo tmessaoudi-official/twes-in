@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Customers\Application;
 
-use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Application\CustomerGroupInUse;
 use App\Module\Customers\Application\CustomerGroupNameTaken;
 use App\Module\Customers\Application\CustomerGroupNotFound;
@@ -18,8 +18,8 @@ use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
 use App\Settings\Application\ForgetSettings;
-use App\Settings\Domain\Setting;
-use App\Settings\Domain\SettingAddress;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;

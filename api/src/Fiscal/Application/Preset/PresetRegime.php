@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Application\Preset;
 
-use App\Fiscal\Domain\TaxFamily;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 
 /**
  * A tax regime a customer (or a company) is under: which tax families it removes, and what the invoice must say. A

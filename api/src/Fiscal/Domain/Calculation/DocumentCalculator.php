@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Domain\Calculation;
 
-use App\Fiscal\Domain\TaxKind;
+use App\Fiscal\Domain\ValueObject\TaxKind;
 use BcMath\Number;
 
 /**

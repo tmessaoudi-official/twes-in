@@ -14,8 +14,8 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\QueryParameter;
-use App\Licensing\Domain\Standing;
-use App\Licensing\Infrastructure\ApiPlatform\SubscriptionSummary;
+use App\Licensing\Domain\ValueObject\Standing;
+use App\Licensing\Infrastructure\ApiPlatform\Output\SubscriptionSummary;
 use App\Tenancy\Application\Company\PlatformCompanyView;
 use Symfony\Component\Serializer\Attribute\Groups;
 

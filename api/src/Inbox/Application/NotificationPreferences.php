@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Inbox\Application;
 
-use App\Identity\Domain\User;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Inbox\Domain\Model\NotificationPreference;
 use App\Inbox\Domain\Repository\NotificationPreferenceRepository;
 use App\ModuleRegistry\Application\ModuleStates;

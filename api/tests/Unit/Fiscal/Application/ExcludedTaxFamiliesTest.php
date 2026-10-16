@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Fiscal\Application;
 
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\TaxFamily;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tests\Support\ShippedFiscalPresets;

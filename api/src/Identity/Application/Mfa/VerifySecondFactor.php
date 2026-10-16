@@ -13,10 +13,10 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\SecretCipher;
 use App\Identity\Application\TotpCodes;
-use App\Identity\Domain\RecoveryCode;
-use App\Identity\Domain\RecoveryCodeRepository;
-use App\Identity\Domain\User;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\RecoveryCodeRepository;
+use App\Identity\Domain\Repository\UserRepository;
+use App\Identity\Domain\ValueObject\RecoveryCode;
 use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
 

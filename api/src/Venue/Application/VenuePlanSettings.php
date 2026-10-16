@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Venue\Application;
 
 use App\Settings\Application\DeclaresSettings;
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
-use App\Settings\Domain\SettingType;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingType;
 
 /**
  * The sizes the floor plan's palette poses a shape at (docs/SPEC.md row 83; § 7, 2026-09-21, the palette the

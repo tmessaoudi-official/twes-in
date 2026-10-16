@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\CustomFields\Infrastructure\ApiPlatform\CustomFieldResource;
+use App\CustomFields\Infrastructure\ApiPlatform\Resource\CustomFieldResource;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerGroup;
 use App\Module\Customers\Domain\CustomerKind;
@@ -20,8 +20,8 @@ use App\Module\Customers\Infrastructure\ApiPlatform\ContactResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\CustomerGroupResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\CustomerOptionsResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\CustomerResource;
-use App\ModuleRegistry\Domain\ModuleState;
-use App\ModuleRegistry\Infrastructure\ApiPlatform\ModuleOwnership;
+use App\ModuleRegistry\Domain\Model\ModuleState;
+use App\ModuleRegistry\Infrastructure\ApiPlatform\Security\ModuleOwnership;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Scanning\Application;
 
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Module\Scanning\Application\PairingEcho;
 use App\Module\Scanning\Application\PhonePairings;
 use App\Module\Scanning\Application\ScannerSwitch;

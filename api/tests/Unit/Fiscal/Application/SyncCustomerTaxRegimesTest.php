@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Fiscal\Application;
 
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\TaxFamily;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Tests\Support\InMemoryCustomerTaxRegimes;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;

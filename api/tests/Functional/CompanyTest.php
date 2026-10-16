@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\Model\Unit;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 

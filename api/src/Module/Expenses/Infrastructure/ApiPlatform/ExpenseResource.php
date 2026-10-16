@@ -18,7 +18,7 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Fiscal\Domain\TaxKind;
+use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Expenses\Application\ExpenseInput;
 use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseAmounts;

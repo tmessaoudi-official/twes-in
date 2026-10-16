@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Identity;
 
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\UserRepository;
+use App\Identity\Domain\ValueObject\Email;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Uid\Uuid;
 

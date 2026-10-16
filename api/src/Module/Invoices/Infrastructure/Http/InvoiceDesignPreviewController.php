@@ -14,7 +14,7 @@ use App\Module\Invoices\Application\PrintInvoice;
 use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
 use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
-use App\Settings\Infrastructure\ApiPlatform\SettingAccess;
+use App\Settings\Infrastructure\ApiPlatform\Security\SettingAccess;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Shared\Domain\DocumentDesign;
 use App\Shared\Domain\DocumentLayout;

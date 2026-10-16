@@ -13,7 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Settings\Application\ReaderFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;

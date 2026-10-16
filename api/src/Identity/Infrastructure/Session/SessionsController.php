@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\Session;
 
 use App\Identity\Application\Session\ManageSessions;
-use App\Identity\Domain\User;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;

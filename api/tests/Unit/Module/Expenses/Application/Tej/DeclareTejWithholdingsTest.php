@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Expenses\Application\Tej;
 
 use App\Fiscal\Domain\Calculation\RoundingPoint;
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\TaxFamily;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Expenses\Application\Tej\DeclareTejWithholdings;
 use App\Module\Expenses\Application\Tej\TejDeclarationRefused;
 use App\Module\Expenses\Domain\Expense;

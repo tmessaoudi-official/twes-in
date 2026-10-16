@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
-use App\Settings\Domain\SettingAddress;
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

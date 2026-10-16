@@ -11,7 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Licensing\Application\CompanyAccess;
-use App\Licensing\Domain\Access;
+use App\Licensing\Domain\ValueObject\Access;
 use App\Shared\Infrastructure\Doctrine\CompanyFilter;
 use App\Tenancy\Application\Support\SupportAccess;
 use App\Tenancy\Domain\Company;

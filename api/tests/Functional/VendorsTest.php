@@ -13,7 +13,7 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Module\Expenses\Domain\ExpenseCategory;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorProfile;
-use App\ModuleRegistry\Domain\ModuleState;
+use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;

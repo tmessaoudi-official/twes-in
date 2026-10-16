@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\ModuleRegistry\Infrastructure\Permission;
 
 use App\Audit\Infrastructure\ApiPlatform\Security\AuditPermission;
-use App\Fiscal\Infrastructure\ApiPlatform\FiscalPermission;
+use App\Fiscal\Infrastructure\ApiPlatform\Security\FiscalPermission;
 use App\ModuleRegistry\Application\ModuleCatalog;
-use App\ModuleRegistry\Infrastructure\ApiPlatform\ModulePermission;
+use App\ModuleRegistry\Infrastructure\ApiPlatform\Security\ModulePermission;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Application\Permission\PermissionGroup;
 use App\Tenancy\Infrastructure\ApiPlatform\MemberPermission;

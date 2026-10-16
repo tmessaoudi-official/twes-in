@@ -13,7 +13,7 @@ use App\Audit\Application\AuditTrail;
 use App\Identity\Application\Login\RecordFailedLogin;
 use App\Identity\Application\Login\RecordLogout;
 use App\Identity\Application\Login\RecordSuccessfulLogin;
-use App\Identity\Application\Mfa\FinishPasskeyLogin;
+use App\Identity\Application\Mfa\Passkey\FinishPasskeyLogin;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Shared\Application\Transactions;
 use PHPUnit\Framework\TestCase;

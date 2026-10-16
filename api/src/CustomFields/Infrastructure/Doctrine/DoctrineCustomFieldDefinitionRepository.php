@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\CustomFields\Infrastructure\Doctrine;
 
-use App\CustomFields\Domain\CustomFieldDefinition;
-use App\CustomFields\Domain\CustomFieldDefinitionRepository;
-use App\CustomFields\Domain\CustomFieldEntity;
+use App\CustomFields\Domain\Model\CustomFieldDefinition;
+use App\CustomFields\Domain\Repository\CustomFieldDefinitionRepository;
+use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

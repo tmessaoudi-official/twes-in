@@ -11,8 +11,8 @@ namespace App\Module\Invoices\Domain;
 
 use App\Files\Domain\Model\StoredFile;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\TaxKind;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Products\Domain\LotCode;

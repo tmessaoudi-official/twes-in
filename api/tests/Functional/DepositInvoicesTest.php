@@ -12,9 +12,9 @@ namespace App\Tests\Functional;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
-use App\Fiscal\Domain\TaxComponentRepository;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Repository\TaxComponentRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
@@ -23,7 +23,7 @@ use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
@@ -778,7 +778,7 @@ final class DepositInvoicesTest extends ApiTestCase
         return $customer;
     }
 
-    private function unit(string $code): \App\Fiscal\Domain\Unit
+    private function unit(string $code): \App\Fiscal\Domain\Model\Unit
     {
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany($code, $this->company->getId());
         self::assertNotNull($unit);
@@ -791,7 +791,7 @@ final class DepositInvoicesTest extends ApiTestCase
         return $this->unit($code)->getId()->toRfc4122();
     }
 
-    private function tax(string $code): \App\Fiscal\Domain\TaxComponent
+    private function tax(string $code): \App\Fiscal\Domain\Model\TaxComponent
     {
         $tax = static::getContainer()->get(TaxComponentRepository::class)->ofCodeInCompany($code, $this->company->getId());
         self::assertNotNull($tax);

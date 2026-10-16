@@ -9,13 +9,13 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Infrastructure\Import;
 
-use App\CustomFields\Domain\CustomFieldDefinition;
-use App\CustomFields\Domain\CustomFieldDefinitionRepository;
-use App\CustomFields\Domain\CustomFieldEntity;
-use App\CustomFields\Domain\CustomFieldType;
+use App\CustomFields\Domain\Model\CustomFieldDefinition;
+use App\CustomFields\Domain\Repository\CustomFieldDefinitionRepository;
+use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
+use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
-use App\Fiscal\Domain\TaxComponentRepository;
+use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\ImportExport\Application\DeclaresImport;
 use App\ImportExport\Application\ImportCells;
 use App\ImportExport\Application\ImportColumn;

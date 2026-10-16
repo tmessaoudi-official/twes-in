@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Products\Application;
 
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Products\Application\ChangeProductCost;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Domain\CostChangeSource;

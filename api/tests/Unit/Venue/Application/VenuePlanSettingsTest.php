@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Venue\Application;
 
 use App\Settings\Application\SettingCatalog;
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Venue\Application\VenuePlanSettings;
 use PHPUnit\Framework\TestCase;
 

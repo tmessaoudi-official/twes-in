@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
 use Symfony\Contracts\Translation\TranslatorInterface;

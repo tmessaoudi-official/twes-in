@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Settings\Application\DeclaresSettings;
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
-use App\Settings\Domain\SettingType;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingType;
 
 /**
  * The thresholds of what the invoices module puts on « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10), each a

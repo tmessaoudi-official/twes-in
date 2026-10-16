@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\TaxComponentRepository;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryTaxComponents implements TaxComponentRepository

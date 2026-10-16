@@ -16,7 +16,7 @@ use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductCategoryRepository;
 use App\Module\Products\Domain\ProductRepository;
 use App\Settings\Application\ForgetSettings;
-use App\Settings\Domain\SettingAddress;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;

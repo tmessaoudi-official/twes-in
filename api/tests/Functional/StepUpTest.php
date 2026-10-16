@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Tests\Support\FakeAuthenticator;
 use Symfony\Component\HttpFoundation\Response;
 

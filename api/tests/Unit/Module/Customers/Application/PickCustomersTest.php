@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Customers\Application;
 
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
-use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Application\PickCustomers;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;

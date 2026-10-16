@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Domain;
 
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;

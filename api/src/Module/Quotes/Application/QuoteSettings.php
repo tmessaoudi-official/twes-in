@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Module\Quotes\Application;
 
 use App\Settings\Application\DeclaresSettings;
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
-use App\Settings\Domain\SettingType;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingType;
 
 /**
  * The quotes module's settings, in the parties chain, so a customer group or a customer can differ from its company:

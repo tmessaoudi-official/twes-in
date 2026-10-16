@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Audit\Domain\Model\AuditLog;
 use App\Identity\Application\Login\LoginAudit;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Clock\NativeClock;

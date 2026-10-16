@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Domain\Calculation;
 
-use App\Fiscal\Domain\ChargeLeftOut;
+use App\Fiscal\Domain\ValueObject\ChargeLeftOut;
 
 /**
  * What a document's lines come to, with the title of the section each line opens, in the same order, why it leaves out a

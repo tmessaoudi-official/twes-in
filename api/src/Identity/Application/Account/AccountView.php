@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Application\Account;
 
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
 
 /** An account as the platform's operators see it: who it is and whether it may sign in. */
 final readonly class AccountView

@@ -11,8 +11,8 @@ namespace App\Tenancy\Application\Invitation;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Identity\Domain\Email;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
+use App\Identity\Domain\ValueObject\Email;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;

@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\Password;
 
 use App\Identity\Application\Password\RequestPasswordReset;
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /** The worker's side of a forgotten password: the account looked up, the link made and mailed, away from the request. */

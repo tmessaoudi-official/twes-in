@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Scanning\Domain;
 
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Module\Scanning\Domain\ScanPairing;
 use App\Module\Scanning\Domain\ScanPairingRefused;
 use App\Tenancy\Domain\Company;

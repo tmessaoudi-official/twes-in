@@ -11,7 +11,7 @@ namespace App\Identity\Application\Mfa;
 
 use App\Identity\Application\Login\FailedLoginAttempt;
 use App\Identity\Application\Login\RecordFailedLogin;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 

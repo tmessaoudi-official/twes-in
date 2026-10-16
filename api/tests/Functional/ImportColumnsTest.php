@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\CustomFields\Domain\CustomFieldDefinition;
-use App\CustomFields\Domain\CustomFieldEntity;
-use App\CustomFields\Domain\CustomFieldType;
+use App\CustomFields\Domain\Model\CustomFieldDefinition;
+use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
+use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportHeading;

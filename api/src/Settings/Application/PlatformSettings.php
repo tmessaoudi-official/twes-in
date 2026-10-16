@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
-use App\Settings\Domain\SettingType;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingType;
 
 /**
  * The platform chain (docs/SPEC.md § 3 Settings): what the platform's operators decide for everyone. Signup is off

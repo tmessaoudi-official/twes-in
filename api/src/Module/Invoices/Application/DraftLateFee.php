@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Application\CurrencyScales;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceLineDetails;

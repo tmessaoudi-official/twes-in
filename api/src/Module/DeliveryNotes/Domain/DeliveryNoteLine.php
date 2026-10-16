@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Domain;
 
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Products\Domain\Product;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;

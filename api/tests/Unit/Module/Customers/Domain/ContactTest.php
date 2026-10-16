@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Customers\Domain;
 
-use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Domain\Contact;
 use App\Module\Customers\Domain\ContactDetails;
 use App\Module\Customers\Domain\Customer;

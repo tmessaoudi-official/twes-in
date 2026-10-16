@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Doctrine;
 
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Domain\Signup;
 use App\Tenancy\Domain\SignupRepository;
 use Doctrine\ORM\EntityManagerInterface;

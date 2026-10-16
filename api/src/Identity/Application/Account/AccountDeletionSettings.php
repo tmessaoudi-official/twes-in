@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Identity\Application\Account;
 
 use App\Settings\Application\DeclaresSettings;
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
-use App\Settings\Domain\SettingType;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingType;
 
 /**
  * How long an account asked to be deleted waits before the nightly run deletes it, during which signing in again takes

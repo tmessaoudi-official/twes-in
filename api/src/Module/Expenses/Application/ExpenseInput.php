@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Expenses\Application;
 
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Fiscal\Domain\TaxKind;
+use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseDetails;
 use App\Module\Expenses\Domain\ExpenseLine;

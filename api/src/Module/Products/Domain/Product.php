@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Domain;
 
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\Unit;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\Common\Collections\ArrayCollection;

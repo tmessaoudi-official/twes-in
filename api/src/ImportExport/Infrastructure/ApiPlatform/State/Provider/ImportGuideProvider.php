@@ -11,7 +11,7 @@ namespace App\ImportExport\Infrastructure\ApiPlatform\State\Provider;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportHeading;

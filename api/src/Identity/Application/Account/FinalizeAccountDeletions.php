@@ -12,11 +12,11 @@ namespace App\Identity\Application\Account;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\JournalAddresses;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingAddress;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 

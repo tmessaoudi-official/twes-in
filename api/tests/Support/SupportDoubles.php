@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Identity\Application\Mfa\SecondFactors;
-use App\Identity\Domain\Passkey;
-use App\Identity\Domain\PasskeyRepository;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\Passkey;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Application\Support\RecordSupportVisit;
 use App\Tenancy\Application\Support\SupportAccess;

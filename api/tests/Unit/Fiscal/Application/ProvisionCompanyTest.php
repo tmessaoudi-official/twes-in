@@ -11,9 +11,9 @@ namespace App\Tests\Unit\Fiscal\Application;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Preset\UnknownFiscalPreset;
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\TaxFamily;
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\NumberingSeries;
 use App\Tenancy\Domain\ResetPeriod;

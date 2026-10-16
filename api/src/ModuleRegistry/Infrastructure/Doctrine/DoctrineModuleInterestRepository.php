@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\ModuleRegistry\Infrastructure\Doctrine;
 
-use App\ModuleRegistry\Domain\ModuleInterest;
-use App\ModuleRegistry\Domain\ModuleInterestRepository;
+use App\ModuleRegistry\Domain\Model\ModuleInterest;
+use App\ModuleRegistry\Domain\Repository\ModuleInterestRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

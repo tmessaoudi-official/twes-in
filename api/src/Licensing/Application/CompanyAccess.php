@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Licensing\Application;
 
-use App\Licensing\Domain\Access;
+use App\Licensing\Domain\ValueObject\Access;
 use Symfony\Component\Uid\Uuid;
 
 /** What a company's subscription lets its members do now; full for a company licensing does not manage. */

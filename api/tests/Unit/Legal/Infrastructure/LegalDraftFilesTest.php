@@ -11,8 +11,8 @@ namespace App\Tests\Unit\Legal\Infrastructure;
 
 use App\Legal\Application\LegalDraft;
 use App\Legal\Application\LegalSettings;
-use App\Legal\Domain\LegalLanguage;
-use App\Legal\Domain\LegalPage;
+use App\Legal\Domain\ValueObject\LegalLanguage;
+use App\Legal\Domain\ValueObject\LegalPage;
 use App\Legal\Infrastructure\Drafts\LegalDraftFiles;
 use PHPUnit\Framework\TestCase;
 

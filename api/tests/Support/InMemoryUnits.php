@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Fiscal\Domain\Unit;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryUnits implements UnitRepository

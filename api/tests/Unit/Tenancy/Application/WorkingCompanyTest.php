@@ -11,8 +11,8 @@ namespace App\Tests\Unit\Tenancy\Application;
 
 use App\Files\Application\Attachments;
 use App\Files\Application\Files;
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Application\Session\ChooseWorkingCompany;
 use App\Tenancy\Application\Session\DescribeWorkingContext;

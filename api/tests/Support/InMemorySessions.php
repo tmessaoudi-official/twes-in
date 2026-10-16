@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Identity\Domain\User;
-use App\Identity\Domain\UserSession;
-use App\Identity\Domain\UserSessionRepository;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Model\UserSession;
+use App\Identity\Domain\Repository\UserSessionRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemorySessions implements UserSessionRepository

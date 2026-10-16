@@ -11,10 +11,10 @@ namespace App\Identity\Application\StepUp;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Identity\Application\Mfa\PasskeyAssertions;
-use App\Identity\Application\Mfa\PasskeyRefused;
+use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
+use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\PasswordHasher;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;

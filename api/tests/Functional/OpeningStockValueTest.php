@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockMovement;

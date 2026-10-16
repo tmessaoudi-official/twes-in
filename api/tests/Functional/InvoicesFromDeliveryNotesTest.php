@@ -11,9 +11,9 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
-use App\Fiscal\Domain\TaxComponentRepository;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Repository\TaxComponentRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
@@ -497,7 +497,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         return $customer;
     }
 
-    private function unit(string $code): \App\Fiscal\Domain\Unit
+    private function unit(string $code): \App\Fiscal\Domain\Model\Unit
     {
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany($code, $this->company->getId());
         self::assertNotNull($unit);
@@ -510,7 +510,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         return $this->unit($code)->getId()->toRfc4122();
     }
 
-    private function tax(string $code): \App\Fiscal\Domain\TaxComponent
+    private function tax(string $code): \App\Fiscal\Domain\Model\TaxComponent
     {
         $tax = static::getContainer()->get(TaxComponentRepository::class)->ofCodeInCompany($code, $this->company->getId());
         self::assertNotNull($tax);

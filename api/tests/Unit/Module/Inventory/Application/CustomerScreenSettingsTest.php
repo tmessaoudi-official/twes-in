@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Inventory\Application;
 
 use App\Module\Inventory\Application\CustomerScreenSettings;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use PHPUnit\Framework\TestCase;
 
 final class CustomerScreenSettingsTest extends TestCase

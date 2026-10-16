@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Domain;
 
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Shared\Domain\CompanyOwned;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;

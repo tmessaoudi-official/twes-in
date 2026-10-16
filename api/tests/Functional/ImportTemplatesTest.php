@@ -9,12 +9,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\CustomFields\Domain\CustomFieldDefinition;
-use App\CustomFields\Domain\CustomFieldEntity;
-use App\CustomFields\Domain\CustomFieldType;
+use App\CustomFields\Domain\Model\CustomFieldDefinition;
+use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
+use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
-use App\ModuleRegistry\Domain\ModuleState;
+use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutReader;
 use App\Tenancy\Application\Seed\SeedPlatform;

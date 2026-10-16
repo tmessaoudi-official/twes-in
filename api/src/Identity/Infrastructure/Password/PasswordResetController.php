@@ -12,7 +12,7 @@ namespace App\Identity\Infrastructure\Password;
 use App\Identity\Application\Password\NewPasswordRefused;
 use App\Identity\Application\Password\ResetLinkNotUsable;
 use App\Identity\Application\Password\ResetPassword;
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;

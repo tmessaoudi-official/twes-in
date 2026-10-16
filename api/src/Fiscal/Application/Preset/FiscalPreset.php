@@ -11,7 +11,7 @@ namespace App\Fiscal\Application\Preset;
 
 use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\Calculation\TaxBasis;
-use App\Fiscal\Domain\StampOnCorrection;
+use App\Fiscal\Domain\ValueObject\StampOnCorrection;
 
 /**
  * One country's fiscal rules as read from its validated file. A company copies the tax components and units at

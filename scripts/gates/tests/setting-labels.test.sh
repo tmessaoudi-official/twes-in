@@ -21,8 +21,8 @@ repo() {
   local d
   d=$(mktemp -d)
   git -C "$d" init -q
-  mkdir -p "$d/api/src/Shop/Application" "$d/api/src/Settings/Domain" "$d/web/public/i18n"
-  cat > "$d/api/src/Settings/Domain/SettingChain.php" <<'PHP'
+  mkdir -p "$d/api/src/Shop/Application" "$d/api/src/Settings/Domain/ValueObject" "$d/web/public/i18n"
+  cat > "$d/api/src/Settings/Domain/ValueObject/SettingChain.php" <<'PHP'
 <?php
 enum SettingChain: string
 {
@@ -152,7 +152,7 @@ out=$(SETTING_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
 code=$?
 check "an interpolated label key is caught by the floor" "$code" 1 "$out" "below the floor"
 
-d=$(repo) && translations "$d" && rm "$d/api/src/Settings/Domain/SettingChain.php"
+d=$(repo) && translations "$d" && rm "$d/api/src/Settings/Domain/ValueObject/SettingChain.php"
 out=$(gate --root "$d" 2>&1)
 code=$?
 check "a missing chain enum fails rather than skipping the headings" "$code" 1 "$out" "cannot be discovered"

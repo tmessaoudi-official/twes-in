@@ -12,7 +12,7 @@ namespace App\Tests\Integration\Invoices;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
-use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;

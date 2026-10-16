@@ -11,8 +11,8 @@ namespace App\ModuleRegistry\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\ModuleRegistry\Domain\ModuleState;
-use App\ModuleRegistry\Domain\ModuleStateRepository;
+use App\ModuleRegistry\Domain\Model\ModuleState;
+use App\ModuleRegistry\Domain\Repository\ModuleStateRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;

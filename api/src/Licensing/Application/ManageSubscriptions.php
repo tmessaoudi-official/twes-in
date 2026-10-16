@@ -11,9 +11,9 @@ namespace App\Licensing\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Licensing\Domain\Subscription;
-use App\Licensing\Domain\SubscriptionRepository;
-use App\Licensing\Domain\SubscriptionTerms;
+use App\Licensing\Domain\Model\Subscription;
+use App\Licensing\Domain\Repository\SubscriptionRepository;
+use App\Licensing\Domain\ValueObject\SubscriptionTerms;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Domain\Company;

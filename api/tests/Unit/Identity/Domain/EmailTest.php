@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Identity\Domain;
 
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

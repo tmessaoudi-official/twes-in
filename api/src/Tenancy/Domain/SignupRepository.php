@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Domain;
 
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 
 interface SignupRepository
 {

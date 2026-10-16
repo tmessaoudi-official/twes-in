@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Application;
 
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Module\Inventory\Application\TellStockKeepers;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Legal\Application;
 
-use App\Legal\Domain\LegalText;
-use App\Legal\Domain\LegalTextRepository;
+use App\Legal\Domain\Model\LegalText;
+use App\Legal\Domain\Repository\LegalTextRepository;
 use Psr\Clock\ClockInterface;
 
 /**

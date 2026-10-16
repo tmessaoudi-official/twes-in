@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Application\Preset;
 
-use App\Fiscal\Domain\IdentifierCheck;
+use App\Fiscal\Domain\ValueObject\IdentifierCheck;
 
 /** A registration number a country's documents carry: the shape it has and, when its research sources one, its check. */
 final readonly class PresetIdentifier

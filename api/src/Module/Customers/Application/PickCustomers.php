@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Customers\Application;
 
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
-use App\Fiscal\Domain\TaxFamily;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerRepository;
 use App\Tenancy\Domain\Company;

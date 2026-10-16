@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Tenancy\Application;
 
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Tenancy\Application\Support\SupportAccess;

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Domain\Calculation;
 
-use App\Fiscal\Domain\TaxKind;
+use App\Fiscal\Domain\ValueObject\TaxKind;
 
 /** One tax component as a document carries it: a snapshot of the rate or amount at the time of the document. */
 final readonly class TaxInput

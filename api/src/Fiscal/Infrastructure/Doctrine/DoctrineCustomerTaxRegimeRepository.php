@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Infrastructure\Doctrine;
 
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class DoctrineCustomerTaxRegimeRepository implements CustomerTaxRegimeRepository

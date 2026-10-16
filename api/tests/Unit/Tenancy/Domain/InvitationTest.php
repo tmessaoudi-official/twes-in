@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Tenancy\Domain;
 
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Invitation;
 use App\Tenancy\Domain\InvitationToken;

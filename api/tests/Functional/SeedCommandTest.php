@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Domain\Company;

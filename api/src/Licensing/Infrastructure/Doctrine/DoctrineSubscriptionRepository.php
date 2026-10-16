@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Licensing\Infrastructure\Doctrine;
 
-use App\Licensing\Domain\Subscription;
-use App\Licensing\Domain\SubscriptionRepository;
+use App\Licensing\Domain\Model\Subscription;
+use App\Licensing\Domain\Repository\SubscriptionRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

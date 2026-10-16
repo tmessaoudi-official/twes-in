@@ -1,0 +1,84 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Identity\Application\Mfa\Totp;
+
+use App\Audit\Application\AuditEntry;
+use App\Audit\Application\AuditTrail;
+use App\Identity\Application\Mfa\IssueRecoveryCodes;
+use App\Identity\Application\Mfa\SecondFactorRefused;
+use App\Identity\Application\Mfa\SecondFactorUnreadable;
+use App\Identity\Application\SecretCipher;
+use App\Identity\Application\TotpCodes;
+use App\Identity\Domain\Repository\UserRepository;
+use App\Shared\Application\Transactions;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * Step two: one real code turns the pending secret into a factor, and the recovery codes are issued.
+ *
+ * The raw codes are returned here and nowhere else, ever — what is stored is their SHA-256. Losing them means
+ * generating a new set, which is why the ruling of 2026-09-10 says they are shown once and regenerable.
+ */
+final readonly class ConfirmTotpEnrolment
+{
+    public const string ENROLLED = 'auth.mfa_enrolled';
+
+    public function __construct(
+        private UserRepository $users,
+        private IssueRecoveryCodes $issueRecoveryCodes,
+        private TotpCodes $totp,
+        private SecretCipher $cipher,
+        private AuditTrail $audit,
+        private Transactions $transactions,
+    ) {
+    }
+
+    /**
+     * @return list<string> the raw recovery codes, to be shown once
+     *
+     * @throws SecondFactorRefused    when the code does not match the pending secret
+     * @throws SecondFactorUnreadable when the current key cannot read the pending secret
+     */
+    public function handle(Uuid $userId, string $code, ?\DateTimeImmutable $now = null): array
+    {
+        $now ??= new \DateTimeImmutable();
+        $user = $this->users->ofId($userId);
+        $pending = $user?->getTotpSecret();
+
+        if (null === $user || null === $pending || $user->hasTotp()) {
+            // Nothing pending, or a factor is already on: confirming again would be a way to reissue
+            // recovery codes without proving anything.
+            throw new SecondFactorRefused();
+        }
+
+        try {
+            $timestep = $this->totp->verify($this->cipher->decrypt($pending), $code, $now);
+        } catch (\RuntimeException) {
+            // The pending secret was sealed under a key since rotated: no code can confirm it, so it is refused, not a
+            // 500, and starting the enrolment again seals a new one under the current key (docs/SPEC.md § 8 row 31).
+            throw new SecondFactorUnreadable();
+        }
+
+        if (null === $timestep) {
+            throw new SecondFactorRefused();
+        }
+
+        return $this->transactions->run(function () use ($user, $timestep, $now): array {
+            $user->confirmTotpEnrolment($timestep, $now);
+            $this->users->save($user);
+
+            $codes = $this->issueRecoveryCodes->handle($user, $now);
+
+            $this->audit->record(new AuditEntry('user', $user->getId(), self::ENROLLED, $user->getId(), ['method' => 'totp']));
+
+            return $codes;
+        });
+    }
+}

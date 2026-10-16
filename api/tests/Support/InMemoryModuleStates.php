@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\ModuleRegistry\Domain\ModuleState;
-use App\ModuleRegistry\Domain\ModuleStateRepository;
+use App\ModuleRegistry\Domain\Model\ModuleState;
+use App\ModuleRegistry\Domain\Repository\ModuleStateRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryModuleStates implements ModuleStateRepository

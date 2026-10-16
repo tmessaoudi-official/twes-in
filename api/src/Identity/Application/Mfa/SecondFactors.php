@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Identity\Application\Mfa;
 
-use App\Identity\Domain\PasskeyRepository;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\PasskeyRepository;
 
 /**
  * Whether a password alone is no longer enough for this account: an authenticator app in force, or at least one passkey.
