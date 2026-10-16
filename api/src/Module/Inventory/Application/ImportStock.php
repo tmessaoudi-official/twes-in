@@ -187,7 +187,7 @@ final readonly class ImportStock
                 default => [StockImportRefused::PRODUCT, 'invalid_value'],
             };
 
-            throw new StockImportRefused($about, $reason, $refused->getMessage(), [], $refused);
+            throw new StockImportRefused($about, $refused->reason ?? $reason, $refused->getMessage(), $refused->params, $refused);
         }
     }
 }

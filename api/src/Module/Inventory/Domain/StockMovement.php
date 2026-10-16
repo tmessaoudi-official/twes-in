@@ -164,10 +164,10 @@ class StockMovement implements CompanyOwned
     {
         self::lotOf($product, $lot);
         if (ProductKind::Goods !== $product->getDetails()->kind) {
-            throw new InvalidStockMovement('productId', \sprintf('The product %s is a service: only goods are kept in stock.', $product->getReference()));
+            throw new InvalidStockMovement('productId', \sprintf('The product %s is a service: only goods are kept in stock.', $product->getReference()), reason: 'not_stocked');
         }
         if (!$location->getCompany()->getId()->equals($product->getCompany()->getId())) {
-            throw new InvalidStockMovement('locationId', 'Goods move in a location of their own company.');
+            throw new InvalidStockMovement('locationId', 'Goods move in a location of their own company.', reason: 'invalid_location');
         }
         $this->id = Uuid::v7();
         $this->company = $product->getCompany();
@@ -399,17 +399,17 @@ class StockMovement implements CompanyOwned
     private static function quantity(string $quantity, Product $product, bool $zeroAllowed): string
     {
         if (1 !== preg_match(self::QUANTITY, trim($quantity), $match)) {
-            throw new InvalidStockMovement('quantity', 'A quantity is a decimal number with at most eleven digits and three decimals.');
+            throw new InvalidStockMovement('quantity', 'A quantity is a decimal number with at most eleven digits and three decimals.', reason: 'invalid_quantity');
         }
         [, $sign, $units] = $match;
         $decimals = $match[3] ?? '';
         $unit = $product->getUnit();
         if (\strlen(rtrim($decimals, '0')) > $unit->getDecimals()) {
-            throw new InvalidStockMovement('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()));
+            throw new InvalidStockMovement('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()), reason: 'quantity_decimals', params: ['unit' => $unit->getName(), 'decimals' => $unit->getDecimals()]);
         }
         $zero = '' === trim($units.$decimals, '0');
         if (('-' === $sign && !$zero) || ($zero && !$zeroAllowed)) {
-            throw new InvalidStockMovement('quantity', $zeroAllowed ? 'A count finds zero or more.' : 'Goods move by a positive quantity.');
+            throw new InvalidStockMovement('quantity', $zeroAllowed ? 'A count finds zero or more.' : 'Goods move by a positive quantity.', reason: $zeroAllowed ? 'count_negative' : 'quantity_not_positive');
         }
 
         $normalized = $units.'.'.str_pad($decimals, self::QUANTITY_DECIMALS, '0');
@@ -488,7 +488,7 @@ class StockMovement implements CompanyOwned
     private static function cost(string $unitCost): string
     {
         if (1 !== preg_match('/^(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,4}))?$/', trim($unitCost), $match)) {
-            throw new InvalidStockMovement('unitCost', 'A cost is an amount from zero with at most four decimals.');
+            throw new InvalidStockMovement('unitCost', 'A cost is an amount from zero with at most four decimals.', reason: 'invalid_price');
         }
         $normalized = $match[1].'.'.str_pad($match[2] ?? '', 4, '0');
         if (!is_numeric($normalized)) {

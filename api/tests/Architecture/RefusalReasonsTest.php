@@ -73,12 +73,12 @@ final class RefusalReasonsTest extends KernelTestCase
         $translated = self::translated();
         $statements = 0;
         $untranslated = [];
-        foreach (['src/Module/Customers', 'src/Module/Vendors', 'src/Fiscal/Application/Preset', 'src/CustomFields', 'src/Tenancy/Application/Company', 'src/Module/Products', 'src/Module/Expenses'] as $directory) {
+        foreach (['src/Module/Customers', 'src/Module/Vendors', 'src/Fiscal/Application/Preset', 'src/CustomFields', 'src/Tenancy/Application/Company', 'src/Module/Products', 'src/Module/Expenses', 'src/Module/Inventory'] as $directory) {
             $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator("$root/$directory", \FilesystemIterator::SKIP_DOTS));
             foreach ($files as $file) {
                 \assert($file instanceof \SplFileInfo);
                 $source = (string) file_get_contents($file->getPathname());
-                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense)\((.*?)\);/s', $source, $found);
+                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense|InvalidStockMovement)\((.*?)\);/s', $source, $found);
                 // A custom field's refusals go through its helper, one per arm of a match.
                 preg_match_all('/self::refuse\((.*?)\),$/m', $source, $helped);
                 foreach ([...$found[1], ...$helped[1]] as $arguments) {
