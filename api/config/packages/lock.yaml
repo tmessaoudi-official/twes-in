@@ -1,0 +1,6 @@
+# The rate limiters take their budgets under this lock, so a burst of parallel requests cannot each read the same count
+# (tests/Integration/Shared/RateLimiterLocksTest). flock holds while every request of an instance runs in one api
+# container, as deployed; a second api host would need a store they share, PostgreSQL's advisory locks
+# (postgresql+advisory://…), as Symfony's lock documentation says of flock across several front servers.
+framework:
+    lock: '%env(LOCK_DSN)%'
