@@ -141,6 +141,36 @@ final class ProductImportTest extends ApiTestCase
         ], $rejected);
     }
 
+    /**
+     * A price as a spreadsheet writes it: thousands set apart, a decimal comma, a float the sheet computed; and the kind
+     * in the words the screen shows. Only a price finer than the column holds is refused, saying how fine it may be.
+     */
+    public function testNumbersAndChoicesAreReadAsSpreadsheetsWriteThem(): void
+    {
+        $this->em()->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Product, 'checked', 'Contrôlé le', CustomFieldType::Date, false, [], 2, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import(
+            "reference,name,kind,unit_code,unit_price_net\n"
+            ."ART-1,Perceuse,Bien,H87,\"1\u{00A0}234,5\"\n"
+            ."ART-2,Pose,Service,H87,14.875000000000002\n"
+            ."ART-3,Clou,goods,H87,\"9,12345\"\n",
+            dryRun: true,
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 3], $this->arrayAt($this->json(), 'created'));
+        self::assertSame([[4, 'unit_price_net', 'too_many_decimals', ['max' => 4]]], $this->rejections());
+
+        $this->import("reference,name,kind,unit_code,unit_price_net,custom.checked\nART-1,Perceuse,Bien,H87,\"1\u{00A0}234,5\",15/03/2026\nART-2,Pose,Service,H87,14.875000000000002,\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['goods', '1234.5000'], [$this->product('ART-1')->getDetails()->kind->value, $this->product('ART-1')->getDetails()->unitPriceNet]);
+        self::assertSame(['service', '14.8750'], [$this->product('ART-2')->getDetails()->kind->value, $this->product('ART-2')->getDetails()->unitPriceNet]);
+        self::assertSame('2026-03-15', $this->product('ART-1')->getCustomFields()['checked'] ?? null, 'a day as people here write it');
+    }
+
     /** A file and the form say a text too long the same way, with its maximum. */
     public function testATooLongNameIsRefusedAsTheFormRefusesIt(): void
     {

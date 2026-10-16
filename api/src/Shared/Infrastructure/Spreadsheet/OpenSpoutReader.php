@@ -13,6 +13,8 @@ use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetReader;
 use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Cell\FormulaCell;
 use OpenSpout\Reader\CSV\Reader as CsvReader;
 use OpenSpout\Reader\XLSX\Options as XlsxOptions;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
@@ -96,7 +98,7 @@ final class OpenSpoutReader implements SpreadsheetReader
                     // is what every rejected row's reason will name.
                     \assert(\is_int($number));
 
-                    $cells = array_values(array_map(self::text(...), $row->toArray()));
+                    $cells = array_values(array_map(static fn (Cell $cell): string => self::text($cell instanceof FormulaCell ? $cell->getComputedValue() : $cell->getValue()), $row->cells));
 
                     yield $number => SpreadsheetFormat::Csv === $format ? array_map(CsvFormula::restored(...), $cells) : $cells;
                 }
@@ -136,7 +138,8 @@ final class OpenSpoutReader implements SpreadsheetReader
     }
 
     /**
-     * What a cell becomes as text.
+     * What a cell becomes as text. A computed cell is the value its spreadsheet last worked out, which is what the person
+     * saw; one no spreadsheet ever computed has none, and reads blank.
      *
      * A float is written by `json_encode` rather than cast: PHP's `precision` of 14 turns 123456789012345.67 into
      * "1.2345678901235E+14", losing a digit and producing a notation no parser downstream reads, while
