@@ -42,6 +42,7 @@ class StaticLoader implements TranslateLoader {
 
 const amel: CustomerRow = {
   id: 'k1',
+  version: 1,
   number: 'CLI-0001',
   kind: 'individual',
   customerGroupId: 'g1',

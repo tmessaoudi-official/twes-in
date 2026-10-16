@@ -3399,6 +3399,7 @@
     "notice_someone": "Cette fiche a été modifiée.",
     "deleted": "{{name}} a supprimé cette fiche.",
     "deleted_someone": "Cette fiche a été supprimée.",
+    "saved_since": "Rien n’a été enregistré : une autre version de cette fiche l’a été entre-temps. Vérifiez-la, puis enregistrez de nouveau.",
     "lines_conflict": "Les lignes ont aussi été modifiées dans la version enregistrée.",
     "take_saved": "Prendre la version enregistrée",
     "keep_typed": "Garder ma saisie"

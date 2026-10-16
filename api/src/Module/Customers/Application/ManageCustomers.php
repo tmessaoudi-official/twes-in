@@ -27,6 +27,8 @@ use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Module\Customers\Domain\Repository\CustomerGroupRepository;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\Customers\Domain\ValueObject\CustomerSearch;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
@@ -57,6 +59,7 @@ final readonly class ManageCustomers
         private ClockInterface $clock,
         private CustomFieldDefinitionRepository $customFields,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -103,14 +106,20 @@ final readonly class ManageCustomers
     }
 
     /**
+     * `$version` is the one the editor opened; an import, which revises what it finds, names none.
+     *
      * @throws CustomerNotFound
      * @throws CustomerNumberTaken
      * @throws InvalidCustomer
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, CustomerInput $input, ?Uuid $actorUserId): Customer
+    public function revise(Company $company, Uuid $id, CustomerInput $input, ?Uuid $actorUserId, ?int $version = null): Customer
     {
-        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Customer {
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): Customer {
             $customer = $this->get($company, $id);
+            if (null !== $version) {
+                $this->versions->expect($customer, $version);
+            }
             $holder = $this->customers->ofNumberInCompany(trim($input->number), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($customer->getId())) {
                 throw new CustomerNumberTaken();

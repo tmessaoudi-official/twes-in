@@ -18,9 +18,13 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
+use App\Shared\Application\Transactions;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 final class CustomersTest extends ApiTestCase
 {
@@ -158,7 +162,7 @@ final class CustomersTest extends ApiTestCase
         $this->postJson($this->path(), $this->customer());
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id), $this->customer(['email' => 'compta@carthage.tn', 'isActive' => false, 'shippingCity' => 'Sfax', 'shippingCountryCode' => 'TN']));
+        $this->sendJson('PUT', $this->path($id), $this->customer(['version' => 1, 'email' => 'compta@carthage.tn', 'isActive' => false, 'shippingCity' => 'Sfax', 'shippingCountryCode' => 'TN']));
 
         self::assertResponseIsSuccessful();
         self::assertFalse($this->json()['isActive']);
@@ -166,6 +170,64 @@ final class CustomersTest extends ApiTestCase
         $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'customer.revised'");
         self::assertIsString($changes);
         self::assertSame(['fields' => ['email', 'shippingAddress', 'isActive']], json_decode($changes, true));
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->postJson($this->path(), $this->customer());
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->customer(['version' => 1, 'billingCity' => 'Sfax']));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->customer(['version' => 1, 'billingCity' => 'Sousse']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path($id));
+        self::assertSame(['Sfax', 2], [$this->json()['billingCity'], $this->json()['version']]);
+    }
+
+    public function testASaveThatLostTheRaceToAnotherIsRefusedAsChanged(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->postJson($this->path(), $this->customer());
+        $id = Uuid::fromString($this->stringAt($this->json(), 'id'));
+        $customer = $this->em()->find(Customer::class, $id);
+        self::assertNotNull($customer);
+        static::getContainer()->get(RecordVersions::class)->expect($customer, 1);
+        // Another request saves the same customer between this one's check and its write.
+        $this->em()->getConnection()->executeStatement('UPDATE customer SET version = version + 1 WHERE id = ?', [$id->toRfc4122()]);
+
+        $this->expectException(RecordChanged::class);
+        static::getContainer()->get(Transactions::class)->run(static fn (): array => $customer->revise('CLI-0002', $customer->getProfile(), null, $customer->getTaxRegime(), [], true, new \DateTimeImmutable()));
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->postJson($this->path(), $this->customer());
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->customer(['version' => 1]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+    }
+
+    public function testARevisionSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->postJson($this->path(), $this->customer());
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->customer(['billingCity' => 'Sfax']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     public function testAReaderOnlyReadsAndAnotherCompanysCustomerIsNotFound(): void
@@ -181,7 +243,7 @@ final class CustomersTest extends ApiTestCase
         $this->login('reader@twes.local', 'password-1234');
         $this->getJson($this->path($mine));
         self::assertResponseIsSuccessful();
-        $this->sendJson('PUT', $this->path($mine), $this->customer());
+        $this->sendJson('PUT', $this->path($mine), $this->customer(['version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson($this->path(), $this->customer(['number' => 'CLI-0002']));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
@@ -206,7 +268,7 @@ final class CustomersTest extends ApiTestCase
 
         $this->getJson($this->path($theirs->getId()->toRfc4122()));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        $this->sendJson('PUT', $this->path($theirs->getId()->toRfc4122()), $this->customer(['kind' => 'individual', 'identifiers' => []]));
+        $this->sendJson('PUT', $this->path($theirs->getId()->toRfc4122()), $this->customer(['version' => 1, 'kind' => 'individual', 'identifiers' => []]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 

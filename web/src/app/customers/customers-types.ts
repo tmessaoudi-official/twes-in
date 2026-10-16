@@ -4,7 +4,7 @@ import type { CustomFieldValue } from '../shared/custom-fields/custom-fields-typ
 
 /** Why the API refused, as the customers screens translate it. */
 export type CustomersError =
-  'network' | 'not_found' | 'number_taken' | 'name_taken' | 'in_use' | 'invalid';
+  'network' | 'not_found' | 'number_taken' | 'name_taken' | 'in_use' | 'invalid' | 'record_changed';
 
 export type CustomerKind = 'company' | 'individual';
 export const CUSTOMER_KINDS: readonly CustomerKind[] = ['company', 'individual'];
@@ -42,6 +42,8 @@ export interface CustomerAddress {
 
 export interface CustomerRow {
   id: string;
+  /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
+  version: number;
   number: string;
   kind: CustomerKind;
   customerGroupId: string | null;
@@ -64,7 +66,7 @@ export interface CustomerRow {
   customFields: Record<string, CustomFieldValue>;
 }
 
-export type CustomerInput = Omit<CustomerRow, 'id'>;
+export type CustomerInput = Omit<CustomerRow, 'id' | 'version'>;
 
 export interface CustomerGroupRow {
   id: string;

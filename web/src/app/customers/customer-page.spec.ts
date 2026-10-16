@@ -86,6 +86,7 @@ const options: CustomerOptions = {
 };
 const carthage: CustomerRow = {
   id: 'k1',
+  version: 1,
   number: 'CLI-0001',
   kind: 'company',
   customerGroupId: null,
@@ -652,6 +653,7 @@ describe('CustomerPage', () => {
       'c1',
       'k1',
       expect.objectContaining({ email: 'compta@carthage.tn', defaultTaxComponentIds: ['t1'] }),
+      1,
     );
     expect(successToasts()).toContain('customers.saved');
   });
@@ -704,6 +706,7 @@ describe('CustomerPage', () => {
       'c1',
       'k1',
       expect.objectContaining({ email: 'compta@carthage.tn' }),
+      1,
     );
   });
 
@@ -739,6 +742,42 @@ describe('CustomerPage', () => {
     expect(q('field-error-identifier__matricule_fiscal')?.textContent).toContain('mal formé');
     expect(q('field-error-email')?.textContent).toContain('E-mail refusé.');
     expect(document.activeElement).toBe(q('field-identifier__matricule_fiscal'));
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    customer.set(carthage);
+    await open('k1');
+    facade.reviseCustomer.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.clearError.mockImplementationOnce(() => error.set(null));
+    facade.loadCustomer.mockImplementationOnce(async () =>
+      customer.set({ ...carthage, version: 2, phone: '71 000 000' }),
+    );
+
+    type('field-email', 'compta@carthage.tn');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-phone') as HTMLInputElement).value).toBe('71 000 000'));
+
+    expect((q('field-email') as HTMLInputElement).value).toBe('compta@carthage.tn');
+    expect(q('customer-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseCustomer).toHaveBeenLastCalledWith(
+      'c1',
+      'k1',
+      expect.objectContaining({ email: 'compta@carthage.tn', phone: '71 000 000' }),
+      2,
+    );
   });
 
   it('says why the API refused', async () => {
