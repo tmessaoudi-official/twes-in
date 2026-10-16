@@ -24,6 +24,8 @@ export type LoginError =
   | 'invalid_passkey'
   | 'mfa_last_factor'
   | 'passkey_not_found'
+  // An authenticator removal with none in force, from another tab that removed it first.
+  | 'totp_not_enrolled'
   // A password change that did not go through (the API's own reasons).
   | 'current_password'
   | 'too_short'
@@ -178,3 +180,5 @@ export type PasskeyAdded =
   { ok: true; passkey: PasskeySummary; recoveryCodes: string[] } | { ok: false; error: LoginError };
 
 export type PasskeyRemoved = { ok: true } | { ok: false; error: LoginError };
+
+export type AuthenticatorRemoved = { ok: true } | { ok: false; error: LoginError };

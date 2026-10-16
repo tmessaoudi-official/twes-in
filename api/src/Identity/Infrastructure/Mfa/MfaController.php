@@ -9,9 +9,12 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Mfa;
 
+use App\Identity\Application\Mfa\AuthenticatorNotEnrolled;
 use App\Identity\Application\Mfa\BeginTotpEnrolment;
 use App\Identity\Application\Mfa\ConfirmTotpEnrolment;
+use App\Identity\Application\Mfa\LastSecondFactor;
 use App\Identity\Application\Mfa\RegenerateRecoveryCodes;
+use App\Identity\Application\Mfa\RemoveAuthenticator;
 use App\Identity\Application\Mfa\SecondFactorAlreadyEnrolled;
 use App\Identity\Application\Mfa\SecondFactorLockout;
 use App\Identity\Application\Mfa\SecondFactorRefused;
@@ -53,6 +56,7 @@ final readonly class MfaController
         private ConfirmTotpEnrolment $confirmEnrolment,
         private RegenerateRecoveryCodes $regenerateRecoveryCodes,
         private SecondFactorLogin $secondFactorLogin,
+        private RemoveAuthenticator $removeAuthenticator,
     ) {
     }
 
@@ -118,6 +122,23 @@ final readonly class MfaController
         }
 
         return new JsonResponse(['recoveryCodes' => $codes]);
+    }
+
+    /** Forgets the authenticator, a phone lost or replaced, once a fresh proof is given; never the last factor required. */
+    #[Route('/api/auth/mfa/authenticator', name: 'api_auth_mfa_authenticator_remove', methods: ['DELETE'])]
+    public function remove(): Response
+    {
+        try {
+            $this->removeAuthenticator->handle($this->currentUserId());
+        } catch (AuthenticatorNotEnrolled) {
+            return new JsonResponse(['error' => 'totp_not_enrolled'], Response::HTTP_NOT_FOUND);
+        } catch (LastSecondFactor) {
+            return new JsonResponse(['error' => 'mfa_last_factor'], Response::HTTP_CONFLICT);
+        } catch (StepUpRequired) {
+            return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
+        }
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
     /**

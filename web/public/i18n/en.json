@@ -41,6 +41,7 @@
       "invalid_passkey": "That passkey could not be verified. Try again, or use another way to sign in.",
       "mfa_last_factor": "A company you belong to requires two-step verification, so your last way to verify cannot be removed.",
       "passkey_not_found": "That passkey no longer exists.",
+      "totp_not_enrolled": "No authenticator app is set up.",
       "passkey_cancelled": "No passkey was used. Try again, and follow what your device asks.",
       "passkey_already_registered": "This device already holds a passkey for this account."
     },
@@ -79,6 +80,7 @@
       "app_title": "Authenticator app",
       "app_intro": "Add an authenticator app as another way to verify, for when your passkey is not at hand.",
       "app_start": "Set up an authenticator app",
+      "app_remove": "Remove the app",
       "passkeys_title": "Passkeys",
       "passkeys_intro": "A passkey confirms it is you with your fingerprint, face or device PIN, instead of a code.",
       "passkeys_none": "No passkey yet.",
@@ -4551,7 +4553,8 @@
         "password_changed": "changed their password",
         "password_reset": "reset their password",
         "recovery_codes_regenerated": "renewed their recovery codes",
-        "step_up": "confirmed who they are"
+        "step_up": "confirmed who they are",
+        "totp_removed": "removed their authenticator app"
       },
       "company": {
         "profile_revised": "changed the company profile",

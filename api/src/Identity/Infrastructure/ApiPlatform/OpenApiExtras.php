@@ -280,6 +280,18 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             summary: 'Remove a passkey',
             parameters: [new Parameter('id', 'path', 'The passkey', true, schema: ['type' => 'string', 'format' => 'uuid'])],
         )));
+        $openApi->getPaths()->addPath('/api/auth/mfa/authenticator', new PathItem(delete: new Operation(
+            operationId: 'removeAuthenticator',
+            tags: ['Auth'],
+            responses: [
+                '204' => new Response('Removed; another may be enrolled'),
+                '401' => $errorResponse('Not signed in'),
+                '403' => $errorResponse('No fresh proof of who is at the screen (step_up_required)'),
+                '404' => $errorResponse('No authenticator in force on this account (totp_not_enrolled)'),
+                '409' => $errorResponse('The last factor of an account a company requires to have one'),
+            ],
+            summary: 'Remove the authenticator app',
+        )));
         $openApi->getPaths()->addPath('/api/auth/mfa/passkey-login/options', new PathItem(post: new Operation(
             operationId: 'passkeyLoginOptions',
             tags: ['Auth'],

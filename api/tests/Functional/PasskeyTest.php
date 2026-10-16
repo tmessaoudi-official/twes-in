@@ -274,6 +274,25 @@ final class PasskeyTest extends ApiTestCase
         self::assertSame('mfa_last_factor', $this->stringAt($this->json(), 'error'));
     }
 
+    // docs/SPEC.md § 7, 2026-09-22 09:12: the authenticator goes while a passkey stands in for it, and that passkey stays.
+    public function testAnAuthenticatorGoesWhileAPasskeyStandsInForIt(): void
+    {
+        $company = $this->createCompany('Secure');
+        $company->requireMfa(true);
+        $this->createUser('someone@twes.local', self::PASSWORD, $company, authenticator: true);
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+        $this->registerPasskey(new FakeAuthenticator());
+        [$passkey] = $this->listedIds();
+
+        $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        $this->sendJson('DELETE', '/api/auth/mfa/passkeys/'.$passkey);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('mfa_last_factor', $this->stringAt($this->json(), 'error'));
+    }
+
     public function testAPasskeyReplacesTheRecoveryCodesOfAnAccountWhoseOnlyFactorItIs(): void
     {
         $authenticator = new FakeAuthenticator();

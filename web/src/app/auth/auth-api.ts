@@ -169,6 +169,11 @@ export class AuthApi {
     await send(this.http.delete(`/api/auth/mfa/passkeys/${encodeURIComponent(id)}`));
   }
 
+  /** Forgets the authenticator app; another may then be enrolled. */
+  async removeAuthenticator(): Promise<void> {
+    await send(this.http.delete('/api/auth/mfa/authenticator'));
+  }
+
   /** Request options for the account whose password was just accepted. */
   async passkeyLoginOptions(): Promise<PasskeyOptions> {
     return {

@@ -248,6 +248,75 @@ final class MfaEnrolmentTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    // docs/SPEC.md § 7, 2026-09-22 09:12: every second factor is manageable, the last one a company requires is kept,
+    // and removing one asks for a fresh proof first.
+    public function testAnAuthenticatorIsRemovedAfterAFreshProofAndCanBeEnrolledAgain(): void
+    {
+        $this->createUser('someone@twes.local', self::PASSWORD, authenticator: true);
+        $this->login('someone@twes.local', self::PASSWORD);
+        self::assertResponseIsSuccessful();
+
+        // The code that finished the sign-in is not the proof: a taken session must not strip the account's factors.
+        $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('step_up_required', $this->stringAt($this->json(), 'error'));
+
+        $this->stepUp(self::PASSWORD);
+        $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->getJson('/api/auth/me');
+        self::assertFalse($this->boolAt($this->section($this->json(), 'mfa'), 'totp'));
+        self::assertSame(1, $this->audited('auth.totp_removed'));
+
+        $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame('totp_not_enrolled', $this->stringAt($this->json(), 'error'));
+
+        // Replacing a phone is removing its authenticator and enrolling the new one.
+        $this->postJson('/api/auth/mfa/enrolment', []);
+        self::assertResponseIsSuccessful();
+        $secret = $this->stringAt($this->json(), 'secret');
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
+        self::assertResponseIsSuccessful();
+        $this->getJson('/api/auth/me');
+        self::assertTrue($this->boolAt($this->section($this->json(), 'mfa'), 'totp'));
+    }
+
+    public function testTheAuthenticatorACompanyRequiresIsKeptWhenItIsTheLastFactor(): void
+    {
+        $company = $this->createCompany('Secure');
+        $company->requireMfa(true);
+        $this->createUser('someone@twes.local', self::PASSWORD, $company, authenticator: true);
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+
+        $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('mfa_last_factor', $this->stringAt($this->json(), 'error'));
+        $this->getJson('/api/auth/me');
+        self::assertTrue($this->boolAt($this->section($this->json(), 'mfa'), 'totp'));
+    }
+
+    public function testAnOperatorKeepsTheAuthenticatorThatIsTheirLastFactor(): void
+    {
+        // Every operator carries a second factor, whatever company they belong to (docs/SPEC.md § 7, 2026-09-15, S3).
+        $this->createUser('op@twes.local', self::PASSWORD, operator: true);
+        $this->login('op@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+
+        $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('mfa_last_factor', $this->stringAt($this->json(), 'error'));
+    }
+
+    public function testRemovingAnAuthenticatorNeedsASession(): void
+    {
+        $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+    }
+
     public function testTheRequirementFollowsTheUserNotTheChosenCompany(): void
     {
         // A member of one strict company and one relaxed one must enrol either way, or the company switcher
@@ -263,6 +332,14 @@ final class MfaEnrolmentTest extends ApiTestCase
 
         $this->getJson('/api/auth/me');
         self::assertTrue($this->boolAt($this->section($this->json(), 'mfa'), 'required'));
+    }
+
+    private function audited(string $action): int
+    {
+        $count = $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM audit_log WHERE action = ?', [$action]);
+        self::assertIsNumeric($count);
+
+        return (int) $count;
     }
 
     private function signOut(): void

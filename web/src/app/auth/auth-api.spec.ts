@@ -319,6 +319,20 @@ describe('AuthApi', () => {
     await expect(kept).rejects.toEqual(new AuthRefused('mfa_last_factor'));
   });
 
+  it('removes the authenticator, or reports why it stays', async () => {
+    const removed = api.removeAuthenticator();
+    http
+      .expectOne({ method: 'DELETE', url: '/api/auth/mfa/authenticator' })
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await expect(removed).resolves.toBeUndefined();
+
+    const kept = api.removeAuthenticator();
+    http
+      .expectOne('/api/auth/mfa/authenticator')
+      .flush({ error: 'mfa_last_factor' }, { status: 409, statusText: 'Conflict' });
+    await expect(kept).rejects.toEqual(new AuthRefused('mfa_last_factor'));
+  });
+
   it('answers a pending login with a passkey', async () => {
     const options = api.passkeyLoginOptions();
     http
