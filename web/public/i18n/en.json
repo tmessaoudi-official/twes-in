@@ -3485,6 +3485,8 @@
       "invalid_description": "Description refused.",
       "invalid_barcode": "Barcode refused.",
       "invalid_price": "Price refused: a positive number.",
+      "price_net_and_gross": "The price is given both without and with taxes: keep unit_price_net or unit_price_gross.",
+      "gross_unreachable": "No net price comes to {{gross}} including taxes with these taxes; the nearest are {{below}} and {{above}}.",
       "invalid_iban": "IBAN refused.",
       "invalid_bic": "BIC refused.",
       "invalid_country": "Country refused: a two-letter code, such as TN or FR.",

@@ -3485,6 +3485,8 @@
       "invalid_description": "Description refusée.",
       "invalid_barcode": "Code-barres refusé.",
       "invalid_price": "Prix refusé : un nombre positif.",
+      "price_net_and_gross": "Le prix est donné hors taxes et taxes comprises : gardez unit_price_net ou unit_price_gross.",
+      "gross_unreachable": "Aucun prix HT n’arrive à {{gross}} TTC avec ces taxes ; les plus proches sont {{below}} et {{above}}.",
       "invalid_iban": "IBAN refusé.",
       "invalid_bic": "BIC refusé.",
       "invalid_country": "Pays refusé : un code à deux lettres, comme TN ou FR.",

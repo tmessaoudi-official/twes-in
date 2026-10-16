@@ -60,6 +60,8 @@
       "category_note": "Le nom d’une catégorie existante ; créez-la avant l’import.",
       "unit_price_net": "Prix de vente HT",
       "price_note": "Montant avec une virgule ou un point. Obligatoire pour un nouvel article.",
+      "unit_price_gross": "Prix de vente TTC",
+      "unit_price_gross_note": "Le prix d’une unité taxes comprises, au plus aux décimales de la devise : le prix HT est celui qui y arrive exactement avec les taxes de l’article. Laissez unit_price_net vide sur la même ligne.",
       "cost_price": "Prix de revient",
       "cost_note": "Ce que l’article coûte, pour calculer la marge.",
       "barcode": "Code-barres",
