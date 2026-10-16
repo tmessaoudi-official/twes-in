@@ -58,7 +58,7 @@ final class CustomerImportTest extends ApiTestCase
         $this->import($this->twoCustomers(), dryRun: true);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(0, $this->customers());
         self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM audit_log WHERE action = 'customer.created'"));
         $this->getJson($this->companyPath().'/customers');
@@ -72,7 +72,7 @@ final class CustomerImportTest extends ApiTestCase
         $this->import($this->twoCustomers());
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         $business = $this->customer('CLI-0001');
         self::assertSame('Carthage Conseil', $business->getProfile()->name);
         self::assertSame(['matricule_fiscal' => self::MATRICULE], $business->getProfile()->identifiers);
@@ -306,7 +306,7 @@ final class CustomerImportTest extends ApiTestCase
         $this->import($second, mode: 'upsert');
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'unchanged' => [], 'rejected' => [], 'changes' => [['line' => 2, 'column' => 'name', 'before' => 'Carthage Conseil', 'after' => 'Carthage Conseil Group']], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         $this->assertNothingImportedIsManaged();
         $this->em()->clear();
         $updated = $this->customer('CLI-0001');
@@ -390,6 +390,35 @@ final class CustomerImportTest extends ApiTestCase
             $this->customerSettings('CLI-0001'),
             'a blank cell keeps what the customer has',
         );
+    }
+
+    /**
+     * An upsert says per customer what changes, old to new, as the file writes it, settings included; a row that
+     * changes nothing is counted apart and writes nothing, not even to the journal (docs/SPEC.md § 7, 2026-10-09
+     * 10:40, ruling 5).
+     */
+    public function testAnUpsertSaysWhatChangesAndWhatDoesNot(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->import($this->twoCustomers());
+        self::assertResponseIsSuccessful();
+
+        $this->import("number,name,default_discount_rate,payment_terms_days\nCLI-0001,Carthage Conseil SA,7,45\nCLI-0002,Sonia Ben Ali,,\n", 'upsert', dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['updated']);
+        self::assertSame([3], $this->json()['unchanged']);
+        self::assertSame([
+            ['line' => 2, 'column' => 'name', 'before' => 'Carthage Conseil', 'after' => 'Carthage Conseil SA'],
+            ['line' => 2, 'column' => 'default_discount_rate', 'before' => '5.500', 'after' => '7.000'],
+            ['line' => 2, 'column' => 'payment_terms_days', 'before' => '', 'after' => '45'],
+        ], $this->json()['changes']);
+
+        $journal = $this->numberOf("SELECT COUNT(*) FROM audit_log WHERE action LIKE 'customer.%'");
+        $this->import("number,name\nCLI-0002,Sonia Ben Ali\n", 'upsert');
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['unchanged']);
+        self::assertSame($journal, $this->numberOf("SELECT COUNT(*) FROM audit_log WHERE action LIKE 'customer.%'"), 'a row that changes nothing records nothing');
     }
 
     /** @return iterable<string, array{string, string, string, array<string, int|string>}> */

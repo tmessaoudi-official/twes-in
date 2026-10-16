@@ -13,12 +13,12 @@ use App\Fiscal\Domain\TaxComponentRepository;
 use App\ImportExport\Application\DeclaresExport;
 use App\ImportExport\Application\ExportQuery;
 use App\Module\Products\Application\ManageProducts;
-use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductSearch;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductSearchReader;
 use App\Module\Products\Infrastructure\Import\ProductImport;
+use App\Module\Products\Infrastructure\Import\ProductInFile;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
@@ -76,53 +76,11 @@ final readonly class ProductExport implements DeclaresExport
         for ($page = 1;; ++$page) {
             $answer = $this->manage->search($company, $search, new PageRequest($page, self::BATCH));
             foreach ($answer->items as $product) {
-                yield array_map(fn (string $column): string => $this->cell($product, $column, $codes), $columns);
+                yield array_map(static fn (string $column): string => ProductInFile::cell($product, $column, $codes), $columns);
             }
             if ($page * self::BATCH >= $answer->total || [] === $answer->items) {
                 return;
             }
         }
-    }
-
-    /** @param array<string, string> $taxCodes by tax id */
-    private function cell(Product $product, string $column, array $taxCodes): string
-    {
-        $details = $product->getDetails();
-
-        return match (true) {
-            'reference' === $column => $product->getReference(),
-            'name' === $column => $details->name,
-            'kind' === $column => $details->kind->value,
-            'description' === $column => $details->description ?? '',
-            'unit_code' === $column => $product->getUnit()->getCode(),
-            'category' === $column => $product->getCategory()?->getName() ?? '',
-            'unit_price_net' === $column => $details->unitPriceNet,
-            'cost_price' === $column => $details->costPrice ?? '',
-            'barcode' === $column => self::unitBarcode($product),
-            'default_tax_codes' === $column => implode(',', array_map(static fn (string $id): string => $taxCodes[$id] ?? '', $product->getDefaultTaxComponentIds())),
-            'active' === $column => $product->isActive() ? 'yes' : 'no',
-            str_starts_with($column, ProductImport::CUSTOM_PREFIX) => self::custom($product->getCustomFields()[substr($column, \strlen(ProductImport::CUSTOM_PREFIX))] ?? null),
-            default => '',
-        };
-    }
-
-    private static function unitBarcode(Product $product): string
-    {
-        foreach ($product->getBarcodes() as $barcode) {
-            if (BarcodeRole::Unit === $barcode->getRole()) {
-                return $barcode->getCode();
-            }
-        }
-
-        return '';
-    }
-
-    private static function custom(string|int|float|bool|null $value): string
-    {
-        return match (true) {
-            null === $value => '',
-            \is_bool($value) => $value ? 'yes' : 'no',
-            default => (string) $value,
-        };
     }
 }

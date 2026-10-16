@@ -13,16 +13,21 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * One run of a file, as every row of it sees it: the id the run is kept under once committed, which what a row writes
- * elsewhere may carry to read as the import's, the switches the person ticked among those the subject offers, and
- * whether it is the preview, rolled back whatever it finds, so a row asks for nothing a preview cannot keep.
+ * elsewhere may carry to read as the import's, the switches the person ticked among those the subject offers,
+ * whether it is the preview, rolled back whatever it finds, so a row asks for nothing a preview cannot keep, and the
+ * subject's columns as this person may see them, the ones a row found again is compared over.
  */
 final readonly class ImportContext
 {
-    /** @param list<string> $ticked the keys of the subject's switches the person ticked */
+    /**
+     * @param list<string> $ticked  the keys of the subject's switches the person ticked
+     * @param list<string> $columns the subject's columns for this company and person
+     */
     public function __construct(
         public Uuid $runId,
         private array $ticked = [],
         public bool $dryRun = false,
+        public array $columns = [],
     ) {
     }
 

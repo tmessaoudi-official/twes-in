@@ -80,7 +80,7 @@ final class OpeningStockImportTest extends ApiTestCase
         $this->import($this->twoCounts(), dryRun: true);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => [
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [
             ['line' => 2, 'column' => 'stock_count', 'code' => 'stock_change', 'params' => ['location' => '000', 'before' => '0', 'after' => '120']],
             ['line' => 3, 'column' => 'stock_count', 'code' => 'stock_change', 'params' => ['location' => 'Z1', 'before' => '0.000', 'after' => '7.500']],
         ], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());

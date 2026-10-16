@@ -14,4 +14,6 @@ enum RowImported
 {
     case Created;
     case Updated;
+    /** Found again, and nothing it holds differs from what the row gives: nothing was written. */
+    case Unchanged;
 }

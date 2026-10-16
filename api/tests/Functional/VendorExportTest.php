@@ -68,6 +68,22 @@ final class VendorExportTest extends ApiTestCase
         self::assertSame(['Sotumag', '', 'no'], [$rows['FRN-0002']['name'], $rows['FRN-0002']['payment_terms_days'], $rows['FRN-0002']['active']]);
     }
 
+    /** The export brought back over the vendors it came from changes nothing (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 5). */
+    public function testAnExportBroughtBackChangesNothing(): void
+    {
+        $this->createUser('writer@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()), ['vendor.read', 'vendor.write'], 'writer');
+        $this->login('writer@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
+        $this->client->request('GET', $this->path().'/exports/vendors.csv');
+        $exported = $this->content();
+
+        $this->uploadFile($this->path().'/imports/vendors', 'vendors.csv', $exported, 'file', ['mode' => 'upsert', 'dryRun' => '1']);
+
+        self::assertResponseIsSuccessful();
+        $report = $this->json();
+        self::assertSame([[], [2, 3], [], []], [$report['updated'] ?? null, $report['unchanged'] ?? null, $report['changes'] ?? null, $report['rejected'] ?? null]);
+    }
+
     public function testTheSearchTheFilterAndTheOrderOfTheScreenNarrowAndSortTheFile(): void
     {
         self::assertCount(2, $this->csv('/exports/vendors.csv?q=sotumag'));

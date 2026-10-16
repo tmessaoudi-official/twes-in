@@ -11,6 +11,7 @@ namespace App\Module\Inventory\Infrastructure\Products;
 
 use App\Module\Inventory\Application\KeepReorderPoints;
 use App\Module\Inventory\Domain\InvalidReorderPoint;
+use App\Module\Inventory\Domain\ProductReorderPointRepository;
 use App\Module\Inventory\Domain\StockLocationRepository;
 use App\Module\Products\Application\ProductReorderPoints;
 use App\Module\Products\Application\ReorderPointRefused;
@@ -28,6 +29,7 @@ final readonly class InventoryProductReorderPoints implements ProductReorderPoin
     public function __construct(
         private StockLocationRepository $locations,
         private KeepReorderPoints $points,
+        private ProductReorderPointRepository $held,
         private EntityManagerInterface $entityManager,
     ) {
     }
@@ -37,10 +39,16 @@ final readonly class InventoryProductReorderPoints implements ProductReorderPoin
         return $this->locations->ofIdInCompany($locationId, $company->getId())?->getEstablishment()->getId();
     }
 
-    public function setReorderPoint(Company $company, Uuid $productId, Uuid $establishmentId, string $quantity, ?Uuid $actorUserId): void
+    public function setReorderPoint(Company $company, Uuid $productId, Uuid $establishmentId, string $quantity, ?Uuid $actorUserId): array
     {
+        // Read before it is written: the point kept is the same object, changed in place.
+        $before = $this->held->ofProductInEstablishment($productId, $establishmentId)?->getQuantity() ?? '';
         try {
-            $this->entityManager->detach($this->points->set($company, $productId, $establishmentId, $quantity, $actorUserId));
+            $point = $this->points->set($company, $productId, $establishmentId, $quantity, $actorUserId);
+            $after = $point->getQuantity();
+            $this->entityManager->detach($point);
+
+            return [$before, $after];
         } catch (InvalidReorderPoint $refused) {
             throw new ReorderPointRefused($refused->getMessage(), 0, $refused);
         }

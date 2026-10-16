@@ -147,6 +147,33 @@ final class ProductExportTest extends ApiTestCase
         return array_map(strval(...), str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"), escape: ''));
     }
 
+    /**
+     * The export brought back over the products it came from changes nothing (docs/SPEC.md § 7, 2026-10-09 10:40,
+     * ruling 5), for a reader of costs and for somebody who sees none, whose file has no cost to compare.
+     *
+     * @return iterable<string, array{list<string>}>
+     */
+    public static function readers(): iterable
+    {
+        yield 'a reader of costs' => [['product.read', 'product.write', 'product.cost.read']];
+        yield 'somebody who sees no cost' => [['product.read', 'product.write']];
+    }
+
+    /** @param list<string> $permissions */
+    #[\PHPUnit\Framework\Attributes\DataProvider('readers')]
+    public function testAnExportBroughtBackChangesNothing(array $permissions): void
+    {
+        $this->signIn($permissions);
+        $this->client->request('GET', $this->path().'/exports/products.csv');
+        $exported = $this->content();
+
+        $this->uploadFile($this->path().'/imports/products', 'products.csv', $exported, 'file', ['mode' => 'upsert', 'dryRun' => '1']);
+
+        self::assertResponseIsSuccessful();
+        $report = $this->json();
+        self::assertSame([[], [2, 3], [], []], [$report['updated'] ?? null, $report['unchanged'] ?? null, $report['changes'] ?? null, $report['rejected'] ?? null]);
+    }
+
     /** What every part of an .xlsx archive says, joined, so a figure is found whichever part holds it. */
     private function unzipped(string $bytes): string
     {

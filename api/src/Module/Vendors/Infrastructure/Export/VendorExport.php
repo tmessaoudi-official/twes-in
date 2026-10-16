@@ -18,6 +18,7 @@ use App\Module\Vendors\Domain\VendorSearch;
 use App\Module\Vendors\Infrastructure\ApiPlatform\VendorPermission;
 use App\Module\Vendors\Infrastructure\ApiPlatform\VendorSearchReader;
 use App\Module\Vendors\Infrastructure\Import\VendorImport;
+use App\Module\Vendors\Infrastructure\Import\VendorInFile;
 use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Shared\Domain\PageRequest;
@@ -77,39 +78,11 @@ final readonly class VendorExport implements DeclaresExport
         for ($page = 1;; ++$page) {
             $answer = $this->manage->search($company, $search, new PageRequest($page, self::BATCH));
             foreach ($answer->items as $vendor) {
-                yield array_map(static fn (string $column): string => self::cell($vendor, $column, $categories), $columns);
+                yield array_map(static fn (string $column): string => VendorInFile::cell($vendor, $column, $categories), $columns);
             }
             if ($page * self::BATCH >= $answer->total || [] === $answer->items) {
                 return;
             }
         }
-    }
-
-    /** @param array<string, string> $categories */
-    private static function cell(Vendor $vendor, string $column, array $categories): string
-    {
-        $profile = $vendor->getProfile();
-        $address = $profile->address;
-
-        return match ($column) {
-            'number' => $vendor->getNumber(),
-            'name' => $profile->name,
-            'legal_name' => $profile->legalName ?? '',
-            'email' => $profile->email ?? '',
-            'phone' => $profile->phone ?? '',
-            'website' => $profile->website ?? '',
-            'line1' => $address->line1 ?? '',
-            'line2' => $address->line2 ?? '',
-            'postal_code' => $address->postalCode ?? '',
-            'city' => $address->city ?? '',
-            'country_code' => $address->countryCode ?? '',
-            'iban' => $profile->iban ?? '',
-            'bic' => $profile->bic ?? '',
-            'payment_terms_days' => null === $profile->paymentTermsDays ? '' : (string) $profile->paymentTermsDays,
-            'expense_category' => null === $profile->defaultExpenseCategoryId ? '' : ($categories[$profile->defaultExpenseCategoryId->toRfc4122()] ?? ''),
-            'notes' => $profile->notes ?? '',
-            'active' => $vendor->isActive() ? 'yes' : 'no',
-            default => $profile->identifiers[$column] ?? '',
-        };
     }
 }

@@ -92,6 +92,8 @@ final readonly class ProductImport implements DeclaresImport
         'defaultTaxComponentIds' => ['default_tax_codes', 'unknown_tax_code'],
     ];
 
+    /** What the inventory answers for: where goods lie, the reorder point and the stock, compared through its ports. */
+    private const array STOCK_COLUMNS = ['home_location', 'reorder_point', 'stock_add', 'stock_count', 'location'];
     private const array YES = ['yes', 'y', 'true', '1', 'oui', 'o'];
     /** A kind by its code or as the screen names it, in French and in English. */
     private const array KINDS = ['goods' => 'goods', 'bien' => 'goods', 'biens' => 'goods', 'service' => 'service', 'services' => 'service'];
@@ -211,6 +213,8 @@ final readonly class ProductImport implements DeclaresImport
             $input = $this->input($company, $record, $existing, $faults);
             $faults->stopIfAny();
             \assert(false !== $home);
+            // Rendered before the write, which changes the product in place.
+            $before = null === $existing ? [] : $this->inFile($company, $existing, $context);
             if (null === $existing) {
                 $written = $this->manage->create($company, $input, $actorUserId);
                 $this->settleHome($company, $written, $home, $actorUserId);
@@ -223,11 +227,21 @@ final readonly class ProductImport implements DeclaresImport
                 return RowImported::Created;
             }
             $written = $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
-            $this->settleHome($company, $written, $home, $actorUserId);
-            $this->settleReorderPoint($company, $written, $reorderPoint, $actorUserId);
-            $this->settleStock($company, $written, $record, $quantity, $home, $actorUserId, $context, $notes);
+            $after = $this->inFile($company, $written, $context);
+            $moved = [
+                'home_location' => $this->settleHome($company, $written, $home, $actorUserId),
+                'reorder_point' => $this->settleReorderPoint($company, $written, $reorderPoint, $actorUserId),
+            ];
+            $stock = $this->settleStock($company, $written, $record, $quantity, $home, $actorUserId, $context, $notes);
+            if (null !== $stock) {
+                $moved[$stock[0]] = [$stock[1], $stock[2]];
+            }
+            foreach (array_filter($moved) as $column => [$was, $now]) {
+                $before[$column] = $was;
+                $after[$column] = $now;
+            }
 
-            return RowImported::Updated;
+            return $notes->changedBetween($before, $after) ? RowImported::Updated : RowImported::Unchanged;
         } catch (InvalidProduct $refused) {
             // The one code a file writes is the unit code, first in the list: every refusal of a row of it is that cell's.
             $field = str_starts_with($refused->field, 'barcodes.') ? 'barcode' : $refused->field;
@@ -330,12 +344,14 @@ final readonly class ProductImport implements DeclaresImport
      *
      * @param array{bool, string, string}|null $quantity
      *
+     * @return array{string, string, string}|null the column the quantity is written in, and what is on hand there before and after
+     *
      * @throws ProductStockRefused
      */
-    private function settleStock(Company $company, Product $product, ImportRecord $record, ?array $quantity, ?Uuid $home, ?Uuid $actorUserId, ImportContext $context, RowNotes $notes): void
+    private function settleStock(Company $company, Product $product, ImportRecord $record, ?array $quantity, ?Uuid $home, ?Uuid $actorUserId, ImportContext $context, RowNotes $notes): ?array
     {
         if (null === $quantity) {
-            return;
+            return null;
         }
         [$adds, $value, $column] = $quantity;
         $location = $record->value('location');
@@ -343,14 +359,38 @@ final readonly class ProductImport implements DeclaresImport
             ? $this->stock->add($company, $product->getId(), $location, $home, $value, $product->getDetails()->costPrice, $actorUserId, $context->runId)
             : $this->stock->count($company, $product->getId(), $location, $home, $value, $context->ticked(self::RECOUNT), $actorUserId, $context->runId);
         $notes->note($column, 'stock_change', ['location' => $change->place, 'before' => $change->before, 'after' => $change->after]);
+
+        return [$column, $change->before, $change->after];
     }
 
-    /** Gives the written product the home the row named, once there is a product to give it to. */
-    private function settleHome(Company $company, Product $product, ?Uuid $locationId, ?Uuid $actorUserId): void
+    /**
+     * Gives the written product the home the row named, once there is a product to give it to.
+     *
+     * @return array{string, string}|null the main home's code there before and after, when the row names one
+     */
+    private function settleHome(Company $company, Product $product, ?Uuid $locationId, ?Uuid $actorUserId): ?array
     {
-        if (null !== $locationId) {
-            $this->homes->setHome($company, $product->getId(), $locationId, $actorUserId);
+        return null === $locationId ? null : $this->homes->setHome($company, $product->getId(), $locationId, $actorUserId);
+    }
+
+    /**
+     * The product as the file writes it, over the columns this person's file has but those of the stock, which the
+     * inventory answers for (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 5).
+     *
+     * @return array<string, string> by column
+     */
+    private function inFile(Company $company, Product $product, ImportContext $context): array
+    {
+        $codes = [];
+        foreach ($this->taxes->ofCompany($company->getId()) as $tax) {
+            $codes[$tax->getId()->toRfc4122()] = $tax->getCode();
         }
+        $cells = [];
+        foreach (array_diff($context->columns, self::STOCK_COLUMNS) as $column) {
+            $cells[$column] = ProductInFile::cell($product, $column, $codes);
+        }
+
+        return $cells;
     }
 
     /**
@@ -396,13 +436,13 @@ final readonly class ProductImport implements DeclaresImport
     /**
      * @param array{Uuid, string}|null $point
      *
+     * @return array{string, string}|null the point before and after, when the row sets one
+     *
      * @throws ReorderPointRefused
      */
-    private function settleReorderPoint(Company $company, Product $product, ?array $point, ?Uuid $actorUserId): void
+    private function settleReorderPoint(Company $company, Product $product, ?array $point, ?Uuid $actorUserId): ?array
     {
-        if (null !== $point) {
-            $this->reorderPoints->setReorderPoint($company, $product->getId(), $point[0], $point[1], $actorUserId);
-        }
+        return null === $point ? null : $this->reorderPoints->setReorderPoint($company, $product->getId(), $point[0], $point[1], $actorUserId);
     }
 
     /**

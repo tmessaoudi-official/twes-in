@@ -89,6 +89,25 @@ final class CustomerExportTest extends ApiTestCase
         self::assertSame(['', '', '', ''], array_map(static fn (string $column): string => $inherited[$column] ?? '?', $settings));
     }
 
+    /**
+     * The export is a file the import reads back as it is: brought back over the customers it came from, every row is
+     * unchanged and nothing is listed as changing (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 5), the settings columns,
+     * the numbers, the rates and the tax codes included.
+     */
+    public function testAnExportBroughtBackChangesNothing(): void
+    {
+        $this->uploadFile($this->path().'/imports/customers', 'settings.csv', "number,name,payment_terms_days,credit_limit,document_language,exemption_reference\nCLI-0001,Carthage Conseil,45,\"12 500,5\",anglais,Article 13\n", 'file', ['mode' => 'upsert', 'dryRun' => '0']);
+        self::assertResponseIsSuccessful();
+        $this->client->request('GET', $this->path().'/exports/customers.csv');
+        $exported = $this->content();
+
+        $this->uploadFile($this->path().'/imports/customers', 'customers.csv', $exported, 'file', ['mode' => 'upsert', 'dryRun' => '1']);
+
+        self::assertResponseIsSuccessful();
+        $report = $this->json();
+        self::assertSame([[], [2, 3], [], []], [$report['updated'] ?? null, $report['unchanged'] ?? null, $report['changes'] ?? null, $report['rejected'] ?? null]);
+    }
+
     public function testTheSearchTheFiltersAndTheOrderOfTheScreenNarrowAndSortTheFile(): void
     {
         self::assertCount(2, $this->csv('/exports/customers.csv?q=sonia'));
