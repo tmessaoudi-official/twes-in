@@ -224,7 +224,22 @@ final class OpeningStockImportTest extends ApiTestCase
             [9, 'reference', 'not_stocked', ['reference' => 'MO-TOUR']],
             [10, 'stock_count', 'invalid_quantity', []],
             [11, 'reference', 'lot_tracked', ['reference' => 'COL-01']],
-            [12, 'stock_add', 'invalid_quantity', []],
+            [12, 'stock_add', 'quantity_not_positive', []],
+        ], $this->rejected());
+    }
+
+    /** A quantity is refused saying what its unit counts in, and what a count or a receipt takes. */
+    public function testAQuantityIsRefusedSayingWhatItsUnitAndItsWayIn(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+
+        $this->import(self::HEADER."\nVIS-6X40,,000,,1.5\nFIL-2,,000,,-2\nFIL-2,,Z1,0,\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            [2, 'stock_count', 'quantity_decimals', ['unit' => 'Unité', 'decimals' => 0]],
+            [3, 'stock_count', 'count_negative', []],
+            [4, 'stock_add', 'quantity_not_positive', []],
         ], $this->rejected());
     }
 
