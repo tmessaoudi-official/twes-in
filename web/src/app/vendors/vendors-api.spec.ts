@@ -71,6 +71,7 @@ describe('VendorsApi', () => {
     const pending = api.vendor('c1', 'v 1');
     http.expectOne('/api/companies/c1/vendors/v%201').flush({
       id: 'v 1',
+      version: 4,
       number: 'FRN-0001',
       name: 'Sotumag',
       identifiers: {},
@@ -83,7 +84,7 @@ describe('VendorsApi', () => {
       defaultExpenseCategoryId: 'k2',
     });
 
-    expect(await pending).toEqual({ ...sotumag, id: 'v 1' });
+    expect(await pending).toEqual({ ...sotumag, id: 'v 1', version: 4 });
   });
 
   it('reads one page of vendors as the API searched, narrowed and sorted it, with the total', async () => {
@@ -134,7 +135,7 @@ describe('VendorsApi', () => {
   });
 
   it('says a number another vendor has, and a field the API refused', async () => {
-    const taken = api.reviseVendor('c1', 'v1', sotumag);
+    const taken = api.reviseVendor('c1', 'v1', sotumag, 1);
     http
       .expectOne('/api/companies/c1/vendors/v1')
       .flush(null, { status: 409, statusText: 'Conflict' });
@@ -181,9 +182,26 @@ describe('VendorsApi', () => {
     expect((await off).expenseCategories).toBeNull();
   });
 
+  it('sends back the version revised, and tells a version saved since from a number taken', async () => {
+    const changed = api.reviseVendor('c1', 'v1', sotumag, 3);
+    const request = http.expectOne('/api/companies/c1/vendors/v1');
+    expect(request.request.body).toMatchObject({ version: 3, number: sotumag.number });
+    request.flush(
+      { type: '/problems/record-changed', status: 409 },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(changed).rejects.toMatchObject({ code: 'record_changed' });
+
+    const taken = api.reviseVendor('c1', 'v1', sotumag, 3);
+    http
+      .expectOne('/api/companies/c1/vendors/v1')
+      .flush({ type: '/errors/409' }, { status: 409, statusText: 'Conflict' });
+    await expect(taken).rejects.toMatchObject({ code: 'number_taken' });
+  });
+
   // docs/SPEC.md § 7, the step-up list: API Platform leads the 403 with the token.
   it('names the proof the API waits for before it keeps new bank details', async () => {
-    const waiting = api.reviseVendor('c1', 'v1', sotumag);
+    const waiting = api.reviseVendor('c1', 'v1', sotumag, 1);
     http
       .expectOne('/api/companies/c1/vendors/v1')
       .flush(

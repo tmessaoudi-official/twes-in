@@ -117,6 +117,7 @@ export class VendorPage {
       const options = this.facade.options();
       return current && options ? vendorValues(current, options) : null;
     },
+    version: () => this.current()?.version ?? null,
   });
 
   /** What the form holds that the API has not been told yet; the bar beside the title shows it. */
@@ -212,10 +213,15 @@ export class VendorPage {
       } else {
         this.showRefused();
       }
-    } else if ((await this.facade.reviseVendor(companyId, id, input)) !== null) {
+    } else if (
+      (await this.facade.reviseVendor(companyId, id, input, this.sync.version())) !== null
+    ) {
       const form = this.form();
       if (form !== null) this.sync.savedHere(form);
       this.feedback.success('vendors.saved');
+    } else if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     } else {
       this.showRefused();
     }

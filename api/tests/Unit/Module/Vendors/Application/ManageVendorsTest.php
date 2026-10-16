@@ -20,6 +20,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryExpenseCategoryDirectory;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemoryVendors;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
@@ -36,7 +37,7 @@ final class ManageVendorsTest extends TestCase
     {
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManageVendors(new InMemoryVendors(), ShippedFiscalPresets::presets(), $this->audit, new MockClock('2026-09-15 09:00:00'), new InMemoryExpenseCategoryDirectory(), $transactions);
+        $this->manage = new ManageVendors(new InMemoryVendors(), ShippedFiscalPresets::presets(), $this->audit, new MockClock('2026-09-15 09:00:00'), new InMemoryExpenseCategoryDirectory(), $transactions, new InMemoryRecordVersions());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }

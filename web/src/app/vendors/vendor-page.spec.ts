@@ -24,7 +24,12 @@ import { VendorPage } from './vendor-page';
 import { VendorsFacade } from './vendors-facade';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { VendorOptions, VendorRow, VendorsError } from './vendors-types';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import {
+  provideQuietFeedback,
+  type RecordedFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
 import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
@@ -52,6 +57,7 @@ const options: VendorOptions = {
 };
 const sotumag: VendorRow = {
   id: 'v1',
+  version: 1,
   number: 'FRN-0001',
   name: 'Sotumag',
   legalName: null,
@@ -82,6 +88,7 @@ describe('VendorPage', () => {
     loadVendor: vi.fn(),
     createVendor: vi.fn(),
     reviseVendor: vi.fn(),
+    clearError: vi.fn(),
   };
   const auth = {
     me: () => ({
@@ -273,6 +280,7 @@ describe('VendorPage', () => {
       'c1',
       'v1',
       expect.objectContaining({ email: 'compta@sotumag.tn' }),
+      1,
     );
     expect(successToasts()).toContain('vendors.saved');
 
@@ -282,6 +290,42 @@ describe('VendorPage', () => {
     await settle();
     expect(successToasts()).toEqual(['vendors.saved']);
     expect(q('vendor-error')?.textContent).toContain('Un autre fournisseur porte déjà ce numéro.');
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    vendor.set(sotumag);
+    await open('v1');
+    facade.reviseVendor.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.clearError.mockImplementationOnce(() => error.set(null));
+    facade.loadVendor.mockImplementationOnce(async () =>
+      vendor.set({ ...sotumag, version: 2, phone: '71 000 000' }),
+    );
+
+    type('field-email', 'compta@sotumag.tn');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-phone') as HTMLInputElement).value).toBe('71 000 000'));
+
+    expect((q('field-email') as HTMLInputElement).value).toBe('compta@sotumag.tn');
+    expect(q('vendor-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseVendor).toHaveBeenLastCalledWith(
+      'c1',
+      'v1',
+      expect.objectContaining({ email: 'compta@sotumag.tn', phone: '71 000 000' }),
+      2,
+    );
   });
 
   it('says each field the API refused on that field, and puts the person on the first', async () => {
@@ -319,6 +363,7 @@ describe('VendorPage', () => {
       'c1',
       'v1',
       expect.objectContaining({ defaultExpenseCategoryId: 'k2' }),
+      1,
     );
 
     fixture.destroy();

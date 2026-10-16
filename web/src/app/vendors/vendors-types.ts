@@ -2,7 +2,7 @@
 
 /** Why the API refused, as the vendors screens translate it. */
 export type VendorsError =
-  'network' | 'not_found' | 'number_taken' | 'step_up_required' | 'invalid';
+  'network' | 'not_found' | 'number_taken' | 'step_up_required' | 'invalid' | 'record_changed';
 
 /** What the API sorts vendors by. */
 export type VendorSortKey = 'number' | 'name' | 'city' | 'paymentTermsDays' | 'isActive';
@@ -33,6 +33,8 @@ export interface VendorAddress {
 
 export interface VendorRow {
   id: string;
+  /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
+  version: number;
   number: string;
   name: string;
   legalName: string | null;
@@ -52,7 +54,7 @@ export interface VendorRow {
   defaultExpenseCategoryId: string | null;
 }
 
-export type VendorInput = Omit<VendorRow, 'id'>;
+export type VendorInput = Omit<VendorRow, 'id' | 'version'>;
 
 export interface VendorIdentifierOption {
   key: string;

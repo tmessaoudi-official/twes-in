@@ -25,6 +25,7 @@ use App\Module\Vendors\Infrastructure\ApiPlatform\State\Processor\ReviseVendorPr
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Provider\VendorCollectionProvider;
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Provider\VendorItemProvider;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -81,8 +82,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: self::NORMALIZATION,
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
     ],
 )]
@@ -102,6 +103,12 @@ final class VendorResource
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
     public ?string $id = null;
+
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
 
     #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
     #[Assert\Regex(pattern: Vendor::NUMBER, groups: [self::WRITE], payload: ['reason' => 'invalid_number'])]
@@ -186,6 +193,7 @@ final class VendorResource
         $profile = $vendor->getProfile();
         $resource = new self();
         $resource->id = $vendor->getId()->toRfc4122();
+        $resource->version = $vendor->getVersion();
         $resource->number = $vendor->getNumber();
         $resource->name = $profile->name;
         $resource->legalName = $profile->legalName;

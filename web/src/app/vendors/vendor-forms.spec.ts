@@ -26,6 +26,7 @@ const withCategories: VendorOptions = {
 
 const sotumag: VendorRow = {
   id: 'v1',
+  version: 1,
   number: 'FRN-0001',
   name: 'Sotumag',
   legalName: null,
