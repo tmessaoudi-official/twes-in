@@ -4,6 +4,13 @@
 - [2026-10-16 09:47] AGREED: the source layout follows API Platform's DDD reference with a size rule, one architecture test enforcing it; persisted class names stay put (docs/SPEC.md § 7, same stamp).
 - [2026-10-16 09:47] AGREED: order: F26 slice 3, then this move context by context, then the ruled bulk actions, then row 251's P3s.
 - [2026-10-16 09:47] AGREED: a list × action matrix on a marking page and a list stance gate; lenses 54 and 55 join round 2.
+- [2026-10-16 10:40] ASSUMED (review): no Contributes/ or ForModule/ folders: an extension point's folder already names its point, Inbox, Watch, Settings, Erasure, FirstSteps and DataHealth are both contexts and points, and permission-labels.sh finds manifests at Infrastructure/Module/*Module.php. Basis: advisor goal-start round 1 (narrowing fine, log it). Alternatives: Contributes/<point>/ classified by the Declares* interface.
+- [2026-10-16 10:40] ASSUMED (review): Application keeps capability folders under the 25-file cap; no forced Port/, Exception/ or Permission/ folders: 146 exceptions and 89 interfaces would move for no reader, and ModuleBoundariesTest knows a contract by its kind, not its path. Basis: advisor round 1. Alternatives: the plan's Port/Exception/Permission folders.
+- [2026-10-16 10:40] ASSUMED (review): the *Permission classes and guards stay in Infrastructure/ApiPlatform, under Security/: moving them to Application changes their layer, which is not a layout move. Basis: advisor round 1. Alternatives: Application/Permission/.
+- [2026-10-16 10:40] ASSUMED (review): the 11 *SearchReader classes go to ApiPlatform/Payload/, not Doctrine/Query/: they read the request's query parameters into a Domain search and touch no database. Basis: CustomerSearchReader::read(array $parameters, …) read 2026-10-16. Alternatives: Doctrine/Query/.
+- [2026-10-16 10:40] ASSUMED (review): Fiscal/Domain/Calculation stays one named sub-domain, allowed by an explicit list in the test: one coherent calculator under the cap, named by the Dockerfile and the expertise pack. Basis: advisor round 1. Alternatives: scatter it into ValueObject/ and Service/.
+- [2026-10-16 10:40] ASSUMED (review): the move mapping is a curated file per context (drafted by the mover, edited by hand, committed with the move), and the test enforces only decidable rules (resource, processor, provider, OpenAPI decorator, entity, repository port and adapter, Doctrine type, exception, enum, DomainEvent) plus the cap; value object vs service is an allowed set. Basis: advisor round 1 item 5.
+- [2026-10-16 10:41] ASSUMED (review): Infrastructure/Doctrine/ stays flat (no Repository/, Query/, Type/ folders), under the 25-file cap: the reference keeps DoctrineBookRepository and DoctrineBookViewFinder side by side in Infrastructure/Doctrine/ (gh api repos/mtarld/apip-ddd tree, read 2026-10-16), and the AGREED ruling says follow the reference. Alternatives: the plan's Doctrine/{Repository,Query,Type}.
 
 ## Formal Plan
 
@@ -16,16 +23,17 @@ points a context contributes to, and the adapters it answers for another module.
 those stay. `ModuleBoundariesTest` keys its exceptions by file path. Branch `w3` holds 2 commits already on master and
 1 stale WIP: nothing to integrate first.
 
-**Target.**
-- `Infrastructure/ApiPlatform/`: `Resource/`, `State/Processor/`, `State/Provider/`, `Payload/` (inputs), `Output/`
-  (views, rows, options, answers), `OpenApi/`.
-- `Infrastructure/Doctrine/`: `Repository/`, `Query/` (the search readers), `Type/`.
-- `Infrastructure/Contributes/<point>/` for FirstSteps, Watch, Inbox, Erasure, Export, Import, Settings, Module,
-  DataHealth; `Infrastructure/ForModule/<caller>/` for an adapter answering another module's port. `Http/`, `Console/`,
-  `Scheduler/`, `Messenger/`, `Mail/`, `Pdf/`, `Security/` stay as technologies.
-- `Domain/`: `Model/` (entities and aggregates), `Repository/` (ports), `ValueObject/` (and enums), `Event/`, `Exception/`.
-- `Application/`: capability folders (as `Identity/Application/Mfa`), `Port/`, `Exception/`, `Permission/`.
-- Size rule: a folder past about 25 files is split by aggregate (`Resource/StockLocation/`).
+**Target** (narrowed 2026-10-16 10:40 by the ASSUMED entries above, to the reference's own folders).
+- `Infrastructure/ApiPlatform/`: `Resource/`, `State/Processor/`, `State/Provider/`, `OpenApi/`, `Payload/` (inputs and
+  the search readers), `Output/` (views, rows, options, answers), `Security/` (permissions, guards), `Metadata/`;
+  nothing flat. A resource, processor or provider outside `ApiPlatform/` (the failed-messages page) moves into it.
+- `Infrastructure/Doctrine/` stays flat, as the reference keeps it; every other Infrastructure folder stays as it is.
+- `Domain/`: `Model/` (entities, embeddables), `Repository/` (ports), `ValueObject/` (and enums), `Event/` (what
+  implements `DomainEvent`), `Exception/`, `Service/`; nothing flat. `Fiscal/Domain/Calculation` stays whole.
+- `Application/`: capability folders under the cap; no forced `Port/`, `Exception/` or `Permission/`.
+- Size rule: a folder past 25 files is split by aggregate (`Resource/StockLocation/`) or capability.
+- Kept by name, never moved: the four routed messages, `SecurityUser`, the nine scheduled tasks (`SourceLayoutTest::KEPT`,
+  computed from messenger.yaml, `UserInterface`, `#[AsMessage]`, `#[AsPeriodicTask]`, `#[AsCronTask]`).
 
 **Steps.**
 1. The rule first, red: `tests/Architecture/SourceLayoutTest` classifies every class by its role (suffix, `#[ApiResource]`,
