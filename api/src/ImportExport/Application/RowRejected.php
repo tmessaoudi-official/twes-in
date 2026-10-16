@@ -16,6 +16,9 @@ namespace App\ImportExport\Application;
  */
 final class RowRejected extends \DomainException
 {
+    /** @var list<RowRejected> the row's other faults, found while its cells were read */
+    private array $alongside = [];
+
     /** @param array<string, string|int> $params */
     public function __construct(
         public readonly ?string $column,
@@ -24,5 +27,25 @@ final class RowRejected extends \DomainException
         public readonly array $params = [],
     ) {
         parent::__construct($message);
+    }
+
+    /**
+     * Every fault of one row, said together: the first as this refusal, the rest beside it.
+     *
+     * @param non-empty-list<RowRejected> $faults
+     */
+    public static function together(array $faults): self
+    {
+        $first = array_shift($faults);
+        $together = new self($first->column, $first->getMessage(), $first->reason, $first->params);
+        $together->alongside = $faults;
+
+        return $together;
+    }
+
+    /** @return non-empty-list<RowRejected> this fault, then the row's others */
+    public function all(): array
+    {
+        return [$this, ...$this->alongside];
     }
 }

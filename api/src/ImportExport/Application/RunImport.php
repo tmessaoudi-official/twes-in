@@ -57,8 +57,8 @@ final readonly class RunImport
         $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun);
 
         try {
-            return $this->transactions->run(function () use ($declaration, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $already): ImportReport {
-                $report = $this->apply($declaration, $company, $records, $mode, $actorUserId, $context);
+            return $this->transactions->run(function () use ($declaration, $subject, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $already): ImportReport {
+                $report = $this->apply($declaration, $subject, $company, $records, $mode, $actorUserId, $context);
                 if ($dryRun || [] !== $report->rejected) {
                     throw new ImportRolledBack(new ImportReport(false, $report->created, $report->updated, $report->rejected, $report->notes, $already));
                 }
@@ -75,8 +75,10 @@ final readonly class RunImport
     /**
      * @param list<ImportRecord> $records
      */
-    private function apply(DeclaresImport $declaration, Company $company, array $records, ImportMode $mode, ?Uuid $actorUserId, ImportContext $context): ImportReport
+    private function apply(DeclaresImport $declaration, ImportSubject $subject, Company $company, array $records, ImportMode $mode, ?Uuid $actorUserId, ImportContext $context): ImportReport
     {
+        // A row's faults are said in the order of its columns, as a person reads the row; a fault of no column last.
+        $position = array_flip($subject->keys());
         $created = $updated = $rejected = $noted = [];
         /** @var array<string, int> $firstLineOf the first line naming each identity */
         $firstLineOf = [];
@@ -110,7 +112,11 @@ final readonly class RunImport
                     $noted[] = ['line' => $record->line, ...$note];
                 }
             } catch (RowRejected $refused) {
-                $rejected[] = ['line' => $record->line, 'column' => $refused->column, 'code' => $refused->reason, 'params' => $refused->params, 'message' => $refused->getMessage()];
+                $faults = $refused->all();
+                usort($faults, static fn (RowRejected $one, RowRejected $other): int => ($position[$one->column ?? ''] ?? \PHP_INT_MAX) <=> ($position[$other->column ?? ''] ?? \PHP_INT_MAX));
+                foreach ($faults as $fault) {
+                    $rejected[] = ['line' => $record->line, 'column' => $fault->column, 'code' => $fault->reason, 'params' => $fault->params, 'message' => $fault->getMessage()];
+                }
             }
         }
 

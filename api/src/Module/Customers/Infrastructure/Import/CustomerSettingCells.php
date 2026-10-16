@@ -13,6 +13,7 @@ use App\Fiscal\Application\CurrencyScales;
 use App\ImportExport\Application\ImportCells;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportRecord;
+use App\ImportExport\Application\RowFaults;
 use App\ImportExport\Application\RowRejected;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingCatalog;
@@ -68,35 +69,45 @@ final readonly class CustomerSettingCells
     }
 
     /**
-     * The row's settings, read and held to their declarations before anything is written.
+     * The row's settings, read and held to their declarations before anything is written; a refused one is kept
+     * among the row's faults and left out.
      *
      * @return array<string, int|string> by setting key
-     *
-     * @throws RowRejected
      */
-    public function read(Company $company, ImportRecord $record): array
+    public function read(Company $company, ImportRecord $record, RowFaults $faults): array
     {
         $values = [];
-        $scale = null;
         foreach (self::SETTING_OF as $column => $key) {
             $cell = $record->value($column);
             if (null === $cell) {
                 continue;
             }
             $definition = $this->catalog->definitionOf($key) ?? throw new \LogicException(\sprintf('The setting %s is not declared.', $key));
-            $value = match ($column) {
-                self::TERMS => 1 === preg_match('/^\d+$/D', trim($cell)) ? (int) trim($cell) : null,
-                self::CREDIT => ImportCells::decimal($record, $column, $scale ??= $this->scales->of($company->getCurrency())),
-                self::LANGUAGE => self::LANGUAGES[mb_strtolower(trim($cell))] ?? mb_strtolower(trim($cell)),
-                default => $cell,
-            };
-            if (null === $value || null !== $definition->refusal($value)) {
-                throw self::refused($column, $definition);
+            $value = $faults->read(fn (): int|string => $this->value($company, $record, $column, $cell, $definition));
+            if (null !== $value) {
+                $values[$key] = $value;
             }
-            $values[$key] = $value;
         }
 
         return $values;
+    }
+
+    /**
+     * @throws RowRejected
+     */
+    private function value(Company $company, ImportRecord $record, string $column, string $cell, SettingDefinition $definition): int|string
+    {
+        $value = match ($column) {
+            self::TERMS => 1 === preg_match('/^\d+$/D', trim($cell)) ? (int) trim($cell) : null,
+            self::CREDIT => ImportCells::decimal($record, $column, $this->scales->of($company->getCurrency())),
+            self::LANGUAGE => self::LANGUAGES[mb_strtolower(trim($cell))] ?? mb_strtolower(trim($cell)),
+            default => $cell,
+        };
+        if (null === $value || null !== $definition->refusal($value)) {
+            throw self::refused($column, $definition);
+        }
+
+        return $value;
     }
 
     /**

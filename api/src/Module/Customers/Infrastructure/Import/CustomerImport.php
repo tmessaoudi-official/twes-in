@@ -24,6 +24,7 @@ use App\ImportExport\Application\ImportHeading;
 use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
+use App\ImportExport\Application\RowFaults;
 use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
@@ -162,15 +163,18 @@ final readonly class CustomerImport implements DeclaresImport
         if (null !== $existing && ImportMode::Create === $mode) {
             throw new RowRejected('number', 'A customer already has this number. Import in "create and update" mode to update it.', 'already_exists');
         }
-        $this->rules->hold(CustomerResource::class, CustomerResource::WRITE, self::cells($record));
-        // Read and held to their declarations before the customer is written, so a refused setting writes nothing.
-        $settings = $this->settingCells->read($company, $record);
+        // Every cell is read before anything is written, and every fault found is said at once (ruling 9).
+        $faults = new RowFaults();
+        $faults->read(fn () => $this->rules->hold(CustomerResource::class, CustomerResource::WRITE, self::cells($record)));
+        $settings = $this->settingCells->read($company, $record, $faults);
 
         $written = null;
         try {
+            $input = $this->input($company, $record, $existing, $faults);
+            $faults->stopIfAny();
             $written = null === $existing
-                ? $this->manage->create($company, $this->input($company, $record, null), $actorUserId)
-                : $this->manage->revise($company, $existing->getId(), $this->input($company, $record, $existing), $actorUserId);
+                ? $this->manage->create($company, $input, $actorUserId)
+                : $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
             $this->settingCells->write($company, $written->getId(), $settings, $actorUserId);
             $this->noteMissingIdentifiers($company, $written, $notes);
 
@@ -194,10 +198,11 @@ final readonly class CustomerImport implements DeclaresImport
      * The customer the row describes: every cell it fills in, and for an existing customer what it already holds
      * wherever the row leaves a cell blank.
      *
+     * A refused cell is kept among the row's faults and leaves what the customer holds in its place.
+     *
      * @throws InvalidCustomer
-     * @throws RowRejected
      */
-    private function input(Company $company, ImportRecord $record, ?Customer $current): CustomerInput
+    private function input(Company $company, ImportRecord $record, ?Customer $current, RowFaults $faults): CustomerInput
     {
         $profile = $current?->getProfile();
         $kind = $record->value('kind');
@@ -213,7 +218,7 @@ final readonly class CustomerImport implements DeclaresImport
         return new CustomerInput(
             $record->value('number') ?? '',
             new CustomerProfile(
-                null === $kind ? $blankKind : (CustomerKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A customer is a "company" or an "individual".', 'not_one_of', ['choices' => implode(', ', array_column(CustomerKind::cases(), 'value'))])),
+                null === $kind ? $blankKind : $faults->read(static fn (): CustomerKind => CustomerKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A customer is a "company" or an "individual".', 'not_one_of', ['choices' => implode(', ', array_column(CustomerKind::cases(), 'value'))]), $blankKind),
                 $record->value('name') ?? $profile->name ?? '',
                 $record->value('legal_name') ?? $profile?->legalName,
                 $identifiers,
@@ -222,14 +227,14 @@ final readonly class CustomerImport implements DeclaresImport
                 $record->value('website') ?? $profile?->website,
                 $this->address($company, $record, 'billing', $profile?->billingAddress) ?? new PostalAddress(countryCode: $company->getCountryCode()),
                 $this->address($company, $record, 'shipping', $profile?->shippingAddress),
-                ImportCells::decimal($record, 'default_discount_rate', 3) ?? $profile?->defaultDiscountRate,
+                $faults->read(static fn (): ?string => ImportCells::decimal($record, 'default_discount_rate', 3)) ?? $profile?->defaultDiscountRate,
                 $record->value('notes') ?? $profile?->notes,
             ),
-            $this->groupId($company, $record, $current),
+            $faults->read(fn (): ?Uuid => $this->groupId($company, $record, $current), $current?->getGroup()?->getId()),
             $record->value('tax_regime_code') ?? $current?->getTaxRegime()->getCode() ?? 'standard',
-            $this->taxIds($company, $record, $current),
-            self::yesNo($record, 'active') ?? $current?->isActive() ?? true,
-            $this->customValues($company, $record, $current),
+            $faults->read(fn (): array => $this->taxIds($company, $record, $current), []),
+            $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
+            $this->customValues($company, $record, $current, $faults),
             identifiersMayFollow: true,
         );
     }
@@ -298,7 +303,7 @@ final readonly class CustomerImport implements DeclaresImport
      *
      * @return array<string, string|int|float|bool>
      */
-    private function customValues(Company $company, ImportRecord $record, ?Customer $current): array
+    private function customValues(Company $company, ImportRecord $record, ?Customer $current, RowFaults $faults): array
     {
         $values = $current?->getCustomFields() ?? [];
         foreach ($this->customFields->ofCompanyAndEntity($company->getId(), CustomFieldEntity::Customer) as $field) {
@@ -307,12 +312,12 @@ final readonly class CustomerImport implements DeclaresImport
             if (null === $cell || !$field->isActive()) {
                 continue;
             }
-            $values[$field->getKey()] = match ($field->getType()) {
+            $values[$field->getKey()] = $faults->read(static fn (): string|int|float|bool => match ($field->getType()) {
                 CustomFieldType::Number => self::number($cell) ?? throw new RowRejected($column, 'A number.', 'not_a_number'),
                 CustomFieldType::Date => ImportCells::day($cell),
                 CustomFieldType::Bool => self::yesNo($record, $column) ?? throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
                 default => $cell,
-            };
+            }, $cell);
         }
 
         return $values;

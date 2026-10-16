@@ -562,6 +562,40 @@ Cheville 10 mm,6191234567897
         ));
     }
 
+    /**
+     * A refused row says every fault it holds at once, in the template's column order (docs/SPEC.md § 7, 2026-10-09
+     * 10:40, ruling 9), so a person fixes the file in one pass; a home that cannot be found is not followed by a
+     * reorder point refused for want of it.
+     */
+    public function testARefusedRowListsEveryFaultAtOnce(): void
+    {
+        $second = Establishment::create($this->company, 'LYON', 'Lyon', false, new \DateTimeImmutable());
+        $this->em()->persist($second);
+        $this->em()->flush();
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import(
+            "reference,name,kind,unit_code,category,unit_price_net,cost_price,default_tax_codes,active,home_location,reorder_point\n"
+            ."ART-1,Tout faux,meuble,XYZ,Inconnue,5%,\"1,23456\",ZZ,peut-être,ZZZ,-1\n"
+            ."ART-2,Sans maison,goods,H87,,1.000,,,,ZZZ,5\n",
+            dryRun: true,
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            [2, 'kind', 'not_one_of'],
+            [2, 'unit_code', 'unknown_unit'],
+            [2, 'category', 'unknown_category'],
+            [2, 'unit_price_net', 'percent_sign'],
+            [2, 'cost_price', 'too_many_decimals'],
+            [2, 'default_tax_codes', 'unknown_tax_code'],
+            [2, 'active', 'not_yes_or_no'],
+            [2, 'home_location', 'unknown_location'],
+            [2, 'reorder_point', 'invalid_value'],
+            [3, 'home_location', 'unknown_location'],
+        ], array_map(static fn (array $row): array => \array_slice($row, 0, 3), $this->rejections()));
+    }
+
     /** A code no location has, and a code two establishments share: named, never guessed at. */
     public function testAHomeThatCannotBeResolvedRejectsTheRowNamingTheCell(): void
     {

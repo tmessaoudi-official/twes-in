@@ -24,6 +24,7 @@ use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\ImportSwitch;
+use App\ImportExport\Application\RowFaults;
 use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
@@ -197,15 +198,21 @@ final readonly class ProductImport implements DeclaresImport
 
         // Resolved BEFORE anything is written, where every other cell this row could be refused for is resolved: a
         // refusal that fires after the product is created is a rule the file is held to in a different order from
-        // the rest, and only the whole import being rolled back keeps that from showing.
-        $home = $this->homeOf($company, $record);
-        $reorderPoint = $this->reorderPointOf($company, $record, $home);
-        $quantity = $this->quantityOf($record, $context);
+        // the rest, and only the whole import being rolled back keeps that from showing. Every fault found is said
+        // at once (ruling 9); a home that cannot be found stands as `false`, so the reorder point is not refused for
+        // want of it.
+        $faults = new RowFaults();
+        $home = $faults->read(fn (): ?Uuid => $this->homeOf($company, $record), false);
+        $reorderPoint = $faults->read(fn (): ?array => $this->reorderPointOf($company, $record, $home));
+        $quantity = $faults->read(fn (): ?array => $this->quantityOf($record, $context));
 
         $written = null;
         try {
+            $input = $this->input($company, $record, $existing, $faults);
+            $faults->stopIfAny();
+            \assert(false !== $home);
             if (null === $existing) {
-                $written = $this->manage->create($company, $this->input($company, $record, null), $actorUserId);
+                $written = $this->manage->create($company, $input, $actorUserId);
                 $this->settleHome($company, $written, $home, $actorUserId);
                 $this->settleReorderPoint($company, $written, $reorderPoint, $actorUserId);
                 if (null === $reference) {
@@ -215,7 +222,7 @@ final readonly class ProductImport implements DeclaresImport
 
                 return RowImported::Created;
             }
-            $written = $this->manage->revise($company, $existing->getId(), $this->input($company, $record, $existing), $actorUserId);
+            $written = $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
             $this->settleHome($company, $written, $home, $actorUserId);
             $this->settleReorderPoint($company, $written, $reorderPoint, $actorUserId);
             $this->settleStock($company, $written, $record, $quantity, $home, $actorUserId, $context, $notes);
@@ -355,11 +362,13 @@ final readonly class ProductImport implements DeclaresImport
      * The quantity's shape is checked here with the rest of the row; whether the product's unit can count it is the
      * inventory's rule, answered once the product is written.
      *
+     * A home the row names but the company has not (`false`) leaves the point's shape checked and nothing more.
+     *
      * @return array{Uuid, string}|null
      *
      * @throws RowRejected
      */
-    private function reorderPointOf(Company $company, ImportRecord $record, ?Uuid $homeLocationId): ?array
+    private function reorderPointOf(Company $company, ImportRecord $record, Uuid|false|null $homeLocationId): ?array
     {
         $quantity = ImportCells::decimal($record, 'reorder_point', 3);
         if (null === $quantity || '' === trim($quantity)) {
@@ -368,6 +377,9 @@ final readonly class ProductImport implements DeclaresImport
         $quantity = trim($quantity);
         if (1 !== preg_match('/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/', $quantity)) {
             throw new RowRejected('reorder_point', 'A reorder point is a quantity from 0, with at most three decimals.', 'invalid_value');
+        }
+        if (false === $homeLocationId) {
+            return null;
         }
         $establishmentId = null === $homeLocationId ? null : $this->reorderPoints->establishmentOfLocation($company, $homeLocationId);
         if (null === $establishmentId) {
@@ -397,14 +409,17 @@ final readonly class ProductImport implements DeclaresImport
      * The product the row describes: every cell it fills in, and for an existing product what it already holds
      * wherever the row leaves a cell blank.
      *
+     * A refused cell is kept among the row's faults and leaves what the product holds, or a stand-in, in its place:
+     * the row is stopped before the input is used.
+     *
      * @throws InvalidProduct
-     * @throws RowRejected
      */
-    private function input(Company $company, ImportRecord $record, ?Product $current): ProductInput
+    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults): ProductInput
     {
         $held = $current?->getDetails();
         $kind = $record->value('kind');
-        $price = ImportCells::decimal($record, 'unit_price_net', 4) ?? $held?->unitPriceNet;
+        $price = $faults->read(static fn (): string => ImportCells::decimal($record, 'unit_price_net', 4) ?? $held->unitPriceNet
+            ?? throw new RowRejected('unit_price_net', 'A product is sold at a price, so a new one needs one.', 'value_required'), '0');
 
         return new ProductInput(
             // Left out, a new product is given the next of the company's format and a product found by its code keeps its own.
@@ -412,15 +427,15 @@ final readonly class ProductImport implements DeclaresImport
             new ProductDetails(
                 $record->value('name') ?? $held->name ?? '',
                 $record->value('description') ?? $held?->description,
-                null === $kind ? ($held->kind ?? ProductKind::Goods) : (ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))])),
-                $price ?? throw new RowRejected('unit_price_net', 'A product is sold at a price, so a new one needs one.', 'value_required'),
-                ($this->guard->may($company, ProductPermission::COST_READ) ? ImportCells::decimal($record, 'cost_price', 4) : null) ?? $held?->costPrice,
+                null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods),
+                $price,
+                ($this->guard->may($company, ProductPermission::COST_READ) ? $faults->read(static fn (): ?string => ImportCells::decimal($record, 'cost_price', 4)) : null) ?? $held?->costPrice,
             ),
-            $this->unitId($company, $record, $current),
-            $this->categoryId($company, $record, $current),
-            $this->taxIds($company, $record, $current),
-            self::yesNo($record, 'active') ?? $current?->isActive() ?? true,
-            $this->customValues($company, $record, $current),
+            $faults->read(fn (): Uuid => $this->unitId($company, $record, $current), Uuid::v7()),
+            $faults->read(fn (): ?Uuid => $this->categoryId($company, $record, $current), $current?->getCategory()?->getId()),
+            $faults->read(fn (): array => $this->taxIds($company, $record, $current), []),
+            $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
+            $this->customValues($company, $record, $current, $faults),
             self::barcodes($record, $current),
         );
     }
@@ -495,7 +510,7 @@ final readonly class ProductImport implements DeclaresImport
      *
      * @return array<string, string|int|float|bool>
      */
-    private function customValues(Company $company, ImportRecord $record, ?Product $current): array
+    private function customValues(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults): array
     {
         $values = $current?->getCustomFields() ?? [];
         foreach ($this->customFields->ofCompanyAndEntity($company->getId(), CustomFieldEntity::Product) as $field) {
@@ -504,12 +519,12 @@ final readonly class ProductImport implements DeclaresImport
             if (null === $cell || !$field->isActive()) {
                 continue;
             }
-            $values[$field->getKey()] = match ($field->getType()) {
+            $values[$field->getKey()] = $faults->read(static fn (): string|int|float|bool => match ($field->getType()) {
                 CustomFieldType::Number => self::number($cell) ?? throw new RowRejected($column, 'A number.', 'not_a_number'),
                 CustomFieldType::Date => ImportCells::day($cell),
                 CustomFieldType::Bool => self::yesNo($record, $column) ?? throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
                 default => $cell,
-            };
+            }, $cell);
         }
 
         return $values;

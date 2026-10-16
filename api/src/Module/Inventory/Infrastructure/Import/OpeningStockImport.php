@@ -17,6 +17,7 @@ use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\ImportSwitch;
+use App\ImportExport\Application\RowFaults;
 use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
@@ -116,27 +117,29 @@ final readonly class OpeningStockImport implements DeclaresImport
 
     public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
     {
-        $product = $this->productOf($company, $record);
+        // Every cell is read before anything is written, and every fault found is said at once (ruling 9). A refused
+        // number stands as `false`, so the rules over the row's numbers are not broken for want of it; the place is
+        // found through the product, so a product the company has not leaves it unread.
+        $faults = new RowFaults();
+        $product = $faults->read(fn (): Product => $this->productOf($company, $record));
         $productColumn = null === $record->value('reference') ? 'barcode' : 'reference';
-        $add = ImportCells::decimal($record, 'stock_add', 3);
-        $count = ImportCells::decimal($record, 'stock_count', 3);
-        $cost = ImportCells::decimal($record, 'unit_cost', 4);
-        if (null !== $add && null !== $count) {
-            throw new RowRejected('stock_count', 'A row adds goods or counts them, not both: keep one of stock_add and stock_count.', 'stock_add_and_count');
-        }
-        if (null === $add && null === $count) {
-            throw new RowRejected('stock_count', 'Every row of this file adds goods or counts them: fill in stock_add or stock_count.', 'quantity_required');
-        }
-        if (null !== $cost && null === $add) {
-            throw new RowRejected('unit_cost', 'A cost goes with goods added: a count finds what is there and buys nothing.', 'cost_without_addition');
-        }
+        $add = $faults->read(static fn (): ?string => ImportCells::decimal($record, 'stock_add', 3), false);
+        $count = $faults->read(static fn (): ?string => ImportCells::decimal($record, 'stock_count', 3), false);
+        $cost = $faults->read(static fn (): ?string => ImportCells::decimal($record, 'unit_cost', 4), false);
         $quantityColumn = null === $add ? 'stock_count' : 'stock_add';
+        if (false !== $add && false !== $count && false !== $cost) {
+            $faults->read(static fn () => self::holdNumbers($add, $count, $cost));
+        }
 
         $place = null;
         $change = null;
         try {
-            $this->stock->stocked($product);
-            $place = $this->stock->placeOf($company, $product, $record->value('location_code'));
+            if (null !== $product) {
+                $faults->read(fn () => $this->refusedOn($productColumn, $quantityColumn, fn () => $this->stock->stocked($product)));
+                $place = $faults->read(fn (): StockLocation => $this->refusedOn($productColumn, $quantityColumn, fn (): StockLocation => $this->stock->placeOf($company, $product, $record->value('location_code'))));
+            }
+            $faults->stopIfAny();
+            \assert(null !== $product && null !== $place && false !== $add && false !== $count && false !== $cost);
             $held = $this->stock->held($product, $place);
             if ($held && ImportMode::Create === $mode) {
                 throw null === $add ? new RowRejected($productColumn, 'This product already has stock recorded at this location. Import in "create and update" mode to count it again.', 'already_counted') : new RowRejected($productColumn, 'This product already has stock recorded at this location. Import in "create and update" mode to add to it.', 'already_stocked', ['location' => $place->getCode()]);
@@ -148,12 +151,58 @@ final readonly class OpeningStockImport implements DeclaresImport
 
             return $held ? RowImported::Updated : RowImported::Created;
         } catch (StockImportRefused $refused) {
-            throw new RowRejected(match ($refused->about) {
-                StockImportRefused::PLACE => 'location_code', StockImportRefused::QUANTITY => $quantityColumn, StockImportRefused::COST => 'unit_cost', default => $productColumn,
-            }, $refused->getMessage(), $refused->reason, $refused->params);
+            throw self::rejection($refused, $productColumn, $quantityColumn);
         } finally {
-            $this->forget($product, $place, $change);
+            if (null !== $product) {
+                $this->forget($product, $place, $change);
+            }
         }
+    }
+
+    /**
+     * What the row's numbers must be together: an addition or a count, never both nor neither, and a cost only with
+     * goods added.
+     *
+     * @throws RowRejected
+     */
+    private static function holdNumbers(?string $add, ?string $count, ?string $cost): void
+    {
+        if (null !== $add && null !== $count) {
+            throw new RowRejected('stock_count', 'A row adds goods or counts them, not both: keep one of stock_add and stock_count.', 'stock_add_and_count');
+        }
+        if (null === $add && null === $count) {
+            throw new RowRejected('stock_count', 'Every row of this file adds goods or counts them: fill in stock_add or stock_count.', 'quantity_required');
+        }
+        if (null !== $cost && null === $add) {
+            throw new RowRejected('unit_cost', 'A cost goes with goods added: a count finds what is there and buys nothing.', 'cost_without_addition');
+        }
+    }
+
+    /**
+     * The stock's own refusal, said on the cell it is about.
+     *
+     * @template T
+     *
+     * @param callable(): T $asking
+     *
+     * @return T
+     *
+     * @throws RowRejected
+     */
+    private function refusedOn(string $productColumn, string $quantityColumn, callable $asking): mixed
+    {
+        try {
+            return $asking();
+        } catch (StockImportRefused $refused) {
+            throw self::rejection($refused, $productColumn, $quantityColumn);
+        }
+    }
+
+    private static function rejection(StockImportRefused $refused, string $productColumn, string $quantityColumn): RowRejected
+    {
+        return new RowRejected(match ($refused->about) {
+            StockImportRefused::PLACE => 'location_code', StockImportRefused::QUANTITY => $quantityColumn, StockImportRefused::COST => 'unit_cost', default => $productColumn,
+        }, $refused->getMessage(), $refused->reason, $refused->params);
     }
 
     public function finished(Company $company, ImportContext $context, ?Uuid $actorUserId): void
