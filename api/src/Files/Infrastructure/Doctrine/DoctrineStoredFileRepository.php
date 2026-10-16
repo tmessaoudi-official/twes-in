@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Files\Infrastructure\Doctrine;
 
-use App\Files\Domain\StoredFile;
-use App\Files\Domain\StoredFileRepository;
+use App\Files\Domain\Model\StoredFile;
+use App\Files\Domain\Repository\StoredFileRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

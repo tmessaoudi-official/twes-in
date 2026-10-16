@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Venue\Domain\VenueStructure;
-use App\Venue\Domain\VenueStructureRepository;
+use App\Venue\Domain\Model\VenueStructure;
+use App\Venue\Domain\Repository\VenueStructureRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryVenueStructures implements VenueStructureRepository

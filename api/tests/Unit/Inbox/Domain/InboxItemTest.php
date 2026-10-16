@@ -11,7 +11,7 @@ namespace App\Tests\Unit\Inbox\Domain;
 
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
-use App\Inbox\Domain\InboxItem;
+use App\Inbox\Domain\Model\InboxItem;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\TestCase;
 

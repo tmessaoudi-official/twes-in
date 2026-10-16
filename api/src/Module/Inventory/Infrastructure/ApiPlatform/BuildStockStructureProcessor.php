@@ -17,9 +17,9 @@ use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use App\Venue\Application\ArrangeVenue;
 use App\Venue\Application\VenueAreaNotFound;
 use App\Venue\Application\VenueStructureNotFound;
-use App\Venue\Domain\InvalidVenue;
-use App\Venue\Domain\PlanRect;
-use App\Venue\Domain\StructureKind;
+use App\Venue\Domain\Exception\InvalidVenue;
+use App\Venue\Domain\ValueObject\PlanRect;
+use App\Venue\Domain\ValueObject\StructureKind;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 

@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\ImportExport\Application;
 
 use App\Identity\Application\StepUp\StepUpRequired;
-use App\ImportExport\Domain\ImportRun;
-use App\ImportExport\Domain\ImportRunRepository;
+use App\ImportExport\Domain\Model\ImportRun;
+use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;

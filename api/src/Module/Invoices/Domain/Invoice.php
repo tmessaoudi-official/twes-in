@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Domain;
 
-use App\Files\Domain\StoredFile;
+use App\Files\Domain\Model\StoredFile;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;

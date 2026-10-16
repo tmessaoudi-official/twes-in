@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Files\Application;
 
-use App\Files\Domain\StoredFile;
-use App\Files\Domain\StoredFileRepository;
+use App\Files\Domain\Model\StoredFile;
+use App\Files\Domain\Repository\StoredFileRepository;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;

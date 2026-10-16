@@ -15,7 +15,7 @@ use App\Files\Application\AttachmentRefused;
 use App\Files\Application\Attachments;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
-use App\Files\Domain\Attachment;
+use App\Files\Domain\Model\Attachment;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\Decimal;

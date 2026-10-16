@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Watch\Infrastructure;
 
 use App\Watch\Application\WatchItem;
-use App\Watch\Infrastructure\ApiPlatform\WatchResource;
-use App\Watch\Infrastructure\ApiPlatform\WatchRowResource;
+use App\Watch\Infrastructure\ApiPlatform\Resource\WatchResource;
+use App\Watch\Infrastructure\ApiPlatform\Resource\WatchRowResource;
 use PHPUnit\Framework\TestCase;
 
 final class WatchResourceTest extends TestCase

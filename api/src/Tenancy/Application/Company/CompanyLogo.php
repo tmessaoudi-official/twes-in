@@ -15,7 +15,7 @@ use App\Files\Application\AttachmentRefused;
 use App\Files\Application\Attachments;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
-use App\Files\Domain\Attachment;
+use App\Files\Domain\Model\Attachment;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;

@@ -11,8 +11,8 @@ namespace App\Erasure\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Erasure\Domain\DataErasure;
-use App\Erasure\Domain\DataErasureRepository;
+use App\Erasure\Domain\Model\DataErasure;
+use App\Erasure\Domain\Repository\DataErasureRepository;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;

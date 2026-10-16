@@ -11,7 +11,7 @@ namespace App\Erasure\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Erasure\Domain\DataErasureRepository;
+use App\Erasure\Domain\Repository\DataErasureRepository;
 use App\Files\Application\Files;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Erasure\Application;
 
-use App\Erasure\Domain\DataErasure;
-use App\Erasure\Domain\DataErasureRepository;
+use App\Erasure\Domain\Model\DataErasure;
+use App\Erasure\Domain\Repository\DataErasureRepository;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;

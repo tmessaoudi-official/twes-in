@@ -18,11 +18,11 @@ use App\Venue\Application\ArrangeVenue;
 use App\Venue\Application\VenueAreaNotFound;
 use App\Venue\Application\VenueLevelTaken;
 use App\Venue\Application\VenueSpotNotFound;
-use App\Venue\Domain\InvalidVenue;
-use App\Venue\Domain\PlanRect;
-use App\Venue\Domain\PlanWay;
-use App\Venue\Domain\VenueArea;
-use App\Venue\Domain\VenueSpot;
+use App\Venue\Domain\Exception\InvalidVenue;
+use App\Venue\Domain\Model\VenueArea;
+use App\Venue\Domain\Model\VenueSpot;
+use App\Venue\Domain\ValueObject\PlanRect;
+use App\Venue\Domain\ValueObject\PlanWay;
 use Symfony\Component\Uid\Uuid;
 
 /**

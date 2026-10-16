@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Inbox\Infrastructure\Doctrine;
 
-use App\Inbox\Domain\NotificationPreference;
-use App\Inbox\Domain\NotificationPreferenceRepository;
+use App\Inbox\Domain\Model\NotificationPreference;
+use App\Inbox\Domain\Repository\NotificationPreferenceRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

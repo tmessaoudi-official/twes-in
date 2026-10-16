@@ -11,8 +11,8 @@ namespace App\Inbox\Application;
 
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserRepository;
-use App\Inbox\Domain\NotificationPreference;
-use App\Inbox\Domain\NotificationPreferenceRepository;
+use App\Inbox\Domain\Model\NotificationPreference;
+use App\Inbox\Domain\Repository\NotificationPreferenceRepository;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\CompanyRepository;
 use App\Tenancy\Domain\MembershipRepository;

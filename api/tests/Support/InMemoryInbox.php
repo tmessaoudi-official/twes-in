@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Inbox\Domain\InboxItem;
-use App\Inbox\Domain\InboxRepository;
+use App\Inbox\Domain\Model\InboxItem;
+use App\Inbox\Domain\Repository\InboxRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryInbox implements InboxRepository

@@ -13,7 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Files\Application\Files;
 use App\Files\Application\Pictures;
-use App\Files\Domain\StoredFile;
+use App\Files\Domain\Model\StoredFile;
 use App\Module\Products\Domain\PhotoSize;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductPhoto;

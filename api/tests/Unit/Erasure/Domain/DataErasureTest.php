@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Erasure\Domain;
 
-use App\Erasure\Domain\DataErasure;
-use App\Erasure\Domain\ErasureNoLongerPending;
-use App\Erasure\Domain\ErasureState;
+use App\Erasure\Domain\Exception\ErasureNoLongerPending;
+use App\Erasure\Domain\Model\DataErasure;
+use App\Erasure\Domain\ValueObject\ErasureState;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;

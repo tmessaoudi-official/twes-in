@@ -18,7 +18,7 @@ use App\Audit\Domain\Model\AuditLog;
 use App\Audit\Infrastructure\ApiPlatform\Resource\ActivityResource;
 use App\Audit\Infrastructure\ApiPlatform\State\Provider\ActivityCollectionProvider;
 use App\CustomFields\Infrastructure\ApiPlatform\CreateCustomFieldProcessor;
-use App\Files\Domain\AttachmentRepository;
+use App\Files\Domain\Repository\AttachmentRepository;
 use App\Fiscal\Domain\Calculation\Rate;
 use App\Identity\Domain\Email;
 use App\Identity\Infrastructure\ApiPlatform\OpenApiExtras;
@@ -76,13 +76,8 @@ final class SourceLayoutTest extends TestCase
      */
     private const array NOT_YET_MOVED = [
         'CustomFields',
-        'Erasure',
-        'Files',
-        'FirstSteps',
         'Fiscal',
         'Identity',
-        'ImportExport',
-        'Inbox',
         'Legal',
         'Licensing',
         'Module/Customers',
@@ -101,8 +96,6 @@ final class SourceLayoutTest extends TestCase
         'Settings',
         'Shared',
         'Tenancy',
-        'Venue',
-        'Watch',
     ];
 
     /**

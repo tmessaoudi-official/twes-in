@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Files\Domain\StoredFile;
-use App\Files\Domain\StoredFileRepository;
+use App\Files\Domain\Model\StoredFile;
+use App\Files\Domain\Repository\StoredFileRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryStoredFiles implements StoredFileRepository

@@ -13,7 +13,7 @@ use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Inbox\Application\InboxItemNotFound;
 use App\Inbox\Application\NotificationCentre;
-use App\Inbox\Domain\InboxItem;
+use App\Inbox\Domain\Model\InboxItem;
 use App\Tests\Support\InMemoryInbox;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;

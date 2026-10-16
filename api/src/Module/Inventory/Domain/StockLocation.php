@@ -12,7 +12,7 @@ namespace App\Module\Inventory\Domain;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
-use App\Venue\Domain\VenueSpot;
+use App\Venue\Domain\Model\VenueSpot;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;

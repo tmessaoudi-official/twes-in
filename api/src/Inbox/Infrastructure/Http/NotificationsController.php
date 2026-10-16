@@ -12,7 +12,7 @@ namespace App\Inbox\Infrastructure\Http;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Inbox\Application\InboxItemNotFound;
 use App\Inbox\Application\NotificationCentre;
-use App\Inbox\Domain\InboxItem;
+use App\Inbox\Domain\Model\InboxItem;
 use App\Shared\Application\RealtimeTokens;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
 use App\Tenancy\Domain\Company;
