@@ -167,8 +167,10 @@ final class SourceLayoutTest extends TestCase
 
     public function testNoFolderHoldsMoreThanTheCap(): void
     {
+        $folders = $this->folders();
+        self::assertGreaterThan(1700, array_sum($folders), 'the folders hold some 1,800 classes: a count reading fewer has stopped counting them');
         $crowded = [];
-        foreach ($this->crowded($this->folders()) as $folder => $count) {
+        foreach ($this->crowded($folders) as $folder => $count) {
             $crowded[] = "$folder holds $count files";
         }
         self::assertSame([], $crowded, 'A folder past '.self::CAP." files is split by aggregate or capability:\n".implode("\n", $crowded));
