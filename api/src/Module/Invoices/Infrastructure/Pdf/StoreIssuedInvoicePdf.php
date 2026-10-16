@@ -11,13 +11,12 @@ namespace App\Module\Invoices\Infrastructure\Pdf;
 
 use App\Module\Invoices\Application\Print\PrintInvoice;
 use App\Module\Invoices\Domain\Event\InvoiceIssued;
-use App\Shared\Application\PdfRenderingFailed;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
- * Stores a document's PDF as soon as it is issued. The issue is already committed: a renderer that cannot answer is
- * logged, and the document's first download renders and stores the PDF instead.
+ * Stores a document's PDF as soon as it is issued. The issue is already committed: a renderer or a storage that cannot
+ * answer is logged, and the document's first download renders and stores the PDF instead.
  */
 #[AsEventListener(event: InvoiceIssued::class)]
 final readonly class StoreIssuedInvoicePdf
@@ -30,7 +29,7 @@ final readonly class StoreIssuedInvoicePdf
     {
         try {
             $this->print->storeIssued($event->companyId, $event->invoiceId);
-        } catch (PdfRenderingFailed $failure) {
+        } catch (\Throwable $failure) {
             $this->logger->warning('The PDF of invoice {number} was not stored at issue; its first download stores it: {reason}', [
                 'number' => $event->number,
                 'reason' => $failure->getMessage(),
