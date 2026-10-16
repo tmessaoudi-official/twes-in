@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Infrastructure\Products;
 
 use App\Module\Inventory\Application\KeepProductHomes;
+use App\Module\Inventory\Domain\ProductHomeLocationRepository;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationRepository;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
@@ -29,6 +30,7 @@ final readonly class InventoryProductHomes implements ProductHomes
     public function __construct(
         private StockLocationRepository $locations,
         private KeepProductHomes $homes,
+        private ProductHomeLocationRepository $held,
         private ModuleStates $modules,
         private EntityManagerInterface $entityManager,
     ) {
@@ -58,8 +60,14 @@ final readonly class InventoryProductHomes implements ProductHomes
      * writes one home and reads it straight back, and detaching there would be a batching concern imposed on a
      * screen that has none. Nothing reads the home back through this port.
      */
-    public function setHome(Company $company, Uuid $productId, Uuid $locationId, ?Uuid $actorUserId): void
+    public function setHome(Company $company, Uuid $productId, Uuid $locationId, ?Uuid $actorUserId): array
     {
-        $this->entityManager->detach($this->homes->set($company, $productId, $locationId, $actorUserId));
+        $establishmentId = $this->locations->ofIdInCompany($locationId, $company->getId())?->getEstablishment()->getId();
+        $before = null === $establishmentId ? '' : ($this->held->ofProductInEstablishment($productId, $establishmentId)[0] ?? null)?->getLocation()->getCode() ?? '';
+        $home = $this->homes->set($company, $productId, $locationId, $actorUserId);
+        $after = $home->getLocation()->getCode();
+        $this->entityManager->detach($home);
+
+        return [$before, $after];
     }
 }

@@ -38,6 +38,10 @@ interface ProductHomes
      */
     public function locationsCoded(Company $company, string $code): array;
 
-    /** Gives the product its home there, moving the one that establishment already had. */
-    public function setHome(Company $company, Uuid $productId, Uuid $locationId, ?Uuid $actorUserId): void;
+    /**
+     * Gives the product its home there, moving the one that establishment already had.
+     *
+     * @return array{string, string} the code of that establishment's main home before, empty when it had none, and after
+     */
+    public function setHome(Company $company, Uuid $productId, Uuid $locationId, ?Uuid $actorUserId): array;
 }

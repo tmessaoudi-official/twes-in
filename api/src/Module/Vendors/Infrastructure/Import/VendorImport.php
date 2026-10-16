@@ -157,9 +157,12 @@ final readonly class VendorImport implements DeclaresImport
 
                 return RowImported::Created;
             }
+            // Rendered before the write, which changes the vendor in place.
+            $categories = $this->categoryNames($company);
+            $before = $this->inFile($existing, $context, $categories);
             $written = $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
 
-            return RowImported::Updated;
+            return $notes->changedBetween($before, $this->inFile($written, $context, $categories)) ? RowImported::Updated : RowImported::Unchanged;
         } catch (InvalidVendor $refused) {
             throw new RowRejected(self::columnOf($refused->field), $refused->getMessage(), $refused->reason, $refused->params);
         } catch (VendorNumberTaken) {
@@ -226,6 +229,33 @@ final readonly class VendorImport implements DeclaresImport
         }
 
         return null !== $address->countryCode ? $address : new PostalAddress($address->line1, $address->line2, $address->postalCode, $address->city, $company->getCountryCode());
+    }
+
+    /**
+     * The vendor as the file writes it, over the columns of this run (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 5).
+     *
+     * @param array<string, string> $categories
+     *
+     * @return array<string, string> by column
+     */
+    private function inFile(Vendor $vendor, ImportContext $context, array $categories): array
+    {
+        $cells = [];
+        foreach ($context->columns as $column) {
+            $cells[$column] = VendorInFile::cell($vendor, $column, $categories);
+        }
+
+        return $cells;
+    }
+
+    /**
+     * The company's expense categories by id, named as a row names them.
+     *
+     * @return array<string, string>
+     */
+    private function categoryNames(Company $company): array
+    {
+        return array_map(static fn (array $category): string => $category['name'], $this->expenseCategories->categoriesInCompany($company->getId()));
     }
 
     private function expenseCategoryId(Company $company, ImportRecord $record, ?VendorProfile $held): ?Uuid

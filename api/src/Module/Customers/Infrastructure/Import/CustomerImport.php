@@ -172,13 +172,19 @@ final readonly class CustomerImport implements DeclaresImport
         try {
             $input = $this->input($company, $record, $existing, $faults);
             $faults->stopIfAny();
+            // Rendered before the write, which changes the customer in place.
+            $codes = null === $existing ? [] : $this->taxCodes($company);
+            $before = null === $existing ? [] : $this->inFile($company, $existing, $context, $codes);
             $written = null === $existing
                 ? $this->manage->create($company, $input, $actorUserId)
                 : $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
             $this->settingCells->write($company, $written->getId(), $settings, $actorUserId);
             $this->noteMissingIdentifiers($company, $written, $notes);
+            if (null === $existing) {
+                return RowImported::Created;
+            }
 
-            return null === $existing ? RowImported::Created : RowImported::Updated;
+            return $notes->changedBetween($before, $this->inFile($company, $written, $context, $codes)) ? RowImported::Updated : RowImported::Unchanged;
         } catch (InvalidCustomer $refused) {
             throw new RowRejected(self::columnOf($refused->field), $refused->getMessage(), $refused->reason, $refused->params);
         } catch (CustomerNumberTaken) {
@@ -192,6 +198,36 @@ final readonly class CustomerImport implements DeclaresImport
                 }
             }
         }
+    }
+
+    /**
+     * The customer as the file writes it, over the columns of this run, its own settings included (docs/SPEC.md § 7,
+     * 2026-10-09 10:40, ruling 5).
+     *
+     * @param array<string, string> $taxCodes by tax id
+     *
+     * @return array<string, string> by column
+     */
+    private function inFile(Company $company, Customer $customer, ImportContext $context, array $taxCodes): array
+    {
+        $own = $this->settingCells->shown($company, [$customer->getId()])[$customer->getId()->toRfc4122()] ?? [];
+        $cells = [];
+        foreach ($context->columns as $column) {
+            $cells[$column] = CustomerSettingCells::covers($column) ? $own[$column] ?? '' : CustomerInFile::cell($customer, $column, $taxCodes);
+        }
+
+        return $cells;
+    }
+
+    /** @return array<string, string> the company's tax codes by tax id */
+    private function taxCodes(Company $company): array
+    {
+        $codes = [];
+        foreach ($this->taxes->ofCompany($company->getId()) as $tax) {
+            $codes[$tax->getId()->toRfc4122()] = $tax->getCode();
+        }
+
+        return $codes;
     }
 
     /**

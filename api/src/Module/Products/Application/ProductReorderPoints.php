@@ -21,6 +21,10 @@ interface ProductReorderPoints
     /** The establishment a stock location is in; null for one the company does not have. */
     public function establishmentOfLocation(Company $company, Uuid $locationId): ?Uuid;
 
-    /** @throws ReorderPointRefused when the quantity is not one the product's unit can count */
-    public function setReorderPoint(Company $company, Uuid $productId, Uuid $establishmentId, string $quantity, ?Uuid $actorUserId): void;
+    /**
+     * @return array{string, string} the point there before, empty when there was none, and after, as it is kept
+     *
+     * @throws ReorderPointRefused when the quantity is not one the product's unit can count
+     */
+    public function setReorderPoint(Company $company, Uuid $productId, Uuid $establishmentId, string $quantity, ?Uuid $actorUserId): array;
 }

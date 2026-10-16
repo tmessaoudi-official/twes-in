@@ -54,18 +54,18 @@ final readonly class RunImport
     {
         $records = $this->records($subject, $rows);
         $already = $this->runs->lastOf($company->getId(), $declaration->key(), $contentHash)?->getAt();
-        $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun);
+        $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun, $subject->keys());
 
         try {
             return $this->transactions->run(function () use ($declaration, $subject, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $already): ImportReport {
                 $report = $this->apply($declaration, $subject, $company, $records, $mode, $actorUserId, $context);
                 if ($dryRun || [] !== $report->rejected) {
-                    throw new ImportRolledBack(new ImportReport(false, $report->created, $report->updated, $report->rejected, $report->notes, $already));
+                    throw new ImportRolledBack(new ImportReport(false, $report->created, $report->updated, $report->rejected, $report->notes, $already, $report->changes, $report->unchanged));
                 }
                 $declaration->finished($company, $context, $actorUserId);
                 $this->runs->save(new ImportRun($context->runId, $company, $declaration->key(), $contentHash, $mode->value, $actorUserId, \count($report->created), \count($report->updated), $this->clock->now()));
 
-                return new ImportReport(true, $report->created, $report->updated, [], $report->notes, $already);
+                return new ImportReport(true, $report->created, $report->updated, [], $report->notes, $already, $report->changes, $report->unchanged);
             });
         } catch (ImportRolledBack $rolledBack) {
             return $rolledBack->report;
@@ -79,7 +79,7 @@ final readonly class RunImport
     {
         // A row's faults are said in the order of its columns, as a person reads the row; a fault of no column last.
         $position = array_flip($subject->keys());
-        $created = $updated = $rejected = $noted = [];
+        $created = $updated = $unchanged = $rejected = $noted = $changed = [];
         /** @var array<string, int> $firstLineOf the first line naming each identity */
         $firstLineOf = [];
         foreach ($records as $record) {
@@ -107,9 +107,14 @@ final readonly class RunImport
                 match ($declaration->import($company, $record, $mode, $actorUserId, $notes, $context)) {
                     RowImported::Created => $created[] = $record->line,
                     RowImported::Updated => $updated[] = $record->line,
+                    RowImported::Unchanged => $unchanged[] = $record->line,
                 };
                 foreach ($notes->all() as $note) {
                     $noted[] = ['line' => $record->line, ...$note];
+                }
+                // In the order of the columns, as the subject compares them.
+                foreach ($notes->changes() as $change) {
+                    $changed[] = ['line' => $record->line, ...$change];
                 }
             } catch (RowRejected $refused) {
                 $faults = $refused->all();
@@ -120,7 +125,7 @@ final readonly class RunImport
             }
         }
 
-        return new ImportReport(false, $created, $updated, $rejected, $noted);
+        return new ImportReport(false, $created, $updated, $rejected, $noted, null, $changed, $unchanged);
     }
 
     /**

@@ -41,11 +41,12 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
         $lines = ['type' => 'array', 'items' => ['type' => 'integer']];
         $report = [
             'type' => 'object',
-            'required' => ['committed', 'created', 'updated', 'rejected', 'notes', 'alreadyImportedAt'],
+            'required' => ['committed', 'created', 'updated', 'unchanged', 'rejected', 'changes', 'notes', 'alreadyImportedAt'],
             'properties' => [
                 'committed' => ['type' => 'boolean', 'description' => 'Whether the file was stored: never for a preview, nor while a row is rejected.'],
                 'created' => $lines + ['description' => 'The file’s own line numbers, empty lines counted.'],
-                'updated' => $lines,
+                'updated' => $lines + ['description' => 'The lines found again whose record changes.'],
+                'unchanged' => $lines + ['description' => 'The lines found again whose record the row leaves as it is: nothing is written for them.'],
                 'rejected' => ['type' => 'array', 'items' => [
                     'type' => 'object',
                     'required' => ['line', 'column', 'code', 'params', 'message'],
@@ -55,6 +56,16 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
                         'code' => ['type' => 'string', 'description' => 'A stable reason, translated by the screen as `import.rejections.<code>`.'],
                         'params' => ['type' => 'object', 'additionalProperties' => ['type' => ['string', 'integer']], 'description' => 'What the translation names, such as the group the file gave.'],
                         'message' => ['type' => 'string', 'description' => 'The reason in English, for a code the screen does not know yet.'],
+                    ],
+                ]],
+                'changes' => ['type' => 'array', 'description' => 'What each line updated changes, cell by cell, as the file writes each value.', 'items' => [
+                    'type' => 'object',
+                    'required' => ['line', 'column', 'before', 'after'],
+                    'properties' => [
+                        'line' => ['type' => 'integer'],
+                        'column' => ['type' => 'string'],
+                        'before' => ['type' => 'string', 'description' => 'The value held, empty when there was none.'],
+                        'after' => ['type' => 'string'],
                     ],
                 ]],
                 'notes' => ['type' => 'array', 'description' => 'What a row imported was noted for, such as the reference its new product was given; a note never stops the file.', 'items' => [

@@ -65,7 +65,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import($this->twoProducts(), dryRun: true);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(0, $this->products());
     }
 
@@ -76,7 +76,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import($this->twoProducts());
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         $screw = $this->product('VIS-6X40');
         self::assertSame('Vis 6x40 zinguée', $screw->getDetails()->name);
         self::assertSame('goods', $screw->getDetails()->kind->value);
@@ -196,11 +196,11 @@ final class ProductImportTest extends ApiTestCase
             ['line' => 2, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00001']],
             ['line' => 3, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00002']],
         ];
-        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => $given, 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => $given, 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(0, $this->products());
 
         $this->import($file);
-        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => $given, 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => $given, 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame('Cheville 8', $this->product('ART-00001')->getDetails()->name);
         self::assertSame([['unit', '6191234567880', 1]], self::codes($this->product('ART-00001')));
         self::assertSame('Cheville 10', $this->product('ART-00002')->getDetails()->name);
@@ -218,7 +218,7 @@ final class ProductImportTest extends ApiTestCase
         self::assertSame([[2, 'barcode', 'already_exists', ['reference' => 'ART-00001']]], $this->rejections());
 
         $this->import($again, mode: 'upsert');
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'unchanged' => [], 'rejected' => [], 'changes' => [['line' => 2, 'column' => 'name', 'before' => 'Cheville 8', 'after' => 'Cheville 8 mm'], ['line' => 2, 'column' => 'unit_price_net', 'before' => '0.1000', 'after' => '0.1500']], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         $this->em()->clear();
         $updated = $this->product('ART-00001');
         self::assertSame(['Cheville 8 mm', '0.1500'], [$updated->getDetails()->name, $updated->getDetails()->unitPriceNet]);
@@ -352,7 +352,7 @@ Cheville 10 mm,6191234567897
 
         $this->import("name,unit_code,unit_price_net\nvis 6X40 zinguée,H87,0.5\nÉcrou M6,H87,0.2\n", mode: 'upsert', dryRun: true);
 
-        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => [
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [
             ['line' => 2, 'column' => 'name', 'code' => 'name_shared', 'params' => ['reference' => 'VIS-6X40']],
             ['line' => 2, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00001']],
             ['line' => 3, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00002']],
@@ -414,7 +414,7 @@ Cheville 10 mm,6191234567897
         $this->import($second, mode: 'upsert');
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'unchanged' => [], 'rejected' => [], 'changes' => [['line' => 2, 'column' => 'name', 'before' => 'Vis 6x40 zinguée', 'after' => 'Vis 6x40 inox']], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         $this->em()->clear();
         $updated = $this->product('VIS-6X40');
         self::assertSame('Vis 6x40 inox', $updated->getDetails()->name);
@@ -457,7 +457,7 @@ Cheville 10 mm,6191234567897
         $this->import(self::HEADER.",home_location\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,Z1\n");
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(1, $this->numberOf(
             'SELECT COUNT(*) FROM product_home_location h JOIN product p ON p.id = h.product_id'
             .' JOIN stock_location l ON l.id = h.location_id WHERE p.reference = ? AND l.code = ?',
@@ -484,7 +484,7 @@ Cheville 10 mm,6191234567897
         );
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2, 3, 4], 'updated' => [], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3, 4], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(3, $this->numberOf(
             'SELECT COUNT(*) FROM product_home_location h JOIN stock_location l ON l.id = h.location_id'
             .' WHERE l.code = ?',
@@ -503,7 +503,7 @@ Cheville 10 mm,6191234567897
         $this->import(self::HEADER.",reorder_point\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,12\n");
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(['12.000'], $this->pointsOf('VIS-6X40'), 'the company has one establishment, so the row needs no home to say which');
 
         $company = $this->em()->find(Company::class, $this->company->getId());
@@ -518,7 +518,7 @@ Cheville 10 mm,6191234567897
 
         $this->import("reference,name,home_location,reorder_point\nVIS-6X40,Vis 6x40 zinguée,Z1,5\n", mode: 'upsert');
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'unchanged' => [], 'rejected' => [], 'changes' => [['line' => 2, 'column' => 'home_location', 'before' => '', 'after' => 'Z1'], ['line' => 2, 'column' => 'reorder_point', 'before' => '12.000', 'after' => '5.000']], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(['5.000'], $this->pointsOf('VIS-6X40'), 'the home names the establishment');
 
         $this->import("reference,name,home_location,reorder_point\nVIS-6X40,Vis 6x40 zinguée,Z1,-1\n", mode: 'upsert');
@@ -543,6 +543,32 @@ Cheville 10 mm,6191234567897
         return array_map(static fn (mixed $quantity): string => \is_string($quantity) ? $quantity : '', $quantities);
     }
 
+    /**
+     * An upsert says per product what changes, old to new, as the file writes it: its own cells, where it normally
+     * lives, its reorder point and its stock; a row that changes nothing is counted apart (ruling 5).
+     */
+    public function testAnUpsertSaysWhatChangesAndWhatDoesNot(): void
+    {
+        $this->stockKept();
+        $this->aZoneCoded('Z1');
+        $this->aZoneCoded('Z2');
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read', 'stock.write']);
+        $this->import("reference,name,unit_code,unit_price_net,cost_price,home_location,reorder_point,stock_count\nVIS-6X40,Vis,H87,1,0.2,Z1,5,10\nVIS-8X60,Vis 8,H87,2,,,,\n");
+        self::assertResponseIsSuccessful();
+
+        $this->import("reference,name,unit_price_net,cost_price,home_location,reorder_point,stock_count\nVIS-6X40,Vis,1.25,0.2,Z2,7,12\nVIS-8X60,Vis 8,2,,,,\n", mode: 'upsert', dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[2], [3]], [$this->json()['updated'], $this->json()['unchanged']]);
+        self::assertSame([
+            ['line' => 2, 'column' => 'unit_price_net', 'before' => '1.0000', 'after' => '1.2500'],
+            ['line' => 2, 'column' => 'home_location', 'before' => 'Z1', 'after' => 'Z2'],
+            ['line' => 2, 'column' => 'reorder_point', 'before' => '5.000', 'after' => '7.000'],
+            // Counted where it now lives, which held nothing yet.
+            ['line' => 2, 'column' => 'stock_count', 'before' => '0', 'after' => '12'],
+        ], $this->json()['changes']);
+    }
+
     /** A blank cell keeps what is there, like every other cell: a file that does not mention homes does not clear them. */
     public function testAnUpsertLeavingTheHomeBlankKeepsIt(): void
     {
@@ -554,7 +580,7 @@ Cheville 10 mm,6191234567897
         $this->import("reference,name,home_location\nVIS-6X40,Vis 6x40 inox,\n", mode: 'upsert');
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'unchanged' => [], 'rejected' => [], 'changes' => [['line' => 2, 'column' => 'name', 'before' => 'Vis 6x40 zinguée', 'after' => 'Vis 6x40 inox']], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(1, $this->numberOf(
             'SELECT COUNT(*) FROM product_home_location h JOIN stock_location l ON l.id = h.location_id'
             .' JOIN product p ON p.id = h.product_id WHERE p.reference = ? AND l.code = ?',
