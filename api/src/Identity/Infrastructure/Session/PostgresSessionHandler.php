@@ -77,7 +77,7 @@ final class PostgresSessionHandler implements \SessionHandlerInterface, \Session
         return $closed;
     }
 
-    public function read(#[\SensitiveParameter] string $id): string
+    public function read(#[\SensitiveParameter] string $id): string|false
     {
         return $this->current()->read($id);
     }
