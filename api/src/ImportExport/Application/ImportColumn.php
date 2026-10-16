@@ -31,6 +31,8 @@ final readonly class ImportColumn
      * @param string|null $note     a translation key for what a person needs to know to fill it in: the values
      *                              accepted, the format of a date or a rate, or where a code comes from; a key of
      *                              the screen's catalogue
+     * @param bool        $code     a code, kept as typed: the xlsx template formats its column as Text, so that a
+     *                              spreadsheet keeps « 0012 », a barcode or a postal code rather than reading a number
      */
     public function __construct(
         public string $key,
@@ -39,6 +41,7 @@ final readonly class ImportColumn
         public ?string $example = null,
         public ?string $note = null,
         public ImportHeading $headingIs = ImportHeading::ScreenText,
+        public bool $code = false,
     ) {
     }
 }

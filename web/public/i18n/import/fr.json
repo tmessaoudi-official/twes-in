@@ -3,7 +3,7 @@
     "boolean_note": "oui ou non (yes, y, true, 1, oui, o — non, n, false, 0).",
     "country_note": "Code pays à deux lettres (TN, FR). Laissé vide, celui de l’entreprise s’applique.",
     "identifier_note": "Numéro d’immatriculation attendu par le régime fiscal de l’entreprise.",
-    "rate_note": "Taux en pourcentage, avec une virgule ou un point (5,5 ou 5.5).",
+    "rate_note": "Taux en pourcentage, sans le signe % (5 pour 5 %), avec une virgule ou un point (5,5 ou 5.5).",
     "customers": {
       "number": "Numéro client",
       "number_note": "Sert à retrouver le client lors d’un second import : il ne change pas.",

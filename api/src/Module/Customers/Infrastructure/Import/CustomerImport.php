@@ -322,21 +322,21 @@ final readonly class CustomerImport implements DeclaresImport
     private function fixed(): array
     {
         return [
-            new ImportColumn('number', 'import.customers.number', true, 'CLI-0001', 'import.customers.number_note'),
+            new ImportColumn('number', 'import.customers.number', true, 'CLI-0001', 'import.customers.number_note', code: true),
             new ImportColumn('kind', 'import.customers.kind', false, 'company', 'import.customers.kind_note'),
             new ImportColumn('name', 'import.customers.name', true, 'Boulangerie Mercier'),
             new ImportColumn('legal_name', 'import.customers.legal_name', false, 'Mercier SARL'),
             new ImportColumn('email', 'import.customers.email', false, 'contact@mercier.fr'),
-            new ImportColumn('phone', 'import.customers.phone', false, '+33 1 23 45 67 89'),
+            new ImportColumn('phone', 'import.customers.phone', false, '+33 1 23 45 67 89', code: true),
             new ImportColumn('website', 'import.customers.website', false, 'https://mercier.fr'),
             new ImportColumn('billing_line1', 'import.customers.billing_line1', false, '12 rue des Lilas'),
             new ImportColumn('billing_line2', 'import.customers.billing_line2', false, 'Bâtiment C'),
-            new ImportColumn('billing_postal_code', 'import.customers.billing_postal_code', false, '75011'),
+            new ImportColumn('billing_postal_code', 'import.customers.billing_postal_code', false, '75011', code: true),
             new ImportColumn('billing_city', 'import.customers.billing_city', false, 'Paris'),
             new ImportColumn('billing_country_code', 'import.customers.billing_country_code', false, 'FR', 'import.country_note'),
             new ImportColumn('shipping_line1', 'import.customers.shipping_line1', false, null, 'import.customers.shipping_note'),
             new ImportColumn('shipping_line2', 'import.customers.shipping_line2'),
-            new ImportColumn('shipping_postal_code', 'import.customers.shipping_postal_code'),
+            new ImportColumn('shipping_postal_code', 'import.customers.shipping_postal_code', code: true),
             new ImportColumn('shipping_city', 'import.customers.shipping_city'),
             new ImportColumn('shipping_country_code', 'import.customers.shipping_country_code', false, null, 'import.country_note'),
             new ImportColumn('customer_group', 'import.customers.group', false, null, 'import.customers.group_note'),
@@ -358,7 +358,7 @@ final readonly class CustomerImport implements DeclaresImport
     {
         $columns = [];
         foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
-            $columns[] = new ImportColumn($identifier->key, $identifier->labelKey, false, $identifier->example, 'import.identifier_note', ImportHeading::FiscalLabel);
+            $columns[] = new ImportColumn($identifier->key, $identifier->labelKey, false, $identifier->example, 'import.identifier_note', ImportHeading::FiscalLabel, code: true);
         }
 
         return $columns;

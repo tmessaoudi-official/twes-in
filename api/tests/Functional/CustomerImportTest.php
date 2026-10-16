@@ -21,6 +21,10 @@ use App\Module\Customers\Domain\CustomerGroup;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutWriter;
 use App\Tenancy\Domain\Company;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
+use OpenSpout\Writer\XLSX\Writer as XlsxWriter;
 use Symfony\Component\HttpFoundation\Response;
 
 /** Customers imported from a file (docs/SPEC.md § 7, 2026-09-17 and 2026-09-19). */
@@ -332,6 +336,28 @@ final class CustomerImportTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame([2], $this->json()['created']);
         self::assertSame('Sonia Ben Ali', $this->customer('CLI-0009')->getProfile()->name);
+    }
+
+    /**
+     * A discount Excel shows as « 5 % » holds 0.05: read as written, the customer would get a twentieth of one percent.
+     * The row is refused, saying how to write it (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 7).
+     */
+    public function testAnXlsxDiscountShownAsAPercentageIsRefusedSayingHowToWriteIt(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $path = (string) tempnam(sys_get_temp_dir(), 'import-test-');
+        $writer = new XlsxWriter();
+        $writer->openToFile($path);
+        $writer->addRow(Row::fromValues(['number', 'name', 'kind', 'default_discount_rate']));
+        $writer->addRow(new Row([Cell::fromValue('CLI-0009'), Cell::fromValue('Sonia Ben Ali'), Cell::fromValue('individual'), Cell::fromValue(0.05, (new Style())->withFormat('0%'))]));
+        $writer->close();
+        $contents = (string) file_get_contents($path);
+        unlink($path);
+
+        $this->import($contents, dryRun: true, name: 'customers.xlsx');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([['line' => 2, 'column' => 'default_discount_rate', 'code' => 'percent_sign', 'params' => [], 'message' => 'Write 5 for 5 %.']], $this->json()['rejected']);
     }
 
     public function testWhatIsNotASpreadsheetIsRefused(): void
