@@ -3602,6 +3602,7 @@
       "already_exists": "Existe déjà. Importez en « créer et mettre à jour » pour le modifier.",
       "already_counted": "Ce produit a déjà du stock à cet emplacement. Importez en « créer et mettre à jour » pour le recompter.",
       "duplicate_in_file": "Déjà présent à la ligne {{line}} du fichier.",
+      "too_many_cells": "Des valeurs sur {{count}} colonnes, l’en-tête n’en a que {{expected}} : une valeur est de trop ou décalée.",
       "invalid_value": "Valeur refusée.",
       "not_one_of": "Attendu : {{choices}}.",
       "not_yes_or_no": "Attendu : oui ou non.",

@@ -20,6 +20,8 @@ final readonly class ImportRecord
     public function __construct(
         public int $line,
         public array $values,
+        /** @var array{count: int, expected: int}|null the columns the row has values in past the header's, so it is refused */
+        public ?array $overflow = null,
     ) {
     }
 
