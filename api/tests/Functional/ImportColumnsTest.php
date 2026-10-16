@@ -64,7 +64,7 @@ final class ImportColumnsTest extends ApiTestCase
             'a column every company has is named by the screen, in its own language',
         );
         self::assertSame(
-            ['key' => 'matricule_fiscal', 'required' => false, 'headingKey' => null, 'label' => 'Matricule fiscal', 'example' => '1234567A/A/M/000', 'noteKey' => 'import.identifier_note'],
+            ['key' => 'matricule_fiscal', 'required' => false, 'headingKey' => null, 'label' => 'Matricule fiscal', 'example' => '1234567A/B/M/000', 'noteKey' => 'import.identifier_note'],
             $columns['matricule_fiscal'] ?? null,
             'a registration number is named by the preset, translated for the person asking',
         );
@@ -110,7 +110,7 @@ final class ImportColumnsTest extends ApiTestCase
             $this->getJson($this->path($subject));
             self::assertResponseIsSuccessful();
             $columns = array_column($this->arrayAt($this->json(), 'columns'), 'example', 'key');
-            self::assertSame('1234567A/A/M/000', $columns['matricule_fiscal'] ?? null, $subject);
+            self::assertSame('1234567A/B/M/000', $columns['matricule_fiscal'] ?? null, $subject);
         }
     }
 
