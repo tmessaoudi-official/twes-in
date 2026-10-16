@@ -4,6 +4,8 @@ import frAccount from '../../public/i18n/account/fr.json';
 import en from '../../public/i18n/en.json';
 import enExpense from '../../public/i18n/expense/en.json';
 import frExpense from '../../public/i18n/expense/fr.json';
+import enImport from '../../public/i18n/import/en.json';
+import frImport from '../../public/i18n/import/fr.json';
 import fr from '../../public/i18n/fr.json';
 import enSchedule from '../../public/i18n/schedule/en.json';
 import frSchedule from '../../public/i18n/schedule/fr.json';
@@ -29,6 +31,7 @@ function keysOf(value: unknown, prefix = ''): string[] {
 const parts: Record<string, Record<string, unknown>> = {
   account: { fr: frAccount, en: enAccount },
   expense: { fr: frExpense, en: enExpense },
+  import: { fr: frImport, en: enImport },
   schedule: { fr: frSchedule, en: enSchedule },
   'two-factor': { fr: frTwoFactor, en: enTwoFactor },
 };

@@ -367,6 +367,7 @@ export const routes: Routes = [
         // this company cannot import, or may not write, so no static module guard could say it here.
         path: 'imports/:subject',
         title: 'titles.import',
+        ...textsPart('import'),
         loadComponent: () => import('./import/import-page').then((m) => m.ImportPage),
       },
       {
