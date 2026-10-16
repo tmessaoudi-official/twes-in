@@ -188,6 +188,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/tour-anchors.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/coming-gated.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/live-reload.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/list-stances.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/stored-items.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/check.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/mutants.test.sh
@@ -229,6 +230,7 @@ in-gate-licences:
 	bash scripts/gates/tour-anchors.sh
 	bash scripts/gates/coming-gated.sh
 	bash scripts/gates/live-reload.sh
+	bash scripts/gates/list-stances.sh
 	bash scripts/gates/stored-items.sh
 	bash scripts/gates/icons-declared.sh
 	bash scripts/gates/float-casts.sh
