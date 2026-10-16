@@ -529,3 +529,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - PHP's mbstring has no Windows-1256 (Excel's Arabic CSV): `mb_convert_encoding(…, 'Windows-1256')` throws; glibc's iconv
   `CP1256` converts it. mbstring maps Windows-1252's five undefined bytes to C1 controls, where iconv fails on them, and keeps
   a UTF-16 byte-order mark as EF BB BF; a lone UTF-16 high surrogate becomes « ? » (2026-10-16, `CsvTranscoder`).
+- Moving screen texts into a page's part (`textsPart`) moves them out of `web/public/i18n/<lang>.json`, which API tests
+  and gates read too: `git grep -l "public/i18n" api scripts` before the move. `ImportColumnsTest` went red only after the
+  push, and its gate never reached the web half (2026-10-16, 7159fcb1).
