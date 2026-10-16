@@ -152,6 +152,10 @@ level is reached it is kept by construction: every future screen is held to it w
 - [2026-10-16 07:19] ASSUMED (review): F11 (row 251, ruling 11): the four customer columns sit after default_discount_rate and are held to each setting's own declaration (min, max, choices, length), so a file allows what the customer's settings tab allows; document_language takes fr/en or the language's name in French and English; a refused credit limit is the new code invalid_credit_limit (0 sets none, so invalid_amount's 'above 0' would mislead), and invalid_payment_terms now says its {{max}}, which the vendor refusal already sent. Alternatives: a dedicated code per setting refusal; codes only for the language.
 - [2026-10-16 08:23] ASSUMED (review): F12 (row 251): the upsert-change confirmation is kind 'corrigeable', because the definitions decide it. « Corrigeable » says « cela ne s’annule pas ; une erreur se corrige ensuite », and every record an upsert changes stays editable. « Définitif » says it can be neither undone nor corrected. Alternatives: definitif.
 - [2026-10-16 08:23] ASSUMED (review): F12 (row 251): « Ce qui change » lists the first 200 changes, says « Les 200 premiers changements sur N », and still counts every column in full. Basis: the advisor agreed when it reviewed the design, and a 2,000-row file can hold tens of thousands of changes. Alternatives: no cap; paging the table.
+- [2026-10-16 09:47] AGREED: Source layout (developer, 2026-10-16): api/src follows API Platform's DDD reference (Infrastructure/ApiPlatform/{Resource,State/Processor,State/Provider,Payload,Output,OpenApi}, Doctrine/{Repository,Query,Type}, Infrastructure/Contributes/<point>/ and ForModule/<caller>/, Domain/{Model,Repository,ValueObject,Event,Exception}, Application/<capability>|Port|Exception|Permission), any folder over about 25 files split by aggregate, one architecture test enforcing suffix-to-folder and the size cap; persisted class names (Messenger messages, SecurityUser) stay put. Plan: docs/plans/source-layout.plan.md.
+- [2026-10-16 09:47] AGREED: Order (developer, 2026-10-16): F26 slice 3 lands first, then the layout move context by context (one commit and one gate each, the OpenAPI export byte-identical), then the ruled bulk actions (invoices, products, delivery notes, « Ajouter à… »), then row 251's remaining P3s.
+- [2026-10-16 09:47] AGREED: Lists (developer, 2026-10-16): a list × action matrix for every list not yet ruled is published on a marking page for the developer to rule, and a stance gate makes every list page declare supported or not applicable, with its reason, for selection, bulk actions, row actions, import and export; what one list gains, every list of its kind is judged for.
+- [2026-10-16 09:47] AGREED: Rounds (developer, 2026-10-16): the gates above AND two new lenses for round 2: 54 « one pattern everywhere » (a pattern built on one screen reaches every screen of its kind) and 55 « code layout and architecture conformance »; both rulings go to SPEC § 7 and the expertise pack is refreshed from it.
 
 ## Formal Plan
 
@@ -182,7 +186,7 @@ Stop rule: a round that adds no new category and under about 5 % new findings; a
   After round 1 the developer rules the feelings' looks and wordings and the rubric; at apparent saturation one blind
   round without the list (over 5 % new: continue). Then the developer rules, and fixes go by kind: a shared component,
   a gate, a lint rule or a test, and the lesson in the expertise pack. A finding is closed when its kind is.
-- **52 lenses**, each a question asked of every screen: 1 can I do this (role, module, plan, state; why not and who can;
+- **55 lenses**, each a question asked of every screen: 1 can I do this (role, module, plan, state; why not and who can;
   both walls) · 2 should I (law, preset or setting; consequence; kind; journal; who is told) · 3 clear · 4 easy to find ·
   5 mobile first · 6 a short drop · 7 business correctness · 8 technical correctness · 9 lifecycle · 10 what comes next ·
   11 feelings · 12 accessibility and language · 13 proof · 14 operations · 15 promises · 16 trade fit · 17 large data ·
@@ -194,7 +198,9 @@ Stop rule: a round that adds no new category and under about 5 % new findings; a
   and cognitive load · 43 company size · 44 data decay · 45 notification hygiene · 46 find anything · 47 setting side
   effects · 48 when something else is down · 49 honesty · 50 one word per action · 51 help that's true · 52 seen from
   outside · 53 focus and typing flow (arrival, in-place steps, after a refusal, returned on close, after add and remove,
-  across saves and live reloads, Enter and Escape, tab order, focus visible, paste and phone keyboards).
+  across saves and live reloads, Enter and Escape, tab order, focus visible, paste and phone keyboards). · 54 one pattern everywhere
+  (a pattern built on one screen reaches every screen of its kind) · 55 code layout and architecture conformance (both
+  ruled 2026-10-16 09:47, from round 2).
 - **58 feelings**, in families so they never mean 58 colours: danger (définitif), consequence (corrigeable), undoable,
   safe to try, locked, needs attention, urgent, sensitive, someone else is here, working, done, failed, not allowed, not
   yet, changed since you looked, first time, trusted, uncertain, money direction, loss, connection lost, which company
