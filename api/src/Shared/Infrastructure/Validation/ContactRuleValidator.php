@@ -27,13 +27,18 @@ final class ContactRuleValidator extends ConstraintValidator
         if (!$constraint instanceof ContactRule) {
             throw new UnexpectedTypeException($constraint, ContactRule::class);
         }
-        if (null === $value || '' === $value) {
+        if (null === $value) {
             return;
         }
         if (!\is_string($value)) {
             throw new UnexpectedValueException($value, 'string');
         }
+        if ('' === trim($value)) {
+            return;
+        }
 
+        // The domain keeps a value without its surrounding spaces, so it judges it so.
+        $value = trim($value);
         $refusal = match ($constraint->rule) {
             ContactRule::EMAIL => ContactRules::email($value),
             ContactRule::PHONE => ContactRules::phone($value),

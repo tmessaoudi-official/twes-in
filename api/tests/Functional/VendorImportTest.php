@@ -236,6 +236,22 @@ final class VendorImportTest extends ApiTestCase
             ."\nFRN-0002,Outillage Pro,,".self::MATRICULE.",,,,,,\n";
     }
 
+    /** A vendor stored before a rule is held to it when a file writes it again, under the column the rule names. */
+    public function testAFileUpdatingAVendorStoredBeforeARuleIsRefusedOnTheCellItBreaks(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->import("number,name,email\nFRN-0100,Sotumag,achats@sotumag.tn\n");
+        self::assertResponseIsSuccessful();
+        $this->em()->getConnection()->executeStatement("UPDATE vendor SET email = 'achats@' WHERE number = 'FRN-0100'");
+
+        $this->import("number,name\nFRN-0100,Sotumag Group\n", mode: 'upsert', dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        $rejected = $this->arrayAt($this->json(), 'rejected');
+        self::assertIsArray($rejected[0] ?? null);
+        self::assertSame([2, 'email', 'invalid_email'], [$rejected[0]['line'] ?? null, $rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null]);
+    }
+
     private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'vendors.csv'): void
     {
         $this->uploadFile($this->companyPath().'/imports/vendors', $name, $contents, 'file', ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0']);
