@@ -71,11 +71,11 @@ final class VendorBankDetailsStepUpTest extends ApiTestCase
     {
         $id = $this->createdWithBankDetails();
 
-        $this->sendJson('PUT', $this->path($id), $this->vendor(['iban' => 'TN7004018104003691000188', 'bic' => 'BIATTNTT']));
+        $this->sendJson('PUT', $this->path($id), $this->vendor(['version' => 1, 'iban' => 'TN7004018104003691000188', 'bic' => 'BIATTNTT']));
         $this->assertStepUpRequired();
-        $this->sendJson('PUT', $this->path($id), $this->vendor(['iban' => self::IBAN, 'bic' => 'STBKTNTT']));
+        $this->sendJson('PUT', $this->path($id), $this->vendor(['version' => 1, 'iban' => self::IBAN, 'bic' => 'STBKTNTT']));
         $this->assertStepUpRequired();
-        $this->sendJson('PUT', $this->path($id), $this->vendor(['iban' => null, 'bic' => 'BIATTNTT']));
+        $this->sendJson('PUT', $this->path($id), $this->vendor(['version' => 1, 'iban' => null, 'bic' => 'BIATTNTT']));
         $this->assertStepUpRequired();
 
         $this->getJson($this->path($id));
@@ -88,6 +88,7 @@ final class VendorBankDetailsStepUpTest extends ApiTestCase
         $id = $this->createdWithBankDetails();
 
         $this->sendJson('PUT', $this->path($id), $this->vendor([
+            'version' => 1,
             'iban' => 'tn59 1000 6035 1835 9847 8831',
             'bic' => 'biattntt',
             'city' => 'Sfax',
@@ -100,7 +101,7 @@ final class VendorBankDetailsStepUpTest extends ApiTestCase
     /** The proof is asked last: a vendor that is not there is not found, as before. */
     public function testAVendorThatIsNotThereIsNotFoundBeforeAnyProof(): void
     {
-        $this->sendJson('PUT', $this->path(Uuid::v7()->toRfc4122()), $this->vendor(['iban' => self::IBAN]));
+        $this->sendJson('PUT', $this->path(Uuid::v7()->toRfc4122()), $this->vendor(['version' => 1, 'iban' => self::IBAN]));
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
