@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\ImportExport\Infrastructure\Http;
 
 use App\ImportExport\Application\ImportCatalogue;
+use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\UnknownImportSubject;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
@@ -48,7 +49,7 @@ final readonly class ImportTemplateController
             // Importing writes; offering the file to somebody who could not use it would be a dead end with a download in it.
             $permission = $this->catalogue->declaration($subject)->permission();
             $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $permission);
-            $columns = $this->catalogue->subject($subject, $company)->keys();
+            $columns = $this->catalogue->subject($subject, $company)->columns;
         } catch (UnknownImportSubject $unknown) {
             throw new NotFoundHttpException($unknown->getMessage(), $unknown);
         }
@@ -61,7 +62,9 @@ final readonly class ImportTemplateController
         }
 
         try {
-            $this->writer->write($path, $spreadsheet, [$columns]);
+            // A code's column is formatted as Text, so that what a person types there is kept as typed.
+            $codes = array_keys(array_filter($columns, static fn (ImportColumn $column): bool => $column->code));
+            $this->writer->write($path, $spreadsheet, [array_map(static fn (ImportColumn $column): string => $column->key, $columns)], $codes);
             $contents = file_get_contents($path);
         } catch (UnwritableSpreadsheet $failure) {
             throw new ServiceUnavailableHttpException(30, 'The template could not be prepared; try again shortly.', $failure);

@@ -91,6 +91,9 @@ final class OpenSpoutReader implements SpreadsheetReader
             throw new UnreadableSpreadsheet(\sprintf('"%s" could not be read as %s.', basename($path), $format->value), previous: $failure);
         }
 
+        // Read before openspout, which knows a cell's format but keeps it: what Excel shows as 5 % it holds as 0.05.
+        $percentages = SpreadsheetFormat::Xlsx === $format ? XlsxPercentCells::of($path) : [];
+
         try {
             foreach ($reader->getSheetIterator() as $sheet) {
                 foreach ($sheet->getRowIterator() as $number => $row) {
@@ -98,7 +101,11 @@ final class OpenSpoutReader implements SpreadsheetReader
                     // is what every rejected row's reason will name.
                     \assert(\is_int($number));
 
-                    $cells = array_values(array_map(static fn (Cell $cell): string => self::text($cell instanceof FormulaCell ? $cell->getComputedValue() : $cell->getValue()), $row->cells));
+                    $cells = [];
+                    foreach (array_values($row->cells) as $column => $cell) {
+                        $value = $cell instanceof FormulaCell ? $cell->getComputedValue() : $cell->getValue();
+                        $cells[] = isset($percentages[$number][$column]) ? self::percentage($value) : self::text($value);
+                    }
 
                     yield $number => SpreadsheetFormat::Csv === $format ? array_map(CsvFormula::restored(...), $cells) : $cells;
                 }
@@ -145,6 +152,17 @@ final class OpenSpoutReader implements SpreadsheetReader
      * "1.2345678901235E+14", losing a digit and producing a notation no parser downstream reads, while
      * `serialize_precision` gives back the shortest text that is still the same number. An int is already exact.
      */
+    /** A number shown as a percentage, read as it showed: 0.05 is « 5% ». */
+    private static function percentage(mixed $value): string
+    {
+        if (!\is_int($value) && !\is_float($value)) {
+            return self::text($value);
+        }
+
+        // float: Excel keeps the percentage as a float; ten decimals hold any a column takes, and round its noise away.
+        return rtrim(rtrim(number_format($value * 100, 10, '.', ''), '0'), '.').'%';
+    }
+
     private static function text(mixed $value): string
     {
         return match (true) {

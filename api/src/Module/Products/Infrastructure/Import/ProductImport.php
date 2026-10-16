@@ -165,7 +165,7 @@ final readonly class ProductImport implements DeclaresImport
                     ? [
                         new ImportColumn('stock_add', 'import.stock.stock_add', false, '24', 'import.stock.stock_add_note'),
                         new ImportColumn('stock_count', 'import.stock.stock_count', false, '120', 'import.stock.stock_count_note'),
-                        new ImportColumn('location', 'import.products.location', false, 'A-12', 'import.products.location_note'),
+                        new ImportColumn('location', 'import.products.location', false, 'A-12', 'import.products.location_note', code: true),
                     ]
                     : [],
                 ...$this->custom($company),
@@ -531,7 +531,7 @@ final readonly class ProductImport implements DeclaresImport
     private function fixed(Company $company): array
     {
         return [
-            new ImportColumn('reference', 'import.products.reference', false, 'VIS-6X40', 'import.products.reference_optional_note'),
+            new ImportColumn('reference', 'import.products.reference', false, 'VIS-6X40', 'import.products.reference_optional_note', code: true),
             new ImportColumn('name', 'import.products.name', true, 'Vis 6x40 zinguée'),
             new ImportColumn('kind', 'import.products.kind', false, 'goods', 'import.products.kind_note'),
             new ImportColumn('description', 'import.products.description'),
@@ -541,12 +541,12 @@ final readonly class ProductImport implements DeclaresImport
             ...$this->guard->may($company, ProductPermission::COST_READ)
                 ? [new ImportColumn('cost_price', 'import.products.cost_price', false, '0.2200', 'import.products.cost_note')]
                 : [],
-            new ImportColumn('barcode', 'import.products.barcode', false, '6191234567897', 'import.products.barcode_note'),
+            new ImportColumn('barcode', 'import.products.barcode', false, '6191234567897', 'import.products.barcode_note', code: true),
             new ImportColumn('default_tax_codes', 'import.products.default_taxes', false, null, 'import.products.default_taxes_note'),
             new ImportColumn('active', 'import.products.active', false, 'yes', 'import.boolean_note'),
             ...$this->homes->offered($company)
                 ? [
-                    new ImportColumn('home_location', 'import.products.home_location', false, 'A-12', 'import.products.home_location_note'),
+                    new ImportColumn('home_location', 'import.products.home_location', false, 'A-12', 'import.products.home_location_note', code: true),
                     new ImportColumn('reorder_point', 'import.products.reorder_point', false, '12', 'import.products.reorder_point_note'),
                 ]
                 : [],

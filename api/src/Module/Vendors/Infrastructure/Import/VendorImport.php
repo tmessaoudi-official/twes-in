@@ -247,19 +247,19 @@ final readonly class VendorImport implements DeclaresImport
     private function fixed(): array
     {
         return [
-            new ImportColumn('number', 'import.vendors.number', true, 'FRN-0001', 'import.vendors.number_note'),
+            new ImportColumn('number', 'import.vendors.number', true, 'FRN-0001', 'import.vendors.number_note', code: true),
             new ImportColumn('name', 'import.vendors.name', true, 'Aciers du Sud'),
             new ImportColumn('legal_name', 'import.vendors.legal_name', false, 'Aciers du Sud SARL'),
             new ImportColumn('email', 'import.vendors.email', false, 'compta@aciers.tn'),
-            new ImportColumn('phone', 'import.vendors.phone', false, '+216 71 000 000'),
+            new ImportColumn('phone', 'import.vendors.phone', false, '+216 71 000 000', code: true),
             new ImportColumn('website', 'import.vendors.website', false, 'https://aciers.tn'),
             new ImportColumn('line1', 'import.vendors.line1', false, '12 rue de la Fonderie'),
             new ImportColumn('line2', 'import.vendors.line2'),
-            new ImportColumn('postal_code', 'import.vendors.postal_code', false, '2033'),
+            new ImportColumn('postal_code', 'import.vendors.postal_code', false, '2033', code: true),
             new ImportColumn('city', 'import.vendors.city', false, 'Megrine'),
             new ImportColumn('country_code', 'import.vendors.country_code', false, 'TN', 'import.country_note'),
-            new ImportColumn('iban', 'import.vendors.iban', false, 'TN5910006035183598478831'),
-            new ImportColumn('bic', 'import.vendors.bic', false, 'BIATTNTT'),
+            new ImportColumn('iban', 'import.vendors.iban', false, 'TN5910006035183598478831', code: true),
+            new ImportColumn('bic', 'import.vendors.bic', false, 'BIATTNTT', code: true),
             new ImportColumn('payment_terms_days', 'import.vendors.payment_terms_days', false, '30', 'import.vendors.payment_terms_note'),
             new ImportColumn('expense_category', 'import.vendors.expense_category', false, null, 'import.vendors.expense_category_note'),
             new ImportColumn('notes', 'import.vendors.notes'),
@@ -277,7 +277,7 @@ final readonly class VendorImport implements DeclaresImport
     {
         $columns = [];
         foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
-            $columns[] = new ImportColumn($identifier->key, $identifier->labelKey, false, $identifier->example, 'import.identifier_note', ImportHeading::FiscalLabel);
+            $columns[] = new ImportColumn($identifier->key, $identifier->labelKey, false, $identifier->example, 'import.identifier_note', ImportHeading::FiscalLabel, code: true);
         }
 
         return $columns;

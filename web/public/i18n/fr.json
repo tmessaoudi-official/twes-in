@@ -3524,7 +3524,8 @@
       "paid_after_today": "Date de règlement refusée : aujourd’hui au plus tard.",
       "invalid_withholding_rate": "Retenue refusée : un pourcentage de 0 à 100, trois décimales au plus.",
       "tej_outside_tunisia": "Code TEJ refusé : il ne vaut que pour une entreprise sous le préréglage tunisien.",
-      "too_many_decimals": "Trop de décimales : {max, plural, =0 {un nombre entier} one {une décimale au plus} other {{{max}} décimales au plus}}."
+      "too_many_decimals": "Trop de décimales : {max, plural, =0 {un nombre entier} one {une décimale au plus} other {{{max}} décimales au plus}}.",
+      "percent_sign": "Écrivez 5 pour 5 %."
     },
     "action": "Importer"
   },

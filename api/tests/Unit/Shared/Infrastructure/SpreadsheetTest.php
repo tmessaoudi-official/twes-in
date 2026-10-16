@@ -144,6 +144,90 @@ final class SpreadsheetTest extends TestCase
         self::assertSame(['12.5', '14.875000000000002'], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx))[1]);
     }
 
+    /**
+     * Excel keeps « 5 % » as 0.05 and shows it a hundred times larger through the cell's format: read as 0.05, a
+     * discount of 5 % would be imported as one of 0.05 %. Such a cell is read as what it showed, sign included, for the
+     * column to refuse it; a percent sign written out in quotes multiplies nothing, and a text keeps its words.
+     *
+     * @param \Closure(string): string $rewrite what another spreadsheet writes differently from openspout
+     */
+    #[DataProvider('workbookShapes')]
+    public function testACellShownAsAPercentageIsReadAsItShowed(\Closure $rewrite): void
+    {
+        $path = $this->path('xlsx');
+        $writer = new XlsxWriter();
+        $writer->openToFile($path);
+        $writer->addRow(new Row([
+            Cell::fromValue(0.05, (new Style())->withFormat('0%')),
+            Cell::fromValue(0.075, (new Style())->withFormat('0.00%')),
+            Cell::fromValue(0.125, (new Style())->withFormat('0.0%')),
+            Cell::fromValue(5, (new Style())->withFormat('0"%"')),
+            Cell::fromValue(0.05, (new Style())->withFormat('0.00')),
+            Cell::fromValue('cinq', (new Style())->withFormat('0%')),
+            Cell::fromValue(1, (new Style())->withFormat('0%')),
+        ]));
+        $writer->addRow(new Row([Cell::fromValue(0.05), Cell::fromValue(0.05, (new Style())->withFormat('0%'))]));
+        $writer->close();
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path));
+        foreach (['xl/worksheets/sheet1.xml', 'xl/_rels/workbook.xml.rels'] as $part) {
+            $zip->addFromString($part, $rewrite((string) $zip->getFromName($part)));
+        }
+        $zip->close();
+
+        self::assertSame(
+            [1 => ['5%', '7.5%', '12.5%', '5', '0.05', 'cinq', '100%'], 2 => ['0.05', '5%', '', '', '', '', '']],
+            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx)),
+        );
+    }
+
+    /** @return iterable<string, array{\Closure(string): string}> */
+    public static function workbookShapes(): iterable
+    {
+        yield 'as openspout writes it' => [static fn (string $part): string => $part];
+        // A cell's and a line's reference may be left out, each then following the one before it.
+        yield 'without references' => [static fn (string $part): string => (string) preg_replace('/ r="[A-Z]*[0-9]+"/', '', $part)];
+        // A sheet's part may be named from the archive's root rather than beside the workbook.
+        yield 'a sheet named from the root' => [static fn (string $part): string => str_replace('Target="worksheets/', 'Target="/xl/worksheets/', $part)];
+    }
+
+    /**
+     * A template's code columns are formatted as Text, as a person formats a column in Excel: a reference typed
+     * « 0012 » or a 13-digit barcode then stays what was typed rather than becoming 12 or 6.19123E+12. The format is
+     * the column's, not only its first cell's, for it to hold on every line a person adds.
+     */
+    public function testAColumnWrittenAsTextKeepsWhatIsTypedThere(): void
+    {
+        $path = $this->path('xlsx');
+        $keys = array_map(static fn (int $column): string => 'column_'.$column, range(0, 52));
+        (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Xlsx, [$keys], [0, 2, 27, 52]);
+
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path));
+        $sheet = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+        $styles = (string) $zip->getFromName('xl/styles.xml');
+        $zip->close();
+
+        self::assertSame(4, preg_match_all('#<col min="([0-9]+)" max="\1" width="18" customWidth="1" style="([0-9]+)"/>#', self::between('<cols>', '</cols><sheetData>', $sheet), $columns));
+        self::assertSame(['1', '3', '28', '53'], $columns[1], 'A, C, AB and BA');
+        self::assertGreaterThan(0, preg_match_all('#<xf [^>]*?numFmtId="([0-9]+)"#', self::between('<cellXfs', '</cellXfs>', $styles), $all));
+        foreach ($columns[2] as $style) {
+            self::assertSame('49', $all[1][(int) $style], 'the column is formatted as Text');
+        }
+        self::assertSame([1 => $keys], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx)));
+    }
+
+    /** A CSV carries no format, so a column asked for as Text changes nothing in it. */
+    public function testACsvIsTheSameWhateverColumnIsAskedForAsText(): void
+    {
+        $plain = $this->path('csv');
+        $asked = $this->path('csv');
+        (new OpenSpoutWriter())->write($plain, SpreadsheetFormat::Csv, [['reference', 'name']]);
+        (new OpenSpoutWriter())->write($asked, SpreadsheetFormat::Csv, [['reference', 'name']], [0]);
+
+        self::assertSame(file_get_contents($plain), file_get_contents($asked));
+    }
+
     /** A date cell is a date to Excel and a string to us, in the one notation every parser downstream agrees on. */
     public function testADateCellIsReadAsAnIsoDate(): void
     {
@@ -307,6 +391,16 @@ final class SpreadsheetTest extends TestCase
     {
         $this->expectException(UnwritableSpreadsheet::class);
         (new OpenSpoutWriter())->write('/nonexistent-directory/export.csv', SpreadsheetFormat::Csv, [['a']]);
+    }
+
+    /** What a part holds between two marks, failing the case when either is missing. */
+    private static function between(string $start, string $end, string $part): string
+    {
+        $from = strpos($part, $start);
+        $to = false === $from ? false : strpos($part, $end, $from);
+        self::assertNotFalse($to, \sprintf('%s…%s in %s', $start, $end, $part));
+
+        return substr($part, $from + \strlen($start), $to - $from - \strlen($start));
     }
 
     /**

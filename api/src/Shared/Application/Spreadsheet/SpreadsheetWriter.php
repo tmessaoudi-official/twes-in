@@ -19,11 +19,14 @@ namespace App\Shared\Application\Spreadsheet;
 interface SpreadsheetWriter
 {
     /**
-     * @param string                      $path the file to create, its directory existing
-     * @param iterable<int, list<string>> $rows written as they arrive, so an export of a long list never holds more
-     *                                          than one row in memory
+     * @param string                      $path        the file to create, its directory existing
+     * @param iterable<int, list<string>> $rows        written as they arrive, so an export of a long list never holds more
+     *                                                 than one row in memory
+     * @param list<int>                   $textColumns the columns (from 0) a spreadsheet keeps as typed, formatted as
+     *                                                 Text, so that « 0012 » or a barcode is not read as a number;
+     *                                                 a format of the workbook, which a CSV has none of
      *
      * @throws UnwritableSpreadsheet when the file cannot be written
      */
-    public function write(string $path, SpreadsheetFormat $format, iterable $rows): void;
+    public function write(string $path, SpreadsheetFormat $format, iterable $rows, array $textColumns = []): void;
 }

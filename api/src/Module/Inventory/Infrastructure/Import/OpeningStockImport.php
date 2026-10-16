@@ -103,9 +103,9 @@ final readonly class OpeningStockImport implements DeclaresImport
     public function subjectFor(Company $company): ImportSubject
     {
         return new ImportSubject(self::KEY, [
-            new ImportColumn('reference', 'import.opening_stock.reference', false, 'VIS-6X40', 'import.opening_stock.reference_or_barcode_note'),
-            new ImportColumn('barcode', 'import.opening_stock.barcode', false, '6191234567897', 'import.opening_stock.barcode_note'),
-            new ImportColumn('location_code', 'import.opening_stock.location_code', false, 'A-12', 'import.opening_stock.location_optional_note'),
+            new ImportColumn('reference', 'import.opening_stock.reference', false, 'VIS-6X40', 'import.opening_stock.reference_or_barcode_note', code: true),
+            new ImportColumn('barcode', 'import.opening_stock.barcode', false, '6191234567897', 'import.opening_stock.barcode_note', code: true),
+            new ImportColumn('location_code', 'import.opening_stock.location_code', false, 'A-12', 'import.opening_stock.location_optional_note', code: true),
             new ImportColumn('stock_add', 'import.stock.stock_add', false, '24', 'import.stock.stock_add_note'),
             new ImportColumn('stock_count', 'import.stock.stock_count', false, '120', 'import.stock.stock_count_note'),
             ...$this->guard->may($company, ProductPermission::COST_READ)

@@ -56,6 +56,30 @@ final class ImportCellsTest extends TestCase
         }
     }
 
+    /** @return iterable<string, array{string}> */
+    public static function percentages(): iterable
+    {
+        yield 'a cell Excel shows as a percentage, read as it showed' => ['5%'];
+        yield 'typed with its space' => ['5 %'];
+        yield 'typed with a no-break space and a comma' => ["12,5\u{00A0}%"];
+        yield 'below zero' => ['-2%'];
+    }
+
+    /**
+     * A percentage is refused rather than guessed: a discount column holds 5 for 5 %, and « 5 % » read as 0.05 would
+     * grant a twentieth of one percent (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 7).
+     */
+    #[DataProvider('percentages')]
+    public function testAPercentageIsRefusedSayingHowToWriteIt(string $cell): void
+    {
+        try {
+            ImportCells::decimal($this->row(['discount' => $cell]), 'discount', 3);
+            self::fail(\sprintf('« %s » was taken', $cell));
+        } catch (RowRejected $refused) {
+            self::assertSame(['discount', 'percent_sign', []], [$refused->column, $refused->reason, $refused->params]);
+        }
+    }
+
     /** @return iterable<string, array{string, string}> */
     public static function writtenDays(): iterable
     {

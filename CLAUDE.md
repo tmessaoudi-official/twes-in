@@ -532,3 +532,7 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - Moving screen texts into a page's part (`textsPart`) moves them out of `web/public/i18n/<lang>.json`, which API tests
   and gates read too: `git grep -l "public/i18n" api scripts` before the move. `ImportColumnsTest` went red only after the
   push, and its gate never reached the web half (2026-10-16, 7159fcb1).
+- openspout hands over neither a cell's number format nor a column's style: a cell Excel shows as « 5 % » arrives as 0.05
+  (`XlsxPercentCells` reads `styles.xml` for it), and a template column formatted as Text is a `<col style>` the writer adds
+  once openspout has closed the file. A row whose cells are all empty is never written, so formatting empty rows in
+  advance is no way round it (2026-10-16).

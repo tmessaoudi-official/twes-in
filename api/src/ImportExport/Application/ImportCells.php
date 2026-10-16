@@ -21,13 +21,15 @@ final class ImportCells
 
     private const string DECIMAL = '/^(-?[0-9]+)(?:\.([0-9]+))?$/D';
 
+    private const string PERCENTAGE = '/^-?[0-9.]+%$/D';
+
     /** How far a binary float may stray from the decimal it stands for, relative to it: Excel keeps 15 digits. */
     private const string FLOAT_NOISE = '0.000000001';
 
     /**
      * @param int $decimals how many decimals the column holds
      *
-     * @throws RowRejected when the number is finer than the column holds
+     * @throws RowRejected when the number is finer than the column holds, or is written as a percentage
      */
     public static function decimal(ImportRecord $record, string $column, int $decimals): ?string
     {
@@ -36,6 +38,10 @@ final class ImportCells
             return null;
         }
         $written = str_replace(',', '.', (string) preg_replace(self::SPACES, '', $cell));
+        // A rate column holds 5 for 5 %: a percentage, typed or shown so by Excel, is refused rather than guessed at.
+        if (1 === preg_match(self::PERCENTAGE, $written)) {
+            throw new RowRejected($column, 'Write 5 for 5 %.', 'percent_sign');
+        }
         if (1 !== preg_match(self::DECIMAL, $written, $parts) || !is_numeric($written)) {
             return $written;
         }
