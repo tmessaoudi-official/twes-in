@@ -293,7 +293,7 @@ describe('DeliveryNotesApi', () => {
     await expect(pending).rejects.toThrow();
   });
 
-  // docs/SPEC.md § 7, 2026-09-26: « Bons de livraison »'s chips say how many each would list.
+  // « Bons de livraison »'s chips say how many each would list.
   it('asks how many notes each status would list, under the list’s own words and customer', async () => {
     const pending = api.statusCounts('c1', {
       ...SEARCH,
@@ -465,6 +465,63 @@ describe('DeliveryNotesApi', () => {
       .expectOne('/api/companies/c1/invoices/d2/delivery-notes')
       .flush({ id: 'd2', status: 'draft' });
     await part;
+  });
+
+  it('asks what invoicing the selected notes would take, into a draft or a new invoice, and reads each row', async () => {
+    const pending = api.invoicingCheck('c1', ['n1', 'n2', 'n3'], 'd1');
+    const request = http.expectOne('/api/companies/c1/invoices/from-delivery-notes/check');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ deliveryNoteIds: ['n1', 'n2', 'n3'], invoiceId: 'd1' });
+    request.flush({
+      rows: [
+        { id: 'n1', number: 'BL-1', customerName: 'Carthage', outcome: 'included', reason: null },
+        { id: 'n2', number: null, customerName: 'Carthage', outcome: 'skipped', reason: 'draft' },
+        { id: 'n3', number: null, customerName: null, outcome: 'skipped', reason: 'not_found' },
+      ],
+      included: 1,
+      skipped: 2,
+      customerId: 'k1',
+      establishmentId: 'e1',
+    });
+    expect(await pending).toEqual({
+      rows: [
+        { id: 'n1', number: 'BL-1', customerName: 'Carthage', included: true, reason: null },
+        { id: 'n2', number: null, customerName: 'Carthage', included: false, reason: 'draft' },
+        { id: 'n3', number: null, customerName: null, included: false, reason: 'not_found' },
+      ],
+      included: 1,
+      skipped: 2,
+      customerId: 'k1',
+      establishmentId: 'e1',
+    });
+
+    const fresh = api.invoicingCheck('c1', ['n9']);
+    const second = http.expectOne('/api/companies/c1/invoices/from-delivery-notes/check');
+    expect(second.request.body).toEqual({ deliveryNoteIds: ['n9'], invoiceId: null });
+    second.flush({
+      rows: [
+        { id: 'n9', number: null, customerName: null, outcome: 'skipped', reason: 'not_found' },
+      ],
+      included: 0,
+      skipped: 1,
+      customerId: null,
+      establishmentId: null,
+    });
+    expect(await fresh).toEqual(
+      expect.objectContaining({ customerId: null, establishmentId: null }),
+    );
+  });
+
+  it('refuses a check that came without its rows, and turns a refused one into a code', async () => {
+    const bare = api.invoicingCheck('c1', ['n1']);
+    http.expectOne('/api/companies/c1/invoices/from-delivery-notes/check').flush({ included: 0 });
+    await expect(bare).rejects.toEqual(new DeliveryNotesRefused('network'));
+
+    const gone = api.invoicingCheck('c1', ['n1'], 'd1');
+    http
+      .expectOne('/api/companies/c1/invoices/from-delivery-notes/check')
+      .flush({}, { status: 409, statusText: 'Conflict' });
+    await expect(gone).rejects.toEqual(new DeliveryNotesRefused('conflict'));
   });
 
   it("lists the drafts of the notes' customer, leaving out those of another establishment", async () => {

@@ -135,6 +135,24 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
         return null !== $note && $note->getCompany()->getId()->equals($companyId) ? $note : null;
     }
 
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        if ([] === $ids) {
+            return [];
+        }
+        $notes = $this->entityManager->createQueryBuilder()
+            ->select('n')
+            ->from(DeliveryNote::class, 'n')
+            ->where('n.id IN (:ids)')
+            ->andWhere('n.company = :company')
+            ->setParameter('ids', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids), ArrayParameterType::STRING)
+            ->setParameter('company', $companyId, 'uuid')
+            ->getQuery()
+            ->getResult();
+
+        return array_values(array_filter(\is_array($notes) ? $notes : [], static fn (mixed $note): bool => $note instanceof DeliveryNote));
+    }
+
     public function lockedOfIdsInCompany(array $ids, Uuid $companyId): array
     {
         return $this->locked('n.id IN (:ids)', $ids, $companyId);

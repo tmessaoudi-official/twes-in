@@ -26,6 +26,7 @@ use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Products\Domain\Service\LotCode;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
@@ -33,7 +34,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Delivery notes and the invoices they end on (docs/SPEC.md § 7, 2026-09-14). An invoice is drafted from validated or
+ * Delivery notes and the invoices they end on. An invoice is drafted from validated or
  * delivered notes of one customer and one establishment, whose rows are held meanwhile, so that a note on an invoice that
  * is not cancelled is on no other. The notes turn invoiced once that invoice is issued, so a draft cancelled on the way
  * strands none. Invoices know delivery notes only by the ids of their lines; this is the one place the two meet.
@@ -41,6 +42,8 @@ use Symfony\Component\Uid\Uuid;
 final readonly class InvoiceDeliveryNotes
 {
     public const string INVOICED = 'delivery_note.invoiced';
+    /** A selection is one list page at most, and the largest page holds this many rows. */
+    public const int MOST = 100;
 
     public function __construct(
         private DeliveryNoteRepository $notes,
@@ -87,8 +90,8 @@ final readonly class InvoiceDeliveryNotes
     }
 
     /**
-     * The same notes' lines added after those a DRAFT invoice already has, instead of starting a new invoice (docs/SPEC.md
-     * § 7, 2026-10-04): the draft must be of the notes' customer and establishment, and what it already took of a line
+     * The same notes' lines added after those a DRAFT invoice already has, instead of starting a new invoice:
+     * the draft must be of the notes' customer and establishment, and what it already took of a line
      * counts as taken, so a line is never added twice over. An issued invoice is never touched: a credit note corrects it.
      *
      * @param list<Uuid>                 $noteIds
@@ -119,6 +122,76 @@ final readonly class InvoiceDeliveryNotes
 
             return $this->invoicing->appendLines($company, $invoiceId, $lines, ['deliveryNoteIds' => array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes)], $actorUserId);
         });
+    }
+
+    /**
+     * What drafting one invoice from the selected notes would do with each, before it runs, as every bulk action is
+     * previewed: each id once, in the order chosen, taken or skipped with its reason.
+     * The invoice is the draft named, or else a new one for the customer and establishment of the first note that can go
+     * on it. Nothing is changed, and nothing is held: `draftInvoice` and `addToDraft` check again as they run.
+     *
+     * @param list<Uuid> $noteIds
+     *
+     * @return list<InvoicingCheckRow>
+     *
+     * @throws \InvalidArgumentException on no id, or more than a list page of them
+     * @throws InvoiceNotFound           when the invoice named is not the company's
+     * @throws InvoiceNotDraft           when it is not a draft any more
+     */
+    public function check(Company $company, array $noteIds, ?Uuid $invoiceId = null): array
+    {
+        $unique = [];
+        foreach ($noteIds as $id) {
+            $unique[$id->toRfc4122()] ??= $id;
+        }
+        if ([] === $unique || \count($unique) > self::MOST) {
+            throw new \InvalidArgumentException(\sprintf('Invoicing in bulk takes 1 to %d delivery notes.', self::MOST));
+        }
+        $target = null;
+        if (null !== $invoiceId) {
+            $target = $this->invoices->ofIdInCompany($invoiceId, $company->getId()) ?? throw new InvoiceNotFound();
+            if (InvoiceStatus::Draft !== $target->getStatus()) {
+                throw new InvoiceNotDraft();
+            }
+        }
+        $found = [];
+        foreach ($this->notes->ofIdsInCompany(array_values($unique), $company->getId()) as $note) {
+            $found[$note->getId()->toRfc4122()] = $note;
+        }
+        $left = $this->invoices->invoicedQuantities($company->getId(), self::lineIds(array_values($found)));
+        [$customer, $establishment] = null === $target ? [null, null] : [$target->getCustomer()->getId(), $target->getEstablishment()->getId()];
+        $rows = [];
+        foreach ($unique as $key => $id) {
+            $note = $found[$key] ?? null;
+            $skipped = match (true) {
+                null === $note => InvoicingCheckRow::NOT_FOUND,
+                DeliveryNoteStatus::Draft === $note->getStatus() => InvoicingCheckRow::DRAFT,
+                DeliveryNoteStatus::Cancelled === $note->getStatus() => InvoicingCheckRow::CANCELLED,
+                DeliveryNoteStatus::Invoiced === $note->getStatus() => InvoicingCheckRow::INVOICED,
+                !self::anythingLeft($note, $left) => InvoicingCheckRow::NOTHING_LEFT,
+                null !== $customer && !$note->getCustomer()->getId()->equals($customer) => InvoicingCheckRow::OTHER_CUSTOMER,
+                null !== $establishment && !$note->getEstablishment()->getId()->equals($establishment) => InvoicingCheckRow::OTHER_ESTABLISHMENT,
+                default => null,
+            };
+            if (null === $skipped && null === $customer) {
+                [$customer, $establishment] = [$note->getCustomer()->getId(), $note->getEstablishment()->getId()];
+            }
+            $rows[] = new InvoicingCheckRow($id, $note, $skipped);
+        }
+
+        return $rows;
+    }
+
+    /** @param array<string, string> $taken by delivery note line id, what the invoices that are not cancelled take */
+    private static function anythingLeft(DeliveryNote $note, array $taken): bool
+    {
+        foreach ($note->getLines() as $line) {
+            if (Decimal::of($line->getQuantity())->compare(Decimal::of($taken[$line->getId()->toRfc4122()] ?? '0')) > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

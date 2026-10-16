@@ -19,6 +19,7 @@ import type {
   DeliveryNoteStatusCounts,
   ProductOption,
   InvoiceDraftOption,
+  InvoicingCheck,
 } from './delivery-notes-types';
 
 /** The delivery notes of the company being worked in, the note open on screen and what its form offers. */
@@ -224,6 +225,38 @@ export class DeliveryNotesFacade {
     } finally {
       this.busySignal.set(false);
     }
+  }
+
+  /*
+   * The list's « Facturer » on several notes. These three throw `DeliveryNotesRefused` and leave `error` alone: the
+   * list reads `error` as a page that failed to load, and what went wrong here is said by the action itself.
+   */
+
+  /** What invoicing the selected notes would do with each, as the API checks it; nothing changes. */
+  async invoicingCheck(
+    companyId: string,
+    ids: readonly string[],
+    intoDraftId: string | null = null,
+  ): Promise<InvoicingCheck> {
+    return this.api.invoicingCheck(companyId, ids, intoDraftId);
+  }
+
+  /** The drafts of the customer and establishment the selected notes would be added to. */
+  async draftsToAddTo(
+    companyId: string,
+    customerId: string,
+    establishmentId: string | null,
+  ): Promise<InvoiceDraftOption[]> {
+    return this.api.draftsOf(companyId, customerId, establishmentId);
+  }
+
+  /** The id of the invoice drafted from the notes, each for what is left of it, new or added to `intoDraftId`. */
+  async invoiceNotes(
+    companyId: string,
+    ids: readonly string[],
+    intoDraftId?: string,
+  ): Promise<string> {
+    return this.api.invoice(companyId, ids, undefined, intoDraftId);
   }
 
   /**

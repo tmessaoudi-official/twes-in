@@ -18,6 +18,7 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
+use App\Module\DeliveryNotes\Application\InvoicingCheckRow;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
@@ -182,6 +183,80 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $held->cancel($this->clock->now());
         $this->invoicing->draftInvoice($this->company, [$mine->getId()], null);
         self::assertCount(2, $this->invoices->invoices, 'a cancelled draft holds no note');
+    }
+
+    public function testWhatDraftingWouldDoWithEachNoteIsSaidBeforeAndChangesNothing(): void
+    {
+        $mine = $this->note('BL-2026-00001');
+        $delivered = $this->note('BL-2026-00002');
+        $delivered->deliver($this->clock->now(), $this->clock->now());
+        $otherCustomers = $this->note('BL-2026-00003', customer: $this->customer($this->company, 'CLI-0002'));
+        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions)
+            ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);
+        $fromTheBranch = $this->note('BL-2026-00004', establishment: $branch);
+        $theirs = $this->note('BL-2026-00001', company: $this->globex);
+        $draft = DeliveryNote::create($this->company, $this->establishment($this->company), $this->customer, new DeliveryNoteHeader(), [new DeliveryNoteLineDetails(null, 'Pièce', '1', $this->unit('C62'), '10', [])], $this->clock->now());
+        $this->notes->save($draft);
+        $cancelled = $this->note('BL-2026-00005');
+        $cancelled->cancel($this->clock->now());
+        $invoiced = $this->note('BL-2026-00006');
+        $invoiced->markInvoiced(Uuid::v7(), $this->clock->now());
+        $held = $this->note('BL-2026-00007');
+        $this->invoicing->draftInvoice($this->company, [$held->getId()], null);
+        [$invoices, $entries] = [$this->invoices->invoices, $this->audit->entries];
+        $nobodys = Uuid::v7();
+
+        $rows = $this->invoicing->check($this->company, [$draft->getId(), $mine->getId(), $nobodys, $theirs->getId(), $delivered->getId(), $mine->getId(), $cancelled->getId(), $invoiced->getId(), $held->getId(), $otherCustomers->getId(), $fromTheBranch->getId()]);
+
+        self::assertSame(
+            [
+                [$draft->getId(), InvoicingCheckRow::DRAFT],
+                [$mine->getId(), null],
+                [$nobodys, InvoicingCheckRow::NOT_FOUND],
+                [$theirs->getId(), InvoicingCheckRow::NOT_FOUND],
+                [$delivered->getId(), null],
+                [$cancelled->getId(), InvoicingCheckRow::CANCELLED],
+                [$invoiced->getId(), InvoicingCheckRow::INVOICED],
+                [$held->getId(), InvoicingCheckRow::NOTHING_LEFT],
+                [$otherCustomers->getId(), InvoicingCheckRow::OTHER_CUSTOMER],
+                [$fromTheBranch->getId(), InvoicingCheckRow::OTHER_ESTABLISHMENT],
+            ],
+            array_map(static fn (InvoicingCheckRow $row): array => [$row->id, $row->skipped], $rows),
+            'each id once, in the order chosen, against the first note that can be invoiced',
+        );
+        self::assertSame([null, $mine, null], [$rows[2]->note, $rows[1]->note, $rows[3]->note], "another company's note reads as none");
+        self::assertSame([$invoices, $entries], [$this->invoices->invoices, $this->audit->entries], 'a check changes nothing');
+
+        $half = $this->note('BL-2026-00008', [new DeliveryNoteLineDetails(null, 'Pièce', '2', $this->unit('C62'), '10', [])]);
+        $this->invoicing->draftInvoice($this->company, [$half->getId()], null, [$half->getLines()[0]->getId()->toRfc4122() => '1']);
+        self::assertNull($this->invoicing->check($this->company, [$half->getId()])[0]->skipped, 'a line half taken still has its other half to invoice');
+
+        $rows = $this->invoicing->check($this->company, [$otherCustomers->getId(), $mine->getId()]);
+        self::assertSame([null, InvoicingCheckRow::OTHER_CUSTOMER], array_map(static fn (InvoicingCheckRow $row): ?string => $row->skipped, $rows), 'the first note that goes in names the customer');
+
+        $target = $this->invoicing->draftInvoice($this->company, [$mine->getId()], null);
+        $rows = $this->invoicing->check($this->company, [$otherCustomers->getId(), $delivered->getId(), $mine->getId()], $target->getId());
+        self::assertSame([InvoicingCheckRow::OTHER_CUSTOMER, null, InvoicingCheckRow::NOTHING_LEFT], array_map(static fn (InvoicingCheckRow $row): ?string => $row->skipped, $rows), 'a draft named takes the notes of its customer and establishment, and what it holds is taken');
+
+        foreach (['no note' => [], 'more than a page' => array_map(static fn (): Uuid => Uuid::v7(), range(1, InvoiceDeliveryNotes::MOST + 1))] as $case => $ids) {
+            try {
+                $this->invoicing->check($this->company, $ids);
+                self::fail("$case was checked");
+            } catch (\InvalidArgumentException $refused) {
+                self::assertStringContainsString('1 to '.InvoiceDeliveryNotes::MOST, $refused->getMessage(), $case);
+            }
+        }
+        try {
+            $this->invoicing->check($this->company, [$delivered->getId()], Uuid::v7());
+            self::fail('an invoice of no one was a target');
+        } catch (InvoiceNotFound) {
+        }
+        $target->cancel($this->clock->now());
+        try {
+            $this->invoicing->check($this->company, [$delivered->getId()], $target->getId());
+            self::fail('a cancelled invoice was a target');
+        } catch (InvoiceNotDraft) {
+        }
     }
 
     public function testNotesAreAddedToAnExistingDraftOfTheSameCustomerAfterItsOwnLinesAndAuditedAsARevision(): void

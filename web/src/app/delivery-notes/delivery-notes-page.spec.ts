@@ -95,6 +95,7 @@ describe('DeliveryNotesPage', () => {
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
+    hasModule: vi.fn(),
   };
   let fixture: ComponentFixture<DeliveryNotesPage>;
 
@@ -114,6 +115,7 @@ describe('DeliveryNotesPage', () => {
     facade.loadStatusCounts.mockReset().mockResolvedValue(undefined);
     statusCounts.set(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    auth.hasModule.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [DeliveryNotesPage],
       providers: [
@@ -181,7 +183,35 @@ describe('DeliveryNotesPage', () => {
     expect(q('delivery-note-add')).toBeNull();
   });
 
-  // docs/SPEC.md § 7, 2026-09-26: each status chip says how many it would list, as the API counts them.
+  it('lets whoever may draft an invoice select notes, and offers « Facturer » on them', async () => {
+    const box = q('list-select-row-n1')?.querySelector('input') as HTMLInputElement;
+    expect(box).not.toBeNull();
+    // A draft has no number yet: its box is named by its customer.
+    expect(q('list-select-row-n2')?.querySelector('input')?.getAttribute('aria-label')).toBe(
+      'delivery_notes.select_draft',
+    );
+    expect(q('delivery-notes-bulk-invoice')).toBeNull();
+
+    box.click();
+    await settle();
+    expect(q('delivery-notes-bulk-invoice')).not.toBeNull();
+  });
+
+  it('selects nothing for whoever may not draft an invoice, or while invoices are off', async () => {
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'invoice.write');
+    fixture = TestBed.createComponent(DeliveryNotesPage);
+    await settle();
+    expect(q('list-select-row-n1')).toBeNull();
+    expect(q('delivery-note-add')).not.toBeNull();
+
+    auth.hasPermission.mockReturnValue(true);
+    auth.hasModule.mockImplementation((module: string) => module !== 'invoices');
+    fixture = TestBed.createComponent(DeliveryNotesPage);
+    await settle();
+    expect(q('list-select-row-n1')).toBeNull();
+  });
+
+  // Each status chip says how many it would list, as the API counts them.
   it('asks the API what each status would list, and says it on the chips', async () => {
     expect(facade.loadStatusCounts).toHaveBeenCalledWith(
       'c1',
@@ -208,7 +238,7 @@ describe('DeliveryNotesPage', () => {
     expect(await count('list-facet-status-delivered')).toBe('3');
   });
 
-  it('names the key that opens a new note from here (docs/SPEC.md § 7, 2026-09-24 22:51)', () => {
+  it('names the key that opens a new note from here', () => {
     expect(q('delivery-note-add')?.getAttribute('aria-keyshortcuts')).toBe('n');
     expect(q('delivery-note-add')?.querySelector('kbd')?.textContent).toBe('N');
   });

@@ -12,6 +12,9 @@
 - [2026-10-16 10:40] ASSUMED (review): the move mapping is a curated file per context (drafted by the mover, edited by hand, committed with the move), and the test enforces only decidable rules (resource, processor, provider, OpenAPI decorator, entity, repository port and adapter, Doctrine type, exception, enum, DomainEvent) plus the cap; value object vs service is an allowed set. Basis: advisor round 1 item 5.
 - [2026-10-16 10:41] ASSUMED (review): Infrastructure/Doctrine/ stays flat (no Repository/, Query/, Type/ folders), under the 25-file cap: the reference keeps DoctrineBookRepository and DoctrineBookViewFinder side by side in Infrastructure/Doctrine/ (gh api repos/mtarld/apip-ddd tree, read 2026-10-16), and the AGREED ruling says follow the reference. Alternatives: the plan's Doctrine/{Repository,Query,Type}.
 - [2026-10-16 13:42] ASSUMED (review): the list stance gate keys a list as <template>#<descriptor> (selection, bulk, row actions per list; import, export per page), and every aspect not offered and not yet ruled reads « not ruled yet: the list × action matrix (step 7) »; only the 2026-10-11 rulings (row 260's row actions, 08:26's first bulk actions) give another reason — because step 7 is where the developer rules them and no product reason is invented before it (advisor agreed). Alternatives: per-page keys only; a product reason guessed per list.
+- [2026-10-16 14:22] ASSUMED (review): the list's three bulk facade methods for delivery notes (invoicingCheck, draftsToAddTo, invoiceNotes) throw DeliveryNotesRefused instead of setting the facade's error, because the list reads that error as a page that failed to load; the bulk bar says the failure as a toast. Basis: advisor agreed. Alternatives: reuse draftsOf/invoice and clear the error afterwards.
+- [2026-10-16 14:22] ASSUMED (review): the skipped-rows dialog for bulk actions is shared (web/src/app/shared/list/bulk-skipped-dialog.ts), its texts found under a caller-given prefix; the invoices' own dialog moves onto it at its next bulk slice (Known issues). Basis: advisor agreed. Alternatives: a dialog per feature.
+- [2026-10-16 14:22] ASSUMED (review): with no target draft, the invoicing check takes the first selected note that can go on an invoice as the reference customer and establishment, so the order the notes were ticked decides whose invoice is drafted; the others are named as another customer's before anything runs. Basis: advisor agreed. Alternatives: refuse a selection of several customers outright, or ask which customer.
 
 ## Formal Plan
 
@@ -72,7 +75,7 @@ Work in flight is rebased on the new paths only after the move of its context la
 | 5 | Docs and the expertise refresh | S | done | 1d6a0beb | CLAUDE.md docs/** .claude/** |
 | 6 | List stance gate | M | done | e209cd8f | scripts/gates/** web/src/app/** |
 | 7 | List × action matrix for ruling | S | doing | - | var/claude/** |
-| 8 | Ruled bulk actions | L | todo | - | api/src/** web/src/app/** |
+| 8 | Ruled bulk actions | L | doing | - | api/src/** web/src/app/** |
 | 9 | Lenses 54 and 55 in round 2's brief | S | todo | - | docs/plans/** var/claude/** |
 <!-- /progress-block -->
 ### Blocked
@@ -81,3 +84,4 @@ Work in flight is rebased on the new paths only after the move of its context la
 ### Needs research
 ### Fragile
 ### Known issues
+- `invoices/invoice-bulk-skipped-dialog.ts` and `shared/list/bulk-skipped-dialog.ts` say the same thing; the invoices' one adds the PDF's take-back boxes. Move invoices onto the shared one (boxes as an option) when its next bulk slice opens.

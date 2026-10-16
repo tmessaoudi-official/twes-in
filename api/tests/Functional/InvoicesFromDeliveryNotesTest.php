@@ -28,7 +28,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use Symfony\Component\HttpFoundation\Response;
 
-/** docs/SPEC.md § 7 (2026-09-14): an invoice drafted from delivery notes, and the notes it invoices once it is issued. */
+/** An invoice drafted from delivery notes, and the notes it invoices once it is issued. */
 final class InvoicesFromDeliveryNotesTest extends ApiTestCase
 {
     private const string ABSENT = '0192c3a4-0000-7000-8000-000000000000';
@@ -126,6 +126,79 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $this->postJson($this->invoicePath($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame([null, null, null], array_column($this->arrayAt($this->json(), 'lines'), 'sourceDeliveryNoteLineId'), 'a credit note invoices no delivery note');
+    }
+
+    /** Invoicing several notes at once says first which go on the invoice and why the rest do not. */
+    public function testWhatInvoicingSeveralNotesWouldTakeIsCheckedBeforeAndChangesNothing(): void
+    {
+        // Made before the first request: the test client's kernel reboots between requests.
+        $otherCustomer = $this->customer('CLI-0002')->getId()->toRfc4122();
+        $this->signedIn();
+        $first = $this->validatedNote();
+        $held = $this->validatedNote();
+        $other = $this->validatedNote(['customerId' => $otherCustomer]);
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$held]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $draft = $this->stringAt($this->json(), 'id');
+        $before = $this->em()->getConnection()->fetchOne('SELECT count(*) FROM audit_log');
+
+        $this->postJson($this->checkPath(), ['deliveryNoteIds' => [$other, self::ABSENT, $first, $held, $first]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $answer = $this->json();
+        $rows = $this->arrayAt($answer, 'rows');
+        self::assertSame([$other, self::ABSENT, $first, $held], array_column($rows, 'id'), 'each id once, in the order chosen');
+        self::assertSame(['included', 'skipped', 'skipped', 'skipped'], array_column($rows, 'outcome'));
+        self::assertSame([null, 'not_found', 'other_customer', 'nothing_left'], array_column($rows, 'reason'), 'the first note that can go on it names the customer');
+        self::assertSame([1, 3], [$answer['included'], $answer['skipped']]);
+        self::assertSame([$otherCustomer, $this->establishmentId()], [$answer['customerId'], $answer['establishmentId']], 'whose invoice the notes that go in make, to find its drafts');
+        self::assertIsString(array_column($rows, 'number')[0]);
+        self::assertSame([null, 'Carthage Conseil'], [array_column($rows, 'number')[1], array_column($rows, 'customerName')[2]]);
+        self::assertSame($before, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM audit_log'), 'a check changes nothing');
+
+        $this->postJson($this->checkPath(), ['deliveryNoteIds' => [$other, $first], 'invoiceId' => $draft]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame(['other_customer', null], array_column($this->arrayAt($this->json(), 'rows'), 'reason'), 'a draft named takes the notes of its customer');
+
+        foreach (['no note' => ['deliveryNoteIds' => []], 'more than a page' => ['deliveryNoteIds' => array_fill(0, 101, self::ABSENT)], 'not an id' => ['deliveryNoteIds' => ['x']], 'an invoice that is not an id' => ['deliveryNoteIds' => [$first], 'invoiceId' => 'x']] as $case => $body) {
+            $this->postJson($this->checkPath(), $body);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
+        }
+        $this->postJson($this->checkPath(), ['deliveryNoteIds' => [self::ABSENT]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame([0, null, null], [$this->json()['included'], $this->json()['customerId'], $this->json()['establishmentId']], 'no customer when nothing goes in');
+        $this->postJson($this->checkPath(), ['deliveryNoteIds' => [$first], 'invoiceId' => self::ABSENT]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'an invoice of no one');
+        $this->postJson($this->invoicePath($draft).'/cancel', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->checkPath(), ['deliveryNoteIds' => [$first], 'invoiceId' => $draft]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoice that is no draft any more');
+    }
+
+    public function testOnlyWhoMayDraftAnInvoiceChecksAndOnlyWhileBothModulesAreOn(): void
+    {
+        $mine = $this->persistedValidatedNote($this->company);
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['invoice.read', 'delivery_note.read', 'delivery_note.write'], 'reader');
+        $this->createSales();
+        $this->login('reader@twes.local', 'password-1234');
+        $this->postJson($this->checkPath(), ['deliveryNoteIds' => [$mine]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'without invoice.write');
+        $this->sendJson('POST', '/api/auth/logout');
+
+        $this->login('sales@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->companyPath().'/modules/accounting_export', ['enabled' => false]);
+        $this->sendJson('PUT', $this->companyPath().'/modules/recurring', ['enabled' => false]);
+        foreach (['delivery_notes', 'invoices'] as $module) {
+            $this->sendJson('PUT', $this->companyPath().'/modules/'.$module, ['enabled' => false]);
+            self::assertResponseIsSuccessful();
+            $this->postJson($this->checkPath(), ['deliveryNoteIds' => [$mine]]);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "with $module switched off");
+            $this->sendJson('PUT', $this->companyPath().'/modules/'.$module, ['enabled' => true]);
+            self::assertResponseIsSuccessful();
+        }
+        $this->postJson($this->checkPath(), ['deliveryNoteIds' => [$mine]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
     }
 
     /** docs/SPEC.md § 7: an invoice takes all or part of a note's lines, and the note is invoiced once nothing is left. */
@@ -307,7 +380,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
 
     public function testAnInvoiceDraftedFromNotesNamesTheLotEachLineHandedOverAndARevisionKeepsIt(): void
     {
-        // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: the lot handed over is the lot invoiced.
+        // The lot handed over is the lot invoiced.
         $this->signedIn();
         $product = $this->em()->find(Product::class, $this->productId);
         self::assertNotNull($product);
@@ -552,6 +625,11 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
     private function fromNotesPath(): string
     {
         return $this->companyPath().'/invoices/from-delivery-notes';
+    }
+
+    private function checkPath(): string
+    {
+        return $this->fromNotesPath().'/check';
     }
 
     private function invoicePath(?string $id = null): string
