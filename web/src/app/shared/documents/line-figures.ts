@@ -22,10 +22,14 @@ import { type LineFigures, negated } from './document-figures';
         class="flex cursor-pointer items-center gap-2 rounded-md px-1 text-end"
         [attr.aria-expanded]="open()"
         [attr.aria-controls]="testId() + '-details'"
-        [attr.aria-label]="'document_figures.toggle' | translate: { position: position() }"
         (click)="open.set(!open())"
         [attr.data-testid]="testId() + '-toggle'"
       >
+        <!-- Named by the figures it shows, after the line it is: an aria-label of the line alone would leave out the
+             words a speech user reads off it (WCAG 2.5.3). -->
+        <span class="sr-only">{{
+          'document_figures.toggle' | translate: { position: position() }
+        }}</span>
         <span
           >{{ 'document_figures.net' | translate }}
           <span class="font-semibold" [attr.data-testid]="testId() + '-net'">{{

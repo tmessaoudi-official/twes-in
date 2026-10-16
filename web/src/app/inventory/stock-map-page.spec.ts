@@ -2145,9 +2145,13 @@ describe('StockMapPage', () => {
     expect(layer.classList.contains('pointer-events-none')).toBe(true);
     expect(q('stock-structure-wall')).not.toBeNull();
 
+    expect(q('stock-layer-shown-structure')?.getAttribute('role')).toBe('switch');
+    expect(q('stock-layer-shown-structure')?.getAttribute('aria-checked')).toBe('true');
+    expect(q('stock-layer-locked-structure')?.getAttribute('aria-checked')).toBe('true');
     (q('stock-layer-shown-structure') as HTMLElement).click();
     await settle();
 
+    expect(q('stock-layer-shown-structure')?.getAttribute('aria-checked')).toBe('false');
     expect(q('stock-structure-layer')).toBeNull();
     // Hiding the building leaves the stock exactly where it was.
     expect(
@@ -2477,6 +2481,8 @@ describe('StockMapPage', () => {
   it('names the façade « Bientôt », and hides it when what is coming is hidden', async () => {
     expect(q('stock-map-view-plan')?.getAttribute('aria-pressed')).toBe('true');
     expect(q('stock-map-view-facade')?.getAttribute('aria-disabled')).toBe('true');
+    // Named by the words it shows, the sentence only described (WCAG 2.5.3, Label in Name).
+    expect(q('stock-map-view-facade')?.getAttribute('aria-label')).toBeNull();
     expect(q('stock-map-view-facade')?.querySelector('[data-testid="soon"]')).not.toBeNull();
 
     showComing.set(false);

@@ -3369,7 +3369,7 @@
   },
   "appearance": {
     "scheme_menu": "Theme: {{current}}",
-    "language_menu": "Language: {{current}}",
+    "language_menu": "Language: {{current}}, {{code}}",
     "schemes": {
       "auto": "Automatic",
       "light": "Light",

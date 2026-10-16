@@ -55,7 +55,7 @@
               <span class="twes-rail-label" aria-hidden="true">{{
                 'shell.create' | translate
               }}</span>
-              <kbd aria-hidden="true">{{ keyName(keys().create) }}</kbd>
+              <kbd aria-hidden="true" [attr.data-glyph]="keyName(keys().create)"></kbd>
             }
           </button>
         }
@@ -203,11 +203,17 @@
           </button>
         }
         @if (!handset() && me(); as me) {
+          <!-- Named with the name and role the row shows, in their order: a speech user says what they read. -->
           <button
             type="button"
             class="twes-rail-member"
             [matMenuTriggerFor]="account"
-            [attr.aria-label]="('shell.user_menu' | translate) + ' — ' + me.user.displayName"
+            [attr.aria-label]="
+              ('shell.user_menu' | translate) +
+              ' — ' +
+              me.user.displayName +
+              (me.company ? ', ' + ('roles.' + me.company.role | translate) : '')
+            "
             [matTooltip]="me.user.displayName"
             matTooltipPosition="right"
             [matTooltipDisabled]="!rail()"
@@ -216,14 +222,16 @@
             [attr.aria-current]="onAccount() ? 'page' : null"
             [class.is-current]="onAccount()"
           >
-            <span class="twes-avatar" aria-hidden="true">{{ initials() }}</span>
+            <span class="twes-avatar" aria-hidden="true" [attr.data-glyph]="initials()"></span>
             @if (!rail()) {
               <span class="twes-rail-member-text" aria-hidden="true">
                 <span class="truncate font-semibold" data-testid="user-name">{{
                   me.user.displayName
                 }}</span>
                 @if (me.company; as company) {
-                  <span class="twes-rail-member-role truncate">{{
+                  <!-- A space between the two lines, which Angular would otherwise drop: without it the name and
+                       role read as one word, to axe and to a screen reader alike. -->
+                  &ngsp;<span class="twes-rail-member-role truncate">{{
                     'roles.' + company.role | translate
                   }}</span>
                 }
@@ -260,7 +268,7 @@
             >
               <mat-icon aria-hidden="true">search</mat-icon>
               <span class="twes-command-open-label">{{ 'shell.commands.search' | translate }}</span>
-              <kbd aria-hidden="true">Ctrl K</kbd>
+              <kbd aria-hidden="true" data-glyph="Ctrl K"></kbd>
             </button>
           </div>
         }
@@ -362,7 +370,7 @@
                 data-testid="user-menu"
                 data-tour="shell-account"
               >
-                <span class="twes-avatar" aria-hidden="true">{{ initials() }}</span>
+                <span class="twes-avatar" aria-hidden="true" [attr.data-glyph]="initials()"></span>
               </button>
             }
           }

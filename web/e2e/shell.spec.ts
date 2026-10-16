@@ -464,7 +464,7 @@ test('a person gives « Créer » a key of their own in Préférences, which out
     await page.goto('/');
     await page.reload();
     await expect(page.getByTestId('greeting')).toBeVisible();
-    await expect(page.getByTestId('create-open').locator('kbd')).toHaveText('K');
+    await expect(page.getByTestId('create-open').locator('kbd')).toHaveAttribute('data-glyph', 'K');
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.keyboard.press('k');
     await expect(page.locator('[data-testid^="create-new-"]').first()).toBeVisible();

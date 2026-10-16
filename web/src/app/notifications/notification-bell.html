@@ -12,21 +12,19 @@
     [attr.data-unread]="unread()"
     data-testid="notification-bell"
   >
-    <!-- The badge sits on a wrapper, never on the hidden icon itself, which Material warns about on every render; the
-         count is in the button's name. -->
-    <span
-      class="inline-flex"
-      aria-hidden="true"
-      [matBadge]="badge()"
-      [matBadgeHidden]="unread() === 0 || !folded()"
-      matBadgeSize="small"
-      ><mat-icon>notifications</mat-icon></span
-    >
+    <!-- Folded, unread notifications are a dot on the icon, drawn with no text: Material's small badge keeps its count
+         as text, which is a label the name does not carry (WCAG 2.5.3). The count is in the button's name. -->
+    <span class="twes-bell-mark" aria-hidden="true"
+      ><mat-icon>notifications</mat-icon>
+      @if (unread() > 0 && folded()) {
+        <span class="twes-bell-dot" data-testid="notification-dot"></span>
+      }
+    </span>
     <span class="twes-rail-label" [class.sr-only]="folded()" aria-hidden="true">{{
       'notifications.title' | translate
     }}</span>
     @if (unread() > 0 && !folded()) {
-      <span class="twes-rail-count" aria-hidden="true">{{ badge() }}</span>
+      <span class="twes-rail-count" aria-hidden="true" [attr.data-glyph]="badge()"></span>
     }
   </button>
 } @else {
@@ -39,14 +37,17 @@
     [attr.data-unread]="unread()"
     data-testid="notification-bell"
   >
-    <span
-      class="inline-flex"
-      aria-hidden="true"
-      [matBadge]="badge()"
-      [matBadgeHidden]="unread() === 0"
-      matBadgeSize="medium"
-      matBadgeColor="warn"
-      ><mat-icon>notifications</mat-icon></span
-    >
+    <!-- The count is drawn, « 9+ » above nine, while the name says it exactly: drawn as text it would be a label the
+         name does not carry (WCAG 2.5.3). -->
+    <span class="twes-bell-mark" aria-hidden="true"
+      ><mat-icon>notifications</mat-icon>
+      @if (unread() > 0) {
+        <span
+          class="twes-bell-count"
+          [attr.data-glyph]="badge()"
+          data-testid="notification-count"
+        ></span>
+      }
+    </span>
   </button>
 }

@@ -90,6 +90,23 @@ describe('CompanySwitcher', () => {
     expect(root.querySelector('.twes-rail-company-mark')?.textContent?.trim()).toBe('G');
   });
 
+  it('is named on the rail by what it shows, never by an aria-label of the name alone', async () => {
+    // WCAG 2.5.3: the country and currency it shows are words a speech user reads off it.
+    const root = await render(globex);
+
+    const button = root.querySelector('[data-testid="company-switcher"]');
+    expect(button?.getAttribute('aria-label')).toBeNull();
+    expect(
+      button?.querySelector('.twes-rail-company-text')?.getAttribute('aria-hidden'),
+    ).toBeNull();
+    expect(button?.querySelector('[data-testid="company-name"]')?.textContent?.trim()).toBe(
+      'Globex',
+    );
+    // Its lines read as words of their own, not « GlobexTunisie ».
+    const words = button?.querySelector('.twes-rail-company-text')?.textContent;
+    expect(words?.replace(/\s+/g, ' ').trim()).toMatch(/^Globex \S/);
+  });
+
   it('shows beside each company what waits in it, and on the closed button what waits in the others', async () => {
     unreadByCompany.set({ c1: 4, c2: 3 });
     const root = await render(acme);

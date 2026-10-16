@@ -337,7 +337,8 @@ test('the sign-in page speaks the language chosen on it, after a reload too', as
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByTestId('language-menu')).toHaveAttribute(
     'aria-label',
-    /Language: English/,
+    // Ending with the code the button shows (WCAG 2.5.3).
+    /^Language: English, EN$/,
   );
 });
 

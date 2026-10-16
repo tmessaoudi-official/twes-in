@@ -3,12 +3,14 @@
        currency; a menu of the others when there are others, a plain block when there is one. -->
   @if (current(); as current) {
     @if (companies().length > 1) {
+      <!-- Named by what it shows, the name, country and currency, hidden but read when folded: an aria-label of the
+           name alone would leave out words a speech user reads off it (WCAG 2.5.3). -->
       <button
         type="button"
         class="twes-rail-company"
         [matMenuTriggerFor]="railMenu"
         [disabled]="switching()"
-        [appLabel]="current.name"
+        [matTooltip]="current.name"
         [matTooltipDisabled]="!folded()"
         matTooltipPosition="right"
         data-testid="company-switcher"
@@ -26,7 +28,8 @@
           <span class="twes-rail-company-name truncate" data-testid="company-name">{{
             current.name
           }}</span>
-          <span class="twes-rail-company-sub"
+          <!-- The space Angular would drop between the lines: they name the button, and must not read as one word. -->
+          &ngsp;<span class="twes-rail-company-sub"
             >{{ where() }}
             @if (elsewhere() > 0 && !folded()) {
               <app-count-badge
