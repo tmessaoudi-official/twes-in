@@ -36,7 +36,7 @@ final readonly class ReviseExpenseProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ExpensePermission::WRITE);
 
         try {
-            $expense = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'expenseId'), $data->input(), $this->guard->account()->getId());
+            $expense = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'expenseId'), $data->input(), $this->guard->account()->getId(), $data->version);
         } catch (ExpenseNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (ExpenseTransitionRefused $conflict) {

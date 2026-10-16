@@ -37,6 +37,7 @@ describe('ExpensesApi', () => {
     const pending = api.expense('c1', 'e 1');
     http.expectOne('/api/companies/c1/expenses/e%201').flush({
       id: 'e 1',
+      version: 4,
       status: 'recorded',
       date: '2026-09-10',
       description: 'Gasoil',
@@ -61,6 +62,7 @@ describe('ExpensesApi', () => {
 
     expect(await pending).toEqual({
       id: 'e 1',
+      version: 4,
       status: 'recorded',
       date: '2026-09-10',
       reference: null,
@@ -400,12 +402,29 @@ describe('ExpensesApi', () => {
     await expect(failing).rejects.toThrow();
   });
 
+  it('sends back the version it revises, and reads the one saved', async () => {
+    const revised = api.reviseExpense('c1', 'e1', fuel, 2);
+    const put = http.expectOne('/api/companies/c1/expenses/e1');
+    expect(put.request.body).toMatchObject({ version: 2, description: fuel.description });
+    put.flush({ id: 'e1', version: 3 });
+    expect((await revised).version).toBe(3);
+  });
+
   it('tells a refused expense from a refused category and a refused file', async () => {
-    const recorded = api.reviseExpense('c1', 'e1', fuel);
+    const recorded = api.reviseExpense('c1', 'e1', fuel, 1);
     http
       .expectOne('/api/companies/c1/expenses/e1')
       .flush(null, { status: 409, statusText: 'Conflict' });
     await expect(recorded).rejects.toEqual(new ExpensesRefused('not_draft'));
+
+    const changed = api.reviseExpense('c1', 'e1', fuel, 1);
+    http
+      .expectOne('/api/companies/c1/expenses/e1')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toEqual(new ExpensesRefused('record_changed'));
 
     const invalid = api.createExpense('c1', fuel);
     http
@@ -470,7 +489,7 @@ describe('ExpensesApi', () => {
       ],
     });
 
-    const revised = api.reviseExpense('c1', 'e1', fuel);
+    const revised = api.reviseExpense('c1', 'e1', fuel, 1);
     http
       .expectOne('/api/companies/c1/expenses/e1')
       .flush(violations('categoryId', 'unknown_choice'), unprocessable);

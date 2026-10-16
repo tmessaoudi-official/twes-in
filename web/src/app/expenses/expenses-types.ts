@@ -13,7 +13,8 @@ export type ExpensesError =
   | 'file_refused'
   | 'files_full'
   | 'file_too_large'
-  | 'period_closed';
+  | 'period_closed'
+  | 'record_changed';
 
 export type ExpenseStatus = 'draft' | 'recorded' | 'paid';
 
@@ -83,6 +84,8 @@ export interface ExpenseSearch {
 
 export interface ExpenseRow {
   id: string;
+  /** The version read, which a revision sends back; one saved since is refused as `record_changed`. */
+  version: number;
   status: ExpenseStatus;
   /** YYYY-MM-DD. */
   date: string;

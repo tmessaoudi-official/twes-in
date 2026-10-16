@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { filenameOf } from '../shared/files/save-file';
 import { isPeriodClosed } from '../shared/documents/period-closed';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import { isRecordChanged } from '../shared/errors/record-changed';
 import type {
   ApiCompaniesCompanyIdexpensesGetCollectionResponse,
   ExpenseAttachmentExpenseAttachmentRead,
@@ -13,6 +14,7 @@ import type {
   ExpenseCategoryExpenseCategoryWriteValidationExpenseCategoryWrite as ExpenseCategoryExpenseCategoryWrite,
   ExpenseExpensePayValidationExpensePay as ExpenseExpensePay,
   ExpenseExpenseRead,
+  ExpenseExpenseWriteRecordReviseValidationExpenseWriteRecordRevise as ExpenseExpenseRevise,
   ExpenseExpenseWriteValidationExpenseWrite as ExpenseExpenseWrite,
   ExpenseJsonldExpenseRead,
   ExpenseOptionsExpenseOptionsRead,
@@ -179,12 +181,21 @@ export class ExpensesApi {
     );
   }
 
-  /** 409 once the expense is no longer a draft. */
-  async reviseExpense(companyId: string, id: string, input: ExpenseInput): Promise<ExpenseRow> {
+  /**
+   * 409 once the expense is no longer a draft; `version` is the one the form was opened at, and a later one saved
+   * elsewhere answers `record_changed`.
+   */
+  async reviseExpense(
+    companyId: string,
+    id: string,
+    input: ExpenseInput,
+    version: number | null,
+  ): Promise<ExpenseRow> {
+    const body: ExpenseExpenseRevise = { ...toExpenseBody(input), version };
     return this.saving(async () =>
       toExpense(
         await firstValueFrom(
-          this.http.put<ExpenseExpenseRead>(path(companyId, 'expenses', id), toExpenseBody(input)),
+          this.http.put<ExpenseExpenseRead>(path(companyId, 'expenses', id), body),
         ),
       ),
     );
@@ -398,7 +409,7 @@ function codeOf(error: unknown, refusals: Refusals): ExpensesError {
     case 404:
       return 'not_found';
     case 409:
-      return refusals.conflict;
+      return isRecordChanged(error.error) ? 'record_changed' : refusals.conflict;
     case 413:
       return 'file_too_large';
     default:
@@ -415,6 +426,8 @@ const attachmentsPath = (companyId: string, expenseId: string): string =>
 function toExpense(raw: ExpenseExpenseRead | ExpenseJsonldExpenseRead): ExpenseRow {
   return {
     id: raw.id ?? '',
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
     status: raw.status ?? 'draft',
     date: raw.date ?? '',
     reference: raw.reference ?? null,

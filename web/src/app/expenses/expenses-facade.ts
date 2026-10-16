@@ -120,8 +120,9 @@ export class ExpensesFacade {
     companyId: string,
     id: string,
     input: ExpenseInput,
+    version: number | null,
   ): Promise<ExpenseRow | null> {
-    return this.save(() => this.api.reviseExpense(companyId, id, input));
+    return this.save(() => this.api.reviseExpense(companyId, id, input, version));
   }
 
   async recordExpense(companyId: string, id: string): Promise<ExpenseRow | null> {

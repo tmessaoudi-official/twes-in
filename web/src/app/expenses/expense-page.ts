@@ -199,6 +199,7 @@ export class ExpensePage {
       const current = this.current();
       return current ? expenseValues(current, todayIn(this.company()?.timezone)) : null;
     },
+    version: () => this.current()?.version ?? null,
     // The bill is one field: a line is never merged with another person's.
     parts: [
       {
@@ -507,10 +508,22 @@ export class ExpensePage {
       } else {
         this.showRefused();
       }
-    } else if ((await this.facade.reviseExpense(companyId, id, input)) !== null) {
+    } else if (
+      (await this.facade.reviseExpense(companyId, id, input, this.sync.version())) !== null
+    ) {
       const form = this.form();
       if (form !== null) this.sync.savedHere(form);
       this.feedback.success('expenses.saved');
+    } else {
+      await this.refused();
+    }
+  }
+
+  /** A save made over a version saved since is merged and said; any other refusal is shown where it belongs. */
+  private async refused(): Promise<void> {
+    if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     } else {
       this.showRefused();
     }
@@ -538,10 +551,10 @@ export class ExpensePage {
     if (form.invalid) return;
     const input = this.inputOf(form.getRawValue());
     if (input === null) return;
-    if (
-      (await this.facade.reviseExpense(companyId, id, input)) === null ||
-      (await this.facade.recordExpense(companyId, id)) === null
-    ) {
+    if ((await this.facade.reviseExpense(companyId, id, input, this.sync.version())) === null) {
+      // Nothing is recorded over a version this form never showed.
+      await this.refused();
+    } else if ((await this.facade.recordExpense(companyId, id)) === null) {
       this.showRefused();
     }
   }

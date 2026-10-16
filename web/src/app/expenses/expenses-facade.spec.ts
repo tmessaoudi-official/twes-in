@@ -20,6 +20,7 @@ const input: ExpenseInput = {
 const draft: ExpenseRow = {
   ...input,
   id: 'e1',
+  version: 1,
   status: 'draft',
   vendorName: null,
   categoryName: 'Carburant',

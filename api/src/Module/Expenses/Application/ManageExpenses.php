@@ -36,6 +36,8 @@ use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\Tree;
 use App\Shared\Domain\ValueObject\Page;
@@ -78,6 +80,7 @@ final readonly class ManageExpenses
         private Transactions $transactions,
         private ModuleStates $modules,
         private FiscalPresets $presets,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -158,14 +161,20 @@ final readonly class ManageExpenses
     }
 
     /**
+     * `$version` is the one the editor opened; a save over a later one is refused before anything is changed.
+     *
      * @throws ExpenseNotFound
      * @throws ExpenseTransitionRefused
      * @throws InvalidExpense
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, ExpenseInput $input, ?Uuid $actorUserId): Expense
+    public function revise(Company $company, Uuid $id, ExpenseInput $input, ?Uuid $actorUserId, ?int $version = null): Expense
     {
-        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Expense {
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): Expense {
             $expense = $this->get($company, $id);
+            if (null !== $version) {
+                $this->versions->expect($expense, $version);
+            }
             $expense->assertDraft('revised');
             $changed = $expense->revise($input->details, $this->amounts($company, $input), $this->vendor($company, $input->vendorId, $expense->getVendor()), $this->category($company, $input->categoryId), $this->scales->of($company->getCurrency()), $this->presets->get($company->getFiscalPreset())->vatRoundingPoint, $this->clock->now());
             if ([] !== $changed) {
