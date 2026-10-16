@@ -62,7 +62,7 @@ Before changing anything ruled: `git log -S"<phrase>" docs/SPEC.md` finds the §
 
 ## 3. UX and design-system rulings (behaviour-changing; screens must obey)
 - Inter + Material Symbols are self-hosted, NEVER loaded from Google; the icon font is cut at build to declared icons only.  [Ruled: user 2026-09-13]
-- Accent is any hex turned into tonal palettes at runtime; `@material/material-color-utilities` is pinned EXACTLY (0.4.0 since 2026-10-03); it ships extensionless ESM imports, so `web/vitest.config.ts` has Vitest inline it.  [Ruled: user 2026-09-13, 2026-10-03]
+- Accent is any hex turned into tonal palettes at runtime; `@material/material-color-utilities` is pinned EXACTLY (0.4.0 since 2026-10-03); it ships extensionless ESM imports, so `web/vitest.config.mts` has Vitest inline it.  [Ruled: user 2026-09-13, 2026-10-03]
 - Screens are descriptors: every list is `DataList` over a `ListDescriptor`, every form `DescriptorForm` over a `FormDescriptor`; no bespoke list/form; every list column declares the width it HOLDS; reorder/resize need a non-drag alternative (WCAG 2.5.7).  [Ruled: user 2026-09-13]
 - Figures use the company-country interface locale (`fr-TN`: "2 975,000", dd/mm/yyyy) only through the `amount`/`day`/`moment` pipes; money is formatted from the decimal STRING, never a float; decimal inputs accept comma or point, the API stays point.  [Ruled: user 2026-09-15, amended 2026-09-19]
 - "What day is it in a time zone" has ONE implementation (`shared/i18n/format.ts` `todayIn`); duplicating it caused a 422 for browsers whose day ran ahead of the company's.  [Ruled: user 2026-09-16]

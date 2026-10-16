@@ -538,3 +538,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   (`XlsxPercentCells` reads `styles.xml` for it), and a template column formatted as Text is a `<col style>` the writer adds
   once openspout has closed the file. A row whose cells are all empty is never written, so formatting empty rows in
   advance is no way round it (2026-10-16).
+- Move classes with `scripts/refactor/move-classes.py` and prove the move with `scripts/refactor/layout-oracle.sh`. The mover
+  rewrites names and `src/<path>` strings only: a path relative to `src/Module` (`ModuleBoundariesTest`'s keys) and a gate
+  test's `mkdir` of a fixture folder are followed by hand. A class moved into a folder of its own changes API Platform's
+  discovery order, which the oracle reads as another order, not another content; two routes that can match one request
+  must not change places (2026-10-16; flagged for the next expertise refresh).

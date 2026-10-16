@@ -68,7 +68,7 @@ Work in flight is rebased on the new paths only after the move of its context la
 | 2 | The class mover, dry run first | M | done | 419c0077 | scripts/refactor/** |
 | 3 | The oracle: OpenAPI and router byte-identical | S | done | 419c0077 | scripts/refactor/** |
 | 4 | Move context by context | L | done | 8217b242 | api/src/** api/tests/** |
-| 5 | Docs and the expertise refresh | S | doing | 8217b242 | CLAUDE.md docs/** .claude/** |
+| 5 | Docs and the expertise refresh | S | done | 1d6a0beb | CLAUDE.md docs/** .claude/** |
 | 6 | List stance gate | M | todo | - | scripts/gates/** web/src/app/** |
 | 7 | List × action matrix for ruling | S | todo | - | var/claude/** |
 | 8 | Ruled bulk actions | L | todo | - | api/src/** web/src/app/** |
