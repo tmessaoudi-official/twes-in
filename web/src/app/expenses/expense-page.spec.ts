@@ -93,6 +93,7 @@ const tunisian: ExpenseOptions = {
 };
 const draft: ExpenseRow = {
   id: 'e1',
+  version: 1,
   status: 'draft',
   date: '2026-09-10',
   reference: null,
@@ -160,6 +161,7 @@ describe('ExpensePage', () => {
     createExpense: vi.fn(),
     reviseExpense: vi.fn(),
     recordExpense: vi.fn(),
+    clearError: vi.fn(),
     payExpense: vi.fn(),
     classifyWithholding: vi.fn(),
     deleteExpense: vi.fn(),
@@ -375,6 +377,7 @@ describe('ExpensePage', () => {
         vendorId: 'v1',
         payee: null,
       }),
+      1,
     );
   });
 
@@ -404,6 +407,7 @@ describe('ExpensePage', () => {
       'c1',
       'e1',
       expect.objectContaining({ lines: [{ amountNet: '120', taxComponentIds: ['t1'] }] }),
+      1,
     );
     expect(facade.recordExpense).toHaveBeenCalledWith('c1', 'e1');
     expect(facade.reviseExpense.mock.invocationCallOrder[0]).toBeLessThan(
@@ -415,6 +419,65 @@ describe('ExpensePage', () => {
     q('expense-record')!.click();
     await settle();
     expect(facade.recordExpense).not.toHaveBeenCalled();
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    expense.set(draft);
+    await open('e1');
+    facade.reviseExpense.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.clearError.mockImplementationOnce(() => error.set(null));
+    facade.loadExpense.mockImplementationOnce(async () =>
+      expense.set({ ...draft, version: 2, reference: 'FA-77' }),
+    );
+
+    type('field-description', 'Gasoil octobre');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-reference') as HTMLInputElement).value).toBe('FA-77'));
+
+    expect((q('field-description') as HTMLInputElement).value).toBe('Gasoil octobre');
+    expect(error()).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseExpense).toHaveBeenLastCalledWith(
+      'c1',
+      'e1',
+      expect.objectContaining({ description: 'Gasoil octobre', reference: 'FA-77' }),
+      2,
+    );
+  });
+
+  it('records nothing over a version saved since: it merges it first', async () => {
+    expense.set(draft);
+    await open('e1');
+    facade.reviseExpense.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.clearError.mockImplementationOnce(() => error.set(null));
+    facade.loadExpense.mockImplementationOnce(async () =>
+      expense.set({ ...draft, version: 2, reference: 'FA-77' }),
+    );
+
+    q('expense-record')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-reference') as HTMLInputElement).value).toBe('FA-77'));
+    expect(facade.recordExpense).not.toHaveBeenCalled();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
   });
 
   it('pays a recorded expense, which can no longer be edited or deleted', async () => {
@@ -801,6 +864,7 @@ describe('ExpensePage', () => {
           documentTaxComponentIds: ['s1'],
           printedTaxes: [{ code: 'TVA19', amount: '191.9' }],
         }),
+        1,
       );
     });
 

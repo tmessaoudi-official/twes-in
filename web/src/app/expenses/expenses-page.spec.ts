@@ -40,6 +40,7 @@ class StaticLoader implements TranslateLoader {
 
 const fuel: ExpenseRow = {
   id: 'e1',
+  version: 1,
   status: 'recorded',
   date: '2026-09-10',
   reference: null,

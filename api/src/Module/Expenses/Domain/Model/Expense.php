@@ -150,6 +150,11 @@ class Expense implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /** Doctrine counts each save, so an editor of an older version is told rather than overwriting it. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     private function __construct(Company $company, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
@@ -333,7 +338,10 @@ class Expense implements CompanyOwned
         }
         $figures = $this->figures($amounts, $currencyScale, $rounding);
 
-        $this->date = $details->date;
+        // Doctrine compares a date by its instance: a new one of the same day would be written, and count as a save.
+        if (!isset($this->date) || $this->date->format('Y-m-d') !== $details->date->format('Y-m-d')) {
+            $this->date = $details->date;
+        }
         $this->reference = $details->reference;
         $this->description = $details->description;
         $this->vendor = $vendor;
@@ -521,6 +529,11 @@ class Expense implements CompanyOwned
     public function getId(): Uuid
     {
         return $this->id;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getCompany(): Company

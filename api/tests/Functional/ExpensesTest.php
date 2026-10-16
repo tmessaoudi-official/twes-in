@@ -119,6 +119,68 @@ final class ExpensesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_METHOD_NOT_ALLOWED);
     }
 
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $this->postJson($this->path(), $this->expense());
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->expense(['version' => 1, 'description' => 'Gasoil octobre']));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->expense(['version' => 1, 'description' => 'Gasoil novembre']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path($id));
+        self::assertSame(['Gasoil octobre', 2], [$this->json()['description'], $this->json()['version']]);
+    }
+
+    public function testARevisionOfItsLinesAloneMovesTheVersion(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $taxed = $this->line('100')[0];
+        $free = $this->line('50', false)[0];
+        $this->postJson($this->path(), $this->expense(['lines' => [$taxed, $free]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $gross = $this->json()['amountGross'];
+
+        // The same lines in another order: every total stays, and only the lines say the expense changed.
+        $this->sendJson('PUT', $this->path($id), $this->expense(['version' => 1, 'lines' => [$free, $taxed]]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame($gross, $this->json()['amountGross']);
+        self::assertSame(2, $this->json()['version']);
+        $this->sendJson('PUT', $this->path($id), $this->expense(['version' => 1, 'description' => 'Gasoil octobre']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $this->postJson($this->path(), $this->expense());
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->expense(['version' => 1]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+    }
+
+    public function testARevisionSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $this->postJson($this->path(), $this->expense());
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->expense(['description' => 'Gasoil octobre']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
+    }
+
     public function testAWriterDraftsAnExpenseWhoseFiguresComeFromTheNetAndTheRate(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);
@@ -170,7 +232,7 @@ final class ExpensesTest extends ApiTestCase
         $this->postJson($this->path(), $this->expense());
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a vendor named while Vendors is off');
         self::assertStringContainsString('vendorId', (string) $this->client->getResponse()->getContent());
-        $this->sendJson('PUT', $this->path($fromVendor), $this->expense(['description' => 'Gasoil octobre']));
+        $this->sendJson('PUT', $this->path($fromVendor), $this->expense(['version' => 1, 'description' => 'Gasoil octobre']));
         self::assertResponseIsSuccessful();
         self::assertSame(['Gasoil octobre', 'Sotumag'], [$this->json()['description'], $this->json()['vendorName']], 'a draft keeps the vendor it has');
         $this->getJson($this->companyPath().'/expense-options/vendors');
@@ -242,7 +304,7 @@ final class ExpensesTest extends ApiTestCase
         // A revision answers the same way.
         $this->postJson($this->path(), $this->expense());
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        $this->sendJson('PUT', $this->path($this->stringAt($this->json(), 'id')), $this->expense(['categoryId' => $absent]));
+        $this->sendJson('PUT', $this->path($this->stringAt($this->json(), 'id')), $this->expense(['version' => 1, 'categoryId' => $absent]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame([['propertyPath' => 'categoryId', 'reason' => 'unknown_choice', 'params' => []]], $this->refusals());
     }
@@ -260,7 +322,7 @@ final class ExpensesTest extends ApiTestCase
         $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'cash', 'paidOn' => $today->format('Y-m-d')]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not paid');
 
-        $this->sendJson('PUT', $this->path($id), $this->expense(['date' => $today->modify('-10 days')->format('Y-m-d'), 'categoryId' => $this->category('Carburant'), 'lines' => $this->line('200')]));
+        $this->sendJson('PUT', $this->path($id), $this->expense(['version' => 1, 'date' => $today->modify('-10 days')->format('Y-m-d'), 'categoryId' => $this->category('Carburant'), 'lines' => $this->line('200')]));
         self::assertResponseIsSuccessful();
         $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'expense.revised'");
         self::assertIsString($changes);
@@ -269,8 +331,9 @@ final class ExpensesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame('recorded', $this->json()['status']);
 
-        $this->sendJson('PUT', $this->path($id), $this->expense(['categoryId' => null]));
+        $this->sendJson('PUT', $this->path($id), $this->expense(['version' => $this->versionOf($id), 'categoryId' => null]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertStringNotContainsString('record-changed', (string) $this->client->getResponse()->getContent(), 'refused as recorded, not as stale');
         foreach (['paid_before_expense' => $today->modify('-11 days'), 'paid_after_today' => $today->modify('+1 day')] as $reason => $impossible) {
             $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'cash', 'paidOn' => $impossible->format('Y-m-d')]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $impossible->format('Y-m-d'));
@@ -581,7 +644,7 @@ final class ExpensesTest extends ApiTestCase
         $this->signedIn(['expense.read', 'expense.write', 'vendor.read', 'vendor.write']);
         $fuel = $this->category('Carburant');
         $vendorPath = $this->companyPath().'/vendors/'.$this->vendor->getId()->toRfc4122();
-        $body = ['number' => 'FRN-0001', 'name' => 'Sotumag', 'identifiers' => [], 'paymentTermsDays' => 30, 'isActive' => true];
+        $body = ['version' => 1, 'number' => 'FRN-0001', 'name' => 'Sotumag', 'identifiers' => [], 'paymentTermsDays' => 30, 'isActive' => true];
 
         $this->sendJson('PUT', $vendorPath, [...$body, 'defaultExpenseCategoryId' => '01920000-0000-7000-8000-000000000000']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -901,6 +964,14 @@ final class ExpensesTest extends ApiTestCase
     private function companyPath(): string
     {
         return '/api/companies/'.$this->company->getId()->toRfc4122();
+    }
+
+    private function versionOf(string $expenseId): int
+    {
+        $version = $this->em()->getConnection()->fetchOne('SELECT version FROM expense WHERE id = ?', [$expenseId]);
+        self::assertIsInt($version);
+
+        return $version;
     }
 
     private function path(?string $expenseId = null): string

@@ -37,6 +37,7 @@ use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\ReviseExpense
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Provider\ExpenseCollectionProvider;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Provider\ExpenseItemProvider;
 use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -96,8 +97,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/expenses/{expenseId}',
@@ -156,6 +157,12 @@ final class ExpenseResource
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
     public ?string $id = null;
+
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
 
     /** draft, recorded or paid. */
     #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => ['draft', 'recorded', 'paid']])]
@@ -382,6 +389,7 @@ final class ExpenseResource
         $amount = static fn (string $stored): string => Decimal::format(Decimal::of($stored), $currencyScale);
         $resource = new self();
         $resource->id = $expense->getId()->toRfc4122();
+        $resource->version = $expense->getVersion();
         $resource->status = $expense->getStatus()->value;
         $resource->date = $expense->getDate()->format('Y-m-d');
         $resource->reference = $expense->getReference();
