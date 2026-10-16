@@ -3,7 +3,7 @@
 import { inject, Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
-import { StepUpDialog, type StepUpReason } from './step-up-dialog';
+import type { StepUpDialog, StepUpReason } from './step-up-dialog';
 
 /**
  * Asks the signed-in person to prove who they are again, before something a stranger at the same screen must not be
@@ -20,7 +20,9 @@ export class StepUp {
    * of the sentence saying why; leaving customer view's is the default.
    */
   async request(intro = 'step_up.intro'): Promise<boolean> {
-    const ref = this.dialog.open<StepUpDialog, StepUpReason, boolean>(StepUpDialog, {
+    // Loaded when first asked: the service is reached from the first page, which has no room for the dialog itself.
+    const component = (await import('./step-up-dialog')).StepUpDialog;
+    const ref = this.dialog.open<StepUpDialog, StepUpReason, boolean>(component, {
       data: { intro },
       autoFocus: 'first-tabbable',
       disableClose: false,
