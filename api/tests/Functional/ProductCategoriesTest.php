@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Domain\Model\Unit;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductCategory;
-use App\Module\Products\Domain\ProductDetails;
-use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Model\ProductCategory;
+use App\Module\Products\Domain\ValueObject\ProductDetails;
+use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 

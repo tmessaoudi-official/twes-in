@@ -12,7 +12,7 @@ namespace App\Module\DeliveryNotes\Domain\Model;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteLineDetails;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\Common\Collections\ArrayCollection;

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Application\Chain;
 
-use App\Module\Invoices\Domain\ChainSeries;
+use App\Module\Invoices\Domain\ValueObject\ChainSeries;
 
 /** A place where a series' chain does not hold, and why. */
 final readonly class ChainBreak

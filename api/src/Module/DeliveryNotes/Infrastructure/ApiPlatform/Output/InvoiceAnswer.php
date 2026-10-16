@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output;
 
-use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\Model\Invoice;
 use App\Tenancy\Domain\Company;
 
 /**

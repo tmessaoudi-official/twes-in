@@ -9,11 +9,11 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
-use App\Module\Invoices\Domain\ChainSeries;
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Domain\InvoiceChainHead;
-use App\Module\Invoices\Domain\InvoiceChainStore;
-use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\Model\InvoiceChainHead;
+use App\Module\Invoices\Domain\Service\InvoiceChainStore;
+use App\Module\Invoices\Domain\ValueObject\ChainSeries;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use Doctrine\ORM\EntityManagerInterface;

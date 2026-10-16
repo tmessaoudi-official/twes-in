@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Domain;
 
-use App\Module\Inventory\Domain\InvalidStockLocation;
-use App\Module\Inventory\Domain\StockLocation;
-use App\Module\Inventory\Domain\StockLocationKind;
+use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
+use App\Module\Inventory\Domain\Model\StockLocation;
+use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Venue\Domain\Model\VenueArea;

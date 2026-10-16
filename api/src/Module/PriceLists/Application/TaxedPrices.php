@@ -11,7 +11,7 @@ namespace App\Module\PriceLists\Application;
 
 use App\Fiscal\Domain\Calculation\InvalidDocument;
 use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 
 /**
  * What a customer pays for a product at a price, taxes included, counted as the documents count it. A port this module

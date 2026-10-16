@@ -29,12 +29,12 @@ final class ModuleBoundariesTest extends TestCase
      */
     private const array AWAITING_A_RULING = [
         'DeliveryNotes/Infrastructure/ApiPlatform/State/Provider/DeliveryNoteCustomerPickProvider.php' => 'App\Module\Customers\Application\PickCustomers',
-        'Invoices/Infrastructure/ApiPlatform/InvoiceCustomerPickProvider.php' => 'App\Module\Customers\Application\PickCustomers',
+        'Invoices/Infrastructure/ApiPlatform/State/Provider/InvoiceCustomerPickProvider.php' => 'App\Module\Customers\Application\PickCustomers',
         'DeliveryNotes/Infrastructure/ApiPlatform/State/Provider/DeliveryNoteProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
-        'Inventory/Infrastructure/ApiPlatform/StockProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
-        'Invoices/Infrastructure/ApiPlatform/InvoiceProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
+        'Inventory/Infrastructure/ApiPlatform/State/Provider/StockProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
+        'Invoices/Infrastructure/ApiPlatform/State/Provider/InvoiceProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
         'Expenses/Infrastructure/ApiPlatform/State/Provider/ExpenseVendorPickProvider.php' => 'App\Module\Vendors\Application\PickVendors',
-        'Inventory/Infrastructure/ApiPlatform/StockVendorPickProvider.php' => 'App\Module\Vendors\Application\PickVendors',
+        'Inventory/Infrastructure/ApiPlatform/State/Provider/StockVendorPickProvider.php' => 'App\Module\Vendors\Application\PickVendors',
     ];
 
     public function testAModuleNamesNoClassOfAnotherThatRuns(): void

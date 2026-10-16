@@ -11,7 +11,7 @@ namespace App\Module\Products\Infrastructure\PriceLists;
 
 use App\Module\PriceLists\Application\TaxedPrices;
 use App\Module\Products\Application\CustomerPrice;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 
 /** Answers the price lists' `TaxedPrices` port with the price check this module shows everywhere. */
 final readonly class CustomerTaxedPrices implements TaxedPrices

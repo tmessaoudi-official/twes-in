@@ -9,12 +9,12 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Application;
 
-use App\Module\Products\Domain\InvalidProduct;
-use App\Module\Products\Domain\ProductCategory;
-use App\Module\Products\Domain\ProductCategoryRepository;
-use App\Module\Products\Domain\ProductReferenceSequenceRepository;
-use App\Module\Products\Domain\ProductRepository;
-use App\Module\Products\Domain\ReferenceFormat;
+use App\Module\Products\Domain\Exception\InvalidProduct;
+use App\Module\Products\Domain\Model\ProductCategory;
+use App\Module\Products\Domain\Repository\ProductCategoryRepository;
+use App\Module\Products\Domain\Repository\ProductReferenceSequenceRepository;
+use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Module\Products\Domain\ValueObject\ReferenceFormat;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;

@@ -9,11 +9,11 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Http;
 
-use App\Module\Invoices\Application\InvoiceCopy;
 use App\Module\Invoices\Application\InvoiceNotFound;
-use App\Module\Invoices\Application\NoCopyOfADraft;
-use App\Module\Invoices\Application\PrintInvoice;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
+use App\Module\Invoices\Application\Print\InvoiceCopy;
+use App\Module\Invoices\Application\Print\NoCopyOfADraft;
+use App\Module\Invoices\Application\Print\PrintInvoice;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;

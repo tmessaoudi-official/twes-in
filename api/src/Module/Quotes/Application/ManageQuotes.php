@@ -23,7 +23,7 @@ use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
-use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Quotes\Domain\Exception\InvalidQuote;
 use App\Module\Quotes\Domain\Exception\QuoteNotDraft;
 use App\Module\Quotes\Domain\Model\Quote;

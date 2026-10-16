@@ -1,0 +1,52 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Module\Products\Infrastructure\ApiPlatform\State\Processor;
+
+use ApiPlatform\Metadata\Operation;
+use ApiPlatform\State\ProcessorInterface;
+use App\Module\Products\Application\ManageProducts;
+use App\Module\Products\Application\Photo\ProductPhotos;
+use App\Module\Products\Application\ProductBarcodeTaken;
+use App\Module\Products\Application\ProductNotFound;
+use App\Module\Products\Application\ProductReferenceTaken;
+use App\Module\Products\Domain\Exception\InvalidProduct;
+use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource;
+use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Infrastructure\ApiPlatform\DomainRule;
+use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
+use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
+/** @implements ProcessorInterface<ProductResource, ProductResource> */
+final readonly class ReviseProductProcessor implements ProcessorInterface
+{
+    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private ProductPhotos $photos)
+    {
+    }
+
+    public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): ProductResource
+    {
+        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::WRITE);
+
+        try {
+            $seesCosts = $this->guard->may($company, ProductPermission::COST_READ);
+            $product = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'productId'), $data->input($seesCosts), $this->guard->account()->getId());
+        } catch (ProductNotFound $absent) {
+            throw new NotFoundHttpException('No such product.', $absent);
+        } catch (ProductReferenceTaken|ProductBarcodeTaken $taken) {
+            throw new ConflictHttpException($taken->getMessage(), $taken);
+        } catch (InvalidProduct $refused) {
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
+        }
+
+        return ProductResource::of($product, $seesCosts, $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null);
+    }
+}

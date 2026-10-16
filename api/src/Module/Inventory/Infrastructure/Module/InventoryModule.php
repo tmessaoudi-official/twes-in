@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Infrastructure\Module;
 
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
-use App\Module\Inventory\Infrastructure\ApiPlatform\StockPermission;
+use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\ModuleRegistry\Application\DeclaresModule;
 use App\ModuleRegistry\Application\ModuleManifest;

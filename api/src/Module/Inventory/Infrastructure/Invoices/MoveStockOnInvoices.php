@@ -13,9 +13,9 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveredQuantity;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
 use App\Module\Inventory\Application\SourceDeliveryNotes;
 use App\Module\Inventory\Application\TellStockKeepers;
-use App\Module\Invoices\Domain\InvoicedQuantity;
-use App\Module\Invoices\Domain\InvoiceIssued;
-use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Invoices\Domain\Event\InvoiceIssued;
+use App\Module\Invoices\Domain\ValueObject\InvoicedQuantity;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 

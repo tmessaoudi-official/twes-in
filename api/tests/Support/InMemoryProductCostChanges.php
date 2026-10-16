@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Products\Domain\ProductCostChange;
-use App\Module\Products\Domain\ProductCostChangeRepository;
+use App\Module\Products\Domain\Model\ProductCostChange;
+use App\Module\Products\Domain\Repository\ProductCostChangeRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryProductCostChanges implements ProductCostChangeRepository

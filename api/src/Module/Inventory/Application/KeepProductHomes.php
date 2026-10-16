@@ -11,12 +11,12 @@ namespace App\Module\Inventory\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\Inventory\Domain\InvalidStockLocation;
-use App\Module\Inventory\Domain\ProductHomeLocation;
-use App\Module\Inventory\Domain\ProductHomeLocationRepository;
-use App\Module\Inventory\Domain\StockLocationRepository;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductRepository;
+use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
+use App\Module\Inventory\Domain\Model\ProductHomeLocation;
+use App\Module\Inventory\Domain\Repository\ProductHomeLocationRepository;
+use App\Module\Inventory\Domain\Repository\StockLocationRepository;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Tree;
 use App\Tenancy\Domain\Company;

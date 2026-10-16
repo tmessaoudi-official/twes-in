@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Recurring;
 
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Recurring\Application\RecurringModel;
 use App\Module\Recurring\Application\RecurringModels;
 use App\Tenancy\Domain\Company;

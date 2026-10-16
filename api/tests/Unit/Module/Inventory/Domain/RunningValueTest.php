@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Domain;
 
-use App\Module\Inventory\Domain\RunningValue;
+use App\Module\Inventory\Domain\ValueObject\RunningValue;
 use PHPUnit\Framework\TestCase;
 
 final class RunningValueTest extends TestCase

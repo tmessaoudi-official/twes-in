@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Invoices\Application\DepositQuotes;
+use App\Module\Invoices\Application\Deposit\DepositQuotes;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

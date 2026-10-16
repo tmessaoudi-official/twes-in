@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Doctrine;
 
-use App\Module\Inventory\Domain\StockLocation;
-use App\Module\Inventory\Domain\StockLocationRepository;
+use App\Module\Inventory\Domain\Model\StockLocation;
+use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

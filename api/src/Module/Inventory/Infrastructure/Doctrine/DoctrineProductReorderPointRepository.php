@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Doctrine;
 
-use App\Module\Inventory\Domain\ProductReorderPoint;
-use App\Module\Inventory\Domain\ProductReorderPointRepository;
+use App\Module\Inventory\Domain\Model\ProductReorderPoint;
+use App\Module\Inventory\Domain\Repository\ProductReorderPointRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

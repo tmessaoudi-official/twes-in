@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Domain;
 
-use App\Module\Inventory\Domain\WeightedAverageCost;
+use App\Module\Inventory\Domain\Service\WeightedAverageCost;
 use PHPUnit\Framework\TestCase;
 
 final class WeightedAverageCostTest extends TestCase

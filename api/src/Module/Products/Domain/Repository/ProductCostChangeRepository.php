@@ -1,0 +1,21 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Module\Products\Domain\Repository;
+
+use App\Module\Products\Domain\Model\ProductCostChange;
+use Symfony\Component\Uid\Uuid;
+
+interface ProductCostChangeRepository
+{
+    public function save(ProductCostChange $change): void;
+
+    /** @return list<ProductCostChange> the latest changes of a product's cost in its company, the newest first */
+    public function ofProduct(Uuid $productId, Uuid $companyId, int $limit): array;
+}

@@ -17,7 +17,7 @@ use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
-use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Settings\Application\ReadSetting;
 use App\Shared\Application\DomainEvents;
 use App\Shared\Application\Transactions;

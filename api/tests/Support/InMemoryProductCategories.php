@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Products\Domain\ProductCategory;
-use App\Module\Products\Domain\ProductCategoryRepository;
+use App\Module\Products\Domain\Model\ProductCategory;
+use App\Module\Products\Domain\Repository\ProductCategoryRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryProductCategories implements ProductCategoryRepository

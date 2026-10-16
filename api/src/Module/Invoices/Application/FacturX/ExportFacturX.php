@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Application\FacturX;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
 use App\Module\Invoices\Application\InvoiceNotFound;
-use App\Module\Invoices\Application\PrintInvoice;
+use App\Module\Invoices\Application\Print\PrintInvoice;
 use App\Shared\Application\FacturXPdf;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Domain\Company;

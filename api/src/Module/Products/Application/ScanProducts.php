@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Application;
 
-use App\Module\Products\Domain\Barcode;
-use App\Module\Products\Domain\Gs1Scan;
-use App\Module\Products\Domain\ProductBarcode;
-use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\Model\ProductBarcode;
+use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Module\Products\Domain\ValueObject\Barcode;
+use App\Module\Products\Domain\ValueObject\Gs1Scan;
 use App\Tenancy\Domain\Company;
 
 /**

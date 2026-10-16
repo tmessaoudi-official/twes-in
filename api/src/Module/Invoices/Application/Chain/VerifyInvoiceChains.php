@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Application\Chain;
 
-use App\Module\Invoices\Domain\ChainSeries;
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Domain\InvoiceChainStore;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\Service\InvoiceChainStore;
+use App\Module\Invoices\Domain\ValueObject\ChainSeries;
 use Symfony\Component\Uid\Uuid;
 
 /**

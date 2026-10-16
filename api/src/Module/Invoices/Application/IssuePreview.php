@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Application;
 
-use App\Module\Invoices\Domain\OperationCategory;
+use App\Module\Invoices\Domain\ValueObject\OperationCategory;
 
 /** What issuing a draft now would give it, said before it is done: its number and, where the law asks, its operations. */
 final readonly class IssuePreview

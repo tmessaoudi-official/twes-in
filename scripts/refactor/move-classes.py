@@ -158,15 +158,17 @@ def apply(root: str, moves: list[tuple[str, str]]) -> None:
                 if names_bare(text, short):
                     needed.setdefault(name, []).append(target)
 
+    # Every name and every path in one pass, so no rename reads another's result: a class moved into a folder of its
+    # own name is the start of its siblings' new names. A name followed by a backslash is a namespace, not the class.
+    written = {old: new for old, new in renamed.items()}
+    written.update({old.replace('\\', '\\\\'): new.replace('\\', '\\\\') for old, new in renamed.items()})
+    names = re.compile(r'(?<!\w)(' + '|'.join(map(re.escape, written)) + r')(?![\w\\])')
+    paths = {old[len('api/'):]: new[len('api/'):] for old, new in by_path.items()}
+    places = re.compile(r'(?<![\w.])(' + '|'.join(map(re.escape, paths)) + r')(?!\w)')
     changed: dict[str, str] = {}
     for name, text in files.items():
-        new_text = text
-        for old, new in renamed.items():
-            for written_old, written_new in ((old, new), (old.replace('\\', '\\\\'), new.replace('\\', '\\\\'))):
-                new_text = re.sub(r'(?<!\w)' + re.escape(written_old) + r'(?!\w)', lambda _m, w=written_new: w, new_text)
-        for old_path, new_path in by_path.items():
-            old_rel, new_rel = old_path[len('api/'):], new_path[len('api/'):]
-            new_text = re.sub(r'(?<![\w.])' + re.escape(old_rel) + r'(?!\w)', lambda _m, w=new_rel: w, new_text)
+        new_text = names.sub(lambda m: written[m.group(1)], text)
+        new_text = places.sub(lambda m: paths[m.group(1)], new_text)
         if name in by_path:
             new_namespace = namespace_of(fqcn(by_path[name][len('api/src/'):]))
             new_text = NAMESPACE.sub(lambda _m: f'namespace {new_namespace};', new_text, count=1)

@@ -24,7 +24,7 @@ use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteLineDetails;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteSearch;
-use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;

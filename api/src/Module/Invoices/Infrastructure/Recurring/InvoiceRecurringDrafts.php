@@ -11,9 +11,9 @@ namespace App\Module\Invoices\Infrastructure\Recurring;
 
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\ManageInvoices;
-use App\Module\Invoices\Domain\InvalidInvoice;
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceTransitionRefused;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
+use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Recurring\Application\RecurringDrafts;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;

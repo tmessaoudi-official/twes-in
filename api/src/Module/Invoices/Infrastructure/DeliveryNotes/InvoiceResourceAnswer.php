@@ -12,8 +12,8 @@ namespace App\Module\Invoices\Infrastructure\DeliveryNotes;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output\InvoiceAnswer;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoiceResource;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Tenancy\Domain\Company;
 
 /** Answers the delivery notes' `InvoiceAnswer` port with the invoice resource this module answers everywhere else. */

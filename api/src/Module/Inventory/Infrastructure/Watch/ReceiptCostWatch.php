@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Infrastructure\Watch;
 
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
-use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
+use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;

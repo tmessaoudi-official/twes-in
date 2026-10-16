@@ -10,11 +10,11 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Infrastructure\Products;
 
 use App\Module\Inventory\Application\KeepReorderPoints;
-use App\Module\Inventory\Domain\InvalidReorderPoint;
-use App\Module\Inventory\Domain\ProductReorderPointRepository;
-use App\Module\Inventory\Domain\StockLocationRepository;
-use App\Module\Products\Application\ProductReorderPoints;
-use App\Module\Products\Application\ReorderPointRefused;
+use App\Module\Inventory\Domain\Exception\InvalidReorderPoint;
+use App\Module\Inventory\Domain\Repository\ProductReorderPointRepository;
+use App\Module\Inventory\Domain\Repository\StockLocationRepository;
+use App\Module\Products\Application\Stock\ProductReorderPoints;
+use App\Module\Products\Application\Stock\ReorderPointRefused;
 use App\Tenancy\Domain\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

@@ -255,9 +255,9 @@ final class ModulesTest extends ApiTestCase
             self::assertSame('customers', $ownership->ownerOf($resource), $resource);
         }
         foreach ([
-            \App\Module\Products\Infrastructure\ApiPlatform\ProductResource::class,
-            \App\Module\Products\Infrastructure\ApiPlatform\ProductCategoryResource::class,
-            \App\Module\Products\Infrastructure\ApiPlatform\ProductOptionsResource::class,
+            \App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource::class,
+            \App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductCategoryResource::class,
+            \App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductOptionsResource::class,
         ] as $resource) {
             self::assertSame('products', $ownership->ownerOf($resource), $resource);
         }

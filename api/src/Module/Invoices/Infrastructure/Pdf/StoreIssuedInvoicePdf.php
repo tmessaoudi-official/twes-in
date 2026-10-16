@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Pdf;
 
-use App\Module\Invoices\Application\PrintInvoice;
-use App\Module\Invoices\Domain\InvoiceIssued;
+use App\Module\Invoices\Application\Print\PrintInvoice;
+use App\Module\Invoices\Domain\Event\InvoiceIssued;
 use App\Shared\Application\PdfRenderingFailed;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;

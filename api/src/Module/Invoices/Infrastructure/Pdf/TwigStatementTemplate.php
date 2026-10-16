@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Pdf;
 
-use App\Module\Invoices\Application\StatementPage;
-use App\Module\Invoices\Application\StatementTemplate;
+use App\Module\Invoices\Application\Statement\StatementPage;
+use App\Module\Invoices\Application\Statement\StatementTemplate;
 use App\Tenancy\Application\Company\CompanyLogo;
 use Twig\Environment;
 

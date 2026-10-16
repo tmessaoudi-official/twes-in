@@ -11,11 +11,11 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Module\Inventory\Domain\StockLocation;
-use App\Module\Inventory\Domain\StockLocationKind;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductDetails;
-use App\Module\Products\Domain\ProductKind;
+use App\Module\Inventory\Domain\Model\StockLocation;
+use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\ValueObject\ProductDetails;
+use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Company;

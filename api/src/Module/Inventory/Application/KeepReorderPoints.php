@@ -11,11 +11,11 @@ namespace App\Module\Inventory\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Module\Inventory\Domain\InvalidReorderPoint;
-use App\Module\Inventory\Domain\ProductReorderPoint;
-use App\Module\Inventory\Domain\ProductReorderPointRepository;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductRepository;
+use App\Module\Inventory\Domain\Exception\InvalidReorderPoint;
+use App\Module\Inventory\Domain\Model\ProductReorderPoint;
+use App\Module\Inventory\Domain\Repository\ProductReorderPointRepository;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;

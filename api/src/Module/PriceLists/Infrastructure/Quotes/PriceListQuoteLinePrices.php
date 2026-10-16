@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\PriceLists\Infrastructure\Quotes;
 
 use App\Module\PriceLists\Infrastructure\StartingPrices;
-use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\Model\Product;
 use App\Module\Quotes\Application\QuoteLinePrices;
 use Symfony\Component\Uid\Uuid;
 

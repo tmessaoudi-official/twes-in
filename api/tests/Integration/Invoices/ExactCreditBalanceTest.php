@@ -15,7 +15,7 @@ use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
-use App\Module\Invoices\Domain\CustomerCreditRepository;
+use App\Module\Invoices\Domain\Repository\CustomerCreditRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Doctrine\ORM\EntityManagerInterface;

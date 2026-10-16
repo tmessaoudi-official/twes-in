@@ -12,7 +12,7 @@ namespace App\Tests\Unit\Tenancy\Application;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
 use App\Identity\Infrastructure\Security\SecurityUser;
-use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
+use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Tenancy\Application\Support\SupportAccess;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\InvalidSupportWindow;

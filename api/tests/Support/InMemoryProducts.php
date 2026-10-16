@@ -9,12 +9,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Products\Domain\Barcode;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductBarcode;
-use App\Module\Products\Domain\ProductKind;
-use App\Module\Products\Domain\ProductRepository;
-use App\Module\Products\Domain\ProductSearch;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Model\ProductBarcode;
+use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Module\Products\Domain\ValueObject\Barcode;
+use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Module\Products\Domain\ValueObject\ProductSearch;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;

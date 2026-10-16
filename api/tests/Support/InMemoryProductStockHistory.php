@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Products\Application\ProductStockHistory;
+use App\Module\Products\Application\Stock\ProductStockHistory;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryProductStockHistory implements ProductStockHistory

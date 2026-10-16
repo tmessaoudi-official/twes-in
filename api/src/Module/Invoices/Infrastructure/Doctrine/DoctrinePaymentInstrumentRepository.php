@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Module\Invoices\Domain\InstrumentPortfolioSearch;
-use App\Module\Invoices\Domain\InstrumentStatus;
-use App\Module\Invoices\Domain\PaymentInstrument;
-use App\Module\Invoices\Domain\PaymentInstrumentRepository;
+use App\Module\Invoices\Domain\Model\PaymentInstrument;
+use App\Module\Invoices\Domain\Repository\PaymentInstrumentRepository;
+use App\Module\Invoices\Domain\ValueObject\InstrumentPortfolioSearch;
+use App\Module\Invoices\Domain\ValueObject\InstrumentStatus;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;

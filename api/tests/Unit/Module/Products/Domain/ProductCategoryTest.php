@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Products\Domain;
 
-use App\Module\Products\Domain\InvalidProductCategory;
-use App\Module\Products\Domain\ProductCategory;
+use App\Module\Products\Domain\Exception\InvalidProductCategory;
+use App\Module\Products\Domain\Model\ProductCategory;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\TestCase;
 

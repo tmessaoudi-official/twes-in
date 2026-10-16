@@ -13,8 +13,8 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\SectionSubtotal;
 use App\Fiscal\Domain\Calculation\SectionSubtotals;
 use App\Module\Invoices\Application\InvoicePage;
-use App\Module\Invoices\Application\InvoiceTemplate;
-use App\Module\Invoices\Domain\InvoiceLine;
+use App\Module\Invoices\Application\Print\InvoiceTemplate;
+use App\Module\Invoices\Domain\Model\InvoiceLine;
 use App\Tenancy\Application\Company\CompanyLogo;
 use Twig\Environment;
 

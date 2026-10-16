@@ -11,7 +11,7 @@ namespace App\Tests\Unit\Fiscal\Infrastructure;
 
 use App\Fiscal\Application\Preset\FiscalPreset;
 use App\Fiscal\Infrastructure\Preset\YamlFiscalPresets;
-use App\Module\Invoices\Application\InvoiceMentions;
+use App\Module\Invoices\Application\Print\InvoiceMentions;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 

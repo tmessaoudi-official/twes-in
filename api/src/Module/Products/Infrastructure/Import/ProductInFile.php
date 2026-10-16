@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Import;
 
-use App\Module\Products\Domain\Barcode;
-use App\Module\Products\Domain\BarcodeRole;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductBarcode;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Model\ProductBarcode;
+use App\Module\Products\Domain\ValueObject\Barcode;
+use App\Module\Products\Domain\ValueObject\BarcodeRole;
 
 /**
  * A product as a file writes it, column by column, the way the import reads it back: what the export writes, and what

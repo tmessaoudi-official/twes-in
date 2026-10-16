@@ -11,9 +11,9 @@ namespace App\Module\Invoices\Infrastructure\Doctrine;
 
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Domain\Model\Customer;
-use App\Module\Invoices\Domain\CreditEntryKind;
-use App\Module\Invoices\Domain\CustomerCreditEntry;
-use App\Module\Invoices\Domain\CustomerCreditRepository;
+use App\Module\Invoices\Domain\Model\CustomerCreditEntry;
+use App\Module\Invoices\Domain\Repository\CustomerCreditRepository;
+use App\Module\Invoices\Domain\ValueObject\CreditEntryKind;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;

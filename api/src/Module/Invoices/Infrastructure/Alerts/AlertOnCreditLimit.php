@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Alerts;
 
-use App\Module\Invoices\Application\TellCreditWatchers;
-use App\Module\Invoices\Domain\InvoiceIssued;
-use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Application\Credit\TellCreditWatchers;
+use App\Module\Invoices\Domain\Event\InvoiceIssued;
+use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Tenancy\Domain\CompanyRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;

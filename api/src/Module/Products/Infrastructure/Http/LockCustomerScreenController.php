@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Products\Infrastructure\Http;
 
 use App\Identity\Application\CustomerScreen\CustomerScreenLock;
-use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
+use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpFoundation\Response;

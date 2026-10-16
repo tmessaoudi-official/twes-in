@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Application;
 
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductPhotoRepository;
-use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Repository\ProductPhotoRepository;
+use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

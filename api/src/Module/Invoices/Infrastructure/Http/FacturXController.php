@@ -12,7 +12,7 @@ namespace App\Module\Invoices\Infrastructure\Http;
 use App\Module\Invoices\Application\FacturX\ExportFacturX;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
 use App\Module\Invoices\Application\InvoiceNotFound;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;

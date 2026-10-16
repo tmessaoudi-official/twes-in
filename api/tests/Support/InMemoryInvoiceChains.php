@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Invoices\Domain\ChainSeries;
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Domain\InvoiceChainHead;
-use App\Module\Invoices\Domain\InvoiceChainStore;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\Model\InvoiceChainHead;
+use App\Module\Invoices\Domain\Service\InvoiceChainStore;
+use App\Module\Invoices\Domain\ValueObject\ChainSeries;
 use Symfony\Component\Uid\Uuid;
 
 /** The chains over the invoices an `InMemoryInvoices` holds, read as the Doctrine store reads them. */

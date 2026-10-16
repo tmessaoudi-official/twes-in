@@ -16,7 +16,7 @@ use App\Module\PriceLists\Application\PriceListNameTaken;
 use App\Module\PriceLists\Application\PriceListNotFound;
 use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\Resource\PriceListResource;
-use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
+use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;

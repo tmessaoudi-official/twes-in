@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Doctrine;
 
-use App\Module\Products\Domain\ProductCostChange;
-use App\Module\Products\Domain\ProductCostChangeRepository;
+use App\Module\Products\Domain\Model\ProductCostChange;
+use App\Module\Products\Domain\Repository\ProductCostChangeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

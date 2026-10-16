@@ -10,12 +10,12 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Inventory\Domain;
 
 use App\Fiscal\Domain\Model\Unit;
-use App\Module\Inventory\Domain\InvalidStockMovement;
-use App\Module\Inventory\Domain\StockLot;
-use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductDetails;
-use App\Module\Products\Domain\ProductKind;
-use App\Module\Products\Domain\ProductTracking;
+use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
+use App\Module\Inventory\Domain\Model\StockLot;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\ValueObject\ProductDetails;
+use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

@@ -11,10 +11,11 @@ namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
-use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Domain\InvoiceChain;
-use App\Module\Invoices\Domain\InvoiceFigures;
-use App\Module\Invoices\Domain\OperationCategory;
+use App\Module\Invoices\Application\Print\InvoiceCopy;
+use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\Service\InvoiceChain;
+use App\Module\Invoices\Domain\ValueObject\InvoiceFigures;
+use App\Module\Invoices\Domain\ValueObject\OperationCategory;
 use App\Shared\Domain\DocumentDesign;
 use App\Tenancy\Domain\SellerSnapshot;
 

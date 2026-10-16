@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Watch;
 
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Infrastructure\Watch\InvoiceWatch;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;

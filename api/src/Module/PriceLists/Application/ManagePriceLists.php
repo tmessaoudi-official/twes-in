@@ -17,7 +17,7 @@ use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
 use App\Module\PriceLists\Domain\Model\PriceList;
 use App\Module\PriceLists\Domain\Model\PriceListItem;
 use App\Module\PriceLists\Domain\Repository\PriceListRepository;
-use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;

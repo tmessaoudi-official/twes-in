@@ -11,7 +11,7 @@ namespace App\Module\Recurring\Infrastructure\ApiPlatform\State\Provider;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Recurring\Application\ManageRecurringInvoices;
 use App\Module\Recurring\Application\RecurringInvoiceNotFound;
 use App\Module\Recurring\Infrastructure\ApiPlatform\Resource\RecurringInvoiceResource;

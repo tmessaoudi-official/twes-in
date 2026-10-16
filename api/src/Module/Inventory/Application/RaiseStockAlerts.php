@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Application;
 
-use App\Module\Inventory\Domain\ProductReorderPointRepository;
-use App\Module\Inventory\Domain\StockLocationKind;
-use App\Module\Inventory\Domain\StockMovement;
-use App\Module\Inventory\Domain\StockMovementRepository;
+use App\Module\Inventory\Domain\Model\StockMovement;
+use App\Module\Inventory\Domain\Repository\ProductReorderPointRepository;
+use App\Module\Inventory\Domain\Repository\StockMovementRepository;
+use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use BcMath\Number;
 
 /**
