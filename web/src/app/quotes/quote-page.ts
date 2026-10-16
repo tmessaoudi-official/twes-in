@@ -215,6 +215,7 @@ export class QuotePage {
       const options = this.options();
       return current && options ? quoteValues(current, options) : null;
     },
+    version: () => this.current()?.version ?? null,
     // The lines are one field: a line is never merged with another person's.
     parts: [
       {
@@ -558,10 +559,25 @@ export class QuotePage {
         this.unsaved.savedAndLeaving();
         await this.router.navigate(['/quotes', created.id], { replaceUrl: true });
       }
-    } else if ((await this.facade.revise(companyId, id, input)) !== null) {
-      const form = this.form();
-      if (form !== null) this.sync.savedHere(form);
+    } else if ((await this.facade.revise(companyId, id, input, this.sync.version())) !== null) {
+      this.revisedHere();
       this.feedback.success('quotes.saved');
+    } else {
+      await this.refused();
+    }
+  }
+
+  /** The form now stands on what this tab saved, before anything else is asked of the quote. */
+  private readonly revisedHere = (): void => {
+    const form = this.form();
+    if (form !== null) this.sync.savedHere(form);
+  };
+
+  /** A save made over a version saved since is merged and said; any other refusal stays as the screen shows it. */
+  private async refused(): Promise<void> {
+    if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 
@@ -572,7 +588,14 @@ export class QuotePage {
     if (!companyId || id === null || input === null) return;
     // Read before sending: once sent, the screen declares what a sent quote offers.
     const kind = kindAmong(this.actions(), 'send');
-    const sent = await this.facade.reviseAndSend(companyId, id, input);
+    const sent = await this.facade.reviseAndSend(
+      companyId,
+      id,
+      input,
+      this.sync.version(),
+      this.revisedHere,
+    );
+    if (sent === null) await this.refused();
     if (sent !== null && kind !== undefined) {
       this.feedback.effect('quotes.sent', {}, kind);
     }

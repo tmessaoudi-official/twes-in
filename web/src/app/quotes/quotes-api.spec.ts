@@ -282,11 +282,27 @@ describe('QuotesApi', () => {
     );
     await expect(full).rejects.toEqual(new QuotesRefused('files_full'));
 
-    const revised = api.revise('c1', 'q1', input);
+    const revised = api.revise('c1', 'q1', input, 2);
+    const put = http.expectOne('/api/companies/c1/quotes/q1');
+    // The version the form stands on, which the API refuses once someone else saved a later one.
+    expect(put.request.body).toEqual(expect.objectContaining({ version: 2 }));
+    put.flush({ detail: 'lines: none' }, { status: 422, statusText: 'Unprocessable' });
+    await expect(revised).rejects.toEqual(new QuotesRefused('invalid'));
+
+    const changed = api.revise('c1', 'q1', input, 1);
     http
       .expectOne('/api/companies/c1/quotes/q1')
-      .flush({ detail: 'lines: none' }, { status: 422, statusText: 'Unprocessable' });
-    await expect(revised).rejects.toEqual(new QuotesRefused('invalid'));
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toEqual(new QuotesRefused('record_changed'));
+
+    const fixed = api.revise('c1', 'q1', input, 1);
+    http
+      .expectOne('/api/companies/c1/quotes/q1')
+      .flush(null, { status: 409, statusText: 'Conflict' });
+    await expect(fixed).rejects.toEqual(new QuotesRefused('conflict'));
 
     const customer = api.create('c1', input);
     http

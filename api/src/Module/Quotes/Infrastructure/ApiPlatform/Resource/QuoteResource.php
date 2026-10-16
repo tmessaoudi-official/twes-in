@@ -41,6 +41,7 @@ use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\ReviseQuoteProc
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\SendQuoteProcessor;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Provider\QuoteCollectionProvider;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Provider\QuoteItemProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -96,8 +97,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: self::NORMALIZATION,
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/quotes/preview',
@@ -199,6 +200,12 @@ final class QuoteResource
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
     public ?string $id = null;
+
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
 
     /** The number sending gives the quote; null while it is a draft. */
     #[ApiProperty(writable: false)]
@@ -429,6 +436,7 @@ final class QuoteResource
         $header = $quote->getHeader();
         $resource = new self();
         $resource->id = $quote->getId()->toRfc4122();
+        $resource->version = $quote->getVersion();
         $resource->number = $quote->getNumber();
         $resource->status = $quote->getStatus()->value;
         $resource->expired = $quote->isExpired($today);

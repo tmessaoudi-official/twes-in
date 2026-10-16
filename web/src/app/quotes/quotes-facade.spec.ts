@@ -16,6 +16,7 @@ const options: InvoiceOptions = {
 };
 const sent: QuoteRow = {
   id: 'q1',
+  version: 1,
   number: 'DEV-2026-10-00001',
   status: 'sent',
   expired: false,
@@ -120,9 +121,13 @@ describe('QuotesFacade', () => {
     api.revise.mockImplementation(async () => (order.push('revise'), { ...sent, status: 'draft' }));
     api.send.mockImplementation(async () => (order.push('send'), sent));
 
-    expect(await facade.reviseAndSend('c1', 'q1', input)).toEqual(sent);
+    expect(await facade.reviseAndSend('c1', 'q1', input, 3, () => order.push('revised'))).toEqual(
+      sent,
+    );
 
-    expect(order).toEqual(['revise', 'send']);
+    expect(api.revise).toHaveBeenCalledWith('c1', 'q1', input, 3);
+    // The form is told the save was kept before sending answers, whatever sending then says.
+    expect(order).toEqual(['revise', 'revised', 'send']);
   });
 
   it('attaches the signed copy once the yes is kept, and reads the files again', async () => {

@@ -9,6 +9,8 @@ export type QuotesError =
   | 'network'
   | 'not_found'
   | 'conflict'
+  /** Saved over a version someone else saved since: nothing was saved, and what they saved is to be merged. */
+  | 'record_changed'
   | 'invalid'
   | 'customer_unavailable'
   | 'file_refused'
@@ -74,6 +76,8 @@ export type QuoteLine = InvoiceLine;
 
 export interface QuoteRow {
   id: string;
+  /** The version read, which a revision sends back; one saved since is refused as `record_changed`. */
+  version: number;
   /** Null until the quote is sent. */
   number: string | null;
   status: QuoteStatus;

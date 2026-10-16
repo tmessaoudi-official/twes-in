@@ -26,6 +26,7 @@ import {
 } from '../shared/settings/settings-facade';
 import {
   effectToasts,
+  failureToasts,
   offeredNext,
   noticeToasts,
   provideQuietFeedback,
@@ -94,6 +95,7 @@ const products: ProductOption[] = [
 
 const draft: QuoteRow = {
   id: 'q1',
+  version: 1,
   number: null,
   status: 'draft',
   expired: false,
@@ -366,8 +368,107 @@ describe('QuotePage', () => {
         customerId: 'k1',
         lines: [expect.objectContaining({ quantity: '3', productId: 'p1' })],
       }),
+      1,
+      expect.any(Function),
     );
     await vi.waitFor(() => expect(effectToasts()).toEqual(['quotes.sent:definitif']));
+  });
+
+  /** The next save is refused as made over a version saved since, and the read after it brings that version. */
+  function savedSinceBy(call: 'revise' | 'reviseAndSend'): void {
+    facade[call].mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.clearError.mockImplementationOnce(() => error.set(null));
+    facade.loadQuote.mockImplementationOnce(async () =>
+      quote.set({ ...draft, version: 2, customerReference: 'BC-7' }),
+    );
+  }
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    quote.set(draft);
+    await open('q1');
+    savedSinceBy('revise');
+
+    typeIn(q('line-0-quantity') as HTMLInputElement, '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-7'),
+    );
+
+    expect(facade.revise).toHaveBeenCalledWith('c1', 'q1', expect.anything(), 1);
+    expect((q('line-0-quantity') as HTMLInputElement).value).toBe('3');
+    expect(error()).toBeNull();
+    expect(failureToasts()).toEqual(['live.saved_since']);
+    expect(successToasts()).not.toContain('quotes.saved');
+
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.revise).toHaveBeenLastCalledWith(
+      'c1',
+      'q1',
+      expect.objectContaining({ customerReference: 'BC-7' }),
+      2,
+    );
+  });
+
+  it('marks nothing sent over a version saved since: it merges it and says so', async () => {
+    quote.set(draft);
+    await open('q1');
+    savedSinceBy('reviseAndSend');
+
+    q('document-action-send')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-7'),
+    );
+
+    expect(facade.reviseAndSend).toHaveBeenCalledWith(
+      'c1',
+      'q1',
+      expect.anything(),
+      1,
+      expect.any(Function),
+    );
+    expect(error()).toBeNull();
+    expect(failureToasts()).toEqual(['live.saved_since']);
+    expect(effectToasts()).toEqual([]);
+  });
+
+  it('marks it sent again on the version its kept save gave, when sending was refused after it', async () => {
+    quote.set(draft);
+    await open('q1');
+    facade.reviseAndSend.mockImplementationOnce(
+      async (_c: string, _q: string, _input: unknown, _v: number, revised: () => void) => {
+        quote.set({ ...draft, version: 2 });
+        revised();
+        error.set('invalid');
+        return null;
+      },
+    );
+
+    q('document-action-send')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+    error.set(null);
+    q('document-action-send')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+
+    expect(facade.reviseAndSend).toHaveBeenLastCalledWith(
+      'c1',
+      'q1',
+      expect.anything(),
+      2,
+      expect.any(Function),
+    );
   });
 
   it('never asks a quote line for a lot, even of a product tracked by one', async () => {

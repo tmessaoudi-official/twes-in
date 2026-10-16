@@ -114,13 +114,72 @@ final class QuotesTest extends ApiTestCase
         $this->postJson($this->path($second).'/send', null);
         self::assertSame([$number(2), $today->modify('+15 days')->format('Y-m-d')], [$this->json()['number'], $this->json()['validUntil']], 'the customer\'s own validity');
 
-        $this->sendJson('PUT', $this->path($first), $this->quote());
+        $this->sendJson('PUT', $this->path($first), $this->quote(['version' => $this->storedVersion('quote', $first)]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a sent quote is fixed');
+        self::assertStringNotContainsString('record-changed', (string) $this->client->getResponse()->getContent(), 'fixed, not saved since');
         $this->postJson($this->path($first).'/send', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'and numbered once');
         $this->postJson($this->path($first).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a sent quote is answered, never cancelled');
         self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM numbering_series WHERE document_type = 'quote' AND company_id = ?", [$this->company->getId()->toRfc4122()]));
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(self::WRITER);
+        $id = $this->draft();
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->quote(['version' => 1, 'customerReference' => 'PO-78']));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->quote(['version' => 1, 'customerReference' => 'PO-79']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path($id));
+        self::assertSame(['PO-78', 2], [$this->json()['customerReference'], $this->json()['version']]);
+    }
+
+    /** A document's lines are one field of it: a revision of them alone moves the version its form is checked against. */
+    public function testARevisionOfItsLinesAloneMovesTheVersion(): void
+    {
+        $this->signedIn(self::WRITER);
+        $id = $this->draft();
+        $total = $this->json()['total'];
+        [$sold, $fitting] = $this->arrayAt($this->quote(), 'lines');
+
+        // The same lines in another order: every total stays, and only the lines say the quote changed.
+        $this->sendJson('PUT', $this->path($id), $this->quote(['version' => 1, 'lines' => [$fitting, $sold]]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame($total, $this->json()['total']);
+        self::assertSame(2, $this->json()['version']);
+        $this->sendJson('PUT', $this->path($id), $this->quote(['version' => 1, 'customerReference' => 'PO-78', 'lines' => [$fitting, $sold]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(self::WRITER);
+        $id = $this->draft();
+
+        $this->sendJson('PUT', $this->path($id), $this->quote(['version' => 1]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+    }
+
+    public function testARevisionSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(self::WRITER);
+        $id = $this->draft();
+
+        $this->sendJson('PUT', $this->path($id), $this->quote(['customerReference' => 'PO-78']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     public function testTheCustomersAnswerIsRecordedAndARefusalsWordsStayOutOfTheAudit(): void

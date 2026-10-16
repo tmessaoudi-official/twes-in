@@ -21,6 +21,7 @@ const options: InvoiceOptions = {
 function quote(changes: Partial<QuoteRow> = {}): QuoteRow {
   return {
     id: 'q1',
+    version: 1,
     number: 'DEV-2026-10-00001',
     status: 'sent',
     expired: false,
