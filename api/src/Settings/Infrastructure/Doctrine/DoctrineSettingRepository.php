@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Settings\Infrastructure\Doctrine;
 
-use App\Settings\Domain\Setting;
-use App\Settings\Domain\SettingAddress;
-use App\Settings\Domain\SettingRepository;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\Repository\SettingRepository;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class DoctrineSettingRepository implements SettingRepository

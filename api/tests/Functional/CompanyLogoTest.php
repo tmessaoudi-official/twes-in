@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 

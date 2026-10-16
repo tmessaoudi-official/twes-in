@@ -21,7 +21,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\LineTotals;
 use App\Fiscal\Domain\Calculation\TaxTotal;
-use App\Fiscal\Infrastructure\ApiPlatform\DocumentPreview;
+use App\Fiscal\Infrastructure\ApiPlatform\Output\DocumentPreview;
 use App\Module\Quotes\Application\QuoteDeposit;
 use App\Module\Quotes\Application\QuoteInput;
 use App\Module\Quotes\Application\QuoteLineInput;

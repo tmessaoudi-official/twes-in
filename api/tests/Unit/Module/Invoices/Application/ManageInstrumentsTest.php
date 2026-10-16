@@ -11,7 +11,7 @@ namespace App\Tests\Unit\Module\Invoices\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;

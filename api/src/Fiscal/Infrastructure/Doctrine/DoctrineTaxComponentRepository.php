@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Infrastructure\Doctrine;
 
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\TaxComponentRepository;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

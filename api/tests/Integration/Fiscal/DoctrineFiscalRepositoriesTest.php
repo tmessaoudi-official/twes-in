@@ -9,13 +9,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Fiscal;
 
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\TaxComponentRepository;
-use App\Fiscal\Domain\TaxFamily;
-use App\Fiscal\Domain\Unit;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Repository\TaxComponentRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyRepository;
 use Doctrine\ORM\EntityManagerInterface;

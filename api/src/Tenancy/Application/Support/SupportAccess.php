@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Support;
 
 use App\Identity\Application\Mfa\SecondFactors;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Tenancy\Domain\MembershipRepository;
 use App\Tenancy\Domain\SupportGrant;
 use App\Tenancy\Domain\SupportGrantRepository;

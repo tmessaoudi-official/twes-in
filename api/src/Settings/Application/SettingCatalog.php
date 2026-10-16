@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /** Every declared setting. A key it does not know can be neither read nor written. */

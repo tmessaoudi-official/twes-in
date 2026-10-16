@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Audit\Domain\Model\AuditLog;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Role;

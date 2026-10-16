@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Scanning\Infrastructure\Http;
 
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Module\Scanning\Application\PairingEcho;

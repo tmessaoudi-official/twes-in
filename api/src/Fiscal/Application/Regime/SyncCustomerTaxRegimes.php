@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Fiscal\Application\Regime;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use Psr\Clock\ClockInterface;
 
 /**

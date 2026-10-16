@@ -11,8 +11,8 @@ namespace App\Tests\Unit\Module\Invoices\Application\FacturX;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\TaxFamily;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;

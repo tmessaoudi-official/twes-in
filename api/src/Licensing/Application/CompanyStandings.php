@@ -9,13 +9,13 @@ declare(strict_types=1);
 
 namespace App\Licensing\Application;
 
-use App\Licensing\Domain\Access;
-use App\Licensing\Domain\LicensingDefaults;
-use App\Licensing\Domain\PaymentDeclarationRepository;
-use App\Licensing\Domain\Standing;
-use App\Licensing\Domain\Subscription;
-use App\Licensing\Domain\SubscriptionRepository;
-use App\Licensing\Domain\UnpaidMode;
+use App\Licensing\Domain\Model\Subscription;
+use App\Licensing\Domain\Repository\PaymentDeclarationRepository;
+use App\Licensing\Domain\Repository\SubscriptionRepository;
+use App\Licensing\Domain\ValueObject\Access;
+use App\Licensing\Domain\ValueObject\LicensingDefaults;
+use App\Licensing\Domain\ValueObject\Standing;
+use App\Licensing\Domain\ValueObject\UnpaidMode;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use Psr\Clock\ClockInterface;

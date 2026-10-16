@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\CustomFields\Domain\CustomFieldDefinition;
-use App\CustomFields\Domain\CustomFieldDefinitionRepository;
-use App\CustomFields\Domain\CustomFieldEntity;
+use App\CustomFields\Domain\Model\CustomFieldDefinition;
+use App\CustomFields\Domain\Repository\CustomFieldDefinitionRepository;
+use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryCustomFieldDefinitions implements CustomFieldDefinitionRepository

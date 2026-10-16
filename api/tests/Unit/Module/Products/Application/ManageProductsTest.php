@@ -9,12 +9,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Products\Application;
 
-use App\CustomFields\Domain\CustomFieldDefinition;
-use App\CustomFields\Domain\CustomFieldEntity;
-use App\CustomFields\Domain\CustomFieldType;
+use App\CustomFields\Domain\Model\CustomFieldDefinition;
+use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
+use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Products\Application\BarcodeInput;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
@@ -37,7 +37,7 @@ use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;

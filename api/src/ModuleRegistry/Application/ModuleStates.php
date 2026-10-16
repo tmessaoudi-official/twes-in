@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\ModuleRegistry\Application;
 
-use App\ModuleRegistry\Domain\ModuleStateRepository;
+use App\ModuleRegistry\Domain\Repository\ModuleStateRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**

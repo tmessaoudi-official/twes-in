@@ -9,16 +9,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Licensing\Domain;
 
-use App\Licensing\Domain\Access;
-use App\Licensing\Domain\BillingPeriod;
-use App\Licensing\Domain\InvalidSubscription;
-use App\Licensing\Domain\LicensingDefaults;
-use App\Licensing\Domain\PeriodUnit;
-use App\Licensing\Domain\Stage;
-use App\Licensing\Domain\Standing;
-use App\Licensing\Domain\Subscription;
-use App\Licensing\Domain\SubscriptionTerms;
-use App\Licensing\Domain\UnpaidMode;
+use App\Licensing\Domain\Exception\InvalidSubscription;
+use App\Licensing\Domain\Model\Subscription;
+use App\Licensing\Domain\ValueObject\Access;
+use App\Licensing\Domain\ValueObject\BillingPeriod;
+use App\Licensing\Domain\ValueObject\LicensingDefaults;
+use App\Licensing\Domain\ValueObject\PeriodUnit;
+use App\Licensing\Domain\ValueObject\Stage;
+use App\Licensing\Domain\ValueObject\Standing;
+use App\Licensing\Domain\ValueObject\SubscriptionTerms;
+use App\Licensing\Domain\ValueObject\UnpaidMode;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;

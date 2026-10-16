@@ -17,7 +17,7 @@ use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;

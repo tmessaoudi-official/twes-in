@@ -11,10 +11,10 @@ namespace App\Identity\Application\Session;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Identity\Domain\User;
-use App\Identity\Domain\UserRepository;
-use App\Identity\Domain\UserSession;
-use App\Identity\Domain\UserSessionRepository;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Model\UserSession;
+use App\Identity\Domain\Repository\UserRepository;
+use App\Identity\Domain\Repository\UserSessionRepository;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;

@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Expenses\Domain;
 
 use App\Fiscal\Domain\Calculation\RoundingPoint;
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\TaxFamily;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseAmountLine;
 use App\Module\Expenses\Domain\ExpenseAmounts;

@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Licensing\Infrastructure\Doctrine;
 
-use App\Licensing\Domain\DeclarationStatus;
-use App\Licensing\Domain\PaymentAlreadyDeclared;
-use App\Licensing\Domain\PaymentDeclaration;
-use App\Licensing\Domain\PaymentDeclarationRepository;
+use App\Licensing\Domain\Exception\PaymentAlreadyDeclared;
+use App\Licensing\Domain\Model\PaymentDeclaration;
+use App\Licensing\Domain\Repository\PaymentDeclarationRepository;
+use App\Licensing\Domain\ValueObject\DeclarationStatus;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;

@@ -21,7 +21,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\LineTotals;
 use App\Fiscal\Domain\Calculation\TaxTotal;
-use App\Fiscal\Infrastructure\ApiPlatform\DocumentPreview;
+use App\Fiscal\Infrastructure\ApiPlatform\Output\DocumentPreview;
 use App\Module\DeliveryNotes\Application\DeliveryNoteInput;
 use App\Module\DeliveryNotes\Application\DeliveryNoteLineInput;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;

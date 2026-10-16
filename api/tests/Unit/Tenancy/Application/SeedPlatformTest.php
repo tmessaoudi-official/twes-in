@@ -13,7 +13,7 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Application\SecretCipher;
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Tenancy\Application\Seed\InvalidOperatorTotpSecret;
 use App\Tenancy\Application\Seed\OperatorPasswordRequired;

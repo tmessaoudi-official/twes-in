@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Identity\Domain\AccountSearch;
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\UserRepository;
+use App\Identity\Domain\ValueObject\AccountSearch;
+use App\Identity\Domain\ValueObject\Email;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;

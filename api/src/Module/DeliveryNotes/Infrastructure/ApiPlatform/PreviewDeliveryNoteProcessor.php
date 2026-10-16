@@ -12,7 +12,7 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Fiscal\Application\CurrencyScales;
-use App\Fiscal\Infrastructure\ApiPlatform\DocumentPreview;
+use App\Fiscal\Infrastructure\ApiPlatform\Output\DocumentPreview;
 use App\Module\DeliveryNotes\Application\DeliveryNoteNotFound;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteNotDraft;

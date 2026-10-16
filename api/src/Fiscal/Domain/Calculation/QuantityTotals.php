@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Domain\Calculation;
 
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\Unit;
 
 /**
  * The « Quantités » line under a document's lines: how much it carries in each unit, so a delivery is counted at a

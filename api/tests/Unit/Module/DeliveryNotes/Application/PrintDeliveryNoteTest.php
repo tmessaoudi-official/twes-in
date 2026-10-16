@@ -11,7 +11,7 @@ namespace App\Tests\Unit\Module\DeliveryNotes\Application;
 
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
@@ -31,7 +31,7 @@ use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;

@@ -17,11 +17,11 @@ use ApiPlatform\State\ProviderInterface;
 use App\Audit\Domain\Model\AuditLog;
 use App\Audit\Infrastructure\ApiPlatform\Resource\ActivityResource;
 use App\Audit\Infrastructure\ApiPlatform\State\Provider\ActivityCollectionProvider;
-use App\CustomFields\Infrastructure\ApiPlatform\CreateCustomFieldProcessor;
+use App\CustomFields\Infrastructure\ApiPlatform\State\Processor\CreateCustomFieldProcessor;
 use App\Files\Domain\Repository\AttachmentRepository;
 use App\Fiscal\Domain\Calculation\Rate;
-use App\Identity\Domain\Email;
-use App\Identity\Infrastructure\ApiPlatform\OpenApiExtras;
+use App\Identity\Domain\ValueObject\Email;
+use App\Identity\Infrastructure\ApiPlatform\OpenApi\OpenApiExtras;
 use App\Identity\Infrastructure\Security\UserProvider;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\InvalidContact;
@@ -75,11 +75,6 @@ final class SourceLayoutTest extends TestCase
      * only shrinks, one context per commit.
      */
     private const array NOT_YET_MOVED = [
-        'CustomFields',
-        'Fiscal',
-        'Identity',
-        'Legal',
-        'Licensing',
         'Module/Customers',
         'Module/DeliveryNotes',
         'Module/Expenses',
@@ -92,8 +87,6 @@ final class SourceLayoutTest extends TestCase
         'Module/RecurringExpenses',
         'Module/Scanning',
         'Module/Vendors',
-        'ModuleRegistry',
-        'Settings',
         'Shared',
         'Tenancy',
     ];

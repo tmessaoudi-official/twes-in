@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
-use App\Settings\Domain\SettingAddress;
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingRepository;
+use App\Settings\Domain\Repository\SettingRepository;
+use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
 
 /**
  * Walks a chain for one context: the most specific level holding a value wins, down to the default, which is the

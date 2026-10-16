@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Inventory\Application;
 
 use App\Audit\Application\AuditEntry;
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Application\StockLocationCodeTaken;
 use App\Module\Inventory\Application\StockLocationInUse;

@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Application\Account\FinalizeAccountDeletions;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;

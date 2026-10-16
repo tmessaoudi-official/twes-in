@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 
 final class InMemoryCustomerTaxRegimes implements CustomerTaxRegimeRepository
 {

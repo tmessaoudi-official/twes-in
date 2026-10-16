@@ -16,7 +16,7 @@ use App\Module\Customers\Domain\CustomerGroupRepository;
 use App\Module\Customers\Domain\CustomerRepository;
 use App\Module\Customers\Domain\InvalidCustomerGroup;
 use App\Settings\Application\ForgetSettings;
-use App\Settings\Domain\SettingAddress;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;

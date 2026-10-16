@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\CustomFields\Application;
 
-use App\CustomFields\Domain\CustomFieldEntity;
-use App\CustomFields\Domain\CustomFieldType;
+use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
+use App\CustomFields\Domain\ValueObject\CustomFieldType;
 
 /** A custom field as it is written; on a revision the entity, key and type must say what the field already says. */
 final readonly class CustomFieldInput

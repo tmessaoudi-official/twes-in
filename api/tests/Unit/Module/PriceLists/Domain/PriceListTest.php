@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\PriceLists\Domain;
 
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\PriceLists\Domain\InvalidPriceList;
 use App\Module\PriceLists\Domain\PriceList;
 use App\Module\PriceLists\Domain\PriceListItem;

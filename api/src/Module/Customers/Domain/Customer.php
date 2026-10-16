@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Domain;
 
-use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;

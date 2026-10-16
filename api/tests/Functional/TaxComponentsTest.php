@@ -122,7 +122,7 @@ final class TaxComponentsTest extends ApiTestCase
         $globex = $this->createCompany('Globex');
         static::getContainer()->get(ProvisionCompany::class)->handle($globex);
         $this->signedIn(['fiscal.read', 'fiscal.write']);
-        $theirs = $this->em()->getRepository(\App\Fiscal\Domain\TaxComponent::class)->findOneBy(['company' => $globex, 'code' => 'TVA19']);
+        $theirs = $this->em()->getRepository(\App\Fiscal\Domain\Model\TaxComponent::class)->findOneBy(['company' => $globex, 'code' => 'TVA19']);
         self::assertNotNull($theirs);
 
         $this->sendJson('PUT', $this->path().'/'.$theirs->getId()->toRfc4122(), ['name' => 'Hijacked', 'rate' => '0', 'isActive' => true, 'sortOrder' => 0]);

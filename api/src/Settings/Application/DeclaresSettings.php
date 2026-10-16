@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
-use App\Settings\Domain\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingDefinition;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**

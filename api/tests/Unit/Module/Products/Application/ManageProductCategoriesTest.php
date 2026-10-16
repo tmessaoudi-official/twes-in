@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Products\Application;
 
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Products\Application\ManageProductCategories;
 use App\Module\Products\Application\ProductCategoryInUse;
 use App\Module\Products\Application\ProductCategoryNameTaken;
@@ -19,8 +19,8 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Settings\Application\ForgetSettings;
-use App\Settings\Domain\Setting;
-use App\Settings\Domain\SettingAddress;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
-use App\Identity\Domain\Email;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
+use App\Identity\Domain\ValueObject\Email;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;

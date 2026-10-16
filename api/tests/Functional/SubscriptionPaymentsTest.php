@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Licensing\Domain\PaymentMethod;
+use App\Licensing\Domain\ValueObject\PaymentMethod;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Role;
 use Symfony\Component\HttpFoundation\Response;

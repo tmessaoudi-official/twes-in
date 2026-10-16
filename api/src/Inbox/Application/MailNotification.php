@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Inbox\Application;
 
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Settings\Application\ReaderFormats;
 use Symfony\Component\Uid\Uuid;
 

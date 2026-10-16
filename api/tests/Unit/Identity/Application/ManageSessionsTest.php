@@ -11,8 +11,8 @@ namespace App\Tests\Unit\Identity\Application;
 
 use App\Identity\Application\Session\ManageSessions;
 use App\Identity\Application\Session\SessionStanding;
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemorySessions;

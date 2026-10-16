@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Fiscal\Domain;
 
-use App\Fiscal\Domain\InvalidFiscalValue;
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Exception\InvalidFiscalValue;
+use App\Fiscal\Domain\Model\Unit;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

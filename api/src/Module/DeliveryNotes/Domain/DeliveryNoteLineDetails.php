@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Domain;
 
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\TaxKind;
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Products\Domain\LotCode;
 use App\Module\Products\Domain\Product;
 

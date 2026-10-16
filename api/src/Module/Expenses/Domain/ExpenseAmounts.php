@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Expenses\Domain;
 
-use App\Fiscal\Domain\TaxComponent;
+use App\Fiscal\Domain\Model\TaxComponent;
 
 /**
  * What a supplier's bill comes to as it is printed: its lines, the fixed charges it carries (the stamp), and the tax

@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Identity\Domain\PasswordReset;
-use App\Identity\Domain\PasswordResetRepository;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\PasswordReset;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\PasswordResetRepository;
 
 final class InMemoryPasswordResets implements PasswordResetRepository
 {

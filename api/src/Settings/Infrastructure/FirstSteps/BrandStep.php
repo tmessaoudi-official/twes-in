@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Settings\Infrastructure\FirstSteps;
 
 use App\FirstSteps\Application\DeclaresFirstStep;
-use App\ModuleRegistry\Infrastructure\ApiPlatform\ModulePermission;
-use App\Settings\Domain\SettingLevel;
+use App\ModuleRegistry\Infrastructure\ApiPlatform\Security\ModulePermission;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Connection;
 

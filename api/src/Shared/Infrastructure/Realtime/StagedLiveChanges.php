@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Realtime;
 
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;
 use App\Shared\Application\RealtimePublisher;

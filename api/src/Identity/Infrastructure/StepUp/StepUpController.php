@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\StepUp;
 
-use App\Identity\Application\Mfa\BeginPasskeyAssertion;
-use App\Identity\Application\Mfa\PasskeyRefused;
+use App\Identity\Application\Mfa\Passkey\BeginPasskeyAssertion;
+use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpExhausted;
 use App\Identity\Application\StepUp\StepUpRefused;

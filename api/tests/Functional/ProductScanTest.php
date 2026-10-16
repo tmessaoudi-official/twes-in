@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Domain\TaxComponentRepository;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Repository\TaxComponentRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 

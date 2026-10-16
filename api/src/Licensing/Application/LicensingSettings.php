@@ -9,14 +9,14 @@ declare(strict_types=1);
 
 namespace App\Licensing\Application;
 
-use App\Licensing\Domain\LicensingDefaults;
-use App\Licensing\Domain\SubscriptionTerms;
-use App\Licensing\Domain\UnpaidMode;
+use App\Licensing\Domain\ValueObject\LicensingDefaults;
+use App\Licensing\Domain\ValueObject\SubscriptionTerms;
+use App\Licensing\Domain\ValueObject\UnpaidMode;
 use App\Settings\Application\DeclaresSettings;
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
-use App\Settings\Domain\SettingType;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingType;
 
 /**
  * The platform's licensing defaults (docs/SPEC.md § 7, 2026-09-17). They live in the platform chain only, which operators

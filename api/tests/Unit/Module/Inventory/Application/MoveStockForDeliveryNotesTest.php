@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Application;
 
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\ManageStockLocations;
@@ -27,13 +27,13 @@ use App\Module\Products\Domain\ProductTracking;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\ModuleRegistry\Domain\ModuleState;
+use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
-use App\Settings\Domain\Setting;
-use App\Settings\Domain\SettingAddress;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tests\Support\FakeTransactions;

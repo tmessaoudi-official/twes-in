@@ -11,8 +11,8 @@ namespace App\ModuleRegistry\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\ModuleRegistry\Domain\ModuleInterest;
-use App\ModuleRegistry\Domain\ModuleInterestRepository;
+use App\ModuleRegistry\Domain\Model\ModuleInterest;
+use App\ModuleRegistry\Domain\Repository\ModuleInterestRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;

@@ -11,7 +11,7 @@ namespace App\Tests\Unit\ModuleRegistry\Infrastructure;
 
 use App\ModuleRegistry\Application\DeclaresModule;
 use App\ModuleRegistry\Application\ModuleManifest;
-use App\ModuleRegistry\Infrastructure\ApiPlatform\ModuleOwnership;
+use App\ModuleRegistry\Infrastructure\ApiPlatform\Security\ModuleOwnership;
 use App\Tests\Unit\ModuleRegistry\Application\ModuleCatalogTest;
 use PHPUnit\Framework\TestCase;
 
@@ -30,7 +30,7 @@ final class ModuleOwnershipTest extends TestCase
         self::assertSame('ledger', $ownership->ownerOf('App\\Module\\Ledger\\Infrastructure\\ApiPlatform\\EntryResource'));
         self::assertSame('ledger', $ownership->ownerOf('App\\Module\\Ledger\\Domain\\Entry'));
         self::assertNull($ownership->ownerOf('App\\Module\\LedgerArchive\\Infrastructure\\ApiPlatform\\EntryResource'), 'a directory whose name merely starts alike');
-        self::assertNull($ownership->ownerOf('App\\Settings\\Infrastructure\\ApiPlatform\\SettingResource'), 'the core');
+        self::assertNull($ownership->ownerOf('App\\Settings\\Infrastructure\\ApiPlatform\\Resource\\SettingResource'), 'the core');
     }
 
     public function testAModuleDirectoryDeclaresOneModule(): void

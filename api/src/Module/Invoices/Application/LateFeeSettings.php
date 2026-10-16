@@ -11,10 +11,10 @@ namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Settings\Application\DeclaresSettings;
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
-use App\Settings\Domain\SettingType;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingType;
 
 /**
  * The late fee (MON-15, CLI-14): off until the company turns it on, and charged only where the company wrote a tier,

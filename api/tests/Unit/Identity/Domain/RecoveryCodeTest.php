@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Identity\Domain;
 
-use App\Identity\Domain\RecoveryCode;
+use App\Identity\Domain\ValueObject\RecoveryCode;
 use PHPUnit\Framework\TestCase;
 
 /**

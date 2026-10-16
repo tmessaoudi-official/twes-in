@@ -12,7 +12,7 @@ namespace App\Module\Vendors\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Module\Vendors\Application\ExpenseCategoryDirectory;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;

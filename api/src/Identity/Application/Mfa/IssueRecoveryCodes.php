@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Identity\Application\Mfa;
 
-use App\Identity\Domain\RecoveryCode;
-use App\Identity\Domain\RecoveryCodeEntry;
-use App\Identity\Domain\RecoveryCodeRepository;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\RecoveryCodeEntry;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\RecoveryCodeRepository;
+use App\Identity\Domain\ValueObject\RecoveryCode;
 
 /**
  * A fresh set of recovery codes in place of whatever the account had. Only their SHA-256 is stored: the raw codes are

@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\CustomFields\Domain;
 
-use App\CustomFields\Domain\CustomFieldRule;
-use App\CustomFields\Domain\CustomFieldType;
-use App\CustomFields\Domain\CustomFieldValues;
-use App\CustomFields\Domain\InvalidCustomFieldValue;
+use App\CustomFields\Domain\Exception\InvalidCustomFieldValue;
+use App\CustomFields\Domain\Service\CustomFieldValues;
+use App\CustomFields\Domain\ValueObject\CustomFieldRule;
+use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\ModuleRegistry\Domain;
 
-use App\ModuleRegistry\Domain\ModuleState;
+use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\TestCase;
 

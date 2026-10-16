@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
-use App\Fiscal\Domain\TaxComponentRepository;
-use App\Fiscal\Domain\UnitRepository;
-use App\Identity\Domain\Email;
-use App\Identity\Domain\UserRepository;
+use App\Fiscal\Domain\Repository\TaxComponentRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Identity\Domain\Repository\UserRepository;
+use App\Identity\Domain\ValueObject\Email;
 use App\Module\Customers\Application\CustomerInput;
 use App\Module\Customers\Application\ManageContacts;
 use App\Module\Customers\Application\ManageCustomerGroups;
@@ -61,7 +61,7 @@ use App\Module\Vendors\Application\VendorInput;
 use App\Module\Vendors\Domain\VendorProfile;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Domain\PaymentMethod;
 use App\Shared\Domain\PostalAddress;
 use App\Shared\Domain\Schedule;

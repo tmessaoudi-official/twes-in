@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Quotes\Domain;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;

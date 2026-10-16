@@ -11,10 +11,10 @@ namespace App\Fiscal\Infrastructure\Preset;
 
 use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\Calculation\TaxBasis;
-use App\Fiscal\Domain\IdentifierCheck;
-use App\Fiscal\Domain\StampOnCorrection;
-use App\Fiscal\Domain\TaxFamily;
-use App\Fiscal\Domain\TaxKind;
+use App\Fiscal\Domain\ValueObject\IdentifierCheck;
+use App\Fiscal\Domain\ValueObject\StampOnCorrection;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
+use App\Fiscal\Domain\ValueObject\TaxKind;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;

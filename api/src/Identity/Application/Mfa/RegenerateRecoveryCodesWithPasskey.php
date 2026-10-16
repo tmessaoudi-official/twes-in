@@ -11,7 +11,9 @@ namespace App\Identity\Application\Mfa;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
+use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
 

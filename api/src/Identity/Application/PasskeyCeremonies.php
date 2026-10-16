@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Application;
 
-use App\Identity\Application\Mfa\PasskeyRefused;
+use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 
 /**
  * The two WebAuthn ceremonies, registration and assertion, behind a port so the use cases never name the library.

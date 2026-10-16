@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Legal\Application;
 
-use App\Legal\Domain\LegalLanguage;
-use App\Legal\Domain\LegalPage;
+use App\Legal\Domain\ValueObject\LegalLanguage;
+use App\Legal\Domain\ValueObject\LegalPage;
 
 /** A starting text the platform ships for one page in one language, for the operator to complete and validate. */
 final readonly class LegalDraft

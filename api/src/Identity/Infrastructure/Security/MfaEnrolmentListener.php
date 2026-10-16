@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\Security;
 
 use App\Identity\Application\Mfa\SecondFactors;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Infrastructure\Http\RoutedPath;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use Symfony\Bundle\SecurityBundle\Security;

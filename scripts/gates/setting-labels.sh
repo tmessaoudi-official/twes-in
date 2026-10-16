@@ -71,7 +71,7 @@ fi
 
 # The headings the page draws its sections under: one per chain a company reads and sets, which the enum names
 # itself. Reading `ofCompanies()` rather than every case is deliberate — a platform-only chain has no section.
-chain_file=api/src/Settings/Domain/SettingChain.php
+chain_file=api/src/Settings/Domain/ValueObject/SettingChain.php
 if [[ ! -f "$root/$chain_file" ]]; then
   printf 'setting-labels: FAIL — %s is missing; the chains cannot be discovered\n' "$chain_file"
   exit 1

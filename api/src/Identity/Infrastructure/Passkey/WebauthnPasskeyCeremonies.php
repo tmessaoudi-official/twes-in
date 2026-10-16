@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Passkey;
 
-use App\Identity\Application\Mfa\PasskeyRefused;
+use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\PasskeyCeremonies;
 use App\Identity\Application\VerifiedPasskey;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;

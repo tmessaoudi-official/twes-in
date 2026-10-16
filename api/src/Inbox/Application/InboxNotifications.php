@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Inbox\Application;
 
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Inbox\Domain\Model\InboxItem;
 use App\Inbox\Domain\Repository\InboxRepository;
 use App\Shared\Application\Notification;

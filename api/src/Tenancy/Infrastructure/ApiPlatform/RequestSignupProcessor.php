@@ -11,7 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Application\Signup\SignupPolicy;
 use App\Tenancy\Infrastructure\Signup\SignupAsked;
 use Symfony\Component\DependencyInjection\Attribute\Target;

@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Fiscal\Domain;
 
-use App\Fiscal\Domain\InvalidFiscalValue;
-use App\Fiscal\Domain\TaxComponent;
-use App\Fiscal\Domain\TaxFamily;
-use App\Fiscal\Domain\TaxKind;
+use App\Fiscal\Domain\Exception\InvalidFiscalValue;
+use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
+use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

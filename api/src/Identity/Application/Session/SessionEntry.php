@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Application\Session;
 
-use App\Identity\Domain\UserSession;
+use App\Identity\Domain\Model\UserSession;
 
 /** A session on the person's list, and whether it is the one asking. */
 final readonly class SessionEntry

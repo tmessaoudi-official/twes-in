@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Licensing\Application\CompanyAccess;
-use App\Licensing\Domain\Access;
+use App\Licensing\Domain\ValueObject\Access;
 use Symfony\Component\Uid\Uuid;
 
 /** Every company at the access a test sets. */

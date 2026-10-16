@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
-use App\Fiscal\Domain\TaxFamily;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Invoices\Application\InvoiceSummarySource;
 use App\Module\Invoices\Domain\CreditEntryKind;
 use App\Module\Invoices\Domain\InvoiceStatus;

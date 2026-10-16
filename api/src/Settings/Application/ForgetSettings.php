@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
-use App\Settings\Domain\SettingAddress;
-use App\Settings\Domain\SettingRepository;
+use App\Settings\Domain\Repository\SettingRepository;
+use App\Settings\Domain\ValueObject\SettingAddress;
 
 /**
  * Forgets every value stored for one subject when the subject itself goes: a deleted customer group leaves no

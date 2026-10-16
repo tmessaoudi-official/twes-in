@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Expenses\Domain;
 
-use App\Fiscal\Domain\TaxComponent;
+use App\Fiscal\Domain\Model\TaxComponent;
 
 /**
  * One block of a supplier's bill as it is printed: a net amount above zero with no more decimals than the company's

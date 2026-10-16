@@ -11,8 +11,8 @@ namespace App\Fiscal\Application\Regime;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\PresetRegime;
-use App\Fiscal\Domain\CustomerTaxRegime;
-use App\Fiscal\Domain\TaxFamily;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Tenancy\Domain\Company;
 
 /**

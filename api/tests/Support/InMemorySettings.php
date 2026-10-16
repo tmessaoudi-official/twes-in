@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Settings\Domain\Setting;
-use App\Settings\Domain\SettingAddress;
-use App\Settings\Domain\SettingRepository;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\Repository\SettingRepository;
+use App\Settings\Domain\ValueObject\SettingAddress;
 
 final class InMemorySettings implements SettingRepository
 {

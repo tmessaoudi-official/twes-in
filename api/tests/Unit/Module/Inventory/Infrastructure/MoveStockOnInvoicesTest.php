@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Infrastructure;
 
-use App\Fiscal\Domain\Unit;
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Fiscal\Domain\Model\Unit;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
@@ -34,8 +34,8 @@ use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
-use App\Settings\Domain\Setting;
-use App\Settings\Domain\SettingAddress;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;

@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Identity\Domain\RecoveryCode;
-use App\Identity\Domain\RecoveryCodeEntry;
+use App\Identity\Domain\Model\RecoveryCodeEntry;
+use App\Identity\Domain\ValueObject\RecoveryCode;
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
 use Symfony\Component\HttpFoundation\Response;

@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Doctrine;
 
-use App\Identity\Domain\RecoveryCodeEntry;
-use App\Identity\Domain\RecoveryCodeRepository;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\RecoveryCodeEntry;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\RecoveryCodeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class DoctrineRecoveryCodeRepository implements RecoveryCodeRepository

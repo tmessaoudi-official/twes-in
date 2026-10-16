@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Application\Preset;
 
-use App\Fiscal\Domain\TaxFamily;
-use App\Fiscal\Domain\TaxKind;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
+use App\Fiscal\Domain\ValueObject\TaxKind;
 
 final readonly class PresetTaxComponent
 {

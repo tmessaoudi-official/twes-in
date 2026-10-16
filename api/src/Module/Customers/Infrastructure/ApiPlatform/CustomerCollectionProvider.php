@@ -13,7 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\Fiscal\Application\Regime\ListCustomerTaxRegimes;
-use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Application\ManageCustomers;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerSearch;

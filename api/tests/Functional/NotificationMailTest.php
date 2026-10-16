@@ -10,13 +10,13 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Application\PasswordHasher;
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Inbox\Application\NotificationPreferences;
 use App\Inbox\Infrastructure\Mail\NotificationToMail;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Tenancy\Domain\Company;

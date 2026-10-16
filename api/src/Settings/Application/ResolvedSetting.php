@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
 
 /** A setting as one context sees it: the value in force, where it comes from, and what each level holds. */
 final readonly class ResolvedSetting

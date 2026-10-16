@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Fiscal\Domain;
 
-use App\Fiscal\Domain\IdentifierCheck;
+use App\Fiscal\Domain\ValueObject\IdentifierCheck;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

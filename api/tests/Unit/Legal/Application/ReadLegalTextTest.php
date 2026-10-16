@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Legal\Application;
 
 use App\Legal\Application\ReadLegalText;
-use App\Legal\Domain\LegalLanguage;
-use App\Legal\Domain\LegalPage;
-use App\Legal\Domain\LegalText;
+use App\Legal\Domain\Model\LegalText;
+use App\Legal\Domain\ValueObject\LegalLanguage;
+use App\Legal\Domain\ValueObject\LegalPage;
 use App\Tests\Support\InMemoryLegalTexts;
 use PHPUnit\Framework\TestCase;
 

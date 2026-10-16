@@ -13,7 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\Account\DeleteOwnAccount;
 use App\Identity\Application\Account\ManageAccounts;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\CurrentCompany;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;

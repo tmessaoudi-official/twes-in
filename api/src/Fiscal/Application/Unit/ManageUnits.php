@@ -11,9 +11,9 @@ namespace App\Fiscal\Application\Unit;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Fiscal\Domain\InvalidFiscalValue;
-use App\Fiscal\Domain\Unit;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Exception\InvalidFiscalValue;
+use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;

@@ -18,10 +18,10 @@ use App\ImportExport\Application\RowRejected;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingAddress;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
-use App\Settings\Domain\SettingRepository;
+use App\Settings\Domain\Repository\SettingRepository;
+use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 

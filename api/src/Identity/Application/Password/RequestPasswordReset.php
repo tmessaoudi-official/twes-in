@@ -11,11 +11,11 @@ namespace App\Identity\Application\Password;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Identity\Domain\Email;
-use App\Identity\Domain\PasswordReset;
-use App\Identity\Domain\PasswordResetRepository;
-use App\Identity\Domain\PasswordResetToken;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Model\PasswordReset;
+use App\Identity\Domain\Repository\PasswordResetRepository;
+use App\Identity\Domain\Repository\UserRepository;
+use App\Identity\Domain\ValueObject\Email;
+use App\Identity\Domain\ValueObject\PasswordResetToken;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;

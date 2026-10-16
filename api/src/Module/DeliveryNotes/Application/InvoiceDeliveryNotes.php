@@ -12,7 +12,7 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Fiscal\Domain\TaxComponent;
+use App\Fiscal\Domain\Model\TaxComponent;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineTax;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;

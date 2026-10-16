@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
-use App\Identity\Infrastructure\ApiPlatform\MeFactory;
+use App\Identity\Infrastructure\ApiPlatform\Output\MeFactory;
 use App\Tenancy\Application\Session\ChooseWorkingCompany;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;

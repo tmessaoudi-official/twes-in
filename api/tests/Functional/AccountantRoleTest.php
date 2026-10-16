@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Domain\Company;

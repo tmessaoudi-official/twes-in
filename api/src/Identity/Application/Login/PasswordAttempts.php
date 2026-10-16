@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Identity\Application\Login;
 
 use App\Identity\Application\PasswordHasher;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 

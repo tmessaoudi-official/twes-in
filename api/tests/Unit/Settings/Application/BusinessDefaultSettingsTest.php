@@ -11,9 +11,9 @@ namespace App\Tests\Unit\Settings\Application;
 
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\SettingCatalog;
-use App\Settings\Domain\SettingChain;
-use App\Settings\Domain\SettingDefinition;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingChain;
+use App\Settings\Domain\ValueObject\SettingDefinition;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Domain\DocumentDesign;
 use App\Shared\Domain\DocumentLayout;
 use PHPUnit\Framework\TestCase;

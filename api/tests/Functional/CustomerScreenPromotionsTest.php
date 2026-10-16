@@ -11,9 +11,9 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
-use App\Fiscal\Domain\TaxComponentRepository;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Repository\TaxComponentRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerGroup;
 use App\Module\Customers\Domain\CustomerKind;

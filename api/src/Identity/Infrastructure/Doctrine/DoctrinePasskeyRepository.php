@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Doctrine;
 
-use App\Identity\Domain\Passkey;
-use App\Identity\Domain\PasskeyRepository;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\Passkey;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\Repository\PasskeyRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

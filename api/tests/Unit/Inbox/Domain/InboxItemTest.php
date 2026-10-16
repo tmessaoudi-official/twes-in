@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Inbox\Domain;
 
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Inbox\Domain\Model\InboxItem;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\TestCase;

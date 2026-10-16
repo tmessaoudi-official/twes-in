@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Scanning\Domain;
 
-use App\Identity\Domain\User;
+use App\Identity\Domain\Model\User;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;

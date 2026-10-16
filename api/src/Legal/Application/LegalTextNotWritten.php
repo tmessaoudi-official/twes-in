@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Legal\Application;
 
-use App\Legal\Domain\LegalLanguage;
-use App\Legal\Domain\LegalPage;
+use App\Legal\Domain\ValueObject\LegalLanguage;
+use App\Legal\Domain\ValueObject\LegalPage;
 
 final class LegalTextNotWritten extends \DomainException
 {

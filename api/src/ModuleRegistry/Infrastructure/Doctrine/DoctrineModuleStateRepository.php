@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\ModuleRegistry\Infrastructure\Doctrine;
 
-use App\ModuleRegistry\Domain\ModuleState;
-use App\ModuleRegistry\Domain\ModuleStateRepository;
+use App\ModuleRegistry\Domain\Model\ModuleState;
+use App\ModuleRegistry\Domain\Repository\ModuleStateRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

@@ -9,11 +9,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\PlatformSettings;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\SignupRepository;
 use App\Tenancy\Infrastructure\Signup\SignupAsked;

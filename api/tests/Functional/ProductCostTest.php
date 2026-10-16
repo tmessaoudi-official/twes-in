@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Products\Domain\Barcode;
 use App\Module\Products\Domain\BarcodeLine;
 use App\Module\Products\Domain\BarcodeRole;

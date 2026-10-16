@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Inventory\Domain;
 
-use App\Fiscal\Domain\Unit;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Inventory\Domain\LotOnHand;
 use App\Module\Inventory\Domain\LotPicking;
 use App\Module\Inventory\Domain\StockLot;

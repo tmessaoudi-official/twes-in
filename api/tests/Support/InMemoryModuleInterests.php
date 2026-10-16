@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\ModuleRegistry\Domain\ModuleInterest;
-use App\ModuleRegistry\Domain\ModuleInterestRepository;
+use App\ModuleRegistry\Domain\Model\ModuleInterest;
+use App\ModuleRegistry\Domain\Repository\ModuleInterestRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryModuleInterests implements ModuleInterestRepository

@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Identity\Application\Mfa;
 
 use App\Identity\Application\SecretCipher;
-use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Transactions;
 
 /**

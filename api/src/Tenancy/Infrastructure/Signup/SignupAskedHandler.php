@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Signup;
 
-use App\Identity\Domain\Email;
+use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Application\Signup\RequestSignup;
 use App\Tenancy\Application\Signup\SignupClosed;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;

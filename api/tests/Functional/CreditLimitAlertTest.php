@@ -11,12 +11,12 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
-use App\Fiscal\Domain\CustomerTaxRegimeRepository;
-use App\Fiscal\Domain\UnitRepository;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
-use App\Settings\Domain\SettingLevel;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
