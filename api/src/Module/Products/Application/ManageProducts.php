@@ -142,6 +142,12 @@ final readonly class ManageProducts
         return $this->products->ofIdInCompany($id, $company->getId()) ?? throw new ProductNotFound();
     }
 
+    /** The product as a write reads it: under a row lock, so another write of it waits rather than being refused. */
+    private function locked(Company $company, Uuid $id): Product
+    {
+        return $this->products->lockedOfIdInCompany($id, $company->getId()) ?? throw new ProductNotFound();
+    }
+
     /**
      * @throws ProductReferenceTaken
      * @throws ProductBarcodeTaken
@@ -192,7 +198,7 @@ final readonly class ManageProducts
     public function revise(Company $company, Uuid $id, ProductInput $input, ?Uuid $actorUserId, ?int $version = null): Product
     {
         return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): Product {
-            $product = $this->get($company, $id);
+            $product = $this->locked($company, $id);
             if (null !== $version) {
                 $this->versions->expect($product, $version);
             }
@@ -243,7 +249,7 @@ final readonly class ManageProducts
     public function replaceBarcodes(Company $company, Uuid $id, array $rows, ?Uuid $actorUserId, bool $seesCosts = true): Product
     {
         return $this->transactions->run(function () use ($company, $id, $rows, $actorUserId, $seesCosts): Product {
-            $product = $this->get($company, $id);
+            $product = $this->locked($company, $id);
             $rows = $seesCosts ? $rows : $this->unseenCodesKept($rows, $product);
             if ($product->replaceBarcodes($this->barcodeLines($company, $rows, $product), $this->clock->now())) {
                 $this->products->save($product);

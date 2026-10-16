@@ -44,10 +44,14 @@ final readonly class ChangeProductCost
      * @return bool whether the cost changed
      *
      * @throws InvalidProduct
+     * @throws ProductNotFound
      */
     public function handle(Company $company, Product $product, ?string $cost, CostChangeSource $source, ?Uuid $sourceId, ?Uuid $actorUserId): bool
     {
         return $this->transactions->run(function () use ($company, $product, $cost, $source, $sourceId, $actorUserId): bool {
+            // Read again under the row lock: a person's save of this product since it was read is waited for and taken
+            // in, where the unlocked object would be refused at the flush for a version saved in between.
+            $product = $this->products->lockedOfIdInCompany($product->getId(), $company->getId()) ?? throw new ProductNotFound();
             $before = $product->getDetails()->costPrice;
             $now = $this->clock->now();
             if (!$product->reviseCost($cost, $now)) {

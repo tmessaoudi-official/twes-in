@@ -61,6 +61,12 @@ interface ProductRepository
     /** Null for a product that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Product;
 
+    /**
+     * The product read again under a row lock held until the transaction ends, as a write must read it: another
+     * write of the same product waits instead of being refused at the flush for a version saved in between.
+     */
+    public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Product;
+
     public function ofReferenceInCompany(string $reference, Uuid $companyId): ?Product;
 
     /** The first product of the company, by reference, whose name is this one whatever its case; null when none. */

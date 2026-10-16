@@ -23,7 +23,9 @@ use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
@@ -159,6 +161,25 @@ final readonly class DoctrineProductRepository implements ProductRepository
         $product = $this->entityManager->find(Product::class, $id);
 
         return null !== $product && $product->getCompany()->getId()->equals($companyId) ? $product : null;
+    }
+
+    public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Product
+    {
+        $product = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Product::class, 'p')
+            ->where('p.id = :id')
+            ->andWhere('p.company = :company')
+            ->setParameter('id', $id, 'uuid')
+            ->setParameter('company', $companyId, 'uuid')
+            ->getQuery()
+            // SELECT … FOR UPDATE, which Doctrine refuses outside a transaction; the refresh hint replaces whatever an
+            // earlier read of the row in this request left in memory with what the lock just read.
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+
+        return $product instanceof Product ? $product : null;
     }
 
     public function ofReferenceInCompany(string $reference, Uuid $companyId): ?Product
