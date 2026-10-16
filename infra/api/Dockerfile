@@ -2,7 +2,7 @@
 # twes-in API on FrankenPHP (Caddy + PHP 8.5). Two targets over one base, as the official Symfony Docker image
 # lays them out: dev (compose.yaml, CI's e2e) and prod (compose.prod.yaml, a deployment). The last stage, prod, is
 # what a build that names no target gets.
-FROM dunglas/frankenphp:1.12.7-php8.5-trixie AS base
+FROM dunglas/frankenphp:1.13.0-php8.5-trixie AS base
 
 # Worker mode (https://frankenphp.dev/docs/worker/): the kernel boots once per worker and serves request after request;
 # symfony/runtime's FrankenPhpWorkerRunner resets the services between them and starts a fresh worker every 500. In
@@ -68,8 +68,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends bash ca-certificates git jq logrotate make perl python3 \
  && rm -rf /var/lib/apt/lists/*
 # The Docker CLI and Compose, for the gates that drive containers through the host's socket.
-COPY --from=docker:29.8.2-cli /usr/local/bin/docker /usr/local/bin/docker
-COPY --from=docker:29.8.2-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
+COPY --from=docker:29.9.0-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker:29.9.0-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
 # A one-off command, not a server: no migrations, no worker, no health check.
 ENTRYPOINT []
 CMD ["bash"]

@@ -17,7 +17,7 @@ services:
   edge:
     logging: *logging
     restart: unless-stopped
-    image: caddy:2.11.6-alpine
+    image: caddy:2.11.7-alpine
     environment:
       STATUS_HOST: "${STATUS_HOST:?set STATUS_HOST, the name the status page answers on}"
       ERRORS_HOST: "${ERRORS_HOST:?set ERRORS_HOST, the name the error tracker answers on}"
