@@ -170,12 +170,12 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await page.goto('/delivery-notes');
     await page.getByTestId('list-filter').fill(noteNumber);
     await expect(page.getByTestId('delivery-notes-table')).toContainText(noteNumber);
-    // Each status chip says how many it would list under that search (docs/SPEC.md § 7, 2026-09-26): this run's
+    // Each status chip says how many it would list under that search: this run's
     // note, found by its number, is delivered.
     await expectFacetCount(page, 'list-facet-status-delivered', '1');
     await expectFacetCount(page, 'list-facet-status-draft', '0');
 
-    // Filters combine (docs/SPEC.md § 7, 2026-10-06): « Livré » or « Brouillon » keeps the note, an issue day that
+    // Filters combine: « Livré » or « Brouillon » keeps the note, an issue day that
     // begins in two days takes it out until its chip is removed.
     await choose(page, 'list-facet-status', /Livré|Delivered/);
     await choose(page, 'list-facet-status', /Brouillon|Draft/);
@@ -216,7 +216,7 @@ async function validatedNote(
   await expect(page.getByTestId('delivery-note-title')).toHaveText(/BL-\d{4}-(\d{2}-)?\d{5}/);
 }
 
-// docs/SPEC.md § 7, 2026-09-21 17:25: one action numbers the draft and delivers it today, beside the two steps.
+// One action numbers the draft and delivers it today, beside the two steps.
 test('a draft is validated and delivered in one step', async ({ page }) => {
   const run = Date.now().toString(36).toUpperCase();
   const customerNumber = `E2E-DNB-${run}`;
@@ -386,5 +386,53 @@ test('a second note is added to the draft invoice the first one started', async 
     await expect(page.getByTestId('line-0-source-left')).toBeVisible();
   } finally {
     await retire(page, customerNumber);
+  }
+});
+
+// Several notes go on one invoice from the list, and a note that cannot go on it is
+// named with why before the others go on.
+test('several notes are invoiced at once from the list, another customer’s named and left out', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const first = `E2E-DM-${run}-A`;
+  const other = `E2E-DM-${run}-B`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, first);
+  await createCustomer(page, other);
+  const noteId = () => page.url().slice(page.url().lastIndexOf('/') + 1);
+  try {
+    await validatedNote(page, first, `Premier ${run}`);
+    const a = noteId();
+    await validatedNote(page, first, `Second ${run}`);
+    const b = noteId();
+    await validatedNote(page, other, `Autre ${run}`);
+    const c = noteId();
+
+    await page.goto('/delivery-notes');
+    await page.getByTestId('list-filter').fill(run);
+    for (const id of [a, b, c]) {
+      await expect(page.getByTestId(`delivery-note-${id}`)).toBeVisible();
+      await page.getByTestId(`list-select-row-${id}`).locator('input').check();
+    }
+    await page.getByTestId('delivery-notes-bulk-invoice').click();
+
+    const skipped = page.getByTestId('delivery-notes-bulk-skipped');
+    await expect(skipped.getByTestId(`delivery-notes-bulk-skipped-${c}`)).toContainText(
+      'D’un autre client',
+    );
+    await expect(skipped.locator('li')).toHaveCount(1);
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('delivery-notes-bulk-go').click();
+
+    // The customer has no draft yet: the two notes start a new invoice, which opens.
+    await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('line-0-description')).toHaveValue(`Premier ${run}`);
+    await expect(page.getByTestId('line-1-description')).toHaveValue(`Second ${run}`);
+    await expect(page.getByTestId('line-2-description')).toHaveCount(0);
+  } finally {
+    await retire(page, first);
+    await retire(page, other);
   }
 });

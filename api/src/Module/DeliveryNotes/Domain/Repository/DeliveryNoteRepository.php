@@ -29,7 +29,7 @@ interface DeliveryNoteRepository
 
     /**
      * How many notes each status chip of the list would show under the same words and customer, the status left aside
-     * (docs/SPEC.md § 7, 2026-09-26), and how many in all.
+     * and how many in all.
      *
      * @return array{all: int, statuses: array<string, int>} every status named, in the enum's order
      */
@@ -37,6 +37,15 @@ interface DeliveryNoteRepository
 
     /** Null for a delivery note that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote;
+
+    /**
+     * The company's delivery notes among these ids, read as they are, holding nothing.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return list<DeliveryNote>
+     */
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array;
 
     /**
      * The company's delivery notes among these ids, their rows held until the transaction this runs in ends; outside a

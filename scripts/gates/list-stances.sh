@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# What one list gains, every list of its kind is judged for (docs/SPEC.md § 7, 2026-10-16 09:47): only the invoices list
+# What one list gains, every list of its kind is judged for: only the invoices list
 # had a selection among 27, and nothing asked the others. Every list a template draws (`<app-data-list>`) offers, or
 # says below why it does not, five things: selection, bulk actions (an `appDataListSelection` template), row actions
 # (its descriptor's `actions`, or a button in one of its cells), import (a link to `/imports/…`) and export
@@ -58,9 +58,7 @@ customers/customers-page#list|bulk=not-ruled
 customers/customers-page#list|row-actions=row-260
 customers/customers-page#list|selection=not-ruled
 delivery-notes/delivery-notes-page|import=not-ruled
-delivery-notes/delivery-notes-page#list|bulk=bulk-ruled
 delivery-notes/delivery-notes-page#list|row-actions=row-260
-delivery-notes/delivery-notes-page#list|selection=bulk-ruled
 expenses/expense-categories-page|export=not-ruled
 expenses/expense-categories-page|import=not-ruled
 expenses/expense-categories-page#list|bulk=not-ruled

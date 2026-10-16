@@ -82,6 +82,13 @@ final class InMemoryDeliveryNotes implements DeliveryNoteRepository
         return null;
     }
 
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids);
+
+        return array_values(array_filter($this->ofCompany($companyId), static fn (DeliveryNote $note): bool => \in_array($note->getId()->toRfc4122(), $wanted, true)));
+    }
+
     public function lockedOfIdsInCompany(array $ids, Uuid $companyId): array
     {
         $this->assertLockable();

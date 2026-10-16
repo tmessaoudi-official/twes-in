@@ -13,7 +13,7 @@ export type DeliveryNoteStatus = 'draft' | 'validated' | 'delivered' | 'cancelle
 export type DeliveryNoteSortKey = 'number' | 'customer' | 'issueDate' | 'deliveryDate' | 'status';
 
 /** One page of the delivery notes list as the API searches, narrows and sorts it (docs/SPEC.md § 7). */
-/** What each status chip of the list would show under the same search, as the API counted it (docs/SPEC.md § 7, 2026-09-26). */
+/** What each status chip of the list would show under the same search, as the API counted it. */
 /** What of a delivery note is still to invoice, line by line in the note's own order: the API's decimal strings. */
 /** A draft invoice the notes of a customer could be added to instead of starting a new one. */
 export interface InvoiceDraftOption {
@@ -22,6 +22,34 @@ export interface InvoiceDraftOption {
   total: string;
   lineCount: number;
   customerReference: string | null;
+}
+
+/** Why a selected note stays off the invoice, as the API says it. */
+export type InvoicingSkipReason =
+  | 'not_found'
+  | 'draft'
+  | 'cancelled'
+  | 'invoiced'
+  | 'nothing_left'
+  | 'other_customer'
+  | 'other_establishment';
+
+/** One selected note, and whether invoicing the selection takes it. */
+export interface InvoicingCheckRow {
+  id: string;
+  number: string | null;
+  customerName: string | null;
+  included: boolean;
+  reason: InvoicingSkipReason | null;
+}
+
+/** What invoicing the selected notes would do, before it runs, and whose invoice the ones taken make. */
+export interface InvoicingCheck {
+  rows: readonly InvoicingCheckRow[];
+  included: number;
+  skipped: number;
+  customerId: string | null;
+  establishmentId: string | null;
 }
 
 export interface DeliveryNoteLeft {
@@ -109,7 +137,7 @@ export interface DeliveryNoteLine {
   productName: string | null;
   /** How the product's stock is told apart today; null for a line naming no product. Read only. */
   productTracking: ProductTracking | null;
-  /** The lot or serial handed over, for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5). */
+  /** The lot or serial handed over, for a product tracked by one. */
   lotCode: string | null;
   /** The line's net amount at the currency's scale, computed by the API on every read. */
   net: string;
@@ -217,7 +245,7 @@ export interface LineTaxOption {
 /**
  * What the delivery note form offers: the company's currency, its active establishments, units and line taxes — what
  * is small, bounded and needed all at once. The customers and the products are asked for a few at a time through the
- * two pickers instead (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+ * two pickers instead.
  */
 export interface DeliveryNoteOptions {
   currency: string;

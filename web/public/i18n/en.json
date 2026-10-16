@@ -1972,6 +1972,25 @@
     "cancelled": "The note was cancelled.",
     "suggest": {
       "invoice": "Invoice this note"
+    },
+    "selected": "{count, plural, =0 {No note selected} one {{{count}} note selected} other {{{count}} notes selected}}",
+    "select_draft": "Select the draft for {{customer}}",
+    "bulk": {
+      "invoice": "Invoice",
+      "skipped_title": "{count, plural, =0 {No note left out} one {One selected note is left out} other {{{count}} selected notes are left out}}",
+      "invoice_rest": "{count, plural, one {Invoice the other one} other {Invoice the other {{count}}}}",
+      "close": "Close",
+      "check_failed": "The selection could not be checked. Try again.",
+      "unknown": "Unknown note",
+      "reasons": {
+        "not_found": "Not found: deleted meanwhile, or no longer accessible",
+        "draft": "Draft: not validated yet",
+        "cancelled": "Cancelled: nothing was handed over",
+        "invoiced": "Already invoiced: its invoice is issued",
+        "nothing_left": "Already on an invoice, a draft included: nothing left to invoice",
+        "other_customer": "Another customer's: an invoice is addressed to one only",
+        "other_establishment": "Another establishment's: each numbers its own invoices"
+      }
     }
   },
   "products": {

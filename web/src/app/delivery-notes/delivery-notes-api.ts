@@ -18,6 +18,8 @@ import type {
   DeliveryNoteStatusCountsDeliveryNoteStatusCountsRead,
   InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWriteValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
   InvoiceFromDeliveryNotesInvoiceResourceInvoiceReadValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
+  InvoicingCheckInvoicingCheckReadValidationInvoicingCheckWrite as InvoicingCheckRead,
+  InvoicingCheckInvoicingCheckWriteValidationInvoicingCheckWrite as InvoicingCheckWrite,
 } from '../api/types.gen';
 import type { PreviewBody } from '../shared/documents/document-figures';
 import { SILENT } from '../shared/feedback/activity-interceptor';
@@ -39,6 +41,7 @@ import {
   type LineTaxOption,
   type ProductOption,
   type InvoiceDraftOption,
+  type InvoicingCheck,
 } from './delivery-notes-types';
 import { InvoicesApi, refusedField } from '../invoices/invoices-api';
 import { trackingOf } from '../products/products-types';
@@ -73,7 +76,7 @@ export class DeliveryNotesApi {
 
   /**
    * The few customers or products a person means, or — given ids — exactly the records a note already names, whether
-   * or not they are still offered. The catalogue is never read whole (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+   * or not they are still offered. The catalogue is never read whole.
    */
   async pickCustomers(companyId: string, asked: PickAsked): Promise<CustomerOption[]> {
     return this.guard(async () => {
@@ -167,7 +170,7 @@ export class DeliveryNotesApi {
     });
   }
 
-  /** What each status chip would list under the list's words and customer (docs/SPEC.md § 7, 2026-09-26). */
+  /** What each status chip would list under the list's words and customer. */
   async statusCounts(
     companyId: string,
     search: DeliveryNoteSearch,
@@ -262,6 +265,38 @@ export class DeliveryNotesApi {
    * Drafts an invoice from validated or delivered notes of one customer and establishment, and answers its id; 409
    * when a note is not validated or delivered or is already on an invoice, 422 when the notes cannot share one.
    */
+  /** What invoicing the selected notes would do with each, checked by the API before it runs; nothing changes. */
+  async invoicingCheck(
+    companyId: string,
+    deliveryNoteIds: readonly string[],
+    invoiceId: string | null = null,
+  ): Promise<InvoicingCheck> {
+    return this.guard(async () => {
+      const body: InvoicingCheckWrite = { deliveryNoteIds: [...deliveryNoteIds], invoiceId };
+      const check = await firstValueFrom(
+        this.http.post<InvoicingCheckRead>(
+          `${companyPath(companyId)}/invoices/from-delivery-notes/check`,
+          body,
+        ),
+      );
+      if (check.rows === undefined || check.included === undefined || check.skipped === undefined)
+        throw new Error('An invoicing check came without its rows.');
+      return {
+        rows: check.rows.map((row) => ({
+          id: row.id,
+          number: row.number,
+          customerName: row.customerName,
+          included: row.outcome === 'included',
+          reason: row.reason,
+        })),
+        included: check.included,
+        skipped: check.skipped,
+        customerId: check.customerId ?? null,
+        establishmentId: check.establishmentId ?? null,
+      };
+    });
+  }
+
   async invoice(
     companyId: string,
     deliveryNoteIds: readonly string[],

@@ -16,13 +16,18 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
-import { DataList, DataListCell } from '../shared/list/data-list';
+import { DataList, DataListCell, DataListSelection } from '../shared/list/data-list';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { PickAsked } from '../shared/form/pick-api';
-import type { ListFacetCounts, ListPickSource, ListQuery } from '../shared/list/list-types';
+import type {
+  ListDescriptor,
+  ListFacetCounts,
+  ListPickSource,
+  ListQuery,
+} from '../shared/list/list-types';
 import { keyName } from '../shared/actions/shortcuts-sheet';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
@@ -32,6 +37,7 @@ import {
   deliveryNoteListRows,
   deliveryNoteSearch,
 } from './delivery-note-forms';
+import { DeliveryNoteBulk } from './delivery-note-bulk';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import {
   DELIVERY_NOTE_STATUS_TONES,
@@ -51,6 +57,8 @@ import {
     DayPipe,
     DataList,
     DataListCell,
+    DataListSelection,
+    DeliveryNoteBulk,
     ListExport,
     StatusBadge,
   ],
@@ -63,7 +71,29 @@ export class DeliveryNotesPage implements OnInit {
   private readonly facade = inject(DeliveryNotesFacade);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = DELIVERY_NOTES_LIST;
+  /**
+   * Rows are selected only where something can be done with them: « Facturer » several notes at once, for whoever may
+   * draft an invoice while invoices are on.
+   */
+  protected readonly list = computed((): ListDescriptor<DeliveryNoteListRow> =>
+    this.mayInvoice()
+      ? {
+          ...DELIVERY_NOTES_LIST,
+          selection: {
+            countKey: 'delivery_notes.selected',
+            labelOf: (row) =>
+              row.number === null
+                ? { key: 'delivery_notes.select_draft', params: { customer: row.customer } }
+                : null,
+          },
+        }
+      : DELIVERY_NOTES_LIST,
+  );
+  protected readonly mayInvoice = computed(
+    () => this.auth.hasModule('invoices') && this.auth.hasPermission('invoice.write'),
+  );
+  /** The rows ticked on the page shown, by id: what the selection bar's « Facturer » acts on. */
+  protected readonly selected = signal<readonly string[]>([]);
   /** A list cell's row is untyped, so the tone is looked up through a typed function. */
   protected readonly struckOf = (status: DeliveryNoteStatus): boolean =>
     withdrawn(DELIVERY_NOTE_STATUS_STAGES[status]);
@@ -76,7 +106,7 @@ export class DeliveryNotesPage implements OnInit {
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('delivery_note.write'));
   protected readonly rowTestId = (row: DeliveryNoteListRow): string => `delivery-note-${row.id}`;
-  /** What each status chip would list, as the API counted it (docs/SPEC.md § 7, 2026-09-26). */
+  /** What each status chip would list, as the API counted it. */
   protected readonly facetCounts = computed((): ListFacetCounts | null => {
     const counts = this.facade.statusCounts();
     return counts === null ? null : { status: { total: counts.all, options: counts.statuses } };
@@ -98,7 +128,7 @@ export class DeliveryNotesPage implements OnInit {
       name: customer.name,
     }));
   }
-  /** The person's key for a new note, named on the button (docs/SPEC.md § 7, 2026-09-24 22:51). */
+  /** The person's key for a new note, named on the button. */
   protected readonly newKey = computed(() => this.keys().new);
   protected readonly keyName = keyName;
   private readonly keys = inject(SettingsFacade).value(PRESENTATION.shortcuts);

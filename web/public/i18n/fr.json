@@ -1972,6 +1972,25 @@
     "cancelled": "Le bon a été annulé.",
     "suggest": {
       "invoice": "Facturer ce bon"
+    },
+    "selected": "{count, plural, =0 {Aucun bon sélectionné} one {{{count}} bon sélectionné} other {{{count}} bons sélectionnés}}",
+    "select_draft": "Sélectionner le brouillon pour {{customer}}",
+    "bulk": {
+      "invoice": "Facturer",
+      "skipped_title": "{count, plural, =0 {Aucun bon laissé de côté} one {Un bon sélectionné est laissé de côté} other {{{count}} bons sélectionnés sont laissés de côté}}",
+      "invoice_rest": "{count, plural, one {Facturer l’autre} other {Facturer les {{count}} autres}}",
+      "close": "Fermer",
+      "check_failed": "La sélection n’a pas pu être vérifiée. Réessayez.",
+      "unknown": "Bon inconnu",
+      "reasons": {
+        "not_found": "Introuvable : supprimé entre-temps, ou plus accessible",
+        "draft": "Brouillon : pas encore validé",
+        "cancelled": "Annulé : rien n’a été remis",
+        "invoiced": "Déjà facturé : sa facture est émise",
+        "nothing_left": "Déjà sur une facture, brouillon compris : plus rien à facturer",
+        "other_customer": "D’un autre client : une facture ne s’adresse qu’à un seul",
+        "other_establishment": "D’un autre établissement : chacun numérote ses propres factures"
+      }
     }
   },
   "products": {
