@@ -245,13 +245,12 @@ export class DeliveryNotesApi {
     return this.step(companyId, id, 'validate-and-deliver', null);
   }
 
-  /** Marks a validated note delivered on a day, or on the company's today when the day is left out. */
-  async deliver(
-    companyId: string,
-    id: string,
-    deliveredOn: string | null,
-  ): Promise<DeliveryNoteRow> {
-    const body: DeliveryNoteDeliveryNoteDeliver = { deliveredOn };
+  /**
+   * Marks a validated note delivered at a moment written on the company's clock (`YYYY-MM-DDTHH:MM`), or now when
+   * it is left out.
+   */
+  async deliver(companyId: string, id: string, delivered: string | null): Promise<DeliveryNoteRow> {
+    const body: DeliveryNoteDeliveryNoteDeliver = { delivered };
     return this.step(companyId, id, 'deliver', body);
   }
 
@@ -411,6 +410,7 @@ function toNote(
     customerName: raw.customerName ?? '',
     issueDate: raw.issueDate ?? null,
     deliveryDate: raw.deliveryDate ?? null,
+    deliveredAt: raw.deliveredAt ?? null,
     deliveryAddress: {
       line1: raw.deliveryAddressLine1 ?? null,
       line2: raw.deliveryAddressLine2 ?? null,

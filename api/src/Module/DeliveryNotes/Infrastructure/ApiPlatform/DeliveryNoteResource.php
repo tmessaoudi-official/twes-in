@@ -157,6 +157,8 @@ final class DeliveryNoteResource
     public const string READ = 'delivery_note:read';
     public const string WRITE = 'delivery_note:write';
     public const string DELIVER = 'delivery_note:deliver';
+    /** A day and a time to the minute on the company's clock, as a person writes when the goods arrived. */
+    public const string LOCAL_MOMENT = 'Y-m-d\\TH:i';
     /** Nulls are answered: a draft's absent number and a line without a product read alike; no identifiers read `{}`. */
     private const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
@@ -228,22 +230,30 @@ final class DeliveryNoteResource
     #[Groups([self::READ])]
     public ?array $customerSnapshot = null;
 
-    /** The day the goods arrived, YYYY-MM-DD, from the issue day to the company's today; left out, today. Sent to deliver. */
-    #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'format' => 'date'])]
-    #[Assert\Date(groups: [self::DELIVER])]
+    /**
+     * When the goods arrived, YYYY-MM-DDTHH:MM in the company's time zone, from its issue day to now; left out, now.
+     * Sent to deliver: the company's own clock, so a screen anywhere writes the time the paper says.
+     */
+    #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'pattern' => '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$'])]
+    #[Assert\DateTime(format: self::LOCAL_MOMENT, groups: [self::DELIVER])]
     #[Groups([self::DELIVER])]
-    public ?string $deliveredOn = null;
+    public ?string $delivered = null;
 
     /** The day validation numbered the note, in the company's time zone; null while it is a draft. */
     #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'date'])]
     #[Groups([self::READ])]
     public ?string $issueDate = null;
 
-    /** The day the goods are expected, YYYY-MM-DD. */
+    /** The day the goods are expected, YYYY-MM-DD; once delivered, the company's day they arrived. */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
     #[Assert\Date(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $deliveryDate = null;
+
+    /** The moment the goods arrived, ISO 8601 in UTC; null until the note is delivered, or invoiced after it was. */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'date-time'])]
+    #[Groups([self::READ])]
+    public ?string $deliveredAt = null;
 
     #[Assert\Length(max: 200, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
@@ -363,6 +373,7 @@ final class DeliveryNoteResource
         $resource->customerSnapshot = null === $snapshot ? null : ['identifiers' => new \ArrayObject($snapshot->identifiers)] + $snapshot->toArray();
         $resource->issueDate = $note->getIssueDate()?->format('Y-m-d');
         $resource->deliveryDate = $header->deliveryDate?->format('Y-m-d');
+        $resource->deliveredAt = $note->getDeliveredAt()?->format(\DATE_ATOM);
         [$resource->deliveryAddressLine1, $resource->deliveryAddressLine2, $resource->deliveryPostalCode, $resource->deliveryCity, $resource->deliveryCountryCode] = $header->deliveryAddress->parts();
         $resource->customerReference = $header->customerReference;
         $resource->remarksPrinted = $header->remarksPrinted;

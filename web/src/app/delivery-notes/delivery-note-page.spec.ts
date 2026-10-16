@@ -102,6 +102,7 @@ const draft: DeliveryNoteRow = {
   customerName: 'Carthage',
   issueDate: null,
   deliveryDate: null,
+  deliveredAt: null,
   deliveryAddress: { line1: null, line2: null, postalCode: null, city: null, countryCode: null },
   customerReference: null,
   remarksPrinted: null,
@@ -180,7 +181,7 @@ describe('DeliveryNotePage', () => {
   const auth = {
     me: () => ({
       user: { id: 'u1' },
-      company: { id: 'c1', name: 'Acme' },
+      company: { id: 'c1', name: 'Acme', timezone: 'Africa/Tunis' },
       plannedModules: [
         { key: 'mailing', planned: 'v1' },
         { key: 'whatsapp', planned: 'v1' },
@@ -914,13 +915,39 @@ describe('DeliveryNotePage', () => {
       '/api/companies/c1/delivery-notes/n1/pdf',
     );
 
-    // Delivering asks for its day in a dialog, so the bar carries actions and not a date field.
+    // Delivering asks for its moment in a dialog, so the bar carries actions and not a date field. It opens on now
+    // on the company's clock; left as it is, the API stamps its own now, which a browser clock running ahead cannot
+    // push past.
+    // At 23:30 in UTC it is already half past midnight the next day in Tunis.
     expect(q('delivery-note-delivered-on')).toBeNull();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-20T23:30:00Z'));
+    try {
+      q('document-action-deliver')!.click();
+      await settle();
+    } finally {
+      vi.useRealTimers();
+    }
+    expect((over('delivery-note-delivered-on') as HTMLInputElement).value).toBe('21/09/2026');
+    expect((over('delivery-note-delivered-time') as HTMLInputElement).value).toBe('00:30');
+    over('delivery-note-deliver')!.click();
+    await vi.waitFor(() => expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', null));
+
+    // A round recorded at its end: the moment written is sent as the company's clock reads it.
+    facade.deliver.mockClear();
     q('document-action-deliver')!.click();
     await settle();
+    // The time is written as a person writes it, on 24 hours: « 9h05 », « 9:05 » or « 0905 »; never a 24:00.
     typeIn(over('delivery-note-delivered-on') as HTMLInputElement, '2026-09-20');
+    typeIn(over('delivery-note-delivered-time') as HTMLInputElement, '24:00');
+    await settle();
+    expect((over('delivery-note-deliver') as HTMLButtonElement).disabled).toBe(true);
+    typeIn(over('delivery-note-delivered-time') as HTMLInputElement, '9h05');
+    await settle();
     over('delivery-note-deliver')!.click();
-    await vi.waitFor(() => expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20'));
+    await vi.waitFor(() =>
+      expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20T09:05'),
+    );
 
     // Cancelling is destructive, so it is behind "⋮" and asks before it runs.
     expect(q('document-action-cancel')).toBeNull();
@@ -947,12 +974,18 @@ describe('DeliveryNotePage', () => {
     expect(q('document-action-pdf')?.textContent).not.toContain('pdf_draft');
   });
 
-  it('shows an invoiced note with its delivery day and PDF, neither delivered nor cancelled again', async () => {
-    note.set({ ...validated, status: 'invoiced', deliveryDate: '2026-09-20' });
+  it('shows an invoiced note with its delivery moment and PDF, neither delivered nor cancelled again', async () => {
+    note.set({
+      ...validated,
+      status: 'invoiced',
+      deliveryDate: '2026-09-20',
+      deliveredAt: '2026-09-20T13:05:00+00:00',
+    });
     await open('n1');
 
     expect(q('delivery-note-status')?.textContent).toContain('Facturé');
-    expect(q('delivery-note-status')?.textContent).toContain('20/09/2026');
+    // The time the goods arrived, on the company's clock: 13:05 UTC is 14:05 in Tunis.
+    expect(q('delivery-note-status')?.textContent).toContain('20/09/2026 14:05');
     expect(q('delivery-note-invoiced')?.textContent).toContain('sur une facture');
     expect(q('delivery-note-fixed')).toBeNull();
     expect(q('document-action-deliver')).toBeNull();

@@ -40,7 +40,7 @@ final readonly class DeliveryNoteCollectionProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::READ);
-        $search = DeliveryNoteSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, DeliveryNoteSearch::SORTS));
+        $search = DeliveryNoteSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, DeliveryNoteSearch::SORTS), $company);
 
         return $this->paging->paginator(
             $this->manage->search($company, $search, $this->paging->request($operation, $context)),

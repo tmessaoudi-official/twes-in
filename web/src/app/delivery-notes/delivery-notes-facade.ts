@@ -180,13 +180,13 @@ export class DeliveryNotesFacade {
     });
   }
 
-  /** Delivered on the day given, or on the company's today when none is. */
+  /** Delivered at the moment given on the company's clock, or now when none is. */
   async deliver(
     companyId: string,
     id: string,
-    deliveredOn: string | null,
+    delivered: string | null,
   ): Promise<DeliveryNoteRow | null> {
-    return this.step(() => this.api.deliver(companyId, id, deliveredOn));
+    return this.step(() => this.api.deliver(companyId, id, delivered));
   }
 
   async cancel(companyId: string, id: string): Promise<DeliveryNoteRow | null> {

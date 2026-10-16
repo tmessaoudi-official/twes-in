@@ -53,6 +53,7 @@ const numbered: DeliveryNoteRow = {
   customerName: 'Carthage Conseil',
   issueDate: '2026-09-15',
   deliveryDate: null,
+  deliveredAt: null,
   deliveryAddress: { line1: null, line2: null, postalCode: null, city: null, countryCode: null },
   customerReference: null,
   remarksPrinted: null,

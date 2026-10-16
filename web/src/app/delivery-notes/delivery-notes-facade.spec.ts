@@ -26,6 +26,7 @@ const draft: DeliveryNoteRow = {
   customerName: 'Carthage',
   issueDate: null,
   deliveryDate: null,
+  deliveredAt: null,
   deliveryAddress: { line1: null, line2: null, postalCode: null, city: null, countryCode: null },
   customerReference: null,
   remarksPrinted: null,

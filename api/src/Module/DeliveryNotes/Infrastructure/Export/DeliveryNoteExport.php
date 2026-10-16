@@ -58,7 +58,7 @@ final readonly class DeliveryNoteExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $search = DeliveryNoteSearchReader::read($query->parameters(), $query->text(), $query->order(DeliveryNoteSearch::SORTS));
+        $search = DeliveryNoteSearchReader::read($query->parameters(), $query->text(), $query->order(DeliveryNoteSearch::SORTS), $company);
 
         for ($page = 1;; ++$page) {
             $answer = $this->manage->search($company, $search, new PageRequest($page, self::BATCH));

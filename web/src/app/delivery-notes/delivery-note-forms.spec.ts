@@ -67,6 +67,7 @@ const validated: DeliveryNoteRow = {
   customerName: 'Carthage',
   issueDate: '2026-09-15',
   deliveryDate: '2026-09-20',
+  deliveredAt: null,
   deliveryAddress: {
     line1: 'Quai 3',
     line2: null,

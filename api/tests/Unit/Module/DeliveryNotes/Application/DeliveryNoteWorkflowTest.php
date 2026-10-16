@@ -210,20 +210,23 @@ final class DeliveryNoteWorkflowTest extends TestCase
         self::assertCount(1, $this->audit->entries);
     }
 
-    public function testDeliveryDefaultsToTheCompanysTodayAndOnlyAValidatedNoteCancelledIsAnnounced(): void
+    public function testDeliveryIsStampedNowOnTheCompanysDayAndOnlyAValidatedNoteCancelledIsAnnounced(): void
     {
         $actor = Uuid::v7();
         $delivered = $this->workflow->validate($this->company, $this->draft()->getId(), null);
         try {
-            $this->workflow->deliver($this->company, $delivered->getId(), new \DateTimeImmutable('2026-09-16'), $actor);
-            self::fail('a delivery after the company\'s today was confirmed');
+            $this->workflow->deliver($this->company, $delivered->getId(), $this->clock->now()->modify('+1 minute'), $actor);
+            self::fail('a delivery after now was confirmed');
         } catch (InvalidDeliveryNote $refused) {
-            self::assertSame('deliveredOn', $refused->field);
+            self::assertSame('deliveredAt', $refused->field);
         }
 
         $this->workflow->deliver($this->company, $delivered->getId(), null, $actor);
 
-        self::assertSame([DeliveryNoteStatus::Delivered, '2026-09-15'], [$delivered->getStatus(), $delivered->getHeader()->deliveryDate?->format('Y-m-d')]);
+        self::assertSame(
+            [DeliveryNoteStatus::Delivered, '2026-09-14 23:30:00', '2026-09-15'],
+            [$delivered->getStatus(), $delivered->getDeliveredAt()?->format('Y-m-d H:i:s'), $delivered->getHeader()->deliveryDate?->format('Y-m-d')],
+        );
         $entry = $this->audit->entries[1];
         self::assertSame(['delivery_note.delivered', ['deliveryDate' => '2026-09-15'], $actor], [$entry->action, $entry->changes, $entry->actorUserId]);
         try {
@@ -258,8 +261,8 @@ final class DeliveryNoteWorkflowTest extends TestCase
         self::assertSame($note, $this->workflow->validateAndDeliver($this->company, $note->getId(), $actor));
 
         self::assertSame(
-            [DeliveryNoteStatus::Delivered, 'BL-2026-09-00001', '2026-09-15', '2026-09-15'],
-            [$note->getStatus(), $note->getNumber(), $note->getIssueDate()?->format('Y-m-d'), $note->getHeader()->deliveryDate?->format('Y-m-d')],
+            [DeliveryNoteStatus::Delivered, 'BL-2026-09-00001', '2026-09-15', '2026-09-15', '2026-09-14 23:30:00'],
+            [$note->getStatus(), $note->getNumber(), $note->getIssueDate()?->format('Y-m-d'), $note->getHeader()->deliveryDate?->format('Y-m-d'), $note->getDeliveredAt()?->format('Y-m-d H:i:s')],
         );
         self::assertSame(1, $this->transactions->committed);
         self::assertSame(

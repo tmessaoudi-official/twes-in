@@ -1944,6 +1944,7 @@
       "invoice": "Invoice this note",
       "invoice_part": "Invoice part…",
       "delivered_on": "Delivered on",
+      "delivered_time": "Time",
       "cancel": "Cancel the note",
       "cancel_title": "Cancel this delivery note?",
       "cancel_message": "A cancelled note cannot be validated or invoiced again.",

@@ -195,14 +195,18 @@ final class DeliveryNotesTest extends ApiTestCase
         $this->postJson($this->path($id).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a note is numbered once');
 
-        foreach (['2000-01-01' => 'before its issue day', '2999-01-01' => 'after today', '15/09/2026' => 'not a day'] as $day => $case) {
-            $this->postJson($this->path($id).'/deliver', ['deliveredOn' => $day]);
+        foreach (['2000-01-01T10:00' => 'before its issue day', '2999-01-01T10:00' => 'after now', $today => 'a day without its time', '2026-02-30T10:00' => 'a day that does not exist', '15/09/2026 10:00' => 'not a moment'] as $moment => $case) {
+            $this->postJson($this->path($id).'/deliver', ['delivered' => $moment]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
-            self::assertStringContainsString('deliveredOn', (string) $this->client->getResponse()->getContent(), $case);
+            self::assertStringContainsString('delivered: ', (string) $this->client->getResponse()->getContent(), $case.', named as sent');
         }
+        $before = new \DateTimeImmutable('-1 second');
         $this->postJson($this->path($id).'/deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         self::assertSame(['delivered', $today], [$this->json()['status'], $this->json()['deliveryDate']]);
+        $at = new \DateTimeImmutable($this->stringAt($this->json(), 'deliveredAt'));
+        self::assertTrue($at >= $before && $at <= new \DateTimeImmutable(), 'left out, the delivery is stamped now');
+        self::assertSame('+00:00', $at->format('P'), 'a moment is answered in UTC');
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'delivered goods are not cancelled');
 
@@ -220,6 +224,29 @@ final class DeliveryNotesTest extends ApiTestCase
 
         $this->postJson($this->path(self::ABSENT).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /** A round recorded at its end: the time is the company's clock, as written on the signed note, and kept in UTC. */
+    public function testADeliveryTakesTheTimeItHappenedOnTheCompanysClock(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $zone = new \DateTimeZone($this->company->getTimezone());
+        $today = new \DateTimeImmutable('now', $zone)->format('Y-m-d');
+        $id = $this->draftWithALine();
+        $this->postJson($this->path($id).'/validate', null);
+
+        $this->postJson($this->path($id).'/deliver', ['delivered' => $today.'T00:00']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame(
+            [$today, new \DateTimeImmutable($today.' 00:00', $zone)->setTimezone(new \DateTimeZone('UTC'))->format(\DATE_ATOM)],
+            [$this->json()['deliveryDate'], $this->json()['deliveredAt']],
+        );
+
+        // Midnight in Tunis is still yesterday in UTC: a filter on the day reads the company's day.
+        $this->getJson($this->path().'?deliveryDate[from]='.$today.'&deliveryDate[to]='.$today);
+        self::assertResponseIsSuccessful();
+        self::assertSame([$id], array_column($this->jsonList(), 'id'));
     }
 
     // docs/SPEC.md § 7, 2026-09-21 17:25: the step people want to skip is an action doing both moves, not a setting.

@@ -123,7 +123,7 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
                 ->setParameter('customerIds', array_map(static fn (Uuid $each): string => $each->toRfc4122(), $search->customers), ArrayParameterType::STRING);
         }
         Intervals::days($query, 'n.issueDate', 'issued', $search->issueDate);
-        Intervals::days($query, 'n.deliveryDate', 'delivery', $search->deliveryDate);
+        Intervals::moments($query, 'n.deliveryDate', 'delivery', $search->deliveryDate, $search->timezone);
 
         return $query;
     }

@@ -155,6 +155,7 @@ describe('DeliveryNotesApi', () => {
       customerName: 'Carthage',
       issueDate: '2026-09-15',
       deliveryDate: null,
+      deliveredAt: null,
       deliveryAddress: {
         line1: null,
         line2: null,
@@ -349,18 +350,27 @@ describe('DeliveryNotesApi', () => {
     await expect(pending).rejects.toThrow();
   });
 
-  it('validates, delivers on a day or today, and cancels', async () => {
+  it('validates, delivers at a moment or now, and cancels', async () => {
     const validated = api.validate('c1', 'n1');
     const validate = http.expectOne('/api/companies/c1/delivery-notes/n1/validate');
     expect(validate.request.method).toBe('POST');
     validate.flush({ id: 'n1', status: 'validated', number: 'BL-2026-00001' });
     expect((await validated).number).toBe('BL-2026-00001');
 
-    const delivered = api.deliver('c1', 'n1', '2026-09-20');
+    const delivered = api.deliver('c1', 'n1', '2026-09-20T14:05');
     const deliver = http.expectOne('/api/companies/c1/delivery-notes/n1/deliver');
-    expect(deliver.request.body).toEqual({ deliveredOn: '2026-09-20' });
-    deliver.flush({ id: 'n1', status: 'delivered' });
-    expect((await delivered).status).toBe('delivered');
+    expect(deliver.request.body).toEqual({ delivered: '2026-09-20T14:05' });
+    deliver.flush({
+      id: 'n1',
+      status: 'delivered',
+      deliveryDate: '2026-09-20',
+      deliveredAt: '2026-09-20T13:05:00+00:00',
+    });
+    expect(await delivered).toMatchObject({
+      status: 'delivered',
+      deliveryDate: '2026-09-20',
+      deliveredAt: '2026-09-20T13:05:00+00:00',
+    });
 
     const today = api.deliver('c1', 'n1', null);
     http

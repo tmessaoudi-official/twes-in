@@ -52,6 +52,7 @@ final class DeliveryNoteTest extends TestCase
     private InMemoryUnits $units;
     private InMemoryTaxComponents $taxes;
     private InMemoryEstablishments $establishments;
+    private ProvisionCompany $provision;
     private Company $company;
     private Company $globex;
     private Customer $customer;
@@ -63,7 +64,7 @@ final class DeliveryNoteTest extends TestCase
         $this->units = new InMemoryUnits();
         $this->taxes = new InMemoryTaxComponents();
         $this->establishments = new InMemoryEstablishments();
-        $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock);
+        $provision = $this->provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);
@@ -298,24 +299,31 @@ final class DeliveryNoteTest extends TestCase
         self::assertSame($site->parts(), $this->validated($customer, new DeliveryNoteHeader(deliveryAddress: $site))->getHeader()->deliveryAddress->parts());
     }
 
-    public function testAValidatedNoteIsDeliveredOnADayFromItsIssueToTodayAndThenNeverCancelled(): void
+    /**
+     * The delivery is a moment, kept to the second in UTC: its day is the company's, so half past midnight in Tunis is
+     * the issue day although it is still the day before in UTC, and nothing is delivered after now.
+     */
+    public function testAValidatedNoteIsDeliveredAtAMomentFromItsIssueDayToNowAndThenNeverCancelled(): void
     {
         $note = $this->validated($this->customer, new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-30')));
-        $today = new \DateTimeImmutable('2026-09-16 00:00:00', new \DateTimeZone('UTC'));
-        $this->assertRefused('deliveredOn', fn () => $note->deliver(new \DateTimeImmutable('2026-09-14'), $today, $this->now), 'before the issue day');
-        $this->assertRefused('deliveredOn', fn () => $note->deliver(new \DateTimeImmutable('2026-09-17'), $today, $this->now), 'after today');
-        self::assertSame(DeliveryNoteStatus::Validated, $note->getStatus());
+        self::assertNull($note->getDeliveredAt(), 'the day a validated note expects is not a delivery');
         $later = $this->now->modify('+1 day');
+        $this->assertRefused('deliveredAt', static fn () => $note->deliver(new \DateTimeImmutable('2026-09-14 22:30:00 UTC'), $later), 'before the issue day, in the company\'s zone');
+        $this->assertRefused('deliveredAt', static fn () => $note->deliver($later->modify('+1 second'), $later), 'after now');
+        self::assertSame(DeliveryNoteStatus::Validated, $note->getStatus());
 
-        $note->deliver(new \DateTimeImmutable('2026-09-15 18:30:00', new \DateTimeZone('UTC')), $today, $later);
+        $note->deliver(new \DateTimeImmutable('2026-09-14 23:30:07 UTC'), $later);
 
-        self::assertSame([DeliveryNoteStatus::Delivered, '2026-09-15 00:00:00'], [$note->getStatus(), $note->getHeader()->deliveryDate?->format('Y-m-d H:i:s')]);
+        self::assertSame(
+            [DeliveryNoteStatus::Delivered, '2026-09-14 23:30:07 UTC', '2026-09-15'],
+            [$note->getStatus(), $note->getDeliveredAt()?->format('Y-m-d H:i:s T'), $note->getHeader()->deliveryDate?->format('Y-m-d')],
+        );
         self::assertEquals($later, $note->getUpdatedAt());
         self::assertSame([], $note->releaseEvents(), 'the stock left with validation');
         foreach ([
-            'deliver again' => static fn () => $note->deliver($today, $today, $later),
+            'deliver again' => static fn () => $note->deliver($later, $later),
             'cancel' => static fn () => $note->cancel($later),
-            'deliver a draft' => fn () => DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now)->deliver($today, $today, $later),
+            'deliver a draft' => fn () => DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now)->deliver($later, $later),
         ] as $case => $attempt) {
             try {
                 $attempt();
@@ -381,7 +389,7 @@ final class DeliveryNoteTest extends TestCase
         $later = $this->now->modify('+1 hour');
         $validated = $this->validated($this->customer, new DeliveryNoteHeader());
         $delivered = $this->validated($this->customer, new DeliveryNoteHeader());
-        $delivered->deliver($today, $today, $this->now);
+        $delivered->deliver($this->now, $this->now);
         $cancelled = $this->validated($this->customer, new DeliveryNoteHeader());
         $cancelled->cancel($this->now);
         $cancelled->releaseEvents();
@@ -398,7 +406,7 @@ final class DeliveryNoteTest extends TestCase
         self::assertNull($cancelled->getInvoicedByInvoiceId());
         foreach ([
             'invoiced again' => static fn () => $validated->markInvoiced(Uuid::v7(), $later),
-            'delivered once invoiced' => static fn () => $validated->deliver($today, $today, $later),
+            'delivered once invoiced' => static fn () => $validated->deliver($later, $later),
             'cancelled once invoiced' => static fn () => $delivered->cancel($later),
             'a draft invoiced' => fn () => DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now)->markInvoiced($invoiceId, $later),
             'a cancelled note invoiced' => static fn () => $cancelled->markInvoiced($invoiceId, $later),
@@ -411,6 +419,17 @@ final class DeliveryNoteTest extends TestCase
         }
         self::assertTrue($invoiceId->equals($validated->getInvoicedByInvoiceId()), 'a refused move changes nothing');
         self::assertSame(DeliveryNoteStatus::Cancelled, $cancelled->getStatus());
+    }
+
+    /** A day a draft expects reads back as that day wherever the company is, west of Greenwich, where UTC's midnight is still the day before, too. */
+    public function testAnExpectedDayReadsBackAsTheSameDayOnTheCompanysClock(): void
+    {
+        $montreal = new Company('Érable', 'TN', 'TND', 'fr', 'America/Montreal');
+        $this->provision->handle($montreal);
+
+        $note = DeliveryNote::create($montreal, $this->establishments->ofCompany($montreal->getId())[0], $this->customer($montreal), new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-30')), [], $this->now);
+
+        self::assertSame('2026-09-30', $note->getHeader()->deliveryDate?->format('Y-m-d'));
     }
 
     /** A note validated on 2026-09-15 with one line, its validation event already released. */

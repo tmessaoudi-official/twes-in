@@ -58,7 +58,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
             ['productId' => $this->productId, 'quantity' => '2'],
             ['description' => 'Transport', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '30', 'taxComponentIds' => [$this->taxId('TVA19')]],
         ]]);
-        $this->postJson($this->notePath($first).'/deliver', ['deliveredOn' => $today]);
+        $this->postJson($this->notePath($first).'/deliver', ['delivered' => $today.'T00:00']);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         $second = $this->validatedNote(['customerReference' => 'PO-7', 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]);
         $sources = [...$this->lineIds($first), ...$this->lineIds($second)];

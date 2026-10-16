@@ -96,15 +96,15 @@ final readonly class DeliveryNoteWorkflow
     }
 
     /**
-     * @param \DateTimeImmutable|null $deliveredOn the day the goods arrived; left out, the company's today
+     * @param \DateTimeImmutable|null $deliveredAt the moment the goods arrived; left out, now
      *
      * @throws DeliveryNoteNotFound
      * @throws DeliveryNoteTransitionRefused
      * @throws InvalidDeliveryNote
      */
-    public function deliver(Company $company, Uuid $id, ?\DateTimeImmutable $deliveredOn, ?Uuid $actorUserId): DeliveryNote
+    public function deliver(Company $company, Uuid $id, ?\DateTimeImmutable $deliveredAt, ?Uuid $actorUserId): DeliveryNote
     {
-        $note = $this->transactions->run(fn (): DeliveryNote => $this->delivered($company, $this->locked($company, $id), $deliveredOn, $actorUserId));
+        $note = $this->transactions->run(fn (): DeliveryNote => $this->delivered($company, $this->locked($company, $id), $deliveredAt, $actorUserId));
         $this->events->publish(...$note->releaseEvents());
 
         return $note;
@@ -150,11 +150,10 @@ final readonly class DeliveryNoteWorkflow
         return $note;
     }
 
-    private function delivered(Company $company, DeliveryNote $note, ?\DateTimeImmutable $deliveredOn, ?Uuid $actorUserId): DeliveryNote
+    private function delivered(Company $company, DeliveryNote $note, ?\DateTimeImmutable $deliveredAt, ?Uuid $actorUserId): DeliveryNote
     {
         $now = $this->clock->now();
-        $today = new \DateTimeImmutable($now->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'), new \DateTimeZone('UTC'));
-        $note->deliver($deliveredOn ?? $today, $today, $now);
+        $note->deliver($deliveredAt ?? $now, $now);
         $this->notes->save($note);
         $this->record($company, $note, self::DELIVERED, ['deliveryDate' => $note->getHeader()->deliveryDate?->format('Y-m-d')], $actorUserId);
 

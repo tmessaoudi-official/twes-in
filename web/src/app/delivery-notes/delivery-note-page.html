@@ -27,10 +27,10 @@
               >{{ 'delivery_notes.fields.issueDate' | translate }} {{ note.issueDate | day }}</span
             >
           }
-          @if (note.deliveryDate && (note.status === 'delivered' || note.status === 'invoiced')) {
+          @if (note.deliveredAt) {
             <span
               >{{ 'delivery_notes.fields.deliveryDate' | translate }}
-              {{ note.deliveryDate | day }}</span
+              {{ note.deliveredAt | moment: company()?.timezone }}</span
             >
           }
         </p>

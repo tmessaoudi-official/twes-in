@@ -31,6 +31,7 @@ final readonly class DeliveryNoteSearch
      * @param list<DeliveryNoteStatus>    $statuses
      * @param list<Uuid>                  $customers
      * @param array<string, 'asc'|'desc'> $order     one of SORTS per key, in the order it applies
+     * @param string                      $timezone  the company's, which a delivery's day is read in
      */
     public function __construct(
         public ?string $text = null,
@@ -39,12 +40,13 @@ final readonly class DeliveryNoteSearch
         public array $order = [],
         public ?DateRange $issueDate = null,
         public ?DateRange $deliveryDate = null,
+        public string $timezone = 'UTC',
     ) {
     }
 
     /** The same search with no status named, which is what a status chip's count is made under. */
     public function withoutStatus(): self
     {
-        return new self($this->text, [], $this->customers, [], $this->issueDate, $this->deliveryDate);
+        return new self($this->text, [], $this->customers, [], $this->issueDate, $this->deliveryDate, $this->timezone);
     }
 }

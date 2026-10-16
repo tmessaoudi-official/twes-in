@@ -68,7 +68,9 @@
 
   <dl class="facts">
     {% if note.issueDate %}<div><dt>{{ 'delivery_note.issue_date'|trans({}, t, locale) }}</dt><dd>{{ note.issueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
-    {% if header.deliveryDate %}<div><dt>{{ 'delivery_note.delivery_date'|trans({}, t, locale) }}</dt><dd>{{ header.deliveryDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {#- Once delivered, when, to the minute on the company's clock: the seconds are kept, never printed. -#}
+    {% if note.deliveredAt %}<div><dt>{{ 'delivery_note.delivery_date'|trans({}, t, locale) }}</dt><dd>{{ note.deliveredAt|date(dateFormat ~ ' H:i', note.company.timezone) }}</dd></div>
+    {% elseif header.deliveryDate %}<div><dt>{{ 'delivery_note.delivery_date'|trans({}, t, locale) }}</dt><dd>{{ header.deliveryDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
     {% if header.customerReference %}<div><dt>{{ 'delivery_note.customer_reference'|trans({}, t, locale) }}</dt><dd>{{ header.customerReference }}</dd></div>{% endif %}
   </dl>
 

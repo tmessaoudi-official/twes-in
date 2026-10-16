@@ -154,11 +154,16 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     expect(pdf.disposition).toContain(`${noteNumber}.pdf`);
     expect(pdf.magic).toBe('%PDF-');
 
-    // Delivering asks for its day in a dialog, so the bar carries actions and not a date field.
+    // Delivering asks for its moment in a dialog, so the bar carries actions and not a date field. Left as it opens,
+    // on now, the note shows the minute it was delivered.
     await page.getByTestId('document-action-deliver').click();
+    await expect(page.getByTestId('delivery-note-delivered-time')).toHaveValue(/^\d{2}:\d{2}$/);
     await page.getByTestId('delivery-note-deliver').click();
     await expect(page.getByTestId('document-action-deliver')).toHaveCount(0);
     await expect(page.getByTestId('delivery-note-status')).toContainText(/Livré|Delivered/);
+    await expect(page.getByTestId('delivery-note-status')).toContainText(
+      /\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/,
+    );
 
     // The API pages this list and the shared company outgrows one page, so the row is searched for rather than
     // expected among the newest few.
