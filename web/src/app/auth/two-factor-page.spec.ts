@@ -2,6 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
@@ -65,6 +66,8 @@ describe('TwoFactorPage', () => {
     removeAuthenticator: ReturnType<typeof vi.fn>;
   };
   let stepUp: { request: ReturnType<typeof vi.fn> };
+  /** What the removal's confirmation answers: yes, unless a case keeps the factor. */
+  let dialog: { open: ReturnType<typeof vi.fn> };
 
   async function render(
     mfa: MfaStatus,
@@ -89,6 +92,7 @@ describe('TwoFactorPage', () => {
       removeAuthenticator: vi.fn(),
     };
     stepUp = { request: vi.fn().mockResolvedValue(true) };
+    dialog = { open: vi.fn(() => ({ afterClosed: () => of(true) })) };
     shapeBegin(facade.beginTotpEnrolment, stepUp.request);
     TestBed.configureTestingModule({
       imports: [TwoFactorPage],
@@ -98,6 +102,7 @@ describe('TwoFactorPage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: PasskeyClient, useValue: { supported: () => true } },
         { provide: StepUp, useValue: stepUp },
+        { provide: MatDialog, useValue: dialog },
         provideStillAppearance(),
         provideQuietFeedback(),
         provideTranslateService({
@@ -376,6 +381,33 @@ describe('TwoFactorPage', () => {
 
     expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);
     expect(rendered.query('two-factor-qr')).not.toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 23:04: what cannot be undone says so first, and keeping it changes nothing.
+  it('asks before removing either factor, names the passkey, and keeps both when kept', async () => {
+    const rendered = await render({ enrolled: true, required: false, totp: true, passkeys: 1 }, [
+      laptop,
+    ]);
+    dialog.open.mockReturnValue({ afterClosed: () => of(false) });
+
+    rendered.query<HTMLButtonElement>('two-factor-app-remove')?.click();
+    await settle(rendered.fixture);
+    rendered.query<HTMLButtonElement>('two-factor-passkey-remove')?.click();
+    await settle(rendered.fixture);
+
+    expect(dialog.open.mock.calls.map(([, config]) => config.data)).toEqual([
+      expect.objectContaining({ kind: 'definitif', title: 'auth.two_factor.app_remove_title' }),
+      expect.objectContaining({
+        kind: 'definitif',
+        title: 'auth.two_factor.passkey_remove_title',
+        messageParams: { name: 'Work laptop' },
+      }),
+    ]);
+    expect(facade.removeAuthenticator).not.toHaveBeenCalled();
+    expect(facade.removePasskey).not.toHaveBeenCalled();
+    expect(stepUp.request).not.toHaveBeenCalled();
+    expect(rendered.query('two-factor-app-remove')).not.toBeNull();
+    expect(listed(rendered)).toEqual(['Work laptop']);
   });
 
   it('removes a passkey from the list, and says why the last one stays', async () => {

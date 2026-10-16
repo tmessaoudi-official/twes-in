@@ -3,14 +3,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from './auth-facade';
 import type { LoginError, PasskeySummary, TotpEnrolment } from './auth-types';
 import { PasskeyClient } from './passkey-client';
+import type { ActionConfirm } from '../shared/actions/screen-action';
 import { QrCode } from '../shared/qr/qr-code';
+import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { StepUp } from '../shared/step-up/step-up';
 import { SignedOutLayout } from './signed-out-layout';
 
@@ -39,6 +43,7 @@ export class TwoFactorPage {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly stepUp = inject(StepUp);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly required = this.auth.me()?.mfa.required === true;
   /** Any factor in force; read live, so a passkey added on this page counts at once. */
@@ -166,6 +171,16 @@ export class TwoFactorPage {
     if (this.submitting()) {
       return;
     }
+    const sure = await this.confirmed({
+      kind: 'definitif',
+      title: 'auth.two_factor.app_remove_title',
+      message: 'auth.two_factor.app_remove_message',
+      confirmLabel: 'auth.two_factor.app_remove',
+      keepLabel: 'auth.two_factor.keep',
+    });
+    if (!sure) {
+      return;
+    }
     this.submitting.set(true);
     this.removeError.set(null);
     const outcome = await this.proven(() => this.auth.removeAuthenticator());
@@ -182,6 +197,17 @@ export class TwoFactorPage {
 
   protected async removePasskey(passkey: PasskeySummary): Promise<void> {
     if (this.submitting()) {
+      return;
+    }
+    const sure = await this.confirmed({
+      kind: 'definitif',
+      title: 'auth.two_factor.passkey_remove_title',
+      message: 'auth.two_factor.passkey_remove_message',
+      messageParams: { name: passkey.name },
+      confirmLabel: 'auth.two_factor.passkey_remove',
+      keepLabel: 'auth.two_factor.keep',
+    });
+    if (!sure) {
       return;
     }
     this.submitting.set(true);
@@ -214,6 +240,19 @@ export class TwoFactorPage {
     } else {
       this.error.set(outcome.error);
     }
+  }
+
+  /**
+   * A removed factor cannot be put back, only set up again, so the removal says so before it runs (docs/SPEC.md § 7,
+   * 2026-09-26 23:04): asked first, then the proof of who is at the screen.
+   */
+  private async confirmed(data: ActionConfirm): Promise<boolean> {
+    const answer = await firstValueFrom(
+      this.dialog
+        .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, { data, autoFocus: 'dialog' })
+        .afterClosed(),
+    );
+    return answer === true;
   }
 
   /**

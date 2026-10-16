@@ -121,9 +121,14 @@ export function textsOpened(name: string): CanActivateFn {
 /**
  * The texts only one page reads, in `/i18n/<name>/<language>.json` beside the language's own file, loaded when the
  * page is first opened rather than with the file every page waits for (the screen texts budget). ngx-translate's child
- * service: the page's keys first, every other key from the language's file, the language always the root's.
+ * service: the page's keys first, every other key from the language's file, the language always the root's. The route's
+ * own guards come with it, ahead of the texts', so a route reads `...textsPart(name, guard)`: one call, as the routes
+ * sit on the first page and its budget.
  */
-export function textsPart(name: string): Pick<Route, 'providers' | 'canActivate'> {
+export function textsPart(
+  name: string,
+  ...guards: CanActivateFn[]
+): Pick<Route, 'providers' | 'canActivate'> {
   return {
     providers: [
       provideChildTranslateService({
@@ -131,6 +136,6 @@ export function textsPart(name: string): Pick<Route, 'providers' | 'canActivate'
         compiler: provideTranslateCompiler(PluralCompiler),
       }),
     ],
-    canActivate: [textsLoaded],
+    canActivate: [...guards, textsLoaded],
   };
 }

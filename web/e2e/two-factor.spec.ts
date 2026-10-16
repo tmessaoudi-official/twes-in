@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { wcagViolations } from './axe';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
 import { proveIfAsked, sendProving } from './step-up';
@@ -32,15 +32,9 @@ async function signOut(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/login$/);
 }
 
+/** The shared scan, which waits for an overlay's fade: a dialog read while it opens fails on colours nobody sees. */
 async function expectAccessible(page: Page, screen: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  const violations = results.violations.map(
-    (violation) =>
-      `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
-  );
-  expect(violations, screen).toEqual([]);
+  expect(await wcagViolations(page), screen).toEqual([]);
 }
 
 /** Waits for the next 30-second step: a code is refused unless its step is newer than the last one spent. */
@@ -221,6 +215,12 @@ test('a company that requires two-step verification sends its owner to set it up
   // Every factor can be removed but the last one a company requires (docs/SPEC.md § 7, 2026-09-22 09:12).
   await page.goto('/two-factor');
   await page.getByTestId('two-factor-app-remove').click();
+  // A removed factor cannot be put back, so the removal says so first (docs/SPEC.md § 7, 2026-09-26 23:04).
+  await expect(page.getByTestId('confirm-kind')).toHaveAttribute('data-kind', 'definitif');
+  await expect(page.getByTestId('confirm-message')).toContainText('ne seront plus acceptés');
+  await expectAccessible(page, 'two-factor, asked before removing the authenticator');
+  await page.screenshot({ path: test.info().outputPath('two-factor-remove-asked.png') });
+  await page.getByTestId('confirm-run').click();
   const refused = page.getByTestId('two-factor-app-remove-error');
   await proveIfAsked(page, NEW_PASSWORD, refused);
   await expect(refused).toContainText('exige');
@@ -251,6 +251,7 @@ test('a company that requires two-step verification sends its owner to set it up
   // Required no more, the authenticator goes, a phone lost or replaced, and the page offers to set one up again.
   await page.goto('/two-factor');
   await page.getByTestId('two-factor-app-remove').click();
+  await page.getByTestId('confirm-run').click();
   const scan = page.getByTestId('two-factor-qr');
   await proveIfAsked(page, NEW_PASSWORD, scan);
   await expect(scan.locator('svg')).toBeVisible();
