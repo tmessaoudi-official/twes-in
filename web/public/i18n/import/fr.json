@@ -147,6 +147,18 @@
     "created": "{{count}} créés",
     "updated": "{{count}} mis à jour",
     "rejected": "{{count}} refusés",
+    "unchanged": "{{count}} inchangés",
+    "changes_title": "Ce qui change",
+    "changes_by_column": "{{column}} : {{count}} {count, plural, one {ligne} other {lignes}}",
+    "changes_shown": "Les {{shown}} premiers changements sur {{count}}.",
+    "before": "Avant",
+    "after": "Après",
+    "confirm_changes": {
+      "title": "Modifier des fiches existantes ?",
+      "message": "{{records}} {records, plural, one {fiche change} other {fiches changent}} : {{fields}}. Les valeurs remplacées ne sont gardées nulle part.",
+      "store": "Importer",
+      "keep": "Ne rien importer"
+    },
     "nothing_stored": "Rien n’a été enregistré : corrigez les lignes ci-dessous et réimportez le fichier.",
     "stored": "Fichier importé : {{created}} créés, {{updated}} mis à jour.",
     "line": "Ligne",

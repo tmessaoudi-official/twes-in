@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRadioModule } from '@angular/material/radio';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -30,6 +31,12 @@ import { IMPORT_MAX_BYTES } from '../shared/form/file-limits';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { MomentPipe } from '../shared/i18n/format-pipes';
+import type { ActionConfirm } from '../shared/actions/screen-action';
+import { ConfirmDialog } from '../shared/ui/confirm-dialog';
+import { firstValueFrom } from 'rxjs';
+
+/** How many of a preview's changes the table lists; the count by column says them all. */
+export const CHANGES_SHOWN = 200;
 
 /** The parameters of a note that are quantities, shown with the screen's decimal separator. */
 const QUANTITY_PARAMS = new Set(['before', 'after']);
@@ -69,6 +76,7 @@ export class ImportPage {
   private readonly translate = inject(TranslateService);
   private readonly windowClass = inject(WINDOW_CLASS);
   private readonly format = inject(FormatFacade);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly guide = this.facade.guide;
   protected readonly report = this.facade.report;
@@ -98,6 +106,18 @@ export class ImportPage {
    */
   protected readonly subjectKey = computed(() => this.subject().replace(/-/g, '_'));
   protected readonly compact = computed(() => this.windowClass() === 'compact');
+  /** Each column a preview changes, with how many lines change it, in the order the changes come. */
+  protected readonly changedColumns = computed(() => {
+    const lines = new Map<string, Set<number>>();
+    for (const change of this.report()?.changes ?? []) {
+      lines.set(change.column, (lines.get(change.column) ?? new Set()).add(change.line));
+    }
+    return [...lines].map(([column, of]) => ({ column, count: of.size }));
+  });
+  protected readonly shownChanges = computed(() =>
+    (this.report()?.changes ?? []).slice(0, CHANGES_SHOWN),
+  );
+  protected readonly changesShown = CHANGES_SHOWN;
   /** The rows refused: a row says every fault it holds, and the count beside « créés » counts rows. */
   protected readonly rejectedRows = computed(
     () => new Set(this.report()?.rejected.map((rejection) => rejection.line)).size,
@@ -207,12 +227,46 @@ export class ImportPage {
   }
 
   protected async store(): Promise<void> {
+    if (!(await this.changesConfirmed())) return;
     await this.run(false);
     const report = this.report();
     if (report?.committed === true) {
       this.file.set(null);
       this.previewed.set(false);
     }
+  }
+
+  /**
+   * An upsert that changes records says how many and which columns before it runs (docs/SPEC.md § 7, 2026-10-09
+   * 10:40, ruling 5): no import is undone, and the values it replaces are kept nowhere. A file that only adds asks
+   * nothing.
+   */
+  private async changesConfirmed(): Promise<boolean> {
+    const report = this.report();
+    // Only an upsert finds records again, so only an upsert's preview holds changes.
+    if (report === null || report.changes.length === 0) return true;
+    const confirm: ActionConfirm = {
+      kind: 'corrigeable',
+      title: 'import.confirm_changes.title',
+      message: 'import.confirm_changes.message',
+      messageParams: {
+        records: String(report.updated.length),
+        fields: this.changedColumns()
+          .map((column) => `${column.column} (${column.count})`)
+          .join(', '),
+      },
+      confirmLabel: 'import.confirm_changes.store',
+      keepLabel: 'import.confirm_changes.keep',
+    };
+    const answer = await firstValueFrom(
+      this.dialog
+        .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+          data: confirm,
+          autoFocus: 'dialog',
+        })
+        .afterClosed(),
+    );
+    return answer === true;
   }
 
   private async run(dryRun: boolean): Promise<void> {

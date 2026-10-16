@@ -147,6 +147,18 @@
     "created": "{{count}} created",
     "updated": "{{count}} updated",
     "rejected": "{{count}} rejected",
+    "unchanged": "{{count}} unchanged",
+    "changes_title": "What changes",
+    "changes_by_column": "{{column}}: {{count}} {count, plural, one {line} other {lines}}",
+    "changes_shown": "The first {{shown}} changes of {{count}}.",
+    "before": "Before",
+    "after": "After",
+    "confirm_changes": {
+      "title": "Change existing records?",
+      "message": "{{records}} {records, plural, one {record changes} other {records change}}: {{fields}}. The values replaced are kept nowhere.",
+      "store": "Import",
+      "keep": "Import nothing"
+    },
     "nothing_stored": "Nothing was stored: fix the rows below and import the file again.",
     "stored": "File imported: {{created}} created, {{updated}} updated.",
     "line": "Line",

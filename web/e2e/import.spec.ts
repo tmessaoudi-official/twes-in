@@ -94,6 +94,62 @@ test('a file is previewed before it is imported, and a refused row says why', as
   await retire(page, NUMBER);
 });
 
+// docs/SPEC.md § 7, 2026-10-09 10:40, ruling 5: an upsert's preview says what it changes in each record, old → new,
+// and what it leaves alone; storing it asks first, naming how many records and which columns.
+test('an upsert says what it changes before it changes anything', async ({ page }) => {
+  const number = `UPS-${RUN}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/imports/customers');
+  await choose(page, 'clients.csv', `number,name,kind\n${number},Menuiserie Kairouan,individual\n`);
+  await page.getByTestId('import-preview').click();
+  await expect(page.getByTestId('import-store')).toBeEnabled();
+  await page.getByTestId('import-store').click();
+  await expect(toast(page)).toContainText('1 créés');
+
+  try {
+    await page.getByTestId('import-mode').getByText('mettre à jour').click();
+
+    // The same file again changes nothing, and says so.
+    await choose(
+      page,
+      'clients.csv',
+      `number,name,kind\n${number},Menuiserie Kairouan,individual\n`,
+    );
+    await page.getByTestId('import-preview').click();
+    await expect(page.getByTestId('import-unchanged')).toContainText('1');
+    await expect(page.getByTestId('import-changes')).toHaveCount(0);
+
+    await choose(
+      page,
+      'clients.csv',
+      `number,name,kind\n${number},Menuiserie Kairouan et Fils,individual\n`,
+    );
+    await page.getByTestId('import-preview').click();
+    await expect(page.getByTestId('import-changes')).toContainText('Menuiserie Kairouan');
+    await expect(page.getByTestId('import-changes')).toContainText('Menuiserie Kairouan et Fils');
+    await expect(page.getByTestId('import-changed-columns')).toContainText('name');
+
+    // Asked first: « Ne rien importer » leaves the record as it was.
+    await page.getByTestId('import-store').click();
+    await expect(page.getByTestId('confirm-kind')).toHaveAttribute('data-kind', 'corrigeable');
+    await expect(page.getByTestId('confirm-message')).toContainText('name (1)');
+    await page.getByTestId('confirm-keep').click();
+    await expect(page.getByTestId('import-changes')).toBeVisible();
+
+    await page.getByTestId('import-store').click();
+    await page.getByTestId('confirm-run').click();
+    // This import's own toast: the first import's may still be on screen, and leaving now would drop the run.
+    await expect(toast(page)).toContainText('1 mis à jour');
+
+    await page.goto('/customers');
+    await page.getByTestId('list-filter').fill(number);
+    await expect(page.getByTestId('customers-table')).toContainText('Menuiserie Kairouan et Fils');
+  } finally {
+    await retire(page, number);
+  }
+});
+
 // docs/SPEC.md § 7, 2026-10-15 20:00, Round 1 Q12: a CSV is read in the encoding it was written in, which the report
 // names, and the person may read it in another. Previewed only, so nothing is stored in the shared company. The page's
 // words come in its own part: a heading left as its key would mean the part never opened.

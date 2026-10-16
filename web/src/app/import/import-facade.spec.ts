@@ -25,6 +25,8 @@ describe('ImportFacade', () => {
     notes: [],
     alreadyImportedAt: null,
     encoding: null,
+    changes: [],
+    unchanged: [],
   });
 
   beforeEach(() => {
