@@ -20,6 +20,7 @@ use App\Module\Customers\Domain\CustomerSearch;
 use App\Module\Customers\Infrastructure\ApiPlatform\CustomerPermission;
 use App\Module\Customers\Infrastructure\ApiPlatform\CustomerSearchReader;
 use App\Module\Customers\Infrastructure\Import\CustomerImport;
+use App\Module\Customers\Infrastructure\Import\CustomerSettingCells;
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Domain\PostalAddress;
@@ -39,6 +40,7 @@ final readonly class CustomerExport implements DeclaresExport
         private ManageCustomers $manage,
         private TaxComponentRepository $taxes,
         private ListCustomerTaxRegimes $regimes,
+        private CustomerSettingCells $settings,
     ) {
     }
 
@@ -74,8 +76,10 @@ final readonly class CustomerExport implements DeclaresExport
 
         for ($page = 1;; ++$page) {
             $answer = $this->manage->search($company, $search, new PageRequest($page, self::BATCH));
+            $settings = $this->settings->shown($company, array_map(static fn (Customer $customer) => $customer->getId(), $answer->items));
             foreach ($answer->items as $customer) {
-                yield array_map(fn (string $column): string => $this->cell($customer, $column, $codes), $columns);
+                $own = $settings[$customer->getId()->toRfc4122()] ?? [];
+                yield array_map(fn (string $column): string => CustomerSettingCells::covers($column) ? $own[$column] ?? '' : $this->cell($customer, $column, $codes), $columns);
             }
             if ($page * self::BATCH >= $answer->total || [] === $answer->items) {
                 return;

@@ -69,6 +69,26 @@ final class CustomerExportTest extends ApiTestCase
         self::assertSame('12', $row['custom.employees']);
     }
 
+    /**
+     * A customer's own terms, credit limit, document language and exemption text come out as the import reads them,
+     * so a file exported and brought back changes nothing; a value the customer inherits is left blank, as a blank
+     * cell keeps it.
+     */
+    public function testACustomersOwnSettingsAreWrittenAndAnInheritedOneLeftBlank(): void
+    {
+        $this->uploadFile($this->path().'/imports/customers', 'settings.csv', "number,name,payment_terms_days,credit_limit,document_language,exemption_reference\nCLI-0001,Carthage Conseil,45,\"12 500,5\",anglais,Article 13\n", 'file', ['mode' => 'upsert', 'dryRun' => '0']);
+        self::assertResponseIsSuccessful();
+
+        $lines = $this->csv('/exports/customers.csv');
+
+        $header = array_map(strval(...), str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"), escape: ''));
+        $settings = ['payment_terms_days', 'credit_limit', 'document_language', 'exemption_reference'];
+        $own = array_combine($header, str_getcsv($lines[1], escape: ''));
+        $inherited = array_combine($header, str_getcsv($lines[2], escape: ''));
+        self::assertSame(['45', '12500.5', 'en', 'Article 13'], array_map(static fn (string $column): string => $own[$column] ?? '', $settings));
+        self::assertSame(['', '', '', ''], array_map(static fn (string $column): string => $inherited[$column] ?? '?', $settings));
+    }
+
     public function testTheSearchTheFiltersAndTheOrderOfTheScreenNarrowAndSortTheFile(): void
     {
         self::assertCount(2, $this->csv('/exports/customers.csv?q=sonia'));
