@@ -33,8 +33,8 @@ deploy check before each push.
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | Sweep, five groups of tools | L | doing | - | var/claude/tool-audit/** |
-| 2 | Synthesis and the findings page | M | todo | - | docs/SPEC.md |
+| 1 | Sweep, five groups of tools | L | done | - | var/claude/tool-audit/** |
+| 2 | Synthesis and the findings page | M | doing | - | docs/SPEC.md |
 | 3 | Optimistic locking | L | todo | - | api/** web/** |
 | 4 | The refusal contract | L | todo | - | api/** web/** |
 | 5 | The other fixes, in the developer's order | L | todo | - | |
@@ -44,4 +44,5 @@ deploy check before each push.
 - The ranking of step 2's findings (the developer, on the findings page).
 ### Needs research
 ### Fragile
+- The sweep reports live in `var/claude/tool-audit/raw/` only (not in git); the page carries each finding's fix, documentation and grade.
 ### Known issues
