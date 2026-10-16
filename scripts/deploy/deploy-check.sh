@@ -78,7 +78,7 @@ step "deployment up behind its edge, backups archiving"
 dc exec -T edge cat /data/caddy/pki/authorities/local/root.crt > "$DRILL_DIR/edge-root.crt"
 dc exec -T gotenberg sh -c 'cat > /tmp/edge-root.crt' < "$DRILL_DIR/edge-root.crt"
 ask() { dc exec -T gotenberg curl -sS --cacert /tmp/edge-root.crt --connect-to "$HOST:443:edge:443" --connect-to "$HOST:80:edge:80" --max-time 10 "$@"; }
-for _ in $(seq 1 30); do ask -o /dev/null "https://$HOST/api/health" 2>/dev/null && break; sleep 1; done
+for _ in $(seq 1 30); do ask -f -o /dev/null "https://$HOST/api/health" 2>/dev/null && break; sleep 1; done
 
 headers=$(ask -D - -o /dev/null "https://$HOST/") || fail "the edge did not answer over HTTPS with a certificate its authority signed"
 grep -qi '^strict-transport-security: max-age=31536000'$'\r''$' <<<"$headers" || fail "no Strict-Transport-Security: max-age=31536000 alone:

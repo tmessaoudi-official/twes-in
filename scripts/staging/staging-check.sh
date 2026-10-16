@@ -137,7 +137,7 @@ dc exec -T edge cat /data/caddy/pki/authorities/local/root.crt > "$WORK/edge-roo
 ask() { dc exec -T gotenberg curl -sS --cacert /tmp/edge-root.crt --connect-to "$HOST:443:edge:443" --max-time 10 "$@"; }
 through_the_edge() {
   dc exec -T gotenberg sh -c 'cat > /tmp/edge-root.crt' < "$WORK/edge-root.crt"
-  for _ in $(seq 1 30); do ask -o /dev/null "https://$HOST/api/health" 2>/dev/null && break; sleep 1; done
+  for _ in $(seq 1 30); do ask -f -o /dev/null "https://$HOST/api/health" 2>/dev/null && break; sleep 1; done
   ask "https://$HOST/api/health" | grep -q '"status":"ok"' || fail "/api/health is not ok through the edge"
 }
 through_the_edge
@@ -185,7 +185,11 @@ post() { # path, JSON body: the status, with the session cookie
     -H 'Content-Type: application/json' --data "$2" "https://$HOST$1"
 }
 get() { ask -b /tmp/jar -H "Origin: https://$HOST" -H "csrf-token: $csrf" "https://$HOST$1"; }
+# The budgets outlive a redeploy on the share volume, and this check proves the operator's codes more often in five
+# minutes than the per-person budget allows: each proof starts from a full budget, which is not what is checked here.
+fresh_budgets() { dc exec -T api bin/console cache:pool:clear cache.rate_limiter >/dev/null || fail "the rate limiters' budgets could not be reset"; }
 signed_in_with() { # authenticator secret: password, then the code
+  fresh_budgets
   [[ "$(sign_in)" == 200 ]] || fail "the password step failed"
   post /api/auth/mfa/verify "{\"code\":\"$(code_now "$1")\"}"
 }

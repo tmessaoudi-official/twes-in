@@ -13,10 +13,14 @@ pass=0; fail=0
 check() { if [[ "$2" == "$3" ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (got '$2', wanted '$3')"; fi; }
 echo "live development: the dev server proxies what nginx proxies"
 
-# nginx: each proxied location with the upstream it names, "path host:port"; `= ` and a trailing slash dropped.
+# nginx: each proxied location with the server it reaches, "path host:port"; `= ` and a trailing slash dropped. A
+# proxy_pass names an upstream, whose server line gives the host and port.
 nginx_routes=$(awk '
+  /^upstream / { block = $2 }
+  block != "" && $1 == "server" { server[block] = $2 }
+  block != "" && /^}/ { block = "" }
   /^[[:space:]]*location / { path = $2 == "=" ? $3 : $2; sub(/\/$/, "", path) }
-  /proxy_pass/ && path != "" { up = $2; sub(/;$/, "", up); sub(/^http:\/\//, "", up); sub(/\/.*/, "", up); print path, up; path = "" }
+  /proxy_pass/ && path != "" { up = $2; sub(/;$/, "", up); sub(/^http:\/\//, "", up); sub(/\/.*/, "", up); print path, (up in server ? server[up] : up); path = "" }
 ' "$conf" | sort)
 check "nginx.conf proxies at least the four known paths" "$(($(wc -l <<<"$nginx_routes") >= 4))" 1
 
@@ -30,7 +34,7 @@ else
   check "the WebSocket route upgrades" "$(jq '.["/connection/websocket"].ws' "$proxy")" true
   check "security.txt reaches the API's own address" \
     "$(jq -r '.["/.well-known/security.txt"].pathRewrite["^/.well-known/security.txt"] // empty' "$proxy")" \
-    "$(sed -n 's|.*proxy_pass http://api:80\(/api/legal/security.txt\);|\1|p' "$conf")"
+    "$(sed -n 's|.*proxy_pass http://[^/;]*\(/api/legal/security.txt\);|\1|p' "$conf")"
 fi
 
 # The live override resolves on top of compose.yaml, and only the api and web services change.
