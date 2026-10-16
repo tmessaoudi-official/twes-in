@@ -308,7 +308,7 @@ final class FrenchInvoiceFieldsTest extends ApiTestCase
         $this->createUser('other@twes.local', 'password-1234', $globex, self::WRITER, 'member');
         $this->login('other@twes.local', 'password-1234');
 
-        $this->sendJson('PUT', '/api/companies/'.$globex->getId()->toRfc4122().'/invoices/'.$id, ['customerId' => $this->customer->getId()->toRfc4122(), 'establishmentId' => null, 'operationCategory' => 'goods', 'lines' => [$this->freeLine()]]);
+        $this->sendJson('PUT', '/api/companies/'.$globex->getId()->toRfc4122().'/invoices/'.$id, ['version' => 1, 'customerId' => $this->customer->getId()->toRfc4122(), 'establishmentId' => null, 'operationCategory' => 'goods', 'lines' => [$this->freeLine()]]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
@@ -382,7 +382,7 @@ final class FrenchInvoiceFieldsTest extends ApiTestCase
             $lines[] = array_intersect_key($line, array_flip(['productId', 'description', 'quantity', 'unitId', 'unitPriceNet', 'discountRate', 'discountAmount', 'taxComponentIds']));
         }
 
-        return [...$kept, 'lines' => $lines];
+        return [...$kept, 'lines' => $lines, 'version' => $this->storedVersion('invoice', $this->stringAt($body, 'id'))];
     }
 
     private function unit(string $code): \App\Fiscal\Domain\Model\Unit

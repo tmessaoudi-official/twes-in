@@ -87,7 +87,7 @@ final class InvoiceSectionsTest extends ApiTestCase
     {
         $id = $this->draft([$this->freeLine('Pose', '10'), $this->freeLine('Dépose', '5')]);
 
-        $this->sendJson('PUT', $this->invoicePath($id), $this->body([$this->freeLine('Pose', '10', 'Atelier'), $this->freeLine('Dépose', '5')]));
+        $this->sendJson('PUT', $this->invoicePath($id), [...$this->body([$this->freeLine('Pose', '10', 'Atelier'), $this->freeLine('Dépose', '5')]), 'version' => $this->storedVersion('invoice', $id)]);
 
         self::assertResponseIsSuccessful();
         self::assertSame([['title' => 'Atelier', 'firstLine' => 0, 'lineCount' => 2, 'subtotal' => '15.00']], $this->json()['sections']);
@@ -157,7 +157,7 @@ final class InvoiceSectionsTest extends ApiTestCase
         $this->createUser('other@twes.local', 'password-1234', $globex, self::WRITER, 'member');
         $this->login('other@twes.local', 'password-1234');
 
-        $this->sendJson('PUT', '/api/companies/'.$globex->getId()->toRfc4122().'/invoices/'.$id, $this->body([$this->freeLine('Pose', '10', 'Atelier')]));
+        $this->sendJson('PUT', '/api/companies/'.$globex->getId()->toRfc4122().'/invoices/'.$id, [...$this->body([$this->freeLine('Pose', '10', 'Atelier')]), 'version' => 1]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }

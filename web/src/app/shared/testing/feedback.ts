@@ -84,6 +84,13 @@ export function noticeToasts(): { key: string; params?: Record<string, unknown> 
     .map(({ key, params }) => (params === undefined ? { key } : { key, params }));
 }
 
+/** The keys of the failure toasts a spec's page has asked for so far, in order (needs `provideQuietFeedback()`). */
+export function failureToasts(): string[] {
+  return (TestBed.inject(Feedback) as RecordedFeedback).said
+    .filter((toast) => toast.kind === 'failure')
+    .map((toast) => toast.key);
+}
+
 /** The consequential actions a spec's page has reported, as `key:kind` (needs `provideQuietFeedback()`). */
 export function effectToasts(): string[] {
   return (TestBed.inject(Feedback) as RecordedFeedback).said

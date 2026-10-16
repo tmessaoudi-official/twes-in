@@ -16,6 +16,7 @@ use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Invoices\Application\Print\PrintInvoice;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Products\Domain\Model\Product;
@@ -221,13 +222,97 @@ final class InvoicesTest extends ApiTestCase
         self::assertStringStartsWith('customerId: ', $this->stringAt($this->json(), 'detail'));
     }
 
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => 1, 'customerReference' => 'PO-78', 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => 1, 'customerReference' => 'PO-79', 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path($id));
+        self::assertSame(['PO-78', 2], [$this->json()['customerReference'], $this->json()['version']]);
+    }
+
+    /** A document's lines are one field of it: a revision of them alone moves the version its form is checked against. */
+    public function testARevisionOfItsLinesAloneMovesTheVersion(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $sold = ['productId' => $this->productId, 'quantity' => '1'];
+        $gesture = ['description' => 'Geste commercial', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '100', 'taxComponentIds' => []];
+        $this->postJson($this->path(), $this->invoice(['lines' => [$sold, $gesture]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $gross = $this->json()['totalGross'];
+
+        // The same lines in another order: every total stays, and only the lines say the invoice changed.
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => 1, 'lines' => [$gesture, $sold]]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame($gross, $this->json()['totalGross']);
+        self::assertSame(2, $this->json()['version']);
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => 1, 'customerReference' => 'PO-78', 'lines' => [$gesture, $sold]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+    }
+
+    public function testAnIssuedPdfStoredAfterTheInvoiceWasSavedSinceItWasReadIsKept(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        // Kept across requests, so the renderer is down while the invoice is issued and nothing is stored then.
+        $this->client->disableReboot();
+        $renderer = static::getContainer()->get(FakePdfRenderer::class);
+        $renderer->failing = true;
+        $id = $this->issuedInvoice();
+        $renderer->failing = false;
+        self::assertNull($this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM invoice WHERE id = ?', [$id]));
+        $version = $this->storedVersion('invoice', $id);
+        // Read as a download reads it, then a payment saves the invoice before its PDF is stored.
+        self::assertNotNull($this->em()->find(Invoice::class, Uuid::fromString($id)));
+        $this->em()->getConnection()->executeStatement('UPDATE invoice SET version = version + 1 WHERE id = ?', [$id]);
+
+        static::getContainer()->get(PrintInvoice::class)->storeIssued($this->company->getId(), Uuid::fromString($id));
+
+        self::assertNotNull($this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM invoice WHERE id = ?', [$id]));
+        self::assertSame($version + 2, $this->storedVersion('invoice', $id));
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => 1, 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+    }
+
+    public function testARevisionSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['customerReference' => 'PO-78', 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
+    }
+
     public function testARevisionIsAuditedAndADraftIsCancelledOnceAndThenFixed(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write']);
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id), $this->invoice(['customerReference' => 'PO-78', 'documentTaxComponentIds' => [], 'lines' => [['productId' => $this->productId, 'quantity' => '3', 'discountRate' => '5']]]));
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => $this->storedVersion('invoice', $id), 'customerReference' => 'PO-78', 'documentTaxComponentIds' => [], 'lines' => [['productId' => $this->productId, 'quantity' => '3', 'discountRate' => '5']]]));
 
         self::assertResponseIsSuccessful();
         $invoice = $this->json();
@@ -239,12 +324,12 @@ final class InvoicesTest extends ApiTestCase
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         self::assertSame('cancelled', $this->json()['status']);
-        $this->sendJson('PUT', $this->path($id), $this->invoice());
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => $this->storedVersion('invoice', $id)]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a cancelled invoice is no longer revised');
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoice is cancelled once');
 
-        $this->sendJson('PUT', $this->path(self::ABSENT), $this->invoice());
+        $this->sendJson('PUT', $this->path(self::ABSENT), $this->invoice(['version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson($this->path(self::ABSENT).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
@@ -278,7 +363,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame([$draft['total'], $draft['amountDue'], $draft['taxes']], [$this->json()['total'], $this->json()['amountDue'], $this->json()['taxes']], 'an issued invoice is never recomputed');
         self::assertSame(array_column($this->arrayAt($draft, 'lines'), 'net'), array_column($this->arrayAt($this->json(), 'lines'), 'net'));
 
-        $this->sendJson('PUT', $this->path($id), $this->invoice());
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => $this->storedVersion('invoice', $id)]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is no longer revised');
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is corrected by a credit note, never cancelled');
@@ -709,10 +794,10 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame(['-'.$this->stringAt($invoice, 'total'), $invoice['documentTaxComponentIds'], ['2.000']], [$this->stringAt($credit, 'total'), $credit['documentTaxComponentIds'], array_column($this->arrayAt($credit, 'lines'), 'quantity')], 'a credit note starts as the whole invoice, negative');
         self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action = 'invoice.created' AND entity_id = ?", [$creditId]));
 
-        $this->sendJson('PUT', $this->path($creditId), $this->invoice(['customerId' => $other, 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $this->sendJson('PUT', $this->path($creditId), $this->invoice(['version' => $this->storedVersion('invoice', $creditId), 'customerId' => $other, 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note goes to its invoice\'s customer');
         self::assertStringContainsString('customerId', (string) $this->client->getResponse()->getContent());
-        $this->sendJson('PUT', $this->path($creditId), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $this->sendJson('PUT', $this->path($creditId), $this->invoice(['version' => $this->storedVersion('invoice', $creditId), 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         self::assertResponseIsSuccessful();
 
         $this->postJson($this->path($creditId).'/issue', null);
@@ -743,7 +828,7 @@ final class InvoicesTest extends ApiTestCase
         $this->getJson($this->path($id));
         self::assertSame([$credited, $remaining], [$this->json()['amountCredited'], $this->json()['amountDue']]);
 
-        $this->sendJson('PUT', $this->path($secondId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [['description' => 'Geste commercial', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '100', 'taxComponentIds' => []]]]));
+        $this->sendJson('PUT', $this->path($secondId), $this->invoice(['version' => $this->storedVersion('invoice', $secondId), 'documentTaxComponentIds' => [], 'lines' => [['description' => 'Geste commercial', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '100', 'taxComponentIds' => []]]]));
         self::assertResponseIsSuccessful();
         $this->postJson($this->path($secondId).'/issue', null);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
@@ -784,7 +869,7 @@ final class InvoicesTest extends ApiTestCase
             $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
             $creditId = $this->stringAt($this->json(), 'id');
-            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => $taxes, 'lines' => [$line()]]));
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['version' => $this->storedVersion('invoice', $creditId), 'documentTaxComponentIds' => $taxes, 'lines' => [$line()]]));
             self::assertResponseIsSuccessful();
             $this->postJson($this->path($creditId).'/issue', null);
             self::assertResponseStatusCodeSame(Response::HTTP_OK);
@@ -1083,7 +1168,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->getJson($this->companyPath().'/invoice-options');
         self::assertResponseIsSuccessful();
-        $this->sendJson('PUT', $this->path($mine), $this->invoice());
+        $this->sendJson('PUT', $this->path($mine), $this->invoice(['version' => $this->storedVersion('invoice', $mine)]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson($this->path(), $this->invoice());
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
@@ -1884,7 +1969,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame([['150.000', null, '850.000']], array_map(null, array_column($lines, 'discountAmount'), array_column($lines, 'discountRate'), array_column($lines, 'net')));
         self::assertSame(['850.000', '161.500', '1011.500'], [$this->json()['subtotalNet'], $this->json()['totalTax'], $this->json()['total']]);
 
-        $this->sendJson('PUT', $this->path($id), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'discountAmount' => '100']]]));
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => $this->storedVersion('invoice', $id), 'documentTaxComponentIds' => [], 'lines' => [[...$line, 'discountAmount' => '100']]]));
         $revised = $this->arrayAt($this->json(), 'lines');
         self::assertSame([['100.000', '900.000']], array_map(null, array_column($revised, 'discountAmount'), array_column($revised, 'net')), 'a revision changing the amount alone changes the line');
 
@@ -1916,7 +2001,7 @@ final class InvoicesTest extends ApiTestCase
         foreach ([['-0.001', '-99.999'], ['-0.001', '-99.999'], ['-0.002', '-99.998']] as [$discount, $due]) {
             $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
             $creditId = $this->stringAt($this->json(), 'id');
-            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [$line]]));
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['version' => $this->storedVersion('invoice', $creditId), 'documentTaxComponentIds' => [], 'lines' => [$line]]));
             self::assertResponseIsSuccessful();
             self::assertSame($discount, $this->json()['documentDiscount']);
             $this->postJson($this->path($creditId).'/issue', null);
@@ -1934,7 +2019,7 @@ final class InvoicesTest extends ApiTestCase
         foreach (['-99.998', '-99.998', '-99.998', '-99.998', '-99.999', '-100.000'] as $due) {
             $this->postJson($this->path($sixths).'/credit-notes', ['creditNoteReason' => 'Retour']);
             $creditId = $this->stringAt($this->json(), 'id');
-            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [$line]]));
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['version' => $this->storedVersion('invoice', $creditId), 'documentTaxComponentIds' => [], 'lines' => [$line]]));
             $this->postJson($this->path($creditId).'/issue', null);
             self::assertResponseStatusCodeSame(Response::HTTP_OK);
             self::assertSame($due, $this->json()['amountDue']);
@@ -1946,7 +2031,7 @@ final class InvoicesTest extends ApiTestCase
         $other = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path($other).'/issue', null);
         $this->postJson($this->path($other).'/credit-notes', ['creditNoteReason' => 'Geste']);
-        $this->sendJson('PUT', $this->path($this->stringAt($this->json(), 'id')), $this->invoice(['documentTaxComponentIds' => [], 'discountAmount' => '10', 'lines' => [$line]]));
+        $this->sendJson('PUT', $this->path($this->stringAt($this->json(), 'id')), $this->invoice(['version' => $this->storedVersion('invoice', $this->stringAt($this->json(), 'id')), 'documentTaxComponentIds' => [], 'discountAmount' => '10', 'lines' => [$line]]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note takes no discount of its own');
         self::assertStringContainsString('discountAmount', (string) $this->client->getResponse()->getContent());
     }
@@ -1970,7 +2055,7 @@ final class InvoicesTest extends ApiTestCase
             $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
             $creditId = $this->stringAt($this->json(), 'id');
             self::assertSame([$invoiceLine], array_column($this->arrayAt($this->json(), 'lines'), 'creditedLineId'), 'a credit line names the line it gives back');
-            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'quantity' => $quantity, 'creditedLineId' => $invoiceLine]]]));
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['version' => $this->storedVersion('invoice', $creditId), 'documentTaxComponentIds' => [], 'lines' => [[...$line, 'quantity' => $quantity, 'creditedLineId' => $invoiceLine]]]));
             self::assertResponseIsSuccessful();
             $lines = $this->arrayAt($this->json(), 'lines');
             self::assertSame([[$discount], [$invoiceLine]], [array_column($lines, 'discountAmount'), array_column($lines, 'creditedLineId')], 'the share of the discount, the link kept');
@@ -1991,7 +2076,7 @@ final class InvoicesTest extends ApiTestCase
         foreach (['-99.999', '-99.999', '-100.000', '-100.000'] as $due) {
             $this->postJson($this->path($quartered).'/credit-notes', ['creditNoteReason' => 'Retour']);
             $creditId = $this->stringAt($this->json(), 'id');
-            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'quantity' => '1', 'creditedLineId' => $quarteredLine]]]));
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['version' => $this->storedVersion('invoice', $creditId), 'documentTaxComponentIds' => [], 'lines' => [[...$line, 'quantity' => '1', 'creditedLineId' => $quarteredLine]]]));
             $this->postJson($this->path($creditId).'/issue', null);
             self::assertResponseStatusCodeSame(Response::HTTP_OK);
             self::assertSame($due, $this->json()['amountDue']);
@@ -2001,7 +2086,7 @@ final class InvoicesTest extends ApiTestCase
 
         // A credit line gives back a line of the invoice it corrects, and an invoice's line gives back none.
         $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
-        $this->sendJson('PUT', $this->path($this->stringAt($this->json(), 'id')), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'creditedLineId' => $quarteredLine]]]));
+        $this->sendJson('PUT', $this->path($this->stringAt($this->json(), 'id')), $this->invoice(['version' => $this->storedVersion('invoice', $this->stringAt($this->json(), 'id')), 'documentTaxComponentIds' => [], 'lines' => [[...$line, 'creditedLineId' => $quarteredLine]]]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('lines[0].creditedLineId', (string) $this->client->getResponse()->getContent());
         $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'creditedLineId' => $invoiceLine]]]));
@@ -2028,7 +2113,7 @@ final class InvoicesTest extends ApiTestCase
         foreach ([['-39.669', '-6.334'], ['-39.669', '-6.334'], ['-39.668', '-6.333']] as $at => [$due, $tax]) {
             $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
             $creditId = $this->stringAt($this->json(), 'id');
-            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'creditedLineId' => $lines[$at]]]]));
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['version' => $this->storedVersion('invoice', $creditId), 'documentTaxComponentIds' => [], 'lines' => [[...$line, 'creditedLineId' => $lines[$at]]]]));
             $this->postJson($this->path($creditId).'/issue', null);
             self::assertResponseStatusCodeSame(Response::HTTP_OK, 'the last credit note fits what is left');
             $taxes[] = [$this->json()['amountDue'], $this->json()['totalTax']];
@@ -2044,7 +2129,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame('109.500', $this->json()['amountDue']);
         $this->postJson($this->path($half).'/credit-notes', ['creditNoteReason' => 'Retour']);
         $creditId = $this->stringAt($this->json(), 'id');
-        $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'unitPriceNet' => '100']]]));
+        $this->sendJson('PUT', $this->path($creditId), $this->invoice(['version' => $this->storedVersion('invoice', $creditId), 'documentTaxComponentIds' => [], 'lines' => [[...$line, 'unitPriceNet' => '100']]]));
         $this->postJson($this->path($creditId).'/issue', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('109.500', (string) $this->client->getResponse()->getContent());

@@ -34,6 +34,8 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
@@ -74,6 +76,7 @@ final readonly class ManageInvoices
         private SourceDeliveryNoteLines $sourceLines,
         private DepositDeductions $deductions,
         private FiscalPresets $presets,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -238,14 +241,20 @@ final readonly class ManageInvoices
     }
 
     /**
+     * `$version` is the one the editor opened; a save over a later one is refused before anything is changed.
+     *
      * @throws InvoiceNotFound
      * @throws InvoiceNotDraft
      * @throws InvalidInvoice
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, InvoiceInput $input, ?Uuid $actorUserId): Invoice
+    public function revise(Company $company, Uuid $id, InvoiceInput $input, ?Uuid $actorUserId, ?int $version = null): Invoice
     {
-        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Invoice {
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): Invoice {
             $invoice = $this->locked($company, $id);
+            if (null !== $version) {
+                $this->versions->expect($invoice, $version);
+            }
             [$establishment, $customer, $lines, $documentTaxes] = $this->checked($company, $input, $invoice);
             $changed = $invoice->revise($establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
             if ([] !== $changed) {

@@ -752,7 +752,7 @@ final class InventoryTest extends ApiTestCase
         $customerId = $this->customer();
         $direct = $this->issuedInvoice($customerId, [['productId' => $this->laptopId, 'quantity' => '3']]);
         self::assertSame(['7.000'], array_column($this->levels(), 'quantity'));
-        $revise = fn (string $id, bool $returned, string $quantity) => $this->sendJson('PUT', $this->path('invoices', $id), ['customerId' => $customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->laptopId, 'quantity' => $quantity, 'returned' => $returned]]]);
+        $revise = fn (string $id, bool $returned, string $quantity) => $this->sendJson('PUT', $this->path('invoices', $id), ['version' => $this->storedVersion('invoice', $id), 'customerId' => $customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->laptopId, 'quantity' => $quantity, 'returned' => $returned]]]);
         $creditNote = function (bool $returned, string $quantity) use ($direct, $revise): string {
             $this->postJson($this->path('invoices', $direct).'/credit-notes', ['creditNoteReason' => 'Retour']);
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -801,7 +801,7 @@ final class InventoryTest extends ApiTestCase
             $this->postJson($this->path('invoices', $invoice).'/credit-notes', ['creditNoteReason' => 'Retour']);
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
             $id = $this->stringAt($this->json(), 'id');
-            $this->sendJson('PUT', $this->path('invoices', $id), ['customerId' => $customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->laptopId, 'quantity' => $quantity, 'returned' => true, ...(null === $price ? [] : ['unitPriceNet' => $price])]]]);
+            $this->sendJson('PUT', $this->path('invoices', $id), ['version' => $this->storedVersion('invoice', $id), 'customerId' => $customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->laptopId, 'quantity' => $quantity, 'returned' => true, ...(null === $price ? [] : ['unitPriceNet' => $price])]]]);
             self::assertResponseIsSuccessful();
             $this->postJson($this->path('invoices', $id).'/issue', null);
             self::assertResponseStatusCodeSame(Response::HTTP_OK);

@@ -74,6 +74,7 @@ final class ClerkRoleTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor issues the manager\'s draft');
         // Audit 2026-10-06, C-F4: nor changes it, nor cancels it.
         $this->sendJson('PUT', $this->path($credit), [
+            'version' => 1,
             'customerId' => $this->customerId,
             'establishmentId' => null,
             'supplyDate' => null,

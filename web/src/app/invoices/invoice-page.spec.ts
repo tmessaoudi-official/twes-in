@@ -46,6 +46,7 @@ import type {
 import type { PickAsked } from '../shared/form/pick-api';
 import {
   effectToasts,
+  failureToasts,
   noticeToasts,
   offeredNext,
   provideQuietFeedback,
@@ -165,6 +166,7 @@ const products: ProductOption[] = [
 
 const draft: InvoiceRow = {
   id: 'i1',
+  version: 1,
   type: 'invoice',
   correctsInvoiceId: null,
   creditNoteReason: null,
@@ -980,6 +982,8 @@ describe('InvoicePage', () => {
         documentTaxComponentIds: ['s1'],
         lines: [expect.objectContaining({ quantity: expect.stringMatching(/^3(\.0+)?$/) })],
       }),
+      1,
+      expect.any(Function),
     );
     // What was confirmed as corrigeable is said so once done (docs/SPEC.md § 7, 2026-09-25 22:17).
     await vi.waitFor(() => expect(effectToasts()).toEqual(['invoices.issued:corrigeable']));
@@ -1082,10 +1086,15 @@ describe('InvoicePage', () => {
   });
 
   it('asks where the money already paid goes when a credit note is refused for it, and issues with the answer', async () => {
-    facade.reviseAndIssue.mockImplementationOnce(() => {
-      error.set('excess_to');
-      return Promise.resolve(null);
-    });
+    // The save before the refused issue was kept: the second asks on the version it gave.
+    facade.reviseAndIssue.mockImplementationOnce(
+      (_c: string, _i: string, _input: unknown, _v: number, revised: () => void) => {
+        invoice.set({ ...draft, version: 2 });
+        revised();
+        error.set('excess_to');
+        return Promise.resolve(null);
+      },
+    );
     facade.reviseAndIssue.mockResolvedValue(issued);
     invoice.set(draft);
     await open('i1');
@@ -1103,7 +1112,14 @@ describe('InvoicePage', () => {
     await settle();
 
     expect(facade.reviseAndIssue).toHaveBeenCalledTimes(2);
-    expect(facade.reviseAndIssue).toHaveBeenLastCalledWith('c1', 'i1', expect.anything(), 'refund');
+    expect(facade.reviseAndIssue).toHaveBeenLastCalledWith(
+      'c1',
+      'i1',
+      expect.anything(),
+      2,
+      expect.any(Function),
+      'refund',
+    );
     error.set(null);
   });
 
@@ -1281,6 +1297,92 @@ describe('InvoicePage', () => {
     type('line-0-quantity', '6');
     await settle();
     expect(q('line-0-quantity-error')).toBeNull();
+  });
+
+  /** The next save is refused as made over a version saved since, and the read after it brings that version. */
+  function savedSinceBy(call: 'revise' | 'reviseAndIssue'): void {
+    facade[call].mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.clearError.mockImplementationOnce(() => error.set(null));
+    facade.loadInvoice.mockImplementationOnce(async () =>
+      invoice.set({ ...draft, version: 2, customerReference: 'BC-7' }),
+    );
+  }
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    invoice.set(draft);
+    await open('i1');
+    savedSinceBy('revise');
+
+    type('line-0-quantity', '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-7'),
+    );
+
+    expect(facade.revise).toHaveBeenCalledWith('c1', 'i1', expect.anything(), 1);
+    expect((q('line-0-quantity') as HTMLInputElement).value).toBe('3');
+    expect(error()).toBeNull();
+    expect(failureToasts()).toEqual(['live.saved_since']);
+    expect(successToasts()).not.toContain('invoices.saved');
+
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.revise).toHaveBeenLastCalledWith(
+      'c1',
+      'i1',
+      expect.objectContaining({ customerReference: 'BC-7' }),
+      2,
+    );
+  });
+
+  it('asks nothing about issuing when saving what is typed meets a version saved since: it merges it first', async () => {
+    facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: null });
+    invoice.set(draft);
+    await open('i1');
+    savedSinceBy('revise');
+    type('line-0-quantity', '3');
+    await settle();
+
+    q('document-action-issue')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-7'),
+    );
+
+    expect(over('confirm-message')).toBeNull();
+    expect(facade.reviseAndIssue).not.toHaveBeenCalled();
+    expect(failureToasts()).toEqual(['live.saved_since']);
+  });
+
+  it('issues nothing over a version saved since: it merges it and says so', async () => {
+    facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: null });
+    invoice.set(draft);
+    await open('i1');
+    savedSinceBy('reviseAndIssue');
+
+    q('document-action-issue')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-7'),
+    );
+
+    expect(facade.reviseAndIssue).toHaveBeenCalledWith(
+      'c1',
+      'i1',
+      expect.anything(),
+      1,
+      expect.any(Function),
+    );
+    expect(error()).toBeNull();
+    expect(failureToasts()).toEqual(['live.saved_since']);
+    expect(effectToasts()).toEqual([]);
   });
 
   it('takes the header and lines another person saved into a quiet draft', async () => {

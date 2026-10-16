@@ -99,6 +99,7 @@ function tax(
 function invoice(overrides: Partial<InvoiceRow> = {}): InvoiceRow {
   return {
     id: 'i1',
+    version: 1,
     type: 'invoice',
     correctsInvoiceId: null,
     creditNoteReason: null,
