@@ -7,6 +7,7 @@ Procedure: docs/UPDATE.md, "After every bump" for each commit.
 ## Decisions Log
 - [2026-10-16 18:44] AGREED: one ecosystem a commit; TypeScript 7 stays held; a licence change stops the bump (SPEC § 7 2026-10-16 17:24).
 - [2026-10-16 19:01] ASSUMED (review): the framework-bundle recipe's AGENTS.md and CLAUDE.md stay out of api/, as G1a removed them (459a705c): the project's own CLAUDE.md and SPEC carry the process, and the recipe's generic conventions (AbstractController, ask before generating) contradict the code's. Upstream's only change since install drops the CLAUDE.md shim, so recipes:update brings neither back. Alternatives: a two-line AGENTS.md pointing at CLAUDE.md (advisor's suggestion), or the recipe's file verbatim.
+- [2026-10-16 19:56] AGREED: the MCP packages' MIT → Apache-2.0 transition, dev-only under @angular/cli 22.2.3, is accepted (SPEC § 7, asked under the 17:24 ruling)
 
 ## Formal Plan
 Inventory on 2026-10-16 (`composer outdated --direct`, `npm outdated`, Packagist): Symfony 8.1.9 is the newest
@@ -35,7 +36,7 @@ is out and held.
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | PHP packages | M | todo | - | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
+| 1 | PHP packages | M | done | 45a5e43f | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
 | 2 | npm packages (zxing-wasm apart) | M | todo | - | web/package.json web/package-lock.json infra/web/tools.Dockerfile THIRD-PARTY-NOTICES.md |
 | 3 | zxing-wasm | S | todo | - | web/package.json web/package-lock.json web/src/third-party/** |
 | 4 | Docker images | M | todo | - | compose*.yaml infra/** |

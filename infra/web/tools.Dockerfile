@@ -5,7 +5,7 @@
 # scripts/gates/version-pins.sh refuses a copy that disagrees with infra/web/Dockerfile and web/package-lock.json.
 FROM node:26.10.0-trixie-slim
 
-ARG PLAYWRIGHT_VERSION=1.63.0
+ARG PLAYWRIGHT_VERSION=1.64.1
 
 # Only the system libraries Chromium needs are installed here. The browser itself is downloaded by `make e2e`
 # (`playwright-browser`, in the Makefile) into var/cache/ms-playwright of the working tree, on Docker's default network.
