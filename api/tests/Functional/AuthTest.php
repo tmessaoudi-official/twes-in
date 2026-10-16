@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Audit\Domain\AuditLog;
+use App\Audit\Domain\Model\AuditLog;
 use App\Identity\Application\Login\LoginAudit;
 use App\Identity\Domain\User;
 use Symfony\Component\Clock\Clock;

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Audit\Domain\AuditLog;
+use App\Audit\Domain\Model\AuditLog;
 use App\CustomFields\Domain\CustomFieldDefinition;
 use App\CustomFields\Domain\CustomFieldEntity;
 use App\CustomFields\Domain\CustomFieldType;

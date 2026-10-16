@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\ModuleRegistry\Infrastructure\Permission;
 
-use App\Audit\Infrastructure\ApiPlatform\AuditPermission;
+use App\Audit\Infrastructure\ApiPlatform\Security\AuditPermission;
 use App\Fiscal\Infrastructure\ApiPlatform\FiscalPermission;
 use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Infrastructure\ApiPlatform\ModulePermission;

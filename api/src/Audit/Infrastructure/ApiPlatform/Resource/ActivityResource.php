@@ -7,13 +7,14 @@
 
 declare(strict_types=1);
 
-namespace App\Audit\Infrastructure\ApiPlatform;
+namespace App\Audit\Infrastructure\ApiPlatform\Resource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\QueryParameter;
 use App\Audit\Application\ActivityEntry;
+use App\Audit\Infrastructure\ApiPlatform\State\Provider\ActivityCollectionProvider;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 

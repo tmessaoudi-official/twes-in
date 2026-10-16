@@ -7,9 +7,10 @@
 
 declare(strict_types=1);
 
-namespace App\Audit\Infrastructure\ApiPlatform;
+namespace App\Audit\Infrastructure\ApiPlatform\Payload;
 
 use App\Audit\Application\ActivitySearch;
+use App\Audit\Infrastructure\ApiPlatform\Resource\ActivityResource;
 use App\Shared\Domain\InvalidFilter;
 use App\Shared\Domain\ListFilters;
 use App\Tenancy\Domain\Company;

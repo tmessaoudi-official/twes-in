@@ -11,7 +11,7 @@ namespace App\Audit\Infrastructure;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Audit\Domain\AuditLog;
+use App\Audit\Domain\Model\AuditLog;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;
 use Doctrine\ORM\EntityManagerInterface;
