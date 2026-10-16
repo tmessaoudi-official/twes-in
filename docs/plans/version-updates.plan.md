@@ -42,7 +42,7 @@ is out and held.
 | 1 | PHP packages | M | done | 45a5e43f | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
 | 2 | npm packages (zxing-wasm apart) | M | done | 16a2593d | web/package.json web/package-lock.json infra/web/tools.Dockerfile THIRD-PARTY-NOTICES.md |
 | 3 | zxing-wasm | S | done | 775e4d9a | web/package.json web/package-lock.json web/src/third-party/** |
-| 4 | Docker images | M | done | - | compose*.yaml infra/** |
+| 4 | Docker images | M | done | 3d0767f9 | compose*.yaml infra/** |
 | 6 | axe 4.14's Label in Name on master | S | done | 9b0f9d05 | web/src/** web/e2e/** web/public/i18n/** |
 | 5 | GitHub Actions | S | done | - | .github/workflows/** |
 <!-- /progress-block -->

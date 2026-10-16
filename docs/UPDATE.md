@@ -34,6 +34,11 @@ make versions
 | GitHub Actions              | each action's releases page, for example `github.com/actions/checkout/releases`             |
 | PHP and Node themselves     | `php.net/supported-versions.php`, `nodejs.org/en/about/previous-releases`                    |
 
+`composer outdated` never shows a new Symfony **minor**: `extra.symfony.require` in `api/composer.json` (`8.1.*`) makes
+Flex filter every Symfony package to that line. Read `symfony.com/releases` for one, and move that pin and the
+`symfony/*` constraints together. `composer recipes:update` refuses a tree with changes; run it in a fresh local clone
+and carry its diff over.
+
 `composer` and `npm` run in the toolchain containers (`docs/START.md` § 1): `make tools CMD='…'` for PHP, `make web-tools CMD='…'` for Node. Nothing is installed on the host.
 
 ## Every pin
