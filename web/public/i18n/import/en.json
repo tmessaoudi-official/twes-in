@@ -60,6 +60,8 @@
       "category_note": "The name of an existing category; create it before importing.",
       "unit_price_net": "Net unit price",
       "price_note": "An amount written with a comma or a point. Required for a new product.",
+      "unit_price_gross": "Price including taxes",
+      "unit_price_gross_note": "The price of one unit taxes included, to at most the currency’s decimals: the net price is the one that comes to it exactly with the product’s taxes. Leave unit_price_net empty on the same row.",
       "cost_price": "Cost price",
       "cost_note": "What the product costs, so its margin can be worked out.",
       "barcode": "Barcode",

@@ -13,6 +13,7 @@ use App\CustomFields\Domain\CustomFieldDefinition;
 use App\CustomFields\Domain\CustomFieldDefinitionRepository;
 use App\CustomFields\Domain\CustomFieldEntity;
 use App\CustomFields\Domain\CustomFieldType;
+use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\ImportExport\Application\DeclaresImport;
@@ -30,6 +31,8 @@ use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
 use App\Module\Products\Application\BarcodeInput;
+use App\Module\Products\Application\CustomerPrice;
+use App\Module\Products\Application\GrossUnreachable;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductFileStock;
@@ -127,6 +130,8 @@ final readonly class ProductImport implements DeclaresImport
         private ProductFileStock $stock,
         private VendorRepository $vendors,
         private ModuleStates $modules,
+        private CustomerPrice $prices,
+        private CurrencyScales $scales,
     ) {
     }
 
@@ -483,8 +488,8 @@ final readonly class ProductImport implements DeclaresImport
     {
         $held = $current?->getDetails();
         $kind = $record->value('kind');
-        $price = $faults->read(static fn (): string => ImportCells::decimal($record, 'unit_price_net', 4) ?? $held->unitPriceNet
-            ?? throw new RowRejected('unit_price_net', 'A product is sold at a price, so a new one needs one.', 'value_required'), '0');
+        $taxIds = $faults->read(fn (): array => $this->taxIds($company, $record, $current), false);
+        $price = $faults->read(fn (): string => $this->priceOf($company, $record, $held, $taxIds), '0');
 
         return new ProductInput(
             // Left out, a new product is given the next of the company's format and a product found by its code keeps its own.
@@ -499,7 +504,7 @@ final readonly class ProductImport implements DeclaresImport
             ),
             $faults->read(fn (): Uuid => $this->unitId($company, $record, $current), Uuid::v7()),
             $faults->read(fn (): ?Uuid => $this->categoryId($company, $record, $current), $current?->getCategory()?->getId()),
-            $faults->read(fn (): array => $this->taxIds($company, $record, $current), []),
+            false === $taxIds ? [] : $taxIds,
             $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
             $this->customValues($company, $record, $current, $faults),
             $codes,
@@ -508,6 +513,42 @@ final readonly class ProductImport implements DeclaresImport
             // Somebody who sees no cost is shown no supplier's code, so the product form's rule keeps them as stored.
             seesCosts: $seesCosts,
         );
+    }
+
+    /**
+     * The net price the row sets: written as it is, or from the price taxes included a counter thinks in (F26), never
+     * both, as the two could disagree. A price taxes included is counted over the row's taxes, else the product's;
+     * taxes the row names wrongly are refused on their own cell and leave it unjudged.
+     *
+     * @param list<Uuid>|false $taxIds false when the row's taxes were refused
+     *
+     * @throws RowRejected
+     */
+    private function priceOf(Company $company, ImportRecord $record, ?ProductDetails $held, array|false $taxIds): string
+    {
+        $net = ImportCells::decimal($record, 'unit_price_net', 4);
+        if (null === $record->value('unit_price_gross')) {
+            return $net ?? $held->unitPriceNet
+                ?? throw new RowRejected('unit_price_net', 'A product is sold at a price, so a new one needs one.', 'value_required');
+        }
+        if (null !== $net) {
+            throw new RowRejected('unit_price_gross', 'A row gives its price without taxes or with them, not both.', 'price_net_and_gross');
+        }
+        $gross = (string) ImportCells::decimal($record, 'unit_price_gross', $this->scales->of($company->getCurrency()));
+        if (1 !== preg_match('/^(0|[1-9][0-9]{0,9})(\.[0-9]+)?$/', $gross)) {
+            throw new RowRejected('unit_price_gross', 'A price is a number from 0.', 'invalid_price');
+        }
+        if (false === $taxIds) {
+            return $held->unitPriceNet ?? '0';
+        }
+        try {
+            return $this->prices->netOf($company, array_map(static fn (Uuid $id): string => $id->toRfc4122(), $taxIds), $gross);
+        } catch (InvalidProduct) {
+            // A tax charged on a document rather than on a line: the product's rules refuse it on its own cell.
+            return $held->unitPriceNet ?? '0';
+        } catch (GrossUnreachable $unreachable) {
+            throw new RowRejected('unit_price_gross', $unreachable->getMessage(), 'gross_unreachable', ['gross' => $gross, 'below' => $unreachable->below, 'above' => $unreachable->above]);
+        }
     }
 
     /** @throws RowRejected */
@@ -740,6 +781,8 @@ final readonly class ProductImport implements DeclaresImport
             new ImportColumn('unit_code', 'import.products.unit_code', false, 'H87', 'import.products.unit_code_note'),
             new ImportColumn('category', 'import.products.category', false, null, 'import.products.category_note'),
             new ImportColumn('unit_price_net', 'import.products.unit_price_net', false, '0.4500', 'import.products.price_note'),
+            // No example: the template's row would then give the price twice.
+            new ImportColumn('unit_price_gross', 'import.products.unit_price_gross', false, null, 'import.products.unit_price_gross_note'),
             ...$this->guard->may($company, ProductPermission::COST_READ)
                 ? [new ImportColumn('cost_price', 'import.products.cost_price', false, '0.2200', 'import.products.cost_note')]
                 : [],

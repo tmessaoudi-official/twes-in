@@ -42,7 +42,11 @@ class StaticLoader implements TranslateLoader {
         changes_shown: 'Les {{shown}} premiers changements sur {{count}}.',
         before: 'Avant',
         after: 'Après',
-        rejections: { duplicate_in_file: 'Déjà présent à la ligne {{line}} du fichier.' },
+        rejections: {
+          duplicate_in_file: 'Déjà présent à la ligne {{line}} du fichier.',
+          gross_unreachable:
+            'Aucun prix HT n’arrive à {{gross}} TTC ; les plus proches sont {{below}} et {{above}}.',
+        },
         notes: {
           reference_given: 'Référence donnée : {{reference}}.',
           stock_change: 'Stock à {{location}} : {{before}} → {{after}}.',
@@ -470,6 +474,30 @@ describe('ImportPage', () => {
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(true);
     expect(q('import-nothing-stored')).not.toBeNull();
     expect(q('import-rejections')?.textContent).toContain('Déjà présent à la ligne 2 du fichier.');
+  });
+
+  it('writes the prices a refusal names with the screen’s decimal separator', async () => {
+    chooseFile();
+    await settle();
+    facade.run.mockImplementation(async () =>
+      report.set({
+        ...REJECTED,
+        rejected: [
+          {
+            line: 2,
+            column: 'unit_price_gross',
+            code: 'gross_unreachable',
+            params: { gross: '9.999', below: '9.998', above: '10.000' },
+            message: 'x',
+          },
+        ],
+      }),
+    );
+    await click('import-preview');
+
+    expect(q('import-rejections')?.textContent).toContain(
+      'Aucun prix HT n’arrive à 9,999 TTC ; les plus proches sont 9,998 et 10,000.',
+    );
   });
 
   /** A row says every fault it holds, so the count beside « créés » counts rows, as it does, not faults. */

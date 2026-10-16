@@ -21,6 +21,7 @@ use App\Module\Inventory\Domain\ProductHomeLocation;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockLocationRepository;
+use App\Module\Products\Application\CustomerPrice;
 use App\Module\Products\Domain\Barcode;
 use App\Module\Products\Domain\BarcodeLine;
 use App\Module\Products\Domain\BarcodeRole;
@@ -511,6 +512,78 @@ Cheville 10 mm,6191234567897
         $this->import("reference,name,tracking\nVIS-1,Vis 1,lot\n", mode: 'upsert', dryRun: true);
 
         self::assertSame([[2, 'tracking', 'tracking_kept_by_stock', []]], $this->rejections());
+    }
+
+    /**
+     * A shop's sheet holds its prices taxes included (F26): the net price kept is one at which a unit comes to exactly
+     * that figure, counted forward over the row's taxes, else the product's, a FODEC entering the VAT base included.
+     */
+    public function testAPriceTaxesIncludedIsKeptAsTheNetPriceThatComesToIt(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import("reference,name,unit_code,unit_price_gross,default_tax_codes\nVIS-1,Vis 1,H87,\"1,190\",TVA19\nVIS-2,Vis 2,H87,12.019,FODEC TVA19\nVIS-3,Vis 3,H87,10,TVA19\nVIS-4,Vis 4,H87,5,\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 3, 4, 5], $this->json()['created'], json_encode($this->json()['rejected']) ?: '');
+        $this->em()->clear();
+        $net = fn (string $reference): string => $this->product($reference)->getDetails()->unitPriceNet;
+        self::assertSame(['1.0000', '10.0000', '8.4034', '5.0000'], [$net('VIS-1'), $net('VIS-2'), $net('VIS-3'), $net('VIS-4')]);
+        $prices = static::getContainer()->get(CustomerPrice::class);
+        self::assertSame(['1.190', '12.019', '10.000', '5.000'], array_map(fn (string $reference): string => $prices->of($this->product($reference), 1), ['VIS-1', 'VIS-2', 'VIS-3', 'VIS-4']));
+        self::assertSame('120.001', $prices->of($this->product('VIS-3'), 12), 'a dozen at the net price nearest the exact quotient');
+
+        // A product the row names no tax for is counted over its own; the change is its net price, the one it keeps.
+        $this->import("reference,name,unit_price_gross\nVIS-3,Vis 3,\"11,900\"\nVIS-1,Vis 1,1.19\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[2], [3]], [$this->json()['updated'], $this->json()['unchanged']]);
+        self::assertSame([['line' => 2, 'column' => 'unit_price_net', 'before' => '8.4034', 'after' => '10.0000']], $this->json()['changes']);
+        $this->em()->clear();
+        self::assertSame('10.0000', $net('VIS-3'));
+    }
+
+    /**
+     * A price taxes included is refused on its own cell: beside a net price, which could disagree with it; past the
+     * currency's decimals; not a price; or a figure no net price comes to, named with the nearest two. Taxes the row
+     * names wrongly leave it unjudged, refused on their own cell.
+     */
+    public function testAPriceTaxesIncludedIsRefusedOnItsCell(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import("reference,name,unit_code,unit_price_net,unit_price_gross,default_tax_codes\nVIS-1,Vis 1,H87,,9.999,TVA19\nVIS-2,Vis 2,H87,1,1.19,TVA19\nVIS-3,Vis 3,H87,,1.1901,TVA19\nVIS-4,Vis 4,H87,,cher,TVA19\nVIS-5,Vis 5,H87,,-1,TVA19\nVIS-6,Vis 6,H87,,9.999,NOPE\nVIS-7,Vis 7,H87,,9.999,TIMBRE\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        $rejections = $this->rejections();
+        self::assertSame([
+            [2, 'unit_price_gross', 'gross_unreachable'],
+            [3, 'unit_price_gross', 'price_net_and_gross'],
+            [4, 'unit_price_gross', 'too_many_decimals'],
+            [5, 'unit_price_gross', 'invalid_price'],
+            [6, 'unit_price_gross', 'invalid_price'],
+            [7, 'default_tax_codes', 'unknown_tax_code'],
+            [8, 'default_tax_codes', 'tax_on_document'],
+        ], array_map(static fn (array $rejection): array => \array_slice($rejection, 0, 3), $rejections));
+        self::assertSame([['gross' => '9.999', 'below' => '9.998', 'above' => '10.000'], ['max' => 3]], [$rejections[0][3], $rejections[2][3]]);
+    }
+
+    /** In euros the cent is the last digit: 9.99 at 20 % is no net price's, as 8.32 makes 9.98 and 8.33 makes 10.00. */
+    public function testInEurosAPriceTaxesIncludedIsCountedToTheCent(): void
+    {
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->em()->persist($this->company);
+        $this->em()->flush();
+        static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import("reference,name,unit_code,unit_price_gross,default_tax_codes\nA-1,Pièce 1,H87,\"12,00\",TVA20\nA-2,Pièce 2,H87,9.99,TVA20\nA-3,Pièce 3,H87,9.999,TVA20\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            [3, 'unit_price_gross', 'gross_unreachable', ['gross' => '9.99', 'below' => '9.98', 'above' => '10.00']],
+            [4, 'unit_price_gross', 'too_many_decimals', ['max' => 2]],
+        ], $this->rejections());
     }
 
     /**

@@ -135,6 +135,8 @@ test('an upsert says what it changes before it changes anything', async ({ page 
     await expect(page.getByTestId('confirm-kind')).toHaveAttribute('data-kind', 'corrigeable');
     await expect(page.getByTestId('confirm-message')).toContainText('name (1)');
     await page.getByTestId('confirm-keep').click();
+    // The dialog's closing animation keeps it in the page a moment: the next one would make two.
+    await expect(page.getByTestId('confirm-keep')).toHaveCount(0);
     await expect(page.getByTestId('import-changes')).toBeVisible();
 
     await page.getByTestId('import-store').click();

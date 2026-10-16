@@ -40,6 +40,8 @@ export const CHANGES_SHOWN = 200;
 
 /** The parameters of a note that are quantities, shown with the screen's decimal separator. */
 const QUANTITY_PARAMS = new Set(['before', 'after']);
+/** The prices a refusal names: a price taxes included no net price comes to, and the nearest two. */
+const PRICE_PARAMS = new Set(['gross', 'below', 'above']);
 
 /**
  * One screen for every subject a module declares as importable (docs/SPEC.md § 8 row 59). It is driven entirely by
@@ -174,12 +176,19 @@ export class ImportPage {
   }
 
   /**
-   * Why a row was refused, in the person's words. A code this screen does not know yet falls back to the API's own
-   * English sentence, which is a poor reading but never a blank cell — and better than showing the raw code.
+   * Why a row was refused, in the person's words, its prices written as the screen writes a decimal. A code this
+   * screen does not know yet falls back to the API's own English sentence, which is a poor reading but never a blank
+   * cell — and better than showing the raw code.
    */
   protected reasonOf(rejection: ImportRejection): string {
     const key = `import.rejections.${rejection.code}`;
-    const said = this.translate.instant(key, rejection.params) as string;
+    const params = Object.fromEntries(
+      Object.entries(rejection.params).map(([name, value]) => [
+        name,
+        PRICE_PARAMS.has(name) && typeof value === 'string' ? this.format.decimal(value) : value,
+      ]),
+    );
+    const said = this.translate.instant(key, params) as string;
 
     return said === key ? rejection.message : said;
   }
