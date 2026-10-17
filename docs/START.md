@@ -850,8 +850,8 @@ computer and `twes tick` every quarter hour are run by hand, and `twes install` 
 (`~/.twes-in/release-keys/`): the checkout's own `infra/onprem/release-key.asc` is what `twes install` offers, and is
 pinned only once the fingerprint the developer gave is confirmed, because whoever could forge a tag could change that
 file too. A newer tag nobody signed, or signed by another key, is refused before anything is backed up or checked out,
-written down in `state/refused-releases` (`tick` never tries it again; by hand it is checked again), and mailed and told
-to the operators in the application. The developer's key: ed25519, fingerprint
+written down in `state/refused-releases`, and mailed and told to the operators in the application: once from `tick`,
+under `notify` as under `auto`, and again each time `twes update` asks for it by hand. The developer's key: ed25519, fingerprint
 `0201 4686 9960 09C7 41A9 2ADF 0C53 7690 706E B7F5`. `twes pin-key <file>` pins another (a secret key is refused).
 
 **What `twes` does.**

@@ -218,6 +218,20 @@ pin_key() {
   say "release key pinned: $(tr '\n' ' ' <<<"$fingerprints")— compare it with the developer's before trusting it"
 }
 # Why a release tag cannot be taken, or nothing when the pinned key verifies it.
+# A tag the pinned key does not verify is written down and alerted: each time an update asks for it, and once from tick
+# whatever the policy ("once"), so a forged tag is never met in silence. It answers 0 when the tag verifies.
+verified() { # tag, the release running, once
+  local why
+  why=$(unsigned "$1")
+  [[ -n "$why" ]] || return 0
+  if [[ "${3:-}" == once ]] && listed "$1" refused-releases; then return 1; fi
+  listed "$1" refused-releases || echo "$1" >> "$state/refused-releases"
+  alert installation.update_refused "Mise à jour refusée : $1 n'est pas signée" \
+    "La mise à jour vers $1 a été refusée : $why. Rien n'a été changé, ${2:-aucune version} tourne toujours. Une version que la clé de publication ne signe pas peut venir de quelqu'un d'autre que le développeur." \
+    "version=$1"
+  say "refused: $why"
+  return 1
+}
 unsigned() {
   GNUPGHOME=$keys gpg --batch --with-colons --list-keys 2>/dev/null | grep -q '^pub:' \
     || { echo "no release key is pinned here (twes pin-key <the developer's public key>)"; return 0; }
@@ -386,15 +400,7 @@ update() {
   if [[ -n "$auto" ]] && listed "$newest" refused-releases; then
     say "$newest was refused here: it is applied only by hand (twes update), once its signature verifies"; return 0
   fi
-  why=$(unsigned "$newest")
-  if [[ -n "$why" ]]; then
-    echo "$newest" >> "$state/refused-releases"
-    alert installation.update_refused "Mise à jour refusée : $newest n'est pas signée" \
-      "La mise à jour vers $newest a été refusée : $why. Rien n'a été changé, ${current:-aucune version} tourne toujours. Une version que la clé de publication ne signe pas peut venir de quelqu'un d'autre que le développeur." \
-      "version=$newest"
-    say "refused: $why"
-    return 1
-  fi
+  verified "$newest" "$current" || return 1
   address=$(recall lan-host)
   [[ -n "$address" ]] || address=$(lan_address)
   echo "$address" > "$state/lan-host"
@@ -542,7 +548,7 @@ tick() {
       git -C "$root" fetch --quiet --tags origin || return 0
       newest=$(git -C "$root" tag --list "$release_tags" --sort=-v:refname | head -n 1)
       current=$(tag_of "$(running)")
-      if [[ -n "$newest" && "$newest" != "$current" && -z "$(unsigned "$newest")" ]] && ! listed "$newest" notified; then
+      if [[ -n "$newest" && "$newest" != "$current" ]] && verified "$newest" "$current" once && ! listed "$newest" notified; then
         echo "$newest" >> "$state/notified"
         tell installation.update_available "version=$newest" "previous=${current:--}"
         say "$newest is out; the owners are told"
