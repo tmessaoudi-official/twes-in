@@ -18,6 +18,7 @@ const head: EstablishmentRow = {
   isDefault: true,
   codePattern: '^[0-9]{3}$',
   codeLocked: false,
+  version: 1,
 };
 const sfax: EstablishmentInput = { ...head, code: '001', name: 'Agence de Sfax', isDefault: false };
 const invoices: NumberingSeriesRow = {
@@ -31,6 +32,7 @@ const invoices: NumberingSeriesRow = {
   isDefault: true,
   numbered: false,
   preview: 'FAC-2026-00001',
+  version: 1,
 };
 
 describe('EstablishmentsFacade', () => {
@@ -83,9 +85,9 @@ describe('EstablishmentsFacade', () => {
     api.numberingSeries.mockResolvedValue([revised]);
     const changes = { format: 'F-{SEQ}', nextNumber: 1, resetPeriod: 'yearly' } as const;
 
-    expect(await facade.reviseSeries('c1', 's1', changes)).toBe(true);
+    expect(await facade.reviseSeries('c1', 's1', changes, 1)).toBe(true);
 
-    expect(api.reviseNumberingSeries).toHaveBeenCalledWith('c1', 's1', changes);
+    expect(api.reviseNumberingSeries).toHaveBeenCalledWith('c1', 's1', changes, 1);
     expect(facade.series()).toEqual([revised]);
     expect(facade.error()).toBeNull();
   });

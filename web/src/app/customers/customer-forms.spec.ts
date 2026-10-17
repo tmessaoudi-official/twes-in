@@ -148,6 +148,7 @@ describe('customer forms', () => {
         choices: [],
         sortOrder: 0,
         isActive: true,
+        version: 1,
       },
     ]);
 

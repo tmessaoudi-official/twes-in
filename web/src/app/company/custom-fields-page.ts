@@ -21,6 +21,8 @@ import {
 } from '../shared/custom-fields/custom-fields-types';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { listRecord } from '../shared/form/list-record';
+import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
@@ -45,6 +47,7 @@ import { Feedback } from '../shared/feedback/feedback';
     DataListCell,
     DescriptorForm,
     StatusBadge,
+    RecordChanged,
   ],
   templateUrl: './custom-fields-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -94,6 +97,19 @@ export class CustomFieldsPage implements OnInit {
     );
   });
 
+  /** The saved version the open form stands on, and what another person's save changed in it. */
+  protected readonly sync = listRecord({
+    kind: 'custom_field',
+    editing: this.editing,
+    rows: this.facade.fields,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.load(companyId, this.entity());
+    },
+    values: definitionFormValues,
+  });
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
@@ -138,10 +154,13 @@ export class CustomFieldsPage implements OnInit {
     const accepted =
       declared === null
         ? await this.facade.create(companyId, input)
-        : await this.facade.revise(companyId, declared.id, input);
+        : await this.facade.revise(companyId, declared.id, input, this.sync.version());
     if (accepted) {
       this.editing.set(null);
       this.feedback.success('company.custom_fields.saved');
+    } else if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 

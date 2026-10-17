@@ -37,7 +37,7 @@ final class CustomFieldsTest extends ApiTestCase
         $created = $this->json();
         self::assertSame(['sector', 'choice', ['retail', 'wholesale'], true, true], [$created['key'], $created['type'], $created['choices'], $created['required'], $created['isActive']]);
 
-        $this->sendJson('PUT', $this->path(self::id($created)), [...self::sector(), 'label' => 'Activité', 'isActive' => false]);
+        $this->sendJson('PUT', $this->path(self::id($created)), [...self::sector(), 'version' => 1, 'label' => 'Activité', 'isActive' => false]);
         self::assertResponseIsSuccessful();
         self::assertSame(['Activité', false], [$this->json()['label'], $this->json()['isActive']]);
 
@@ -78,7 +78,7 @@ final class CustomFieldsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'choices are a list, never a map');
         self::assertStringContainsString('choices', (string) $this->client->getResponse()->getContent());
 
-        $this->sendJson('PUT', $this->path($id), [...self::sector(), 'key' => 'segment']);
+        $this->sendJson('PUT', $this->path($id), [...self::sector(), 'version' => 1, 'key' => 'segment']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
@@ -95,7 +95,7 @@ final class CustomFieldsTest extends ApiTestCase
         $this->sendJson('POST', '/api/auth/logout', []);
 
         $this->login('admin@twes.local', 'password-1234');
-        $this->sendJson('PUT', $this->path($theirs), self::sector());
+        $this->sendJson('PUT', $this->path($theirs), [...self::sector(), 'version' => 1]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
@@ -120,10 +120,42 @@ final class CustomFieldsTest extends ApiTestCase
         $customer = $this->json();
         self::assertSame(['sector' => 'retail'], $customer['customFields']);
 
-        $this->sendJson('PUT', $this->path($sector), [...self::sector(), 'isActive' => false]);
+        $this->sendJson('PUT', $this->path($sector), [...self::sector(), 'version' => 1, 'isActive' => false]);
         $this->sendJson('PUT', $customers.'/'.self::id($customer), [...self::customer([]), 'version' => $customer['version']]);
         self::assertResponseIsSuccessful();
         self::assertSame(['sector' => 'retail'], $this->json()['customFields'], 'a retired field keeps what the customer holds');
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->sendJson('POST', $this->path(), self::sector());
+        $id = self::id($this->json());
+        self::assertSame(1, $this->json()['version']);
+        $this->sendJson('PUT', $this->path($id), [...self::sector(), 'version' => 1, 'label' => 'Activité']);
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), [...self::sector(), 'version' => 1, 'label' => 'Métier']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path().'?entity=customer');
+        self::assertSame([['Activité', 2]], array_map(static fn (array $row): array => [$row['label'], $row['version']], $this->jsonList()));
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersionAndOneWithoutAVersionIsRefused(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->sendJson('POST', $this->path(), self::sector());
+        $id = self::id($this->json());
+
+        $this->sendJson('PUT', $this->path($id), [...self::sector(), 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), [...self::sector(), 'label' => 'Métier']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     /** @return array<string, mixed> */

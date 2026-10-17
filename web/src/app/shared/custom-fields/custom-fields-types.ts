@@ -29,6 +29,8 @@ export interface CustomFieldDefinition {
   sortOrder: number;
   /** A retired field is no longer shown; the values records hold for it stay. */
   isActive: boolean;
+  /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
+  version: number;
 }
 
-export type CustomFieldInput = Omit<CustomFieldDefinition, 'id'>;
+export type CustomFieldInput = Omit<CustomFieldDefinition, 'id' | 'version'>;

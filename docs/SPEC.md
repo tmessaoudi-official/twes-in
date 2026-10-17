@@ -221,8 +221,11 @@ level in one PUT (`/companies/{companyId}/settings`, `/platform/settings`), each
 at the unique index, which answers the same 409. `tests/Architecture/RecordVersionsTest`
 reads every PUT: each takes a version (a batch's on each item), or is listed with its reason (a person's own toggles,
 a company's single switches, a single key's PUT), or waits for its slice. An editor opened inside a list (a unit, a
-tax) is a `liveRecord` too, over the row the list holds now: another person's save merges into it as on a record's own
-page (§ 7 2026-09-17 (2)), and its save sends the version of the row it stands on.
+tax, a custom field, an establishment, a numbering series) is a `liveRecord` too, through `shared/form/listRecord`, over
+the row the list holds now: another person's save merges into it as on a record's own page (§ 7 2026-09-17 (2)), and
+its save sends the version of the row it stands on. Its form is keyed on plain values, so a reload of the list leaves
+what is typed alone. A series' version also moves with every number given, so a form opened before a number was
+given is refused rather than writing its next number back.
 
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,

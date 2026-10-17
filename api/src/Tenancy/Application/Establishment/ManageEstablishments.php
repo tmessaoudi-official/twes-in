@@ -12,6 +12,8 @@ namespace App\Tenancy\Application\Establishment;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Exception\InvalidEstablishment;
 use App\Tenancy\Domain\Model\Company;
@@ -43,6 +45,7 @@ final readonly class ManageEstablishments
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -98,11 +101,15 @@ final readonly class ManageEstablishments
      * @throws EstablishmentNotFound  for an establishment that does not exist or belongs to another company
      * @throws EstablishmentCodeTaken
      * @throws InvalidEstablishment
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $establishmentId, EstablishmentDetails $details, ?Uuid $actorUserId): Establishment
+    public function revise(Company $company, Uuid $establishmentId, EstablishmentDetails $details, ?Uuid $actorUserId, ?int $version = null): Establishment
     {
-        return $this->transactions->run(function () use ($company, $establishmentId, $details, $actorUserId): Establishment {
+        return $this->transactions->run(function () use ($company, $establishmentId, $details, $actorUserId, $version): Establishment {
             $establishment = $this->establishments->ofIdInCompany($establishmentId, $company->getId()) ?? throw new EstablishmentNotFound('No such establishment.');
+            if (null !== $version) {
+                $this->versions->expect($establishment, $version);
+            }
             $code = $this->checkedCode($company, $details->code);
             $holder = $this->establishments->ofCodeInCompany($code, $company->getId());
             if (null !== $holder && !$holder->getId()->equals($establishment->getId())) {

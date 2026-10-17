@@ -18,7 +18,7 @@ const input: CustomFieldInput = {
   sortOrder: 0,
   isActive: true,
 };
-const sector: CustomFieldDefinition = { ...input, id: 'f1' };
+const sector: CustomFieldDefinition = { ...input, id: 'f1', version: 1 };
 
 describe('CustomFieldsFacade', () => {
   const api = { list: vi.fn(), create: vi.fn(), revise: vi.fn() };
@@ -55,8 +55,8 @@ describe('CustomFieldsFacade', () => {
     expect(api.list).toHaveBeenCalledTimes(1);
 
     api.revise.mockResolvedValueOnce(sector);
-    expect(await facade.revise('c1', 'f1', input)).toBe(true);
-    expect(api.revise).toHaveBeenCalledWith('c1', 'f1', input);
+    expect(await facade.revise('c1', 'f1', input, 2)).toBe(true);
+    expect(api.revise).toHaveBeenCalledWith('c1', 'f1', input, 2);
 
     api.create.mockRejectedValueOnce(new CustomFieldsRefused('key_taken'));
     expect(await facade.create('c1', input)).toBe(false);

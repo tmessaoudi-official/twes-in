@@ -80,6 +80,7 @@ const warranty: CustomFieldDefinition = {
   choices: [],
   sortOrder: 0,
   isActive: true,
+  version: 1,
 };
 
 describe('product forms', () => {

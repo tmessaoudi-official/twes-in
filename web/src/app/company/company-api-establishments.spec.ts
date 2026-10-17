@@ -52,6 +52,7 @@ describe('CompanyApi establishments and numbering', () => {
         isDefault: true,
         codePattern: '^[0-9]{3}$',
         codeLocked: false,
+        version: 0,
       },
     ]);
   });
@@ -67,20 +68,38 @@ describe('CompanyApi establishments and numbering', () => {
   });
 
   it('names an establishment refused for what it says', async () => {
-    const pending = api.reviseEstablishment('c1', 'e 1', sfax);
+    const pending = api.reviseEstablishment('c1', 'e 1', sfax, 3);
     const request = http.expectOne('/api/companies/c1/establishments/e%201');
     expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ ...sfax, version: 3 });
     request.flush({ detail: 'isDefault' }, { status: 422, statusText: 'Unprocessable' });
 
     await expect(pending).rejects.toMatchObject({ code: 'invalid' });
   });
 
+  it('tells an establishment saved elsewhere since from a code another one has', async () => {
+    const changed = api.reviseEstablishment('c1', 'e1', sfax, 1);
+    http
+      .expectOne('/api/companies/c1/establishments/e1')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toMatchObject({ code: 'record_changed' });
+
+    const taken = api.reviseEstablishment('c1', 'e1', sfax, 1);
+    http
+      .expectOne('/api/companies/c1/establishments/e1')
+      .flush({ detail: 'taken' }, { status: 409, statusText: 'Conflict' });
+    await expect(taken).rejects.toMatchObject({ code: 'code_taken' });
+  });
+
   it('revises a series with its format, the number it resumes at and when it starts again', async () => {
     const changes = { format: 'F-{EST}-{SEQ:4}', nextNumber: 12, resetPeriod: 'monthly' } as const;
-    const pending = api.reviseNumberingSeries('c1', 's1', changes);
+    const pending = api.reviseNumberingSeries('c1', 's1', changes, 4);
     const request = http.expectOne('/api/companies/c1/numbering-series/s1');
     expect(request.request.method).toBe('PUT');
-    expect(request.request.body).toEqual(changes);
+    expect(request.request.body).toEqual({ ...changes, version: 4 });
     request.flush({
       id: 's1',
       establishmentId: 'e1',
@@ -90,9 +109,23 @@ describe('CompanyApi establishments and numbering', () => {
       isDefault: true,
       numbered: true,
       preview: 'F-000-0012',
+      version: 5,
     });
 
-    expect(await pending).toMatchObject({ preview: 'F-000-0012', numbered: true });
+    expect(await pending).toMatchObject({ preview: 'F-000-0012', numbered: true, version: 5 });
+  });
+
+  it('says a series moved on since the form opened rather than writing its number back', async () => {
+    const changes = { format: 'F-{SEQ}', nextNumber: 2, resetPeriod: 'never' } as const;
+    const pending = api.reviseNumberingSeries('c1', 's1', changes, 1);
+    http
+      .expectOne('/api/companies/c1/numbering-series/s1')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+
+    await expect(pending).rejects.toMatchObject({ code: 'record_changed' });
   });
 
   it('keeps a reset period it does not know from reaching the page', async () => {

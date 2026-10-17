@@ -21,6 +21,7 @@ const sector: CustomFieldDefinition = {
   choices: ['retail', 'wholesale'],
   sortOrder: 0,
   isActive: true,
+  version: 1,
 };
 const row = {
   id: 'k1',

@@ -5,8 +5,10 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   CustomFieldCustomFieldRead,
+  CustomFieldCustomFieldWriteRecordReviseValidationCustomFieldWriteRecordRevise as CustomFieldRevise,
   CustomFieldCustomFieldWriteValidationCustomFieldWrite as CustomFieldCustomFieldWrite,
 } from '../../api/types.gen';
+import { isRecordChanged } from '../errors/record-changed';
 import {
   CUSTOM_FIELD_ENTITIES,
   CUSTOM_FIELD_TYPES,
@@ -16,7 +18,8 @@ import {
 } from './custom-fields-types';
 
 /** Why the API refused, as the screens translate it. */
-export type CustomFieldsError = 'network' | 'not_found' | 'key_taken' | 'invalid';
+export type CustomFieldsError =
+  'network' | 'not_found' | 'key_taken' | 'invalid' | 'record_changed';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CustomFieldsRefused extends Error {
@@ -51,13 +54,17 @@ export class CustomFieldsApi {
     );
   }
 
-  /** The key, the type and the kind of record must say what the field already says. */
+  /**
+   * The key, the type and the kind of record must say what the field already says. `version` is the one the form
+   * was opened at: a later one saved elsewhere answers `record_changed`.
+   */
   async revise(
     companyId: string,
     id: string,
     input: CustomFieldInput,
+    version: number | null,
   ): Promise<CustomFieldDefinition> {
-    const body: CustomFieldCustomFieldWrite = { ...input };
+    const body: CustomFieldRevise = { ...input, version };
     return this.guard(async () =>
       toDefinition(
         await firstValueFrom(
@@ -87,7 +94,7 @@ function codeOf(error: unknown): CustomFieldsError {
     case 404:
       return 'not_found';
     case 409:
-      return 'key_taken';
+      return isRecordChanged(error.error) ? 'record_changed' : 'key_taken';
     default:
       return 'invalid';
   }
@@ -107,5 +114,7 @@ function toDefinition(raw: CustomFieldCustomFieldRead): CustomFieldDefinition {
     choices: (raw.choices ?? []).filter((choice): choice is string => typeof choice === 'string'),
     sortOrder: raw.sortOrder ?? 0,
     isActive: raw.isActive ?? true,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }

@@ -24,7 +24,9 @@ import type { CompanyError, EstablishmentRow } from './company-types';
 import { EstablishmentsFacade } from './establishments-facade';
 import { EstablishmentsPage } from './establishments-page';
 import { ArticleSettings } from '../products/article-settings-facade';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -54,6 +56,7 @@ const head: EstablishmentRow = {
   isDefault: true,
   codePattern: '^[0-9]{3}$',
   codeLocked: false,
+  version: 1,
 };
 
 describe('EstablishmentsPage', () => {
@@ -102,6 +105,7 @@ describe('EstablishmentsPage', () => {
     error.set(null);
     establishments.set([head]);
     facade.loadEstablishments.mockReset().mockResolvedValue(undefined);
+    facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.createEstablishment.mockReset().mockResolvedValue(true);
     facade.reviseEstablishment.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -173,7 +177,55 @@ describe('EstablishmentsPage', () => {
       'c1',
       'e1',
       expect.objectContaining({ code: '000', name: 'Siège social', isDefault: true }),
+      1,
     );
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    q('row-action-edit-e1')!.click();
+    await settle();
+    facade.reviseEstablishment.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    facade.loadEstablishments.mockImplementationOnce(async () =>
+      establishments.set([{ ...head, city: 'Sfax', version: 2 }]),
+    );
+
+    type('field-name', 'Siège social');
+    q('establishment-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-city') as HTMLInputElement).value).toBe('Sfax'));
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Siège social');
+    expect(q('establishments-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('establishment-save')!.click();
+    await settle();
+    expect(facade.reviseEstablishment).toHaveBeenLastCalledWith(
+      'c1',
+      'e1',
+      expect.objectContaining({ name: 'Siège social', city: 'Sfax' }),
+      2,
+    );
+  });
+
+  it('takes into the open form what another person saved on the same establishment', async () => {
+    q('row-action-edit-e1')!.click();
+    await settle();
+    facade.loadEstablishments.mockImplementationOnce(async () =>
+      establishments.set([{ ...head, name: 'Acme Tunis', version: 2 }]),
+    );
+
+    await announceSaved('establishment', 'e1');
+    await settle();
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Acme Tunis');
   });
 
   it('revises an establishment whose code numbered documents carry, keeping the code', async () => {
@@ -192,6 +244,7 @@ describe('EstablishmentsPage', () => {
       'c1',
       'e1',
       expect.objectContaining({ code: '000', name: 'Siège social' }),
+      1,
     );
   });
 

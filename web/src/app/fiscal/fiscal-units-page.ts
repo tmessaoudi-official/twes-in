@@ -16,7 +16,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
-import { liveRecord } from '../shared/form/live-record';
+import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
@@ -88,27 +88,17 @@ export class FiscalUnitsPage implements OnInit {
     return buildFormGroup(descriptor, editing === 'new' ? {} : unitFormValues(editing));
   });
 
-  /** The unit being revised as the list now holds it: what another person's save is merged from. */
-  private readonly savedRow = computed(() => {
-    const editing = this.editing();
-    if (editing === null || editing === 'new') return null;
-    return this.units().find((row) => row.id === editing.id) ?? null;
-  });
-
   /** The saved version the open form stands on, and what another person's save changed in it. */
-  protected readonly sync = liveRecord({
+  protected readonly sync = listRecord({
     kind: 'unit',
-    id: () => this.savedRow()?.id ?? null,
+    editing: this.editing,
+    rows: this.units,
     form: this.form,
     reload: async () => {
       const companyId = this.company()?.id;
       if (companyId) await this.fiscal.loadUnits(companyId);
     },
-    saved: () => {
-      const row = this.savedRow();
-      return row === null ? null : unitFormValues(row);
-    },
-    version: () => this.savedRow()?.version ?? null,
+    values: unitFormValues,
   });
 
   async ngOnInit(): Promise<void> {

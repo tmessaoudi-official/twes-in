@@ -41,8 +41,15 @@ export class CustomFieldsFacade {
     return this.write(companyId, input.entity, () => this.api.create(companyId, input));
   }
 
-  async revise(companyId: string, id: string, input: CustomFieldInput): Promise<boolean> {
-    return this.write(companyId, input.entity, () => this.api.revise(companyId, id, input));
+  async revise(
+    companyId: string,
+    id: string,
+    input: CustomFieldInput,
+    version: number | null,
+  ): Promise<boolean> {
+    return this.write(companyId, input.entity, () =>
+      this.api.revise(companyId, id, input, version),
+    );
   }
 
   clearError(): void {

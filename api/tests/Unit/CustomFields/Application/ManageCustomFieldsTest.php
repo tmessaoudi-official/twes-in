@@ -21,6 +21,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomFieldDefinitions;
+use App\Tests\Support\InMemoryRecordVersions;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -37,7 +38,7 @@ final class ManageCustomFieldsTest extends TestCase
         $this->fields = new InMemoryCustomFieldDefinitions();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManageCustomFields($this->fields, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
+        $this->manage = new ManageCustomFields($this->fields, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 

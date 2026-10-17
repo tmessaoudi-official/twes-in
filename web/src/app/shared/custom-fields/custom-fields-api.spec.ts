@@ -52,6 +52,7 @@ describe('CustomFieldsApi', () => {
         choices: ['retail'],
         sortOrder: 0,
         isActive: true,
+        version: 0,
       },
     ]);
   });
@@ -63,11 +64,26 @@ describe('CustomFieldsApi', () => {
     post.flush({ ...sector, id: 'f1' });
     expect((await created).id).toBe('f1');
 
-    const revised = api.revise('c1', 'f1', { ...sector, label: 'Activité' });
+    const revised = api.revise('c1', 'f1', { ...sector, label: 'Activité' }, 3);
     const put = http.expectOne('/api/companies/c1/custom-fields/f1');
-    expect([put.request.method, put.request.body.label]).toEqual(['PUT', 'Activité']);
-    put.flush({ ...sector, id: 'f1', label: 'Activité' });
-    expect((await revised).label).toBe('Activité');
+    expect([put.request.method, put.request.body.label, put.request.body.version]).toEqual([
+      'PUT',
+      'Activité',
+      3,
+    ]);
+    put.flush({ ...sector, id: 'f1', label: 'Activité', version: 4 });
+    expect(await revised).toMatchObject({ label: 'Activité', version: 4 });
+  });
+
+  it('tells a field saved elsewhere since from a key another field has', async () => {
+    const changed = api.revise('c1', 'f1', sector, 1);
+    http
+      .expectOne('/api/companies/c1/custom-fields/f1')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toEqual(new CustomFieldsRefused('record_changed'));
   });
 
   it('names why the API refused', async () => {

@@ -17,6 +17,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { listRecord } from '../shared/form/list-record';
+import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
@@ -29,7 +31,15 @@ import { Feedback } from '../shared/feedback/feedback';
 /** How each establishment numbers each kind of document, with the next number shown while a format is typed. */
 @Component({
   selector: 'app-numbering-page',
-  imports: [MatButtonModule, MatCardModule, TranslatePipe, DataList, DataListCell, DescriptorForm],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    TranslatePipe,
+    DataList,
+    DataListCell,
+    DescriptorForm,
+    RecordChanged,
+  ],
   templateUrl: './numbering-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -67,6 +77,22 @@ export class NumberingPage implements OnInit {
   protected readonly form = computed(() => {
     const editing = this.editing();
     return editing === null ? null : buildFormGroup(this.descriptor(), seriesFormValues(editing));
+  });
+
+  /**
+   * The saved version the open form stands on, and what another person's save changed in it. A number given since
+   * moves the series on without a change of its own being announced: the save then refused merges it.
+   */
+  protected readonly sync = listRecord({
+    kind: 'numbering_series',
+    editing: this.editing,
+    rows: this.series,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.loadSeries(companyId);
+    },
+    values: seriesFormValues,
   });
   private readonly draft = signal<FormValues | null>(null);
   protected readonly preview = computed(() => {
@@ -118,9 +144,19 @@ export class NumberingPage implements OnInit {
     const companyId = this.company()?.id;
     const editing = this.editing();
     if (!companyId || editing === null || this.busy()) return;
-    if (await this.facade.reviseSeries(companyId, editing.id, seriesChanges(values))) {
+    if (
+      await this.facade.reviseSeries(
+        companyId,
+        editing.id,
+        seriesChanges(values),
+        this.sync.version(),
+      )
+    ) {
       this.editing.set(null);
       this.feedback.success('company.numbering.saved');
+    } else if (this.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 }

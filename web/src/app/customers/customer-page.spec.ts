@@ -446,6 +446,7 @@ describe('CustomerPage', () => {
         choices: [],
         sortOrder: 0,
         isActive: true,
+        version: 1,
       },
     ]);
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
