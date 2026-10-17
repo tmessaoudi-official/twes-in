@@ -41,7 +41,7 @@ release_value() { awk -v k="$1" 'index($0, k "=") == 1 { v = substr($0, length(k
 # The staging deployment's compose, as deploy.sh --staging runs it with the check's layers.
 export DEPLOY_EXTRA_FILES="$staging/scripts/backup/drill.compose.yaml:$staging/scripts/deploy/check.compose.yaml"
 dc() {
-  (cd "$staging" && docker compose --env-file "$values" -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml \
+  (cd "$staging" && docker compose --env-file "$values" -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml \
     -f compose.deploy.yaml -f compose.release.yaml -f scripts/backup/drill.compose.yaml -f scripts/deploy/check.compose.yaml "$@")
 }
 

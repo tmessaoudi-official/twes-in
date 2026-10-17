@@ -1,5 +1,5 @@
-# The restore drill's own layer (scripts/backup/restore-drill.sh), over compose.yaml, compose.prod.yaml and
-# compose.backup.yaml, under the compose project `twes-drill`, and by the deploy check (scripts/deploy/deploy-check.sh)
+# The restore drill's own layer (scripts/backup/restore-drill.sh), over compose.yaml, compose.prod.yaml,
+# compose.backup.yaml and compose.backup-bucket.yaml, under the compose project `twes-drill`, and by the deploy check (scripts/deploy/deploy-check.sh)
 # under its own. Never part of a deployment: it adds a stand-in for
 # the off-site bucket (SeaweedFS, Apache-2.0) behind a throwaway certificate authority, publishes no port, so a
 # development stack can run beside it, and names the database volume, so the drill can start the server again on a

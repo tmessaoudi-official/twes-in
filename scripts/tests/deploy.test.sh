@@ -48,7 +48,7 @@ echo "deploy"
 # --build: a self-hosted instance, built here from the release it checked out.
 d=$(repo); e=$(envfile)
 out=$(run "$d" --build "$e"); check "a clean release tag deploys" $? 0 "$out" "v2026.10.12.1"
-check "with the four files and the instance's own values" 0 0 "$(called)" "--env-file $e -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml up -d --build --wait"
+check "with the five files and the instance's own values" 0 0 "$(called)" "--env-file $e -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml -f compose.deploy.yaml up -d --build --wait"
 check "built as the version git says it is" 0 0 "$(called)" "API_BUILD_VERSION=2026."
 
 d=$(repo); e=$(envfile); echo b > "$d/api/b.php"; git -C "$d" add -A; git -C "$d" commit -qm after
@@ -138,6 +138,58 @@ out=$(run "$d" --staging "$e" "$r"); check "a release file is read as data, neve
 d=$(repo); e=$(staging_values); r="$TMPDIR/release.env"; head=$(git -C "$d" rev-parse HEAD); release_lines "$head" > "$r"
 out=$(COMPOSE_EXIT=1 run "$d" --staging "$e" "$r"); check "a start that fails fails the deploy" $? 1 "$out" "did not start"
 check "  and is written down as failed, so a follower does not try it again and again" 0 0 "$(tail -1 "$(dirname "$e")/releases/history" 2>&1)" "failed $head staging"
+
+# TWES_INSTALL=onprem: a shop's installation (docs/START.md § 16), its backups in its own folder, behind its own edge.
+onprem_values() { envfile "TWES_INSTALL=onprem
+${1:-}"; }
+d=$(repo); e=$(onprem_values); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
+out=$(run "$d" --release "$e"); check "a shop's installation deploys a release" $? 0 "$out" "running"
+check "  with its folder for backups and its own edge, by digest" 0 0 "$(called)" "--env-file $e -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-local.yaml -f compose.onprem.yaml -f compose.release.yaml up -d --no-build --wait"
+[[ "$(called)" != *"compose.deploy.yaml"* && "$(called)" != *"compose.backup-bucket.yaml"* ]]; check "  and never a server's edge or bucket" $? 0 "$(called)" ""
+
+d=$(repo); e=$(onprem_values 'BACKUP_OFFSITE=on'); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
+out=$(run "$d" --release "$e"); check "the off-site copy switched on" $? 0 "$out" "running"
+check "  adds its layer over the folder" 0 0 "$(called)" "-f compose.backup-local.yaml -f compose.backup-offsite.yaml -f compose.onprem.yaml"
+d=$(repo); e=$(onprem_values 'BACKUP_OFFSITE=off'); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
+out=$(run "$d" --release "$e"); [[ "$(called)" != *"compose.backup-offsite.yaml"* ]]; check "  and switched off, leaves it out" $? 0 "$(called)" ""
+d=$(repo); e=$(onprem_values 'BACKUP_OFFSITE=yes'); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
+out=$(run "$d" --release "$e"); check "  any other word is refused, never read as one or the other" $? 1 "$out" "BACKUP_OFFSITE"
+[[ -z "$(called)" ]]; check "  and nothing starts" $? 0 "" ""
+
+d=$(repo); e=$(onprem_values)
+out=$(run "$d" --build "$e"); check "a shop's installation may build from its release tag" $? 0 "$out" "v2026.10.12.1"
+check "  over its own layers" 0 0 "$(called)" "-f compose.backup-local.yaml -f compose.onprem.yaml up -d --build --wait"
+
+d=$(repo); e=$(onprem_values); r="$TMPDIR/release.env"; release_lines "$(git -C "$d" rev-parse HEAD)" > "$r"
+out=$(run "$d" --staging "$e" "$r"); check "a shop's values never deploy staging" $? 1 "$out" "TWES_INSTALL"
+
+d=$(repo); e=$(envfile 'TWES_INSTALL=onpremise'); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
+out=$(run "$d" --release "$e"); check "an installation of a kind it does not know is refused" $? 1 "$out" "TWES_INSTALL"
+
+# --again: the release this checkout last deployed, started again from the images it recorded, nothing pulled, so a shop's
+# computer starts in the morning without the internet, and an update rolls back to the release it left.
+d=$(repo); e=$(onprem_values); head=$(git -C "$d" rev-parse HEAD); annotate "$d" "$(release_lines "$head")"
+run "$d" --release "$e" >/dev/null
+out=$(run "$d" --again "$e"); check "the release deployed here starts again" $? 0 "$out" "running"
+check "  from the images it recorded, building nothing" 0 0 "$(called)" "TWES_API_IMAGE=ghcr.invalid/o/twes-in-api@sha256:$DIGEST"
+check "  over the installation's layers" 0 0 "$(called)" "-f compose.onprem.yaml -f compose.release.yaml up -d --no-build --wait"
+[[ ! -f "$TMPDIR/docker.pulled" ]]; check "  and pulls nothing" $? 0 "" ""
+check "  and is written down" 0 0 "$(tail -1 "$(dirname "$e")/releases/history" 2>&1)" "started $head again"
+
+d=$(repo); e=$(onprem_values); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
+out=$(run "$d" --again "$e"); check "a release never deployed here is refused" $? 1 "$out" "never deployed here"
+[[ -z "$(called)" ]]; check "  and nothing starts" $? 0 "" ""
+
+d=$(repo); e=$(onprem_values); head=$(git -C "$d" rev-parse HEAD); annotate "$d" "$(release_lines "$head")"
+run "$d" --release "$e" >/dev/null
+sed -i 's|^TWES_WEB_IMAGE=.*|TWES_WEB_IMAGE=$(touch '"$TMPDIR"'/ran)|' "$(dirname "$e")/releases/$head.env"
+out=$(run "$d" --again "$e"); check "a record is read as data, never run" $? 1 "$out" "web image by its digest"
+[[ ! -e "$TMPDIR/ran" ]]; check "  and what it held did not run" $? 0 "" ""
+
+d=$(repo); e=$(onprem_values); head=$(git -C "$d" rev-parse HEAD); annotate "$d" "$(release_lines "$head")"
+run "$d" --release "$e" >/dev/null
+out=$(COMPOSE_EXIT=1 run "$d" --again "$e"); check "a start again that fails fails" $? 1 "$out" "did not start"
+check "  and is written down as failed" 0 0 "$(tail -1 "$(dirname "$e")/releases/history" 2>&1)" "failed $head again"
 
 # DEPLOY_EXTRA_FILES: make staging-check's own layers, taken under its compose project with --staging alone.
 d=$(repo); e=$(staging_values); r="$TMPDIR/release.env"; release_lines "$(git -C "$d" rev-parse HEAD)" > "$r"

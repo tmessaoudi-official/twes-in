@@ -108,7 +108,7 @@ dump, from the bucket alone into empty volumes, then the API healthy and `app:da
 The commands are in `docs/START.md` § 13. On the machine that lost its database:
 
 1. Stop the stack: `docker compose --env-file /etc/twes-in/deploy.env -f compose.yaml -f compose.prod.yaml
-   -f compose.backup.yaml -f compose.deploy.yaml -f compose.release.yaml down` (no `--volumes`).
+   -f compose.backup.yaml -f compose.backup-bucket.yaml -f compose.deploy.yaml -f compose.release.yaml down` (no `--volumes`).
 2. Keep what is left: `docker volume create twes-pg-broken-<date>` and copy the database volume into it, or rename the
    volume with your provider's snapshot. pgBackRest fills only an empty volume.
 3. Empty the database volume (`docker volume rm <project>_postgres-data`), then the two `restore` commands of § 13, with

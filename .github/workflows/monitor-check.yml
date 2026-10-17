@@ -18,6 +18,7 @@ on:
       - compose.yaml
       - compose.prod.yaml
       - compose.backup.yaml
+      - compose.backup-bucket.yaml
       - compose.deploy.yaml
       - scripts/deploy/new-instance.sh
       - scripts/deploy/check.compose.yaml

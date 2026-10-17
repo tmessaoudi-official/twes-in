@@ -114,8 +114,8 @@ reset:         ## DESTRUCTIVE clean start (docs/START.md): deletes the database 
 	rm -rf api/var/cache api/var/openapi.json web/src/app/api web/playwright/.auth
 	$(MAKE) up
 
-backup-drill:  ## the restore drill (docs/START.md § 13): the production images with the backup overlay, backed up, restored from the bucket alone into empty volumes to a moment and to the latest, checked; its own compose project (twes-drill), removed at the end
-	bash scripts/backup/restore-drill.sh
+backup-drill:  ## the restore drill (docs/START.md § 13; DRILL=local for a shop's folder and off-site copy, § 16): the production images with the backup overlay, backed up, restored from the bucket alone into empty volumes to a moment and to the latest, checked; its own compose project (twes-drill), removed at the end
+	bash scripts/backup/restore-drill.sh $(DRILL)
 
 deploy-check:  ## the deploy check (docs/START.md § 14): a deployment booted from new-instance.sh's values with the four compose files behind its Caddy edge, then asked through it for HSTS, the HTTPS redirect, health, a sign-in, the realtime socket and the client address; its own compose project (twes-deploy-check), removed at the end
 	bash scripts/deploy/deploy-check.sh
@@ -173,6 +173,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/outcomes-as-toasts.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-log-rotation.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/deploy-overlay.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/onprem-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/release-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/publish.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/tag-release.test.sh
@@ -205,6 +206,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/deploy.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-steps.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/forwarded-proto.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/live-proxy.test.sh
@@ -217,6 +219,7 @@ in-gate-licences:
 	bash scripts/gates/outcomes-as-toasts.sh
 	bash scripts/gates/compose-log-rotation.sh
 	bash scripts/gates/deploy-overlay.sh
+	bash scripts/gates/onprem-overlay.sh
 	bash scripts/gates/release-overlay.sh
 	bash scripts/gates/monitor-config.sh
 	bash scripts/gates/version-pins.sh

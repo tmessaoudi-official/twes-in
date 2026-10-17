@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# A shop's edge (compose.onprem.yaml; docs/START.md § 16): every request reaches the installation here, over TLS, and
+# goes on to the web container, whose nginx serves the app and passes /api and the realtime socket on. No public
+# authority can certify localhost or a private address, so Caddy's own does: the shop's computer trusts it for
+# https://localhost when it is installed there, a phone once, from the root certificate below. Caddy replaces any
+# X-Forwarded-* a client sends with what it saw, which nginx and the API then trust as a private address's.
+{
+	admin off
+	local_certs
+	# The authority is trusted by scripts/onprem/twes on the host, never from inside the container.
+	skip_install_trust
+	# A phone connecting to an address sends no server name; this is the one it means.
+	default_sni {$LAN_HOST}
+	# Port 80 answers below, with the root certificate and a redirect of its own.
+	auto_https disable_redirects
+	pki {
+		ca local {
+			name "twes-in (cette installation)"
+		}
+	}
+}
+
+https://localhost, https://{$LAN_HOST} {
+	tls internal
+	reverse_proxy web:80
+}
+
+# Plain HTTP: the authority's root certificate, the one file a phone needs before it trusts the address above, and
+# everything else sent on to HTTPS at the same address.
+http:// {
+	@root path /root.crt
+	handle @root {
+		root * /data/caddy/pki/authorities/local
+		header Content-Type application/x-x509-ca-cert
+		file_server
+	}
+	handle {
+		redir https://{host}{uri} 308
+	}
+}

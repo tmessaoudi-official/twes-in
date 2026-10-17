@@ -13,15 +13,23 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * What the backup overlay promises that no drill can show: a disaster gives no warning, so the restore drill forces the
+ * What the backup layers promise that no drill can show: a disaster gives no warning, so the restore drill forces the
  * last WAL out before it restores, and what a real one loses is set here instead. A quiet database still hands its
  * WAL to the archive within archive_timeout, well inside the ruled quarter hour; the backup service only ever reads
  * the database's data and the stored files; and each repository is encrypted under a passphrase of the instance's own.
+ *
+ * compose.backup.yaml is what archives; where to is a layer of its own: a server's bucket (compose.backup-bucket.yaml)
+ * or a shop's folder (compose.backup-local.yaml), which compose.backup-offsite.yaml copies off site. Each destination
+ * names the repositories to every service that reaches them, so what the database archives is where the backup service
+ * and a restore look.
  */
 final class BackupOverlayTest extends TestCase
 {
-    /** The longest a commit may wait before its WAL leaves for the bucket, in seconds: a third of the ruled 15 minutes. */
+    /** The longest a commit may wait before its WAL leaves for the archive, in seconds: a third of the ruled 15 minutes. */
     private const int MOST_UNARCHIVED_SECONDS = 300;
+
+    /** The services that reach the repositories: the database archives, the backup service copies, a restore reads. */
+    private const array REACHING = ['postgres', 'backup', 'restore'];
 
     public function testAQuietDatabaseStillArchivesWithinFiveMinutes(): void
     {
@@ -37,44 +45,89 @@ final class BackupOverlayTest extends TestCase
 
     public function testTheBackupServiceOnlyReadsTheDatabaseAndTheFiles(): void
     {
-        $volumes = self::service('backup')['volumes'] ?? null;
-        self::assertIsArray($volumes);
-        $mounts = [];
-        foreach ($volumes as $volume) {
-            self::assertIsString($volume);
-            $parts = explode(':', $volume);
-            $mounts[$parts[1] ?? ''] = $parts[2] ?? 'rw';
-        }
+        foreach (['compose.backup.yaml', 'compose.backup-bucket.yaml', 'compose.backup-local.yaml', 'compose.backup-offsite.yaml'] as $file) {
+            $mounts = self::mounts(self::service($file, 'backup'));
 
-        self::assertSame('ro', $mounts['/var/lib/postgresql'] ?? null, 'the database is read, never written, by the backups');
-        self::assertSame('ro', $mounts['/files'] ?? null, 'the stored files are read, never written, by the backups');
+            self::assertNotSame('rw', $mounts['/var/lib/postgresql'] ?? 'ro', $file.': the database is read, never written, by the backups');
+            self::assertNotSame('rw', $mounts['/files'] ?? 'ro', $file.': the stored files are read, never written, by the backups');
+        }
+        $mounts = self::mounts(self::service('compose.backup.yaml', 'backup'));
+        self::assertSame('ro', $mounts['/var/lib/postgresql'] ?? null);
+        self::assertSame('ro', $mounts['/files'] ?? null);
     }
 
     public function testBothRepositoriesAreEncryptedUnderTheInstancesOwnPassphrase(): void
     {
-        $conf = (string) file_get_contents(\dirname(__DIR__, 3).'/infra/postgres/pgbackrest.conf');
+        $conf = self::read('infra/postgres/pgbackrest.conf');
         self::assertMatchesRegularExpression('/^repo1-cipher-type=aes-256-cbc$/m', $conf);
         self::assertDoesNotMatchRegularExpression('/^repo1-cipher-pass=/m', $conf, 'the passphrase never sits in a committed file');
 
-        $overlay = (string) file_get_contents(\dirname(__DIR__, 3).'/compose.backup.yaml');
-        self::assertMatchesRegularExpression('/PGBACKREST_REPO1_CIPHER_PASS: "\$\{BACKUP_DATABASE_PASSPHRASE:\?/', $overlay);
-        self::assertMatchesRegularExpression('/RESTIC_PASSWORD: "\$\{BACKUP_FILES_PASSPHRASE:\?/', $overlay);
+        $base = self::read('compose.backup.yaml');
+        self::assertMatchesRegularExpression('/PGBACKREST_REPO1_CIPHER_PASS: "\$\{BACKUP_DATABASE_PASSPHRASE:\?/', $base);
+        self::assertMatchesRegularExpression('/RESTIC_PASSWORD: "\$\{BACKUP_FILES_PASSPHRASE:\?/', $base);
     }
 
-    public function testBothRepositoriesSitUnderTheInstancesPrefixInItsBucket(): void
+    public function testWhereTheRepositoriesLieIsTheDestinationsAlone(): void
     {
-        $conf = (string) file_get_contents(\dirname(__DIR__, 3).'/infra/postgres/pgbackrest.conf');
-        self::assertDoesNotMatchRegularExpression('/^repo1-path=/m', $conf, 'the path comes from the overlay alone, with the prefix');
+        $conf = self::read('infra/postgres/pgbackrest.conf');
+        self::assertDoesNotMatchRegularExpression('/^repo1-type=/m', $conf, 'the kind of repository comes from the destination');
+        self::assertDoesNotMatchRegularExpression('/^repo1-path=/m', $conf, 'the path comes from the destination alone');
 
-        $overlay = (string) file_get_contents(\dirname(__DIR__, 3).'/compose.backup.yaml');
-        self::assertMatchesRegularExpression('#PGBACKREST_REPO1_PATH: "/\$\{BACKUP_S3_PREFIX:-\}pgbackrest"#', $overlay);
-        self::assertMatchesRegularExpression('#RESTIC_REPOSITORY: "s3:[^"]*/\$\{BACKUP_S3_BUCKET\}/\$\{BACKUP_S3_PREFIX:-\}restic"#', $overlay);
+        $base = self::read('compose.backup.yaml');
+        foreach (['PGBACKREST_REPO1_TYPE', 'PGBACKREST_REPO1_PATH', 'RESTIC_REPOSITORY'] as $name) {
+            self::assertStringNotContainsString($name, $base, 'compose.backup.yaml archives; a destination layer says where');
+        }
     }
 
-    /** @return array<string, string> each `-c name=value` the overlay starts the server with */
+    public function testABucketHoldsBothRepositoriesUnderTheInstancesPrefix(): void
+    {
+        foreach (self::REACHING as $name) {
+            $environment = self::environment('compose.backup-bucket.yaml', $name);
+
+            self::assertSame('s3', $environment['PGBACKREST_REPO1_TYPE'] ?? null, $name);
+            self::assertSame('/${BACKUP_S3_PREFIX:-}pgbackrest', $environment['PGBACKREST_REPO1_PATH'] ?? null, $name);
+            foreach (['PGBACKREST_REPO1_S3_ENDPOINT', 'PGBACKREST_REPO1_S3_BUCKET', 'PGBACKREST_REPO1_S3_KEY', 'PGBACKREST_REPO1_S3_KEY_SECRET'] as $key) {
+                self::assertStringContainsString(':?', $environment[$key] ?? '', $name.' '.$key.' is required: a server without it would archive nowhere');
+            }
+        }
+        foreach (['backup', 'restore'] as $name) {
+            $environment = self::environment('compose.backup-bucket.yaml', $name);
+            self::assertMatchesRegularExpression('#^s3:[^"]*/\$\{BACKUP_S3_BUCKET\}/\$\{BACKUP_S3_PREFIX:-\}restic$#', $environment['RESTIC_REPOSITORY'] ?? '', $name);
+        }
+    }
+
+    public function testAShopsFolderHoldsBothRepositoriesForEveryServiceThatReachesThem(): void
+    {
+        foreach (self::REACHING as $name) {
+            $service = self::service('compose.backup-local.yaml', $name);
+            $environment = self::environment('compose.backup-local.yaml', $name);
+
+            self::assertSame('posix', $environment['PGBACKREST_REPO1_TYPE'] ?? null, $name);
+            self::assertSame('/backup/pgbackrest', $environment['PGBACKREST_REPO1_PATH'] ?? null, $name);
+            self::assertSame('rw', self::mounts($service)['/backup'] ?? null, $name.' writes the shop\'s backup folder');
+            self::assertContains('${BACKUP_DIRECTORY:-backup-local}:/backup', self::volumeLines($service), $name.': a host path when given, else the volume');
+        }
+        foreach (['backup', 'restore'] as $name) {
+            self::assertSame('/backup/restic', self::environment('compose.backup-local.yaml', $name)['RESTIC_REPOSITORY'] ?? null, $name);
+        }
+    }
+
+    public function testTheOffSiteCopyNeedsEveryValueOnceSwitchedOn(): void
+    {
+        foreach (['backup', 'restore'] as $name) {
+            $environment = self::environment('compose.backup-offsite.yaml', $name);
+
+            self::assertMatchesRegularExpression('#^s3:https://\$\{BACKUP_S3_ENDPOINT:\?[^}]*\}:\$\{BACKUP_S3_PORT:-443\}/\$\{BACKUP_S3_BUCKET:\?[^}]*\}/\$\{BACKUP_S3_PREFIX:-\}offsite$#', $environment['OFFSITE_REPOSITORY'] ?? '', $name);
+            foreach (['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_REGION'] as $key) {
+                self::assertStringContainsString(':?', $environment[$key] ?? '', $name.' '.$key.' is required once the copy is on');
+            }
+        }
+    }
+
+    /** @return array<string, string> each `-c name=value` the base starts the server with */
     private static function serverSettings(): array
     {
-        $command = self::service('postgres')['command'] ?? null;
+        $command = self::service('compose.backup.yaml', 'postgres')['command'] ?? null;
         self::assertIsArray($command);
 
         $settings = [];
@@ -90,17 +143,74 @@ final class BackupOverlayTest extends TestCase
         return $settings;
     }
 
-    /** @return array<array-key, mixed> */
-    private static function service(string $name): array
+    /**
+     * @param array<array-key, mixed> $service
+     *
+     * @return array<string, string> each mount's target and its mode
+     */
+    private static function mounts(array $service): array
     {
-        // Compose's own tags (`!reset`, `!override`) are read as tagged values, which no assertion here looks into.
-        $compose = Yaml::parseFile(\dirname(__DIR__, 3).'/compose.backup.yaml', Yaml::PARSE_CUSTOM_TAGS);
+        $mounts = [];
+        foreach (self::volumeLines($service) as $volume) {
+            // A host path or a variable may hold a colon only before the target; the target and the mode never do.
+            if (1 === preg_match('#:(/[^:]*)(?::(ro|rw))?$#', $volume, $match)) {
+                $mounts[$match[1]] = $match[2] ?? 'rw';
+            }
+        }
+
+        return $mounts;
+    }
+
+    /**
+     * @param array<array-key, mixed> $service
+     *
+     * @return list<string>
+     */
+    private static function volumeLines(array $service): array
+    {
+        $volumes = $service['volumes'] ?? [];
+        // `!override` keeps its list as the tagged value's own.
+        if ($volumes instanceof \Symfony\Component\Yaml\Tag\TaggedValue) {
+            $volumes = $volumes->getValue();
+        }
+        self::assertIsArray($volumes);
+        $lines = [];
+        foreach ($volumes as $volume) {
+            self::assertIsString($volume);
+            $lines[] = $volume;
+        }
+
+        return $lines;
+    }
+
+    /** @return array<array-key, mixed> */
+    private static function environment(string $file, string $name): array
+    {
+        $environment = self::service($file, $name)['environment'] ?? null;
+        self::assertIsArray($environment, $name.' of '.$file.' sets its environment');
+        // `<<: *anchor` is merged by the parser itself.
+        return $environment;
+    }
+
+    /** @return array<array-key, mixed> */
+    private static function service(string $file, string $name): array
+    {
+        // Compose's own tags (`!reset`, `!override`) are read as tagged values.
+        $compose = Yaml::parseFile(\dirname(__DIR__, 3).'/'.$file, Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($compose);
         $services = $compose['services'] ?? null;
         self::assertIsArray($services);
         $service = $services[$name] ?? null;
-        self::assertIsArray($service, $name.' is a service of compose.backup.yaml');
+        self::assertIsArray($service, $name.' is a service of '.$file);
 
         return $service;
+    }
+
+    private static function read(string $file): string
+    {
+        $content = file_get_contents(\dirname(__DIR__, 3).'/'.$file);
+        self::assertIsString($content, $file);
+
+        return $content;
     }
 }

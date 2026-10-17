@@ -46,6 +46,7 @@ services:
 EOF
   printf 'services:\n  api:\n    restart: unless-stopped\n' > "$d/compose.prod.yaml"
   printf 'services:\n  backup:\n    image: busybox\n    environment:\n      MONITOR_URL: "${MONITOR_URL:-}"\n      MONITOR_HEARTBEAT_TOKEN: "${MONITOR_HEARTBEAT_TOKEN:-}"\n' > "$d/compose.backup.yaml"
+  printf 'services:\n  backup:\n    environment:\n      BUCKET: "${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}"\n' > "$d/compose.backup-bucket.yaml"
   cat > "$d/compose.deploy.yaml" <<'EOF'
 x-deploy-environment: &deploy
   DEFAULT_URI: "https://${TWES_HOST:?set TWES_HOST}"
