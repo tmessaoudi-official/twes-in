@@ -32,6 +32,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockLots;
@@ -113,7 +114,7 @@ final class ReadReceiptCostTest extends TestCase
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $main = Establishment::create($this->company, '000', 'Siège', true, $now);
         $establishments->save($main);
-        $this->site = new ManageStockLocations($locations, $movements, $establishments, new InMemoryAuditTrail($transactions), $this->clock, $transactions)->defaultOf($main);
+        $this->site = new ManageStockLocations($locations, $movements, $establishments, new InMemoryAuditTrail($transactions), $this->clock, $transactions, new InMemoryRecordVersions())->defaultOf($main);
         $piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, $now);
         $this->laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '1250', '1000'), $piece, null, [], $now);
         $products->save($this->laptop);

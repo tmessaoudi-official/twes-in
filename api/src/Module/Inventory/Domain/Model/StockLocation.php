@@ -70,6 +70,11 @@ class StockLocation implements CompanyOwned
     #[ORM\Column]
     private bool $isDefault = false;
 
+    /** Doctrine counts each save, a binding to the plan included, so an editor of an older version is told rather than overwriting it. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -254,5 +259,10 @@ class StockLocation implements CompanyOwned
     public function isDefault(): bool
     {
         return $this->isDefault;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 }

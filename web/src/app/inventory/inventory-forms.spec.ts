@@ -63,6 +63,7 @@ function location(
     isDefault,
     childCount: 0,
     movementCount: 0,
+    version: 1,
   };
 }
 

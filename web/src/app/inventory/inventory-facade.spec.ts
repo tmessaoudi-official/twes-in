@@ -20,6 +20,7 @@ const site: StockLocationRow = {
   isDefault: true,
   childCount: 0,
   movementCount: 1,
+  version: 1,
 };
 const options: StockOptions = {
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
@@ -364,10 +365,10 @@ describe('InventoryFacade', () => {
 
   it('reads the locations again after one is added, revised or deleted', async () => {
     expect(await facade.createLocation('c1', zone)).toBe(true);
-    expect(await facade.reviseLocation('c1', 'l2', zone)).toBe(true);
+    expect(await facade.reviseLocation('c1', 'l2', zone, 3)).toBe(true);
     expect(await facade.deleteLocation('c1', 'l2')).toBe(true);
 
-    expect(api.reviseLocation).toHaveBeenCalledWith('c1', 'l2', zone);
+    expect(api.reviseLocation).toHaveBeenCalledWith('c1', 'l2', zone, 3);
     expect(api.deleteLocation).toHaveBeenCalledWith('c1', 'l2');
     expect(api.locations).toHaveBeenCalledTimes(3);
   });

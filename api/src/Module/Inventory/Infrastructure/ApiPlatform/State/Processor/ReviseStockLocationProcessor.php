@@ -50,6 +50,7 @@ final readonly class ReviseStockLocationProcessor implements ProcessorInterface
                 $data->code,
                 $data->name,
                 $this->guard->account()->getId(),
+                $data->version,
             );
         } catch (StockLocationNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);

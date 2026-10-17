@@ -67,6 +67,7 @@ function place(id: string, code: string): StockLocationRow {
     isDefault: id === 'r1',
     childCount: 0,
     movementCount: 0,
+    version: 1,
   };
 }
 

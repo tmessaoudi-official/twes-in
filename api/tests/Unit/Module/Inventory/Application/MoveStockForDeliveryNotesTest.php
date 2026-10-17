@@ -42,6 +42,7 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryModuleStates;
 use App\Tests\Support\InMemoryProductHomeLocations;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockLots;
@@ -101,7 +102,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $this->settings->save(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
         $this->settings->save(new Setting(SettingAddress::product($this->company, $this->untracked->getId()), 'article.stock_tracking', false, $now));
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings()]), $this->settings));
-        $manage = new ManageStockLocations($this->locations, $this->movements, $establishments, new InMemoryAuditTrail($this->transactions), $this->clock, $this->transactions);
+        $manage = new ManageStockLocations($this->locations, $this->movements, $establishments, new InMemoryAuditTrail($this->transactions), $this->clock, $this->transactions, new InMemoryRecordVersions());
         $keep = $this->keep = new KeepStock($this->movements, new InMemoryStockLots(), $this->locations, $products, $read, $this->transactions, $this->clock, new RecordingLiveChanges());
         $this->manage = $manage;
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), $this->states);

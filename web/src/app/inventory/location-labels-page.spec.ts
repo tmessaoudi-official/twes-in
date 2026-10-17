@@ -31,6 +31,7 @@ const site: StockLocationRow = {
   isDefault: true,
   childCount: 1,
   movementCount: 0,
+  version: 1,
 };
 const rack: StockLocationRow = {
   ...site,

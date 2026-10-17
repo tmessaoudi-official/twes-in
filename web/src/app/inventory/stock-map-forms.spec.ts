@@ -58,6 +58,7 @@ const location = (over: Partial<StockLocationRow> = {}): StockLocationRow => ({
   isDefault: false,
   childCount: 0,
   movementCount: 0,
+  version: 1,
   ...over,
 });
 

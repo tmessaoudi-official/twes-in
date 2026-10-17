@@ -44,6 +44,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockLots;
@@ -89,7 +90,7 @@ final class KeepStockTest extends TestCase
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $main = Establishment::create($this->company, '000', 'Siège', true, $now);
         $establishments->save($main);
-        $this->site = new ManageStockLocations($locations, $this->movements, $establishments, new InMemoryAuditTrail($this->transactions), $this->clock, $this->transactions)->defaultOf($main);
+        $this->site = new ManageStockLocations($locations, $this->movements, $establishments, new InMemoryAuditTrail($this->transactions), $this->clock, $this->transactions, new InMemoryRecordVersions())->defaultOf($main);
         $piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, $now);
         $this->accessories = ProductCategory::create($this->company, 'Accessoires', null, $now);
         $this->laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '1250'), $piece, null, [], $now);

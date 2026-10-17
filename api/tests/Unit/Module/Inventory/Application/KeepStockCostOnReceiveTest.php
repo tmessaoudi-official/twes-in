@@ -37,6 +37,7 @@ use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryProductCostChanges;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockLots;
@@ -192,7 +193,7 @@ final class KeepStockCostOnReceiveTest extends TestCase
         $main = Establishment::create($this->company, '000', 'Siège', true, $now);
         $establishments->save($main);
         $audit = new InMemoryAuditTrail($transactions);
-        $this->site = new ManageStockLocations($locations, $movements, $establishments, $audit, $clock, $transactions)->defaultOf($main);
+        $this->site = new ManageStockLocations($locations, $movements, $establishments, $audit, $clock, $transactions, new InMemoryRecordVersions())->defaultOf($main);
         $piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, $now);
         $this->laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '1250', '1000'), $piece, null, [], $now);
         $products->save($this->laptop);
