@@ -6,9 +6,11 @@
 # a statement they are tricked into running can read and write rows, never rewrite the journal or reach the server.
 set -e
 
+# Until it takes writes, not only reads: a server restored from a backup answers reads while it replays its WAL, and
+# refuses to assign a transaction id until it is promoted, which the migrations and the grants below both need.
 echo 'Waiting for the database...'
 attempts=60
-until [ "$attempts" -eq 0 ] || error="$(php bin/console dbal:run-sql --connection=owner -q 'SELECT 1' 2>&1)"; do
+until [ "$attempts" -eq 0 ] || error="$(php bin/console dbal:run-sql --connection=owner -q 'SELECT pg_current_xact_id()' 2>&1)"; do
 	sleep 1
 	attempts=$((attempts - 1))
 	echo "Still waiting for the database... $attempts attempts left."

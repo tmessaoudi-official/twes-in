@@ -75,8 +75,20 @@ stand_in_bucket_up
 dc up -d --build --wait postgres gotenberg api backup
 step "stack up: production api, archiving database, backup service ready"
 
-dc exec -T backup twes-backup full
-step "full base backup"
+if [[ "$mode" == local ]]; then
+  # A shop's schedule (twes-backup due) on a new install: nothing done yet, so it takes the full backup, the copy and the
+  # read-back by itself, each under the lock and written down in the outcome volume, and the next run finds nothing due.
+  dc exec -T backup twes-backup due
+  for done_step in full copy verify; do
+    dc exec -T backup test -s "/var/lib/twes-backup/outcome/$done_step.ok" || fail "due wrote down no success for $done_step"
+  done
+  again=$(dc exec -T backup twes-backup due 2>&1)
+  [[ -z "$again" ]] || fail "due ran again what it had just done: $again"
+  step "due on a new shop: full backup, copy, read-back, each written down"
+else
+  dc exec -T backup twes-backup full
+  step "full base backup"
+fi
 
 # What a pilot writes after last night's backup: it must come back from the WAL alone.
 sql "CREATE TABLE restore_drill (n int PRIMARY KEY); INSERT INTO restore_drill VALUES (1)" >/dev/null
@@ -118,8 +130,19 @@ restore_into() {
   local volume=$1; shift
   DRILL_PG_DATA=$volume dc run --rm --no-deps -T restore gosu postgres pgbackrest --stanza=twes --spool-path=/tmp "$@" restore >/dev/null
 }
+# A restored server answers pg_isready, and so its healthcheck, while it still replays WAL towards its target (hot
+# standby): what it holds is read once it has promoted, never at its first answer. Says how long that took past the answer.
+promoted() { # a command that runs psql's arguments against the restored server
+  local waited=0
+  until [[ "$("$@" -tAc 'SELECT pg_is_in_recovery()')" == f ]]; do
+    ((waited < 120)) || fail "the restored server never left recovery"
+    sleep 1; waited=$((waited + 1))
+  done
+  echo "restore-drill: promoted ${waited}s after it first answered" >&2
+}
 rows_in() {
   DRILL_PG_DATA=$1 dc up -d --wait postgres >/dev/null
+  promoted dc exec -T postgres psql -U twes -d twes
   sql "SELECT coalesce(string_agg(n::text, ',' ORDER BY n), '') FROM restore_drill"
 }
 
@@ -128,7 +151,12 @@ restore_into twes-drill-pg-t --type=time "--target=$target" --target-action=prom
 # reads, since a restore follows the newest timeline it finds there.
 DRILL_PG_DATA=twes-drill-pg-t dc run -d --no-deps --name twes-drill-pitr postgres postgres -c archive_mode=off >/dev/null
 for _ in $(seq 1 60); do docker exec twes-drill-pitr pg_isready -q -U twes -d twes 2>/dev/null && break; sleep 1; done
-got=$(docker exec twes-drill-pitr psql -U twes -d twes -v ON_ERROR_STOP=1 -tAc "SELECT coalesce(string_agg(n::text, ',' ORDER BY n), '') FROM restore_drill")
+promoted docker exec twes-drill-pitr psql -U twes -d twes
+if ! got=$(docker exec twes-drill-pitr psql -U twes -d twes -v ON_ERROR_STOP=1 -tAc "SELECT coalesce(string_agg(n::text, ',' ORDER BY n), '') FROM restore_drill"); then
+  docker logs twes-drill-pitr 2>&1 | tail -n 40
+  docker rm -f twes-drill-pitr >/dev/null
+  fail "the server restored to $target could not be read"
+fi
 docker rm -f twes-drill-pitr >/dev/null
 [[ "$got" == "1" ]] || fail "restored to $target, the table holds [$got], wanted [1]"
 step "restored to the moment between the rows: [1]"

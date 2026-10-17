@@ -11,6 +11,9 @@
 #   --again <values>               the release this checkout last deployed here, started again from the images its record
 #                                  names, nothing pulled: a shop's computer in the morning, offline or not, and an update's
 #                                  rollback to the release it left (scripts/onprem/twes).
+#   --compose <values> <arguments> any compose command on the release running here, over its files and the images its
+#                                  record names, saying nothing of its own and writing nothing down: what the shop's
+#                                  script runs a backup and reads the services through.
 # The values say which installation it is: a server (the default), its backups in a bucket behind compose.deploy.yaml's
 # edge, or TWES_INSTALL=onprem, a shop's machine (docs/START.md § 16), its backups in its own folder, copied off site
 # when BACKUP_OFFSITE=on, behind compose.onprem.yaml's edge; a shop is never staging.
@@ -20,11 +23,16 @@
 # A deployment by digest is written down in releases/ beside the values: <commit>.env, the images it ran, which is what a
 # rollback deploys again, and a line of history, which is what staging-follow.sh compares with.
 set -euo pipefail
-usage() { echo "Usage: deploy.sh --release <values file> | --staging <values file> <release file> | --build <values file> | --again <values file>" >&2; exit 2; }
+usage() {
+  echo "Usage: deploy.sh --release <values file> | --staging <values file> <release file> | --build <values file> | --again <values file>" >&2
+  echo "       deploy.sh --compose <values file> <compose arguments>" >&2
+  exit 2
+}
 mode=${1:-}
 case "$mode" in
   --release | --build | --again) [[ $# -eq 2 ]] || usage; values=$2 ;;
   --staging) [[ $# -eq 3 ]] || usage; values=$2 release=$3 ;;
+  --compose) [[ $# -ge 3 ]] || usage; values=$2; shift 2 ;;
   *) usage ;;
 esac
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -70,7 +78,7 @@ if [[ "$mode" == --staging ]]; then
   [[ "$(value DEPLOY_ENV)" == staging ]] || refuse "$values do not say DEPLOY_ENV=staging (new-instance.sh --staging writes it)"
   [[ "$(value BACKUP_S3_PREFIX)" == staging/ ]] \
     || refuse "$values do not say BACKUP_S3_PREFIX=staging/: staging's backups go under their own prefix, never production's"
-else
+elif [[ "$mode" != --compose ]]; then
   [[ "$staging_values" == no ]] || refuse "$values are staging's (DEPLOY_ENV=staging or BACKUP_S3_PREFIX=staging/), never a production instance's"
   tag=$(git -C "$root" describe --exact-match --tags --match 'v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*' HEAD 2>/dev/null) \
     || refuse "HEAD is not at a release tag (vYYYY.MM.DD.N): check one out, git checkout <tag>"
@@ -96,7 +104,7 @@ read_release() {
   done
 }
 records="$(dirname "$values")/releases"
-if [[ "$mode" == --again ]]; then
+if [[ "$mode" == --again || "$mode" == --compose ]]; then
   [[ -f "$records/$commit.env" ]] || refuse "$commit was never deployed here (no $records/$commit.env): deploy its release with --release"
   read_release < "$records/$commit.env"
   source_name="$records/$commit.env"
@@ -120,12 +128,24 @@ done
 [[ "$revision" == "$commit" ]] \
   || refuse "$source_name is commit $revision and HEAD is $commit; the compose files must be the images' own: git checkout --detach $revision"
 
+if [[ "$mode" == --compose ]]; then
+  export TWES_API_IMAGE=${release_value[TWES_API_IMAGE]} TWES_WEB_IMAGE=${release_value[TWES_WEB_IMAGE]}
+  export TWES_DATABASE_IMAGE=${release_value[TWES_DATABASE_IMAGE]}
+  cd "$root"
+  exec docker compose --env-file "$values" "${files[@]}" -f compose.release.yaml "$@"
+fi
+
 # Each image says which commit it was built from (scripts/release/publish.compose.yaml): one that disagrees with its
 # release was recorded wrong, and starting it would run other code than the compose files around it expect. Started
 # again, the images are the ones already here: nothing is fetched.
 for part in api web database; do
   image=${release_value[TWES_${part^^}_IMAGE]}
-  [[ "$mode" == --again ]] || docker pull -q "$image" >/dev/null
+  if [[ "$mode" == --again ]]; then
+    found=$(docker image inspect --format '{{.Id}}' "$image" 2>&1) \
+      || refuse "$image is not on this machine any more (docker: $found): deploy the release with --release while the network answers"
+  else
+    docker pull -q "$image" >/dev/null
+  fi
   built=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")
   [[ "$built" == "$revision" ]] || refuse "$image was built from ${built:-a commit it does not name}, not $revision"
 done

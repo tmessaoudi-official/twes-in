@@ -6,11 +6,17 @@
 # on an existing file would replace the keys a live database is encrypted under.
 # --staging writes a staging instance's (docs/RUNBOOK.md): DEPLOY_ENV=staging, which its error reports carry and
 # deploy.sh --staging requires, and its backups under the prefix staging/, so they never land where production's are.
-# Usage: new-instance.sh [--staging] <file>      (such as /etc/twes-in/deploy.env, outside the checkout)
+# --onprem writes a shop's (docs/START.md § 16): TWES_INSTALL=onprem, its backups in its own folder with the off-site
+# copy off, updates announced rather than applied, and no name, since the shop opens localhost and its network address,
+# which scripts/onprem/twes reads at each start.
+# Usage: new-instance.sh [--staging | --onprem] <file>      (such as /etc/twes-in/deploy.env, outside the checkout)
 set -euo pipefail
-usage() { echo "Usage: new-instance.sh [--staging] <file>" >&2; exit 2; }
-staging=no
-if [[ "${1:-}" == --staging ]]; then staging=yes; shift; fi
+usage() { echo "Usage: new-instance.sh [--staging | --onprem] <file>" >&2; exit 2; }
+kind=production
+case "${1:-}" in
+  --staging) kind=staging; shift ;;
+  --onprem) kind=onprem; shift ;;
+esac
 [[ $# -eq 1 && "$1" != -* ]] || usage
 file=$1
 [[ -e "$file" ]] && { echo "new-instance: $file exists; it holds a live instance's keys, so it is never written over" >&2; exit 1; }
@@ -20,7 +26,45 @@ word() { local out=''; while ((${#out} < $1)); do out+=$(head -c 256 /dev/urando
 
 umask 077
 mkdir -p "$(dirname "$file")"
-cat > "$file" <<EOF
+if [[ "$kind" == onprem ]]; then
+  cat > "$file" <<'EOF'
+# This shop's values (docs/START.md § 16). Read by scripts/onprem/twes and scripts/deploy/deploy.sh, never committed.
+TWES_INSTALL=onprem
+
+# The facts, whoever installs it gives them.
+# The shop's mail account, through which invitations, documents and alerts leave. For Gmail, an app password
+# (two-step verification on, then Google Account > Security > App passwords), the @ of the address written %40:
+#   MAILER_DSN=smtp://shop%40gmail.com:<app password>@smtp.gmail.com:587
+#   MAILER_SENDER=shop@gmail.com
+MAILER_DSN=
+MAILER_SENDER=
+# Who is mailed when an update fails or rolls back, a backup stops or the application turns unhealthy.
+ALERT_EMAIL=
+# Where the backups go: blank keeps them in a Docker volume on this disk; a folder on a second disk or a USB drive
+# (such as /mnt/d/twes-backups under Windows) survives this disk.
+BACKUP_DIRECTORY=
+# The off-site copy, on once the bucket below is given: twes offsite on.
+BACKUP_OFFSITE=off
+BACKUP_S3_ENDPOINT=
+BACKUP_S3_BUCKET=
+BACKUP_S3_REGION=
+BACKUP_S3_KEY=
+BACKUP_S3_SECRET=
+# BACKUP_S3_PORT=443
+# BACKUP_S3_URI_STYLE=host
+# BACKUP_S3_PREFIX=<shop>/
+# Updates: notify (the owner is told, someone runs « twes update »), auto (applied inside the window, in the shop's
+# time, such as 13:00-14:00) or off. Changed with: twes policy auto 13:00-14:00 | notify | off
+UPDATE_POLICY=notify
+UPDATE_WINDOW=
+# The monitor, optional here (docs/START.md § 15): its status page and the DSN its error tracker gave this shop.
+MONITOR_URL=
+SENTRY_DSN=
+# A fixed network address, when the router reserves one for this machine; otherwise twes reads it at each start.
+# LAN_HOST=192.168.1.20
+EOF
+else
+  cat > "$file" <<'EOF'
 # This instance's values (docs/START.md § 14). Passed to compose by scripts/deploy/deploy.sh, never committed.
 
 # The facts, the operator's to give.
@@ -43,6 +87,9 @@ BACKUP_S3_SECRET=
 # and the DSN its error tracker gave this instance (infra/monitor/bootstrap.py prints it).
 MONITOR_URL=
 SENTRY_DSN=
+EOF
+fi
+cat >> "$file" <<EOF
 
 # The secrets, made for this instance alone.
 APP_SECRET=$(word 48)
@@ -58,7 +105,7 @@ BACKUP_FILES_PASSPHRASE=$(word 48)
 MONITOR_TOKEN=$(word 48)
 MONITOR_HEARTBEAT_TOKEN=$(word 48)
 EOF
-if [[ "$staging" == yes ]]; then
+if [[ "$kind" == staging ]]; then
   cat >> "$file" <<'EOF'
 
 # Staging: what its error reports and deploy.sh --staging read, and where in its bucket its backups go. The bucket above
@@ -80,6 +127,6 @@ the backups, where nobody but you can read them (a password manager, and a seale
 The realtime keys can be made again at any time. Copy MONITOR_TOKEN and MONITOR_HEARTBEAT_TOKEN to the monitor's
 values (scripts/monitor/new-monitor.sh); a new pair is two edits, one on each side.
 EOF
-if [[ "$staging" == yes ]]; then
+if [[ "$kind" == staging ]]; then
   echo "This is staging's: give it a bucket and keys of its own, never production's, and never production's data."
 fi

@@ -181,6 +181,24 @@ describe('support access and data check notifications', () => {
   });
 });
 
+describe('installation notifications', () => {
+  it('have words and lead nowhere: the owner asks whoever runs the installation, the operator reads the mail', () => {
+    const icons = {
+      'installation.update_available': 'fiber_new',
+      'installation.rolled_back': 'undo',
+      'installation.update_failed': 'error',
+      'installation.unhealthy': 'sync_problem',
+      'installation.backup_failed': 'cloud_off',
+      'installation.backup_stopped': 'cloud_off',
+    };
+    for (const [type, icon] of Object.entries(icons)) {
+      expect(notificationKey(type)).toBe(`notifications.types.${type.replace('.', '_')}`);
+      expect(notificationKindKey(type)).toBe(`notifications.kinds.${type.replace('.', '_')}`);
+      expect(notificationRecord(type)).toEqual({ icon, route: null, permission: null });
+    }
+  });
+});
+
 describe('module notifications', () => {
   it('have words and lead to the modules page for whoever may switch one on', () => {
     expect(notificationKey('module.arrived')).toBe('notifications.types.module_arrived');

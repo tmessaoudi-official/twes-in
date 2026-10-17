@@ -121,6 +121,29 @@ The commands are in `docs/START.md` § 13. On the machine that lost its database
 The ruling allows 4 hours back and 15 minutes lost. Neither has been measured on a real database: time the first real
 restore on staging and write the figure here.
 
+## Restore a shop
+
+Tried on the check stack (`make onprem-check`: a release with one migration more rolled back, then these commands run as
+printed, in one block as a paste would, the database back to the backup made before the update, the operator still
+signing in, the deep health green). Untried on a shop's Windows computer.
+
+A shop's update backs up first and keeps that backup's label; when the update and its own rollback both fail, the mail
+to `ALERT_EMAIL` carries the commands below, filled in. `twes restore-commands` prints them again at any time, for the
+last update made there. They may be pasted as one block: each restore reads no input (`< /dev/null`), since `docker
+compose run` would otherwise take the lines after it as its own and they would never run. On the shop's computer, in the
+checkout:
+
+1. `git checkout --detach <the release before the update>`: the code that ran on that backup.
+2. `… deploy.sh --compose <values> stop`: every container stopped, no volume removed.
+3. `… run --rm --no-deps restore gosu postgres pgbackrest … --set=<label> --type=immediate --target-action=promote --delta
+   restore < /dev/null`: the database's volume written back to the end of that backup; `--delta` rewrites only what differs.
+4. `… run --rm --no-deps restore restic restore latest --tag before-update --host twes --include /files --target / < /dev/null`: the
+   stored files as they were then.
+5. `bash scripts/onprem/twes start`: the release started again. Its migrate service waits until the restored database
+   takes writes, as it does once promoted.
+6. `twes status` must read health ok. Tell the shop the window between the backup and now: what was written in it is
+   gone, and an invoice issued in it leaves a gap in its series to explain to their accountant.
+
 ## Rotate a secret
 
 The ten values `new-instance.sh` draws. For each: change it in `/etc/twes-in/deploy.env` (keep the old one until the

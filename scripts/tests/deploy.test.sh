@@ -24,7 +24,7 @@ cat > "$TMPDIR/bin/docker" <<'EOF'
 #!/usr/bin/env bash
 case "$1" in
   pull) echo "${@: -1}" >> "$TMPDIR/docker.pulled" ;;
-  image) printf '%s\n' "${LABEL_REV:-}" ;;
+  image) [[ -z "${IMAGE_MISSING:-}" ]] || { echo "Error: No such image: ${@: -1}" >&2; exit 1; }; printf '%s\n' "${LABEL_REV:-}" ;;
   compose)
     printf '%s\n' "API_BUILD_VERSION=${API_BUILD_VERSION:-}" "TWES_API_IMAGE=${TWES_API_IMAGE:-}" \
       "TWES_WEB_IMAGE=${TWES_WEB_IMAGE:-}" "TWES_DATABASE_IMAGE=${TWES_DATABASE_IMAGE:-}" "$@" > "$TMPDIR/docker.args"
@@ -190,6 +190,27 @@ d=$(repo); e=$(onprem_values); head=$(git -C "$d" rev-parse HEAD); annotate "$d"
 run "$d" --release "$e" >/dev/null
 out=$(COMPOSE_EXIT=1 run "$d" --again "$e"); check "a start again that fails fails" $? 1 "$out" "did not start"
 check "  and is written down as failed" 0 0 "$(tail -1 "$(dirname "$e")/releases/history" 2>&1)" "failed $head again"
+
+d=$(repo); e=$(onprem_values); head=$(git -C "$d" rev-parse HEAD); annotate "$d" "$(release_lines "$head")"
+run "$d" --release "$e" >/dev/null
+out=$(IMAGE_MISSING=1 run "$d" --again "$e"); check "an image no longer on this machine is named, never fetched" $? 1 "$out" "not on this machine"
+[[ -z "$(called)" && ! -f "$TMPDIR/docker.pulled" ]]; check "  and nothing starts" $? 0 "" ""
+
+# --compose: any compose command on the release running here, over its files and images (scripts/onprem/twes runs the
+# backup before an update and reads the services through it), never a deployment of its own.
+d=$(repo); e=$(onprem_values); head=$(git -C "$d" rev-parse HEAD); annotate "$d" "$(release_lines "$head")"
+run "$d" --release "$e" >/dev/null
+lines=$(wc -l < "$(dirname "$e")/releases/history")
+out=$(run "$d" --compose "$e" exec -T backup twes-backup before-update); check "a command reaches the release running here" $? 0 "$out" ""
+check "  over its files and images" 0 0 "$(called)" "TWES_API_IMAGE=ghcr.invalid/o/twes-in-api@sha256:$DIGEST"
+check "  with the arguments as given, after the release overlay" 0 0 "$(called)" "-f compose.onprem.yaml -f compose.release.yaml exec -T backup twes-backup before-update"
+[[ "$out" != *"deploy:"* ]]; check "  saying nothing of its own, so what the command prints can be read" $? 0 "$out" ""
+[[ "$(wc -l < "$(dirname "$e")/releases/history")" == "$lines" && ! -f "$TMPDIR/docker.pulled" ]]; check "  writing nothing down and pulling nothing" $? 0 "" ""
+out=$(COMPOSE_EXIT=3 run "$d" --compose "$e" exec -T backup false); check "  and failing as the command fails" $? 3 "$out" ""
+
+d=$(repo); e=$(onprem_values); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
+out=$(run "$d" --compose "$e" ps); check "a command on a release never deployed here is refused" $? 1 "$out" "never deployed here"
+out=$(run "$d" --compose "$e"); check "  and a command must be given" $? 2 "$out" "Usage"
 
 # DEPLOY_EXTRA_FILES: make staging-check's own layers, taken under its compose project with --staging alone.
 d=$(repo); e=$(staging_values); r="$TMPDIR/release.env"; release_lines "$(git -C "$d" rev-parse HEAD)" > "$r"

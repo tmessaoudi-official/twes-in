@@ -1,0 +1,3 @@
+# Every text file is checked out with LF endings, whatever the machine says: a shop's checkout made under Windows
+# with core.autocrlf would read as changed in every file, and scripts/deploy/deploy.sh refuses a changed checkout.
+* text=auto eol=lf

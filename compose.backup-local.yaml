@@ -2,7 +2,8 @@
 # folder as the database writes, restic copies the nightly dump and the files beside it, so archiving never waits on
 # the internet. BACKUP_DIRECTORY names a host folder, best on a second disk or a USB drive; left empty, the folder is the
 # Docker volume backup-local, on the machine's own disk. compose.backup-offsite.yaml copies the folder to a bucket
-# when it is switched on. Each service that reaches the repositories mounts the folder and is named them.
+# when it is switched on. Each service that reaches the repositories mounts the folder and is named them. The machine is
+# off at night, so the backup service runs each step once it is due (BACKUP_SCHEDULE=due) rather than at fixed hours.
 x-local-environment: &local-environment
   PGBACKREST_REPO1_TYPE: posix
   PGBACKREST_REPO1_PATH: /backup/pgbackrest
@@ -17,7 +18,9 @@ services:
     volumes:
       - ${BACKUP_DIRECTORY:-backup-local}:/backup
   backup:
-    environment: *copy-environment
+    environment:
+      <<: *copy-environment
+      BACKUP_SCHEDULE: due
     volumes:
       - ${BACKUP_DIRECTORY:-backup-local}:/backup
   restore:

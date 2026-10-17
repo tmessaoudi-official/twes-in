@@ -31,7 +31,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -120,6 +120,8 @@ backup-drill:  ## the restore drill (docs/START.md § 13; DRILL=local for a shop
 deploy-check:  ## the deploy check (docs/START.md § 14): a deployment booted from new-instance.sh's values with the four compose files behind its Caddy edge, then asked through it for HSTS, the HTTPS redirect, health, a sign-in, the realtime socket and the client address; its own compose project (twes-deploy-check), removed at the end
 	bash scripts/deploy/deploy-check.sh
 
+onprem-check:  ## the on-premises check (docs/START.md § 16): a shop's installation from a clone of release tags in a local registry, run by scripts/onprem/twes: installed, both doors and a sign-in, a release with a migration more and an unhealthy api rolled back on its schema, then the restore commands taken back to the backup before it; its own compose project (twes-onprem-check) on 80 and 443, removed at the end
+	bash scripts/onprem/onprem-check.sh
 staging-check:  ## the staging check (docs/RUNBOOK.md): the working tree published to a local registry by publish.sh, followed by staging-follow.sh into a staging of its own, every container proved to run its digest with nothing built, then redeployed from the recorded release after its images were removed; its own compose project (twes-staging-check), removed at the end
 	bash scripts/staging/staging-check.sh
 
@@ -196,6 +198,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/additive-migrations.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/decision-stamps.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/screen-texts-budget.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/build-version.test.sh
@@ -204,12 +207,14 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-instance.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-monitor.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/deploy.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-steps.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/forwarded-proto.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/live-proxy.test.sh
+	bash scripts/gates/tests/no-leftovers.sh infra/api/tests/migrate.test.sh
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
 	bash scripts/gates/executable-bits.sh
@@ -237,6 +242,7 @@ in-gate-licences:
 	bash scripts/gates/stored-items.sh
 	bash scripts/gates/icons-declared.sh
 	bash scripts/gates/float-casts.sh
+	bash scripts/gates/additive-migrations.sh
 	bash scripts/gates/decision-stamps.sh
 	bash scripts/gates/screen-texts-budget.sh
 
