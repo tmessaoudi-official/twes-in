@@ -6,8 +6,9 @@ import { firstValueFrom } from 'rxjs';
 import type {
   RecurringExpenseRecurringExpenseCreateValidationRecurringExpenseCreate as RecurringExpenseCreate,
   RecurringExpenseRecurringExpenseRead,
-  RecurringExpenseRecurringExpenseReviseValidationRecurringExpenseRevise as RecurringExpenseRevise,
+  RecurringExpenseRecurringExpenseReviseRecordReviseValidationRecurringExpenseReviseRecordRevise as RecurringExpenseRevise,
 } from '../api/types.gen';
+import { isRecordChanged } from '../shared/errors/record-changed';
 import { refusalsIn } from '../shared/form/field-refusals';
 import {
   SCHEDULE_ANCHORS,
@@ -80,6 +81,7 @@ export class RecurringExpensesApi {
       endsOn: revision.endsOn,
       variableAmount: revision.variableAmount,
       paused: revision.paused,
+      version: revision.version,
     };
     try {
       return toRow(
@@ -149,6 +151,8 @@ function toRow(raw: RecurringExpenseRecurringExpenseRead): RecurringExpenseRow {
     nextOn: raw.nextOn ?? null,
     drafted: raw.drafted ?? 0,
     lastExpenseId: raw.lastExpenseId ?? null,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }
 
@@ -159,6 +163,9 @@ function refused(error: unknown): RecurringExpenseRefused {
   }
   if (error.status === 404) {
     return new RecurringExpenseRefused('not_found');
+  }
+  if (error.status === 409 && isRecordChanged(error.error)) {
+    return new RecurringExpenseRefused('record_changed');
   }
   const [first] = refusalsIn(error.error);
   return new RecurringExpenseRefused('invalid', first?.field ?? null);

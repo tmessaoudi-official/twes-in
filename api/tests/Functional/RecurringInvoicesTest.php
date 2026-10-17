@@ -109,7 +109,7 @@ final class RecurringInvoicesTest extends ApiTestCase
     public function testAPausedOneDraftsNothingAndTakesUpFromTheNextOccurrenceToCome(): void
     {
         $recurring = $this->recurring($this->issued('100'), self::WEEK, $this->day(0));
-        $this->revise($recurring, [...self::WEEK, 'endsOn' => null, 'paused' => true]);
+        $this->revise($recurring, [...self::WEEK, 'endsOn' => null, 'paused' => true, 'version' => $this->storedVersion('recurring_invoice', $recurring)]);
 
         $this->passEachDay(10);
         self::assertSame([], $this->draftsOf($recurring), 'paused, nothing is drafted');
@@ -121,6 +121,36 @@ final class RecurringInvoicesTest extends ApiTestCase
         self::assertSame(new \DateTimeImmutable($day)->modify('+4 days')->format('Y-m-d'), $resumed->getRecurrence()->nextOn?->format('Y-m-d'), 'what fell due while paused is skipped');
         $this->runOn($day);
         self::assertSame([], $this->draftsOf($recurring));
+    }
+
+    public function testARecurringInvoiceNamesTheVersionItWasReadAtAndTheRunMovesIt(): void
+    {
+        $recurring = $this->recurring($this->issued('100'), self::WEEK, $this->day(1));
+        self::assertSame(1, $this->json()['version'], 'the answer carries the version read');
+        $this->getJson($this->path().'/recurring-invoices');
+        self::assertSame(1, $this->jsonList()[0]['version'], 'and so does the list, which pauses from its rows');
+
+        $this->sendJson('PUT', $this->path().'/recurring-invoices/'.$recurring, [...self::WEEK, 'endsOn' => null, 'paused' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a revision without the version it was read at');
+        self::assertContains(['propertyPath' => 'version', 'reason' => 'value_required', 'params' => []], $this->refusals());
+
+        self::assertSame(2, $this->revise($recurring, [...self::WEEK, 'endsOn' => null, 'paused' => true, 'version' => 1])['version']);
+        self::assertSame(2, $this->storedVersion('recurring_invoice', $recurring));
+
+        $this->sendJson('PUT', $this->path().'/recurring-invoices/'.$recurring, [...self::WEEK, 'endsOn' => $this->day(30), 'paused' => true, 'version' => 1]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a revision of the version read before the pause is refused');
+        self::assertSame('/problems/record-changed', $this->stringAt($this->json(), 'type'));
+        $this->getJson($this->path().'/recurring-invoices/'.$recurring);
+        self::assertNull($this->json()['endsOn'], 'and nothing of it is written');
+
+        $this->revise($recurring, [...self::WEEK, 'endsOn' => null, 'paused' => true, 'version' => 2]);
+        self::assertSame(2, $this->storedVersion('recurring_invoice', $recurring), 'a revision changing nothing leaves it');
+
+        $this->revise($recurring, [...self::WEEK, 'endsOn' => null, 'paused' => false, 'version' => 2]);
+        self::assertSame(3, $this->storedVersion('recurring_invoice', $recurring));
+        $this->passEachDay(1);
+        self::assertCount(1, $this->draftsOf($recurring));
+        self::assertSame(4, $this->storedVersion('recurring_invoice', $recurring), 'a draft made moves it, the next occurrence with it');
     }
 
     public function testOnePastItsLastDayIsOver(): void

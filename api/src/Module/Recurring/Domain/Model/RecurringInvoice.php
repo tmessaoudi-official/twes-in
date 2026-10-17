@@ -53,6 +53,11 @@ class RecurringInvoice implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /** Doctrine counts each save, a person's or a run's, so a revision read before one is told rather than writing over it. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     /** @throws InvalidSchedule */
     public function __construct(Company $company, Uuid $modelInvoiceId, Schedule $schedule, \DateTimeImmutable $startsOn, ?\DateTimeImmutable $endsOn, \DateTimeImmutable $today, \DateTimeImmutable $now)
     {
@@ -99,6 +104,11 @@ class RecurringInvoice implements CompanyOwned
     {
         $this->recurrence->pause();
         $this->updatedAt = $now;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getId(): Uuid

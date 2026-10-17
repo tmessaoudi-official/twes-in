@@ -221,13 +221,20 @@ export class RecurringPage implements OnInit {
         schedule: row.schedule,
         endsOn: row.endsOn,
         paused,
+        version: row.version,
       });
       this.rows.update((rows) => rows.map((one) => (one.id === saved.id ? saved : one)));
       this.feedback.success(paused ? 'recurring.paused' : 'recurring.resumed', {
         customer: row.customerName,
       });
     } catch (error) {
-      this.error.set(error instanceof RecurringRefused ? error.code : 'network');
+      if (error instanceof RecurringRefused && error.code === 'record_changed') {
+        // Saved since, by a person or a draft the run made: nothing was written, and the row is read as it is now.
+        await this.refresh(companyId);
+        this.feedback.failure('live.saved_since');
+      } else {
+        this.error.set(error instanceof RecurringRefused ? error.code : 'network');
+      }
     } finally {
       this.busy.set(false);
     }

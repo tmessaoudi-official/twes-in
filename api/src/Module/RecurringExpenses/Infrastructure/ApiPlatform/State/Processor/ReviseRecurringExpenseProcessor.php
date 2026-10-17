@@ -42,6 +42,7 @@ final readonly class ReviseRecurringExpenseProcessor implements ProcessorInterfa
                 $data->paused,
                 $data->variableAmount,
                 $this->guard->account()->getId(),
+                $data->version,
             );
         } catch (RecurringExpenseNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);

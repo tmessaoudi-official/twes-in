@@ -22,7 +22,12 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
-import { effectToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import {
+  effectToasts,
+  failureToasts,
+  provideQuietFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
 import { RecurringApi, RecurringRefused } from './recurring-api';
 import { RecurringPage } from './recurring-page';
 import type { RecurringInvoiceRow } from './recurring-types';
@@ -69,6 +74,7 @@ const rent: RecurringInvoiceRow = {
   nextOn: '2026-11-30',
   drafted: 1,
   lastInvoiceId: 'i9',
+  version: 3,
 };
 
 const over: RecurringInvoiceRow = {
@@ -181,6 +187,7 @@ describe('RecurringPage', () => {
       schedule: rent.schedule,
       endsOn: null,
       paused: true,
+      version: 3,
     });
     await vi.waitFor(() => expect(successToasts()).toEqual(['recurring.paused']));
     expect(q('recurring-r1')?.textContent).toContain('En pause');
@@ -216,6 +223,21 @@ describe('RecurringPage', () => {
     await settle();
 
     await vi.waitFor(() => expect(q('recurring-error')?.textContent).toContain('n’existe plus'));
+  });
+
+  /** A draft made by the run since the list was read moves the version: the pause is refused and the list read again. */
+  it('reads the list again and says nothing was saved when the pause was refused as made over a version saved since', async () => {
+    api.revise.mockRejectedValue(new RecurringRefused('record_changed'));
+    await open();
+    api.list.mockClear().mockResolvedValue([{ ...rent, version: 4, drafted: 2 }, over]);
+
+    q('row-action-pause-r1')!.click();
+    await settle();
+
+    await vi.waitFor(() => expect(failureToasts()).toEqual(['live.saved_since']));
+    expect(api.list).toHaveBeenCalledWith('c1');
+    expect(q('recurring-error')).toBeNull();
+    expect(successToasts()).toEqual([]);
   });
 
   it('offers a reader no change', async () => {

@@ -24,6 +24,8 @@ export interface RecurringExpenseRow {
   readonly nextOn: string | null;
   readonly drafted: number;
   readonly lastExpenseId: string | null;
+  /** The version read, which a revision or a pause sends back: a draft made since moves it too. */
+  readonly version: number;
 }
 
 /** What making an expense recurring asks. */
@@ -41,10 +43,12 @@ export interface RecurringExpenseRevision {
   readonly endsOn: string | null;
   readonly variableAmount: boolean;
   readonly paused: boolean;
+  /** The version the row was read at; one saved since is refused as `record_changed`. */
+  readonly version: number;
 }
 
 /** Why the API refused, which the screens translate. */
-export type RecurringExpenseError = 'invalid' | 'not_found' | 'network';
+export type RecurringExpenseError = 'invalid' | 'not_found' | 'record_changed' | 'network';
 
 /** Where it stands: drafting, paused, or over once past its last day. */
 export function recurringExpenseState(row: RecurringExpenseRow): 'active' | 'paused' | 'ended' {

@@ -245,6 +245,11 @@ keeping a threshold being typed over one saved since with the same two choices. 
 own, which any change of it moves, its prices included: its name and days merge field by field, whom it is for (the
 scope with its group or customer) merges as one part, and so do its prices, so a group never lands unseen behind
 another scope and a price row is never paired with another person's.
+A recurring invoice and a recurring expense carry a version, which a person's revision and a run's draft or pause
+both move, the run holding the row as it already did: a pause from the list sends the version of its row, and one
+refused as saved since reads the list again and says so. A recurring expense's revision, asked in a dialog, is asked
+again over the version saved when it is refused: what was typed is kept, what they changed and was not typed is
+taken, and a field both changed is offered both ways, as the page editors do.
 
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,

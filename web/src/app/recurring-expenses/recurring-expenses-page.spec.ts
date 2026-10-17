@@ -23,7 +23,12 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
-import { effectToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import {
+  effectToasts,
+  failureToasts,
+  provideQuietFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
 import { RecurringExpenseRefused, RecurringExpensesApi } from './recurring-expenses-api';
 import { recurringExpenseFailure } from './recurring-expense-form';
 import { RecurringExpensesPage } from './recurring-expenses-page';
@@ -77,6 +82,7 @@ const rent: RecurringExpenseRow = {
   nextOn: '2026-11-27',
   drafted: 1,
   lastExpenseId: 'e9',
+  version: 3,
 };
 
 const power: RecurringExpenseRow = {
@@ -219,6 +225,7 @@ describe('RecurringExpensesPage', () => {
       endsOn: null,
       variableAmount: false,
       paused: true,
+      version: 3,
     });
     await vi.waitFor(() => expect(successToasts()).toEqual(['expenses.recurring.paused']));
     expect(q('recurring-expense-r1')?.textContent).toContain('En pause');
@@ -243,9 +250,96 @@ describe('RecurringExpensesPage', () => {
         endsOn: null,
         variableAmount: false,
         paused: false,
+        version: 3,
       }),
     );
     await vi.waitFor(() => expect(successToasts()).toEqual(['expenses.recurring.revised']));
+  });
+
+  describe('when it was saved since it was read', () => {
+    const changed = new RecurringExpenseRefused('record_changed');
+
+    function type(testId: string, value: string): void {
+      const input = anywhere(testId) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+
+    /** A draft made by the run moves the version: the pause is refused and the list read again. */
+    it('reads the list again and says nothing was saved when a pause is refused', async () => {
+      api.revise.mockRejectedValueOnce(changed);
+      await open();
+      api.list.mockClear().mockResolvedValue([{ ...rent, version: 4, drafted: 2 }, power]);
+
+      await rowAction('pause', 'r1');
+
+      await vi.waitFor(() => expect(failureToasts()).toEqual(['live.saved_since']));
+      expect(api.list).toHaveBeenCalledWith('c1');
+      expect(q('recurring-expenses-error')).toBeNull();
+      expect(successToasts()).toEqual([]);
+    });
+
+    it('asks again over the version saved, keeping what was typed and taking what they changed', async () => {
+      api.revise.mockRejectedValueOnce(changed);
+      await open();
+      api.list.mockResolvedValue([
+        { ...rent, version: 4, endsOn: '2027-06-30', paused: true },
+        power,
+      ]);
+
+      await rowAction('revise', 'r1');
+      type('field-every', '3');
+      anywhere('recurring-expense-dialog-confirm')!.click();
+      await settle();
+
+      await vi.waitFor(() => expect(failureToasts()).toEqual(['live.saved_since']));
+      await vi.waitFor(() => expect((anywhere('field-every') as HTMLInputElement).value).toBe('3'));
+      expect(anywhere('field-conflict-every')).toBeNull();
+      anywhere('recurring-expense-dialog-confirm')!.click();
+      await settle();
+
+      await vi.waitFor(() =>
+        expect(api.revise).toHaveBeenLastCalledWith('c1', 'r1', {
+          schedule: { ...rent.schedule, every: 3 },
+          endsOn: '2027-06-30',
+          variableAmount: false,
+          paused: true,
+          version: 4,
+        }),
+      );
+      await vi.waitFor(() => expect(successToasts()).toEqual(['expenses.recurring.revised']));
+    });
+
+    it('offers theirs where both changed the same field', async () => {
+      api.revise.mockRejectedValueOnce(changed);
+      await open();
+      api.list.mockResolvedValue([
+        { ...rent, version: 4, schedule: { ...rent.schedule, every: 2 } },
+        power,
+      ]);
+
+      await rowAction('revise', 'r1');
+      type('field-every', '3');
+      anywhere('recurring-expense-dialog-confirm')!.click();
+      await settle();
+
+      await vi.waitFor(() => expect(anywhere('field-conflict-every')).not.toBeNull());
+      expect((anywhere('field-every') as HTMLInputElement).value).toBe('3');
+      anywhere('field-take-theirs-every')!.click();
+      await settle();
+      expect((anywhere('field-every') as HTMLInputElement).value).toBe('2');
+      expect(anywhere('field-conflict-every')).toBeNull();
+      anywhere('recurring-expense-dialog-confirm')!.click();
+      await settle();
+
+      await vi.waitFor(() =>
+        expect(api.revise).toHaveBeenLastCalledWith(
+          'c1',
+          'r1',
+          expect.objectContaining({ schedule: { ...rent.schedule, every: 2 }, version: 4 }),
+        ),
+      );
+    });
   });
 
   it('deletes one only once asked, naming it, as a definitive action', async () => {

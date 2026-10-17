@@ -16,13 +16,15 @@ import { AuthFacade } from '../auth/auth-facade';
 import { expensesTabs, RECURRING_EXPENSES_MODULE } from '../expenses/expenses-nav';
 import { Feedback } from '../shared/feedback/feedback';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { mergeSavedVersion, type FieldConflict } from '../shared/form/form-merge';
+import type { FormValues } from '../shared/form/form-types';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
-import { scheduleSentence, scheduleValues, SCHEDULE_UNITS } from '../shared/schedule/schedule';
+import { scheduleSentence, SCHEDULE_UNITS } from '../shared/schedule/schedule';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -32,6 +34,7 @@ import {
   recurringExpenseFailure,
   recurringExpenseForm,
   recurringExpenseRevision,
+  recurringExpenseValues,
 } from './recurring-expense-form';
 import { RecurringExpenseRefused, RecurringExpensesApi } from './recurring-expenses-api';
 import {
@@ -262,8 +265,15 @@ export class RecurringExpensesPage implements OnInit {
     this.rows.update((rows) => rows.map((one) => (one.id === saved.id ? saved : one)));
   }
 
-  /** Asks the schedule again, its first day kept, and saves what is answered. */
-  private async revise(row: RecurringExpenseRow): Promise<void> {
+  /**
+   * Asks the schedule again, its first day kept, and saves what is answered on the version the row was read at. Saved
+   * since, it is asked again over the version saved: what was typed is kept, what they changed and was not typed here
+   * is taken, and a field both changed is offered both ways.
+   */
+  private async revise(
+    row: RecurringExpenseRow,
+    again: { values: FormValues; conflicts: readonly FieldConflict[] } | null = null,
+  ): Promise<void> {
     const company = this.company();
     if (!company || this.busy()) return;
     const descriptor = recurringExpenseForm(
@@ -273,13 +283,10 @@ export class RecurringExpensesPage implements OnInit {
     );
     const data: RecurringExpenseDialogData = {
       descriptor,
-      group: buildFormGroup(descriptor, {
-        ...scheduleValues(row.schedule),
-        endsOn: row.endsOn ?? '',
-        variableAmount: row.variableAmount,
-      }),
+      group: buildFormGroup(descriptor, again?.values ?? recurringExpenseValues(row)),
       title: `${TEXTS}.revise.title`,
       confirm: `${TEXTS}.revise.confirm`,
+      conflicts: again?.conflicts ?? [],
     };
     const values = await firstValueFrom(
       this.dialog
@@ -291,17 +298,38 @@ export class RecurringExpensesPage implements OnInit {
     );
     if (!values) return;
     this.busy.set(true);
+    let saved: RecurringExpenseRow | null | undefined;
     try {
       this.replace(
         await this.api.revise(company.id, row.id, recurringExpenseRevision(row, values)),
       );
       this.feedback.success(`${TEXTS}.revised`, { description: row.description });
     } catch (error) {
-      const field = error instanceof RecurringExpenseRefused ? error.field : null;
-      this.feedback.failure(recurringExpenseFailure(field));
+      if (error instanceof RecurringExpenseRefused && error.code === 'record_changed') {
+        saved = await this.readAgain(company.id, row.id);
+      } else {
+        const field = error instanceof RecurringExpenseRefused ? error.field : null;
+        this.feedback.failure(recurringExpenseFailure(field));
+      }
     } finally {
       this.busy.set(false);
     }
+    if (saved === undefined) return;
+    this.feedback.failure('live.saved_since');
+    if (saved === null) return;
+    const typed = buildFormGroup(descriptor, values);
+    const { conflicts } = mergeSavedVersion(
+      typed,
+      recurringExpenseValues(row),
+      recurringExpenseValues(saved),
+    );
+    await this.revise(saved, { values: typed.getRawValue() as FormValues, conflicts });
+  }
+
+  /** The list read again after a save was refused over a version saved since, and the row as it is now, if still there. */
+  private async readAgain(companyId: string, id: string): Promise<RecurringExpenseRow | null> {
+    await this.refresh(companyId);
+    return this.rows().find((one) => one.id === id) ?? null;
   }
 
   private async setPaused(row: RecurringExpenseRow, paused: boolean): Promise<void> {
@@ -315,13 +343,20 @@ export class RecurringExpensesPage implements OnInit {
           endsOn: row.endsOn,
           variableAmount: row.variableAmount,
           paused,
+          version: row.version,
         }),
       );
       this.feedback.success(paused ? `${TEXTS}.paused` : `${TEXTS}.resumed`, {
         description: row.description,
       });
     } catch (error) {
-      this.error.set(error instanceof RecurringExpenseRefused ? error.code : 'network');
+      if (error instanceof RecurringExpenseRefused && error.code === 'record_changed') {
+        // Saved since, by a person or a draft the run made: nothing was written, and the row is read as it is now.
+        await this.refresh(companyId);
+        this.feedback.failure('live.saved_since');
+      } else {
+        this.error.set(error instanceof RecurringExpenseRefused ? error.code : 'network');
+      }
     } finally {
       this.busy.set(false);
     }

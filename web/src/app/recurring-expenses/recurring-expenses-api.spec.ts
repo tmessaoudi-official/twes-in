@@ -26,6 +26,7 @@ const ROW = {
   nextOn: '2026-11-27',
   drafted: 1,
   lastExpenseId: 'e9',
+  version: 2,
 };
 
 describe('RecurringExpensesApi', () => {
@@ -70,6 +71,7 @@ describe('RecurringExpensesApi', () => {
         nextOn: '2026-11-27',
         drafted: 1,
         lastExpenseId: 'e9',
+        version: 2,
       },
     ]);
   });
@@ -116,6 +118,7 @@ describe('RecurringExpensesApi', () => {
       endsOn: '2027-12-31',
       variableAmount: true,
       paused: true,
+      version: 2,
     });
     const revise = http.expectOne({ method: 'PUT', url: `${url}/r1` });
     expect(revise.request.body).toEqual({
@@ -128,9 +131,41 @@ describe('RecurringExpensesApi', () => {
       endsOn: '2027-12-31',
       variableAmount: true,
       paused: true,
+      version: 2,
     });
-    revise.flush(ROW);
-    await revised;
+    revise.flush({ ...ROW, version: 3 });
+    await expect(revised).resolves.toMatchObject({ version: 3 });
+  });
+
+  it('tells a revision refused over a version saved since from any other refusal', async () => {
+    const revision = {
+      schedule: {
+        unit: 'day',
+        every: 1,
+        anchor: null,
+        monthDay: null,
+        ordinal: null,
+        weekday: null,
+      },
+      endsOn: null,
+      variableAmount: false,
+      paused: false,
+      version: 2,
+    } as const;
+    const revised = api.revise('c1', 'r1', revision);
+    http
+      .expectOne({ method: 'PUT', url: `${url}/r1` })
+      .flush(
+        { type: '/problems/record-changed', title: 'Changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(revised).rejects.toMatchObject({ code: 'record_changed' });
+
+    const conflicting = api.revise('c1', 'r1', revision);
+    http
+      .expectOne({ method: 'PUT', url: `${url}/r1` })
+      .flush({ detail: 'no.' }, { status: 409, statusText: 'Conflict' });
+    await expect(conflicting).rejects.toMatchObject({ code: 'invalid' });
   });
 
   it('names the field a refusal was about as the form names it, and none it has no field for', async () => {
@@ -170,6 +205,7 @@ describe('RecurringExpensesApi', () => {
       endsOn: null,
       variableAmount: false,
       paused: false,
+      version: 1,
     });
     http
       .expectOne({ method: 'PUT', url: `${url}/r1` })

@@ -19,6 +19,8 @@ export interface RecurringInvoiceRow {
   readonly nextOn: string | null;
   readonly drafted: number;
   readonly lastInvoiceId: string | null;
+  /** The version read, which a revision or a pause sends back: a draft made since moves it too. */
+  readonly version: number;
 }
 
 /** What making an invoice recurring asks. */
@@ -34,10 +36,12 @@ export interface RecurringInvoiceRevision {
   readonly schedule: Schedule;
   readonly endsOn: string | null;
   readonly paused: boolean;
+  /** The version the row was read at; one saved since is refused as `record_changed`. */
+  readonly version: number;
 }
 
 /** Why the API refused, which the screens translate; `field` names what a 422 was about. */
-export type RecurringError = 'invalid' | 'not_found' | 'network';
+export type RecurringError = 'invalid' | 'not_found' | 'record_changed' | 'network';
 
 /** Where it stands: drafting, paused, or over once past its last day. */
 export function recurringState(row: RecurringInvoiceRow): 'active' | 'paused' | 'ended' {

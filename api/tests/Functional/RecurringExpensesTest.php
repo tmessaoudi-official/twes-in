@@ -169,6 +169,35 @@ final class RecurringExpensesTest extends ApiTestCase
         self::assertSame(['day', 2, $this->day(0), true], [$revised['unit'], $revised['every'], $revised['nextOn'], $revised['variableAmount']]);
     }
 
+    public function testARecurringExpenseNamesTheVersionItWasReadAtAndTheRunMovesIt(): void
+    {
+        $week = ['unit' => 'week', 'every' => 1];
+        $recurring = $this->recurring($this->expense(), $week);
+        self::assertSame(1, $this->json()['version'], 'the answer carries the version read');
+        $this->getJson($this->path().'/recurring-expenses');
+        self::assertSame(1, $this->jsonList()[0]['version'], 'and so does the list, which revises and pauses from its rows');
+
+        $without = $this->revision($recurring);
+        unset($without['version']);
+        $this->sendJson('PUT', $this->path().'/recurring-expenses/'.$recurring, [...$without, ...$week]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a revision without the version it was read at');
+        self::assertContains(['propertyPath' => 'version', 'reason' => 'value_required', 'params' => []], $this->refusals());
+
+        $this->passEachDay();
+        self::assertCount(1, $this->draftsOf($recurring));
+        self::assertSame(2, $this->storedVersion('recurring_expense', $recurring), 'a draft made moves it, the next occurrence with it');
+
+        $this->sendJson('PUT', $this->path().'/recurring-expenses/'.$recurring, [...$this->revision($recurring), ...$week, 'variableAmount' => true, 'version' => 1]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a revision of the version read before the draft is refused');
+        self::assertSame('/problems/record-changed', $this->stringAt($this->json(), 'type'));
+        $this->getJson($this->path().'/recurring-expenses/'.$recurring);
+        self::assertFalse($this->json()['variableAmount'], 'and nothing of it is written');
+
+        self::assertSame(3, $this->revise($recurring, [...$week, 'variableAmount' => true])['version']);
+        $this->revise($recurring, [...$week, 'variableAmount' => true]);
+        self::assertSame(3, $this->storedVersion('recurring_expense', $recurring), 'a revision changing nothing leaves it');
+    }
+
     public function testAModelThatCanNoLongerBeCopiedPausesItAndSaysSoOnce(): void
     {
         $deleted = $this->expense();
@@ -263,10 +292,20 @@ final class RecurringExpensesTest extends ApiTestCase
      */
     private function revise(string $id, array $schedule): array
     {
-        $this->sendJson('PUT', $this->path().'/recurring-expenses/'.$id, [...['anchor' => null, 'monthDay' => null, 'ordinal' => null, 'weekday' => null, 'endsOn' => null, 'paused' => false, 'variableAmount' => false], ...$schedule]);
+        $this->sendJson('PUT', $this->path().'/recurring-expenses/'.$id, [...$this->revision($id), ...$schedule]);
         self::assertResponseIsSuccessful();
 
         return $this->json();
+    }
+
+    /**
+     * What a revision sends but its schedule: nothing more, on the version stored now.
+     *
+     * @return array<string, mixed>
+     */
+    private function revision(string $id): array
+    {
+        return ['anchor' => null, 'monthDay' => null, 'ordinal' => null, 'weekday' => null, 'endsOn' => null, 'paused' => false, 'variableAmount' => false, 'version' => $this->storedVersion('recurring_expense', $id)];
     }
 
     /** A draft expense to copy: one line at the standard rate, under a category, from a vendor, with its reference. */

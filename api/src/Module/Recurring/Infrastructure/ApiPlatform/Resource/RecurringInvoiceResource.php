@@ -23,6 +23,7 @@ use App\Module\Recurring\Infrastructure\ApiPlatform\State\Processor\DeleteRecurr
 use App\Module\Recurring\Infrastructure\ApiPlatform\State\Processor\ReviseRecurringInvoiceProcessor;
 use App\Module\Recurring\Infrastructure\ApiPlatform\State\Provider\RecurringInvoiceCollectionProvider;
 use App\Module\Recurring\Infrastructure\ApiPlatform\State\Provider\RecurringInvoiceItemProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RequestedSchedule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\ScheduleRequest;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -63,8 +64,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::REVISE]],
-            validationContext: ['groups' => [self::REVISE]],
+            denormalizationContext: ['groups' => [self::REVISE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::REVISE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/recurring-invoices/{recurringInvoiceId}',
@@ -140,6 +141,12 @@ final class RecurringInvoiceResource implements ScheduleRequest
     #[Groups([self::READ, self::REVISE])]
     public bool $paused = false;
 
+    /** The version read; a revision or a pause sends back the one it was read at, and one saved since, a run's included, answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     /** The day of the next draft; null once past the last day. */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
@@ -171,6 +178,7 @@ final class RecurringInvoiceResource implements ScheduleRequest
         $resource->startsOn = $recurrence->startsOn->format('Y-m-d');
         $resource->endsOn = $recurrence->endsOn?->format('Y-m-d');
         $resource->paused = $recurrence->paused;
+        $resource->version = $recurring->getVersion();
         $resource->nextOn = $recurrence->nextOn?->format('Y-m-d');
         $resource->drafted = $recurrence->drafted;
         $resource->lastInvoiceId = $recurring->getLastInvoiceId()?->toRfc4122();
