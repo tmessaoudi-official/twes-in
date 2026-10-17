@@ -88,7 +88,10 @@ This does three things, in order:
    (`app:database:app-role`): rows only, the journal added to and never rewritten, no schema. `api` and `worker` wait
    for it to succeed and connect as that role; only `migrate` is handed the owner's address
    (`DATABASE_MIGRATION_URL`). A failed migration leaves `api` unstarted instead of serving a half-migrated schema.
-   You never run migrations by hand; `make migrate` runs the service again. Once `api` starts
+   You never run migrations by hand; `make migrate` runs the service again. Under `make up` a migration written while the
+   stack runs is applied by `migrate-watch` (`infra/api/migrate-watch.sh`, `compose.live.yaml`) within seconds, through
+   the same script, so the live api never serves code ahead of its database; `docker compose logs migrate-watch` says
+   what it applied or why it failed. Once `api` starts
    (`infra/api/docker-entrypoint.sh`), it tells the companies that asked « Me prévenir » for a module this release brings
    (`app:modules:announce-arrivals`); each is told once, so a restart tells nobody again. It then chains the issued
    invoices and credit notes no hash chain holds yet, such as those issued before the chain existed, in their issue
@@ -494,6 +497,7 @@ the next build or gate.
 | The api image fails at `cache:clear` ("Cannot autowire service …") | Work in progress in the working tree went into the build (§ 2). Finish it, or bring up a clean worktree |
 | A forgotten-password, signup or invitation mail never arrives | The request only queues it and the `worker` sends it: `docker compose ps worker` must say running, `docker compose exec api bin/console messenger:stats` shows what waits, and `bin/console messenger:failed:show` what failed for good (retry it with `messenger:failed:retry`). Under `make up` the worker's consumer starts again every minute, inside its container, to read the code as it is |
 | The api container never starts | A migration failed: `docker compose logs migrate` shows which, and `api` waits until it passes |
+| Under `make up` every request answers 500 right after a change adding a migration | `migrate-watch` could not apply it: `docker compose logs migrate-watch` names the failing migration; fix it and save, or run `make up` |
 | The production api container stops at once, naming `APP_SECRET`, `APP_MFA_KEY` or a realtime key | Production refuses a missing secret and the development ones committed in `api/.env` (§ 10). Give it its own |
 | An operator is told « Contrôle des données en échec » | A data check found what no use case writes: an issued document changed or taken away, sums that no longer add up, a gap in a series' numbers, a row pointing into another company. The operator is told the check, the company and a count only. `make tools CMD='cd api && bin/console app:data:check --quietly'` names each finding, with each check's time and the peak memory; it exits 1 while anything is found, and the worker's log (`docker compose logs worker`) holds the same lines from the night's run |
 | An API answer is wrong, slow or refused, and the log does not say why | Open the profiler, development only: <http://localhost:8091/_profiler> lists the last requests, and every answer carries an `X-Debug-Token-Link` header to its own. It shows which voter decided, the listeners in order and their time, every query and their count, and the timeline. Imports are not profiled (§ 7 of `docs/SPEC.md`, 2026-09-19) |
