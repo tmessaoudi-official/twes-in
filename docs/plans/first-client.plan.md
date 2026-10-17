@@ -59,6 +59,8 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-17 23:19] ASSUMED (review): Demo S3: entries limited to 10 an hour per client address (demo_entry limiter), so a script cannot drain the pool. Alternatives: no limit; a lower one.
 - [2026-10-17 23:19] ASSUMED (review): Demo S3: « Mon compte » hides the two-factor, password and account-deletion sections in a demo session, since the API refuses them; the toast « Non disponible dans la démo » covers anything still offered elsewhere. Alternatives: show them disabled.
 - [2026-10-17 23:19] ASSUMED (review): Demo S3: a claim is written to the sandbox company's journal as demo.sandbox_claimed under its owner, the visitor's first audit line. Alternatives: not audited.
+- [2026-10-17 23:38] AGREED: Windows install offers two routes, picked at the shop: A, install.ps1 with Docker Desktop as today; B, Docker Engine inside WSL Ubuntu with no Docker Desktop, systemd running start and tick, Windows waking WSL, phones through WSL mirrored networking. Both keep the containers and everything up whatever happens: a restart of the computer, of Docker, or any other event.
+- [2026-10-17 23:38] AGREED: Under make up, a migration added while the live stack runs is applied by itself (the one-shot migrate service, as owner, then the grants), so live mode never serves code ahead of its database. Development only; production migrates at deploy as before.
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
