@@ -3,6 +3,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { StepUp } from '../shared/step-up/step-up';
+import type { FieldValue } from '../shared/form/form-types';
 import { PlatformApi, PlatformRefused } from './platform-api';
 import {
   COMPANY_COUNTRIES,
@@ -16,11 +17,11 @@ import {
   type PlatformCompanyRow,
   type PlatformDelay,
   type PlatformError,
+  type PlatformSettings,
   type PlatformSignup,
   type PlatformSubscriptionRow,
   type SubscriptionTerms,
   type SignupSwitch,
-  type SupportChannel,
   type PlatformSupport,
 } from './platform-types';
 
@@ -34,6 +35,8 @@ export class PlatformFacade {
   private readonly signupSignal = signal<PlatformSignup | null>(null);
   private readonly supportSignal = signal<PlatformSupport | null>(null);
   private readonly delaysSignal = signal<readonly PlatformDelay[] | null>(null);
+  /** The version of each platform key's row when read, which a form's save sends back. */
+  private versions: Readonly<Record<string, number>> = {};
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<PlatformError | null>(null);
 
@@ -91,27 +94,21 @@ export class PlatformFacade {
   async load(): Promise<void> {
     this.busySignal.set(true);
     try {
-      const [waiting, signup, support, delays, every, accounts, demand, failed] = await Promise.all(
-        [
-          this.api.companies(WAITING_SEARCH),
-          this.api.signup(),
-          this.api.support(),
-          this.api.delays(),
-          this.api.companies(COUNT_SEARCH),
-          this.api.accounts(ACCOUNT_COUNT_SEARCH),
-          this.api.moduleDemand(),
-          this.api.failedMessages(),
-        ],
-      );
+      const [waiting, settings, every, accounts, demand, failed] = await Promise.all([
+        this.api.companies(WAITING_SEARCH),
+        this.api.settings(),
+        this.api.companies(COUNT_SEARCH),
+        this.api.accounts(ACCOUNT_COUNT_SEARCH),
+        this.api.moduleDemand(),
+        this.api.failedMessages(),
+      ]);
       this.demandSignal.set(demand);
       this.failedSignal.set(failed);
       this.waitingSignal.set(waiting.rows);
       this.waitingTotalSignal.set(waiting.total);
       this.everyCompanySignal.set(every.total);
       this.everyAccountSignal.set(accounts.total);
-      this.signupSignal.set(signup);
-      this.supportSignal.set(support);
-      this.delaysSignal.set(delays);
+      this.holdSettings(settings);
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
@@ -300,34 +297,61 @@ export class PlatformFacade {
   }
 
   /**
-   * Saves the channels changed, one at a time, and shows what the platform then holds; the signed-in state is read
-   * again, since this tab's own help panel offers them and a live change never comes back to the tab that made it.
+   * Saves the channels changed, together or not at all, and shows what the platform then holds; the signed-in state is
+   * read again, since this tab's own help panel offers them and a live change never comes back to the tab that made it.
    */
   async saveSupport(changes: Partial<PlatformSupport>): Promise<boolean> {
-    return this.write(async () => {
-      for (const [channel, value] of Object.entries(changes) as [SupportChannel, string][]) {
-        await this.proven(() => this.api.setSupport(channel, value));
-        const current = this.supportSignal();
-        if (current !== null) this.supportSignal.set({ ...current, [channel]: value });
-      }
-      await this.auth.refresh();
-
-      return true;
-    });
+    const saved = await this.saveSettings(
+      Object.entries(changes).map(([channel, value]) => ({ key: `support.${channel}`, value })),
+    );
+    if (saved) await this.auth.refresh();
+    return saved;
   }
 
-  /** Saves the delays changed, one at a time, and shows what the platform then holds. */
+  /** Saves the delays changed, together or not at all, and shows what the platform then holds. */
   async saveDelays(changes: Readonly<Record<string, number>>): Promise<boolean> {
-    return this.write(async () => {
-      for (const [key, value] of Object.entries(changes)) {
-        await this.proven(() => this.api.setDelay(key, value));
-        this.delaysSignal.update(
-          (delays) =>
-            delays?.map((delay) => (delay.key === key ? { ...delay, value } : delay)) ?? null,
-        );
-      }
+    return this.saveSettings(Object.entries(changes).map(([key, value]) => ({ key, value })));
+  }
+
+  clearError(): void {
+    this.errorSignal.set(null);
+  }
+
+  /**
+   * One save of a form, each key with the version read. One saved since refuses it all as `record_changed`, and what
+   * the platform holds now is read, so the form shows it and the next save names its versions.
+   */
+  private async saveSettings(
+    changes: readonly { key: string; value: FieldValue }[],
+  ): Promise<boolean> {
+    const saved = await this.write(async () => {
+      await this.proven(() =>
+        this.api.saveSettings(
+          changes.map(({ key, value }) => {
+            const version = this.versions[key];
+            if (version === undefined) throw new Error(`No version was read for ${key}.`);
+            return { key, value, version };
+          }),
+        ),
+      );
+      this.holdSettings(await this.api.settings());
       return true;
     });
+    if (!saved && this.errorSignal() === 'record_changed') {
+      try {
+        this.holdSettings(await this.api.settings());
+      } catch (error) {
+        this.errorSignal.set(codeOf(error));
+      }
+    }
+    return saved;
+  }
+
+  private holdSettings(settings: PlatformSettings): void {
+    this.signupSignal.set(settings.signup);
+    this.supportSignal.set(settings.support);
+    this.delaysSignal.set(settings.delays);
+    this.versions = settings.versions;
   }
 
   /** Reads again what the lists last showed and the overview's counts, since a company opened or decided moves them. */

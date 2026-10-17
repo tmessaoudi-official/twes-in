@@ -21,6 +21,7 @@ function row(
     source: null,
     levels: [],
     overridableLevels: ['company'],
+    versions: {},
     writableLevels: ['company'],
     choices: [],
     min: null,

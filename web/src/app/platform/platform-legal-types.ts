@@ -25,3 +25,9 @@ export interface LegalVersionRow {
   /** The address of whoever wrote it; null for a draft the platform shipped. */
   readonly createdBy: string | null;
 }
+
+/** The publisher's and host's identity by placeholder, and the version of each one's row, 0 where none is stored. */
+export interface LegalIdentity {
+  readonly values: Readonly<Record<string, string>>;
+  readonly versions: Readonly<Record<string, number>>;
+}

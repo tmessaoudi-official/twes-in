@@ -357,7 +357,9 @@ test('the security contact the operator fills in is published in security.txt', 
   await page.getByTestId('legal-identity-security.email').fill(address);
   const saved = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/platform/settings/') && response.request().method() === 'PUT',
+      // A form's keys are saved together, in one request.
+      new URL(response.url()).pathname === '/api/platform/settings' &&
+      response.request().method() === 'PUT',
   );
   await page.getByTestId('legal-identity-save').click();
   await proveIfHeldBack(page, OPERATOR_PASSWORD, saved);

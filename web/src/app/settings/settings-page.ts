@@ -28,6 +28,7 @@ import {
   withUnitChoice,
 } from './settings-forms';
 import { FiscalFacade } from '../fiscal/fiscal-facade';
+import { versioned, versionsAt } from '../shared/settings/setting-forms';
 import { Feedback } from '../shared/feedback/feedback';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 
@@ -109,6 +110,7 @@ export class SettingsPage implements OnInit {
       if (companyId) await this.settings.load(companyId);
     },
     saved: () => this.values(),
+    version: () => versionsAt(this.settings.rows(), 'company'),
   });
   protected readonly overrides = computed(() => companyOverrides(this.settings.rows()));
   /** The planned modules' settings the API still lists as planned, while the person shows what is coming. */
@@ -137,10 +139,13 @@ export class SettingsPage implements OnInit {
   protected async save(values: FormValues): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    const changes = changedSettings(this.settings.rows(), values);
+    const changes = versioned(changedSettings(this.settings.rows(), values), this.sync.version());
     if (changes.length === 0 || (await this.settings.save(companyId, changes))) {
       this.revision.update((revision) => revision + 1);
       this.feedback.success('settings.saved');
+    } else if (this.settings.error() === 'record_changed') {
+      this.settings.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 

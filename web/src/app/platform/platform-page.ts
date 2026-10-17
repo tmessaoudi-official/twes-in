@@ -420,15 +420,27 @@ export class PlatformPage implements OnInit {
 
   protected async saveDelays(): Promise<void> {
     const changes = this.delayChanges();
-    if (changes !== null && (await this.platform.saveDelays(changes))) {
+    if (changes === null) return;
+    if (await this.platform.saveDelays(changes)) {
       this.feedback.success('platform.delays.saved');
+    } else {
+      this.savedSince();
     }
   }
 
   protected async saveSupport(): Promise<void> {
     if (await this.platform.saveSupport(this.supportChanges())) {
       this.feedback.success('platform.support.saved');
+    } else {
+      this.savedSince();
     }
+  }
+
+  /** Another operator saved a key of the form since it was read: the form now shows that, and nothing here was kept. */
+  private savedSince(): void {
+    if (this.platform.error() !== 'record_changed') return;
+    this.platform.clearError();
+    this.feedback.failure('live.saved_since');
   }
 
   protected async saveSubscription(companyId: string): Promise<void> {

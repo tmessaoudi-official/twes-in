@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
-import type { SettingChange } from '../shared/settings/setting-forms';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import type {
   SettingLevel,
   SettingRow,
   SettingsError,
   PartySubject,
+  VersionedSettingChange,
 } from '../shared/settings/settings-types';
 
 /** The level a customer's or a customer group's own values are stored at. */
@@ -38,24 +38,15 @@ export class PartySettings {
     }
   }
 
-  /** True when the API accepted every change; the chain is read again after. */
+  /** True when the API accepted every change, together; the chain is read again after. */
   async save(
     companyId: string,
     subject: PartySubject,
-    changes: readonly SettingChange[],
+    changes: readonly VersionedSettingChange[],
   ): Promise<boolean> {
-    return this.write(companyId, subject, async () => {
-      for (const change of changes) {
-        await this.api.change(
-          companyId,
-          change.key,
-          levelOf(subject),
-          change.value,
-          undefined,
-          subject,
-        );
-      }
-    });
+    return this.write(companyId, subject, () =>
+      this.api.changeAll(companyId, levelOf(subject), changes, subject),
+    );
   }
 
   /** Forgets the subject's own value: the setting falls back to the group's or the company's. */

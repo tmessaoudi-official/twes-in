@@ -10,7 +10,7 @@ const unit = { key: 'article.default_unit', chain: 'articles' } as SettingRow;
 describe('ArticleSettings', () => {
   let api: {
     chain: ReturnType<typeof vi.fn>;
-    change: ReturnType<typeof vi.fn>;
+    changeAll: ReturnType<typeof vi.fn>;
     reset: ReturnType<typeof vi.fn>;
   };
   let facade: ArticleSettings;
@@ -18,7 +18,7 @@ describe('ArticleSettings', () => {
   beforeEach(() => {
     api = {
       chain: vi.fn().mockResolvedValue([unit]),
-      change: vi.fn().mockResolvedValue(undefined),
+      changeAll: vi.fn().mockResolvedValue(undefined),
       reset: vi.fn().mockResolvedValue(undefined),
     };
     TestBed.configureTestingModule({ providers: [{ provide: SettingsApi, useValue: api }] });
@@ -36,14 +36,14 @@ describe('ArticleSettings', () => {
   it("stores each change at the category's level, naming the category, then reads again", async () => {
     const category = { productCategoryId: 'k1' };
 
-    expect(await facade.save('c1', category, [{ key: unit.key, value: 'HUR' }])).toBe(true);
+    expect(await facade.save('c1', category, [{ key: unit.key, value: 'HUR', version: 1 }])).toBe(
+      true,
+    );
 
-    expect(api.change).toHaveBeenCalledWith(
+    expect(api.changeAll).toHaveBeenCalledWith(
       'c1',
-      unit.key,
       'product_category',
-      'HUR',
-      undefined,
+      [{ key: unit.key, value: 'HUR', version: 1 }],
       category,
     );
     expect(api.chain).toHaveBeenCalledWith('c1', 'articles', category);
@@ -58,11 +58,11 @@ describe('ArticleSettings', () => {
   });
 
   it('names what the API refused', async () => {
-    api.change.mockRejectedValue(new SettingsRefused('invalid'));
+    api.changeAll.mockRejectedValue(new SettingsRefused('invalid'));
 
-    expect(await facade.save('c1', { productId: 'p1' }, [{ key: unit.key, value: 'x' }])).toBe(
-      false,
-    );
+    expect(
+      await facade.save('c1', { productId: 'p1' }, [{ key: unit.key, value: 'x', version: 1 }]),
+    ).toBe(false);
     expect(facade.error()).toBe('invalid');
   });
 });

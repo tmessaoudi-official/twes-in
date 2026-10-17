@@ -91,6 +91,8 @@ final class ResolveSettingsTest extends TestCase
         $density = $this->find('presentation.density');
         self::assertSame('compact', $density->value);
         self::assertSame(['company' => 'compact'], $density->explicit);
+        // A save at the user level meets that row all the same, so the version it must name is read.
+        self::assertSame(['company' => 1, 'user' => 1], $density->versions);
     }
 
     public function testEveryListLayoutOfTheUserIsResolvedUnderItsOwnKey(): void

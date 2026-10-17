@@ -6,7 +6,7 @@ import type { LegalPage } from '../shared/legal/legal-pages';
 import { StepUp } from '../shared/step-up/step-up';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { PlatformLegalApi } from './platform-legal-api';
-import type { LegalStatusRow, LegalVersionRow } from './platform-legal-types';
+import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-legal-types';
 
 /**
  * The operator's legal pages (docs/SPEC.md § 8 row 148): where each page stands in each language, and the history of
@@ -22,6 +22,8 @@ export class PlatformLegalFacade {
   private readonly failedSignal = signal(false);
   private readonly identitySignal = signal<Readonly<Record<string, string>>>({});
   private opened: { page: LegalPage; language: LegalLanguage } | null = null;
+  /** The version of each placeholder's row when read, which a save sends back. */
+  private identityVersions: Readonly<Record<string, number>> = {};
 
   readonly overview = this.overviewSignal.asReadonly();
   /** The open page's versions in its language, the latest first. */
@@ -36,18 +38,29 @@ export class PlatformLegalFacade {
     await this.run(async () => {
       const [overview, identity] = await Promise.all([this.api.overview(), this.api.identity()]);
       this.overviewSignal.set(overview);
-      this.identitySignal.set(identity);
+      this.holdIdentity(identity);
     });
   }
 
-  /** @returns whether every change was saved */
-  async saveIdentity(changes: Readonly<Record<string, string>>): Promise<boolean> {
-    return this.run(async () => {
-      for (const [placeholder, value] of Object.entries(changes)) {
-        await this.proven(() => this.api.setIdentity(placeholder, value));
-      }
-      this.identitySignal.set(await this.api.identity());
+  /**
+   * Saves every placeholder changed, together or not at all. `saved_since`: another operator saved one of them since it
+   * was read, nothing was kept, and the identity is read again so the form shows what is saved.
+   */
+  async saveIdentity(
+    changes: Readonly<Record<string, string>>,
+  ): Promise<'saved' | 'saved_since' | 'failed'> {
+    let since = false;
+    const saved = await this.run(async () => {
+      const versioned = Object.entries(changes).map(([placeholder, value]) => {
+        const version = this.identityVersions[placeholder];
+        if (version === undefined) throw new Error(`No version was read for ${placeholder}.`);
+        return { placeholder, value, version };
+      });
+      since = (await this.proven(() => this.api.saveIdentity(versioned))) === 'saved_since';
+      this.holdIdentity(await this.api.identity());
     });
+    if (!saved) return 'failed';
+    return since ? 'saved_since' : 'saved';
   }
 
   async open(page: LegalPage, language: LegalLanguage): Promise<void> {
@@ -88,6 +101,11 @@ export class PlatformLegalFacade {
     ]);
     this.overviewSignal.set(overview);
     this.versionsSignal.set(versions);
+  }
+
+  private holdIdentity(identity: LegalIdentity): void {
+    this.identitySignal.set(identity.values);
+    this.identityVersions = identity.versions;
   }
 
   private async run(work: () => Promise<void>): Promise<boolean> {

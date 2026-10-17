@@ -12,6 +12,7 @@ namespace App\Tests\Architecture;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
+use App\Settings\Infrastructure\ApiPlatform\Payload\SettingChangeRow;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Validator\Constraints\NotNull;
@@ -32,6 +33,14 @@ final class RecordVersionsTest extends KernelTestCase
         '/companies/{companyId}/modules/{moduleKey}' => 'one switch of the company, on or off, set as a whole',
         '/companies/{companyId}/security' => 'one switch of the company, set as a whole; it still moves the version the profile form is checked against',
         '/companies/{companyId}/closing' => 'one date of the company, set as a whole; it still moves the version the profile form is checked against',
+        '/companies/{companyId}/settings/{key}' => 'one key, a person\'s own preference or a value set by a script, where the last word is what they want; a page saves through the batch',
+        '/platform/settings/{key}' => 'one key set by a script, where the last word is what they want; a page saves through the batch',
+    ];
+
+    /** Saving several records in one go: each item says which version it revises. */
+    private const array BATCHES = [
+        '/companies/{companyId}/settings' => SettingChangeRow::class,
+        '/platform/settings' => SettingChangeRow::class,
     ];
 
     /** Not done yet: each slice strikes its own off. */
@@ -55,8 +64,6 @@ final class RecordVersionsTest extends KernelTestCase
         '/companies/{companyId}/product-categories/{categoryId}',
         '/companies/{companyId}/recurring-invoices/{recurringInvoiceId}',
         '/companies/{companyId}/recurring-expenses/{recurringExpenseId}',
-        '/companies/{companyId}/settings/{key}',
-        '/platform/settings/{key}',
         '/companies/{companyId}/establishments/{establishmentId}',
         '/companies/{companyId}/numbering-series/{seriesId}',
         '/companies/{companyId}/roles/{roleId}',
@@ -81,6 +88,7 @@ final class RecordVersionsTest extends KernelTestCase
                     $found[] = $template;
                     $declared = $operation->getInput();
                     $input = \is_array($declared) && isset($declared['class']) ? $declared['class'] : $operation->getClass();
+                    $input = self::BATCHES[$template] ?? $input;
                     $takes = \is_string($input) && self::takesAVersion($validator->getMetadataFor($input), $operation->getDenormalizationContext() ?? [], $operation->getValidationContext() ?? []);
                     if (\array_key_exists($template, self::WITHOUT) || \in_array($template, self::WAITING, true)) {
                         if ($takes) {
@@ -97,7 +105,7 @@ final class RecordVersionsTest extends KernelTestCase
 
         // Fewer PUTs found than there are means the discovery broke, not that the rule holds.
         self::assertGreaterThanOrEqual(37, \count($found), 'every PUT is read');
-        foreach ([...array_keys(self::WITHOUT), ...self::WAITING] as $listed) {
+        foreach ([...array_keys(self::WITHOUT), ...self::WAITING, ...array_keys(self::BATCHES)] as $listed) {
             if (!\in_array($listed, $found, true)) {
                 $wrong[] = "$listed is listed but no PUT has that address";
             }

@@ -45,6 +45,11 @@ class Setting
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /** Moved by every change: a page of settings sends back the one it read for each key, and a later one refuses the save. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     public function __construct(SettingAddress $address, string $key, mixed $value, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
@@ -74,6 +79,11 @@ class Setting
     public function getValue(): mixed
     {
         return $this->value;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function isAt(SettingAddress $address): bool

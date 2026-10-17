@@ -12,7 +12,7 @@ const rowOf = (chain: SettingChain): SettingRow => ({ key: `${chain}.one`, chain
 describe('CompanySettings', () => {
   let api: {
     chain: ReturnType<typeof vi.fn>;
-    change: ReturnType<typeof vi.fn>;
+    changeAll: ReturnType<typeof vi.fn>;
     reset: ReturnType<typeof vi.fn>;
   };
   let facade: CompanySettings;
@@ -21,7 +21,7 @@ describe('CompanySettings', () => {
   beforeEach(() => {
     api = {
       chain: vi.fn(async (_companyId: string, chain: SettingChain) => [rowOf(chain)]),
-      change: vi.fn().mockResolvedValue(undefined),
+      changeAll: vi.fn().mockResolvedValue(undefined),
       reset: vi.fn().mockResolvedValue(undefined),
     };
     refreshed = 0;
@@ -63,7 +63,7 @@ describe('CompanySettings', () => {
   it('makes what it wrote take effect at once, without a refresh of the browser', async () => {
     // These ARE the application's own values — the accent, the density, the language. A live change never comes
     // back to the tab that caused it, so this tab must read the chain again itself (developer, 2026-09-20).
-    await facade.save('c1', [{ key: 'presentation.accent', value: '#aa0000' }]);
+    await facade.save('c1', [{ key: 'presentation.accent', value: '#aa0000', version: 0 }]);
     expect(refreshed).toBe(1);
 
     await facade.reset('c1', 'presentation.accent');
@@ -71,23 +71,23 @@ describe('CompanySettings', () => {
   });
 
   it('does not claim a change took effect when the API refused it', async () => {
-    api.change.mockRejectedValue(new SettingsRefused('invalid'));
+    api.changeAll.mockRejectedValue(new SettingsRefused('invalid'));
 
-    expect(await facade.save('c1', [{ key: 'presentation.accent', value: 'nope' }])).toBe(false);
+    expect(
+      await facade.save('c1', [{ key: 'presentation.accent', value: 'nope', version: 0 }]),
+    ).toBe(false);
     expect(refreshed).toBe(0);
   });
 
-  it('stores each change at the company level, then reads the settings again', async () => {
-    const accepted = await facade.save('c1', [
-      { key: 'document.payment_terms_days', value: 45 },
-      { key: 'article.stock_tracking', value: true },
-    ]);
+  it('stores every change at the company level in one save, then reads the settings again', async () => {
+    const changes = [
+      { key: 'document.payment_terms_days', value: 45, version: 2 },
+      { key: 'article.stock_tracking', value: true, version: 0 },
+    ];
+    const accepted = await facade.save('c1', changes);
 
     expect(accepted).toBe(true);
-    expect(api.change.mock.calls).toEqual([
-      ['c1', 'document.payment_terms_days', 'company', 45],
-      ['c1', 'article.stock_tracking', 'company', true],
-    ]);
+    expect(api.changeAll.mock.calls).toEqual([['c1', 'company', changes]]);
     expect(api.chain).toHaveBeenCalledTimes(COMPANY_CHAINS.length);
   });
 
@@ -99,12 +99,18 @@ describe('CompanySettings', () => {
   });
 
   it('names what the API refused', async () => {
-    api.change.mockRejectedValue(new SettingsRefused('invalid'));
+    api.changeAll.mockRejectedValue(new SettingsRefused('invalid'));
 
-    expect(await facade.save('c1', [{ key: 'document.payment_terms_days', value: 999 }])).toBe(
-      false,
-    );
+    expect(
+      await facade.save('c1', [{ key: 'document.payment_terms_days', value: 999, version: 1 }]),
+    ).toBe(false);
     expect(facade.error()).toBe('invalid');
+
+    api.changeAll.mockRejectedValue(new SettingsRefused('record_changed'));
+    expect(
+      await facade.save('c1', [{ key: 'document.payment_terms_days', value: 60, version: 1 }]),
+    ).toBe(false);
+    expect(facade.error()).toBe('record_changed');
 
     api.chain.mockRejectedValue(new Error('offline'));
     await facade.load('c1');

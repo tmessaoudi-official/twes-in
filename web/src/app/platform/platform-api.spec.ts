@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { PlatformApi, PlatformRefused } from './platform-api';
+import { RECORD_CHANGED } from '../shared/errors/record-changed';
 
 describe('PlatformApi', () => {
   let api: PlatformApi;
@@ -276,15 +277,71 @@ describe('PlatformApi', () => {
     expect((await rejected).status).toBe('suspended');
   });
 
-  it('reads the two signup switches from the platform settings', async () => {
-    const signup = api.signup();
+  it("reads the switches, the support channels, the delays and every key's version in one request", async () => {
+    const settings = api.settings();
 
     http.expectOne('/api/platform/settings').flush([
-      { key: 'signup.enabled', value: true },
-      { key: 'signup.approval_required', value: false },
+      { key: 'signup.enabled', type: 'bool', value: true, versions: { platform: 2 } },
+      { key: 'signup.approval_required', type: 'bool', value: false, versions: { platform: 1 } },
+      { key: 'support.phone', type: 'text', value: '+216 71 000 000', versions: { platform: 5 } },
+      { key: 'support.email', type: 'text', value: '', versions: {} },
+      { key: 'support.status_url', type: 'text', value: 'https://status.twes.test', versions: [] },
+      {
+        key: 'account.deletion_days',
+        type: 'int',
+        labelKey: 'settings.platform.account_deletion_days',
+        value: 10,
+        default: 7,
+        min: 1,
+        max: 90,
+        versions: { platform: 3 },
+      },
+      {
+        key: 'company.reopen_days',
+        type: 'int',
+        labelKey: 'settings.platform.company_reopen_days',
+        value: null,
+        default: 7,
+        min: 1,
+        max: 90,
+      },
     ]);
 
-    expect(await signup).toEqual({ enabled: true, approvalRequired: false });
+    expect(await settings).toEqual({
+      signup: { enabled: true, approvalRequired: false },
+      support: {
+        phone: '+216 71 000 000',
+        whatsapp: '',
+        email: '',
+        status_url: 'https://status.twes.test',
+      },
+      delays: [
+        {
+          key: 'account.deletion_days',
+          labelKey: 'settings.platform.account_deletion_days',
+          value: 10,
+          min: 1,
+          max: 90,
+        },
+        {
+          key: 'company.reopen_days',
+          labelKey: 'settings.platform.company_reopen_days',
+          value: 7,
+          min: 1,
+          max: 90,
+        },
+      ],
+      // A key holding no row is version 0, however the API writes its empty map.
+      versions: {
+        'signup.enabled': 2,
+        'signup.approval_required': 1,
+        'support.phone': 5,
+        'support.email': 0,
+        'support.status_url': 0,
+        'account.deletion_days': 3,
+        'company.reopen_days': 0,
+      },
+    });
   });
 
   it('sets one signup switch at the platform level', async () => {
@@ -298,87 +355,31 @@ describe('PlatformApi', () => {
     await done;
   });
 
-  it('reads every whole-number platform setting as a delay, with its label, bounds and default', async () => {
-    const delays = api.delays();
-
-    http.expectOne('/api/platform/settings').flush([
-      { key: 'signup.enabled', type: 'bool', value: true },
-      {
-        key: 'account.deletion_days',
-        type: 'int',
-        labelKey: 'settings.platform.account_deletion_days',
-        value: 10,
-        default: 7,
-        min: 1,
-        max: 90,
-      },
-      {
-        key: 'company.reopen_days',
-        type: 'int',
-        labelKey: 'settings.platform.company_reopen_days',
-        value: null,
-        default: 7,
-        min: 1,
-        max: 90,
-      },
+  it('saves every key a form changed in one request, each with the version read', async () => {
+    const done = api.saveSettings([
+      { key: 'account.deletion_days', value: 14, version: 3 },
+      { key: 'support.whatsapp', value: '+216 20 123 456', version: 0 },
     ]);
 
-    expect(await delays).toEqual([
-      {
-        key: 'account.deletion_days',
-        labelKey: 'settings.platform.account_deletion_days',
-        value: 10,
-        min: 1,
-        max: 90,
-      },
-      {
-        key: 'company.reopen_days',
-        labelKey: 'settings.platform.company_reopen_days',
-        value: 7,
-        min: 1,
-        max: 90,
-      },
-    ]);
-  });
-
-  it('sets one delay at the platform level', async () => {
-    const done = api.setDelay('account.deletion_days', 14);
-
-    const request = http.expectOne('/api/platform/settings/account.deletion_days');
+    const request = http.expectOne('/api/platform/settings');
     expect(request.request.method).toBe('PUT');
-    expect(request.request.body).toEqual({ value: 14 });
-    request.flush({ key: 'account.deletion_days', value: 14 });
-
-    await done;
-  });
-
-  it('reads the support channels from the platform settings, an unset one empty', async () => {
-    const support = api.support();
-
-    http.expectOne('/api/platform/settings').flush([
-      { key: 'signup.enabled', value: true },
-      { key: 'support.phone', value: '+216 71 000 000' },
-      { key: 'support.email', value: '' },
-      { key: 'support.status_url', value: 'https://status.twes.test' },
-    ]);
-
-    expect(await support).toEqual({
-      phone: '+216 71 000 000',
-      whatsapp: '',
-      email: '',
-      status_url: 'https://status.twes.test',
+    expect(request.request.body).toEqual({
+      changes: [
+        { key: 'account.deletion_days', value: 14, version: 3 },
+        { key: 'support.whatsapp', value: '+216 20 123 456', version: 0 },
+      ],
     });
-  });
-
-  it('sets one support channel at the platform level', async () => {
-    const done = api.setSupport('whatsapp', '+216 20 123 456');
-
-    const request = http.expectOne('/api/platform/settings/support.whatsapp');
-    expect(request.request.method).toBe('PUT');
-    expect(request.request.body).toEqual({ value: '+216 20 123 456' });
-    request.flush({ key: 'support.whatsapp', value: '+216 20 123 456' });
+    request.flush(null, { status: 204, statusText: 'No Content' });
 
     await done;
+  });
+
+  it('tells a save made over a version saved since from another conflict', async () => {
+    const since = api.saveSettings([{ key: 'support.phone', value: '1', version: 1 }]);
+    http
+      .expectOne('/api/platform/settings')
+      .flush({ type: RECORD_CHANGED, status: 409 }, { status: 409, statusText: 'Conflict' });
+    await expect(since).rejects.toEqual(new PlatformRefused('record_changed'));
   });
 
   it('names a refusal: gone, forbidden or unreachable', async () => {
@@ -394,7 +395,7 @@ describe('PlatformApi', () => {
       .flush({}, { status: 403, statusText: 'Forbidden' });
     await expect(forbidden).rejects.toEqual(new PlatformRefused('refused'));
 
-    const offline = api.signup();
+    const offline = api.settings();
     http.expectOne('/api/platform/settings').error(new ProgressEvent('error'), { status: 0 });
     await expect(offline).rejects.toEqual(new PlatformRefused('network'));
   });

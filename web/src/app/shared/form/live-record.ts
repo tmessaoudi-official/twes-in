@@ -9,7 +9,7 @@ import type { FormValues } from './form-types';
 import type { FieldConflict } from './form-merge';
 import { type ChangedBy, RecordSync } from './record-sync';
 
-export interface LiveRecordOptions {
+export interface LiveRecordOptions<V = number | null> {
   /** The API's audit entity type the record is saved under (`customer`, `invoice`…). */
   readonly kind: string;
   /** The open record's id; null while a new one is being written. */
@@ -26,8 +26,11 @@ export interface LiveRecordOptions {
   readonly matches?: (change: LiveChange) => boolean;
   /** What the page edits outside the form and merges as one field each, such as a document's lines. */
   readonly parts?: readonly LivePart[];
-  /** The version of the record as it is now saved, which a save sends back; null for a record that has none yet. */
-  readonly version?: () => number | null;
+  /**
+   * The version of the record as it is now saved, which a save sends back; null for a record that has none yet. A
+   * settings page answers one version per key, each row having its own.
+   */
+  readonly version?: () => V;
 }
 
 /**
@@ -45,10 +48,10 @@ export interface LivePart {
 }
 
 /** A RecordSync that also knows this tab saved: the form is the saved version, and nothing in it is typed any more. */
-export class LiveRecord extends RecordSync {
+export class LiveRecord<V = number | null> extends RecordSync {
   /** What each part showed when the form last stood on the saved version. */
   private readonly partBases = new Map<string, string>();
-  private baseVersion: number | null = null;
+  private baseVersion: V | null = null;
 
   /**
    * Reads the record again and merges it after a save was refused as made over a version saved since; liveRecord
@@ -59,7 +62,7 @@ export class LiveRecord extends RecordSync {
   constructor(
     private readonly parts: readonly LivePart[] = [],
     private readonly saved: () => FormValues | null = () => null,
-    private readonly savedVersion: () => number | null = () => null,
+    private readonly savedVersion: () => V | null = () => null,
   ) {
     super();
   }
@@ -68,7 +71,7 @@ export class LiveRecord extends RecordSync {
    * The version of the record the form stands on, which a save sends back: the API refuses it once someone else saved
    * a later one. Not the version last read: a record read again without being merged is not what the form shows.
    */
-  version(): number | null {
+  version(): V | null {
     return this.baseVersion;
   }
 
@@ -166,8 +169,8 @@ export class LiveRecord extends RecordSync {
  * again quietly and merged into it. A quiet form takes it with a toast naming who saved it; a form being typed in
  * keeps what is typed and shows the banner. Call it in the page's injection context.
  */
-export function liveRecord(options: LiveRecordOptions): LiveRecord {
-  const sync = new LiveRecord(options.parts, options.saved, options.version);
+export function liveRecord<V = number | null>(options: LiveRecordOptions<V>): LiveRecord<V> {
+  const sync = new LiveRecord<V>(options.parts, options.saved, options.version);
   const activity = inject(RequestActivity);
   const feedback = inject(Feedback);
 

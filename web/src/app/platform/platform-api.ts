@@ -14,10 +14,14 @@ import type {
   PlatformSubscriptionPlatformSubscriptionWrite,
   PlatformOwnerInvitationPlatformOwnerInvitationReadValidationInvite as PlatformOwnerInvitationPlatformOwnerInvitationRead,
   PlatformOwnerInvitationPlatformOwnerInvitationWriteValidationInvite as PlatformOwnerInvitationPlatformOwnerInvitationWrite,
+  SettingChangesSettingChangesWriteRecordReviseValidationSettingChangesWriteRecordRevise as PlatformSettingChangesBody,
   SettingSettingRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
+import { isRecordChanged } from '../shared/errors/record-changed';
+import type { VersionedSettingChange } from '../shared/settings/settings-types';
+import { toApiChange } from '../shared/settings/settings-api';
 import type {
   AccountAction,
   PlatformAccountSearch,
@@ -29,12 +33,10 @@ import type {
   NewCompany,
   PlatformAccountRow,
   PlatformCompanyRow,
-  PlatformDelay,
   PlatformError,
-  PlatformSignup,
+  PlatformSettings,
   SignupSwitch,
   SupportChannel,
-  PlatformSupport,
 } from './platform-types';
 
 export class PlatformRefused extends Error {
@@ -92,20 +94,48 @@ export class PlatformApi {
     return this.decide(companyId, 'reject');
   }
 
-  /** Whether anyone may sign up (closed unless set), and whether a new company waits (it does unless set). */
-  signup(): Promise<PlatformSignup> {
+  /**
+   * The platform's own settings as its overview shows them, read once: whether anyone may sign up (closed unless set)
+   * and whether a new company waits (it does unless set), how companies reach the operators (each channel empty where
+   * it is not set), every whole-number setting as a delay in the order the API declares them, and the version of
+   * each key's row, which a save sends back.
+   */
+  settings(): Promise<PlatformSettings> {
     return this.guard(async () => {
       const rows = await firstValueFrom(
         this.http.get<SettingSettingRead[]>('/api/platform/settings'),
       );
-      const valueOf = (key: SignupSwitch) => rows.find((row) => row.key === key)?.value;
+      const valueOf = (key: string) => rows.find((row) => row.key === key)?.value;
+      const channel = (name: SupportChannel) => {
+        const value = valueOf(`support.${name}`);
+        return typeof value === 'string' ? value : '';
+      };
       return {
-        enabled: valueOf('signup.enabled') === true,
-        approvalRequired: valueOf('signup.approval_required') !== false,
+        signup: {
+          enabled: valueOf('signup.enabled') === true,
+          approvalRequired: valueOf('signup.approval_required') !== false,
+        },
+        support: {
+          phone: channel('phone'),
+          whatsapp: channel('whatsapp'),
+          email: channel('email'),
+          status_url: channel('status_url'),
+        },
+        delays: rows
+          .filter((row) => row.type === 'int' && row.key !== undefined)
+          .map((row) => ({
+            key: row.key ?? '',
+            labelKey: row.labelKey ?? '',
+            value: Number(row.value ?? row.default),
+            min: row.min === null || row.min === undefined ? null : Number(row.min),
+            max: row.max === null || row.max === undefined ? null : Number(row.max),
+          })),
+        versions: platformVersions(rows),
       };
     });
   }
 
+  /** One switch, the last word being the operator's: it sends no version. */
   setSignup(key: SignupSwitch, value: boolean): Promise<void> {
     return this.guard(async () => {
       await firstValueFrom(
@@ -114,56 +144,14 @@ export class PlatformApi {
     });
   }
 
-  /** How companies reach the operators: each channel as set, empty where it is not. */
-  support(): Promise<PlatformSupport> {
+  /**
+   * Every key a form changed, stored together or not at all, each with the version its row held when read; one saved
+   * since refuses the whole save as `record_changed`.
+   */
+  saveSettings(changes: readonly VersionedSettingChange[]): Promise<void> {
     return this.guard(async () => {
-      const rows = await firstValueFrom(
-        this.http.get<SettingSettingRead[]>('/api/platform/settings'),
-      );
-      const valueOf = (channel: SupportChannel) => {
-        const value = rows.find((row) => row.key === `support.${channel}`)?.value;
-        return typeof value === 'string' ? value : '';
-      };
-      return {
-        phone: valueOf('phone'),
-        whatsapp: valueOf('whatsapp'),
-        email: valueOf('email'),
-        status_url: valueOf('status_url'),
-      };
-    });
-  }
-
-  /** Every whole-number platform setting, in the order the API declares them. */
-  delays(): Promise<PlatformDelay[]> {
-    return this.guard(async () => {
-      const rows = await firstValueFrom(
-        this.http.get<SettingSettingRead[]>('/api/platform/settings'),
-      );
-      return rows
-        .filter((row) => row.type === 'int' && row.key !== undefined)
-        .map((row) => ({
-          key: row.key ?? '',
-          labelKey: row.labelKey ?? '',
-          value: Number(row.value ?? row.default),
-          min: row.min === null || row.min === undefined ? null : Number(row.min),
-          max: row.max === null || row.max === undefined ? null : Number(row.max),
-        }));
-    });
-  }
-
-  setDelay(key: string, value: number): Promise<void> {
-    return this.guard(async () => {
-      await firstValueFrom(
-        this.http.put<SettingSettingRead>(`/api/platform/settings/${key}`, { value }),
-      );
-    });
-  }
-
-  setSupport(channel: SupportChannel, value: string): Promise<void> {
-    return this.guard(async () => {
-      await firstValueFrom(
-        this.http.put<SettingSettingRead>(`/api/platform/settings/support.${channel}`, { value }),
-      );
+      const body: PlatformSettingChangesBody = { changes: changes.map(toApiChange) };
+      await firstValueFrom(this.http.put<null>('/api/platform/settings', body));
     });
   }
 
@@ -391,7 +379,16 @@ function codeOf(error: unknown, conflict: PlatformError): PlatformError {
   // Every platform write waits for the operator to prove who is at the screen again (docs/SPEC.md § 7).
   if (stepUpAsked(error)) return 'step_up_required';
   if (error.status === 409) {
-    return conflict;
+    return isRecordChanged(error.error) ? 'record_changed' : conflict;
   }
   return error.status === 404 ? 'not_found' : 'refused';
+}
+
+/** Each platform key's row version, 0 where none is stored: what a save names it by. */
+export function platformVersions(rows: readonly SettingSettingRead[]): Record<string, number> {
+  return Object.fromEntries(
+    rows.flatMap((row) =>
+      row.key === undefined ? [] : [[row.key, row.versions?.['platform'] ?? 0]],
+    ),
+  );
 }

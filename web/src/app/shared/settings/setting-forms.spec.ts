@@ -14,6 +14,7 @@ function row(
     source: null,
     levels: [],
     overridableLevels: ['company', 'customer_group', 'customer', 'document'],
+    versions: {},
     writableLevels: ['customer'],
     choices: [],
     min: null,
@@ -54,6 +55,7 @@ const unit = row({
   defaultValue: 'C62',
   value: 'C62',
   overridableLevels: ['company', 'product_category', 'product'],
+  versions: {},
   writableLevels: ['company'],
 });
 const rows = [terms, language, unit];

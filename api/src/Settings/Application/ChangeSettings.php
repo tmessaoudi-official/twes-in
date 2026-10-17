@@ -16,6 +16,7 @@ use App\Settings\Domain\Repository\SettingRepository;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -54,20 +55,62 @@ final readonly class ChangeSettings
         }
         $value = $definition->normalize($value);
 
+        // A single key is a person's own choice or a value set from a script: the last word is the intent, and holding
+        // the row keeps two of them from meeting at the version check of a flush.
         $this->transactions->run(function () use ($address, $key, $value, $actorUserId): void {
-            $now = $this->clock->now();
-            $setting = $this->settings->find($address, $key);
-            if (null === $setting) {
-                $setting = new Setting($address, $key, $value, $now);
-                $this->settings->save($setting);
-                $this->record(self::CHANGED, $setting, $address, $actorUserId);
-            } elseif ($setting->change($value, $now)) {
-                $this->settings->save($setting);
-                $this->record(self::CHANGED, $setting, $address, $actorUserId);
-            }
+            $this->store($address, $key, $value, $this->settings->lockedFind($address, $key), $actorUserId);
         });
 
         return $this->resolve->one($context, $key);
+    }
+
+    /**
+     * Stores every key a page changed at one level, or none: each key's row is held and must still be at the version
+     * the page read, 0 meaning the page read no row there.
+     *
+     * @param list<SettingChange> $changes
+     *
+     * @throws UnknownSetting
+     * @throws SettingLevelRefused
+     * @throws InvalidSettingValue
+     * @throws RecordChanged
+     */
+    public function changeAll(SettingContext $context, SettingLevel $level, array $changes, ?Uuid $actorUserId): void
+    {
+        $located = [];
+        foreach ($changes as $change) {
+            if (isset($located[$change->key])) {
+                throw new InvalidSettingValue(\sprintf('%s: changed twice in one save.', $change->key));
+            }
+            [$definition, $address] = $this->locate($context, $change->key, $level);
+            $refusal = $definition->refusal($change->value);
+            if (null !== $refusal) {
+                throw new InvalidSettingValue(\sprintf('%s: %s.', $change->key, $refusal));
+            }
+            $located[$change->key] = [$address, $definition->normalize($change->value), $change->version];
+        }
+
+        $this->transactions->run(function () use ($located, $actorUserId): void {
+            foreach ($located as $key => [$address, $value, $version]) {
+                $setting = $this->settings->lockedFind($address, $key);
+                if ((null === $setting ? 0 : $setting->getVersion()) !== $version) {
+                    throw new RecordChanged();
+                }
+                $this->store($address, $key, $value, $setting, $actorUserId);
+            }
+        });
+    }
+
+    private function store(SettingAddress $address, string $key, mixed $value, ?Setting $setting, ?Uuid $actorUserId): void
+    {
+        $now = $this->clock->now();
+        if (null === $setting) {
+            $setting = new Setting($address, $key, $value, $now);
+        } elseif (!$setting->change($value, $now)) {
+            return;
+        }
+        $this->settings->save($setting);
+        $this->record(self::CHANGED, $setting, $address, $actorUserId);
     }
 
     /**
@@ -78,7 +121,7 @@ final readonly class ChangeSettings
     {
         [, $address] = $this->locate($context, $key, $level);
         $this->transactions->run(function () use ($address, $key, $actorUserId): void {
-            $setting = $this->settings->find($address, $key);
+            $setting = $this->settings->lockedFind($address, $key);
             if (null !== $setting) {
                 $this->settings->remove($setting);
                 $this->record(self::RESET, $setting, $address, $actorUserId);

@@ -53,16 +53,30 @@ const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
   request: vi.fn<(intro?: string) => Promise<boolean>>(),
 });
 
+const SETTINGS = {
+  signup: { enabled: false, approvalRequired: true },
+  support: { phone: '+216 71 000 000', whatsapp: '', email: '', status_url: '' },
+  delays: [
+    { key: 'account.deletion_days', labelKey: 'l.a', value: 7, min: 1, max: 90 },
+    { key: 'company.reopen_days', labelKey: 'l.c', value: 7, min: 1, max: 90 },
+  ],
+  versions: {
+    'support.phone': 4,
+    'support.whatsapp': 0,
+    'support.email': 2,
+    'support.status_url': 0,
+    'account.deletion_days': 0,
+    'company.reopen_days': 1,
+  },
+};
+
 describe('PlatformFacade', () => {
   const api = {
     approve: vi.fn(),
     reject: vi.fn(),
-    signup: vi.fn(),
+    settings: vi.fn(),
     setSignup: vi.fn(),
-    support: vi.fn(),
-    setSupport: vi.fn(),
-    delays: vi.fn(),
-    setDelay: vi.fn(),
+    saveSettings: vi.fn(),
     accounts: vi.fn(),
     actOnAccount: vi.fn(),
     companies: vi.fn(),
@@ -78,12 +92,7 @@ describe('PlatformFacade', () => {
 
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
-    api.signup.mockResolvedValue({ enabled: false, approvalRequired: true });
-    api.support.mockResolvedValue({ phone: '+216 71 000 000', whatsapp: '', email: '' });
-    api.delays.mockResolvedValue([
-      { key: 'account.deletion_days', labelKey: 'l.a', value: 7, min: 1, max: 90 },
-      { key: 'company.reopen_days', labelKey: 'l.c', value: 7, min: 1, max: 90 },
-    ]);
+    api.settings.mockResolvedValue(SETTINGS);
     api.accounts.mockResolvedValue({ rows: [account], total: 1 });
     api.companies.mockResolvedValue({ rows: [row], total: 1 });
     api.moduleDemand.mockResolvedValue([
@@ -257,33 +266,39 @@ describe('PlatformFacade', () => {
     expect(facade.signup()).toEqual({ enabled: true, approvalRequired: true });
   });
 
-  it('saves the support channels changed, and only those, then shows what the platform holds', async () => {
+  it('saves the support channels changed, and only those, together, then shows what the platform holds', async () => {
     await facade.load();
-    expect(facade.support()).toEqual({ phone: '+216 71 000 000', whatsapp: '', email: '' });
-    api.setSupport.mockResolvedValue(undefined);
+    expect(facade.support()).toEqual(SETTINGS.support);
+    api.saveSettings.mockResolvedValue(undefined);
+    const after = { whatsapp: '+216 20 123 456', email: 'help@twes.test' };
+    api.settings.mockResolvedValueOnce({ ...SETTINGS, support: { ...SETTINGS.support, ...after } });
 
-    expect(await facade.saveSupport({ whatsapp: '+216 20 123 456', email: 'help@twes.test' })).toBe(
-      true,
-    );
+    expect(await facade.saveSupport(after)).toBe(true);
 
-    expect(api.setSupport.mock.calls).toEqual([
-      ['whatsapp', '+216 20 123 456'],
-      ['email', 'help@twes.test'],
+    expect(api.saveSettings.mock.calls).toEqual([
+      [
+        [
+          { key: 'support.whatsapp', value: '+216 20 123 456', version: 0 },
+          { key: 'support.email', value: 'help@twes.test', version: 2 },
+        ],
+      ],
     ]);
-    expect(facade.support()).toEqual({
-      phone: '+216 71 000 000',
-      whatsapp: '+216 20 123 456',
-      email: 'help@twes.test',
-    });
+    expect(facade.support()).toEqual({ ...SETTINGS.support, ...after });
   });
 
   it('saves the delays changed, and shows what the platform then holds', async () => {
     await facade.load();
-    api.setDelay.mockResolvedValue(undefined);
+    api.saveSettings.mockResolvedValue(undefined);
+    api.settings.mockResolvedValueOnce({
+      ...SETTINGS,
+      delays: [SETTINGS.delays[0], { ...SETTINGS.delays[1], value: 14 }],
+    });
 
     expect(await facade.saveDelays({ 'company.reopen_days': 14 })).toBe(true);
 
-    expect(api.setDelay.mock.calls).toEqual([['company.reopen_days', 14]]);
+    expect(api.saveSettings.mock.calls).toEqual([
+      [[{ key: 'company.reopen_days', value: 14, version: 1 }]],
+    ]);
     expect(facade.delays()?.map((delay) => [delay.key, delay.value])).toEqual([
       ['account.deletion_days', 7],
       ['company.reopen_days', 14],
@@ -292,7 +307,7 @@ describe('PlatformFacade', () => {
 
   it('keeps a delay as it was when the platform refuses it', async () => {
     await facade.load();
-    api.setDelay.mockRejectedValue(new PlatformRefused('refused'));
+    api.saveSettings.mockRejectedValue(new PlatformRefused('refused'));
 
     expect(await facade.saveDelays({ 'account.deletion_days': 200 })).toBe(false);
 
@@ -301,12 +316,34 @@ describe('PlatformFacade', () => {
 
   it('keeps the support channels as they were when the platform refuses one', async () => {
     await facade.load();
-    api.setSupport.mockRejectedValue(new PlatformRefused('refused'));
+    api.saveSettings.mockRejectedValue(new PlatformRefused('refused'));
 
     expect(await facade.saveSupport({ whatsapp: '20 123 456' })).toBe(false);
 
-    expect(facade.support()).toEqual({ phone: '+216 71 000 000', whatsapp: '', email: '' });
+    expect(facade.support()).toEqual(SETTINGS.support);
     expect(facade.error()).toBe('refused');
+  });
+
+  it('after a save refused as made since, shows what the platform holds and saves on its versions next', async () => {
+    await facade.load();
+    api.saveSettings.mockRejectedValueOnce(new PlatformRefused('record_changed'));
+    const since = {
+      ...SETTINGS,
+      support: { ...SETTINGS.support, email: 'ops@twes.test' },
+      versions: { ...SETTINGS.versions, 'support.email': 3 },
+    };
+    api.settings.mockResolvedValue(since);
+
+    expect(await facade.saveSupport({ email: 'help@twes.test' })).toBe(false);
+
+    expect(facade.error()).toBe('record_changed');
+    expect(facade.support()).toEqual(since.support);
+
+    api.saveSettings.mockResolvedValue(undefined);
+    expect(await facade.saveSupport({ email: 'help@twes.test' })).toBe(true);
+    expect(api.saveSettings).toHaveBeenLastCalledWith([
+      { key: 'support.email', value: 'help@twes.test', version: 3 },
+    ]);
   });
 
   it('leaves a switch as it was when the platform refuses it', async () => {
@@ -401,12 +438,12 @@ describe('PlatformFacade', () => {
   it('changes nothing when the operator does not give the proof', async () => {
     stepUp.request.mockReset().mockResolvedValue(false);
     await facade.load();
-    api.setSupport.mockRejectedValue(new PlatformRefused('step_up_required'));
+    api.saveSettings.mockRejectedValue(new PlatformRefused('step_up_required'));
 
     expect(await facade.saveSupport({ whatsapp: '20 123 456' })).toBe(false);
 
-    expect(api.setSupport).toHaveBeenCalledTimes(1);
-    expect(facade.support()).toEqual({ phone: '+216 71 000 000', whatsapp: '', email: '' });
+    expect(api.saveSettings).toHaveBeenCalledTimes(1);
+    expect(facade.support()).toEqual(SETTINGS.support);
     expect(facade.error()).toBe('step_up_required');
   });
 });

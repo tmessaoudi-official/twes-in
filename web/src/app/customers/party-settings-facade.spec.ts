@@ -10,7 +10,7 @@ const terms = { key: 'document.payment_terms_days', chain: 'parties' } as Settin
 describe('PartySettings', () => {
   let api: {
     chain: ReturnType<typeof vi.fn>;
-    change: ReturnType<typeof vi.fn>;
+    changeAll: ReturnType<typeof vi.fn>;
     reset: ReturnType<typeof vi.fn>;
   };
   let facade: PartySettings;
@@ -18,7 +18,7 @@ describe('PartySettings', () => {
   beforeEach(() => {
     api = {
       chain: vi.fn().mockResolvedValue([terms]),
-      change: vi.fn().mockResolvedValue(undefined),
+      changeAll: vi.fn().mockResolvedValue(undefined),
       reset: vi.fn().mockResolvedValue(undefined),
     };
     TestBed.configureTestingModule({ providers: [{ provide: SettingsApi, useValue: api }] });
@@ -36,14 +36,12 @@ describe('PartySettings', () => {
   it("stores each change at the group's level, naming the group, then reads again", async () => {
     const group = { customerGroupId: 'g1' };
 
-    expect(await facade.save('c1', group, [{ key: terms.key, value: 45 }])).toBe(true);
+    expect(await facade.save('c1', group, [{ key: terms.key, value: 45, version: 1 }])).toBe(true);
 
-    expect(api.change).toHaveBeenCalledWith(
+    expect(api.changeAll).toHaveBeenCalledWith(
       'c1',
-      terms.key,
       'customer_group',
-      45,
-      undefined,
+      [{ key: terms.key, value: 45, version: 1 }],
       group,
     );
     expect(api.chain).toHaveBeenCalledWith('c1', 'parties', group);
@@ -58,11 +56,11 @@ describe('PartySettings', () => {
   });
 
   it('names what the API refused', async () => {
-    api.change.mockRejectedValue(new SettingsRefused('invalid'));
+    api.changeAll.mockRejectedValue(new SettingsRefused('invalid'));
 
-    expect(await facade.save('c1', { customerId: 'k1' }, [{ key: terms.key, value: 999 }])).toBe(
-      false,
-    );
+    expect(
+      await facade.save('c1', { customerId: 'k1' }, [{ key: terms.key, value: 999, version: 1 }]),
+    ).toBe(false);
     expect(facade.error()).toBe('invalid');
   });
 });

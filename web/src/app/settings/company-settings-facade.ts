@@ -3,8 +3,12 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import { SettingsFacade } from '../shared/settings/settings-facade';
-import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
-import { COMPANY_CHAINS, type SettingChange } from './settings-forms';
+import type {
+  SettingRow,
+  SettingsError,
+  VersionedSettingChange,
+} from '../shared/settings/settings-types';
+import { COMPANY_CHAINS } from './settings-forms';
 
 /** A company's defaults, as its settings page reads and changes them: always at the company level. */
 @Injectable({ providedIn: 'root' })
@@ -31,13 +35,9 @@ export class CompanySettings {
     }
   }
 
-  /** True when the API accepted every change; the settings are read again after. */
-  async save(companyId: string, changes: readonly SettingChange[]): Promise<boolean> {
-    return this.write(companyId, async () => {
-      for (const change of changes) {
-        await this.api.change(companyId, change.key, 'company', change.value);
-      }
-    });
+  /** True when the API accepted every change, together; the settings are read again after. */
+  async save(companyId: string, changes: readonly VersionedSettingChange[]): Promise<boolean> {
+    return this.write(companyId, () => this.api.changeAll(companyId, 'company', changes));
   }
 
   /** Forgets the company's value: the setting falls back to the platform's, else the declared default. */

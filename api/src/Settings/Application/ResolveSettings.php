@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
+use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\Repository\SettingRepository;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Settings\Domain\ValueObject\SettingChain;
@@ -76,37 +77,41 @@ final readonly class ResolveSettings
     /**
      * @param list<SettingAddress> $addresses
      *
-     * @return array<string, array<string, mixed>> by key, then by level
+     * @return array<string, array<string, Setting>> by key, then by level
      */
     private function stored(array $addresses): array
     {
         $stored = [];
         foreach ($this->settings->at($addresses) as $setting) {
-            $stored[$setting->getKey()][$setting->getLevel()->value] = $setting->getValue();
+            $stored[$setting->getKey()][$setting->getLevel()->value] = $setting;
         }
 
         return $stored;
     }
 
     /**
-     * @param array<string, mixed> $stored   by level
-     * @param array<string, mixed> $defaults the country's, by key
+     * @param array<string, Setting> $stored   by level
+     * @param array<string, mixed>   $defaults the country's, by key
      */
     private function resolve(string $key, SettingDefinition $definition, array $stored, array $defaults): ResolvedSetting
     {
         $explicit = [];
+        // Every stored row has a version, a value no longer applying included: a save over it must name it, or it would
+        // meet the row at the unique index.
+        $versions = array_map(static fn (Setting $setting): int => $setting->getVersion(), $stored);
         $default = \array_key_exists($key, $defaults) && null === $definition->refusal($defaults[$key]) ? $defaults[$key] : $definition->default;
         $value = $default;
         $source = null;
         foreach ($definition->chain->levels() as $level) {
-            if (!\array_key_exists($level->value, $stored) || !$definition->allows($level) || null !== $definition->refusal($stored[$level->value])) {
+            $setting = $stored[$level->value] ?? null;
+            if (null === $setting || !$definition->allows($level) || null !== $definition->refusal($setting->getValue())) {
                 continue;
             }
-            $explicit[$level->value] = $stored[$level->value];
-            $value = $stored[$level->value];
+            $explicit[$level->value] = $setting->getValue();
+            $value = $setting->getValue();
             $source = $level;
         }
 
-        return new ResolvedSetting($key, $definition, $value, $source, $explicit, $default);
+        return new ResolvedSetting($key, $definition, $value, $source, $explicit, $default, $versions);
     }
 }

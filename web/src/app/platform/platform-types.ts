@@ -61,6 +61,14 @@ export type SupportChannel = 'phone' | 'whatsapp' | 'email' | 'status_url';
 /** Each support channel as the operators set it, empty where they did not. */
 export type PlatformSupport = Readonly<Record<SupportChannel, string>>;
 
+/** The platform's own settings as its overview reads them, with each key's row version, 0 where none is stored. */
+export interface PlatformSettings {
+  readonly signup: PlatformSignup;
+  readonly support: PlatformSupport;
+  readonly delays: readonly PlatformDelay[];
+  readonly versions: Readonly<Record<string, number>>;
+}
+
 /**
  * A number of days the platform sets for every company: each whole-number platform setting, drawn from its declaration
  * (label, bounds), so a new one has its field without a line written here. `value` is what is in effect, the default
@@ -162,6 +170,7 @@ export type PlatformError =
   | 'name_taken'
   | 'already_member'
   | 'step_up_required'
+  | 'record_changed'
   | 'refused'
   | 'network';
 
