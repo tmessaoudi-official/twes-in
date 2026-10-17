@@ -38,13 +38,19 @@ async function putSeries(page: Page, series: Series): Promise<void> {
   const status = await page.evaluate(
     async ([csrf, row]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const response = await fetch(`/api/companies/${me.company.id}/numbering-series/${row.id}`, {
+      const base = `/api/companies/${me.company.id}/numbering-series`;
+      // The version the series is at now: the save the scenario made, and any number given since, moved it on.
+      const now = ((await (await fetch(base)).json()) as { id: string; version: number }[]).find(
+        (candidate) => candidate.id === row.id,
+      );
+      const response = await fetch(`${base}/${row.id}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', 'csrf-token': csrf },
         body: JSON.stringify({
           format: row.format,
           nextNumber: row.nextNumber,
           resetPeriod: row.resetPeriod,
+          version: now?.version ?? null,
         }),
       });
       return response.status;
