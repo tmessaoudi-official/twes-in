@@ -22,7 +22,9 @@
       "signup": "Créer un compte",
       "no_account": "Pas encore de compte ?",
       "forgot": "Mot de passe oublié ?",
-      "session_expired": "Votre session a pris fin. Reconnectez-vous pour continuer."
+      "session_expired": "Votre session a pris fin. Reconnectez-vous pour continuer.",
+      "demo_title": "Essayer la démo",
+      "demo_intro": "Une entreprise fictive et son historique, rien qu’à vous ; tout disparaît à la déconnexion."
     },
     "logout": "Se déconnecter",
     "errors": {
@@ -43,7 +45,11 @@
       "passkey_not_found": "Cette clé d’accès n’existe plus.",
       "totp_not_enrolled": "Aucune application d’authentification n’est configurée.",
       "passkey_cancelled": "Aucune clé d’accès n’a été utilisée. Réessayez en suivant les indications de votre appareil.",
-      "passkey_already_registered": "Cet appareil contient déjà une clé d’accès pour ce compte."
+      "passkey_already_registered": "Cet appareil contient déjà une clé d’accès pour ce compte.",
+      "demo_busy": "La démo se prépare : réessayez dans un instant.",
+      "demo_off": "La démo est fermée.",
+      "unknown_country": "Pas de démo pour ce pays.",
+      "demo_refused": "Non disponible dans la démo."
     },
     "mfa": {
       "title": "Vérification en deux étapes",
@@ -84,7 +90,8 @@
       "stock": "Stock · Réf. A-1042",
       "stock_quantity": "18 unités",
       "stock_threshold": "Sous le seuil de 25 unités"
-    }
+    },
+    "demo_banner": "Démo : une entreprise fictive. Aucun courrier ne part, aucun document n’a de valeur fiscale, et tout disparaît à la déconnexion."
   },
   "hello": {
     "greeting": "Bonjour, {{name}}",
@@ -929,6 +936,8 @@
   "settings": {
     "platform": {
       "account_deletion_days": "Jours avant qu’un compte supprimé le soit définitivement",
+      "demo_enabled": "Démo ouverte aux visiteurs (« Essayer la démo »)",
+      "demo_sandboxes_max": "Démos au plus en même temps",
       "company_reopen_days": "Jours pendant lesquels une entreprise fermée peut être rouverte",
       "licensing_grace_days": "Jours de grâce après la fin d’un abonnement"
     },

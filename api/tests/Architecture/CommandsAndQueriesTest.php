@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Architecture;
 
 use App\Audit\Application\AuditTrail;
+use App\Demo\Application\BuildSandbox;
+use App\Demo\Application\KeepSandboxPool;
 use App\Files\Application\Attachments;
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
@@ -89,6 +91,8 @@ final class CommandsAndQueriesTest extends TestCase
         PrintDeliveryNote::class => 'the PDF of a note already issued, stored once when issuing could not render it, which no person changes',
         PrintInvoice::class => 'the PDF of a document already issued, stored once when issuing could not render it, which no person changes',
         CashInvoicesInBulk::class => 'every payment goes through ManagePayments, which records it on its invoice',
+        KeepSandboxPool::class => 'the platform keeping a demo of each country ready, which no person changes; each build records the company it opens',
+        BuildSandbox::class => 'its company is opened by OpenSandboxCompany, which records it, and the demo data is written through the use cases, which record theirs',
         ResealSecondFactors::class => 'the same secrets under a new key, run on the console with the service stopped, which no person changes; the runbook is its record',
     ];
 

@@ -39,6 +39,12 @@ export type LoginError =
   | 'passkey_cancelled'
   // The browser refused because this device already holds a passkey for the account. Never sent by the API.
   | 'passkey_already_registered'
+  // « Essayer la démo »: switched off since the page loaded, no sandbox ready yet, a country it does not offer, and
+  // something a demo account may not do.
+  | 'demo_off'
+  | 'demo_busy'
+  | 'unknown_country'
+  | 'demo_refused'
   | 'network';
 
 export interface Credentials {
@@ -52,6 +58,20 @@ export interface SignedInUser {
   displayName: string;
   locale: string;
   isPlatformOperator: boolean;
+  /** A demo visitor's throwaway account: the app says so, and offers nothing that would make it a real one. */
+  demo: boolean;
+}
+
+/** A country the demo may be tried in, and the company its sandbox holds. */
+export interface DemoCountry {
+  readonly code: string;
+  readonly company: string;
+}
+
+/** Whether the sign-in page offers « Essayer la démo », and in which countries. */
+export interface DemoAvailability {
+  readonly enabled: boolean;
+  readonly countries: readonly DemoCountry[];
 }
 
 /** What the company's subscription lets its members do, whatever their role allows (docs/SPEC.md § 7, 2026-09-17). */

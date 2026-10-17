@@ -125,6 +125,35 @@
     </form>
   }
 
+  @if (step() === 'password' && (demoCountries().length > 0 || demoError())) {
+    <section class="twes-auth-demo" aria-labelledby="login-demo-title" data-testid="login-demo">
+      <h2 class="twes-auth-section-label" id="login-demo-title">
+        {{ 'auth.login.demo_title' | translate }}
+      </h2>
+      <p class="twes-auth-intro">{{ 'auth.login.demo_intro' | translate }}</p>
+      @for (country of demoCountries(); track country.code) {
+        <button
+          type="button"
+          class="twes-auth-option"
+          (click)="enterDemo(country.code)"
+          [disabled]="submitting()"
+          [attr.data-testid]="'login-demo-' + country.code"
+        >
+          <span class="twes-auth-option-icon"><mat-icon>storefront</mat-icon></span>
+          <span class="twes-auth-option-text">
+            <strong>{{ countryName(country.code) }}</strong>
+            <span>{{ country.company }}</span>
+          </span>
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      }
+      @if (demoError(); as code) {
+        <p role="alert" class="twes-auth-error" data-testid="login-demo-error">
+          {{ 'auth.errors.' + code | translate }}
+        </p>
+      }
+    </section>
+  }
   @if (step() === 'password') {
     <p twesAuthAfter class="twes-auth-after">
       <a routerLink="/forgot-password" data-testid="login-forgot">{{

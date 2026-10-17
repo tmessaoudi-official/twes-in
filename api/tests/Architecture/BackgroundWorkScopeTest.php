@@ -11,6 +11,8 @@ namespace App\Tests\Architecture;
 
 use App\Audit\Infrastructure\Scheduler\PurgeFailedSignInAddressesEveryNight;
 use App\DataHealth\Infrastructure\Scheduler\CheckDataEveryNight;
+use App\Demo\Infrastructure\Messenger\SandboxToBuildHandler;
+use App\Demo\Infrastructure\Scheduler\TendDemoSandboxesEveryFiveMinutes;
 use App\Erasure\Infrastructure\Scheduler\EndErasuresEveryQuarterHour;
 use App\Identity\Infrastructure\Password\PasswordResetAskedHandler;
 use App\Identity\Infrastructure\Scheduler\FinalizeAccountDeletionsEveryNight;
@@ -38,6 +40,8 @@ final class BackgroundWorkScopeTest extends TestCase
     private const array SCOPES = [
         CheckDataEveryNight::class => 'every company at once, on purpose: each check groups its findings by company and tells the operators counts, never contents',
         ClearUntakenPhotos::class => 'every company at once, on purpose: a phone photo nobody took is cleared by its age alone',
+        TendDemoSandboxesEveryFiveMinutes::class => 'each sandbox done with, locked by its own id, removed with the one company and the one owner it names; then no company: it counts the sandboxes, read across companies, and queues new ones, which have none yet',
+        SandboxToBuildHandler::class => 'the sandbox by its id, and the company it opens for that sandbox alone, named by id in every step',
         EndErasuresEveryQuarterHour::class => 'each due erasure, locked by its own id, ends the company or account it names',
         FinalizeAccountDeletionsEveryNight::class => 'each due account, locked by its own id, no company: an account belongs to none, and its memberships go with it',
         InvitationToMailHandler::class => 'the invitation by its id, and the company that invitation names',

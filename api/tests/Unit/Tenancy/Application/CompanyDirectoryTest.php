@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Tenancy\Application;
 
 use App\Files\Application\Attachments;
 use App\Files\Application\Files;
+use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Application\Company\CompanyLogo;
@@ -138,7 +139,14 @@ final class CompanyDirectoryTest extends TestCase
 
     private function listMembers(): ListMembers
     {
-        return new ListMembers($this->memberships, $this->invitations, new MockClock('2026-09-09 10:00:00'));
+        $nobodyIsADemo = new class implements DemoAccounts {
+            public function isDemo(Uuid $userId): bool
+            {
+                return false;
+            }
+        };
+
+        return new ListMembers($this->memberships, $this->invitations, $nobodyIsADemo, new MockClock('2026-09-09 10:00:00'));
     }
 
     private function logos(): CompanyLogo

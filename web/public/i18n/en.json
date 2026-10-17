@@ -22,7 +22,9 @@
       "signup": "Create an account",
       "no_account": "No account yet?",
       "forgot": "Forgot your password?",
-      "session_expired": "Your session has ended. Sign in again to continue."
+      "session_expired": "Your session has ended. Sign in again to continue.",
+      "demo_title": "Try the demo",
+      "demo_intro": "A made-up company and its history, yours alone; it all goes when you sign out."
     },
     "logout": "Sign out",
     "errors": {
@@ -43,7 +45,11 @@
       "passkey_not_found": "That passkey no longer exists.",
       "totp_not_enrolled": "No authenticator app is set up.",
       "passkey_cancelled": "No passkey was used. Try again, and follow what your device asks.",
-      "passkey_already_registered": "This device already holds a passkey for this account."
+      "passkey_already_registered": "This device already holds a passkey for this account.",
+      "demo_busy": "The demo is getting ready: try again in a moment.",
+      "demo_off": "The demo is closed.",
+      "unknown_country": "No demo for this country.",
+      "demo_refused": "Not available in the demo."
     },
     "mfa": {
       "title": "Two-step verification",
@@ -84,7 +90,8 @@
       "stock": "Stock · Ref. A-1042",
       "stock_quantity": "18 units",
       "stock_threshold": "Below the threshold of 25 units"
-    }
+    },
+    "demo_banner": "Demo: a made-up company. No mail leaves, no document has fiscal value, and it all goes when you sign out."
   },
   "hello": {
     "greeting": "Hello, {{name}}",
@@ -929,6 +936,8 @@
   "settings": {
     "platform": {
       "account_deletion_days": "Days before a deleted account is deleted for good",
+      "demo_enabled": "Demo open to visitors, through Try the demo",
+      "demo_sandboxes_max": "Most demos at the same time",
       "company_reopen_days": "Days during which a closed company can be reopened",
       "licensing_grace_days": "Days of grace after a subscription ends"
     },

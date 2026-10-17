@@ -109,6 +109,7 @@ const owner: SignedInState = {
     displayName: 'Amel Ben Salah',
     locale: 'fr',
     isPlatformOperator: false,
+    demo: false,
   },
   company: {
     id: 'c1',

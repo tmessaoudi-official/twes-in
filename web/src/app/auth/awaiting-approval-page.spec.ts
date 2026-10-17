@@ -40,6 +40,7 @@ function state(status: string, access: 'full' | 'read_only' | 'locked' = 'full')
       displayName: 'Nadia',
       locale: 'fr',
       isPlatformOperator: false,
+      demo: false,
     },
     company: {
       id: 'c1',

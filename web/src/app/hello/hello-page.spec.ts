@@ -50,6 +50,7 @@ const owner: SignedInState = {
     displayName: 'Amel',
     locale: 'fr',
     isPlatformOperator: false,
+    demo: false,
   },
   company: {
     id: 'c1',

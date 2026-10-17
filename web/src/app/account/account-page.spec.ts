@@ -140,8 +140,9 @@ describe('AccountPage', () => {
     load: vi.fn(),
     pinAtSignIn: vi.fn(),
   };
-  const me = signal<{ mfa: MfaStatus }>({
+  const me = signal<{ mfa: MfaStatus; user: { demo: boolean } }>({
     mfa: { enrolled: true, required: false, totp: true, passkeys: 0 },
+    user: { demo: false },
   });
   const modules = signal<readonly string[]>(['scanning']);
   const auth = {
@@ -227,7 +228,10 @@ describe('AccountPage', () => {
     density.set('comfortable');
     showComing.set(true);
     companies.set([acme, globex]);
-    me.set({ mfa: { enrolled: true, required: false, totp: true, passkeys: 0 } });
+    me.set({
+      mfa: { enrolled: true, required: false, totp: true, passkeys: 0 },
+      user: { demo: false },
+    });
     for (const fn of [
       theme.setScheme,
       theme.setDensity,
@@ -265,9 +269,25 @@ describe('AccountPage', () => {
     expect(byTestId(root, 'account-two-factor')?.textContent).toContain('Activée');
     expect(byTestId(root, 'account-two-factor-manage')?.getAttribute('href')).toBe('/two-factor');
 
-    me.set({ mfa: { enrolled: false, required: false, totp: false, passkeys: 0 } });
+    me.set({
+      mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
+      user: { demo: false },
+    });
     fixture.detectChanges();
     expect(byTestId(root, 'account-two-factor')?.textContent).toContain('Désactivée');
+  });
+
+  it('offers a demo visitor no password, second factor nor deletion of the account, which the API refuses', async () => {
+    me.set({
+      mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
+      user: { demo: true },
+    });
+    const root = await render('security');
+
+    expect(byTestId(root, 'account-two-factor')).toBeNull();
+    expect(byTestId(root, 'account-password')).toBeNull();
+    expect(root.querySelector('app-account-deletion')).toBeNull();
+    expect(root.querySelector('app-connected-devices')).not.toBeNull();
   });
 
   it('keeps all four tabs with what is coming hidden, since none of them is still to come', async () => {

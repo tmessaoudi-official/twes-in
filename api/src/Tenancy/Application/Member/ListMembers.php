@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Member;
 
+use App\Identity\Application\Account\DemoAccounts;
 use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Repository\InvitationRepository;
@@ -16,12 +17,16 @@ use App\Tenancy\Domain\Repository\MembershipRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** Everyone in one company, oldest membership first, then the addresses invited that have not accepted yet. */
+/**
+ * Everyone in one company, oldest membership first, then the addresses invited that have not accepted yet. A demo
+ * visitor's account shows the address every demo account shows, as it does to the visitor themselves.
+ */
 final readonly class ListMembers
 {
     public function __construct(
         private MembershipRepository $memberships,
         private InvitationRepository $invitations,
+        private DemoAccounts $demoAccounts,
         private ClockInterface $clock,
     ) {
     }
@@ -30,9 +35,9 @@ final readonly class ListMembers
     public function for(Uuid $companyId): array
     {
         $members = array_map(
-            static fn (Membership $m) => new MemberView(
+            fn (Membership $m) => new MemberView(
                 $m->getUser()->getId()->toRfc4122(),
-                $m->getUser()->getEmail()->value,
+                $this->demoAccounts->isDemo($m->getUser()->getId()) ? DemoAccounts::SHOWN_AS : $m->getUser()->getEmail()->value,
                 $m->getUser()->getDisplayName(),
                 $m->getRole()->getName(),
                 $m->getCreatedAt()->format(\DATE_ATOM),

@@ -11,7 +11,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { HealthFacade } from '../shared/health/health-facade';
 import { SignupFacade } from '../signup/signup-facade';
 import { AuthFacade } from './auth-facade';
-import type { LoginError } from './auth-types';
+import type { DemoCountry, LoginError } from './auth-types';
+import { LanguageFacade } from '../shared/i18n/language-facade';
 import { PasskeyClient } from './passkey-client';
 import { SignedOutLayout } from './signed-out-layout';
 import { PasswordToggle } from '../shared/form/password-toggle';
@@ -61,9 +62,34 @@ export class LoginPage {
   private readonly signup = inject(SignupFacade);
   /** Offered only while the platform's operators have opened signup. */
   protected readonly signupOpen = computed(() => this.signup.availability()?.enabled === true);
+  private readonly language = inject(LanguageFacade);
+  /** The countries « Essayer la démo » offers, none while the platform's operators keep it closed. */
+  protected readonly demoCountries = signal<readonly DemoCountry[]>([]);
+  protected readonly demoError = signal<LoginError | null>(null);
 
   constructor() {
     void this.signup.loadAvailability();
+    void this.auth.demoAvailability().then((demo) => this.demoCountries.set(demo.countries));
+  }
+
+  protected countryName(code: string): string {
+    return new Intl.DisplayNames([this.language.current()], { type: 'region' }).of(code) ?? code;
+  }
+
+  protected async enterDemo(country: string): Promise<void> {
+    if (this.submitting()) return;
+    this.submitting.set(true);
+    this.demoError.set(null);
+    const outcome = await this.auth.enterDemo(country);
+    this.submitting.set(false);
+    if (outcome.status === 'signed_in') {
+      await this.router.navigateByUrl('/');
+      return;
+    }
+    if (outcome.status === 'refused') {
+      this.demoError.set(outcome.error);
+      if (outcome.error === 'demo_off') this.demoCountries.set([]);
+    }
   }
 
   protected async submit(): Promise<void> {

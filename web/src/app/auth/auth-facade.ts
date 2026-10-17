@@ -14,6 +14,7 @@ import type {
   CompanyAccess,
   ConfirmationOutcome,
   Credentials,
+  DemoAvailability,
   EnrolmentOutcome,
   LoginError,
   LoginOutcome,
@@ -101,6 +102,26 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
     } catch (error) {
       this.signedOut();
       return { status: 'refused', error: codeOf(error) };
+    }
+  }
+
+  /** « Essayer la démo »: signed in, with no account, in a sandbox of the country picked. */
+  async enterDemo(country: string): Promise<LoginOutcome> {
+    try {
+      const state = await this.api.enterDemo(country);
+      this.signedIn(state);
+      return { status: 'signed_in', state };
+    } catch (error) {
+      return { status: 'refused', error: codeOf(error) };
+    }
+  }
+
+  /** Whether the sign-in page offers the demo; closed when the API cannot say. */
+  async demoAvailability(): Promise<DemoAvailability> {
+    try {
+      return await this.api.demoAvailability();
+    } catch {
+      return { enabled: false, countries: [] };
     }
   }
 

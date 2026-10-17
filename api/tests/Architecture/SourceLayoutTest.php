@@ -77,6 +77,8 @@ final class SourceLayoutTest extends TestCase
     private const array KEPT = [
         'App\Audit\Infrastructure\Scheduler\PurgeFailedSignInAddressesEveryNight',
         'App\DataHealth\Infrastructure\Scheduler\CheckDataEveryNight',
+        'App\Demo\Infrastructure\Messenger\SandboxToBuild',
+        'App\Demo\Infrastructure\Scheduler\TendDemoSandboxesEveryFiveMinutes',
         'App\Erasure\Infrastructure\Scheduler\EndErasuresEveryQuarterHour',
         'App\Identity\Infrastructure\Password\PasswordResetAsked',
         'App\Identity\Infrastructure\Scheduler\FinalizeAccountDeletionsEveryNight',

@@ -64,6 +64,7 @@ final class ScaleGenerator
         'customer_credit_entry' => 'what a customer has to their credit: a clone starts with none',
         'data_erasure' => 'the erasures a company made: a clone made none',
         'data_erasure_row' => 'what an erasure keeps for its undo: a clone made none',
+        'demo_sandbox' => 'a sandbox the demo built for a visitor: a clone is no sandbox',
         'delivery_note' => 'delivery notes: a follow-up slice',
         'delivery_note_line' => 'delivery notes: a follow-up slice',
         'delivery_note_line_tax' => 'delivery notes: a follow-up slice',

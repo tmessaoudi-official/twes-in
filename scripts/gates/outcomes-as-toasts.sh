@@ -45,12 +45,14 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # its 24 hours end, whoever made it and whatever the owner does meanwhile; that it was made or undone is a toast.
 # `support-banner` is that the owner let support read the company until a given time: true on every page until that time or
 # until the owner closes it, for the operator reading and for the members alike; opening or closing it is a toast.
+# `demo-banner` is that the session is the demo's: a made-up company whose mail never leaves and whose documents have no
+# fiscal value, true on every page until the visitor signs out.
 # `erasure-waiting` is the same state seen from « Effacer des données », said where the next erasure would be chosen.
 # `list-selection-count` is how many rows a list holds selected, changing with every box ticked: a state of the page that
 # the next action will act on, never the outcome of one.
 # `document-taxes-stamp-status` holds what a credit note's figures as typed leave of the stamp chosen on it: that the note
 # completing the invoice gives it back, true until the lines change again, and never the outcome of a save.
-page_states=' document-taxes-stamp-status list-loading phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner support-banner erasure-waiting list-selection-count '
+page_states=' document-taxes-stamp-status list-loading phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner support-banner demo-banner erasure-waiting list-selection-count '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {

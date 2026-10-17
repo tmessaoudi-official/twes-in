@@ -123,6 +123,8 @@ export class AccountPage implements OnInit {
     Math.max(0, this.tabs().indexOf(this.tab() as AccountTab)),
   );
   protected readonly twoFactorOn = computed(() => this.auth.me()?.mfa.enrolled === true);
+  /** A demo visitor's throwaway account takes no password, second factor nor deletion of its own: the API refuses them. */
+  protected readonly demo = computed(() => this.auth.me()?.user.demo === true);
 
   private readonly settings = inject(SettingsFacade);
   /** The scanner is a module (docs/SPEC.md § 7, 2026-10-06 21:02): off, its preferences have nothing to set. */

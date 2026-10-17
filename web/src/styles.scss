@@ -1905,6 +1905,15 @@ app-signed-out-layout {
   text-transform: uppercase;
 }
 
+// « Essayer la démo » under the sign-in form: its heading, a line, then one choice row per country.
+.twes-auth-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
 // A choice row inside the card: icon tile, two lines, a chevron.
 .twes-auth-option {
   display: flex;

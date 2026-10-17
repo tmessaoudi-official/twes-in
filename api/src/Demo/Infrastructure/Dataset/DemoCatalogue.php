@@ -23,6 +23,18 @@ final class DemoCatalogue
         return [self::tunisian(), self::french()];
     }
 
+    /** The company a demo sandbox of that country holds. */
+    public static function of(string $country): DemoCompany
+    {
+        foreach (self::all() as $demo) {
+            if ($demo->country === $country) {
+                return $demo;
+            }
+        }
+
+        throw new \LogicException("The demo catalogue has no company in $country.");
+    }
+
     public static function tunisian(): DemoCompany
     {
         $domestic = [

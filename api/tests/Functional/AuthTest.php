@@ -352,7 +352,7 @@ final class AuthTest extends ApiTestCase
         $this->login('owner@example.test', self::PASSWORD);
 
         self::assertSame(['user', 'company', 'permissions', 'mfa', 'modules', 'plannedModules', 'customerScreenCompanyId', 'support', 'supportAccessUntil'], array_keys($this->json()));
-        self::assertSame(['id', 'email', 'displayName', 'locale', 'isPlatformOperator'], array_keys($this->section($this->json(), 'user')));
+        self::assertSame(['id', 'email', 'displayName', 'locale', 'isPlatformOperator', 'demo'], array_keys($this->section($this->json(), 'user')));
         self::assertStringNotContainsString('argon', (string) $this->client->getResponse()->getContent());
     }
 
