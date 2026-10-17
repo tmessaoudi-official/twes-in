@@ -15,6 +15,7 @@ const owner: SignedInState = {
     displayName: 'Owner',
     locale: 'fr',
     isPlatformOperator: false,
+    demo: false,
   },
   company: {
     id: 'c1',

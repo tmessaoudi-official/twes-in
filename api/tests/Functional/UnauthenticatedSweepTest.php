@@ -28,6 +28,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         '^/api/health/deep$',
         '^/api/client-errors$',
         '^/api/auth/login$',
+        '^/api/auth/demo$',
         '^/api/docs',
         '^/api/invitations',
         '^/api/auth/mfa/verify$',
@@ -49,6 +50,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
     private const array PUBLIC_ROUTES = [
         'GET _api_/invitations/{token}_get',
         'GET _api_/legal/{page}/{language}_get',
+        'GET api_auth_demo_availability',
         'GET api_doc',
         'GET api_health',
         'GET api_health_deep',
@@ -56,6 +58,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         'GET signup_availability',
         'GET signup_link',
         'POST _api_/invitations/{token}/accept_post',
+        'POST api_auth_demo',
         'POST api_auth_login',
         'POST api_auth_mfa_passkey_login',
         'POST api_auth_mfa_passkey_login_options',

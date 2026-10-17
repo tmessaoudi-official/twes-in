@@ -55,7 +55,14 @@ class Blank {}
 
 const inCompany = (id: string): SignedInState =>
   ({
-    user: { id: 'u1', email: 'a@b.c', displayName: 'A', locale: 'fr', isPlatformOperator: false },
+    user: {
+      id: 'u1',
+      email: 'a@b.c',
+      displayName: 'A',
+      locale: 'fr',
+      isPlatformOperator: false,
+      demo: false,
+    },
     company: {
       id,
       name: id,

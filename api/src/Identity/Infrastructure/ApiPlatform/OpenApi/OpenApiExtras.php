@@ -46,13 +46,18 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                 'password' => ['type' => 'string', 'format' => 'password'],
             ],
         ]);
+        $schemas['DemoEntry'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['country'],
+            'properties' => ['country' => ['type' => 'string', 'description' => 'One of the countries GET /api/auth/demo offers']],
+        ]);
         $schemas['AuthError'] = new \ArrayObject([
             'type' => 'object',
             'required' => ['error'],
             'properties' => [
                 'error' => [
                     'type' => 'string',
-                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required', 'mfa_already_enrolled', 'invalid_passkey', 'mfa_last_factor', 'passkey_not_found'],
+                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required', 'mfa_already_enrolled', 'invalid_passkey', 'mfa_last_factor', 'passkey_not_found', 'demo_off', 'demo_busy', 'unknown_country', 'demo_refused'],
                 ],
             ],
         ]);
@@ -91,6 +96,22 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             ],
             summary: 'Sign in with email and password',
             requestBody: new RequestBody('Credentials', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/LoginRequest']))]), true),
+        )));
+        // The demo's availability is an API Platform resource on the same path: entering is added beside it.
+        $demo = $openApi->getPaths()->getPath('/api/auth/demo') ?? throw new \LogicException('The demo availability is documented by its resource.');
+        $openApi->getPaths()->addPath('/api/auth/demo', $demo->withPost(new Operation(
+            operationId: 'enterDemo',
+            tags: ['Auth'],
+            responses: [
+                '200' => new Response('Signed in as the owner of the demo sandbox of that country', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/'.$me]))])),
+                '400' => $errorResponse('No demo for that country (unknown_country)'),
+                '403' => $errorResponse('CSRF check failed'),
+                '404' => $errorResponse('The demo is switched off (demo_off)'),
+                '429' => $errorResponse('Too many entries from this client'),
+                '503' => $errorResponse('None ready yet; try again after Retry-After (demo_busy)'),
+            ],
+            summary: 'Enter the demo: signed in, with no account, as the owner of a sandbox of the country picked',
+            requestBody: new RequestBody('The country', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/DemoEntry']))]), true),
         )));
         $openApi->getPaths()->addPath('/api/auth/logout', new PathItem(post: new Operation(
             operationId: 'logout',

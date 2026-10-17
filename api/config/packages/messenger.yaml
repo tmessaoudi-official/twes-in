@@ -36,6 +36,7 @@ framework:
             App\Tenancy\Infrastructure\Signup\SignupAsked: async
             App\Tenancy\Infrastructure\Invitation\InvitationToMail: async
             App\Inbox\Infrastructure\Mail\NotificationToMail: async
+            App\Demo\Infrastructure\Messenger\SandboxToBuild: async
 
 when@test:
     framework:

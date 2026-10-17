@@ -11,6 +11,7 @@ namespace App\Identity\Application\StepUp;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\PasswordHasher;
@@ -40,6 +41,7 @@ final readonly class ConfirmStepUp
         private PasskeyAssertions $assertions,
         private AuditTrail $audit,
         private StepUpProofs $proofs,
+        private DemoAccounts $demoAccounts,
         private ClockInterface $clock,
         #[Autowire(param: 'app.step_up.valid_for')]
         private string $validFor,
@@ -49,9 +51,15 @@ final readonly class ConfirmStepUp
     ) {
     }
 
-    /** Whether this account proved itself in this sign-in within the last few minutes. */
+    /**
+     * Whether this account proved itself in this sign-in within the last few minutes. A demo visitor's account always
+     * has: it has nothing to prove itself with, and the sandbox it opens holds nothing of anyone's.
+     */
     public function isRecent(Uuid $userId): bool
     {
+        if ($this->demoAccounts->isDemo($userId)) {
+            return true;
+        }
         $at = $this->proofs->lastFor($userId);
 
         return null !== $at && $this->clock->now() <= $at->add(new \DateInterval($this->validFor));

@@ -72,3 +72,9 @@ framework:
             policy: 'fixed_window'
             limit: 20
             interval: '15 minutes'
+        # « Essayer la démo » signs a visitor in with no account, and every entry spends a whole sandbox the worker then
+        # builds again: per client, ten an hour, then 429.
+        demo_entry:
+            policy: 'fixed_window'
+            limit: 10
+            interval: '1 hour'

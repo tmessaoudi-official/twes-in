@@ -14,111 +14,116 @@
         <div class="flex flex-col gap-6 py-4">
           @switch (tab) {
             @case ('security') {
-              <div
-                class="flex flex-wrap items-center justify-between gap-3"
-                data-testid="account-two-factor"
-              >
-                <div class="flex flex-col">
-                  <span class="font-medium">{{ 'account.two_factor' | translate }}</span>
-                  <span class="text-sm text-on-surface-variant">{{
-                    (twoFactorOn() ? 'account.two_factor_on' : 'account.two_factor_off') | translate
-                  }}</span>
-                </div>
-                <a
-                  mat-stroked-button
-                  routerLink="/two-factor"
-                  data-testid="account-two-factor-manage"
-                  >{{ 'account.two_factor_manage' | translate }}</a
+              @if (!demo()) {
+                <div
+                  class="flex flex-wrap items-center justify-between gap-3"
+                  data-testid="account-two-factor"
                 >
-              </div>
+                  <div class="flex flex-col">
+                    <span class="font-medium">{{ 'account.two_factor' | translate }}</span>
+                    <span class="text-sm text-on-surface-variant">{{
+                      (twoFactorOn() ? 'account.two_factor_on' : 'account.two_factor_off')
+                        | translate
+                    }}</span>
+                  </div>
+                  <a
+                    mat-stroked-button
+                    routerLink="/two-factor"
+                    data-testid="account-two-factor-manage"
+                    >{{ 'account.two_factor_manage' | translate }}</a
+                  >
+                </div>
 
-              <form
-                class="flex max-w-md flex-col gap-3"
-                (submit)="$event.preventDefault(); changePassword()"
-                data-testid="account-password"
-              >
-                <h2 class="text-lg font-semibold">{{ 'account.password.title' | translate }}</h2>
-                <p class="m-0 text-sm text-on-surface-variant">
-                  {{ 'account.password.intro' | translate }}
-                </p>
-                <div class="flex min-w-0 flex-col gap-1.5">
-                  <label class="twes-field-label" for="account-password-current">{{
-                    'account.password.current' | translate
-                  }}</label>
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                    <input
-                      matInput
-                      #passwordCurrentField
-                      id="account-password-current"
-                      type="password"
-                      autocomplete="current-password"
-                      [value]="passwordCurrent()"
-                      (input)="passwordCurrent.set($any($event.target).value)"
-                      data-testid="account-password-current"
-                    />
-                    <app-password-toggle matSuffix [field]="passwordCurrentField" />
-                  </mat-form-field>
-                </div>
-                <div class="flex min-w-0 flex-col gap-1.5">
-                  <label class="twes-field-label" for="account-password-new">{{
-                    'account.password.new' | translate
-                  }}</label>
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                    <input
-                      matInput
-                      #passwordNewField
-                      id="account-password-new"
-                      type="password"
-                      autocomplete="new-password"
-                      [value]="passwordNew()"
-                      (input)="passwordNew.set($any($event.target).value)"
-                      data-testid="account-password-new"
-                    />
-                    <app-password-toggle matSuffix [field]="passwordNewField" />
-                    <mat-hint>{{ 'account.password.new_hint' | translate }}</mat-hint>
-                  </mat-form-field>
-                </div>
-                <div class="flex min-w-0 flex-col gap-1.5">
-                  <label class="twes-field-label" for="account-password-again">{{
-                    'account.password.again' | translate
-                  }}</label>
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                    <input
-                      matInput
-                      #passwordAgainField
-                      id="account-password-again"
-                      type="password"
-                      autocomplete="new-password"
-                      [value]="passwordAgain()"
-                      (input)="passwordAgain.set($any($event.target).value)"
-                      data-testid="account-password-again"
-                    />
-                    <app-password-toggle matSuffix [field]="passwordAgainField" />
-                  </mat-form-field>
-                </div>
-                @if (passwordProblem(); as problem) {
-                  <p
-                    role="alert"
-                    class="m-0 text-sm text-error"
-                    data-testid="account-password-problem"
-                  >
-                    {{ 'account.password.problems.' + problem | translate }}
+                <form
+                  class="flex max-w-md flex-col gap-3"
+                  (submit)="$event.preventDefault(); changePassword()"
+                  data-testid="account-password"
+                >
+                  <h2 class="text-lg font-semibold">{{ 'account.password.title' | translate }}</h2>
+                  <p class="m-0 text-sm text-on-surface-variant">
+                    {{ 'account.password.intro' | translate }}
                   </p>
-                }
-                <div>
-                  <button
-                    mat-flat-button
-                    type="submit"
-                    [disabled]="!passwordReady() || passwordBusy()"
-                    data-testid="account-password-submit"
-                  >
-                    {{ 'account.password.submit' | translate }}
-                  </button>
-                </div>
-              </form>
+                  <div class="flex min-w-0 flex-col gap-1.5">
+                    <label class="twes-field-label" for="account-password-current">{{
+                      'account.password.current' | translate
+                    }}</label>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <input
+                        matInput
+                        #passwordCurrentField
+                        id="account-password-current"
+                        type="password"
+                        autocomplete="current-password"
+                        [value]="passwordCurrent()"
+                        (input)="passwordCurrent.set($any($event.target).value)"
+                        data-testid="account-password-current"
+                      />
+                      <app-password-toggle matSuffix [field]="passwordCurrentField" />
+                    </mat-form-field>
+                  </div>
+                  <div class="flex min-w-0 flex-col gap-1.5">
+                    <label class="twes-field-label" for="account-password-new">{{
+                      'account.password.new' | translate
+                    }}</label>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <input
+                        matInput
+                        #passwordNewField
+                        id="account-password-new"
+                        type="password"
+                        autocomplete="new-password"
+                        [value]="passwordNew()"
+                        (input)="passwordNew.set($any($event.target).value)"
+                        data-testid="account-password-new"
+                      />
+                      <app-password-toggle matSuffix [field]="passwordNewField" />
+                      <mat-hint>{{ 'account.password.new_hint' | translate }}</mat-hint>
+                    </mat-form-field>
+                  </div>
+                  <div class="flex min-w-0 flex-col gap-1.5">
+                    <label class="twes-field-label" for="account-password-again">{{
+                      'account.password.again' | translate
+                    }}</label>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <input
+                        matInput
+                        #passwordAgainField
+                        id="account-password-again"
+                        type="password"
+                        autocomplete="new-password"
+                        [value]="passwordAgain()"
+                        (input)="passwordAgain.set($any($event.target).value)"
+                        data-testid="account-password-again"
+                      />
+                      <app-password-toggle matSuffix [field]="passwordAgainField" />
+                    </mat-form-field>
+                  </div>
+                  @if (passwordProblem(); as problem) {
+                    <p
+                      role="alert"
+                      class="m-0 text-sm text-error"
+                      data-testid="account-password-problem"
+                    >
+                      {{ 'account.password.problems.' + problem | translate }}
+                    </p>
+                  }
+                  <div>
+                    <button
+                      mat-flat-button
+                      type="submit"
+                      [disabled]="!passwordReady() || passwordBusy()"
+                      data-testid="account-password-submit"
+                    >
+                      {{ 'account.password.submit' | translate }}
+                    </button>
+                  </div>
+                </form>
+              }
 
               <app-connected-devices />
-              <app-account-deletion />
+              @if (!demo()) {
+                <app-account-deletion />
+              }
             }
             @case ('preferences') {
               <div class="flex flex-col gap-3">

@@ -45,6 +45,7 @@ function signedIn(mfa: MfaStatus): SignedInState {
       displayName: 'Owner',
       locale: 'fr',
       isPlatformOperator: false,
+      demo: false,
     },
     company: null,
     permissions: [],

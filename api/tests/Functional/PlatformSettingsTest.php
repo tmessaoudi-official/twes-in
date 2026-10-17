@@ -34,6 +34,8 @@ final class PlatformSettingsTest extends ApiTestCase
             'account.deletion_days',
             // The days the owner of a company closed down may take it back (Tenancy\Application\Company\CompanyClosingSettings).
             'company.reopen_days',
+            // Whether visitors may try the demo, and how many sandboxes may exist at once (Demo\Application\DemoSettings).
+            'demo.enabled', 'demo.sandboxes_max',
             // The publisher's and host's identity the legal pages name (Legal\Application\LegalSettings), empty until filled in.
             'legal.backup.provider', 'legal.commercial.email', 'legal.host.address', 'legal.host.country', 'legal.host.name', 'legal.host.phone', 'legal.jurisdiction',
             'legal.mail.provider', 'legal.monitor.provider', 'legal.privacy.email', 'legal.publisher.address', 'legal.publisher.director',

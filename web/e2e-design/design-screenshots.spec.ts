@@ -16,6 +16,7 @@ const me = {
     displayName: 'Operator',
     locale: 'fr',
     isPlatformOperator: true,
+    demo: false,
   },
   company: {
     id: COMPANY_ID,

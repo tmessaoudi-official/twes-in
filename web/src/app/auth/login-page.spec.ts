@@ -10,7 +10,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import type { Me } from '../api/types.gen';
+import type { DemoAvailability, Me } from '../api/types.gen';
 import { LoginPage } from './login-page';
 import { PasskeyClient } from './passkey-client';
 import { provideStillAppearance } from '../shared/testing/appearance';
@@ -34,6 +34,8 @@ class StaticLoader implements TranslateLoader {
           submit: 'Se connecter',
           submitting: 'Connexion…',
           signup: 'Créer un compte',
+          demo_title: 'Essayer la démo',
+          demo_intro: 'Une entreprise fictive et son historique',
         },
         mfa: {
           title: 'Vérification en deux étapes',
@@ -53,6 +55,8 @@ class StaticLoader implements TranslateLoader {
           mfa_not_pending: 'Reconnectez-vous',
           network: 'Serveur injoignable',
           invalid_passkey: 'Clé refusée',
+          demo_busy: 'La démo se prépare : réessayez dans un instant.',
+          demo_off: 'La démo est fermée.',
         },
       },
     });
@@ -66,6 +70,7 @@ const me: Me = {
     displayName: 'Owner',
     locale: 'fr',
     isPlatformOperator: false,
+    demo: false,
   },
   company: null,
   permissions: [],
@@ -103,14 +108,26 @@ describe('LoginPage', () => {
 
   afterEach(() => TestBed.inject(HttpTestingController).verify());
 
-  async function render(signupOpen = false) {
+  const DEMO_OPEN: DemoAvailability = {
+    enabled: true,
+    countries: [
+      { code: 'TN', company: 'Carthage Conseil' },
+      { code: 'FR', company: 'Atelier Mercier' },
+    ],
+  };
+
+  async function render(
+    signupOpen = false,
+    demo: DemoAvailability = { enabled: false, countries: [] },
+  ) {
     const fixture = TestBed.createComponent(LoginPage);
-    // The health probe and the signup availability are asked at construction; whenStable() would wait for them.
+    // The health probe, the signup and the demo availability are asked at construction; whenStable() would wait for them.
     const http = TestBed.inject(HttpTestingController);
     http.expectOne('/api/health').flush({ status: 'ok', database: 'ok' });
     http
       .expectOne('/api/signup')
       .flush({ enabled: signupOpen, countries: signupOpen ? ['TN'] : [] });
+    http.expectOne({ method: 'GET', url: '/api/auth/demo' }).flush(demo);
     await fixture.whenStable();
     await new Promise((resolve) => setTimeout(resolve, 0));
     await fixture.whenStable();
@@ -175,6 +192,63 @@ describe('LoginPage', () => {
     const { query } = await render(false);
 
     expect(query('login-signup')).toBeNull();
+  });
+
+  it('offers the demo in each country it is open in, with the company each holds', async () => {
+    const { query } = await render(false, DEMO_OPEN);
+
+    expect(query('login-demo')?.textContent).toContain('Essayer la démo');
+    expect(query('login-demo-TN')?.textContent).toContain('Tunisie');
+    expect(query('login-demo-TN')?.textContent).toContain('Carthage Conseil');
+    expect(query('login-demo-FR')?.textContent).toContain('France');
+    expect(query('login-demo-FR')?.textContent).toContain('Atelier Mercier');
+  });
+
+  it('offers no demo while it is closed', async () => {
+    const { query } = await render();
+
+    expect(query('login-demo')).toBeNull();
+  });
+
+  it('enters the demo of the country picked and opens the home page', async () => {
+    const { fixture, http, query } = await render(false, DEMO_OPEN);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+    query<HTMLButtonElement>('login-demo-FR')!.click();
+    const request = http.expectOne({ method: 'POST', url: '/api/auth/demo' });
+    expect(request.request.body).toEqual({ country: 'FR' });
+    request.flush({ ...me, user: { ...me.user, email: 'demo@example.com', demo: true } });
+    await settle(fixture);
+
+    expect(navigate).toHaveBeenCalledWith('/');
+  });
+
+  it('asks the visitor to try again in a moment while no demo is ready', async () => {
+    const { fixture, http, query } = await render(false, DEMO_OPEN);
+
+    query<HTMLButtonElement>('login-demo-TN')!.click();
+    http
+      .expectOne({ method: 'POST', url: '/api/auth/demo' })
+      .flush({ error: 'demo_busy' }, { status: 503, statusText: 'Service Unavailable' });
+    await settle(fixture);
+
+    expect(query('login-demo-error')?.getAttribute('role')).toBe('alert');
+    expect(query('login-demo-error')?.textContent).toContain('La démo se prépare');
+    expect(query('login-demo-TN')).not.toBeNull();
+  });
+
+  it('takes the demo away when it was closed since the page opened', async () => {
+    const { fixture, http, query } = await render(false, DEMO_OPEN);
+
+    query<HTMLButtonElement>('login-demo-TN')!.click();
+    http
+      .expectOne({ method: 'POST', url: '/api/auth/demo' })
+      .flush({ error: 'demo_off' }, { status: 404, statusText: 'Not Found' });
+    await settle(fixture);
+
+    expect(query('login-demo-error')?.textContent).toContain('La démo est fermée');
+    expect(query('login-demo-TN')).toBeNull();
+    expect(query('login-demo-FR')).toBeNull();
   });
 
   it('refuses an empty submission without calling the API', async () => {

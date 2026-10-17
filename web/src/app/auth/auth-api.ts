@@ -5,6 +5,8 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom, Observable } from 'rxjs';
 import type {
   AuthError,
+  DemoAvailability as ApiDemoAvailability,
+  DemoEntry,
   LoginRequest,
   Me,
   MeSubscription,
@@ -24,6 +26,7 @@ import type {
   CompanyAccess,
   CompanySubscription,
   Credentials,
+  DemoAvailability,
   LoginError,
   PasskeyCredential,
   PasskeyOptions,
@@ -63,6 +66,24 @@ export class AuthApi {
     const body: LoginRequest = { email: credentials.email, password: credentials.password };
     const answer = await send(this.http.post<Me | MfaPending>('/api/auth/login', body));
     return 'mfaRequired' in answer ? 'second_factor' : toState(answer);
+  }
+
+  /** Whether the demo is open, and in which countries: read with no session. */
+  async demoAvailability(): Promise<DemoAvailability> {
+    const body = await send(this.http.get<ApiDemoAvailability>('/api/auth/demo'));
+    return {
+      enabled: body.enabled,
+      countries: body.countries.map((country) => ({
+        code: country.code,
+        company: country.company,
+      })),
+    };
+  }
+
+  /** Signs in, with no account, as the owner of the demo sandbox ready for that country. */
+  async enterDemo(country: string): Promise<SignedInState> {
+    const body: DemoEntry = { country };
+    return toState(await send(this.http.post<Me>('/api/auth/demo', body)));
   }
 
   /** The second half of a login: a six-digit code, or a recovery code. */
@@ -220,6 +241,7 @@ function toState(me: Me): SignedInState {
       displayName: me.user.displayName,
       locale: me.user.locale,
       isPlatformOperator: me.user.isPlatformOperator,
+      demo: me.user.demo,
     },
     company:
       me.company === null

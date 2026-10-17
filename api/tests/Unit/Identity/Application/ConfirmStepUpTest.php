@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Identity\Application;
 
+use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\Login\FailedLoginAttempt;
 use App\Identity\Application\Login\RecordFailedLogin;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
@@ -39,6 +40,8 @@ final class ConfirmStepUpTest extends TestCase
     private User $user;
     private MockClock $clock;
     private StepUpProofs $proofs;
+    /** @var list<string> the accounts a demo visitor holds */
+    private array $demo = [];
 
     protected function setUp(): void
     {
@@ -158,6 +161,15 @@ final class ConfirmStepUpTest extends TestCase
         self::assertTrue($this->confirm()->isRecent($this->user->getId()));
     }
 
+    public function testADemoVisitorCountsAsHavingJustProvedItself(): void
+    {
+        $visitor = Uuid::v7();
+        $this->demo = [$visitor->toRfc4122()];
+
+        self::assertTrue($this->confirm()->isRecent($visitor), 'a throwaway account has no password nor passkey to prove itself with');
+        self::assertFalse($this->confirm()->isRecent($this->user->getId()), 'everyone else still proves themselves');
+    }
+
     public function testAnotherAccountsProofIsNotThisOnes(): void
     {
         $this->confirm()->withPassword($this->user->getId(), self::PASSWORD);
@@ -181,7 +193,19 @@ final class ConfirmStepUpTest extends TestCase
         $assertions = new PasskeyAssertions($this->createStub(PasskeyRepository::class), $this->createStub(PasskeyCeremonies::class));
 
         $audit = new InMemoryAuditTrail();
+        $demo = $this->demo;
+        $demoAccounts = new class($demo) implements DemoAccounts {
+            /** @param list<string> $demo */
+            public function __construct(private array $demo)
+            {
+            }
 
-        return new ConfirmStepUp($this->users, $hasher, $assertions, $audit, $this->proofs, $this->clock, 'PT5M', $attempts);
+            public function isDemo(Uuid $userId): bool
+            {
+                return \in_array($userId->toRfc4122(), $this->demo, true);
+            }
+        };
+
+        return new ConfirmStepUp($this->users, $hasher, $assertions, $audit, $this->proofs, $demoAccounts, $this->clock, 'PT5M', $attempts);
     }
 }

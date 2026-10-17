@@ -13,6 +13,7 @@ const owner: Me = {
     displayName: 'Owner',
     locale: 'fr',
     isPlatformOperator: false,
+    demo: false,
   },
   company: {
     id: '019...',
@@ -71,6 +72,37 @@ describe('AuthApi', () => {
       { key: 'quotes', planned: 'v1' },
       { key: 'zakat', planned: 'later' },
     ]);
+  });
+
+  it('reads which countries the demo is open in', async () => {
+    const pending = api.demoAvailability();
+    http
+      .expectOne({ method: 'GET', url: '/api/auth/demo' })
+      .flush({ enabled: true, countries: [{ code: 'TN', company: 'Carthage Conseil' }] });
+
+    expect(await pending).toEqual({
+      enabled: true,
+      countries: [{ code: 'TN', company: 'Carthage Conseil' }],
+    });
+  });
+
+  it('enters the demo of a country and says the account is a demo one', async () => {
+    const pending = api.enterDemo('TN');
+    const request = http.expectOne({ method: 'POST', url: '/api/auth/demo' });
+    expect(request.request.body).toEqual({ country: 'TN' });
+    request.flush({ ...owner, user: { ...owner.user, email: 'demo@example.com', demo: true } });
+
+    const state = await pending;
+    expect(state.user).toEqual(expect.objectContaining({ email: 'demo@example.com', demo: true }));
+  });
+
+  it('carries the reason the demo could not be entered', async () => {
+    const pending = api.enterDemo('TN');
+    http
+      .expectOne('/api/auth/demo')
+      .flush({ error: 'demo_busy' }, { status: 503, statusText: 'Service Unavailable' });
+
+    await expect(pending).rejects.toEqual(new AuthRefused('demo_busy'));
   });
 
   it('carries how to reach the platform, each channel as the operators gave it', async () => {

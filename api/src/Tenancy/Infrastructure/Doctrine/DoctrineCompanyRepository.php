@@ -77,12 +77,14 @@ final readonly class DoctrineCompanyRepository implements CompanyRepository
 
     /**
      * One DELETE, never the ORM's removal: a company's rows reach each other through foreign keys checked at the end of
-     * the statement, so only a single statement can take them all; the ORM would delete them one table at a time.
+     * the statement, so only a single statement can take them all; the ORM would delete them one table at a time. The
+     * unit of work is cleared after it: a membership or a document of the company it still held would point at a row
+     * that is gone, and the next flush would fail on it or write it back.
      */
     public function removeWhole(Company $company): void
     {
         $this->entityManager->getConnection()->executeStatement('DELETE FROM company WHERE id = ?', [$company->getId()->toRfc4122()]);
-        $this->entityManager->detach($company);
+        $this->entityManager->clear();
     }
 
     public function search(CompanySearch $search, PageRequest $page): Page

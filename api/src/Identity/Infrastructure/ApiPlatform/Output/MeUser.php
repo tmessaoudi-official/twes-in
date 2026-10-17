@@ -19,6 +19,8 @@ final readonly class MeUser
         #[ApiProperty(required: true)] public string $displayName,
         #[ApiProperty(required: true)] public string $locale,
         #[ApiProperty(required: true)] public bool $isPlatformOperator,
+        /** A demo visitor's throwaway account: the app says so, and offers nothing that would make it a real one. */
+        #[ApiProperty(required: true)] public bool $demo = false,
     ) {
     }
 }

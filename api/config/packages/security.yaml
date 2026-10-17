@@ -48,6 +48,8 @@ security:
         # A browser's error report, from any page, the sign-in page included.
         - { path: ^/api/client-errors$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
+        # « Essayer la démo »: a visitor with no account enters a demo sandbox (DemoEntryController).
+        - { path: ^/api/auth/demo$, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         # Invitation links are opened from a mail client, so under SameSite=Strict they arrive with no session
         # cookie at all: these two operations are designed logged out (docs/SPEC.md § 3 Auth, onboarding).

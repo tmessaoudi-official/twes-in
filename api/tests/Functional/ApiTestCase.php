@@ -510,7 +510,8 @@ abstract class ApiTestCase extends WebTestCase
      */
     protected function queued(): array
     {
-        return array_map(static fn (Envelope $envelope): object => $envelope->getMessage(), array_values([...self::queue()->get()]));
+        // get() hands over one message unless asked for more: the queue is read whole.
+        return array_map(static fn (Envelope $envelope): object => $envelope->getMessage(), array_values([...self::queue()->get(\PHP_INT_MAX)]));
     }
 
     /** Hands what is queued to the bus as the worker would, until nothing is left; how many it handed. */
