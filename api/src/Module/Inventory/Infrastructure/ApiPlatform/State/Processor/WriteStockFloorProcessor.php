@@ -47,7 +47,7 @@ final readonly class WriteStockFloorProcessor implements ProcessorInterface
         try {
             $floor = $operation instanceof Post
                 ? $this->map->addFloor($company, Uuid::fromString($data->establishmentId), $data->name, $data->level, (string) $data->widthMetres, (string) $data->depthMetres, $actor)
-                : $this->map->reviseFloor($company, CompanyPath::identifier($uriVariables, 'floorId'), $data->name, $data->level, (string) $data->widthMetres, (string) $data->depthMetres, $image, $data->imageMetresWide, $data->imageOpacity, $actor);
+                : $this->map->reviseFloor($company, CompanyPath::identifier($uriVariables, 'floorId'), $data->name, $data->level, (string) $data->widthMetres, (string) $data->depthMetres, $image, $data->imageMetresWide, $data->imageOpacity, $actor, $data->version);
         } catch (VenueAreaNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (VenueLevelTaken $taken) {

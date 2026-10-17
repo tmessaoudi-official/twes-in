@@ -102,6 +102,7 @@ const ground: StockFloorRow = {
   imageMetresWide: null,
   imageOpacity: 35,
   drawingCount: 1,
+  version: 1,
 };
 const upstairs: StockFloorRow = { ...ground, id: 'f2', name: 'Étage 1', level: 1, drawingCount: 0 };
 
@@ -147,6 +148,7 @@ const wall: StockStructureRow = {
   depth: '0.200',
   rotation: 0,
   height: '3.000',
+  version: 1,
 };
 
 const options: StockOptions = {
@@ -262,10 +264,21 @@ describe('StockMapPage', () => {
     facade.reloadDrawings.mockReset().mockResolvedValue(undefined);
     facade.loadStructures.mockReset().mockResolvedValue(undefined);
     facade.reloadStructures.mockReset().mockResolvedValue(undefined);
-    facade.buildStructure.mockReset().mockResolvedValue(true);
+    facade.buildStructure
+      .mockReset()
+      .mockImplementation(
+        async (_company: string, floorId: string, input: object, id: string | null) => ({
+          ...wall,
+          ...input,
+          id: id ?? 's9',
+          floorId,
+          version: id === null ? 1 : 2,
+        }),
+      );
     facade.eraseStructure.mockReset().mockResolvedValue(true);
     facade.createFloor.mockReset().mockResolvedValue(true);
     facade.reviseFloor.mockReset().mockResolvedValue(true);
+    facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.deleteFloor.mockReset().mockResolvedValue(true);
     facade.draw.mockReset().mockResolvedValue(true);
     facade.deleteLocation.mockReset().mockResolvedValue(true);
@@ -753,6 +766,53 @@ describe('StockMapPage', () => {
       imageMetresWide: null,
       imageOpacity: 35,
     });
+  });
+
+  it('revises a floor on the version read, and merges one saved since into the open form', async () => {
+    q('stock-floor-f1')!.click();
+    await settle();
+    q('stock-floor-edit')!.click();
+    await settle();
+    facade.reviseFloor.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    facade.loadPlanContext.mockImplementationOnce(async () =>
+      floors.set([
+        { ...ground, level: 3, imageFileId: 'img2', imageMetresWide: '24', version: 2 },
+        upstairs,
+      ]),
+    );
+
+    type('field-name', 'Quai');
+    type('field-widthMetres', '24');
+    type('field-depthMetres', '15');
+    q('stock-floor-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-level') as HTMLInputElement).value).toBe('3'));
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Quai');
+    expect(q('stock-map-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('stock-floor-save')!.click();
+    await settle();
+    expect(facade.reviseFloor).toHaveBeenLastCalledWith(
+      'c1',
+      'f1',
+      // The plan image is on no form here: what the floor holds now is carried, never what it held when opened.
+      expect.objectContaining({
+        name: 'Quai',
+        level: 3,
+        imageFileId: 'img2',
+        imageMetresWide: '24',
+      }),
+      2,
+    );
   });
 
   it('says why a level was refused', async () => {
@@ -1831,6 +1891,7 @@ describe('StockMapPage', () => {
       'f1',
       expect.objectContaining({ kind: 'door', width: '0.800', depth: '0.150', height: '2.000' }),
       null,
+      null,
     );
     expect(successToasts()).toContain('inventory.plan.structure_saved');
     expect(q('field-width')).toBeNull();
@@ -1867,6 +1928,7 @@ describe('StockMapPage', () => {
         width: '6.900',
         depth: '0.200',
       }),
+      null,
       null,
     );
     expect(successToasts()).toContain('inventory.plan.undone');
@@ -2040,6 +2102,7 @@ describe('StockMapPage', () => {
       'f1',
       expect.objectContaining({ kind: 'door', width: '0.800' }),
       null,
+      null,
     );
   });
 
@@ -2060,6 +2123,73 @@ describe('StockMapPage', () => {
       'f1',
       expect.objectContaining({ kind: 'wall', width: '6.900' }),
       's1',
+      1,
+    );
+  });
+
+  /** « Annuler » puts back the piece on the version its save produced, and never over someone else's change. */
+  it('takes back a revised piece on the version its save produced, and says so when it changed since', async () => {
+    q('stock-structure-wall')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+    type('field-name', 'Mur sud');
+    (q('stock-structure-save') as HTMLElement).click();
+    await settle();
+
+    const takeBack = undoOf('inventory.plan.structure_saved');
+    takeBack();
+    await settle();
+    expect(facade.buildStructure).toHaveBeenLastCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({ name: 'Mur nord' }),
+      's1',
+      2,
+    );
+    expect(successToasts()).toContain('inventory.plan.undone');
+
+    (TestBed.inject(Feedback) as RecordedFeedback).said.length = 0;
+    facade.buildStructure.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    takeBack();
+    await settle();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.undo_refused',
+      params: undefined,
+    });
+    expect(successToasts()).not.toContain('inventory.plan.undone');
+    expect(q('stock-map-error')).toBeNull();
+  });
+
+  it('merges a piece saved since into its open form, and saves on that version next', async () => {
+    q('stock-structure-wall')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+    facade.buildStructure.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.reloadStructures.mockImplementationOnce(async () =>
+      structures.set([{ ...wall, kind: 'door', version: 2 }]),
+    );
+
+    type('field-name', 'Mur sud');
+    (q('stock-structure-save') as HTMLElement).click();
+    await settle();
+    await vi.waitFor(() => expect(facade.reloadStructures).toHaveBeenCalledWith('c1'));
+    await settle();
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Mur sud');
+    expect(q('stock-map-error')).toBeNull();
+    (q('stock-structure-save') as HTMLElement).click();
+    await settle();
+    expect(facade.buildStructure).toHaveBeenLastCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({ kind: 'door', name: 'Mur sud' }),
+      's1',
+      2,
     );
   });
 

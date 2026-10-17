@@ -768,7 +768,14 @@ describe('InventoryApi', () => {
     const request = http.expectOne('/api/companies/c1/stock-floors');
     expect(request.request.method).toBe('GET');
     request.flush([
-      { id: 'f1', establishmentId: 'e1', name: 'Rez-de-chaussée', level: 0, drawingCount: 3 },
+      {
+        id: 'f1',
+        establishmentId: 'e1',
+        name: 'Rez-de-chaussée',
+        level: 0,
+        drawingCount: 3,
+        version: 4,
+      },
     ]);
 
     expect(await pending).toEqual([
@@ -783,8 +790,44 @@ describe('InventoryApi', () => {
         imageMetresWide: null,
         imageOpacity: 35,
         drawingCount: 3,
+        version: 4,
       },
     ]);
+  });
+
+  /** A floor's form and a piece's revision send the version read, and one saved since is told apart from the rest. */
+  it('revises a floor and a piece of the building on the version read', async () => {
+    const floor = {
+      establishmentId: 'e1',
+      name: 'Quai',
+      level: 0,
+      widthMetres: '30',
+      depthMetres: '20',
+      imageFileId: null,
+      imageMetresWide: null,
+      imageOpacity: 35,
+    };
+    const revised = api.reviseFloor('c1', 'f1', floor, 4);
+    const put = http.expectOne('/api/companies/c1/stock-floors/f1');
+    expect([put.request.method, put.request.body]).toEqual(['PUT', { ...floor, version: 4 }]);
+    put.flush({ type: '/problems/record-changed' }, { status: 409, statusText: 'Conflict' });
+    await expect(revised).rejects.toMatchObject({ code: 'record_changed' });
+
+    const piece = {
+      kind: 'door' as const,
+      name: 'Porte',
+      x: '0.000',
+      y: '0.000',
+      width: '0.900',
+      depth: '0.200',
+      rotation: 0,
+      height: '2.100',
+    };
+    const reshaped = api.reshapeStructure('c1', 's1', piece, 2);
+    const again = http.expectOne('/api/companies/c1/stock-structures/s1');
+    expect([again.request.method, again.request.body]).toEqual(['PUT', { ...piece, version: 2 }]);
+    again.flush({ id: 's1', floorId: 'f1', kind: 'door', name: 'Porte', version: 3 });
+    expect((await reshaped).version).toBe(3);
   });
 
   /**
@@ -808,6 +851,7 @@ describe('InventoryApi', () => {
         depth: '0.200',
         rotation: 0,
         height: '4.000',
+        version: 5,
       },
     ]);
 
@@ -823,6 +867,7 @@ describe('InventoryApi', () => {
         depth: '0.200',
         rotation: 0,
         height: '4.000',
+        version: 5,
       },
     ]);
 

@@ -416,10 +416,20 @@
     <!-- The floor's own form, in the panel beside the board, or on its own while there is no floor to draw yet. -->
     <ng-template #floorFormTemplate>
       @if (floorFormGroup(); as group) {
+        @if (floorSync.changedBy(); as changedBy) {
+          <app-record-changed
+            [changedBy]="changedBy"
+            [conflictCount]="floorSync.conflicts().length"
+            (reload)="floorSync.reloadSaved(group)"
+          />
+        }
         @if (floorDescriptor(); as descriptor) {
           <app-descriptor-form
             [descriptor]="descriptor"
             [form]="group"
+            [updated]="floorSync.updated()"
+            [conflicts]="floorSync.conflicts()"
+            (resolved)="floorSync.resolve(group, $event)"
             testId="stock-floor-form"
             (submitted)="saveFloor($event)"
           >
@@ -1584,10 +1594,20 @@
                 repair: a doorway traced with the wall tool is right in every measurement and wrong in exactly one.
               -->
               @if (structureFormGroup(); as group) {
+                @if (structureSync.changedBy(); as changedBy) {
+                  <app-record-changed
+                    [changedBy]="changedBy"
+                    [conflictCount]="structureSync.conflicts().length"
+                    (reload)="structureSync.reloadSaved(group)"
+                  />
+                }
                 @if (structureDescriptor(); as descriptor) {
                   <app-descriptor-form
                     [descriptor]="descriptor"
                     [form]="group"
+                    [updated]="structureSync.updated()"
+                    [conflicts]="structureSync.conflicts()"
+                    (resolved)="structureSync.resolve(group, $event)"
                     testId="stock-structure-form"
                     (submitted)="saveStructure($event)"
                   >

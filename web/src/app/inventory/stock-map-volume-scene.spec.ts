@@ -56,6 +56,7 @@ function structure(overrides: Partial<StockStructureRow> = {}): StockStructureRo
     depth: '0.200',
     rotation: 0,
     height: '3.000',
+    version: 1,
     ...overrides,
   };
 }

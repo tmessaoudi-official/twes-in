@@ -16,7 +16,8 @@ import type {
   StockHoldingStockHoldingRead,
   StockDrawingStockDrawingWriteValidationStockDrawingWrite as StockDrawingStockDrawingWrite,
   StockFloorStockFloorRead,
-  StockFloorStockFloorWriteValidationStockFloorWrite as StockFloorStockFloorWrite,
+  StockFloorStockFloorWriteValidationStockFloorWriteStockFloorCreate as StockFloorStockFloorWrite,
+  StockFloorStockFloorWriteRecordReviseValidationStockFloorWriteRecordRevise as StockFloorStockFloorRevise,
   StockLevelJsonldStockLevelRead,
   StockMovementJsonldStockMovementRead,
   StockLocationStockLocationRead,
@@ -28,6 +29,7 @@ import type {
   StockOptionsStockOptionsRead,
   StockStructureStockStructureRead,
   StockStructureStockStructureWriteValidationStockStructureWrite as StockStructureStockStructureWrite,
+  StockStructureStockStructureWriteRecordReviseValidationStockStructureWriteRecordRevise as StockStructureStockStructureRevise,
   StockProductPickStockProductPickRead,
   StockVendorPickStockVendorPickRead,
   StockWhereaboutStockWhereaboutRead,
@@ -433,15 +435,18 @@ export class InventoryApi {
   }
 
   /** A floor's name, its level and the plan behind it are one form, so they are one request. */
-  async reviseFloor(companyId: string, id: string, input: StockFloorInput): Promise<StockFloorRow> {
+  async reviseFloor(
+    companyId: string,
+    id: string,
+    input: StockFloorInput,
+    version: number | null,
+  ): Promise<StockFloorRow> {
+    const body: StockFloorStockFloorRevise = { ...floorBody(input), version };
     return this.guard(
       async () =>
         toFloor(
           await firstValueFrom(
-            this.http.put<StockFloorStockFloorRead>(
-              path(companyId, 'stock-floors', id),
-              floorBody(input),
-            ),
+            this.http.put<StockFloorStockFloorRead>(path(companyId, 'stock-floors', id), body),
           ),
         ),
       'level_taken',
@@ -638,13 +643,15 @@ export class InventoryApi {
     companyId: string,
     structureId: string,
     input: StockStructureInput,
+    version: number | null,
   ): Promise<StockStructureRow> {
+    const body: StockStructureStockStructureRevise = { ...structureBody(input), version };
     return this.guard(async () =>
       toStructure(
         await firstValueFrom(
           this.http.put<StockStructureStockStructureRead>(
             path(companyId, 'stock-structures', structureId),
-            structureBody(input),
+            body,
           ),
         ),
       ),
@@ -947,6 +954,8 @@ function toFloor(raw: StockFloorStockFloorRead): StockFloorRow {
     imageMetresWide: raw.imageMetresWide ?? null,
     imageOpacity: raw.imageOpacity ?? DEFAULT_PLAN_OPACITY,
     drawingCount: raw.drawingCount ?? 0,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }
 
@@ -970,6 +979,8 @@ function toStructure(raw: StockStructureStockStructureRead): StockStructureRow {
     depth: raw.depth ?? '0.000',
     rotation: raw.rotation ?? 0,
     height: raw.height ?? '0.000',
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }
 

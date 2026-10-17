@@ -100,8 +100,9 @@ final class StockMapTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame(['24.000', '15.500'], [$this->json()['widthMetres'], $this->json()['depthMetres']]);
         $ground = $this->stringAt($this->json(), 'id');
+        $read = $this->intAt($this->json(), 'version');
 
-        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '30', 'depthMetres' => '15.5', 'imageFileId' => null, 'imageMetresWide' => null, 'imageOpacity' => 35]);
+        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '30', 'depthMetres' => '15.5', 'imageFileId' => null, 'imageMetresWide' => null, 'imageOpacity' => 35, 'version' => $read]);
         self::assertResponseIsSuccessful();
         $this->getJson($this->path('stock-floors'));
         self::assertSame('30.000', $this->jsonList()[0]['widthMetres']);
@@ -112,15 +113,16 @@ final class StockMapTest extends ApiTestCase
         $this->signedIn(['stock.read', 'stock.write']);
         $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
         $ground = $this->stringAt($this->json(), 'id');
+        $read = $this->intAt($this->json(), 'version');
         $file = Uuid::v7()->toRfc4122();
 
-        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15', 'imageFileId' => $file, 'imageMetresWide' => '24', 'imageOpacity' => 40]);
+        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15', 'imageFileId' => $file, 'imageMetresWide' => '24', 'imageOpacity' => 40, 'version' => $read]);
 
         self::assertResponseIsSuccessful();
         self::assertSame([$file, '24.000', 40], [$this->json()['imageFileId'], $this->json()['imageMetresWide'], $this->json()['imageOpacity']]);
 
         // An image with no scale cannot sit under rectangles measured in metres, so the two travel together.
-        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15', 'imageFileId' => $file, 'imageMetresWide' => null, 'imageOpacity' => 40]);
+        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15', 'imageFileId' => $file, 'imageMetresWide' => null, 'imageOpacity' => 40, 'version' => $this->intAt($this->json(), 'version')]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('imageMetresWide', (string) $this->client->getResponse()->getContent());
     }
@@ -440,7 +442,7 @@ final class StockMapTest extends ApiTestCase
 
         // Traced with the wall tool and really the doorway: the rectangle is right, only the kind is wrong.
         // The store already calls it something, and that is written down with the correction, trimmed.
-        $this->sendJson('PUT', $this->path('stock-structures', $wall), $this->piece(['kind' => 'door', 'width' => '0.9', 'height' => '2.1', 'name' => '  Porte du quai 2  ']));
+        $this->sendJson('PUT', $this->path('stock-structures', $wall), $this->piece(['kind' => 'door', 'width' => '0.9', 'height' => '2.1', 'name' => '  Porte du quai 2  ', 'version' => 1]));
         self::assertResponseIsSuccessful();
         self::assertSame(['door', '0.900', '2.100'], [$this->json()['kind'], $this->json()['width'], $this->json()['height']]);
         self::assertSame('Porte du quai 2', $this->json()['name']);
@@ -453,6 +455,47 @@ final class StockMapTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         $this->getJson($this->path('stock-floors', $ground).'/structures');
         self::assertSame([], $this->jsonList());
+    }
+
+    /** A floor's form and a piece's revision name the version they were opened at; one saved since answers 409. */
+    public function testAFloorOrAPieceRevisedOverAVersionSavedSinceIsRefusedAndOneWithoutAVersionToo(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $ground = $this->floor();
+        $floor = ['name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15', 'imageFileId' => null, 'imageMetresWide' => null, 'imageOpacity' => 35];
+        $this->getJson($this->path('stock-floors'));
+        $read = $this->intAt($this->jsonList()[0], 'version');
+
+        $this->sendJson('PUT', $this->path('stock-floors', $ground), [...$floor, 'version' => $read]);
+        self::assertResponseIsSuccessful();
+        self::assertSame($read, $this->json()['version'], 'a floor saved as it stood is not another version');
+        $this->sendJson('PUT', $this->path('stock-floors', $ground), [...$floor, 'name' => 'Quai', 'widthMetres' => '30', 'version' => $read]);
+        self::assertResponseIsSuccessful();
+        $saved = $this->intAt($this->json(), 'version');
+        self::assertGreaterThan($read, $saved);
+
+        $this->sendJson('PUT', $this->path('stock-floors', $ground), [...$floor, 'name' => 'Réserve', 'version' => $read]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->sendJson('PUT', $this->path('stock-floors', $ground), [...$floor, 'name' => 'Réserve']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('version', (string) $this->client->getResponse()->getContent());
+        $this->getJson($this->path('stock-floors'));
+        self::assertSame(['Quai', '30.000', $saved], [$this->jsonList()[0]['name'], $this->jsonList()[0]['widthMetres'], $this->jsonList()[0]['version']]);
+
+        $this->postJson($this->path('stock-floors', $ground).'/structures', $this->piece([]));
+        $wall = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version']);
+        $this->sendJson('PUT', $this->path('stock-structures', $wall), $this->piece(['name' => 'Mur nord', 'version' => 1]));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+        $this->sendJson('PUT', $this->path('stock-structures', $wall), $this->piece(['kind' => 'door', 'version' => 1]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->sendJson('PUT', $this->path('stock-structures', $wall), $this->piece(['kind' => 'door']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->getJson($this->path('stock-floors', $ground).'/structures');
+        self::assertSame([['wall', 'Mur nord', 2]], array_map(static fn (array $piece): array => [$piece['kind'], $piece['name'], $piece['version']], $this->jsonList()));
     }
 
     public function testAPieceOfStructureIsRefusedWithItsFieldAndNeedsTheWritePermission(): void
@@ -487,7 +530,7 @@ final class StockMapTest extends ApiTestCase
         self::assertSame(['wall'], array_column($this->jsonList(), 'kind'));
         $this->sendJson('DELETE', $this->path('stock-structures', $thin));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        $this->sendJson('PUT', $this->path('stock-structures', Uuid::v7()->toRfc4122()), $this->piece([]));
+        $this->sendJson('PUT', $this->path('stock-structures', Uuid::v7()->toRfc4122()), $this->piece(['version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
