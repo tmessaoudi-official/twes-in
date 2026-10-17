@@ -211,11 +211,15 @@ final readonly class ArrangeVenue
     /**
      * @throws VenueSpotNotFound
      * @throws InvalidVenue
+     * @throws RecordChanged     when the rectangle was saved since `$version` was read
      */
-    public function moveSpot(Company $company, Uuid $spotId, PlanRect $rect, ?Uuid $actorUserId): VenueSpot
+    public function moveSpot(Company $company, Uuid $spotId, PlanRect $rect, ?Uuid $actorUserId, ?int $version = null): VenueSpot
     {
-        return $this->transactions->run(function () use ($company, $spotId, $rect, $actorUserId): VenueSpot {
+        return $this->transactions->run(function () use ($company, $spotId, $rect, $actorUserId, $version): VenueSpot {
             $spot = $this->spot($company, $spotId);
+            if (null !== $version) {
+                $this->versions->expect($spot, $version);
+            }
             // Dropped where it already was: no row, so no other screen is told the plan moved.
             if ($spot->moveTo($rect, $this->clock->now())) {
                 $this->spots->save($spot);
@@ -224,6 +228,33 @@ final readonly class ArrangeVenue
 
             return $spot;
         });
+    }
+
+    /**
+     * What is drawn on a rectangle changed, which the rectangle counts as a change of its own: see VenueSpot::rebound().
+     *
+     * @throws VenueSpotNotFound
+     */
+    public function rebind(Company $company, Uuid $spotId, ?Uuid $actorUserId): void
+    {
+        $this->transactions->run(function () use ($company, $spotId, $actorUserId): void {
+            $spot = $this->spot($company, $spotId);
+            $spot->rebound($this->clock->now());
+            $this->spots->save($spot);
+            $this->record(self::SPOT_TYPE, $spot->getId(), self::SPOT_REVISED, $actorUserId, $company);
+        });
+    }
+
+    /**
+     * Whether a rectangle is still the version a person chose it at, for a step that changes several at once and must
+     * refuse before writing any of them.
+     *
+     * @throws VenueSpotNotFound
+     * @throws RecordChanged
+     */
+    public function expectSpot(Company $company, Uuid $spotId, int $version): void
+    {
+        $this->versions->expect($this->spot($company, $spotId), $version);
     }
 
     /** @throws VenueSpotNotFound */

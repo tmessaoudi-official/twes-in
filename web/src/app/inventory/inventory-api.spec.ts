@@ -935,6 +935,7 @@ describe('InventoryApi', () => {
         depth: '0.600',
         rotation: 90,
         height: '2.100',
+        version: 3,
       },
     ]);
 
@@ -952,6 +953,7 @@ describe('InventoryApi', () => {
         depth: '0.600',
         rotation: 90,
         height: '2.100',
+        version: 3,
       },
     ]);
   });
@@ -974,10 +976,38 @@ describe('InventoryApi', () => {
     expect(drawn.request.body).toEqual(rect);
     drawn.flush({ id: 'd1', floorId: 'f1', ...rect });
 
-    void api.moveDrawing('c1', 'd1', rect);
+    const move = api.moveDrawing('c1', 'd1', rect, 3);
     const moved = http.expectOne('/api/companies/c1/stock-drawings/d1');
     expect(moved.request.method).toBe('PUT');
-    moved.flush({ id: 'd1', floorId: 'f1', ...rect });
+    // A move sends the version the rectangle was opened at, and reads the one it was saved at.
+    expect(moved.request.body).toEqual({ ...rect, version: 3 });
+    moved.flush({ id: 'd1', floorId: 'f1', ...rect, version: 4 });
+    expect((await move).version).toBe(4);
+  });
+
+  /** A group's step names each rectangle with the version it was chosen at, and reads the versions it left. */
+  it('sends a group step with the versions it stands on', async () => {
+    const rect = {
+      x: '1.000',
+      y: '1.000',
+      width: '3.000',
+      depth: '1.000',
+      rotation: 0,
+      height: '2.000',
+    };
+    const step = api.changeDrawings('c1', 'f1', {
+      draws: [],
+      moves: [{ drawingId: 'd1', ...rect, version: 2 }],
+      erasures: [{ drawingId: 'd2', version: 5 }],
+    });
+    const sent = http.expectOne('/api/companies/c1/stock-floors/f1/drawing-changes');
+    expect(sent.request.body).toEqual({
+      draws: [],
+      moves: [{ drawingId: 'd1', ...rect, version: 2 }],
+      erasures: [{ drawingId: 'd2', version: 5 }],
+    });
+    sent.flush({ drawings: [{ id: 'd1', floorId: 'f1', locationId: 'l1', ...rect, version: 3 }] });
+    expect((await step).map((drawing) => [drawing.id, drawing.version])).toEqual([['d1', 3]]);
   });
 
   /**

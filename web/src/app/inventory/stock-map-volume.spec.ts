@@ -41,6 +41,7 @@ const rack: StockDrawingRow = {
   depth: '1.000',
   rotation: 0,
   height: '2.400',
+  version: 1,
 };
 
 /**

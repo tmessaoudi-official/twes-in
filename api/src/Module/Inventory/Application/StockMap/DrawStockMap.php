@@ -253,20 +253,29 @@ final readonly class DrawStockMap
      * @throws StockLocationNotFound
      * @throws InvalidVenue
      * @throws InvalidStockLocation
+     * @throws RecordChanged         when the rectangle was saved since `$version` was read
      */
-    public function moveDrawing(Company $company, Uuid $drawingId, Uuid $locationId, PlanRect $rect, ?Uuid $actorUserId): StockLocation
+    public function moveDrawing(Company $company, Uuid $drawingId, Uuid $locationId, PlanRect $rect, ?Uuid $actorUserId, ?int $version = null): StockLocation
     {
-        return $this->transactions->run(function () use ($company, $drawingId, $locationId, $rect, $actorUserId): StockLocation {
+        return $this->transactions->run(function () use ($company, $drawingId, $locationId, $rect, $actorUserId, $version): StockLocation {
             // Resolved and checked before the rectangle moves, for the reason draw() resolves first: a refusal must
             // leave the plan as it was, not as it would have been.
             $previous = $this->drawable($company, $locationId)->getSpot();
-            $spot = $this->venue->moveSpot($company, $drawingId, $rect, $actorUserId);
+            $spot = $this->venue->moveSpot($company, $drawingId, $rect, $actorUserId, $version);
+            $relabelled = true;
             foreach ($this->drawnAt($company, $spot) as $drawn) {
-                if (!$drawn->getId()->equals($locationId)) {
+                if ($drawn->getId()->equals($locationId)) {
+                    $relabelled = false;
+                } else {
                     $this->locations->drawAt($company, $drawn->getId(), null, $actorUserId);
                 }
             }
             $bound = $this->locations->drawAt($company, $locationId, $spot, $actorUserId);
+            // Pointed at another place, the rectangle is another version even where it stands, so a person who opened
+            // it labelled as it was is told rather than putting the old label back.
+            if ($relabelled) {
+                $this->venue->rebind($company, $spot->getId(), $actorUserId);
+            }
             // Given to another location, the rectangle that one was drawn on is erased rather than left unlabelled.
             if (null !== $previous && !$previous->getId()->equals($spot->getId())) {
                 $this->venue->removeSpot($company, $previous->getId(), $actorUserId);
@@ -421,14 +430,18 @@ final readonly class DrawStockMap
      * twelve leaves a person guessing. A move carries a rectangle only; which place a rectangle is drawn for is changed
      * one rectangle at a time, through its own form.
      *
-     * @param list<array{Uuid, PlanRect}> $draws    a place, and the rectangle to draw it at
-     * @param list<array{Uuid, PlanRect}> $moves    a rectangle of this floor, and where it now stands
-     * @param list<Uuid>                  $erasures rectangles of this floor to undraw
+     * Every rectangle moved or undrawn names the version it was chosen at, and one changed since refuses the whole
+     * step: the group is read again and moved on what is there, rather than half of it over someone else's change.
+     *
+     * @param list<array{Uuid, PlanRect}>      $draws    a place, and the rectangle to draw it at
+     * @param list<array{Uuid, PlanRect, int}> $moves    a rectangle of this floor, where it now stands, and its version
+     * @param list<array{Uuid, int}>           $erasures a rectangle of this floor to undraw, and its version
      *
      * @return list<StockLocation> what is drawn on the floor once the step is done
      *
      * @throws VenueAreaNotFound
      * @throws InvalidStockLocation naming the entry it refuses
+     * @throws RecordChanged        when a rectangle was saved since the version named for it
      */
     public function change(Company $company, Uuid $floorId, array $draws, array $moves, array $erasures, ?Uuid $actorUserId): array
     {
@@ -451,8 +464,8 @@ final readonly class DrawStockMap
         foreach ($moves as $at => [$drawingId]) {
             $onThisFloor($drawingId, "moves[$at].drawingId");
         }
-        foreach ($erasures as $at => $drawingId) {
-            $onThisFloor($drawingId, "erasures[$at]");
+        foreach ($erasures as $at => [$drawingId]) {
+            $onThisFloor($drawingId, "erasures[$at].drawingId");
         }
         $placed = [];
         foreach ($draws as $at => [$locationId]) {
@@ -470,7 +483,15 @@ final readonly class DrawStockMap
         }
 
         return $this->transactions->run(function () use ($company, $floor, $draws, $moves, $erasures, $actorUserId): array {
-            foreach ($erasures as $drawingId) {
+            // Checked once every entry is known to be well formed, so a malformed step is refused as such and a stale
+            // one as stale, and before the first write, so a stale one leaves the floor as it was.
+            foreach ($moves as [$drawingId, , $version]) {
+                $this->venue->expectSpot($company, $drawingId, $version);
+            }
+            foreach ($erasures as [$drawingId, $version]) {
+                $this->venue->expectSpot($company, $drawingId, $version);
+            }
+            foreach ($erasures as [$drawingId]) {
                 $this->eraseDrawing($company, $drawingId, $actorUserId);
             }
             foreach ($moves as [$drawingId, $rect]) {

@@ -2490,6 +2490,7 @@
       "group_turn_right": "Tourner de {{degrees}}° à droite",
       "group_saved": "{{count}} {count, plural, one {rectangle déplacé} other {rectangles déplacés}}",
       "group_erased": "{{count}} {count, plural, one {rectangle effacé} other {rectangles effacés}}",
+      "group_changed": "Un rectangle du groupe a été modifié entre-temps : rien n’a été changé. Le plan est relu, refaites le geste.",
       "nothing_drawn": "Aucun emplacement n’est encore dessiné sur cet étage.",
       "plan_of": "Plan de {{floor}} : {{count}} {count, plural, one {rectangle dessiné} other {rectangles dessinés}}",
       "trace": "Tracer un rectangle",

@@ -19,6 +19,7 @@ use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\DrawStockDrawingProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\EraseStockDrawingProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Provider\StockDrawingCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Venue\Domain\Model\VenueSpot;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -56,8 +57,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/stock-drawings/{drawingId}',
@@ -135,6 +136,12 @@ final class StockDrawingResource
     #[Groups([self::READ, self::WRITE])]
     public string $height = '0';
 
+    /** The version read; a move sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(VenueSpot $spot, StockLocation $location): self
     {
         $rect = $spot->getRect();
@@ -151,6 +158,7 @@ final class StockDrawingResource
         $drawing->depth = $rect->depth;
         $drawing->rotation = $rect->rotation;
         $drawing->height = $rect->height;
+        $drawing->version = $spot->getVersion();
 
         return $drawing;
     }

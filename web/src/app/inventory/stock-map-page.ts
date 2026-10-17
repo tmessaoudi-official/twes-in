@@ -803,6 +803,19 @@ export class StockMapPage implements OnInit {
     },
   });
 
+  /** The saved version the open rectangle's form stands on, and what another person's save changed in it. */
+  protected readonly drawingSync = listRecord({
+    kind: 'venue_spot',
+    editing: this.editing,
+    rows: this.facade.drawings,
+    form: this.drawingFormGroup,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.reloadDrawings(companyId);
+    },
+    values: (row) => drawingValues(row),
+  });
+
   // ——— the floor form ———
 
   protected readonly editingFloor = signal<StockFloorRow | 'new' | null>(null);
@@ -1065,6 +1078,8 @@ export class StockMapPage implements OnInit {
       depth: '0',
       rotation: 0,
       height: '0',
+      // Never saved, so it stands on no version.
+      version: 0,
     };
   }
 
@@ -1324,14 +1339,30 @@ export class StockMapPage implements OnInit {
     if (!companyId || !floorId || draft === null || this.busy()) return;
 
     const saved = new Map(this.chosenDrawings().map((drawing) => [drawing.id, drawing]));
-    const moves = [...draft].map(([drawingId, rect]) => ({ drawingId, ...rectInput(rect) }));
-    const back = moves.flatMap(({ drawingId }) => {
+    const moves = [...draft].flatMap(([drawingId, rect]) => {
       const drawing = saved.get(drawingId);
 
-      return drawing === undefined ? [] : [{ drawingId, ...savedRect(drawing) }];
+      return drawing === undefined
+        ? []
+        : [{ drawingId, ...rectInput(rect), version: drawing.version }];
     });
-    if (await this.facade.changeDrawings(companyId, floorId, { draws: [], moves, erasures: [] })) {
+    const after = await this.facade.changeDrawings(companyId, floorId, {
+      draws: [],
+      moves,
+      erasures: [],
+    });
+    if (after !== null) {
       this.groupDraft.set(null);
+      // « Annuler » puts each rectangle back where it stood, on the version this step left it at.
+      const left = new Map(after.map((drawing) => [drawing.id, drawing.version]));
+      const back = moves.flatMap(({ drawingId }) => {
+        const drawing = saved.get(drawingId);
+        const version = left.get(drawingId);
+
+        return drawing === undefined || version === undefined
+          ? []
+          : [{ drawingId, ...savedRect(drawing), version }];
+      });
       this.feedback.success(
         'inventory.plan.group_saved',
         { count: moves.length },
@@ -1341,7 +1372,21 @@ export class StockMapPage implements OnInit {
             void this.undoGroup(companyId, floorId, { draws: [], moves: back, erasures: [] }),
         },
       );
+    } else {
+      await this.groupChangedSince(companyId);
     }
+  }
+
+  /**
+   * A rectangle of the group was changed by someone else since it was chosen, so nothing of the step was written: the
+   * floor is read again and the group stays chosen, and the move is made again on the rectangles as they now stand.
+   */
+  private async groupChangedSince(companyId: string): Promise<void> {
+    if (this.facade.error() !== 'record_changed') return;
+    this.facade.clearError();
+    this.groupDraft.set(null);
+    await this.facade.reloadDrawings(companyId);
+    this.feedback.failure('inventory.plan.group_changed');
   }
 
   /** Undrawn together, and drawn back together for the same places by one « Annuler ». */
@@ -1354,9 +1399,11 @@ export class StockMapPage implements OnInit {
     const erased = await this.facade.changeDrawings(companyId, floorId, {
       draws: [],
       moves: [],
-      erasures: group.map((drawing) => drawing.id),
+      erasures: group.map((drawing) => ({ drawingId: drawing.id, version: drawing.version })),
     });
-    if (erased) {
+    if (erased === null) {
+      await this.groupChangedSince(companyId);
+    } else {
       this.letGo();
       const again = group.map((drawing) => ({
         locationId: drawing.locationId,
@@ -2259,13 +2306,14 @@ export class StockMapPage implements OnInit {
     const input = drawingInput(values);
     // What « Annuler » puts back: the rectangle as it stood, or nothing at all for one just drawn.
     const before = editing === 'new' ? null : drawingInput(drawingValues(editing));
-    const accepted = await this.facade.draw(
+    const saved = await this.facade.draw(
       companyId,
       floorId,
       input,
       editing === 'new' ? null : editing.id,
+      editing === 'new' ? null : this.drawingSync.version(),
     );
-    if (accepted) {
+    if (saved) {
       this.editing.set(null);
       this.drag = null;
       this.feedback.success(
@@ -2276,9 +2324,14 @@ export class StockMapPage implements OnInit {
           run: () =>
             editing === 'new'
               ? void this.undrawNew(companyId, floorId, input)
-              : void this.undo(() => this.facade.draw(companyId, floorId, before!, editing.id)),
+              : void this.undo(() =>
+                  this.facade.draw(companyId, floorId, before!, editing.id, saved.version),
+                ),
         },
       );
+    } else if (this.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.drawingSync.savedElsewhere();
     }
   }
 
@@ -2301,7 +2354,7 @@ export class StockMapPage implements OnInit {
         {},
         {
           key: 'inventory.plan.undo',
-          run: () => void this.undo(() => this.facade.draw(companyId, floorId, again, null)),
+          run: () => void this.undo(() => this.facade.draw(companyId, floorId, again, null, null)),
         },
       );
     }

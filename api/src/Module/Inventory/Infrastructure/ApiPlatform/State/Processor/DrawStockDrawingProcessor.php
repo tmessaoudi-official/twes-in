@@ -68,7 +68,7 @@ final readonly class DrawStockDrawingProcessor implements ProcessorInterface
                 $location = Uuid::fromString($data->locationId);
                 $drawn = $operation instanceof Post
                     ? $this->map->draw($company, CompanyPath::identifier($uriVariables, 'floorId'), $location, $rect, $actor)
-                    : $this->map->moveDrawing($company, CompanyPath::identifier($uriVariables, 'drawingId'), $location, $rect, $actor);
+                    : $this->map->moveDrawing($company, CompanyPath::identifier($uriVariables, 'drawingId'), $location, $rect, $actor, $data->version);
             }
         } catch (VenueAreaNotFound|VenueSpotNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);

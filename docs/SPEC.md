@@ -221,7 +221,7 @@ level in one PUT (`/companies/{companyId}/settings`, `/platform/settings`), each
 at the unique index, which answers the same 409. `tests/Architecture/RecordVersionsTest`
 reads every PUT: each takes a version (a batch's on each item), or is listed with its reason (a person's own toggles,
 a company's single switches, a single key's PUT), or waits for its slice. An editor opened inside a list (a unit, a
-tax, a custom field, an establishment, a numbering series, a customer group, a customer's contact, an expense or product category, a stock location, a floor or a piece of structure on the stock map) is a
+tax, a custom field, an establishment, a numbering series, a customer group, a customer's contact, an expense or product category, a stock location, a floor, a piece of structure or a rectangle on the stock map) is a
 `liveRecord` too, through `shared/form/listRecord`, over the row the list holds now: another person's save merges into
 it as on a record's own page (§ 7 2026-09-17 (2)), and its save sends the version of the row it stands on. A reload of
 the list leaves what is typed alone: the form is keyed on plain values, or, where the options it offers follow the
@@ -229,7 +229,11 @@ list (a category's parents), built again over what was typed, and a form built a
 the base it stood on rather than taking what was typed for the saved version. A series' version also moves with every number given, so a form opened before a number was
 given is refused rather than writing its next number back. The roles editor has no descriptor form: its name and its
 ticks merge as one field each (the ticks compared as a set), so a form opened before a permission was taken away is
-refused, and shows the permission gone, rather than giving it back to everyone holding the role.
+refused, and shows the permission gone, rather than giving it back to everyone holding the role. A rectangle on the
+stock map takes its version from the drawing itself, and pointing it at another place moves it even where it stands, so
+two people relabelling it are told; a group's move, turn or erasure (`…/drawing-changes`) names each rectangle with the
+version it was chosen at, one changed since refuses the whole step, and the screen reads the floor again with the group
+still chosen (§ 7 2026-10-17 08:55).
 
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,

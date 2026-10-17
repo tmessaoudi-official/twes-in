@@ -57,6 +57,7 @@ final class StockMapTest extends ApiTestCase
         $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing(['locationId' => $this->rackId]));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $drawing = $this->stringAt($this->json(), 'id');
+        $version = $this->intAt($this->json(), 'version');
         self::assertSame(['2.500', '4.000', '3.900', '0.600', 0, '2.100'], [
             $this->json()['x'], $this->json()['y'], $this->json()['width'], $this->json()['depth'], $this->json()['rotation'], $this->json()['height'],
         ]);
@@ -70,7 +71,7 @@ final class StockMapTest extends ApiTestCase
         $this->getJson($this->path('stock-floors'));
         self::assertSame([1, 0], array_column($this->jsonList(), 'drawingCount'));
 
-        $this->sendJson('PUT', $this->path('stock-drawings', $drawing), $this->drawing(['locationId' => $this->rackId, 'y' => '5.4', 'rotation' => 90]));
+        $this->sendJson('PUT', $this->path('stock-drawings', $drawing), $this->drawing(['locationId' => $this->rackId, 'y' => '5.4', 'rotation' => 90, 'version' => $version]));
         self::assertResponseIsSuccessful();
         self::assertSame(['5.400', 90], [$this->json()['y'], $this->json()['rotation']]);
 
@@ -328,7 +329,7 @@ final class StockMapTest extends ApiTestCase
         // Moving a rectangle never creates a place: that is drawing a new one.
         $this->getJson($drawings);
         $drawing = $this->stringAt($this->jsonList()[0], 'id');
-        $this->sendJson('PUT', $this->path('stock-drawings', $drawing), $this->drawing(['locationId' => $made, ...$this->newPlace('rack', 'R11', 'Rayonnage 11')]));
+        $this->sendJson('PUT', $this->path('stock-drawings', $drawing), $this->drawing(['locationId' => $made, ...$this->newPlace('rack', 'R11', 'Rayonnage 11'), 'version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('newLocationCode', (string) $this->client->getResponse()->getContent());
     }
@@ -549,10 +550,11 @@ final class StockMapTest extends ApiTestCase
         $zone = $this->stringAt($this->json(), 'id');
         $zoneLocation = $this->stringAt($this->json(), 'locationId');
         $changes = $this->path('stock-floors', $ground).'/drawing-changes';
+        $chosen = $this->versions($drawings);
 
         $this->postJson($changes, [
-            'moves' => [['drawingId' => $rack, ...$this->drawing(['x' => '5', 'y' => '6', 'rotation' => 90])]],
-            'erasures' => [$zone],
+            'moves' => [['drawingId' => $rack, ...$this->drawing(['x' => '5', 'y' => '6', 'rotation' => 90]), 'version' => $chosen[$rack]]],
+            'erasures' => [['drawingId' => $zone, 'version' => $chosen[$zone]]],
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         // The answer is the floor as the step left it, so the screen needs no second read to show it.
@@ -562,6 +564,10 @@ final class StockMapTest extends ApiTestCase
             [array_column($after, 'locationCode'), array_column($after, 'x'), array_column($after, 'y'), array_column($after, 'rotation')],
         );
         self::assertSame([$rack], array_column($after, 'id'), 'moved, not drawn again');
+        // Each rectangle carries the version the step left it at, which is what « Annuler » sends back.
+        $moved = array_column($after, 'version', 'id')[$rack] ?? null;
+        self::assertIsInt($moved);
+        self::assertGreaterThan($chosen[$rack], $moved);
         // Undrawn, the zone is still a place.
         $this->getJson($this->path('stock-locations'));
         self::assertContains('Z1', array_column($this->jsonList(), 'code'));
@@ -569,7 +575,7 @@ final class StockMapTest extends ApiTestCase
         // « Annuler »: the rack back where it stood, the zone drawn again for the same place.
         $this->postJson($changes, [
             'draws' => [['locationId' => $zoneLocation, ...$this->drawing(['x' => '10', 'y' => '8', 'width' => '4', 'depth' => '2'])]],
-            'moves' => [['drawingId' => $rack, ...$this->drawing([])]],
+            'moves' => [['drawingId' => $rack, ...$this->drawing([]), 'version' => $moved]],
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         $this->getJson($drawings);
@@ -602,16 +608,20 @@ final class StockMapTest extends ApiTestCase
         $changes = $this->path('stock-floors', $ground).'/drawing-changes';
 
         foreach ([
-            'moves[1].x' => ['moves' => [$this->moved($rack), $this->moved($other, ['x' => '-1'])]],
-            'moves[1].drawingId' => ['moves' => [$this->moved($rack), $this->moved(Uuid::v7()->toRfc4122())]],
-            'moves[0].drawingId' => ['moves' => [$this->moved($elsewhere)]],
-            'erasures[0]' => ['moves' => [$this->moved($rack)], 'erasures' => [$rack]],
-            'erasures[1]' => ['erasures' => [$other, $elsewhere]],
-            'draws[0].locationId' => ['moves' => [$this->moved($rack)], 'draws' => [['locationId' => Uuid::v7()->toRfc4122(), ...$this->drawing([])]]],
-            'draws[1].locationId' => ['draws' => [['locationId' => $rackLocation, ...$this->drawing([])], ['locationId' => $rackLocation, ...$this->drawing([])]]],
-            'moves' => ['moves' => ['first' => $this->moved($rack)]],
-            'moves[0].y' => ['moves' => [['drawingId' => $rack, 'x' => '7']]],
-        ] as $field => $body) {
+            ['moves[1].x', ['moves' => [$this->moved($rack), $this->moved($other, ['x' => '-1'])]]],
+            ['moves[1].drawingId', ['moves' => [$this->moved($rack), $this->moved(Uuid::v7()->toRfc4122())]]],
+            ['moves[0].drawingId', ['moves' => [$this->moved($elsewhere)]]],
+            ['erasures[0].drawingId', ['moves' => [$this->moved($rack)], 'erasures' => [$this->erased($rack)]]],
+            ['erasures[1].drawingId', ['erasures' => [$this->erased($other), $this->erased($elsewhere)]]],
+            ['erasures[0].drawingId', ['erasures' => [$rack]]],
+            ['erasures[0].version', ['erasures' => [['drawingId' => $rack]]]],
+            ['moves[0].version', ['moves' => [['drawingId' => $rack, ...$this->drawing([])]]]],
+            ['moves[1].version', ['moves' => [$this->moved($rack), $this->moved($other, ['version' => 0])]]],
+            ['draws[0].locationId', ['moves' => [$this->moved($rack)], 'draws' => [['locationId' => Uuid::v7()->toRfc4122(), ...$this->drawing([])]]]],
+            ['draws[1].locationId', ['draws' => [['locationId' => $rackLocation, ...$this->drawing([])], ['locationId' => $rackLocation, ...$this->drawing([])]]]],
+            ['moves', ['moves' => ['first' => $this->moved($rack)]]],
+            ['moves[0].y', ['moves' => [['drawingId' => $rack, 'x' => '7']]]],
+        ] as [$field, $body]) {
             $this->postJson($changes, $body);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field.':', (string) $this->client->getResponse()->getContent(), $field);
@@ -635,7 +645,79 @@ final class StockMapTest extends ApiTestCase
     }
 
     /**
-     * A rectangle of a group moved to x = 7, with whatever else the case changes.
+     * A rectangle moved or undrawn by a group stands on the version it was chosen at: one changed since refuses the
+     * whole step, the floor is read again, and the move is made on what is there rather than over someone's change.
+     */
+    public function testAGroupStepOverARectangleChangedSinceIsRefusedWhole(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $ground = $this->floor();
+        $drawings = $this->path('stock-floors', $ground).'/drawings';
+        $this->postJson($drawings, $this->drawing($this->newPlace('rack', 'R1', 'Rayonnage 1')));
+        $rack = $this->stringAt($this->json(), 'id');
+        $this->postJson($drawings, $this->drawing([...$this->newPlace('rack', 'R2', 'Rayonnage 2'), 'y' => '6']));
+        $other = $this->stringAt($this->json(), 'id');
+        $otherLocation = $this->stringAt($this->json(), 'locationId');
+        $chosen = $this->versions($drawings);
+        $changes = $this->path('stock-floors', $ground).'/drawing-changes';
+
+        // Someone else moves R2 while the group is chosen.
+        $this->sendJson('PUT', $this->path('stock-drawings', $other), $this->drawing(['locationId' => $otherLocation, 'y' => '9', 'version' => $chosen[$other]]));
+        self::assertResponseIsSuccessful();
+
+        foreach ([
+            ['moves' => [$this->moved($rack, ['version' => $chosen[$rack]]), $this->moved($other, ['version' => $chosen[$other]])]],
+            ['erasures' => [$this->erased($rack, $chosen[$rack]), $this->erased($other, $chosen[$other])]],
+        ] as $at => $step) {
+            $this->postJson($changes, $step);
+            self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, (string) $at);
+            self::assertSame('/problems/record-changed', $this->json()['type']);
+        }
+        $this->getJson($drawings);
+        $now = array_map(static fn (array $one): array => [$one['locationCode'], $one['x'], $one['y']], $this->jsonList());
+        sort($now);
+        self::assertSame([['R1', '2.500', '4.000'], ['R2', '2.500', '9.000']], $now, 'R1 untouched, R2 as the other person left it');
+
+        // Made again on the floor as it is read now, the step goes through.
+        $read = $this->versions($drawings);
+        $this->postJson($changes, ['moves' => [$this->moved($rack, ['version' => $read[$rack]]), $this->moved($other, ['version' => $read[$other]])]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+    }
+
+    /**
+     * A rectangle saved over a version saved since is refused, and pointing it at another place is a change of its own:
+     * two people relabelling the same rectangle are told, rather than the later silently undoing the earlier.
+     */
+    public function testADrawingSavedOverAVersionSavedSinceIsRefusedAndRelabellingMovesItsVersion(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $ground = $this->floor();
+        $drawings = $this->path('stock-floors', $ground).'/drawings';
+        $this->locations();
+        $this->postJson($drawings, $this->drawing($this->newPlace('rack', 'R2', 'Rayonnage 2')));
+        $drawing = $this->stringAt($this->json(), 'id');
+        $first = $this->stringAt($this->json(), 'locationId');
+        $read = $this->intAt($this->json(), 'version');
+
+        // Pointed at another place where it stands: nothing of the rectangle moved, and still it is another version.
+        $this->sendJson('PUT', $this->path('stock-drawings', $drawing), $this->drawing(['locationId' => $this->rackId, 'version' => $read]));
+        self::assertResponseIsSuccessful();
+        $relabelled = $this->intAt($this->json(), 'version');
+        self::assertGreaterThan($read, $relabelled);
+
+        $this->sendJson('PUT', $this->path('stock-drawings', $drawing), $this->drawing(['locationId' => $first, 'version' => $read]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->sendJson('PUT', $this->path('stock-drawings', $drawing), $this->drawing(['locationId' => $first]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('version', (string) $this->client->getResponse()->getContent());
+
+        $this->getJson($drawings);
+        self::assertSame([['R1', $relabelled]], array_map(static fn (array $one): array => [$one['locationCode'], $one['version']], $this->jsonList()));
+    }
+
+    /**
+     * A rectangle of a group moved to x = 7, with whatever else the case changes, on version 1 unless the case says.
      *
      * @param array<string, mixed> $at
      *
@@ -643,7 +725,29 @@ final class StockMapTest extends ApiTestCase
      */
     private function moved(string $id, array $at = []): array
     {
-        return ['drawingId' => $id, ...$this->drawing(['x' => '7', ...$at])];
+        return ['drawingId' => $id, ...$this->drawing(['x' => '7', 'version' => 1, ...$at])];
+    }
+
+    /** @return array{drawingId: string, version: int} */
+    private function erased(string $id, int $version = 1): array
+    {
+        return ['drawingId' => $id, 'version' => $version];
+    }
+
+    /**
+     * Each rectangle of a floor and the version it is read at, as a group is chosen at.
+     *
+     * @return array<string, int>
+     */
+    private function versions(string $drawings): array
+    {
+        $this->getJson($drawings);
+        $versions = [];
+        foreach ($this->jsonList() as $one) {
+            $versions[$this->stringAt($one, 'id')] = $this->intAt($one, 'version');
+        }
+
+        return $versions;
     }
 
     /** A floor to build on, which every structure case needs and none of them is about. */

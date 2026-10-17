@@ -99,6 +99,9 @@ describe('InventoryFacade', () => {
     structures: vi.fn(),
     buildStructure: vi.fn(),
     reshapeStructure: vi.fn(),
+    draw: vi.fn(),
+    moveDrawing: vi.fn(),
+    changeDrawings: vi.fn(),
     locationHomes: vi.fn(),
     whereabouts: vi.fn(),
     pickProducts: vi.fn(),
@@ -126,6 +129,9 @@ describe('InventoryFacade', () => {
     api.structures.mockReset().mockResolvedValue([]);
     api.buildStructure.mockReset();
     api.reshapeStructure.mockReset();
+    api.draw.mockReset();
+    api.moveDrawing.mockReset();
+    api.changeDrawings.mockReset();
     api.locationHomes.mockReset().mockResolvedValue([]);
     api.whereabouts.mockReset();
     api.pickProducts.mockReset().mockResolvedValue([]);
@@ -421,6 +427,42 @@ describe('InventoryFacade', () => {
 
     api.reshapeStructure.mockRejectedValue(new InventoryRefused('record_changed'));
     expect(await facade.buildStructure('c1', 'f1', piece, 's1', 2)).toBeNull();
+    expect(facade.error()).toBe('record_changed');
+  });
+
+  /** A rectangle moved on the version it was opened at answers the one it was saved at, for « Annuler ». */
+  it('moves a rectangle on its version and gives back the rectangle the API kept', async () => {
+    const input = {
+      locationId: 'l1',
+      x: '1.000',
+      y: '2.000',
+      width: '3.000',
+      depth: '1.000',
+      rotation: 0,
+      height: '2.000',
+    };
+    const saved = { ...input, id: 'd1', floorId: 'f1', version: 3 };
+    api.moveDrawing.mockResolvedValue(saved);
+    expect(await facade.draw('c1', 'f1', input, 'd1', 2)).toEqual(saved);
+    expect(api.moveDrawing).toHaveBeenCalledWith('c1', 'd1', input, 2);
+    api.draw.mockResolvedValue({ ...saved, id: 'd2', version: 1 });
+    expect(await facade.draw('c1', 'f1', input, null, null)).toMatchObject({ id: 'd2' });
+    expect(api.draw).toHaveBeenCalledWith('c1', 'f1', input);
+
+    api.moveDrawing.mockRejectedValue(new InventoryRefused('record_changed'));
+    expect(await facade.draw('c1', 'f1', input, 'd1', 2)).toBeNull();
+    expect(facade.error()).toBe('record_changed');
+  });
+
+  it('gives back the rectangles a group step left, and nothing when it was refused', async () => {
+    const step = { draws: [], moves: [], erasures: [{ drawingId: 'd1', version: 2 }] };
+    const left = [{ id: 'd2', version: 4 }];
+    api.changeDrawings.mockResolvedValue(left);
+    expect(await facade.changeDrawings('c1', 'f1', step)).toEqual(left);
+    expect(api.changeDrawings).toHaveBeenCalledWith('c1', 'f1', step);
+
+    api.changeDrawings.mockRejectedValue(new InventoryRefused('record_changed'));
+    expect(await facade.changeDrawings('c1', 'f1', step)).toBeNull();
     expect(facade.error()).toBe('record_changed');
   });
 

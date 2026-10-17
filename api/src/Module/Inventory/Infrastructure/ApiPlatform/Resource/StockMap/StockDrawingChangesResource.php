@@ -21,8 +21,8 @@ use Symfony\Component\Validator\Constraints as Assert;
  * drawn for places, rectangles moved or turned, rectangles undrawn, all of it or none of it. The screen's one
  * « Annuler » sends the inverse step, which has the same shape.
  *
- * A refusal names the entry by its place in what was sent (`moves[2].x`), 422; the floor of another company, or a
- * member without stock.write, answers 404. It answers the floor's drawings as the step left them.
+ * A refusal names the entry by its place in what was sent (`moves[2].x`), 422; a rectangle saved since the version
+ * named for it refuses the whole step, 409; the floor of another company, or a member without stock.write, answers 404. It answers the floor's drawings as the step left them.
  */
 #[ApiResource(
     shortName: 'StockDrawingChanges',
@@ -64,22 +64,22 @@ final class StockDrawingChangesResource
     public array $draws = [];
 
     /**
-     * Rectangles of this floor, each where it now stands: `{drawingId, x, y, width, depth, rotation, height}`.
+     * Rectangles of this floor, each where it now stands: `{drawingId, x, y, width, depth, rotation, height, version}`.
      *
      * @var list<mixed>
      */
     #[Assert\Type('list', groups: [self::WRITE])]
-    #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['drawingId', 'x', 'y', 'width', 'depth'], 'properties' => ['drawingId' => ['type' => 'string', 'format' => 'uuid'], ...self::RECT]]])]
+    #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['drawingId', 'x', 'y', 'width', 'depth', 'version'], 'properties' => ['drawingId' => ['type' => 'string', 'format' => 'uuid'], ...self::RECT, 'version' => ['type' => 'integer', 'minimum' => 1]]]])]
     #[Groups([self::WRITE])]
     public array $moves = [];
 
     /**
-     * Rectangles of this floor to undraw, by id.
+     * Rectangles of this floor to undraw: `{drawingId, version}`.
      *
      * @var list<mixed>
      */
     #[Assert\Type('list', groups: [self::WRITE])]
-    #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid']])]
+    #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['drawingId', 'version'], 'properties' => ['drawingId' => ['type' => 'string', 'format' => 'uuid'], 'version' => ['type' => 'integer', 'minimum' => 1]]]])]
     #[Groups([self::WRITE])]
     public array $erasures = [];
 

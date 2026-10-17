@@ -134,6 +134,7 @@ const drawn: StockDrawingRow = {
   depth: '0.600',
   rotation: 0,
   height: '2.100',
+  version: 1,
 };
 
 /** The canvas's own partition: 6,90 × 0,20 m, a thickness the stock palette would refuse outright. */
@@ -280,11 +281,25 @@ describe('StockMapPage', () => {
     facade.reviseFloor.mockReset().mockResolvedValue(true);
     facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.deleteFloor.mockReset().mockResolvedValue(true);
-    facade.draw.mockReset().mockResolvedValue(true);
+    facade.draw.mockReset().mockResolvedValue({ ...drawn, version: 2 });
     facade.deleteLocation.mockReset().mockResolvedValue(true);
     facade.eraseDrawing.mockReset().mockResolvedValue(true);
     facade.repeatDrawing.mockReset().mockResolvedValue(true);
-    facade.changeDrawings.mockReset().mockResolvedValue(true);
+    // The rectangles as the step left them: each moved one a version further.
+    facade.changeDrawings
+      .mockReset()
+      .mockImplementation(
+        async (
+          _c: string,
+          _f: string,
+          changes: { moves: { drawingId: string; version: number }[] },
+        ) =>
+          changes.moves.map((move) => ({
+            ...drawn,
+            id: move.drawingId,
+            version: move.version + 1,
+          })),
+      );
     auth.hasPermission.mockReset().mockReturnValue(true);
     windowClass.set('expanded');
     coarse.set(false);
@@ -497,7 +512,8 @@ describe('StockMapPage', () => {
       'f1',
       // The place goes to the grid (2,6 → 2,5); a measurement does not.
       expect.objectContaining({ locationId: 'l2', x: '2.500', y: '4.000' }),
-      // Null: this is a new rectangle, not one being moved.
+      // Null: this is a new rectangle, not one being moved, so it stands on no version.
+      null,
       null,
     );
     expect(successToasts()).toContain('inventory.plan.drawing_saved');
@@ -511,7 +527,7 @@ describe('StockMapPage', () => {
     q('stock-drawing-save')!.click();
     await settle();
 
-    expect(facade.draw).toHaveBeenCalledWith('c1', 'f1', expect.anything(), 'd1');
+    expect(facade.draw).toHaveBeenCalledWith('c1', 'f1', expect.anything(), 'd1', 1);
   });
 
   it('erases a rectangle without touching what it was drawn for', async () => {
@@ -556,6 +572,7 @@ describe('StockMapPage', () => {
         height: '2.100',
       }),
       null,
+      null,
     );
     expect(successToasts()).toContain('inventory.plan.undone');
   });
@@ -573,15 +590,68 @@ describe('StockMapPage', () => {
       'f1',
       expect.objectContaining({ x: '7.000' }),
       'd1',
+      1,
     );
 
-    undoOf('inventory.plan.drawing_saved')();
+    // Taken back on the version its save produced, never over someone else's change.
+    const takeBack = undoOf('inventory.plan.drawing_saved');
+    takeBack();
     await settle();
     expect(facade.draw).toHaveBeenLastCalledWith(
       'c1',
       'f1',
       expect.objectContaining({ x: '2.500', y: '4.000' }),
       'd1',
+      2,
+    );
+
+    (TestBed.inject(Feedback) as RecordedFeedback).said.length = 0;
+    facade.draw.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    takeBack();
+    await settle();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.undo_refused',
+      params: undefined,
+    });
+    expect(q('stock-map-error')).toBeNull();
+  });
+
+  it('merges a rectangle saved since into its open form, and saves on that version next', async () => {
+    q('stock-drawing-R1')!.click();
+    await settle();
+    q('stock-drawing-edit')!.click();
+    await settle();
+    facade.draw.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.reloadDrawings.mockImplementationOnce(async () =>
+      drawings.set(
+        drawings().map((one) => (one.id === 'd1' ? { ...one, height: '3.000', version: 2 } : one)),
+      ),
+    );
+
+    type('field-x', '7');
+    q('stock-drawing-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect(facade.reloadDrawings).toHaveBeenCalledWith('c1'));
+    await settle();
+
+    expect(drawingGroup().get('x')!.value).toBe('7');
+    expect(drawingGroup().get('height')!.value).toBe('3.000');
+    expect(q('stock-map-error')).toBeNull();
+    q('stock-drawing-save')!.click();
+    await settle();
+    expect(facade.draw).toHaveBeenLastCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({ x: '7.000', height: '3.000' }),
+      'd1',
+      2,
     );
   });
 
@@ -615,6 +685,7 @@ describe('StockMapPage', () => {
         newLocationCode: 'R2',
         newLocationName: 'Rayonnage 2',
       }),
+      null,
       null,
     );
   });
@@ -996,6 +1067,8 @@ describe('StockMapPage', () => {
     locationCode: 'Z1',
     locationKind: 'zone',
     x: '8.000',
+    // Saved more often than the rack, so each rectangle is seen to carry its own version.
+    version: 4,
   };
   const chosenCodes = (): string[] =>
     [...fixture.nativeElement.querySelectorAll('.twes-map-chosen')].map((rect: Element) =>
@@ -1124,8 +1197,18 @@ describe('StockMapPage', () => {
     expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
       draws: [],
       moves: [
-        expect.objectContaining({ drawingId: 'd1', x: (2.5 + step).toFixed(3), y: '4.000' }),
-        expect.objectContaining({ drawingId: 'd2', x: (8 + step).toFixed(3), y: '4.000' }),
+        expect.objectContaining({
+          drawingId: 'd1',
+          x: (2.5 + step).toFixed(3),
+          y: '4.000',
+          version: 1,
+        }),
+        expect.objectContaining({
+          drawingId: 'd2',
+          x: (8 + step).toFixed(3),
+          y: '4.000',
+          version: 4,
+        }),
       ],
       erasures: [],
     });
@@ -1136,8 +1219,9 @@ describe('StockMapPage', () => {
     expect(facade.changeDrawings).toHaveBeenLastCalledWith('c1', 'f1', {
       draws: [],
       moves: [
-        expect.objectContaining({ drawingId: 'd1', x: '2.500', y: '4.000', width: '3.900' }),
-        expect.objectContaining({ drawingId: 'd2', x: '8.000', y: '4.000', width: '3.900' }),
+        // Each on the version the step left it at.
+        expect.objectContaining({ drawingId: 'd1', x: '2.500', width: '3.900', version: 2 }),
+        expect.objectContaining({ drawingId: 'd2', x: '8.000', width: '3.900', version: 5 }),
       ],
       erasures: [],
     });
@@ -1210,7 +1294,10 @@ describe('StockMapPage', () => {
     expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
       draws: [],
       moves: [],
-      erasures: ['d1', 'd2'],
+      erasures: [
+        { drawingId: 'd1', version: 1 },
+        { drawingId: 'd2', version: 4 },
+      ],
     });
     expect(chosenCodes()).toEqual([]);
 
@@ -1243,8 +1330,40 @@ describe('StockMapPage', () => {
     expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
       draws: [],
       moves: [],
-      erasures: ['d1', 'd2'],
+      erasures: [
+        { drawingId: 'd1', version: 1 },
+        { drawingId: 'd2', version: 4 },
+      ],
     });
+  });
+
+  it('refuses the whole group when a rectangle changed since, reads the floor again and keeps the group chosen', async () => {
+    facade.changeDrawings.mockImplementation(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    await chooseBoth();
+    boardKey('ArrowDown');
+    await settle();
+    q('stock-map-group-save')!.click();
+    await settle();
+
+    expect(facade.reloadDrawings).toHaveBeenCalledWith('c1');
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'inventory.plan.group_changed',
+      params: undefined,
+    });
+    // The move is gone, to be made again on the rectangles as they now stand; the group is still chosen.
+    expect(q('stock-map-group-save')).toBeNull();
+    expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
+    expect(q('stock-map-error')).toBeNull();
+
+    boardKey('Delete');
+    await settle();
+    expect(facade.reloadDrawings).toHaveBeenCalledTimes(2);
+    expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
+    expect(successToasts()).not.toContain('inventory.plan.group_erased');
   });
 
   it('acts on a group only in Aménager: Consulter chooses, and nothing moves', async () => {
