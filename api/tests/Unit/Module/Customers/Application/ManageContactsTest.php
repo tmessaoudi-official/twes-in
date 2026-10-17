@@ -22,6 +22,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryContacts;
 use App\Tests\Support\InMemoryCustomers;
+use App\Tests\Support\InMemoryRecordVersions;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
@@ -38,7 +39,7 @@ final class ManageContactsTest extends TestCase
         $this->customers = new InMemoryCustomers();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManageContacts(new InMemoryContacts(), $this->customers, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
+        $this->manage = new ManageContacts(new InMemoryContacts(), $this->customers, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->customer = $this->customerOf($this->company, 'CLI-0001');
     }

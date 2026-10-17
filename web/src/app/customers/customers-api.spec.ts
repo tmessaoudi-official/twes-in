@@ -269,6 +269,38 @@ describe('CustomersApi', () => {
     await expect(removed).resolves.toBeUndefined();
   });
 
+  it('revises a contact on the version it was opened at, and reads the version saved', async () => {
+    const contact = {
+      firstName: 'Leila',
+      lastName: null,
+      email: null,
+      phone: '71 000 000',
+      role: null,
+      isPrimary: true,
+    };
+    const revised = api.reviseContact('c1', 'k1', 'p1', contact, 3);
+    const put = http.expectOne('/api/companies/c1/customers/k1/contacts/p1');
+    expect([put.request.method, put.request.body]).toEqual(['PUT', { ...contact, version: 3 }]);
+    put.flush({ id: 'p1', ...contact, version: 4 });
+
+    expect((await revised).version).toBe(4);
+  });
+
+  it('tells a contact saved since from any other refusal', async () => {
+    const revised = api.reviseContact(
+      'c1',
+      'k1',
+      'p1',
+      { firstName: 'Leila', lastName: null, email: null, phone: null, role: null, isPrimary: true },
+      1,
+    );
+    http
+      .expectOne('/api/companies/c1/customers/k1/contacts/p1')
+      .flush({ type: '/problems/record-changed' }, { status: 409, statusText: 'Conflict' });
+
+    await expect(revised).rejects.toMatchObject({ code: 'record_changed' });
+  });
+
   it('reads one page of customers as the API searched, narrowed and sorted it, with the total', async () => {
     const pending = api.customers('c1', {
       page: 2,

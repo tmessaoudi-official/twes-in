@@ -229,13 +229,15 @@ describe('CustomersFacade', () => {
   });
 
   it('reads the contacts again after a change, since a new primary contact touches two of them', async () => {
-    api.reviseContact.mockResolvedValue({ ...leila, id: 'p2' });
+    api.reviseContact.mockResolvedValue({ ...leila, id: 'p2', version: 4 });
     api.contacts.mockResolvedValue([
-      { ...leila, id: 'p2' },
-      { ...leila, id: 'p1', isPrimary: false },
+      { ...leila, id: 'p2', version: 4 },
+      { ...leila, id: 'p1', isPrimary: false, version: 2 },
     ]);
 
-    expect(await facade.reviseContact('c1', 'k1', 'p2', leila)).toBe(true);
+    expect(await facade.reviseContact('c1', 'k1', 'p2', leila, 3)).toBe(true);
+
+    expect(api.reviseContact).toHaveBeenCalledWith('c1', 'k1', 'p2', leila, 3);
 
     expect(api.contacts).toHaveBeenCalledWith('c1', 'k1');
     expect(facade.contacts().map((contact) => [contact.id, contact.isPrimary])).toEqual([

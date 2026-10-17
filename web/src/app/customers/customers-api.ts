@@ -11,6 +11,7 @@ import { isRecordChanged } from '../shared/errors/record-changed';
 import type {
   ApiCompaniesCompanyIdcustomersGetCollectionResponse,
   ContactContactRead,
+  ContactContactWriteRecordReviseValidationContactWriteRecordRevise as ContactContactRevise,
   ContactContactWriteValidationContactWrite as ContactContactWrite,
   CustomerCustomerRead,
   CustomerCustomerWriteValidationCustomerWrite as CustomerCustomerWrite,
@@ -266,8 +267,9 @@ export class CustomersApi {
     customerId: string,
     id: string,
     input: ContactInput,
+    version: number | null,
   ): Promise<ContactRow> {
-    const body: ContactContactWrite = { ...input };
+    const body: ContactContactRevise = { ...input, version };
     return this.guard(async () =>
       toContact(
         await firstValueFrom(
@@ -484,6 +486,8 @@ function toContact(raw: ContactContactRead): ContactRow {
     phone: raw.phone ?? null,
     role: raw.role ?? null,
     isPrimary: raw.isPrimary ?? false,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }
 

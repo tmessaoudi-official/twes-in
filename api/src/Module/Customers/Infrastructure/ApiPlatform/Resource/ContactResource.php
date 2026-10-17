@@ -22,6 +22,7 @@ use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\AddContactPr
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\RemoveContactProcessor;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\ReviseContactProcessor;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\ContactCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -52,8 +53,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/customers/{customerId}/contacts/{contactId}',
@@ -96,6 +97,12 @@ final class ContactResource
     #[Groups([self::READ, self::WRITE])]
     public bool $isPrimary = false;
 
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(Contact $contact): self
     {
         $details = $contact->getDetails();
@@ -103,6 +110,7 @@ final class ContactResource
         $resource->id = $contact->getId()->toRfc4122();
         [$resource->firstName, $resource->lastName, $resource->email, $resource->phone, $resource->role] = [$details->firstName, $details->lastName, $details->email, $details->phone, $details->role];
         $resource->isPrimary = $contact->isPrimary();
+        $resource->version = $contact->getVersion();
 
         return $resource;
     }

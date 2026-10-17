@@ -154,9 +154,11 @@ export interface ContactRow {
   phone: string | null;
   role: string | null;
   isPrimary: boolean;
+  /** The version read, which a revision sends back; the API refuses it once someone saved a later one. */
+  version: number;
 }
 
-export type ContactInput = Omit<ContactRow, 'id'>;
+export type ContactInput = Omit<ContactRow, 'id' | 'version'>;
 
 export interface IdentifierOption {
   key: string;
