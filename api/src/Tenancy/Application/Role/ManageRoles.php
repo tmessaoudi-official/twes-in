@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Role;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Domain\Model\Company;
@@ -56,6 +58,7 @@ final readonly class ManageRoles
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -72,6 +75,7 @@ final readonly class ManageRoles
                 array_values(array_filter($role->getPermissions(), static fn (string $p): bool => Permission::WILDCARD !== $p)),
                 \in_array(Permission::WILDCARD, $role->getPermissions(), true),
                 $counts[$role->getId()->toRfc4122()] ?? 0,
+                $role->getVersion(),
             ),
             $this->roles->forCompany($company->getId()),
         );
@@ -96,7 +100,7 @@ final readonly class ManageRoles
             $this->roles->save($role);
             $this->record($company, $role, self::CREATED, $actorUserId);
 
-            return new RoleView($role->getId()->toRfc4122(), $role->getName(), false, $role->getPermissions(), false, 0);
+            return new RoleView($role->getId()->toRfc4122(), $role->getName(), false, $role->getPermissions(), false, 0, $role->getVersion());
         });
     }
 
@@ -109,11 +113,15 @@ final readonly class ManageRoles
      * @throws RoleNameTaken
      * @throws UnknownPermission
      * @throws PermissionNotHeld
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $roleId, string $name, array $permissions, ?Uuid $actorUserId, \Closure $actorMay): RoleView
+    public function revise(Company $company, Uuid $roleId, string $name, array $permissions, ?Uuid $actorUserId, \Closure $actorMay, ?int $version = null): RoleView
     {
-        return $this->transactions->run(function () use ($company, $roleId, $name, $permissions, $actorUserId, $actorMay): RoleView {
+        return $this->transactions->run(function () use ($company, $roleId, $name, $permissions, $actorUserId, $actorMay, $version): RoleView {
             $role = $this->editable($company, $roleId);
+            if (null !== $version) {
+                $this->versions->expect($role, $version);
+            }
             $name = $this->cleanName($company, $name, $roleId);
             $this->assertKnown($permissions);
             // Only what is being ADDED must be held: a role may already carry what its editor lacks, and keeping it is not granting it.
@@ -131,6 +139,7 @@ final readonly class ManageRoles
                 $role->getPermissions(),
                 false,
                 $this->memberships->countByRole($company->getId())[$role->getId()->toRfc4122()] ?? 0,
+                $role->getVersion(),
             );
         });
     }

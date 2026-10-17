@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Tenancy\Application\Role\RoleView;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\CreateRoleProcessor;
@@ -54,8 +55,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/roles/{roleId}',
@@ -124,6 +125,15 @@ final class RoleResource
     #[Groups([self::READ])]
     public int $memberCount = 0;
 
+    /**
+     * The version read; a revision sends back the one it was opened at, and one saved since answers 409. A role
+     * decides what everyone holding it may do, so a form opened before a permission was taken away must not give it back.
+     */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(RoleView $view): self
     {
         $resource = new self();
@@ -133,6 +143,7 @@ final class RoleResource
         $resource->permissions = $view->permissions;
         $resource->wildcard = $view->wildcard;
         $resource->memberCount = $view->memberCount;
+        $resource->version = $view->version;
 
         return $resource;
     }

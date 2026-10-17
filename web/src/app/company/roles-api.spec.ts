@@ -53,4 +53,64 @@ describe('RolesApi refusals', () => {
 
     expect(refused.code).toBe('step_up_required');
   });
+
+  it('reads the version of each role it lists', async () => {
+    const listed = api.list('c1');
+    http.expectOne({ method: 'GET', url: '/api/companies/c1/roles' }).flush([
+      {
+        id: 'r1',
+        name: 'payer',
+        builtIn: false,
+        wildcard: false,
+        permissions: [],
+        memberCount: 0,
+        version: 4,
+      },
+    ]);
+
+    expect((await listed)[0]?.version).toBe(4);
+  });
+
+  it('sends back the version a revision was opened at', async () => {
+    const revised = api.revise('c1', 'r1', 'payer', ['invoice.issue'], 3);
+    const request = http.expectOne({ method: 'PUT', url: '/api/companies/c1/roles/r1' });
+    expect(request.request.body).toEqual({
+      name: 'payer',
+      permissions: ['invoice.issue'],
+      version: 3,
+    });
+    request.flush({
+      id: 'r1',
+      name: 'payer',
+      builtIn: false,
+      wildcard: false,
+      permissions: ['invoice.issue'],
+      memberCount: 0,
+      version: 4,
+    });
+
+    expect((await revised).version).toBe(4);
+  });
+
+  it('tells a role saved since from a name already taken, though both answer 409', async () => {
+    const refusal = async (body: object): Promise<RolesRefused> => {
+      const revised = api.revise('c1', 'r1', 'payer', [], 1);
+      http
+        .expectOne({ method: 'PUT', url: '/api/companies/c1/roles/r1' })
+        .flush(body, { status: 409, statusText: 'Conflict' });
+      return (await revised.then(
+        () => {
+          throw new Error('expected a refusal');
+        },
+        (error: unknown) => error,
+      )) as RolesRefused;
+    };
+
+    expect((await refusal({ type: '/problems/record-changed', detail: 'saved since' })).code).toBe(
+      'record_changed',
+    );
+    expect((await refusal({ detail: 'A role is already called "payer".' })).code).toBe(
+      'name_taken',
+    );
+  });
 });

@@ -227,7 +227,9 @@ it as on a record's own page (§ 7 2026-09-17 (2)), and its save sends the versi
 the list leaves what is typed alone: the form is keyed on plain values, or, where the options it offers follow the
 list (a category's parents), built again over what was typed, and a form built again while its row stays open keeps
 the base it stood on rather than taking what was typed for the saved version. A series' version also moves with every number given, so a form opened before a number was
-given is refused rather than writing its next number back.
+given is refused rather than writing its next number back. The roles editor has no descriptor form: its name and its
+ticks merge as one field each (the ticks compared as a set), so a form opened before a permission was taken away is
+refused, and shows the permission gone, rather than giving it back to everyone holding the role.
 
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,

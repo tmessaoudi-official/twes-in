@@ -201,9 +201,9 @@ final class InvitationTest extends ApiTestCase
         self::assertInstanceOf(MimeEmail::class, $message);
         $token = self::tokenIn((string) $message->getHtmlBody());
 
-        $this->sendJson('PUT', $companyPath.'/roles/'.$low->getId()->toRfc4122(), ['name' => 'away', 'permissions' => ['customer.read']]);
+        $this->sendJson('PUT', $companyPath.'/roles/'.$low->getId()->toRfc4122(), ['name' => 'away', 'permissions' => ['customer.read'], 'version' => 1]);
         self::assertResponseIsSuccessful();
-        $this->sendJson('PUT', $companyPath.'/roles/'.$cashier->getId()->toRfc4122(), ['name' => 'low', 'permissions' => ['customer.read', 'invoice.issue']]);
+        $this->sendJson('PUT', $companyPath.'/roles/'.$cashier->getId()->toRfc4122(), ['name' => 'low', 'permissions' => ['customer.read', 'invoice.issue'], 'version' => 1]);
         self::assertResponseIsSuccessful();
         $this->signOut();
 

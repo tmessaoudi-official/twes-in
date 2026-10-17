@@ -14,6 +14,7 @@ const seller: RoleRow = {
   wildcard: false,
   permissions: ['customer.read'],
   memberCount: 2,
+  version: 1,
 };
 
 // The proof dialog is answered by the test; `retrying` itself is StepUp's own.
@@ -53,7 +54,7 @@ describe('RolesFacade', () => {
     // menu and every permission-gated control stay as they were until the browser is refreshed (2026-09-20).
     api.revise.mockResolvedValue(undefined);
 
-    expect(await facade.revise('c1', 'r1', 'Vendeur', ['customer.read', 'customer.write'])).toBe(
+    expect(await facade.revise('c1', 'r1', 'Vendeur', ['customer.read', 'customer.write'], 1)).toBe(
       true,
     );
 
@@ -75,7 +76,7 @@ describe('RolesFacade', () => {
   it('does not claim the session changed when the API refused the write', async () => {
     api.revise.mockRejectedValue(new RolesRefused('in_use'));
 
-    expect(await facade.revise('c1', 'r1', 'Vendeur', [])).toBe(false);
+    expect(await facade.revise('c1', 'r1', 'Vendeur', [], 1)).toBe(false);
     expect(auth.refresh).not.toHaveBeenCalled();
   });
 
@@ -86,9 +87,10 @@ describe('RolesFacade', () => {
       .mockRejectedValueOnce(new RolesRefused('step_up_required'))
       .mockResolvedValueOnce(undefined);
 
-    expect(await facade.revise('c1', 'r1', 'Vendeur', ['customer.read'])).toBe(true);
+    expect(await facade.revise('c1', 'r1', 'Vendeur', ['customer.read'], 1)).toBe(true);
     expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
     expect(api.revise).toHaveBeenCalledTimes(2);
+    expect(api.revise).toHaveBeenLastCalledWith('c1', 'r1', 'Vendeur', ['customer.read'], 1);
   });
 
   it('says nothing changed when the person does not give the proof', async () => {

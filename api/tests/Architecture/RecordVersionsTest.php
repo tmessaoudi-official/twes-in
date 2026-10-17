@@ -58,7 +58,6 @@ final class RecordVersionsTest extends KernelTestCase
         '/companies/{companyId}/products/{productId}/barcodes',
         '/companies/{companyId}/recurring-invoices/{recurringInvoiceId}',
         '/companies/{companyId}/recurring-expenses/{recurringExpenseId}',
-        '/companies/{companyId}/roles/{roleId}',
     ];
 
     public function testEveryRevisionSaysWhichVersionItRevises(): void

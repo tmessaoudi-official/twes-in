@@ -15,6 +15,8 @@ export interface RoleRow {
   readonly wildcard: boolean;
   readonly permissions: readonly string[];
   readonly memberCount: number;
+  /** The version read, which a revision sends back; the API refuses it once someone saved a later one. */
+  readonly version: number;
 }
 
 /** One heading of the matrix, and the permissions under it. */

@@ -85,7 +85,7 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
         $id = $this->stringAt($this->json(), 'id');
         $this->forgetTheProof();
 
-        $this->sendJson('PUT', $this->path('roles/'.$id), ['name' => 'barista', 'permissions' => ['customer.read', 'product.read']]);
+        $this->sendJson('PUT', $this->path('roles/'.$id), ['name' => 'barista', 'permissions' => ['customer.read', 'product.read'], 'version' => 1]);
         $this->assertStepUpRequired();
         $this->sendJson('DELETE', $this->path('roles/'.$id));
         $this->assertStepUpRequired();
