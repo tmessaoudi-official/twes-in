@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Licensing\Domain\Model\Subscription;
 use App\Licensing\Domain\Repository\SubscriptionRepository;
 use App\Licensing\Domain\ValueObject\SubscriptionTerms;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Domain\Model\Company;
@@ -38,6 +40,7 @@ final readonly class ManageSubscriptions
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -47,14 +50,26 @@ final readonly class ManageSubscriptions
         return $this->subscriptions->ofCompany($this->companyOf($companyId)->getId());
     }
 
-    /** @throws CompanyNotFound */
-    public function set(Uuid $companyId, SubscriptionTerms $terms, Uuid $operatorId): Subscription
+    /**
+     * @param int $version the version of the subscription the terms were read at, 0 when the company had none
+     *
+     * @throws CompanyNotFound
+     * @throws RecordChanged   when the subscription was set, stopped or carried forward since
+     */
+    public function set(Uuid $companyId, SubscriptionTerms $terms, Uuid $operatorId, int $version): Subscription
     {
-        $company = $this->companyOf($companyId);
+        $this->companyOf($companyId);
 
-        return $this->transactions->run(function () use ($company, $terms, $operatorId): Subscription {
+        return $this->transactions->run(function () use ($companyId, $terms, $operatorId, $version): Subscription {
+            // The company's row is held first, so two operators starting to manage it never both find none.
+            $company = $this->companies->lockedOfId($companyId) ?? throw new CompanyNotFound();
             $now = $this->clock->now();
-            $subscription = $this->subscriptions->ofCompany($company->getId());
+            $subscription = $this->subscriptions->lockedOfCompany($company->getId());
+            if (null !== $subscription) {
+                $this->versions->expect($subscription, $version);
+            } elseif (0 !== $version) {
+                throw new RecordChanged();
+            }
             $before = $subscription?->getTerms();
             if (null === $subscription) {
                 $subscription = new Subscription($company, $terms, $now);
@@ -73,7 +88,7 @@ final readonly class ManageSubscriptions
     {
         $company = $this->companyOf($companyId);
         $this->transactions->run(function () use ($company, $operatorId): void {
-            $subscription = $this->subscriptions->ofCompany($company->getId());
+            $subscription = $this->subscriptions->lockedOfCompany($company->getId());
             if (null === $subscription) {
                 return;
             }

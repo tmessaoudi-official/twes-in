@@ -12,7 +12,9 @@ namespace App\Licensing\Infrastructure\Doctrine;
 use App\Licensing\Domain\Model\Subscription;
 use App\Licensing\Domain\Repository\SubscriptionRepository;
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineSubscriptionRepository implements SubscriptionRepository
@@ -24,6 +26,20 @@ final readonly class DoctrineSubscriptionRepository implements SubscriptionRepos
     public function ofCompany(Uuid $companyId): ?Subscription
     {
         return $this->entityManager->getRepository(Subscription::class)->findOneBy(['company' => $companyId]);
+    }
+
+    public function lockedOfCompany(Uuid $companyId): ?Subscription
+    {
+        // SELECT … FOR UPDATE; the refresh hint replaces what an earlier read of the row in this request left in memory.
+        $subscription = $this->entityManager->createQueryBuilder()
+            ->select('s')->from(Subscription::class, 's')
+            ->where('s.company = :company')->setParameter('company', $companyId, 'uuid')
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+
+        return $subscription instanceof Subscription ? $subscription : null;
     }
 
     public function ofCompanies(array $companyIds): array

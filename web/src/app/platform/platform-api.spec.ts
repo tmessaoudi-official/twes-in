@@ -94,10 +94,10 @@ describe('PlatformApi', () => {
       unpaidMode: 'locked' as const,
       holdDays: 3,
     };
-    const saving = api.setSubscription('c1', terms);
+    const saving = api.setSubscription('c1', terms, 4);
     const put = http.expectOne('/api/platform/companies/c1/subscription');
     expect(put.request.method).toBe('PUT');
-    expect(put.request.body).toEqual(terms);
+    expect(put.request.body).toEqual({ ...terms, version: 4 });
     put.flush({
       companyId: 'c1',
       ...terms,
@@ -107,8 +107,19 @@ describe('PlatformApi', () => {
       graceEndsAt: '2026-10-11T23:59:59+01:00',
       daysLeft: 14,
       updatedAt: '2026-09-17T10:00:00+00:00',
+      version: 5,
     });
-    expect((await saving).stage).toBe('trial');
+    const saved = await saving;
+    expect([saved.stage, saved.version]).toEqual(['trial', 5]);
+
+    const refused = api.setSubscription('c1', terms, 4);
+    http
+      .expectOne('/api/platform/companies/c1/subscription')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(refused).rejects.toEqual(new PlatformRefused('record_changed'));
 
     const stopping = api.stopSubscription('c1');
     const gone = http.expectOne('/api/platform/companies/c1/subscription');

@@ -15,7 +15,9 @@ use App\Licensing\Domain\Repository\PaymentDeclarationRepository;
 use App\Licensing\Domain\ValueObject\DeclarationStatus;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrinePaymentDeclarationRepository implements PaymentDeclarationRepository
@@ -27,6 +29,20 @@ final readonly class DoctrinePaymentDeclarationRepository implements PaymentDecl
     public function ofId(Uuid $id): ?PaymentDeclaration
     {
         return $this->entityManager->find(PaymentDeclaration::class, $id);
+    }
+
+    public function lockedOfId(Uuid $id): ?PaymentDeclaration
+    {
+        // SELECT … FOR UPDATE; the refresh hint replaces what an earlier read of the row in this request left in memory.
+        $declaration = $this->entityManager->createQueryBuilder()
+            ->select('d')->from(PaymentDeclaration::class, 'd')
+            ->where('d.id = :id')->setParameter('id', $id, 'uuid')
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+
+        return $declaration instanceof PaymentDeclaration ? $declaration : null;
     }
 
     public function openOfCompany(Uuid $companyId): ?PaymentDeclaration

@@ -106,25 +106,26 @@ final readonly class ManagePayments
      */
     public function decide(Uuid $declarationId, bool $confirmed, Uuid $operatorId, ?string $note = null, int $periods = 1): PaymentDeclaration
     {
-        $declaration = $this->declarations->ofId($declarationId) ?? throw new PaymentNotFound('No such payment declaration.');
-
-        $paidThrough = $this->transactions->run(function () use ($declaration, $confirmed, $operatorId, $note, $periods): ?\DateTimeImmutable {
+        [$declaration, $paidThrough] = $this->transactions->run(function () use ($declarationId, $confirmed, $operatorId, $note, $periods): array {
+            // Held and read afresh: a declaration decided since it was read is refused, never decided twice.
+            $declaration = $this->declarations->lockedOfId($declarationId) ?? throw new PaymentNotFound('No such payment declaration.');
             $now = $this->clock->now();
             $confirmed ? $declaration->confirm($operatorId, $now, $note) : $declaration->reject($operatorId, $now, $note);
             $this->declarations->save($declaration);
             $this->record($declaration, $confirmed ? self::CONFIRMED : self::REJECTED, $operatorId);
             if (!$confirmed) {
-                return null;
+                return [$declaration, null];
             }
-            // A company whose subscription was stopped between the declaration and the decision has nothing to extend.
-            $subscription = $this->subscriptions->ofCompany($declaration->getCompany()->getId());
+            // A company whose subscription was stopped between the declaration and the decision has nothing to extend;
+            // one revised since is carried forward as it is now.
+            $subscription = $this->subscriptions->lockedOfCompany($declaration->getCompany()->getId());
             if (null === $subscription) {
-                return null;
+                return [$declaration, null];
             }
             $subscription->coverPeriods($periods, $now);
             $this->subscriptions->save($subscription);
 
-            return $subscription->getTerms()->paidUntil;
+            return [$declaration, $subscription->getTerms()->paidUntil];
         });
 
         $this->tellOwners($declaration, $paidThrough);

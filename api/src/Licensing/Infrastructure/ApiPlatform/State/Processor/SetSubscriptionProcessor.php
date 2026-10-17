@@ -49,7 +49,7 @@ final readonly class SetSubscriptionProcessor implements ProcessorInterface
         $company = $this->companies->ofId($companyId) ?? throw new NotFoundHttpException('No such company.');
 
         try {
-            $subscription = $this->manage->set($companyId, $data->terms($company->getTimezone()), $account->getId());
+            $subscription = $this->manage->set($companyId, $data->terms($company->getTimezone()), $account->getId(), $data->version ?? throw new \LogicException('The version is validated before.'));
         } catch (CompanyNotFound $notFound) {
             throw new NotFoundHttpException('No such company.', $notFound);
         } catch (InvalidSubscription $refused) {

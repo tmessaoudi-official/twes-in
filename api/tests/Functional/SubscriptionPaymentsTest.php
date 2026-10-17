@@ -9,6 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Licensing\Application\ManagePayments;
+use App\Licensing\Domain\Exception\InvalidPayment;
+use App\Licensing\Domain\Model\PaymentDeclaration;
+use App\Licensing\Domain\Model\Subscription;
 use App\Licensing\Domain\ValueObject\PaymentMethod;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
@@ -158,6 +162,53 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         self::assertSame($this->inMonths(2), $this->json()['paidThrough']);
         self::assertNull($this->json()['openPayment']);
         self::assertSame('confirmed', $this->jsonPayments()[0]['status']);
+    }
+
+    /** The operator's confirmation covers the subscription as it is held, terms saved since it was read included. */
+    public function testAConfirmationCoversTheSubscriptionAsItIsHeldNow(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('owner@twes.local', 'password-1234', $company);
+        $this->subscribe($company, ['paidThrough' => $this->day(-30), 'graceDays' => 0, 'periodCount' => 1, 'periodUnit' => 'month']);
+        $this->login('owner@twes.local', 'password-1234');
+        $this->postJson($this->paymentsOf($company), $this->payment());
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $declarationId = Uuid::fromString($this->stringAt($this->json(), 'id'));
+        $operator = $this->createUser('other-op@twes.local', 'password-1234', operator: true);
+
+        $id = $company->getId()->toRfc4122();
+        $read = $this->em()->getRepository(Subscription::class)->findOneBy(['company' => $company->getId()]);
+        self::assertNotNull($read, 'read as the request would');
+        $this->em()->getConnection()->executeStatement('UPDATE subscription SET version = version + 1, grace_days = 4 WHERE company_id = ?', [$id]);
+
+        static::getContainer()->get(ManagePayments::class)->decide($declarationId, true, $operator->getId());
+
+        self::assertSame([4, 3], [$this->em()->getConnection()->fetchOne('SELECT grace_days FROM subscription WHERE company_id = ?', [$id]), $this->seen($company)]);
+    }
+
+    /** Rejected since it was read: the declaration held says so, and it is not confirmed over the rejection. */
+    public function testADecisionIsTakenOnTheDeclarationItHolds(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('owner@twes.local', 'password-1234', $company);
+        $this->subscribe($company, ['paidThrough' => $this->day(-30), 'graceDays' => 0, 'periodCount' => 1, 'periodUnit' => 'month']);
+        $this->login('owner@twes.local', 'password-1234');
+        $this->postJson($this->paymentsOf($company), $this->payment());
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $declarationId = $this->stringAt($this->json(), 'id');
+        $operator = $this->createUser('other-op@twes.local', 'password-1234', operator: true);
+        $paidThrough = $this->em()->getConnection()->fetchOne('SELECT paid_until FROM subscription WHERE company_id = ?', [$company->getId()->toRfc4122()]);
+
+        $this->em()->find(PaymentDeclaration::class, Uuid::fromString($declarationId)) ?? throw new \LogicException('no declaration');
+        $this->em()->getConnection()->executeStatement("UPDATE payment_declaration SET status = 'rejected', decided_at = now() WHERE id = ?", [$declarationId]);
+
+        try {
+            static::getContainer()->get(ManagePayments::class)->decide(Uuid::fromString($declarationId), true, $operator->getId());
+            self::fail('a declaration rejected since it was read is confirmed');
+        } catch (InvalidPayment) {
+        }
+        self::assertSame('rejected', $this->em()->getConnection()->fetchOne('SELECT status FROM payment_declaration WHERE id = ?', [$declarationId]));
+        self::assertSame($paidThrough, $this->em()->getConnection()->fetchOne('SELECT paid_until FROM subscription WHERE company_id = ?', [$company->getId()->toRfc4122()]), 'and nothing is covered');
     }
 
     public function testARejectedPaymentEndsTheHoldAtOnceAndTheOwnerIsTold(): void
@@ -390,9 +441,23 @@ final class SubscriptionPaymentsTest extends ApiTestCase
             'graceDays' => null,
             'unpaidMode' => null,
             'holdDays' => null,
+            'version' => $this->seen($company),
             ...$terms,
         ]);
         self::assertResponseIsSuccessful();
+    }
+
+    /** The version of the company's subscription, 0 while it has none: what an operator who just read it sends. */
+    private function seen(Company $company): int
+    {
+        $version = $this->em()->getConnection()->fetchOne('SELECT version FROM subscription WHERE company_id = ?', [$company->getId()->toRfc4122()]);
+
+        if (false === $version) {
+            return 0;
+        }
+        self::assertIsInt($version);
+
+        return $version;
     }
 
     /** The person's own choice of a presentation key, as « Mon compte » writes it. */

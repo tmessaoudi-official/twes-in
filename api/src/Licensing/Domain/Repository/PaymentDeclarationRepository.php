@@ -16,6 +16,9 @@ interface PaymentDeclarationRepository
 {
     public function ofId(Uuid $id): ?PaymentDeclaration;
 
+    /** The declaration, held until the transaction ends and read afresh: a decision is taken on what it is now. */
+    public function lockedOfId(Uuid $id): ?PaymentDeclaration;
+
     /** The company's declaration waiting for a decision, if it has one: only ever one at a time. */
     public function openOfCompany(Uuid $companyId): ?PaymentDeclaration;
 

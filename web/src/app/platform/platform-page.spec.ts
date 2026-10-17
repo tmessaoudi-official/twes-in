@@ -258,6 +258,7 @@ describe('PlatformPage', () => {
     closeSubscription: vi.fn(() => openedSubscription.set(null)),
     saveSubscription: vi.fn(async () => true),
     stopSubscription: vi.fn(async () => true),
+    clearError: vi.fn(),
   };
   const payments = {
     waiting: waitingPayments.asReadonly(),
@@ -281,6 +282,7 @@ describe('PlatformPage', () => {
     companiesTotal.set(1);
     accountsTotal.set(1);
     openedSubscription.set(null);
+    subscription.set(null);
     Object.values(payments)
       .filter((value) => typeof value === 'function' && 'mockReset' in value)
       .forEach((fn) => (fn as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(true));
@@ -360,11 +362,89 @@ describe('PlatformPage', () => {
         periodUnit: 'year',
         unpaidMode: 'locked',
       }),
+      0,
     );
 
     query('subscription-Nouvelle Société')!.click();
     await fixture.whenStable();
     expect(facade.closeSubscription).toHaveBeenCalled();
+  });
+
+  it('keeps the terms typed over terms another operator set since, and takes theirs for the rest', async () => {
+    const held: PlatformSubscriptionRow = {
+      companyId: 'c1',
+      periodCount: 1,
+      periodUnit: 'month',
+      trialEndsOn: null,
+      paidThrough: '2026-12-31',
+      price: '600.000',
+      currency: 'TND',
+      graceDays: 3,
+      unpaidMode: null,
+      holdDays: null,
+      stage: 'paid',
+      access: 'full',
+      coveredUntil: '2026-12-31T23:59:59+01:00',
+      graceEndsAt: '2027-01-03T23:59:59+01:00',
+      daysLeft: 70,
+      updatedAt: '2026-10-17T10:00:00+00:00',
+      version: 3,
+    };
+    const theirs: PlatformSubscriptionRow = { ...held, price: '700.000', graceDays: 5, version: 4 };
+    facade.openSubscription.mockImplementation(async (companyId: string) => {
+      openedSubscription.set(companyId);
+      subscription.set(held);
+    });
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+    query('subscription-Nouvelle Société')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const grace = query<HTMLInputElement>('subscription-grace-days')!;
+    grace.value = '9';
+    grace.dispatchEvent(new Event('input'));
+    facade.saveSubscription.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      subscription.set(theirs);
+      return false;
+    });
+    query('subscription-save')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(facade.saveSubscription).toHaveBeenLastCalledWith(
+      'c1',
+      expect.objectContaining({ graceDays: 9 }),
+      3,
+    );
+    expect([
+      query<HTMLInputElement>('subscription-grace-days')!.value,
+      query<HTMLInputElement>('subscription-price')!.value,
+    ]).toEqual(['9', '700.000']);
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+      { kind: 'failure', key: 'live.saved_since', params: undefined },
+    ]);
+
+    // Refused again: the price taken from them the first time is theirs now, so their next price is taken too.
+    facade.saveSubscription.mockImplementationOnce(async () => {
+      subscription.set({ ...theirs, price: '800.000', version: 5 });
+      return false;
+    });
+    query('subscription-save')!.click();
+    await fixture.whenStable();
+    expect(facade.saveSubscription).toHaveBeenLastCalledWith(
+      'c1',
+      expect.objectContaining({ graceDays: 9, price: '700.000' }),
+      4,
+    );
+
+    query('subscription-save')!.click();
+    await fixture.whenStable();
+    expect(facade.saveSubscription).toHaveBeenLastCalledWith(
+      'c1',
+      expect.objectContaining({ graceDays: 9, price: '800.000' }),
+      5,
+    );
   });
 
   it('loads the platform when it opens', async () => {

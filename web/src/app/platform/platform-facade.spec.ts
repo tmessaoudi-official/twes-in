@@ -377,6 +377,7 @@ describe('PlatformFacade', () => {
       graceEndsAt: '2027-01-07T23:59:59+01:00',
       daysLeft: 105,
       updatedAt: '2026-09-17T10:00:00+00:00',
+      version: 1,
     };
     api.subscription.mockResolvedValue(null);
     api.setSubscription.mockResolvedValue(held);
@@ -389,9 +390,18 @@ describe('PlatformFacade', () => {
     expect(facade.openedSubscription()).toBe('c1');
     expect(facade.subscription()).toBeNull();
 
-    expect(await facade.saveSubscription('c1', terms)).toBe(true);
+    expect(await facade.saveSubscription('c1', terms, 0)).toBe(true);
+    expect(api.setSubscription).toHaveBeenCalledWith('c1', terms, 0);
     expect(facade.subscription()).toEqual(held);
     expect(api.companies).toHaveBeenCalledWith(LIST);
+
+    // Another operator set terms since: refused, and what they hold is read again for the next save.
+    const theirs = { ...held, graceDays: 4, version: 2 };
+    api.setSubscription.mockRejectedValue(new PlatformRefused('record_changed'));
+    api.subscription.mockResolvedValue(theirs);
+    expect(await facade.saveSubscription('c1', terms, 1)).toBe(false);
+    expect(facade.error()).toBe('record_changed');
+    expect(facade.subscription()).toEqual(theirs);
 
     facade.closeSubscription();
     expect(facade.openedSubscription()).toBeNull();
@@ -405,19 +415,24 @@ describe('PlatformFacade', () => {
 
     api.setSubscription.mockRejectedValue(new PlatformRefused('refused'));
     expect(
-      await facade.saveSubscription('c1', {
-        periodCount: 1,
-        periodUnit: 'month',
-        trialEndsOn: null,
-        paidThrough: null,
-        price: null,
-        currency: null,
-        graceDays: null,
-        unpaidMode: null,
-        holdDays: null,
-      }),
+      await facade.saveSubscription(
+        'c1',
+        {
+          periodCount: 1,
+          periodUnit: 'month',
+          trialEndsOn: null,
+          paidThrough: null,
+          price: null,
+          currency: null,
+          graceDays: null,
+          unpaidMode: null,
+          holdDays: null,
+        },
+        0,
+      ),
     ).toBe(false);
     expect(facade.error()).toBe('refused');
+    expect(api.subscription).not.toHaveBeenCalled();
   });
 
   // docs/SPEC.md § 7, the step-up list: every platform write waits for the operator to prove who is at the screen.

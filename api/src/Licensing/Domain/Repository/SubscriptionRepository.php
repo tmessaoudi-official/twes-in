@@ -16,6 +16,9 @@ interface SubscriptionRepository
 {
     public function ofCompany(Uuid $companyId): ?Subscription;
 
+    /** The company's subscription, held until the transaction ends and read afresh: what a writer checks and changes. */
+    public function lockedOfCompany(Uuid $companyId): ?Subscription;
+
     /**
      * The subscriptions of the companies named, by company id.
      *

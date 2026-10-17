@@ -42,6 +42,7 @@ import {
   type SupportChannel,
   type PlatformDelay,
   type PlatformSupport,
+  type PlatformSubscriptionRow,
   type SubscriptionTerms,
 } from './platform-types';
 
@@ -266,6 +267,8 @@ export class PlatformPage implements OnInit {
   ];
   /** The terms in the open panel, which start from what the company holds, or empty where it holds none. */
   protected readonly terms = signal<SubscriptionTerms>({ ...EMPTY_TERMS });
+  /** The terms as the panel last read them, against which what was typed is told apart. */
+  private readonly readTerms = signal<SubscriptionTerms>({ ...EMPTY_TERMS });
 
   async ngOnInit(): Promise<void> {
     await this.platform.load();
@@ -360,22 +363,8 @@ export class PlatformPage implements OnInit {
       return;
     }
     await this.platform.openSubscription(companyId);
-    const held = this.subscription();
-    this.terms.set(
-      held === null
-        ? { ...EMPTY_TERMS }
-        : {
-            periodCount: held.periodCount,
-            periodUnit: held.periodUnit,
-            trialEndsOn: held.trialEndsOn,
-            paidThrough: held.paidThrough,
-            price: held.price,
-            currency: held.currency,
-            graceDays: held.graceDays,
-            unpaidMode: held.unpaidMode,
-            holdDays: held.holdDays,
-          },
-    );
+    this.readTerms.set(termsOf(this.subscription()));
+    this.terms.set(this.readTerms());
   }
 
   /** One field of the terms being edited; an emptied field is null, which is what "follow the platform" means. */
@@ -443,9 +432,21 @@ export class PlatformPage implements OnInit {
     this.feedback.failure('live.saved_since');
   }
 
+  /**
+   * Refused as saved since by another operator, the panel shows what they hold: a term typed here is kept and saved on
+   * their version at the next save, every other term is theirs.
+   */
   protected async saveSubscription(companyId: string): Promise<void> {
-    if (await this.platform.saveSubscription(companyId, this.terms())) {
+    const typed = this.terms();
+    const version = this.subscription()?.version ?? 0;
+    if (await this.platform.saveSubscription(companyId, typed, version)) {
+      this.readTerms.set(termsOf(this.subscription()));
       this.feedback.success('platform.subscription.saved');
+    } else if (this.platform.error() === 'record_changed') {
+      const theirs = termsOf(this.subscription());
+      this.terms.set(keepTyped(this.readTerms(), typed, theirs));
+      this.readTerms.set(theirs);
+      this.savedSince();
     }
   }
 
@@ -453,6 +454,7 @@ export class PlatformPage implements OnInit {
     if (await this.platform.stopSubscription(companyId)) {
       this.feedback.success('platform.subscription.stopped');
       this.terms.set({ ...EMPTY_TERMS });
+      this.readTerms.set({ ...EMPTY_TERMS });
     }
   }
 
@@ -463,4 +465,41 @@ export class PlatformPage implements OnInit {
   protected async reject(companyId: string): Promise<void> {
     await this.platform.reject(companyId);
   }
+}
+
+/** The terms a subscription holds, or the empty ones where licensing does not manage the company. */
+function termsOf(held: PlatformSubscriptionRow | null): SubscriptionTerms {
+  if (held === null) return { ...EMPTY_TERMS };
+  return {
+    periodCount: held.periodCount,
+    periodUnit: held.periodUnit,
+    trialEndsOn: held.trialEndsOn,
+    paidThrough: held.paidThrough,
+    price: held.price,
+    currency: held.currency,
+    graceDays: held.graceDays,
+    unpaidMode: held.unpaidMode,
+    holdDays: held.holdDays,
+  };
+}
+
+/** Each term typed since the panel read it, over what is held now; every other term as held now. */
+function keepTyped(
+  read: SubscriptionTerms,
+  typed: SubscriptionTerms,
+  theirs: SubscriptionTerms,
+): SubscriptionTerms {
+  const pick = <K extends keyof SubscriptionTerms>(key: K): SubscriptionTerms[K] =>
+    typed[key] === read[key] ? theirs[key] : typed[key];
+  return {
+    periodCount: pick('periodCount'),
+    periodUnit: pick('periodUnit'),
+    trialEndsOn: pick('trialEndsOn'),
+    paidThrough: pick('paidThrough'),
+    price: pick('price'),
+    currency: pick('currency'),
+    graceDays: pick('graceDays'),
+    unpaidMode: pick('unpaidMode'),
+    holdDays: pick('holdDays'),
+  };
 }
