@@ -39,6 +39,10 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-17 20:58] ASSUMED (review): A release tag the pinned key does not verify is alerted to the operators once from tick under every policy, notify included, and on each manual twes update — because a forged tag is a security alarm, not update news. Alternatives: alert only when an update is attempted (silent under the default policy).
 - [2026-10-17 20:58] ASSUMED (review): install.ps1 carries the release key's fingerprint and verifies the checked-out tag against it before anything from the checkout runs; the shop gets install.ps1 from the developer out of band — because twes install shows the checkout's own key, which a forged tag controls. Alternatives: rely on the typed yes alone; a GitHub tag ruleset alone (recommended in addition, the developer's action).
 - [2026-10-17 20:58] ASSUMED (review): Linux schedules start and tick as systemd system units (User= the account's UID, Requires/After docker.service, a quarter-hour timer) written by twes schedule through sudo, and twes install runs it on Linux — because Docker Engine is a system service there. Alternatives: user units with lingering; cron.
+- [2026-10-17 21:59] AGREED: Demo sandboxes are built ahead by the worker through the real use cases (a pool of two ready ones, each with its own throwaway owner); a sign-in takes one, and the worker builds its replacement.
+- [2026-10-17 21:59] AGREED: The demo is entered by an « Essayer la démo » button on the sign-in page, no password; the account shows as demo@example.com.
+- [2026-10-17 21:59] AGREED: Mail a sandbox would send is captured, never sent, and listed on a « Courriers de la démo » page inside it; it goes with the sandbox.
+- [2026-10-17 21:59] AGREED: The demo is on by default, a shop's own install included; the platform operator can switch it off.
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
