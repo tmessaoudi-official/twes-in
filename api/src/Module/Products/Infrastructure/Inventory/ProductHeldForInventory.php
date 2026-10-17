@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Inventory;
 
-use App\Module\Inventory\Application\HomedProducts;
+use App\Module\Inventory\Application\ProductsHeld;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\RecordVersions;
@@ -17,8 +17,8 @@ use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** Answers the inventory's `HomedProducts` port: the product is held and checked as its own revision holds and checks it. */
-final readonly class ProductHeldForHomes implements HomedProducts
+/** Answers the inventory's `ProductsHeld` port: the product is held and checked as its own revision holds and checks it. */
+final readonly class ProductHeldForInventory implements ProductsHeld
 {
     public function __construct(private ProductRepository $products, private RecordVersions $versions, private ClockInterface $clock)
     {
@@ -34,7 +34,7 @@ final readonly class ProductHeldForHomes implements HomedProducts
         return $product;
     }
 
-    public function homesChanged(Product $product): void
+    public function changedBeside(Product $product): void
     {
         $product->touched($this->clock->now());
         $this->products->save($product);

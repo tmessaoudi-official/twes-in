@@ -89,7 +89,7 @@ final class WatchTest extends ApiTestCase
 
         // VIS at its reorder point: 5 on hand, a point of 5. The invoice above already took one out, so six come in.
         $this->receive('VIS', '6');
-        $this->sendJson('PUT', $this->company().'/products/'.$this->products['VIS'].'/reorder-points/'.$this->establishmentId, ['quantity' => '5']);
+        $this->sendJson('PUT', $this->company().'/products/'.$this->products['VIS'].'/reorder-points/'.$this->establishmentId, ['quantity' => '5', 'version' => $this->storedVersion('product', $this->products['VIS'])]);
         self::assertResponseIsSuccessful();
 
         // COLLE by lot: one lot expiring in 10 days, one in 60 (outside the 30-day window), one gone off yesterday.
@@ -154,7 +154,7 @@ final class WatchTest extends ApiTestCase
         // 20 put aside; GANT has 30, sells 0.3 a day, and 20 put aside leaves it about 3 days.
         $this->signedIn(['company.read', 'product.read', 'product.write', 'stock.read', 'stock.write']);
         $this->receive('VIS', '24');
-        $this->sendJson('PUT', $this->company().'/products/'.$this->products['VIS'].'/reorder-points/'.$this->establishmentId, ['quantity' => '10']);
+        $this->sendJson('PUT', $this->company().'/products/'.$this->products['VIS'].'/reorder-points/'.$this->establishmentId, ['quantity' => '10', 'version' => $this->storedVersion('product', $this->products['VIS'])]);
         self::assertResponseIsSuccessful();
         $this->receive('GANT', '30');
         $this->deliver('GANT', '9');

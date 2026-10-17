@@ -61,6 +61,14 @@
               </button>
             }
           </div>
+          @if (changedSince(row)) {
+            <app-part-conflict
+              class="w-full"
+              [field]="'reorder-' + row.establishmentCode"
+              message="products.reorder.changed_since"
+              (resolved)="resolve(row, $event.choice)"
+            />
+          }
           @if (malformed(row)) {
             <span
               role="alert"

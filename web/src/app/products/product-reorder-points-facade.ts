@@ -4,6 +4,9 @@ import { inject, Injectable, signal } from '@angular/core';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductReorderPointRow, ProductsError } from './products-types';
 
+/** What became of a write: `changed` is a product saved since, which the product page reads again and says. */
+export type ReorderPointWrite = 'saved' | 'refused' | 'changed';
+
 /**
  * One product's reorder point in each establishment (docs/SPEC.md § 7, 2026-09-24 11:40). Its own facade, as the homes
  * have theirs: a section that fails to load or is saving says so about itself, not about the whole product screen.
@@ -25,23 +28,38 @@ export class ProductReorderPoints {
     );
   }
 
+  /**
+   * Sets the point on the product's version the points were read at: they are shown beside the product form and move
+   * it. Over a product saved since, the points are read again and what was typed is the screen's to keep.
+   */
   async set(
     companyId: string,
     productId: string,
     establishmentId: string,
     quantity: string,
-  ): Promise<boolean> {
-    return this.run(async () => {
-      await this.api.setReorderPoint(companyId, productId, establishmentId, quantity);
+    version: number,
+  ): Promise<ReorderPointWrite> {
+    const done = await this.run(async () => {
+      await this.api.setReorderPoint(companyId, productId, establishmentId, quantity, version);
       this.rowsSignal.set(await this.api.reorderPoints(companyId, productId));
     });
+    if (done) return 'saved';
+    if (this.errorSignal() !== 'record_changed') return 'refused';
+    this.errorSignal.set(null);
+    await this.load(companyId, productId);
+    return 'changed';
   }
 
-  async clear(companyId: string, productId: string, establishmentId: string): Promise<boolean> {
-    return this.run(async () => {
+  async clear(
+    companyId: string,
+    productId: string,
+    establishmentId: string,
+  ): Promise<ReorderPointWrite> {
+    const done = await this.run(async () => {
       await this.api.clearReorderPoint(companyId, productId, establishmentId);
       this.rowsSignal.set(await this.api.reorderPoints(companyId, productId));
     });
+    return done ? 'saved' : 'refused';
   }
 
   private async run(work: () => Promise<void>): Promise<boolean> {

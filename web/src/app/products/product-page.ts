@@ -207,8 +207,8 @@ export class ProductPage {
 
   /** The saved version the form stands on, and what another person's save changed in it. */
   protected readonly sync = liveRecord({
-    // Its homes are audited under their own kind and shown beside the form, which their change moves.
-    kind: ['product', 'product_home_location'],
+    // Its homes and reorder points are audited under kinds of their own and shown beside the form, which their change moves.
+    kind: ['product', 'product_home_location', 'product_reorder_point'],
     id: this.id,
     form: this.form,
     reload: async () => {

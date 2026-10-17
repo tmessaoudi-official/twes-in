@@ -156,7 +156,12 @@
           </mat-card>
           <mat-card>
             <mat-card-content>
-              <app-product-reorder-points [productId]="product.id" [readOnly]="!mayWrite()" />
+              <app-product-reorder-points
+                [productId]="product.id"
+                [version]="product.version"
+                [readOnly]="!mayWrite()"
+                (moved)="productMoved($event)"
+              />
             </mat-card-content>
           </mat-card>
         </div>

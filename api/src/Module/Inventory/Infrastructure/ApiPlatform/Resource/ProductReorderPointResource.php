@@ -18,6 +18,7 @@ use App\Module\Inventory\Domain\Model\ProductReorderPoint;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\ClearProductReorderPointProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\SetProductReorderPointProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Provider\ProductReorderPointCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Tenancy\Domain\Model\Establishment;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -42,8 +43,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/products/{productId}/reorder-points/{establishmentId}',
@@ -80,6 +81,15 @@ final class ProductReorderPointResource
     #[Assert\NotBlank(normalizer: 'trim', groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $quantity = null;
+
+    /**
+     * The version of the product the point was read at (the PUT): the points are shown beside the product form, so a
+     * change of them moves the product's version, and a point read before another person's change answers 409.
+     */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([RecordVersion::REVISE])]
+    public ?int $version = null;
 
     /** @param ProductReorderPoint|null $point null where the product has none in that establishment */
     public static function of(Establishment $establishment, ?ProductReorderPoint $point): self
