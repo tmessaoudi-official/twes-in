@@ -32,6 +32,8 @@ import { DescriptorForm } from '../shared/form/descriptor-form';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import { listRecord } from '../shared/form/list-record';
+import { RecordChanged } from '../shared/form/record-changed';
 import { dirtyCount } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { ThemeFacade } from '../shared/theme/theme-facade';
@@ -263,6 +265,8 @@ const PENDING_PIECE: StockStructureRow = {
   depth: '0',
   rotation: 0,
   height: '0',
+  // Never sent: a piece not yet saved is created, and a creation names no version.
+  version: 0,
 };
 
 /**
@@ -290,6 +294,7 @@ const PENDING_PIECE: StockStructureRow = {
     DescriptorForm,
     Label,
     PickField,
+    RecordChanged,
     StockMapVolume,
     StockMapFirstSteps,
     PlaceContents,
@@ -835,6 +840,23 @@ export class StockMapPage implements OnInit {
           ),
       );
     },
+  });
+
+  /** The saved version the open floor form stands on, and what another person's save changed in it. */
+  protected readonly floorSync = listRecord({
+    kind: 'venue_area',
+    editing: this.editingFloor,
+    rows: this.facade.floors,
+    form: this.floorFormGroup,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.loadPlanContext(companyId);
+    },
+    values: (row) =>
+      floorValues(
+        row,
+        this.facade.options() ?? { establishments: [], planShapes: [], structureShapes: [] },
+      ),
   });
 
   constructor() {
@@ -2312,8 +2334,13 @@ export class StockMapPage implements OnInit {
   }
 
   /** « Annuler » on a drawing toast: the change taken back, and said. */
-  private async undo(takeBack: () => Promise<boolean>): Promise<void> {
+  /** « Annuler » never writes over another person's change: refused as saved since, it says nothing was taken back. */
+  private async undo(takeBack: () => Promise<unknown>): Promise<void> {
     if (await takeBack()) this.feedback.success('inventory.plan.undone');
+    else if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      this.feedback.failure('live.undo_refused');
+    }
   }
 
   // ——— the structure layer: the building, which is none of the stock ———
@@ -2363,6 +2390,19 @@ export class StockMapPage implements OnInit {
           ),
       );
     },
+  });
+
+  /** The saved version the open piece's form stands on, and what another person's save changed in it. */
+  protected readonly structureSync = listRecord({
+    kind: 'venue_structure',
+    editing: this.editingStructure,
+    rows: this.facade.structures,
+    form: this.structureFormGroup,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.reloadStructures(companyId);
+    },
+    values: (row) => structureValues(row, this.structureTools()),
   });
 
   /**
@@ -2533,13 +2573,14 @@ export class StockMapPage implements OnInit {
     const before =
       editing === 'new' ? null : structureInput(structureValues(editing, this.structureTools()));
     const standing = new Set(this.facade.structures().map((piece) => piece.id));
-    const accepted = await this.facade.buildStructure(
+    const saved = await this.facade.buildStructure(
       companyId,
       floorId,
       structureInput(values),
       editing === 'new' ? null : editing.id,
+      editing === 'new' ? null : this.structureSync.version(),
     );
-    if (accepted) {
+    if (saved) {
       this.editingStructure.set(null);
       // A piece just built has no id of its own here: it is the one that was not standing before the save.
       const made = this.facade.structures().find((piece) => !standing.has(piece.id));
@@ -2554,10 +2595,19 @@ export class StockMapPage implements OnInit {
                 ? made === undefined
                   ? Promise.resolve(false)
                   : this.facade.eraseStructure(companyId, floorId, made.id)
-                : this.facade.buildStructure(companyId, floorId, before!, editing.id),
+                : this.facade.buildStructure(
+                    companyId,
+                    floorId,
+                    before!,
+                    editing.id,
+                    saved.version,
+                  ),
             ),
         },
       );
+    } else if (this.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.structureSync.savedElsewhere();
     }
   }
 
@@ -2577,7 +2627,7 @@ export class StockMapPage implements OnInit {
         {
           key: 'inventory.plan.undo',
           run: () =>
-            void this.undo(() => this.facade.buildStructure(companyId, floorId, again, null)),
+            void this.undo(() => this.facade.buildStructure(companyId, floorId, again, null, null)),
         },
       );
     }
@@ -2600,14 +2650,26 @@ export class StockMapPage implements OnInit {
     const editing = this.editingFloor();
     if (!companyId || editing === null || this.busy()) return;
 
-    const row = editing === 'new' ? null : editing;
+    // What the form does not show, the plan image, is carried from the floor as it stands now, not as it was opened.
+    const row =
+      editing === 'new'
+        ? null
+        : (this.facade.floors().find((floor) => floor.id === editing.id) ?? editing);
     const accepted =
       row === null
         ? await this.facade.createFloor(companyId, floorInput(values, null))
-        : await this.facade.reviseFloor(companyId, row.id, floorInput(values, row));
+        : await this.facade.reviseFloor(
+            companyId,
+            row.id,
+            floorInput(values, row),
+            this.floorSync.version(),
+          );
     if (accepted) {
       this.editingFloor.set(null);
       this.feedback.success('inventory.plan.floor_saved');
+    } else if (this.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.floorSync.savedElsewhere();
     }
   }
 

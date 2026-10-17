@@ -3402,6 +3402,7 @@
     "deleted": "{{name}} a supprimé cette fiche.",
     "deleted_someone": "Cette fiche a été supprimée.",
     "saved_since": "Rien n’a été enregistré : une autre version de cette fiche l’a été entre-temps. Vérifiez-la, puis enregistrez de nouveau.",
+    "undo_refused": "Rien n’a été annulé : une autre version a été enregistrée entre-temps.",
     "lines_conflict": "Les lignes ont aussi été modifiées dans la version enregistrée.",
     "take_saved": "Prendre la version enregistrée",
     "keep_typed": "Garder ma saisie"

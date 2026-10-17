@@ -67,7 +67,7 @@ final class RepeatStockDrawingTest extends TestCase
         $establishments = new InMemoryEstablishments();
         $establishments->save($this->establishment);
         $this->spots = new InMemoryVenueSpots();
-        $this->venue = new ArrangeVenue(new InMemoryVenueAreas(), $this->spots, new InMemoryVenueStructures(), $establishments, $audit, $clock, $transactions);
+        $this->venue = new ArrangeVenue(new InMemoryVenueAreas(), $this->spots, new InMemoryVenueStructures(), $establishments, $audit, $clock, $transactions, new InMemoryRecordVersions());
         $this->locations = new ManageStockLocations(new InMemoryStockLocations(), new InMemoryStockMovements(), $establishments, $audit, $clock, $transactions, new InMemoryRecordVersions());
         $this->map = new DrawStockMap($this->venue, $this->locations, $transactions);
         $this->actor = Uuid::v7();

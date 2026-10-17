@@ -50,7 +50,7 @@ final readonly class BuildStockStructureProcessor implements ProcessorInterface
                 ?? throw new InvalidVenue('kind', 'A piece of structure is a wall, a door, a post or a dock.');
             $built = $operation instanceof Post
                 ? $this->venue->build($company, CompanyPath::identifier($uriVariables, 'floorId'), $kind, $data->name, $rect, $actor)
-                : $this->venue->reshapeStructure($company, CompanyPath::identifier($uriVariables, 'structureId'), $kind, $data->name, $rect, $actor);
+                : $this->venue->reshapeStructure($company, CompanyPath::identifier($uriVariables, 'structureId'), $kind, $data->name, $rect, $actor, $data->version);
         } catch (VenueAreaNotFound|VenueStructureNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (InvalidVenue $refused) {

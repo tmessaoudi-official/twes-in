@@ -18,6 +18,7 @@ use ApiPlatform\Metadata\Put;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\BuildStockStructureProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\EraseStockStructureProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Provider\StockStructureCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Venue\Domain\Model\VenueStructure;
 use App\Venue\Domain\ValueObject\StructureKind;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -57,8 +58,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/stock-structures/{structureId}',
@@ -123,6 +124,12 @@ final class StockStructureResource
     #[Groups([self::READ, self::WRITE])]
     public string $height = '0';
 
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     /** @return list<string> */
     public static function kinds(): array
     {
@@ -143,6 +150,7 @@ final class StockStructureResource
         $piece->depth = $rect->depth;
         $piece->rotation = $rect->rotation;
         $piece->height = $rect->height;
+        $piece->version = $structure->getVersion();
 
         return $piece;
     }

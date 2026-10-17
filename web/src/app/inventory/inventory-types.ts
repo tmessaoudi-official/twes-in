@@ -441,6 +441,8 @@ export interface StockFloorRow {
   imageMetresWide: string | null;
   imageOpacity: number;
   drawingCount: number;
+  /** The version read, which a revision sends back. */
+  version: number;
 }
 
 export type StockFloorInput = Pick<
@@ -530,6 +532,8 @@ export interface StockStructureRow {
   depth: string;
   rotation: number;
   height: string;
+  /** The version read, which a revision sends back. */
+  version: number;
 }
 
 export type StockStructureInput = Pick<

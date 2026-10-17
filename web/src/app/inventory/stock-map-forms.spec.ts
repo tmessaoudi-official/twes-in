@@ -46,6 +46,7 @@ const floor: StockFloorRow = {
   imageMetresWide: null,
   imageOpacity: 35,
   drawingCount: 2,
+  version: 1,
 };
 
 const location = (over: Partial<StockLocationRow> = {}): StockLocationRow => ({
@@ -429,6 +430,7 @@ describe('the structure layer', () => {
     rotation: 0,
     height: '3.000',
     name: 'Mur nord',
+    version: 1,
   };
 
   /** The tools the palette poses, at the sizes the company builds at rather than any constant here. */

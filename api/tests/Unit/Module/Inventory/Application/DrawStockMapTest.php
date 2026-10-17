@@ -63,7 +63,7 @@ final class DrawStockMapTest extends TestCase
         $establishments->save($this->establishment);
         $areas = new InMemoryVenueAreas();
         $this->spots = new InMemoryVenueSpots();
-        $venue = new ArrangeVenue($areas, $this->spots, new InMemoryVenueStructures(), $establishments, $audit, $clock, $transactions);
+        $venue = new ArrangeVenue($areas, $this->spots, new InMemoryVenueStructures(), $establishments, $audit, $clock, $transactions, new InMemoryRecordVersions());
         $this->locations = new ManageStockLocations(new InMemoryStockLocations(), new InMemoryStockMovements(), $establishments, $audit, $clock, $transactions, new InMemoryRecordVersions());
         $this->map = new DrawStockMap($venue, $this->locations, $transactions);
         $this->actor = Uuid::v7();

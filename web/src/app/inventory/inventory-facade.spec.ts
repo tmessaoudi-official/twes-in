@@ -95,6 +95,10 @@ describe('InventoryFacade', () => {
     drawings: vi.fn(),
     holdings: vi.fn(),
     floors: vi.fn(),
+    reviseFloor: vi.fn(),
+    structures: vi.fn(),
+    buildStructure: vi.fn(),
+    reshapeStructure: vi.fn(),
     locationHomes: vi.fn(),
     whereabouts: vi.fn(),
     pickProducts: vi.fn(),
@@ -118,6 +122,10 @@ describe('InventoryFacade', () => {
     api.drawings.mockReset().mockResolvedValue([]);
     api.holdings.mockReset().mockResolvedValue(new Map());
     api.floors.mockReset().mockResolvedValue([]);
+    api.reviseFloor.mockReset().mockResolvedValue({});
+    api.structures.mockReset().mockResolvedValue([]);
+    api.buildStructure.mockReset();
+    api.reshapeStructure.mockReset();
     api.locationHomes.mockReset().mockResolvedValue([]);
     api.whereabouts.mockReset();
     api.pickProducts.mockReset().mockResolvedValue([]);
@@ -378,6 +386,44 @@ describe('InventoryFacade', () => {
    * otherwise the racks it had just made would be missing from every picker on the screen that made them,
    * including the one the next rectangle is drawn for.
    */
+  /** « Annuler » after a piece is saved sends the version that save produced, which only the answer carries. */
+  it('revises a floor and a piece on the version read, and answers the piece as saved', async () => {
+    const floor = {
+      establishmentId: 'e1',
+      name: 'Quai',
+      level: 0,
+      widthMetres: '30',
+      depthMetres: '20',
+      imageFileId: null,
+      imageMetresWide: null,
+      imageOpacity: 35,
+    };
+    expect(await facade.reviseFloor('c1', 'f1', floor, 4)).toBe(true);
+    expect(api.reviseFloor).toHaveBeenCalledWith('c1', 'f1', floor, 4);
+
+    const piece = {
+      kind: 'wall' as const,
+      name: 'Mur nord',
+      x: '0.000',
+      y: '0.000',
+      width: '6.900',
+      depth: '0.200',
+      rotation: 0,
+      height: '3.000',
+    };
+    const saved = { ...piece, id: 's1', floorId: 'f1', version: 3 };
+    api.reshapeStructure.mockResolvedValue(saved);
+    expect(await facade.buildStructure('c1', 'f1', piece, 's1', 2)).toEqual(saved);
+    expect(api.reshapeStructure).toHaveBeenCalledWith('c1', 's1', piece, 2);
+    api.buildStructure.mockResolvedValue({ ...saved, id: 's2', version: 1 });
+    expect(await facade.buildStructure('c1', 'f1', piece, null, null)).toMatchObject({ id: 's2' });
+    expect(api.buildStructure).toHaveBeenCalledWith('c1', 'f1', piece);
+
+    api.reshapeStructure.mockRejectedValue(new InventoryRefused('record_changed'));
+    expect(await facade.buildStructure('c1', 'f1', piece, 's1', 2)).toBeNull();
+    expect(facade.error()).toBe('record_changed');
+  });
+
   it('reads the locations again after a repeat, not only the floor', async () => {
     await facade.loadStockContext('c1');
     api.locations.mockClear();

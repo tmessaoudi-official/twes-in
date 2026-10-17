@@ -18,6 +18,7 @@ use ApiPlatform\Metadata\Put;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\DeleteStockFloorProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\WriteStockFloorProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Provider\StockFloorCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Venue\Domain\Model\VenueArea;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -53,8 +54,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/stock-floors/{floorId}',
@@ -121,6 +122,12 @@ final class StockFloorResource
     #[Groups([self::READ])]
     public int $drawingCount = 0;
 
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(VenueArea $area, int $drawingCount): self
     {
         $floor = new self();
@@ -134,6 +141,7 @@ final class StockFloorResource
         $floor->imageMetresWide = $area->getImageMetresWide();
         $floor->imageOpacity = $area->getImageOpacity();
         $floor->drawingCount = $drawingCount;
+        $floor->version = $area->getVersion();
 
         return $floor;
     }

@@ -421,6 +421,15 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /** @param array<string, mixed> $body */
+    protected function intAt(array $body, string $key): int
+    {
+        $value = $body[$key] ?? null;
+        self::assertIsInt($value, "$key is an integer");
+
+        return $value;
+    }
+
+    /** @param array<string, mixed> $body */
     protected function boolAt(array $body, string $key): bool
     {
         $value = $body[$key] ?? null;

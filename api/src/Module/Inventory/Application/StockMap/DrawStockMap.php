@@ -15,6 +15,7 @@ use App\Module\Inventory\Application\Location\StockLocationNotFound;
 use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
 use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
+use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Venue\Application\ArrangeVenue;
@@ -109,11 +110,13 @@ final readonly class DrawStockMap
      * @throws VenueAreaNotFound
      * @throws VenueLevelTaken
      * @throws InvalidVenue
+     * @throws RecordChanged
      */
-    public function reviseFloor(Company $company, Uuid $floorId, string $name, int $level, string $widthMetres, string $depthMetres, ?Uuid $imageFileId, ?string $imageMetresWide, int $imageOpacity, ?Uuid $actorUserId): VenueArea
+    public function reviseFloor(Company $company, Uuid $floorId, string $name, int $level, string $widthMetres, string $depthMetres, ?Uuid $imageFileId, ?string $imageMetresWide, int $imageOpacity, ?Uuid $actorUserId, ?int $version = null): VenueArea
     {
-        return $this->transactions->run(function () use ($company, $floorId, $name, $level, $widthMetres, $depthMetres, $imageFileId, $imageMetresWide, $imageOpacity, $actorUserId): VenueArea {
-            $this->venue->reviseArea($company, $floorId, $name, $level, $actorUserId);
+        return $this->transactions->run(function () use ($company, $floorId, $name, $level, $widthMetres, $depthMetres, $imageFileId, $imageMetresWide, $imageOpacity, $actorUserId, $version): VenueArea {
+            // The version is checked before anything of the form is written, so a refusal leaves the floor as it was.
+            $this->venue->reviseArea($company, $floorId, $name, $level, $actorUserId, $version);
             $this->venue->measureArea($company, $floorId, $widthMetres, $depthMetres, $actorUserId);
 
             return $this->venue->showPlan($company, $floorId, $imageFileId, $imageMetresWide, $imageOpacity, $actorUserId);

@@ -536,9 +536,14 @@ export class InventoryFacade {
     );
   }
 
-  async reviseFloor(companyId: string, id: string, input: StockFloorInput): Promise<boolean> {
+  async reviseFloor(
+    companyId: string,
+    id: string,
+    input: StockFloorInput,
+    version: number | null,
+  ): Promise<boolean> {
     return this.write(
-      () => this.api.reviseFloor(companyId, id, input),
+      () => this.api.reviseFloor(companyId, id, input, version),
       () => this.reloadFloors(companyId),
     );
   }
@@ -654,14 +659,20 @@ export class InventoryFacade {
     floorId: string,
     input: StockStructureInput,
     structureId: string | null,
-  ): Promise<boolean> {
-    return this.write(
-      () =>
-        structureId === null
-          ? this.api.buildStructure(companyId, floorId, input)
-          : this.api.reshapeStructure(companyId, structureId, input),
+    version: number | null,
+  ): Promise<StockStructureRow | null> {
+    // The piece as the API kept it: its version is the one « Annuler » takes it back on.
+    const kept: { row: StockStructureRow | null } = { row: null };
+    const accepted = await this.write(
+      async () => {
+        kept.row =
+          structureId === null
+            ? await this.api.buildStructure(companyId, floorId, input)
+            : await this.api.reshapeStructure(companyId, structureId, input, version);
+      },
       () => this.loadStructures(companyId, floorId),
     );
+    return accepted ? kept.row : null;
   }
 
   async eraseStructure(companyId: string, floorId: string, structureId: string): Promise<boolean> {

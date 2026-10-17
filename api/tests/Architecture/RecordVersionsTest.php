@@ -50,8 +50,6 @@ final class RecordVersionsTest extends KernelTestCase
         '/companies/{companyId}/products/{productId}/home-locations/{establishmentId}',
         '/companies/{companyId}/products/{productId}/reorder-points/{establishmentId}',
         '/companies/{companyId}/stock-drawings/{drawingId}',
-        '/companies/{companyId}/stock-floors/{floorId}',
-        '/companies/{companyId}/stock-structures/{structureId}',
         '/companies/{companyId}/price-lists/{priceListId}',
         '/companies/{companyId}/products/{productId}/barcodes',
         '/companies/{companyId}/recurring-invoices/{recurringInvoiceId}',

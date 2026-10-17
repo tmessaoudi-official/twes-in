@@ -15,6 +15,7 @@ use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemoryVenueAreas;
 use App\Tests\Support\InMemoryVenueSpots;
 use App\Tests\Support\InMemoryVenueStructures;
@@ -62,7 +63,7 @@ final class ArrangeVenueTest extends TestCase
         $this->transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->actor = Uuid::v7();
-        $this->venue = new ArrangeVenue($this->areas, $this->spots, $this->structures, $establishments, $this->audit, $this->clock, $this->transactions);
+        $this->venue = new ArrangeVenue($this->areas, $this->spots, $this->structures, $establishments, $this->audit, $this->clock, $this->transactions, new InMemoryRecordVersions());
     }
 
     public function testAFloorIsDrawnOncePerLevelAndIsListedFromTheGroundUp(): void

@@ -11,6 +11,8 @@ namespace App\Venue\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
@@ -57,6 +59,7 @@ final readonly class ArrangeVenue
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -107,11 +110,15 @@ final readonly class ArrangeVenue
      * @throws VenueAreaNotFound
      * @throws VenueLevelTaken
      * @throws InvalidVenue
+     * @throws RecordChanged
      */
-    public function reviseArea(Company $company, Uuid $areaId, string $name, int $level, ?Uuid $actorUserId): VenueArea
+    public function reviseArea(Company $company, Uuid $areaId, string $name, int $level, ?Uuid $actorUserId, ?int $version = null): VenueArea
     {
-        return $this->transactions->run(function () use ($company, $areaId, $name, $level, $actorUserId): VenueArea {
+        return $this->transactions->run(function () use ($company, $areaId, $name, $level, $actorUserId, $version): VenueArea {
             $area = $this->area($company, $areaId);
+            if (null !== $version) {
+                $this->versions->expect($area, $version);
+            }
             $taken = $this->areas->ofLevelInEstablishment($level, $area->getEstablishment()->getId());
             if (null !== $taken && !$taken->getId()->equals($area->getId())) {
                 throw new VenueLevelTaken();
@@ -266,11 +273,15 @@ final readonly class ArrangeVenue
     /**
      * @throws VenueStructureNotFound
      * @throws InvalidVenue
+     * @throws RecordChanged
      */
-    public function reshapeStructure(Company $company, Uuid $structureId, StructureKind $kind, string $name, PlanRect $rect, ?Uuid $actorUserId): VenueStructure
+    public function reshapeStructure(Company $company, Uuid $structureId, StructureKind $kind, string $name, PlanRect $rect, ?Uuid $actorUserId, ?int $version = null): VenueStructure
     {
-        return $this->transactions->run(function () use ($company, $structureId, $kind, $name, $rect, $actorUserId): VenueStructure {
+        return $this->transactions->run(function () use ($company, $structureId, $kind, $name, $rect, $actorUserId, $version): VenueStructure {
             $structure = $this->structure($company, $structureId);
+            if (null !== $version) {
+                $this->versions->expect($structure, $version);
+            }
             // Left exactly as it stood: no row, so no other screen is told the building moved.
             if ($structure->reshape($kind, $name, $rect, $this->clock->now())) {
                 $this->structures->save($structure);

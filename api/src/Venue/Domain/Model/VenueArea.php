@@ -79,6 +79,11 @@ class VenueArea implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 9, scale: PlanRect::SCALE, nullable: true)]
     private ?string $depthMetres = null;
 
+    /** Doctrine counts each save, so an editor of an older version is told rather than overwriting it. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -160,6 +165,11 @@ class VenueArea implements CompanyOwned
     public function getId(): Uuid
     {
         return $this->id;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getCompany(): Company
