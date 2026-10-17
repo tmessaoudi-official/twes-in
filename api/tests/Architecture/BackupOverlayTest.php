@@ -87,12 +87,12 @@ final class BackupOverlayTest extends TestCase
             self::assertSame('s3', $environment['PGBACKREST_REPO1_TYPE'] ?? null, $name);
             self::assertSame('/${BACKUP_S3_PREFIX:-}pgbackrest', $environment['PGBACKREST_REPO1_PATH'] ?? null, $name);
             foreach (['PGBACKREST_REPO1_S3_ENDPOINT', 'PGBACKREST_REPO1_S3_BUCKET', 'PGBACKREST_REPO1_S3_KEY', 'PGBACKREST_REPO1_S3_KEY_SECRET'] as $key) {
-                self::assertStringContainsString(':?', $environment[$key] ?? '', $name.' '.$key.' is required: a server without it would archive nowhere');
+                self::assertStringContainsString(':?', self::text($environment, $key, $name), $name.' '.$key.' is required: a server without it would archive nowhere');
             }
         }
         foreach (['backup', 'restore'] as $name) {
             $environment = self::environment('compose.backup-bucket.yaml', $name);
-            self::assertMatchesRegularExpression('#^s3:[^"]*/\$\{BACKUP_S3_BUCKET\}/\$\{BACKUP_S3_PREFIX:-\}restic$#', $environment['RESTIC_REPOSITORY'] ?? '', $name);
+            self::assertMatchesRegularExpression('#^s3:[^"]*/\$\{BACKUP_S3_BUCKET\}/\$\{BACKUP_S3_PREFIX:-\}restic$#', self::text($environment, 'RESTIC_REPOSITORY', $name), $name);
         }
     }
 
@@ -117,11 +117,20 @@ final class BackupOverlayTest extends TestCase
         foreach (['backup', 'restore'] as $name) {
             $environment = self::environment('compose.backup-offsite.yaml', $name);
 
-            self::assertMatchesRegularExpression('#^s3:https://\$\{BACKUP_S3_ENDPOINT:\?[^}]*\}:\$\{BACKUP_S3_PORT:-443\}/\$\{BACKUP_S3_BUCKET:\?[^}]*\}/\$\{BACKUP_S3_PREFIX:-\}offsite$#', $environment['OFFSITE_REPOSITORY'] ?? '', $name);
+            self::assertMatchesRegularExpression('#^s3:https://\$\{BACKUP_S3_ENDPOINT:\?[^}]*\}:\$\{BACKUP_S3_PORT:-443\}/\$\{BACKUP_S3_BUCKET:\?[^}]*\}/\$\{BACKUP_S3_PREFIX:-\}offsite$#', self::text($environment, 'OFFSITE_REPOSITORY', $name), $name);
             foreach (['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_REGION'] as $key) {
-                self::assertStringContainsString(':?', $environment[$key] ?? '', $name.' '.$key.' is required once the copy is on');
+                self::assertStringContainsString(':?', self::text($environment, $key, $name), $name.' '.$key.' is required once the copy is on');
             }
         }
+    }
+
+    /** @param array<array-key, mixed> $environment */
+    private static function text(array $environment, string $key, string $service): string
+    {
+        $value = $environment[$key] ?? null;
+        self::assertIsString($value, $service.' sets '.$key);
+
+        return $value;
     }
 
     /** @return array<string, string> each `-c name=value` the base starts the server with */
@@ -188,6 +197,7 @@ final class BackupOverlayTest extends TestCase
     {
         $environment = self::service($file, $name)['environment'] ?? null;
         self::assertIsArray($environment, $name.' of '.$file.' sets its environment');
+
         // `<<: *anchor` is merged by the parser itself.
         return $environment;
     }
