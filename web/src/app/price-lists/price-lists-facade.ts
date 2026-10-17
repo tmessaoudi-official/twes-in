@@ -60,8 +60,22 @@ export class PriceListsFacade {
     return this.write(companyId, () => this.api.create(companyId, input));
   }
 
-  async revise(companyId: string, id: string, input: PriceListInput): Promise<boolean> {
-    return this.write(companyId, () => this.api.revise(companyId, id, input));
+  /**
+   * Saves the list on the version it was opened at. `changed` is a list saved since, which the page reads again and
+   * says rather than keeping it as a refusal.
+   */
+  async revise(
+    companyId: string,
+    id: string,
+    input: PriceListInput,
+    version: number,
+  ): Promise<'saved' | 'refused' | 'changed'> {
+    if (await this.write(companyId, () => this.api.revise(companyId, id, input, version))) {
+      return 'saved';
+    }
+    if (this.errorSignal() !== 'record_changed') return 'refused';
+    this.errorSignal.set(null);
+    return 'changed';
   }
 
   async remove(companyId: string, id: string): Promise<boolean> {

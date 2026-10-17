@@ -3,8 +3,10 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { isRecordChanged } from '../shared/errors/record-changed';
 import type {
   PriceListPriceListRead,
+  PriceListPriceListWriteRecordReviseValidationPriceListWriteRecordRevise as PriceListRevise,
   PriceListPriceListWriteValidationPriceListWrite as PriceListPriceListWrite,
   ProductPriceProductPriceRead,
 } from '../api/types.gen';
@@ -79,12 +81,17 @@ export class PriceListsApi {
     );
   }
 
-  revise(companyId: string, id: string, input: PriceListInput): Promise<PriceListRow> {
+  /** `version` is the one the list was opened at: a later one saved elsewhere answers `record_changed`. */
+  revise(
+    companyId: string,
+    id: string,
+    input: PriceListInput,
+    version: number,
+  ): Promise<PriceListRow> {
+    const revision: PriceListRevise = { ...body(input), version };
     return this.guard(async () =>
       toRow(
-        await firstValueFrom(
-          this.http.put<PriceListPriceListRead>(path(companyId, id), body(input)),
-        ),
+        await firstValueFrom(this.http.put<PriceListPriceListRead>(path(companyId, id), revision)),
       ),
     );
   }
@@ -132,6 +139,8 @@ function toRow(read: PriceListPriceListRead): PriceListRow {
     validTo: read.validTo ?? null,
     isActive: read.isActive ?? true,
     itemCount: read.itemCount ?? 0,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: read.version ?? 0,
     items:
       read.items === undefined
         ? null
@@ -153,7 +162,7 @@ function codeOf(error: unknown): PriceListsError {
     case 404:
       return 'not_found';
     case 409:
-      return 'name_taken';
+      return isRecordChanged(error.error) ? 'record_changed' : 'name_taken';
     default:
       return 'invalid';
   }

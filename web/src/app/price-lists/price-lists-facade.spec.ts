@@ -16,9 +16,18 @@ const row: PriceListRow = {
   validTo: null,
   isActive: true,
   itemCount: 0,
+  version: 1,
   items: null,
 };
-const input: PriceListInput = { ...row, items: [] };
+const input: PriceListInput = {
+  name: row.name,
+  customerGroupId: null,
+  customerId: null,
+  validFrom: null,
+  validTo: null,
+  isActive: true,
+  items: [],
+};
 
 describe('PriceListsFacade', () => {
   const api = {
@@ -63,10 +72,29 @@ describe('PriceListsFacade', () => {
     api.remove.mockResolvedValue(undefined);
 
     expect(await facade.create('c1', input)).toBe(true);
-    expect(await facade.revise('c1', 'l1', input)).toBe(true);
+    expect(await facade.revise('c1', 'l1', input, 1)).toBe('saved');
     expect(await facade.remove('c1', 'l1')).toBe(true);
 
+    expect(api.revise).toHaveBeenCalledWith('c1', 'l1', input, 1);
     expect(api.list).toHaveBeenCalledTimes(3);
+  });
+
+  /** The page reads the open list again and says it; nothing is kept here as a refusal to show. */
+  it('says a list saved since without keeping it as a refusal', async () => {
+    api.revise.mockRejectedValue(new PriceListsRefused('record_changed'));
+
+    expect(await facade.revise('c1', 'l1', input, 1)).toBe('changed');
+
+    expect(facade.error()).toBeNull();
+    expect(facade.busy()).toBe(false);
+  });
+
+  it('keeps any other refusal of a revision to say', async () => {
+    api.revise.mockRejectedValue(new PriceListsRefused('name_taken'));
+
+    expect(await facade.revise('c1', 'l1', input, 1)).toBe('refused');
+
+    expect(facade.error()).toBe('name_taken');
   });
 
   it('names a refusal and keeps the lists it had', async () => {

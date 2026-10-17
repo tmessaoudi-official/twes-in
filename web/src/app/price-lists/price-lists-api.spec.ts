@@ -15,6 +15,7 @@ const read = {
   validTo: null,
   isActive: true,
   itemCount: 1,
+  version: 3,
   items: [
     {
       productId: 'p1',
@@ -67,11 +68,12 @@ describe('PriceListsApi', () => {
     expect(row.items).toBeNull();
   });
 
-  it('reads one list with its prices', async () => {
+  it('reads one list with its prices and the version it was read at', async () => {
     const one = api.get('c1', 'l1');
     http.expectOne('/api/companies/c1/price-lists/l1').flush(read);
 
     expect((await one).items).toEqual(input.items);
+    expect((await one).version).toBe(3);
   });
 
   it('sends the whole list, its prices without the words a screen shows', async () => {
@@ -92,12 +94,27 @@ describe('PriceListsApi', () => {
   });
 
   it('leaves the prices out of a save that does not name them, so the API keeps them', async () => {
-    const saved = api.revise('c1', 'l1', { ...input, items: null });
+    const saved = api.revise('c1', 'l1', { ...input, items: null }, 3);
     const request = http.expectOne('/api/companies/c1/price-lists/l1');
     expect(request.request.method).toBe('PUT');
     expect('items' in request.request.body).toBe(false);
+    expect(request.request.body.version).toBe(3);
     request.flush(read);
     await saved;
+  });
+
+  it('tells a list saved since from a name another list holds', async () => {
+    const stale = api.revise('c1', 'l1', input, 3);
+    http
+      .expectOne('/api/companies/c1/price-lists/l1')
+      .flush({ type: '/problems/record-changed' }, { status: 409, statusText: 'Conflict' });
+    await expect(stale).rejects.toEqual(new PriceListsRefused('record_changed'));
+
+    const taken = api.revise('c1', 'l1', input, 3);
+    http
+      .expectOne('/api/companies/c1/price-lists/l1')
+      .flush({ title: 'Taken' }, { status: 409, statusText: 'Conflict' });
+    await expect(taken).rejects.toEqual(new PriceListsRefused('name_taken'));
   });
 
   it('deletes a list', async () => {

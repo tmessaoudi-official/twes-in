@@ -99,11 +99,11 @@ final class PriceListsTest extends ApiTestCase
         self::assertSame(2, $this->jsonList()[0]['itemCount']);
         self::assertArrayNotHasKey('items', $this->jsonList()[0], 'the collection answers no rows');
 
-        $this->sendJson('PUT', $this->lists($id), ['name' => 'Revendeurs 2026', 'customerGroupId' => $this->group, 'isActive' => false]);
+        $this->sendJson('PUT', $this->lists($id), ['version' => $this->storedVersion('price_list', $id), 'name' => 'Revendeurs 2026', 'customerGroupId' => $this->group, 'isActive' => false]);
         self::assertResponseIsSuccessful();
         self::assertSame(2, $this->json()['itemCount'], 'leaving items out keeps the prices');
 
-        $this->sendJson('PUT', $this->lists($id), ['name' => 'Revendeurs 2026', 'items' => [['productId' => $this->nut, 'minQuantity' => '1', 'unitPriceNet' => '280']]]);
+        $this->sendJson('PUT', $this->lists($id), ['version' => $this->storedVersion('price_list', $id), 'name' => 'Revendeurs 2026', 'items' => [['productId' => $this->nut, 'minQuantity' => '1', 'unitPriceNet' => '280']]]);
         self::assertResponseIsSuccessful();
         self::assertNull($this->json()['customerGroupId'], 'a save writes the whole scope');
         self::assertSame(['ART-002'], array_column($this->arrayAt($this->json(), 'items'), 'productReference'));
@@ -117,6 +117,40 @@ final class PriceListsTest extends ApiTestCase
         $actions = $connection->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'price_list' ORDER BY at, action");
         self::assertEqualsCanonicalizing(['price_list.created', 'price_list.revised', 'price_list.revised', 'price_list.deleted'], $actions);
         self::assertEquals(0, $connection->fetchOne("SELECT COUNT(*) FROM audit_log WHERE entity_type = 'price_list' AND changes::text LIKE '%11.5%'"), 'the audit never keeps a price');
+    }
+
+    public function testAPriceListNamesTheVersionItWasReadAtAndMovesIt(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->postJson($this->lists(), ['name' => 'Public', 'items' => [['productId' => $this->screw, 'minQuantity' => '1', 'unitPriceNet' => '12']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version'], 'the answer carries the version read');
+        $this->getJson($this->lists());
+        self::assertSame(1, $this->jsonList()[0]['version'], 'and so does the list of lists, which the editor opens from');
+
+        $this->sendJson('PUT', $this->lists($id), ['name' => 'Public 2026']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a save without the version it was opened at');
+        self::assertContains(['propertyPath' => 'version', 'reason' => 'value_required', 'params' => []], $this->refusals());
+
+        $this->sendJson('PUT', $this->lists($id), ['name' => 'Public 2026', 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+        self::assertSame(2, $this->storedVersion('price_list', $id));
+
+        $this->sendJson('PUT', $this->lists($id), ['name' => 'Public 2027', 'version' => 1]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a save of the version read before the change is refused');
+        self::assertSame('/problems/record-changed', $this->stringAt($this->json(), 'type'));
+        $this->getJson($this->lists($id));
+        self::assertSame('Public 2026', $this->json()['name'], 'and nothing of it is written');
+
+        $this->sendJson('PUT', $this->lists($id), ['name' => 'Public 2026', 'version' => 2, 'items' => [['productId' => $this->screw, 'minQuantity' => '1', 'unitPriceNet' => '11']]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(3, $this->storedVersion('price_list', $id), 'a price changed alone moves the version');
+
+        $this->sendJson('PUT', $this->lists($id), ['name' => 'Public 2026', 'version' => 3]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(3, $this->storedVersion('price_list', $id), 'a save changing nothing leaves it');
     }
 
     public function testAPriceChangedOnAnExistingBreakIsUpdatedInPlaceNotInsertedBesideIt(): void
@@ -133,7 +167,7 @@ final class PriceListsTest extends ApiTestCase
         $before = $ids();
 
         // The same break at a new price, then two breaks that swap their prices, one removed and one added.
-        $this->sendJson('PUT', $this->lists($id), ['name' => 'Public', 'items' => [
+        $this->sendJson('PUT', $this->lists($id), ['version' => $this->storedVersion('price_list', $id), 'name' => 'Public', 'items' => [
             ['productId' => $this->screw, 'minQuantity' => '1', 'unitPriceNet' => '11'],
             ['productId' => $this->screw, 'minQuantity' => '10', 'unitPriceNet' => '12'],
             ['productId' => $this->screw, 'minQuantity' => '100', 'unitPriceNet' => '9'],
@@ -203,7 +237,7 @@ final class PriceListsTest extends ApiTestCase
             $this->sendJson($method, $this->lists('0192b7a0-0000-7000-8000-0000000000aa'));
             self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $method);
         }
-        $this->sendJson('PUT', $this->lists('0192b7a0-0000-7000-8000-0000000000aa'), ['name' => 'Mien']);
+        $this->sendJson('PUT', $this->lists('0192b7a0-0000-7000-8000-0000000000aa'), ['name' => 'Mien', 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 

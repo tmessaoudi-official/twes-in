@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** What a screen tells a person when a price-list call fails. */
-export type PriceListsError = 'network' | 'not_found' | 'name_taken' | 'invalid' | 'refused';
+export type PriceListsError =
+  | 'network'
+  | 'not_found'
+  | 'name_taken'
+  | 'invalid'
+  | 'refused'
+  /** Saved by someone else since it was opened: the page reads it again and says so, never as an error line. */
+  | 'record_changed';
 
 /** One price of a list: from this quantity up, this net unit price, for this product. */
 export interface PriceListItem {
@@ -34,12 +41,14 @@ export interface PriceListRow {
   validTo: string | null;
   isActive: boolean;
   itemCount: number;
+  /** The version read, which a revision sends back; one saved since answers `record_changed`. */
+  version: number;
   /** Its prices: read on one list, null in the collection, which carries only their number. */
   items: PriceListItem[] | null;
 }
 
 /** What a save sends; `items` left null keeps the prices the list holds. */
-export type PriceListInput = Omit<PriceListRow, 'id' | 'itemCount'>;
+export type PriceListInput = Omit<PriceListRow, 'id' | 'itemCount' | 'version'>;
 
 /** The scope a list is for, as its two foreign keys say it. */
 export function scopeOf(

@@ -35,7 +35,7 @@ final readonly class RevisePriceListProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::WRITE);
 
         try {
-            $list = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'priceListId'), $data->input(), $this->guard->account()->getId());
+            $list = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'priceListId'), $data->input(), $this->guard->account()->getId(), $data->version);
         } catch (PriceListNotFound $absent) {
             throw new NotFoundHttpException('No such price list.', $absent);
         } catch (PriceListNameTaken $taken) {

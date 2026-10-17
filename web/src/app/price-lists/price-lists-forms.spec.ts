@@ -13,6 +13,7 @@ const list = (id: string, isActive: boolean): PriceListRow => ({
   validTo: null,
   isActive,
   itemCount: 0,
+  version: 1,
   items: null,
 });
 
