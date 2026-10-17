@@ -21,6 +21,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\ShippedFiscalPresets;
@@ -42,7 +43,7 @@ final class ManageNumberingSeriesTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->provision = new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), new InMemoryUnits(), new InMemoryEstablishments(), $this->series, ShippedFiscalPresets::scales(), $clock);
-        $this->manage = new ManageNumberingSeries($this->series, $this->audit, $clock, $transactions);
+        $this->manage = new ManageNumberingSeries($this->series, $this->audit, $clock, $transactions, new InMemoryRecordVersions());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->provision->handle($this->company);
     }

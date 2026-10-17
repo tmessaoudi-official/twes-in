@@ -23,6 +23,7 @@ use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\CustomFields\Infrastructure\ApiPlatform\State\Processor\CreateCustomFieldProcessor;
 use App\CustomFields\Infrastructure\ApiPlatform\State\Processor\ReviseCustomFieldProcessor;
 use App\CustomFields\Infrastructure\ApiPlatform\State\Provider\CustomFieldCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -56,8 +57,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
     ],
 )]
@@ -109,10 +110,17 @@ final class CustomFieldResource
     #[Groups([self::READ, self::WRITE])]
     public bool $isActive = true;
 
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(CustomFieldDefinition $field): self
     {
         $resource = new self();
         $resource->id = $field->getId()->toRfc4122();
+        $resource->version = $field->getVersion();
         $resource->entity = $field->getEntity()->value;
         $resource->key = $field->getKey();
         $resource->label = $field->getLabel();

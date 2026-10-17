@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Numbering;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Exception\InvalidNumbering;
 use App\Tenancy\Domain\Model\Company;
@@ -32,6 +34,7 @@ final readonly class ManageNumberingSeries
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -51,11 +54,15 @@ final readonly class ManageNumberingSeries
      * @throws NumberingSeriesNotFound for a series that does not exist or belongs to another company
      * @throws InvalidNumbering
      * @throws NumberingSeriesOverlap  for a format that could print a number another series of the document prints
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $seriesId, NumberingChanges $changes, ?Uuid $actorUserId): NumberingSeries
+    public function revise(Company $company, Uuid $seriesId, NumberingChanges $changes, ?Uuid $actorUserId, ?int $version = null): NumberingSeries
     {
-        return $this->transactions->run(function () use ($company, $seriesId, $changes, $actorUserId): NumberingSeries {
+        return $this->transactions->run(function () use ($company, $seriesId, $changes, $actorUserId, $version): NumberingSeries {
             $series = $this->series->ofIdInCompany($seriesId, $company->getId()) ?? throw new NumberingSeriesNotFound('No such numbering series.');
+            if (null !== $version) {
+                $this->versions->expect($series, $version);
+            }
             $reset = ResetPeriod::tryFrom($changes->resetPeriod)
                 ?? throw new InvalidNumbering('resetPeriod', \sprintf('"%s" is not a reset period: %s.', $changes->resetPeriod, implode(', ', array_map(static fn (ResetPeriod $p): string => $p->value, ResetPeriod::cases()))));
 

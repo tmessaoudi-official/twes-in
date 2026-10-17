@@ -35,7 +35,7 @@ final readonly class ReviseEstablishmentProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
 
         try {
-            $establishment = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'establishmentId'), $data->details(), $this->guard->account()->getId());
+            $establishment = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'establishmentId'), $data->details(), $this->guard->account()->getId(), $data->version);
         } catch (EstablishmentNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);
         } catch (EstablishmentCodeTaken $taken) {

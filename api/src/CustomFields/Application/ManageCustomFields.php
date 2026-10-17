@@ -16,6 +16,8 @@ use App\CustomFields\Domain\Model\CustomFieldDefinition;
 use App\CustomFields\Domain\Repository\CustomFieldDefinitionRepository;
 use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use App\CustomFields\Domain\ValueObject\CustomFieldRule;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -37,6 +39,7 @@ final readonly class ManageCustomFields
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -76,11 +79,15 @@ final readonly class ManageCustomFields
     /**
      * @throws CustomFieldNotFound
      * @throws InvalidCustomFieldDefinition
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, CustomFieldInput $input, ?Uuid $actorUserId): CustomFieldDefinition
+    public function revise(Company $company, Uuid $id, CustomFieldInput $input, ?Uuid $actorUserId, ?int $version = null): CustomFieldDefinition
     {
-        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): CustomFieldDefinition {
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): CustomFieldDefinition {
             $field = $this->fields->ofIdInCompany($id, $company->getId()) ?? throw new CustomFieldNotFound();
+            if (null !== $version) {
+                $this->versions->expect($field, $version);
+            }
             if ($input->entity !== $field->getEntity()) {
                 throw new InvalidCustomFieldDefinition('entity', "A field's kind of record never changes: declare another field.");
             }

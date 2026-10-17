@@ -62,6 +62,7 @@ const sector: CustomFieldDefinition = {
   choices: [],
   sortOrder: 0,
   isActive: true,
+  version: 1,
 };
 const amel: CustomerRow = { ...input, id: 'k1', version: 1 };
 const wholesalers: CustomerGroupRow = {

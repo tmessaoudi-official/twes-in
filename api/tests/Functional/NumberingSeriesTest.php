@@ -11,7 +11,9 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\NumberingSeries;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 final class NumberingSeriesTest extends ApiTestCase
 {
@@ -47,7 +49,7 @@ final class NumberingSeriesTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'F{YY}{MM}-{SEQ:4}', 'nextNumber' => 120, 'resetPeriod' => 'monthly']);
+        $this->revise($this->idOf('invoice'), ['format' => 'F{YY}{MM}-{SEQ:4}', 'nextNumber' => 120, 'resetPeriod' => 'monthly']);
 
         self::assertResponseIsSuccessful();
         $body = $this->json();
@@ -63,7 +65,7 @@ final class NumberingSeriesTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'FAC-{YYYY}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+        $this->revise($this->idOf('invoice'), ['format' => 'FAC-{YYYY}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
@@ -72,7 +74,7 @@ final class NumberingSeriesTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'F{YY}-{SEQ:4}', 'nextNumber' => 120, 'resetPeriod' => 'monthly']);
+        $this->revise($this->idOf('invoice'), ['format' => 'F{YY}-{SEQ:4}', 'nextNumber' => 120, 'resetPeriod' => 'monthly']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
@@ -81,7 +83,7 @@ final class NumberingSeriesTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'FAC-{SEQ}', 'nextNumber' => 0, 'resetPeriod' => 'yearly']);
+        $this->revise($this->idOf('invoice'), ['format' => 'FAC-{SEQ}', 'nextNumber' => 0, 'resetPeriod' => 'yearly']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
@@ -90,7 +92,7 @@ final class NumberingSeriesTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'FAC-{SEQ}', 'nextNumber' => 1, 'resetPeriod' => 'weekly']);
+        $this->revise($this->idOf('invoice'), ['format' => 'FAC-{SEQ}', 'nextNumber' => 1, 'resetPeriod' => 'weekly']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
@@ -99,7 +101,7 @@ final class NumberingSeriesTest extends ApiTestCase
     {
         $this->signedIn(['company.read']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'X-{SEQ}', 'nextNumber' => 1, 'resetPeriod' => 'never']);
+        $this->revise($this->idOf('invoice'), ['format' => 'X-{SEQ}', 'nextNumber' => 1, 'resetPeriod' => 'never']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
@@ -108,11 +110,11 @@ final class NumberingSeriesTest extends ApiTestCase
     {
         $globex = $this->createCompany('Globex');
         static::getContainer()->get(ProvisionCompany::class)->handle($globex);
-        $theirs = $this->em()->getRepository(\App\Tenancy\Domain\Model\NumberingSeries::class)->findOneBy(['company' => $globex]);
+        $theirs = $this->em()->getRepository(NumberingSeries::class)->findOneBy(['company' => $globex]);
         self::assertNotNull($theirs);
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path().'/'.$theirs->getId()->toRfc4122(), ['format' => 'X-{SEQ}', 'nextNumber' => 1, 'resetPeriod' => 'never']);
+        $this->sendJson('PUT', $this->path().'/'.$theirs->getId()->toRfc4122(), ['version' => 1, 'format' => 'X-{SEQ}', 'nextNumber' => 1, 'resetPeriod' => 'never']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
@@ -128,11 +130,11 @@ final class NumberingSeriesTest extends ApiTestCase
         self::assertTrue($row['numbered']);
         self::assertSame(2, $row['nextNumber']);
 
-        $this->sendJson('PUT', $this->path().'/'.$id, ['format' => 'BL-{YY}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+        $this->revise($id, ['format' => 'BL-{YY}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('nextNumber', $this->stringAt($this->json(), 'detail'));
 
-        $this->sendJson('PUT', $this->path().'/'.$id, ['format' => 'BL-{YY}-{SEQ:5}', 'nextNumber' => 2, 'resetPeriod' => 'yearly']);
+        $this->revise($id, ['format' => 'BL-{YY}-{SEQ:5}', 'nextNumber' => 2, 'resetPeriod' => 'yearly']);
         self::assertResponseIsSuccessful();
         self::assertMatchesRegularExpression('/^BL-\d{2}-00002$/', $this->stringAt($this->json(), 'preview'));
     }
@@ -149,19 +151,59 @@ final class NumberingSeriesTest extends ApiTestCase
         $branch = $this->idOf('invoice', '001');
 
         foreach (['FAC-{YYYY}-{MM}-{SEQ:5}', 'FAC-{YYYY}-{MM}-1{SEQ:4}'] as $format) {
-            $this->sendJson('PUT', $this->path().'/'.$branch, ['format' => $format, 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+            $this->revise($branch, ['format' => $format, 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
             self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, $format);
             self::assertStringContainsString('000', $this->stringAt($this->json(), 'detail'));
         }
 
         // Its own numbers kept apart, by a prefix; another document's format is its own, as its numbers are.
-        $this->sendJson('PUT', $this->path().'/'.$branch, ['format' => 'SFX-{YYYY}-{MM}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+        $this->revise($branch, ['format' => 'SFX-{YYYY}-{MM}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
         self::assertResponseIsSuccessful();
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('credit_note', '001'), ['format' => 'FAC-{YYYY}-{MM}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+        $this->revise($this->idOf('credit_note', '001'), ['format' => 'FAC-{YYYY}-{MM}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
         self::assertResponseIsSuccessful();
         // A series is never in conflict with itself.
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'FAC-{YYYY}-{MM}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+        $this->revise($this->idOf('invoice'), ['format' => 'FAC-{YYYY}-{MM}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
         self::assertResponseIsSuccessful();
+    }
+
+    /** A number given after the form was opened moves the series on: writing the form back would give that number twice. */
+    public function testASeriesSavedFromAFormOpenedBeforeANumberWasGivenIsRefusedAndTheCounterStays(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $id = $this->idOf('invoice');
+        $this->getJson($this->path());
+        $opened = array_find($this->jsonList(), static fn (array $row): bool => $id === $row['id']) ?? self::fail('no invoice series');
+
+        $series = $this->em()->find(NumberingSeries::class, Uuid::fromString($id)) ?? self::fail('no series');
+        $series->allocate(new \DateTimeImmutable('today'), new \DateTimeImmutable());
+        $this->em()->flush();
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => $opened['version'], 'format' => $opened['format'], 'nextNumber' => $opened['nextNumber'], 'resetPeriod' => $opened['resetPeriod']]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path());
+        $saved = array_find($this->jsonList(), static fn (array $row): bool => $id === $row['id']) ?? self::fail('no invoice series');
+        self::assertSame(2, $saved['nextNumber']);
+        self::assertIsInt($opened['version']);
+        self::assertSame($opened['version'] + 1, $saved['version']);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersionAndOneWithoutAVersionIsRefused(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $id = $this->idOf('invoice');
+        $this->getJson($this->path());
+        $opened = array_find($this->jsonList(), static fn (array $row): bool => $id === $row['id']) ?? self::fail('no invoice series');
+        $body = ['format' => $opened['format'], 'nextNumber' => $opened['nextNumber'], 'resetPeriod' => $opened['resetPeriod']];
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => $opened['version'], ...$body]);
+        self::assertResponseIsSuccessful();
+        self::assertSame($opened['version'], $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path().'/'.$id, $body);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     /** What a first numbered document leaves behind: the period it was numbered in, and the sequence moved on. */
@@ -195,5 +237,17 @@ final class NumberingSeriesTest extends ApiTestCase
             }
         }
         self::fail("no $documentType series");
+    }
+
+    /**
+     * Revises a row at the version the list holds now, as a form opened just before would.
+     *
+     * @param array<string, mixed> $body
+     */
+    private function revise(string $id, array $body): void
+    {
+        $this->getJson($this->path());
+        $row = array_find($this->jsonList(), static fn (array $row): bool => $id === $row['id']) ?? self::fail("no row $id");
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => $row['version'], ...$body]);
     }
 }

@@ -47,16 +47,22 @@ export class EstablishmentsFacade {
     companyId: string,
     id: string,
     input: EstablishmentInput,
+    version: number | null,
   ): Promise<boolean> {
     return this.write(
-      () => this.api.reviseEstablishment(companyId, id, input),
+      () => this.api.reviseEstablishment(companyId, id, input, version),
       async () => this.establishmentsSignal.set(await this.api.establishments(companyId)),
     );
   }
 
-  async reviseSeries(companyId: string, id: string, changes: NumberingChanges): Promise<boolean> {
+  async reviseSeries(
+    companyId: string,
+    id: string,
+    changes: NumberingChanges,
+    version: number | null,
+  ): Promise<boolean> {
     return this.write(
-      () => this.api.reviseNumberingSeries(companyId, id, changes),
+      () => this.api.reviseNumberingSeries(companyId, id, changes, version),
       async () => this.seriesSignal.set(await this.api.numberingSeries(companyId)),
     );
   }

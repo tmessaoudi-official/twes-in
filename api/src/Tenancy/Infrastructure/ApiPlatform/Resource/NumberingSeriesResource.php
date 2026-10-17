@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Put;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Tenancy\Application\Numbering\NumberingChanges;
 use App\Tenancy\Domain\Model\NumberingSeries;
 use App\Tenancy\Domain\ValueObject\NumberFormat;
@@ -40,8 +41,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
     ],
 )]
@@ -94,10 +95,17 @@ final class NumberingSeriesResource
     #[Groups([self::READ])]
     public string $preview = '';
 
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(NumberingSeries $series, \DateTimeImmutable $today): self
     {
         $resource = new self();
         $resource->id = $series->getId()->toRfc4122();
+        $resource->version = $series->getVersion();
         $resource->establishmentId = $series->getEstablishment()->getId()->toRfc4122();
         $resource->establishmentCode = $series->getEstablishment()->getCode();
         $resource->documentType = $series->getDocumentType();

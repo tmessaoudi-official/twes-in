@@ -16,7 +16,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
-import { liveRecord } from '../shared/form/live-record';
+import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
@@ -95,27 +95,17 @@ export class FiscalTaxesPage implements OnInit {
     return buildFormGroup(descriptor, editing === 'new' ? {} : taxFormValues(editing));
   });
 
-  /** The tax being revised as the list now holds it: what another person's save is merged from. */
-  private readonly savedRow = computed(() => {
-    const editing = this.editing();
-    if (editing === null || editing === 'new') return null;
-    return this.fiscal.taxes().find((row) => row.id === editing.id) ?? null;
-  });
-
   /** The saved version the open form stands on, and what another person's save changed in it. */
-  protected readonly sync = liveRecord({
+  protected readonly sync = listRecord({
     kind: 'tax_component',
-    id: () => this.savedRow()?.id ?? null,
+    editing: this.editing,
+    rows: this.fiscal.taxes,
     form: this.form,
     reload: async () => {
       const companyId = this.company()?.id;
       if (companyId) await this.fiscal.loadTaxes(companyId);
     },
-    saved: () => {
-      const row = this.savedRow();
-      return row === null ? null : taxFormValues(row);
-    },
-    version: () => this.savedRow()?.version ?? null,
+    values: taxFormValues,
   });
 
   async ngOnInit(): Promise<void> {

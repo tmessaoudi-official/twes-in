@@ -20,6 +20,7 @@ const sector: CustomFieldDefinition = {
   choices: ['retail', 'wholesale'],
   sortOrder: 1,
   isActive: true,
+  version: 1,
 };
 
 const ids = (definition: CustomFieldDefinition | null): string[] =>

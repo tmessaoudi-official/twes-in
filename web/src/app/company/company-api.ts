@@ -8,10 +8,11 @@ import type {
   UploadCompanyLogoResponse,
   CompanyProfileCompanyProfileWriteRecordReviseValidationCompanyProfileWriteRecordRevise as CompanyProfileReviseBody,
   EstablishmentEstablishmentRead,
+  EstablishmentEstablishmentWriteRecordReviseValidationEstablishmentWriteRecordRevise as EstablishmentRevise,
   EstablishmentEstablishmentWriteValidationEstablishmentWrite as EstablishmentEstablishmentWrite,
   MemberMemberRead,
   NumberingSeriesNumberingSeriesRead,
-  NumberingSeriesNumberingSeriesWriteValidationNumberingSeriesWrite as NumberingSeriesNumberingSeriesWrite,
+  NumberingSeriesNumberingSeriesWriteRecordReviseValidationNumberingSeriesWriteRecordRevise as NumberingSeriesRevise,
   WorkingCompanyWorkingCompanyRead,
 } from '../api/types.gen';
 import {
@@ -212,12 +213,14 @@ export class CompanyApi {
     );
   }
 
+  /** `version` is the one the form was opened at: a later one saved elsewhere answers `record_changed`. */
   async reviseEstablishment(
     companyId: string,
     id: string,
     input: EstablishmentInput,
+    version: number | null,
   ): Promise<EstablishmentRow> {
-    const body: EstablishmentEstablishmentWrite = { ...input };
+    const body: EstablishmentRevise = { ...input, version };
     return this.guard(
       async () =>
         toEstablishment(
@@ -246,12 +249,17 @@ export class CompanyApi {
     );
   }
 
+  /**
+   * `version` is the one the form was opened at: a number given since moves the series on, and the API answers
+   * `record_changed` rather than write the form's next number back.
+   */
   async reviseNumberingSeries(
     companyId: string,
     id: string,
     changes: NumberingChanges,
+    version: number | null,
   ): Promise<NumberingSeriesRow> {
-    const body: NumberingSeriesNumberingSeriesWrite = { ...changes };
+    const body: NumberingSeriesRevise = { ...changes, version };
     return this.guard(
       async () =>
         toSeries(
@@ -352,7 +360,10 @@ function rowCodeOf(error: unknown): CompanyError {
   if (error.status === 404) {
     return 'not_found';
   }
-  return error.status === 409 ? 'code_taken' : 'invalid';
+  if (error.status === 409) {
+    return isRecordChanged(error.error) ? 'record_changed' : 'code_taken';
+  }
+  return 'invalid';
 }
 
 function toEstablishment(row: EstablishmentEstablishmentRead): EstablishmentRow {
@@ -369,6 +380,8 @@ function toEstablishment(row: EstablishmentEstablishmentRead): EstablishmentRow 
     isDefault: row.isDefault ?? false,
     codePattern: row.codePattern ?? '',
     codeLocked: row.codeLocked ?? false,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: row.version ?? 0,
   };
 }
 
@@ -384,6 +397,7 @@ function toSeries(row: NumberingSeriesNumberingSeriesRead): NumberingSeriesRow {
     isDefault: row.isDefault ?? false,
     numbered: row.numbered ?? false,
     preview: row.preview ?? '',
+    version: row.version ?? 0,
   };
 }
 

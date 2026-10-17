@@ -32,7 +32,7 @@ final readonly class ReviseCustomFieldProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CustomFieldResource::WRITE_PERMISSION);
 
         try {
-            $field = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'fieldId'), $data->input(), $this->guard->account()->getId());
+            $field = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'fieldId'), $data->input(), $this->guard->account()->getId(), $data->version);
         } catch (CustomFieldNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);
         } catch (InvalidCustomFieldDefinition $refused) {

@@ -26,6 +26,7 @@ const head: EstablishmentRow = {
   isDefault: true,
   codePattern: '^[0-9]{3}$',
   codeLocked: false,
+  version: 1,
 };
 
 const fieldOf = (descriptor: ReturnType<typeof seriesForm>, id: string) =>
@@ -114,6 +115,7 @@ describe('the series list', () => {
       isDefault: true,
       numbered: false,
       preview: '00001',
+      version: 1,
     });
     const rows = [
       series('s1', '000', 'invoice'),

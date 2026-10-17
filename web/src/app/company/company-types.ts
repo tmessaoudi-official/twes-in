@@ -119,10 +119,15 @@ export interface EstablishmentRow {
   readonly codePattern: string;
   /** Whether numbered documents carry the code, which then no longer changes. */
   readonly codeLocked: boolean;
+  /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
+  readonly version: number;
 }
 
 /** What a person writes about an establishment; setting isDefault hands the role over from the current default. */
-export type EstablishmentInput = Omit<EstablishmentRow, 'id' | 'codePattern' | 'codeLocked'>;
+export type EstablishmentInput = Omit<
+  EstablishmentRow,
+  'id' | 'codePattern' | 'codeLocked' | 'version'
+>;
 
 export type ResetPeriod = 'yearly' | 'monthly' | 'never';
 
@@ -141,6 +146,8 @@ export interface NumberingSeriesRow {
   /** Whether documents carry numbers from this series; where it resumes then no longer changes. */
   readonly numbered: boolean;
   readonly preview: string;
+  /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
+  readonly version: number;
 }
 
 export interface NumberingChanges {

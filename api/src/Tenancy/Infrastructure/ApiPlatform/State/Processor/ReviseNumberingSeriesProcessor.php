@@ -35,7 +35,7 @@ final readonly class ReviseNumberingSeriesProcessor implements ProcessorInterfac
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
 
         try {
-            $series = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'seriesId'), $data->changes(), $this->guard->account()->getId());
+            $series = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'seriesId'), $data->changes(), $this->guard->account()->getId(), $data->version);
         } catch (NumberingSeriesNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);
         } catch (NumberingSeriesOverlap $shared) {

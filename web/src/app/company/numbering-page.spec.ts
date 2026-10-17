@@ -23,7 +23,8 @@ import {
 import type { NumberingSeriesRow } from './company-types';
 import { EstablishmentsFacade } from './establishments-facade';
 import { NumberingPage } from './numbering-page';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -52,14 +53,16 @@ const deliveryNotes: NumberingSeriesRow = {
   isDefault: true,
   numbered: false,
   preview: 'BL-2026-00001',
+  version: 1,
 };
 
 describe('NumberingPage', () => {
   const series = signal<readonly NumberingSeriesRow[]>([deliveryNotes]);
+  const error = signal<string | null>(null);
   const facade = {
     series: series.asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal<string | null>(null).asReadonly(),
+    error: error.asReadonly(),
     loadSeries: vi.fn(),
     reviseSeries: vi.fn(),
     clearError: vi.fn(),
@@ -87,7 +90,9 @@ describe('NumberingPage', () => {
 
   beforeEach(async () => {
     series.set([deliveryNotes]);
+    error.set(null);
     facade.loadSeries.mockReset().mockResolvedValue(undefined);
+    facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.reviseSeries.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
 
@@ -149,11 +154,16 @@ describe('NumberingPage', () => {
     q('series-save')!.click();
     await settle();
 
-    expect(facade.reviseSeries).toHaveBeenCalledWith('c1', 's1', {
-      format: 'BL-{EST}-{SEQ:4}',
-      nextNumber: 8,
-      resetPeriod: 'yearly',
-    });
+    expect(facade.reviseSeries).toHaveBeenCalledWith(
+      'c1',
+      's1',
+      {
+        format: 'BL-{EST}-{SEQ:4}',
+        nextNumber: 8,
+        resetPeriod: 'yearly',
+      },
+      1,
+    );
   });
 
   it('revises the series with what was typed', async () => {
@@ -164,10 +174,51 @@ describe('NumberingPage', () => {
     q('series-save')!.click();
     await settle();
 
-    expect(facade.reviseSeries).toHaveBeenCalledWith('c1', 's1', {
-      format: 'BL-{EST}-{SEQ:4}',
-      nextNumber: 12,
-      resetPeriod: 'yearly',
+    expect(facade.reviseSeries).toHaveBeenCalledWith(
+      'c1',
+      's1',
+      {
+        format: 'BL-{EST}-{SEQ:4}',
+        nextNumber: 12,
+        resetPeriod: 'yearly',
+      },
+      1,
+    );
+  });
+
+  it('after a save refused because a number was given since, takes the number the series is at and saves on it next', async () => {
+    q('row-action-edit-s1')!.click();
+    await settle();
+    facade.reviseSeries.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
     });
+    facade.loadSeries.mockImplementationOnce(async () =>
+      series.set([
+        { ...deliveryNotes, nextNumber: 2, numbered: true, preview: 'BL-2026-00002', version: 2 },
+      ]),
+    );
+
+    type('field-format', 'BL-{EST}-{SEQ:4}');
+    q('series-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-nextNumber') as HTMLInputElement).value).toBe('2'));
+
+    expect((q('field-format') as HTMLInputElement).value).toBe('BL-{EST}-{SEQ:4}');
+    expect(q('numbering-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('series-save')!.click();
+    await settle();
+    expect(facade.reviseSeries).toHaveBeenLastCalledWith(
+      'c1',
+      's1',
+      { format: 'BL-{EST}-{SEQ:4}', nextNumber: 2, resetPeriod: 'yearly' },
+      2,
+    );
   });
 });

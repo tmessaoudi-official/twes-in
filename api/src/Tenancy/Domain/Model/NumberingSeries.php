@@ -73,6 +73,11 @@ class NumberingSeries implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /** Doctrine counts each save, so an editor of an older version is told rather than overwriting it. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     private function __construct(Company $company, Establishment $establishment, string $documentType, \DateTimeImmutable $now)
     {
         if (1 !== preg_match(self::DOCUMENT_TYPE, $documentType)) {
@@ -211,6 +216,11 @@ class NumberingSeries implements CompanyOwned
     public function preview(\DateTimeImmutable $date): string
     {
         return new NumberFormat($this->format)->render($this->nextNumber, $date, $this->establishment->getCode());
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getId(): Uuid

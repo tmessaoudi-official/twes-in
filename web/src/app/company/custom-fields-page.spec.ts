@@ -24,7 +24,9 @@ import {
 } from '../shared/settings/settings-facade';
 import { CustomFieldsFacade } from './custom-fields-facade';
 import { CustomFieldsPage } from './custom-fields-page';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -50,12 +52,14 @@ const sector: CustomFieldDefinition = {
   choices: ['retail', 'wholesale'],
   sortOrder: 0,
   isActive: true,
+  version: 1,
 };
 
 describe('CustomFieldsPage', () => {
   const error = signal<CustomFieldsError | null>(null);
+  const fields = signal<readonly CustomFieldDefinition[]>([sector]);
   const facade = {
-    fields: signal<readonly CustomFieldDefinition[]>([sector]).asReadonly(),
+    fields: fields.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     load: vi.fn(),
@@ -87,7 +91,9 @@ describe('CustomFieldsPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    fields.set([sector]);
     facade.load.mockReset().mockResolvedValue(undefined);
+    facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.create.mockReset().mockResolvedValue(true);
     facade.revise.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -182,8 +188,56 @@ describe('CustomFieldsPage', () => {
         'c1',
         'f1',
         expect.objectContaining({ key: 'sector', type: 'choice', label: 'Activité' }),
+        1,
       ),
     );
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    q('row-action-edit-f1')!.click();
+    await settle();
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    facade.load.mockImplementationOnce(async () =>
+      fields.set([{ ...sector, sortOrder: 7, version: 2 }]),
+    );
+
+    type('field-label', 'Activité');
+    q('custom-field-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-sortOrder') as HTMLInputElement).value).toBe('7'));
+
+    expect((q('field-label') as HTMLInputElement).value).toBe('Activité');
+    expect(q('custom-fields-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('custom-field-save')!.click();
+    await settle();
+    expect(facade.revise).toHaveBeenLastCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({ label: 'Activité', sortOrder: 7 }),
+      2,
+    );
+  });
+
+  it('takes into the open form what another person saved on the same field', async () => {
+    q('row-action-edit-f1')!.click();
+    await settle();
+    facade.load.mockImplementationOnce(async () =>
+      fields.set([{ ...sector, label: 'Activité principale', version: 2 }]),
+    );
+
+    await announceSaved('custom_field', 'f1');
+    await settle();
+
+    expect((q('field-label') as HTMLInputElement).value).toBe('Activité principale');
   });
 
   it('says why the API refused', async () => {

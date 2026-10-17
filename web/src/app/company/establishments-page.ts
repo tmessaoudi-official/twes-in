@@ -16,6 +16,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { listRecord } from '../shared/form/list-record';
+import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
@@ -42,6 +44,7 @@ import type { ArticleSubject } from '../shared/settings/settings-types';
     DataList,
     DataListCell,
     DescriptorForm,
+    RecordChanged,
   ],
   templateUrl: './establishments-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -86,13 +89,15 @@ export class EstablishmentsPage implements OnInit {
     },
     { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
   );
-  protected readonly descriptor = computed(() => {
+  // Plain values, so a reload of the list that changes neither leaves the open form, and what is typed in it, alone.
+  private readonly codePattern = computed(() => this.establishments()[0]?.codePattern ?? '');
+  private readonly codeLocked = computed(() => {
     const editing = this.editing();
-    return establishmentForm(
-      this.establishments()[0]?.codePattern ?? '',
-      editing !== null && editing !== 'new' && editing.codeLocked,
-    );
+    return editing !== null && editing !== 'new' && editing.codeLocked;
   });
+  protected readonly descriptor = computed(() =>
+    establishmentForm(this.codePattern(), this.codeLocked()),
+  );
   protected readonly form = computed(() => {
     const editing = this.editing();
     if (editing === null) return null;
@@ -100,6 +105,19 @@ export class EstablishmentsPage implements OnInit {
       this.descriptor(),
       editing === 'new' ? {} : establishmentFormValues(editing),
     );
+  });
+
+  /** The saved version the open form stands on, and what another person's save changed in it. */
+  protected readonly sync = listRecord({
+    kind: 'establishment',
+    editing: this.editing,
+    rows: this.establishments,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.loadEstablishments(companyId);
+    },
+    values: establishmentFormValues,
   });
 
   async ngOnInit(): Promise<void> {
@@ -135,10 +153,13 @@ export class EstablishmentsPage implements OnInit {
     const accepted =
       editing === 'new'
         ? await this.facade.createEstablishment(companyId, input)
-        : await this.facade.reviseEstablishment(companyId, editing.id, input);
+        : await this.facade.reviseEstablishment(companyId, editing.id, input, this.sync.version());
     if (accepted) {
       this.editing.set(null);
       this.feedback.success('company.establishments.saved');
+    } else if (this.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 

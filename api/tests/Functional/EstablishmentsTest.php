@@ -83,7 +83,7 @@ final class EstablishmentsTest extends ApiTestCase
         $this->postJson($this->path(), ['code' => '001', 'name' => 'Agence de Sfax']);
         $sfax = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path().'/'.$sfax, ['code' => '001', 'name' => 'Agence de Sfax', 'isDefault' => true]);
+        $this->revise($sfax, ['code' => '001', 'name' => 'Agence de Sfax', 'isDefault' => true]);
 
         self::assertResponseIsSuccessful();
         $this->getJson($this->path());
@@ -95,7 +95,7 @@ final class EstablishmentsTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('000'), ['code' => '000', 'name' => 'Siège', 'isDefault' => false]);
+        $this->revise($this->idOf('000'), ['code' => '000', 'name' => 'Siège', 'isDefault' => false]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
@@ -104,7 +104,7 @@ final class EstablishmentsTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('000'), ['code' => '002', 'name' => 'Siège social', 'postalCode' => '1000', 'isDefault' => true]);
+        $this->revise($this->idOf('000'), ['code' => '002', 'name' => 'Siège social', 'postalCode' => '1000', 'isDefault' => true]);
 
         self::assertResponseIsSuccessful();
         $body = $this->json();
@@ -125,14 +125,57 @@ final class EstablishmentsTest extends ApiTestCase
         $this->getJson($this->path());
         self::assertTrue($this->jsonList()[0]['codeLocked']);
 
-        $this->sendJson('PUT', $this->path().'/'.$id, ['code' => '002', 'name' => 'Acme', 'isDefault' => true]);
+        $this->revise($id, ['code' => '002', 'name' => 'Acme', 'isDefault' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('code', $this->stringAt($this->json(), 'detail'));
 
-        $this->sendJson('PUT', $this->path().'/'.$id, ['code' => '000', 'name' => 'Siège social', 'isDefault' => true]);
+        $this->revise($id, ['code' => '000', 'name' => 'Siège social', 'isDefault' => true]);
         self::assertResponseIsSuccessful();
         self::assertSame('Siège social', $this->json()['name']);
         self::assertTrue($this->json()['codeLocked']);
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->postJson($this->path(), ['code' => '001', 'name' => 'Agence de Sfax']);
+        $sfax = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version']);
+        $this->sendJson('PUT', $this->path().'/'.$sfax, ['version' => 1, 'code' => '001', 'name' => 'Agence de Sfax centre', 'isDefault' => false]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path().'/'.$sfax, ['version' => 1, 'code' => '001', 'name' => 'Agence du port', 'isDefault' => false]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path());
+        $saved = array_find($this->jsonList(), static fn (array $row): bool => $sfax === $row['id']) ?? self::fail('no Sfax');
+        self::assertSame(['Agence de Sfax centre', 2], [$saved['name'], $saved['version']]);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->postJson($this->path(), ['code' => '001', 'name' => 'Agence de Sfax']);
+        $sfax = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path().'/'.$sfax, ['version' => 1, 'code' => '001', 'name' => 'Agence de Sfax', 'isDefault' => false]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+    }
+
+    public function testARevisionSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->postJson($this->path(), ['code' => '001', 'name' => 'Agence de Sfax']);
+        $sfax = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path().'/'.$sfax, ['code' => '001', 'name' => 'Agence du port', 'isDefault' => false]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     public function testAReaderMayNotAddAnEstablishment(): void
@@ -152,7 +195,7 @@ final class EstablishmentsTest extends ApiTestCase
         self::assertNotNull($theirs);
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path().'/'.$theirs->getId()->toRfc4122(), ['code' => '009', 'name' => 'Hijacked', 'isDefault' => true]);
+        $this->sendJson('PUT', $this->path().'/'.$theirs->getId()->toRfc4122(), ['version' => 1, 'code' => '009', 'name' => 'Hijacked', 'isDefault' => true]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
@@ -179,5 +222,17 @@ final class EstablishmentsTest extends ApiTestCase
             }
         }
         self::fail("no $code");
+    }
+
+    /**
+     * Revises a row at the version the list holds now, as a form opened just before would.
+     *
+     * @param array<string, mixed> $body
+     */
+    private function revise(string $id, array $body): void
+    {
+        $this->getJson($this->path());
+        $row = array_find($this->jsonList(), static fn (array $row): bool => $id === $row['id']) ?? self::fail("no row $id");
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => $row['version'], ...$body]);
     }
 }
