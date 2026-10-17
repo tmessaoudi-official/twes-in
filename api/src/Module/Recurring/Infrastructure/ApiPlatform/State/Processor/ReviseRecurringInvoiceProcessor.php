@@ -41,6 +41,7 @@ final readonly class ReviseRecurringInvoiceProcessor implements ProcessorInterfa
                 RequestedSchedule::dayOrNull($data->endsOn),
                 $data->paused,
                 $this->guard->account()->getId(),
+                $data->version,
             );
         } catch (RecurringInvoiceNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);

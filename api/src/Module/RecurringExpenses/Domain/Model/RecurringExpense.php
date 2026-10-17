@@ -56,6 +56,11 @@ class RecurringExpense implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /** Doctrine counts each save, a person's or a run's, so a revision read before one is told rather than writing over it. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     /** @throws InvalidSchedule */
     public function __construct(Company $company, Uuid $modelExpenseId, Schedule $schedule, \DateTimeImmutable $startsOn, ?\DateTimeImmutable $endsOn, bool $variableAmount, \DateTimeImmutable $today, \DateTimeImmutable $now)
     {
@@ -107,6 +112,11 @@ class RecurringExpense implements CompanyOwned
     {
         $this->recurrence->pause();
         $this->updatedAt = $now;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getId(): Uuid

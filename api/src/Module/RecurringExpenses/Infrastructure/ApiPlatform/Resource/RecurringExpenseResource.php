@@ -23,6 +23,7 @@ use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Processor\Dele
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Processor\ReviseRecurringExpenseProcessor;
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Provider\RecurringExpenseCollectionProvider;
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Provider\RecurringExpenseItemProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RequestedSchedule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\ScheduleRequest;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -63,8 +64,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::REVISE]],
-            validationContext: ['groups' => [self::REVISE]],
+            denormalizationContext: ['groups' => [self::REVISE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::REVISE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/recurring-expenses/{recurringExpenseId}',
@@ -154,6 +155,12 @@ final class RecurringExpenseResource implements ScheduleRequest
     #[Groups([self::READ, self::REVISE])]
     public bool $paused = false;
 
+    /** The version read; a revision or a pause sends back the one it was read at, and one saved since, a run's included, answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     /** The day of the next draft; null once past the last day. */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
@@ -188,6 +195,7 @@ final class RecurringExpenseResource implements ScheduleRequest
         $resource->endsOn = $recurrence->endsOn?->format('Y-m-d');
         $resource->variableAmount = $recurring->hasVariableAmount();
         $resource->paused = $recurrence->paused;
+        $resource->version = $recurring->getVersion();
         $resource->nextOn = $recurrence->nextOn?->format('Y-m-d');
         $resource->drafted = $recurrence->drafted;
         $resource->lastExpenseId = $recurring->getLastExpenseId()?->toRfc4122();

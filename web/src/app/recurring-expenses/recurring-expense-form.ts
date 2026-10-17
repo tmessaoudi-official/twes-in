@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { TranslatePipe } from '@ngx-translate/core';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { DescriptorFormGroup } from '../shared/form/form-builder';
+import type { FieldConflict } from '../shared/form/form-merge';
 import type { FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
-import { scheduleFailure, scheduleFields, scheduleOf } from '../shared/schedule/schedule';
+import {
+  scheduleFailure,
+  scheduleFields,
+  scheduleOf,
+  scheduleValues,
+} from '../shared/schedule/schedule';
 import type {
   RecurringExpenseDraft,
   RecurringExpenseRevision,
@@ -85,7 +91,19 @@ export function recurringExpenseDraft(
   };
 }
 
-/** What the form holds as a revision; pausing is not asked here and stays as it is. */
+/** What a revision's form starts from: the row as read, which a save over a later one is merged against. */
+export function recurringExpenseValues(row: RecurringExpenseRow): FormValues {
+  return {
+    ...scheduleValues(row.schedule),
+    endsOn: row.endsOn ?? '',
+    variableAmount: row.variableAmount,
+  };
+}
+
+/**
+ * What the form holds as a revision, on the version the row was read at; pausing is not asked here and stays as the
+ * row has it.
+ */
 export function recurringExpenseRevision(
   row: RecurringExpenseRow,
   values: FormValues,
@@ -95,6 +113,7 @@ export function recurringExpenseRevision(
     endsOn: dayOrNull(values['endsOn']),
     variableAmount: values['variableAmount'] === true,
     paused: row.paused,
+    version: row.version,
   };
 }
 
@@ -117,6 +136,8 @@ export interface RecurringExpenseDialogData {
   /** The title and the confirming word: « Rendre récurrente » or « Enregistrer ». */
   title: string;
   confirm: string;
+  /** Asked again over a version saved since: the fields both sides changed, what is typed kept until one is chosen. */
+  conflicts?: readonly FieldConflict[];
 }
 
 /**
@@ -137,6 +158,8 @@ export interface RecurringExpenseDialogData {
         [descriptor]="data.descriptor"
         [form]="data.group"
         testId="recurring-expense-form"
+        [conflicts]="conflicts()"
+        (resolved)="resolve($event)"
         (submitted)="answer()"
       />
     </mat-dialog-content>
@@ -164,6 +187,15 @@ export class RecurringExpenseDialog {
   protected readonly ref =
     inject<MatDialogRef<RecurringExpenseDialog, FormValues | null>>(MatDialogRef);
   protected readonly data = inject<RecurringExpenseDialogData>(MAT_DIALOG_DATA);
+  protected readonly conflicts = signal<readonly FieldConflict[]>(this.data.conflicts ?? []);
+
+  /** Theirs replaces what is typed; mine keeps it. Either way the field is no longer in question. */
+  protected resolve({ field, choice }: { field: string; choice: 'theirs' | 'mine' }): void {
+    const conflict = this.conflicts().find((one) => one.field === field);
+    if (conflict === undefined) return;
+    if (choice === 'theirs') this.data.group.controls[field]?.setValue(conflict.theirs);
+    this.conflicts.update((all) => all.filter((one) => one !== conflict));
+  }
 
   protected answer(): void {
     if (this.data.group.invalid) {

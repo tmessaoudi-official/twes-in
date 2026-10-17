@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Module\RecurringExpenses\Domain\Exception\InvalidRecurringExpense;
 use App\Module\RecurringExpenses\Domain\Model\RecurringExpense;
 use App\Module\RecurringExpenses\Domain\Repository\RecurringExpenseRepository;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Exception\InvalidSchedule;
 use App\Shared\Domain\Model\Schedule;
@@ -39,6 +41,7 @@ final readonly class ManageRecurringExpenses
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -92,11 +95,15 @@ final readonly class ManageRecurringExpenses
     /**
      * @throws RecurringExpenseNotFound
      * @throws InvalidSchedule
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, Schedule $schedule, ?\DateTimeImmutable $endsOn, bool $paused, bool $variableAmount, ?Uuid $actorUserId): RecurringExpense
+    public function revise(Company $company, Uuid $id, Schedule $schedule, ?\DateTimeImmutable $endsOn, bool $paused, bool $variableAmount, ?Uuid $actorUserId, ?int $version = null): RecurringExpense
     {
-        return $this->transactions->run(function () use ($company, $id, $schedule, $endsOn, $paused, $variableAmount, $actorUserId): RecurringExpense {
+        return $this->transactions->run(function () use ($company, $id, $schedule, $endsOn, $paused, $variableAmount, $actorUserId, $version): RecurringExpense {
             $recurring = $this->recurring->lockedOfIdInCompany($id, $company->getId()) ?? throw new RecurringExpenseNotFound();
+            if (null !== $version) {
+                $this->versions->expect($recurring, $version);
+            }
             $changed = $recurring->revise($schedule, $endsOn, $paused, $variableAmount, $this->today($company), $this->clock->now());
             if ([] !== $changed) {
                 $this->recurring->save($recurring);

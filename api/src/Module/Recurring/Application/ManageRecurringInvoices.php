@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Module\Recurring\Domain\Exception\InvalidRecurringInvoice;
 use App\Module\Recurring\Domain\Model\RecurringInvoice;
 use App\Module\Recurring\Domain\Repository\RecurringInvoiceRepository;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Exception\InvalidSchedule;
 use App\Shared\Domain\Model\Schedule;
@@ -39,6 +41,7 @@ final readonly class ManageRecurringInvoices
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -94,11 +97,15 @@ final readonly class ManageRecurringInvoices
     /**
      * @throws RecurringInvoiceNotFound
      * @throws InvalidSchedule
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, Schedule $schedule, ?\DateTimeImmutable $endsOn, bool $paused, ?Uuid $actorUserId): RecurringInvoice
+    public function revise(Company $company, Uuid $id, Schedule $schedule, ?\DateTimeImmutable $endsOn, bool $paused, ?Uuid $actorUserId, ?int $version = null): RecurringInvoice
     {
-        return $this->transactions->run(function () use ($company, $id, $schedule, $endsOn, $paused, $actorUserId): RecurringInvoice {
+        return $this->transactions->run(function () use ($company, $id, $schedule, $endsOn, $paused, $actorUserId, $version): RecurringInvoice {
             $recurring = $this->recurring->lockedOfIdInCompany($id, $company->getId()) ?? throw new RecurringInvoiceNotFound();
+            if (null !== $version) {
+                $this->versions->expect($recurring, $version);
+            }
             $changed = $recurring->revise($schedule, $endsOn, $paused, $this->today($company), $this->clock->now());
             if ([] !== $changed) {
                 $this->recurring->save($recurring);

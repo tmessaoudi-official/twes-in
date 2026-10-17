@@ -105,7 +105,12 @@ final class Recurrence
                 ++$this->nextIndex;
             }
         }
-        $this->nextOn = $this->occurrenceDay($this->nextIndex);
+        // Doctrine compares a date by the object, so an equal day written anew would count as a change and move the
+        // record's version over a revision that changed nothing.
+        $nextOn = $this->occurrenceDay($this->nextIndex);
+        if ($nextOn?->format('Y-m-d') !== $this->nextOn?->format('Y-m-d')) {
+            $this->nextOn = $nextOn;
+        }
 
         return $changed;
     }
