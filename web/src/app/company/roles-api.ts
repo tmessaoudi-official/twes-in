@@ -6,8 +6,10 @@ import { firstValueFrom } from 'rxjs';
 import type {
   PermissionGroupPermissionGroupRead,
   RoleRoleRead,
+  RoleRoleWriteRecordReviseValidationRoleWriteRecordRevise as RoleRoleRevise,
   RoleRoleWriteValidationRoleWrite as RoleRoleWrite,
 } from '../api/types.gen';
+import { isRecordChanged } from '../shared/errors/record-changed';
 import type { PermissionGroupRow, RoleRow } from './roles-types';
 
 /**
@@ -24,6 +26,7 @@ export type RolesError =
   | 'built_in'
   | 'unknown_permission'
   | 'not_held'
+  | 'record_changed'
   | 'step_up_required'
   | 'invalid';
 
@@ -81,14 +84,13 @@ export class RolesApi {
     roleId: string,
     name: string,
     permissions: readonly string[],
+    version: number | null,
   ): Promise<RoleRow> {
+    const revision: RoleRoleRevise = { ...body(name, permissions), version };
     return this.read(async () =>
       toRow(
         await firstValueFrom(
-          this.http.put<RoleRoleRead>(
-            `${path(companyId)}/${encodeURIComponent(roleId)}`,
-            body(name, permissions),
-          ),
+          this.http.put<RoleRoleRead>(`${path(companyId)}/${encodeURIComponent(roleId)}`, revision),
         ),
       ),
     );
@@ -129,7 +131,10 @@ function refusalOf(error: unknown): RolesRefused {
         detail,
       );
     case 409:
-      return new RolesRefused('name_taken', detail);
+      return new RolesRefused(
+        isRecordChanged(error.error) ? 'record_changed' : 'name_taken',
+        detail,
+      );
     case 422:
       // Three refusals share this status and the API leads each with its own token (RoleResource's constants, the
       // shape CompanyGuard already uses). Reading the token rather than the sentence is what keeps this working
@@ -162,5 +167,7 @@ function toRow(raw: RoleRoleRead): RoleRow {
     wildcard: raw.wildcard === true,
     permissions: [...raw.permissions],
     memberCount: raw.memberCount ?? 0,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }

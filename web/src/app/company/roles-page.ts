@@ -9,7 +9,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormControl, FormGroup, FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,6 +21,11 @@ import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { CapitalizePipe } from '../shared/i18n/capitalize-pipe';
+import type { DescriptorFormGroup } from '../shared/form/form-builder';
+import type { FieldValue } from '../shared/form/form-types';
+import { liveRecord } from '../shared/form/live-record';
+import { PartConflict } from '../shared/form/part-conflict';
+import { RecordChanged } from '../shared/form/record-changed';
 import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
 
@@ -43,6 +48,8 @@ import type { RoleRow } from './roles-types';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    PartConflict,
+    RecordChanged,
     TranslatePipe,
   ],
   templateUrl: './roles-page.html',
@@ -90,6 +97,59 @@ export class RolesPage implements OnInit {
 
   private readonly ticksSignal = signal<ReadonlySet<string>>(new Set());
   protected readonly ticks = this.ticksSignal.asReadonly();
+
+  /**
+   * The editor has no descriptor form: the name and the ticks are its two parts, each merged as one field, over a
+   * form with no controls that stands for the open role. Keyed on the role opened alone, so a reload of the list
+   * leaves it, and what it stands on, in place.
+   */
+  protected readonly form = computed<DescriptorFormGroup | null>(() => {
+    const id = this.openId();
+    return id === null || id === RolesPage.NEW
+      ? null
+      : new FormGroup<Record<string, FormControl<FieldValue>>>({});
+  });
+
+  /**
+   * The saved version the open role stands on, and what another person's save changed in it. A role decides what
+   * everyone holding it may do: an editor opened before someone took a permission away is told, rather than giving
+   * it back on save.
+   */
+  protected readonly sync = liveRecord({
+    kind: 'role',
+    id: () => {
+      const id = this.openId();
+      return id === RolesPage.NEW ? null : id;
+    },
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.load(companyId);
+    },
+    saved: () => (this.open() === null ? null : {}),
+    version: () => this.open()?.version ?? null,
+    parts: [
+      {
+        field: 'name',
+        saved: () => (this.open() === null ? null : this.openName()),
+        shown: () => this.draftName(),
+        take: () => this.draftName.set(this.openName()),
+      },
+      {
+        field: 'permissions',
+        saved: () => {
+          const role = this.open();
+          return role === null ? null : tickText(role.permissions);
+        },
+        shown: () => tickText([...this.ticks()]),
+        take: () => this.ticksSignal.set(new Set(this.open()?.permissions ?? [])),
+      },
+    ],
+  });
+  protected readonly isNameConflict = (conflict: { field: string }): boolean =>
+    conflict.field === 'name';
+  protected readonly isPermissionsConflict = (conflict: { field: string }): boolean =>
+    conflict.field === 'permissions';
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
@@ -160,10 +220,13 @@ export class RolesPage implements OnInit {
     const saved =
       role === null
         ? await this.facade.create(companyId, name, permissions)
-        : await this.facade.revise(companyId, role.id, name, permissions);
+        : await this.facade.revise(companyId, role.id, name, permissions, this.sync.version());
     if (saved) {
       this.feedback.success('company.roles.saved');
       this.close();
+    } else if (this.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 
@@ -177,4 +240,9 @@ export class RolesPage implements OnInit {
       this.close();
     }
   }
+}
+
+/** The ticks as one comparable text: the same permissions, in whatever order, are the same content. */
+function tickText(permissions: readonly string[]): string {
+  return [...permissions].sort().join(' ');
 }

@@ -443,7 +443,9 @@
         "not_held": "Vous ne pouvez donner à un rôle que les droits que vous avez vous-même.",
         "invalid": "Cet enregistrement a été refusé.",
         "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
-      }
+      },
+      "name_conflict": "Le nom a aussi été modifié dans la version enregistrée.",
+      "permissions_conflict": "Les permissions ont aussi été modifiées dans la version enregistrée."
     },
     "security": {
       "title": "Sécurité",

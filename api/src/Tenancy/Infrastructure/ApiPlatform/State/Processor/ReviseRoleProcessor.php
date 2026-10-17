@@ -47,6 +47,7 @@ final readonly class ReviseRoleProcessor implements ProcessorInterface
                 $data->permissions,
                 $this->guard->account()->getId(),
                 fn (string $permission): bool => $this->guard->holds($company, $permission),
+                $data->version,
             ));
         } catch (RoleNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);

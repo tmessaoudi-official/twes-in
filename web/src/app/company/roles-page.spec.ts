@@ -10,7 +10,9 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import { Session } from '../shared/session/session';
 import type { RolesError } from './roles-api';
 import { RolesFacade } from './roles-facade';
@@ -50,6 +52,7 @@ const owner: RoleRow = {
   wildcard: true,
   permissions: [],
   memberCount: 2,
+  version: 1,
 };
 const member: RoleRow = {
   id: 'r-member',
@@ -58,6 +61,7 @@ const member: RoleRow = {
   wildcard: false,
   permissions: ['user.read'],
   memberCount: 1,
+  version: 1,
 };
 const barista: RoleRow = {
   id: 'r-barista',
@@ -66,6 +70,7 @@ const barista: RoleRow = {
   wildcard: false,
   permissions: ['stock.read'],
   memberCount: 0,
+  version: 1,
 };
 
 const groups: readonly PermissionGroupRow[] = [
@@ -195,7 +200,100 @@ describe('RolesPage', () => {
     q('role-save')!.click();
     await settle();
 
-    expect(facade.revise).toHaveBeenCalledWith('c1', 'r-barista', 'barista', ['user.read']);
+    expect(facade.revise).toHaveBeenCalledWith('c1', 'r-barista', 'barista', ['user.read'], 1);
+  });
+
+  it('takes into a quiet editor the ticks another person saved on the same role', async () => {
+    await open();
+    q('role-open-barista')!.click();
+    await settle();
+    facade.load.mockImplementationOnce(async () =>
+      roles.set([owner, member, { ...barista, permissions: ['user.read'], version: 2 }]),
+    );
+
+    await announceSaved('role', 'r-barista');
+    await settle();
+
+    expect(tickOf('user.read').checked).toBe(true);
+    expect(tickOf('stock.read').checked).toBe(false);
+  });
+
+  it('after a save refused as made over a version saved since, keeps a permission taken away there taken away', async () => {
+    // A role decides what everyone holding it may do: renaming it in a form opened before someone took a
+    // permission away must not hand that permission back to all of them.
+    await open();
+    q('role-open-barista')!.click();
+    await settle();
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    facade.load.mockImplementationOnce(async () =>
+      roles.set([owner, member, { ...barista, permissions: [], version: 2 }]),
+    );
+
+    const name = q('role-name') as HTMLInputElement;
+    name.value = 'serveur';
+    name.dispatchEvent(new Event('input'));
+    await settle();
+    q('role-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect(tickOf('stock.read').checked).toBe(false));
+
+    expect((q('role-name') as HTMLInputElement).value).toBe('serveur');
+    expect(facade.clearError).toHaveBeenCalled();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('role-save')!.click();
+    await settle();
+    expect(facade.revise).toHaveBeenLastCalledWith('c1', 'r-barista', 'serveur', [], 2);
+  });
+
+  it('asks which ticks to keep when both sides changed them, and takes the saved ones on request', async () => {
+    await open();
+    q('role-open-barista')!.click();
+    await settle();
+    tickOf('user.write').click();
+    await settle();
+    facade.load.mockImplementationOnce(async () =>
+      roles.set([owner, member, { ...barista, permissions: ['user.read'], version: 2 }]),
+    );
+
+    await announceSaved('role', 'r-barista');
+    await settle();
+
+    expect(q('field-conflict-permissions')).not.toBeNull();
+    expect(tickOf('user.write').checked).toBe(true);
+    q('field-take-theirs-permissions')!.click();
+    await settle();
+    expect(q('field-conflict-permissions')).toBeNull();
+    expect(tickOf('user.write').checked).toBe(false);
+    expect(tickOf('user.read').checked).toBe(true);
+    expect(tickOf('stock.read').checked).toBe(false);
+  });
+
+  it('keeps a name typed here when another person saved the same role under another name, until asked', async () => {
+    await open();
+    q('role-open-barista')!.click();
+    await settle();
+    const name = q('role-name') as HTMLInputElement;
+    name.value = 'serveur';
+    name.dispatchEvent(new Event('input'));
+    await settle();
+    facade.load.mockImplementationOnce(async () =>
+      roles.set([owner, member, { ...barista, name: 'garçon', version: 2 }]),
+    );
+
+    await announceSaved('role', 'r-barista');
+    await settle();
+
+    expect((q('role-name') as HTMLInputElement).value).toBe('serveur');
+    expect(q('field-conflict-name')).not.toBeNull();
+    expect(q('record-changed')).not.toBeNull();
   });
 
   it('creates a role from an empty matrix', async () => {

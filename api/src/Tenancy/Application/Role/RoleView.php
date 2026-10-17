@@ -20,6 +20,7 @@ final readonly class RoleView
         public array $permissions,
         public bool $wildcard,
         public int $memberCount,
+        public int $version,
     ) {
     }
 }

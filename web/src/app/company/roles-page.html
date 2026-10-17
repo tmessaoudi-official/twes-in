@@ -84,7 +84,24 @@
         }}
       </h2>
 
-      <mat-form-field class="max-w-sm">
+      @if (form(); as form) {
+        @if (sync.changedBy(); as changedBy) {
+          <app-record-changed
+            [changedBy]="changedBy"
+            [conflictCount]="sync.conflicts().length"
+            (reload)="sync.reloadSaved(form)"
+          />
+        }
+        @if (sync.conflicts().some(isNameConflict)) {
+          <app-part-conflict
+            field="name"
+            message="company.roles.name_conflict"
+            (resolved)="sync.resolve(form, $event)"
+          />
+        }
+      }
+
+      <mat-form-field class="max-w-sm" [class.twes-field-updated]="sync.updated().has('name')">
         <mat-label>{{ 'company.roles.name' | translate }}</mat-label>
         <input
           matInput
@@ -102,7 +119,20 @@
         <!-- Not every box ticked: the owner holds whatever later releases add, which no set of ticks can promise. -->
         <p data-testid="role-everything">{{ 'company.roles.everything' | translate }}</p>
       } @else {
-        <div class="flex flex-col gap-6" data-testid="role-matrix">
+        @if (form(); as form) {
+          @if (sync.conflicts().some(isPermissionsConflict)) {
+            <app-part-conflict
+              field="permissions"
+              message="company.roles.permissions_conflict"
+              (resolved)="sync.resolve(form, $event)"
+            />
+          }
+        }
+        <div
+          class="flex flex-col gap-6"
+          [class.twes-field-updated]="sync.updated().has('permissions')"
+          data-testid="role-matrix"
+        >
           @for (group of groups(); track group.key) {
             <fieldset class="flex flex-col gap-2">
               <legend class="mb-1 font-medium">{{ group.labelKey | translate }}</legend>

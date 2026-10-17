@@ -57,8 +57,11 @@ export class RolesFacade {
     roleId: string,
     name: string,
     permissions: readonly string[],
+    version: number | null,
   ): Promise<boolean> {
-    return this.write(companyId, () => this.api.revise(companyId, roleId, name, permissions));
+    return this.write(companyId, () =>
+      this.api.revise(companyId, roleId, name, permissions, version),
+    );
   }
 
   async remove(companyId: string, roleId: string): Promise<boolean> {

@@ -49,6 +49,11 @@ class Role
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
+    /** Doctrine counts each save, so an editor of an older version is told rather than giving back what was taken away since. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     /** @param list<string> $permissions */
     public function __construct(string $name, array $permissions, ?Company $company = null, ?\DateTimeImmutable $now = null)
     {
@@ -145,5 +150,10 @@ class Role
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 }

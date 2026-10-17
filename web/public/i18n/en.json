@@ -443,7 +443,9 @@
         "not_held": "You can only give a role the permissions you hold yourself.",
         "invalid": "That save was refused.",
         "step_up_required": "Nothing changed: confirm it is you to make this change."
-      }
+      },
+      "name_conflict": "The name was changed in the saved version too.",
+      "permissions_conflict": "The permissions were changed in the saved version too."
     },
     "security": {
       "title": "Security",

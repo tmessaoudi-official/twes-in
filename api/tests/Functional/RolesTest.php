@@ -81,9 +81,11 @@ final class RolesTest extends ApiTestCase
         self::assertIsString($created['id']);
         self::assertSame(['customer.read', 'product.read'], $created['permissions']);
 
-        $this->sendJson('PUT', $this->path($created['id']), ['name' => 'server', 'permissions' => ['customer.read']]);
+        self::assertSame(1, $created['version']);
+        $this->sendJson('PUT', $this->path($created['id']), ['name' => 'server', 'permissions' => ['customer.read'], 'version' => 1]);
         self::assertResponseIsSuccessful();
         self::assertSame('server', $this->json()['name']);
+        self::assertSame(2, $this->json()['version']);
         self::assertSame(['customer.read'], $this->json()['permissions']);
 
         $this->sendJson('DELETE', $this->path($created['id']));
@@ -91,6 +93,40 @@ final class RolesTest extends ApiTestCase
 
         $this->getJson($this->path());
         self::assertNotContains('server', array_column($this->jsonList(), 'name'));
+    }
+
+    public function testAFormOpenedBeforeAPermissionWasTakenAwayCannotGiveItBack(): void
+    {
+        // A role decides what every member holding it may do: a form opened before someone took a permission away,
+        // saved afterwards, would hand that permission back to all of them without anyone choosing it.
+        $this->signedInAsOwner();
+        $this->postJson($this->path(), ['name' => 'waiter', 'permissions' => ['customer.read', 'product.read']]);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->sendJson('PUT', $this->path($id), ['name' => 'waiter', 'permissions' => ['customer.read'], 'version' => 1]);
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'serveur', 'permissions' => ['customer.read', 'product.read'], 'version' => 1]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path());
+        $role = $this->roleNamed($this->jsonList(), 'waiter');
+        self::assertSame([['customer.read'], 2], [$role['permissions'], $role['version']]);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersionAndOneWithoutAVersionIsRefused(): void
+    {
+        $this->signedInAsOwner();
+        $this->postJson($this->path(), ['name' => 'waiter', 'permissions' => ['customer.read']]);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'waiter', 'permissions' => ['customer.read'], 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'serveur', 'permissions' => ['customer.read']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     public function testEveryChangeToARoleIsAudited(): void
@@ -105,7 +141,7 @@ final class RolesTest extends ApiTestCase
         $created = $this->json();
         self::assertIsString($created['id']);
 
-        $this->sendJson('PUT', $this->path($created['id']), ['name' => 'server', 'permissions' => ['product.read']]);
+        $this->sendJson('PUT', $this->path($created['id']), ['name' => 'server', 'permissions' => ['product.read'], 'version' => 1]);
         self::assertResponseIsSuccessful();
         $this->sendJson('DELETE', $this->path($created['id']));
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
@@ -163,7 +199,7 @@ final class RolesTest extends ApiTestCase
         $ownerId = $this->roleNamed($this->jsonList(), Role::OWNER)['id'];
         self::assertIsString($ownerId);
 
-        $this->sendJson('PUT', $this->path($ownerId), ['name' => 'owner', 'permissions' => ['customer.read']]);
+        $this->sendJson('PUT', $this->path($ownerId), ['name' => 'owner', 'permissions' => ['customer.read'], 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the release defines it, not the company');
         self::assertRefusedWith(RoleResource::BUILT_IN, $this->json());
 
@@ -225,9 +261,9 @@ final class RolesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id), ['name' => 'viewer', 'permissions' => ['customer.read', 'invoice.issue']]);
+        $this->sendJson('PUT', $this->path($id), ['name' => 'viewer', 'permissions' => ['customer.read', 'invoice.issue'], 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'adding what the editor does not hold is refused on a revision too');
-        $this->sendJson('PUT', $this->path($id), ['name' => 'viewer', 'permissions' => []]);
+        $this->sendJson('PUT', $this->path($id), ['name' => 'viewer', 'permissions' => [], 'version' => 1]);
         self::assertResponseIsSuccessful();
 
         $this->sendJson('POST', '/api/auth/logout');
@@ -285,7 +321,7 @@ final class RolesTest extends ApiTestCase
         $this->login('intruder@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
 
-        $this->sendJson('PUT', $this->path($role['id']), ['name' => 'theirs', 'permissions' => ['customer.read']]);
+        $this->sendJson('PUT', $this->path($role['id']), ['name' => 'theirs', 'permissions' => ['customer.read'], 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'it is not even addressed under this company');
     }
 

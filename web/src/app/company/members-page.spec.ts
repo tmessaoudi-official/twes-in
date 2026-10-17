@@ -84,6 +84,7 @@ describe('MembersPage', () => {
     wildcard: false,
     permissions: [],
     memberCount: 0,
+    version: 1,
   });
   const companyRoles = signal<readonly RoleRow[]>([]);
   const roles = {
