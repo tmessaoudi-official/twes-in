@@ -583,7 +583,10 @@ film is made, never written in the script, because a person may have changed it.
 ## 13. Backups and the restore drill
 
 `compose.backup.yaml` adds backups to the production stack (§ 10). It is a layer of its own, so a deployment that runs
-without it has none; the deploy compose includes it.
+without it has none; the deploy compose includes it. It says what is archived, and a destination layer over it says
+where: `compose.backup-bucket.yaml`, a server's S3-compatible bucket, every value required (this section), or
+`compose.backup-local.yaml`, a shop's own folder, copied off site by `compose.backup-offsite.yaml` when that is switched
+on (§ 16). Without a destination the layer archives nowhere, so every command below names one.
 
 - The database is built from `infra/postgres/Dockerfile`: the same PostgreSQL as `compose.yaml`, with pgBackRest. It
   hands its WAL to pgBackRest as it writes, and pgBackRest sends it, encrypted, to an S3-compatible bucket. A quiet
@@ -605,7 +608,7 @@ export BACKUP_S3_ENDPOINT=<the bucket service's host> BACKUP_S3_BUCKET=<bucket> 
        BACKUP_S3_KEY=<access key> BACKUP_S3_SECRET=<secret key> \
        BACKUP_DATABASE_PASSPHRASE=$(openssl rand -base64 36) BACKUP_FILES_PASSPHRASE=$(openssl rand -base64 36)
 # BACKUP_S3_PORT (443) and BACKUP_S3_URI_STYLE (host; path for most services other than AWS) when they differ
-docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml up -d --build --wait
+docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml up -d --build --wait
 ```
 
 **Restoring** runs the layer's `restore` service, which starts only when named. It writes the database's volume, which
@@ -613,7 +616,7 @@ pgBackRest fills only when it is empty, as on a new machine before the first `up
 overwrites. Every value as above, the database server stopped:
 
 ```sh
-B="docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml"
+B="docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml"
 $B run --rm --no-deps restore gosu postgres pgbackrest --stanza=twes --spool-path=/tmp \
   --type=time "--target=2026-10-12 08:25:00+00" --target-action=promote restore
   # without --type, --target and --target-action: the latest that reached the bucket
@@ -700,7 +703,7 @@ shell's history and the process list:
 
 ```sh
 read -rs PW && printf '%s\n' "$PW" | docker compose --env-file /etc/twes-in/deploy.env \
-  -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml \
+  -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml -f compose.deploy.yaml \
   exec -T api bin/console app:seed --no-interaction --without-company --operator-email=<address> --operator-password-stdin; unset PW
 ```
 

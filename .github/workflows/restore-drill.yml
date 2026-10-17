@@ -12,6 +12,9 @@ on:
     branches: [master]
     paths:
       - compose.backup.yaml
+      - compose.backup-bucket.yaml
+      - compose.backup-local.yaml
+      - compose.backup-offsite.yaml
       - infra/postgres/**
       - scripts/backup/**
       - .github/workflows/restore-drill.yml
@@ -31,3 +34,4 @@ jobs:
           fetch-depth: 0
       - run: bash scripts/build-version.sh --env >> "$GITHUB_ENV"
       - run: make backup-drill
+      - run: make backup-drill DRILL=local

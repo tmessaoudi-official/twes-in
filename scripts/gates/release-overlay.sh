@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# What deploying by digest promises (docs/START.md § 14): compose.release.yaml over the four deployment files makes every
+# What deploying by digest promises (docs/START.md § 14): compose.release.yaml over the five deployment files makes every
 # service that runs an image twes-in builds run the published image instead, by the digest it is given, and build
 # nothing on the server. A service is on a built image when the deployment builds it, or runs the image another service
 # builds (restore runs the database's); which digest it takes follows from what is built: infra/api the api's,
@@ -36,8 +36,8 @@ values=(TWES_HOST=$HOST EDGE_TLS=gate@twes.invalid POSTGRES_PASSWORD=gate-postgr
   BACKUP_DATABASE_PASSPHRASE=d BACKUP_FILES_PASSPHRASE=f MONITOR_TOKEN=m MONITOR_URL=https://status.$HOST
   MONITOR_HEARTBEAT_TOKEN=h SENTRY_DSN=https://gate@errors.$HOST/1)
 for name in "${!IMAGES[@]}"; do values+=("$name=${IMAGES[$name]}"); done
-deployment=(-f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml)
-for f in compose.yaml compose.prod.yaml compose.backup.yaml compose.deploy.yaml compose.release.yaml; do
+deployment=(-f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml -f compose.deploy.yaml)
+for f in compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-bucket.yaml compose.deploy.yaml compose.release.yaml; do
   [[ -f "$root/$f" ]] || problem "found no $f"
 done
 covered=0

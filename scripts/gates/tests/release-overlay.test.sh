@@ -38,6 +38,7 @@ services:
     profiles: [restore]
     image: twes-in-postgres-backup
 EOF
+  printf 'services:\n  backup:\n    environment:\n      BUCKET: "${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}"\n' > "$d/compose.backup-bucket.yaml"
   printf 'services:\n  edge:\n    image: busybox\n    environment:\n      HOST: "${TWES_HOST:?set TWES_HOST}"\n' > "$d/compose.deploy.yaml"
   cat > "$d/compose.release.yaml" <<'EOF'
 services:

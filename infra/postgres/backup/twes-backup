@@ -7,6 +7,9 @@
 #   twes-backup full|diff     a base backup of the database (pgBackRest expires what is past retention after it)
 #   twes-backup copy          the nightly pg_dump and the files volume into restic, then what is past 14 days pruned
 #   twes-backup verify        both repositories read back whole
+#   twes-backup offsite       a shop's whole local folder copied off site, when compose.backup-offsite.yaml is on
+#   twes-backup before-update an incremental base backup, the dump and the files, and the base backup's label, which
+#                             a restore to the moment before an update names (scripts/onprem/twes update)
 # pgBackRest runs as postgres, whose data it reads; restic runs as root, which can read the files the api wrote as
 # its own user. Output goes to the container's log; a failure exits non-zero, which supercronic logs as such.
 #
@@ -42,6 +45,11 @@ wait_for_database() {
 
 init() {
   wait_for_database
+  # A shop's folder (compose.backup-local.yaml) starts empty, or as a host path owned by whoever made it; pgBackRest
+  # writes it as the server's own user, archiving included.
+  if [[ "${PGBACKREST_REPO1_TYPE:-}" == posix ]]; then
+    install -d -o postgres -g postgres -m 0750 "${PGBACKREST_REPO1_PATH:?a folder repository needs its path}"
+  fi
   pgbr stanza-create
   # `cat config` reads the repository's own header: absent means never made, any other failure is a real one.
   if ! rst cat config >/dev/null 2>&1; then
@@ -59,13 +67,42 @@ base_backup() {
 }
 
 copy() {
+  local tag=${1:-nightly}
   wait_for_database
   # Written beside, then moved: a dump cut short by a crash never replaces last night's whole one.
   gosu postgres pg_dump -h /var/run/postgresql -U twes -d twes --format=custom --file="$DUMP_DIR/twes.dump.part"
   gosu postgres mv "$DUMP_DIR/twes.dump.part" "$DUMP_DIR/twes.dump"
-  rst backup --tag nightly --host twes "$DUMP_DIR" "$FILES_DIR"
+  rst backup --tag "$tag" --host twes "$DUMP_DIR" "$FILES_DIR"
   rst forget --host twes --keep-within "$KEEP" --prune
-  say "dump and files copied, kept $KEEP"
+  say "dump and files copied ($tag), kept $KEEP"
+}
+
+# The local folder holds both repositories already encrypted; the off-site copy is one more restic repository, in the
+# bucket, which a lost machine is restored from by copying the folder back first (docs/RUNBOOK.md).
+offsite() {
+  if [[ -z "${OFFSITE_REPOSITORY:-}" ]]; then
+    say "off-site copy off (compose.backup-offsite.yaml is not in this installation)"
+    return 0
+  fi
+  if ! rst -r "$OFFSITE_REPOSITORY" cat config >/dev/null 2>&1; then
+    say "off-site repository not found, making it"
+    rst -r "$OFFSITE_REPOSITORY" init
+  fi
+  rst -r "$OFFSITE_REPOSITORY" backup --tag offsite --host twes /backup
+  rst -r "$OFFSITE_REPOSITORY" forget --host twes --keep-within "$KEEP" --prune
+  say "local folder copied off site, kept $KEEP"
+}
+
+# What an update is rolled back to when its own rollback is not enough. pgBackRest makes an incremental backup a full
+# one when there is none yet; the label is read from its own account of the stanza, the last backup listed.
+before_update() {
+  pgbr --type=incr --annotation=reason=before-update backup
+  local info label=''
+  info=$(pgbr --output=json info)
+  while [[ "$info" =~ \"label\":\"([^\"]*)\" ]]; do label=${BASH_REMATCH[1]}; info=${info#*"${BASH_REMATCH[0]}"}; done
+  [[ -n "$label" ]] || { say "pgBackRest names no backup after the one just made"; return 1; }
+  copy before-update
+  say "before-update: $label"
 }
 
 verify() {
@@ -97,7 +134,10 @@ main() {
     full|diff) trap "heartbeat Base $1" EXIT; base_backup "$1" ;;
     copy) trap 'heartbeat Copie copy' EXIT; copy ;;
     verify) trap 'heartbeat Relecture verify' EXIT; verify ;;
-    *) echo "usage: twes-backup run|init|full|diff|copy|verify" >&2; exit 64 ;;
+    # Off, the step never ran: a monitor that never expects it hears nothing.
+    offsite) [[ -z "${OFFSITE_REPOSITORY:-}" ]] || trap 'heartbeat Hors_site offsite' EXIT; offsite ;;
+    before-update) before_update ;;
+    *) echo "usage: twes-backup run|init|full|diff|copy|verify|offsite|before-update" >&2; exit 64 ;;
   esac
 }
 

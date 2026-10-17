@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # The deploy check (docs/START.md § 14): a deployment booted as a server boots it, from the values
-# scripts/deploy/new-instance.sh writes, given through --env-file, with the four compose files, then asked through its
+# scripts/deploy/new-instance.sh writes, given through --env-file, with the five compose files, then asked through its
 # edge what a browser would ask:
 #   HSTS            every HTTPS answer carries max-age=31536000 for the host alone
 #   redirect        plain HTTP answers 308 to the same address over HTTPS
@@ -23,7 +23,7 @@ PROJECT=twes-deploy-check
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${COMPOSE_PROJECT_NAME:-$PROJECT}" == "$PROJECT" ]] || { echo "deploy-check: refuses COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME, it runs as $PROJECT only" >&2; exit 2; }
 export COMPOSE_PROJECT_NAME=$PROJECT
-export COMPOSE_FILE="$root/compose.yaml:$root/compose.prod.yaml:$root/compose.backup.yaml:$root/compose.deploy.yaml:$root/scripts/backup/drill.compose.yaml:$root/scripts/deploy/check.compose.yaml"
+export COMPOSE_FILE="$root/compose.yaml:$root/compose.prod.yaml:$root/compose.backup.yaml:$root/compose.backup-bucket.yaml:$root/compose.deploy.yaml:$root/scripts/backup/drill.compose.yaml:$root/scripts/deploy/check.compose.yaml"
 export COMPOSE_PROFILES=
 DRILL_DIR=$(mktemp -d); export DRILL_DIR
 export DRILL_PG_DATA=twes-deploy-check-pg

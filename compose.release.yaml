@@ -1,5 +1,5 @@
-# Deploying by digest, over the four deployment files (docs/START.md § 14):
-#   docker compose --env-file <values> -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml \
+# Deploying by digest, over the five deployment files (docs/START.md § 14):
+#   docker compose --env-file <values> -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml -f compose.deploy.yaml \
 #     -f compose.release.yaml up -d --no-build --wait
 # Every service that runs an image twes-in builds runs the one CI published instead, named by its digest, so what a
 # server runs is byte for byte what staging ran, and nothing is built from the server's checkout. scripts/deploy/deploy.sh

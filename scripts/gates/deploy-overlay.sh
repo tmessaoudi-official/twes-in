@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# What a deployment promises (docs/START.md § 14), read from the four files merged as
-# the server runs them: compose.yaml, compose.prod.yaml, compose.backup.yaml and compose.deploy.yaml.
+# What a deployment promises (docs/START.md § 14), read from the five files merged as the server runs them:
+# compose.yaml, compose.prod.yaml, compose.backup.yaml, compose.backup-bucket.yaml and compose.deploy.yaml.
 #   ports      only the edge publishes, on 80, 443 and 443/udp; Docker's published ports pass by the host's firewall, so
 #              the database, the api or a mail catcher left published would face the internet
 #   addresses  api and worker both take every address from TWES_HOST (the worker sends the mails, so its links must be
@@ -34,15 +34,15 @@ finish() {
 
 REQUIRED=(TWES_HOST EDGE_TLS POSTGRES_PASSWORD POSTGRES_APP_PASSWORD MAILER_DSN MAILER_SENDER MONITOR_TOKEN MONITOR_URL MONITOR_HEARTBEAT_TOKEN SENTRY_DSN)
 HOST=gate.twes.invalid
-# Every value the four files need, as made up as the host, given as the server gives them: in an --env-file, which
+# Every value the five files need, as made up as the host, given as the server gives them: in an --env-file, which
 # takes the place of the committed development .env, and with nothing of the developer's own environment.
 values=(TWES_HOST=$HOST EDGE_TLS=gate@twes.invalid POSTGRES_PASSWORD=gate-postgres POSTGRES_APP_PASSWORD=gate-app
   MAILER_DSN=smtp://relay.invalid:587 MAILER_SENDER=no-reply@$HOST APP_SECRET=s APP_MFA_KEY=k REALTIME_TOKEN_KEY=t
   REALTIME_API_KEY=a BACKUP_S3_ENDPOINT=e BACKUP_S3_BUCKET=b BACKUP_S3_REGION=r BACKUP_S3_KEY=k BACKUP_S3_SECRET=s
   BACKUP_DATABASE_PASSPHRASE=d BACKUP_FILES_PASSPHRASE=f MONITOR_TOKEN=gate-monitor MONITOR_URL=https://status.$HOST
   MONITOR_HEARTBEAT_TOKEN=gate-heartbeat SENTRY_DSN=https://gate@errors.$HOST/1)
-files=(-f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml)
-for f in compose.yaml compose.prod.yaml compose.backup.yaml compose.deploy.yaml infra/edge/Caddyfile; do
+files=(-f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml -f compose.deploy.yaml)
+for f in compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-bucket.yaml compose.deploy.yaml infra/edge/Caddyfile; do
   [[ -f "$root/$f" ]] || problem "found no $f"
 done
 ((${#problems[@]})) && finish

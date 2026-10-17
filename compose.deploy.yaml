@@ -1,7 +1,7 @@
 # A deployment (docs/START.md § 14): the production stack, with its backups, behind a TLS edge, as the server runs it:
 #   scripts/deploy/deploy.sh --release | --staging | --build /etc/twes-in/deploy.env …
 # which, from a clean checkout, runs
-#   docker compose --env-file <file> -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml \
+#   docker compose --env-file <file> -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml -f compose.deploy.yaml \
 #     up -d --build --wait
 # or, for a release or staging, adds compose.release.yaml and starts the published images by digest with --no-build.
 # Nothing in it names a provider: any machine, bucket and mail relay, through the values in that file, which

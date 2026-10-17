@@ -86,6 +86,15 @@ final class ProductionRestartTest extends TestCase
         self::assertSame([], self::stayingDown($deploy, 'compose.backup.yaml'), 'these services stay down after a crash or a reboot');
     }
 
+    /** A shop's computer is switched off every night: everything its installation starts comes back with Docker. */
+    public function testEveryServiceAShopsInstallationStartsComesBackByItself(): void
+    {
+        $onprem = self::services(\dirname(__DIR__, 3).'/compose.onprem.yaml');
+
+        self::assertArrayHasKey('edge', $onprem, 'the overlay starts the edge every request comes through');
+        self::assertSame([], self::stayingDown($onprem, 'compose.backup.yaml'), 'these services stay down after a crash or a reboot');
+    }
+
     /**
      * An overlay's services that would stay down, each read through the files beneath it: a restart policy set in
      * compose.yaml, compose.prod.yaml or an overlay beneath it still holds for a service the overlay only adjusts.

@@ -108,4 +108,37 @@ printf '%s\n' 'services:
     environment:
       TWES_HOST: "${TWES_HOST:?set TWES_HOST}"' > "$d/compose.deploy.yaml"
 out=$(bash "$GATE" --root "$d" 2>&1); check "the deploy overlay's edge, without rotation, is named" $? 1 "$out" "edge"
+# A shop's installation is its own shape (compose.onprem.yaml): read apart from the server's, so the deploy overlay's
+# rotated edge never hides the shop's.
+rotated='x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"'
+d=$(project "name: t
+$rotated
+services:
+  a:
+    image: busybox
+    logging: *logging")
+printf '%s\n' "$rotated" 'services:
+  edge:
+    image: busybox
+    logging: *logging' > "$d/compose.deploy.yaml"
+printf '%s\n' 'services:
+  edge:
+    image: busybox
+    environment:
+      LAN_HOST: "${LAN_HOST:?set LAN_HOST}"' > "$d/compose.onprem.yaml"
+out=$(bash "$GATE" --root "$d" 2>&1); check "a shop's edge without rotation is named beside a server's that has it" $? 1 "$out" "edge (compose.onprem.yaml)"
+printf '%s\n' "$rotated" 'services:
+  edge:
+    image: busybox
+    logging: *logging' > "$d/compose.onprem.yaml"
+printf '%s\n' 'services:
+  backup:
+    volumes: ["${BACKUP_DIRECTORY:-backup-local}:/backup"]
+  offsite:
+    image: busybox' > "$d/compose.backup-offsite.yaml"
+out=$(bash "$GATE" --root "$d" 2>&1); check "and a service a shop's backup layer adds is read in the shop's shape" $? 1 "$out" "offsite (compose.onprem.yaml)"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

@@ -8,16 +8,22 @@
 #                                  writes it from the registry); nothing is built. Its values say DEPLOY_ENV=staging and
 #                                  keep its backups under their own prefix, so staging never writes where production does.
 #   --build <values>               a self-hosted instance: HEAD at a release tag, the images built here.
+#   --again <values>               the release this checkout last deployed here, started again from the images its record
+#                                  names, nothing pulled: a shop's computer in the morning, offline or not, and an update's
+#                                  rollback to the release it left (scripts/onprem/twes).
+# The values say which installation it is: a server (the default), its backups in a bucket behind compose.deploy.yaml's
+# edge, or TWES_INSTALL=onprem, a shop's machine (docs/START.md § 16), its backups in its own folder, copied off site
+# when BACKUP_OFFSITE=on, behind compose.onprem.yaml's edge; a shop is never staging.
 # Every way refuses a checkout that differs from its commit, since the compose files, and built images, come from it as
 # it is, untracked files included. The values file must be readable by its owner alone, and it takes the place of the
 # committed development .env, which compose would otherwise read for any value the file lacks.
 # A deployment by digest is written down in releases/ beside the values: <commit>.env, the images it ran, which is what a
 # rollback deploys again, and a line of history, which is what staging-follow.sh compares with.
 set -euo pipefail
-usage() { echo "Usage: deploy.sh --release <values file> | --staging <values file> <release file> | --build <values file>" >&2; exit 2; }
+usage() { echo "Usage: deploy.sh --release <values file> | --staging <values file> <release file> | --build <values file> | --again <values file>" >&2; exit 2; }
 mode=${1:-}
 case "$mode" in
-  --release | --build) [[ $# -eq 2 ]] || usage; values=$2 ;;
+  --release | --build | --again) [[ $# -eq 2 ]] || usage; values=$2 ;;
   --staging) [[ $# -eq 3 ]] || usage; values=$2 release=$3 ;;
   *) usage ;;
 esac
@@ -41,6 +47,23 @@ changed=$(git -C "$root" status --porcelain --untracked-files=all)
 [[ -z "$changed" ]] || refuse "the checkout differs from its commit, and the deployment would carry it:
 $changed"
 
+# The compose files of this installation, in order, before the release overlay.
+case "$(value TWES_INSTALL)" in
+  '' | server) layers=(compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-bucket.yaml compose.deploy.yaml) ;;
+  onprem)
+    [[ "$mode" != --staging ]] || refuse "$values say TWES_INSTALL=onprem: a shop's installation is never staging"
+    layers=(compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-local.yaml)
+    case "$(value BACKUP_OFFSITE)" in
+      on) layers+=(compose.backup-offsite.yaml) ;;
+      '' | off) ;;
+      *) refuse "$values say BACKUP_OFFSITE=$(value BACKUP_OFFSITE): on or off, nothing else" ;;
+    esac
+    layers+=(compose.onprem.yaml) ;;
+  *) refuse "$values say TWES_INSTALL=$(value TWES_INSTALL): server or onprem, nothing else" ;;
+esac
+files=()
+for layer in "${layers[@]}"; do files+=(-f "$layer"); done
+
 staging_values=no
 [[ "$(value DEPLOY_ENV)" == staging || "$(value BACKUP_S3_PREFIX)" == staging/ ]] && staging_values=yes
 if [[ "$mode" == --staging ]]; then
@@ -60,8 +83,7 @@ if [[ "$mode" == --build ]]; then
   source <(bash "$root/scripts/build-version.sh" --root "$root" --env)
   set +a
   cd "$root"
-  exec docker compose --env-file "$values" -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml \
-    up -d --build --wait
+  exec docker compose --env-file "$values" "${files[@]}" up -d --build --wait
 fi
 
 # The release is data: read line by line, never sourced, and each of its four values held to the one shape it may take.
@@ -73,7 +95,12 @@ read_release() {
     release_value[${BASH_REMATCH[1]}]=${BASH_REMATCH[2]}
   done
 }
-if [[ "$mode" == --release ]]; then
+records="$(dirname "$values")/releases"
+if [[ "$mode" == --again ]]; then
+  [[ -f "$records/$commit.env" ]] || refuse "$commit was never deployed here (no $records/$commit.env): deploy its release with --release"
+  read_release < "$records/$commit.env"
+  source_name="$records/$commit.env"
+elif [[ "$mode" == --release ]]; then
   [[ "$(git -C "$root" cat-file -t "refs/tags/$tag")" == tag ]] \
     || refuse "$tag is not annotated, so it names no image: scripts/release/tag-release.sh writes the release tag"
   read_release < <(git -C "$root" for-each-ref --format='%(contents)' "refs/tags/$tag")
@@ -94,29 +121,29 @@ done
   || refuse "$source_name is commit $revision and HEAD is $commit; the compose files must be the images' own: git checkout --detach $revision"
 
 # Each image says which commit it was built from (scripts/release/publish.compose.yaml): one that disagrees with its
-# release was recorded wrong, and starting it would run other code than the compose files around it expect.
+# release was recorded wrong, and starting it would run other code than the compose files around it expect. Started
+# again, the images are the ones already here: nothing is fetched.
 for part in api web database; do
   image=${release_value[TWES_${part^^}_IMAGE]}
-  docker pull -q "$image" >/dev/null
+  [[ "$mode" == --again ]] || docker pull -q "$image" >/dev/null
   built=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")
   [[ "$built" == "$revision" ]] || refuse "$image was built from ${built:-a commit it does not name}, not $revision"
 done
 
-way=${mode#--}
-records="$(dirname "$values")/releases"
+way=${mode#--} done_word=deployed
+[[ "$mode" == --again ]] && done_word=started
 umask 077
 mkdir -p "$records"
 export TWES_API_IMAGE=${release_value[TWES_API_IMAGE]} TWES_WEB_IMAGE=${release_value[TWES_WEB_IMAGE]}
 export TWES_DATABASE_IMAGE=${release_value[TWES_DATABASE_IMAGE]}
 echo "deploy: $revision ($way), by digest"
 cd "$root"
-if ! docker compose --env-file "$values" -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.deploy.yaml \
-  -f compose.release.yaml "${extra[@]}" up -d --no-build --wait; then
+if ! docker compose --env-file "$values" "${files[@]}" -f compose.release.yaml "${extra[@]}" up -d --no-build --wait; then
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) failed $revision $way" >> "$records/history"
   echo "deploy: $revision did not start; the last line of $records/history before this one names what ran" >&2
   exit 1
 fi
 printf '%s\n' "TWES_REVISION=$revision" "TWES_API_IMAGE=$TWES_API_IMAGE" "TWES_WEB_IMAGE=$TWES_WEB_IMAGE" \
   "TWES_DATABASE_IMAGE=$TWES_DATABASE_IMAGE" > "$records/$revision.env"
-echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) deployed $revision $way" >> "$records/history"
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $done_word $revision $way" >> "$records/history"
 echo "deploy: $revision running; written down in $records"

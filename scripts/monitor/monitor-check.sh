@@ -30,7 +30,7 @@ step() { local now; now=$(date +%s); printf 'monitor-check: %-62s %4ss\n' "$1" "
 fail() { echo "monitor-check: FAIL — $*" >&2; exit 1; }
 dc() {
   (cd "$root" && env COMPOSE_PROFILES= docker compose -p "$APP" --env-file "$app_values" -f compose.yaml -f compose.prod.yaml \
-    -f compose.backup.yaml -f compose.deploy.yaml -f scripts/backup/drill.compose.yaml -f scripts/deploy/check.compose.yaml \
+    -f compose.backup.yaml -f compose.backup-bucket.yaml -f compose.deploy.yaml -f scripts/backup/drill.compose.yaml -f scripts/deploy/check.compose.yaml \
     -f scripts/monitor/instance.compose.yaml "$@")
 }
 mon() { (cd "$root" && docker compose -p "$MON" --env-file "$mon_values" -f infra/monitor/compose.yaml -f scripts/monitor/monitor.compose.yaml "$@"); }

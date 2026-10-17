@@ -1,9 +1,13 @@
-# Backups, over compose.yaml and compose.prod.yaml (docs/START.md § 13):
-#   docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml up -d --build --wait
-# The database archives its WAL to an S3-compatible bucket as it writes, so any moment of the last 14 days can be
-# restored; the backup service takes the base backups it replays from, the nightly pg_dump and a copy of the files
-# volume, each encrypted before it leaves. Every value below is the instance's own: compose stops before starting
-# anything while one is missing. scripts/backup/restore-drill.sh proves the whole round trip on these very files.
+# Backups, over compose.yaml and compose.prod.yaml (docs/START.md § 13): what archives, never where to. A destination
+# layer follows it, always:
+#   compose.backup-bucket.yaml   a server's S3-compatible bucket (a deployment, the drill, the checks)
+#   compose.backup-local.yaml    a shop's own folder (an installation on premises, docs/START.md § 16), which
+#                                compose.backup-offsite.yaml copies to a bucket when it is switched on
+#   docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml up -d --build --wait
+# The database archives its WAL as it writes, so any moment of the last 14 days can be restored; the backup service
+# takes the base backups it replays from, the nightly pg_dump and a copy of the files volume, each encrypted under a
+# passphrase of the instance's own: compose stops before starting anything while one is missing.
+# scripts/backup/restore-drill.sh proves the whole round trip on these very files.
 x-logging: &logging
   driver: json-file
   options:
@@ -11,16 +15,6 @@ x-logging: &logging
     max-file: "5"
 
 x-backup-environment: &backup-environment
-  PGBACKREST_REPO1_S3_ENDPOINT: "${BACKUP_S3_ENDPOINT:?set BACKUP_S3_ENDPOINT, the bucket service's host name}"
-  PGBACKREST_REPO1_STORAGE_PORT: "${BACKUP_S3_PORT:-443}"
-  PGBACKREST_REPO1_S3_BUCKET: "${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}"
-  PGBACKREST_REPO1_S3_REGION: "${BACKUP_S3_REGION:?set BACKUP_S3_REGION}"
-  PGBACKREST_REPO1_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
-  # Production's repositories sit at the bucket's root; staging's under staging/ (scripts/deploy/new-instance.sh --staging),
-  # so a staging that was handed production's bucket by mistake still never writes over its backups.
-  PGBACKREST_REPO1_PATH: "/${BACKUP_S3_PREFIX:-}pgbackrest"
-  PGBACKREST_REPO1_S3_KEY: "${BACKUP_S3_KEY:?set BACKUP_S3_KEY}"
-  PGBACKREST_REPO1_S3_KEY_SECRET: "${BACKUP_S3_SECRET:?set BACKUP_S3_SECRET}"
   PGBACKREST_REPO1_CIPHER_PASS: "${BACKUP_DATABASE_PASSPHRASE:?set BACKUP_DATABASE_PASSPHRASE, kept apart from the server: without it no backup can be read}"
 
 services:
@@ -61,13 +55,8 @@ services:
         condition: service_healthy
     environment:
       <<: *backup-environment
-      BACKUP_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
-      RESTIC_REPOSITORY: "s3:https://${BACKUP_S3_ENDPOINT}:${BACKUP_S3_PORT:-443}/${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX:-}restic"
       RESTIC_PASSWORD: "${BACKUP_FILES_PASSPHRASE:?set BACKUP_FILES_PASSPHRASE, kept apart from the server: without it no copy can be read}"
-      AWS_ACCESS_KEY_ID: "${BACKUP_S3_KEY}"
-      AWS_SECRET_ACCESS_KEY: "${BACKUP_S3_SECRET}"
-      AWS_DEFAULT_REGION: "${BACKUP_S3_REGION}"
-      # Where each step's heartbeat goes (twes-backup); the deploy overlay requires both, the drill has no monitor.
+      # Where each step's heartbeat goes (twes-backup); a deployment requires both, the drill and a shop have no monitor.
       MONITOR_URL: "${MONITOR_URL:-}"
       MONITOR_HEARTBEAT_TOKEN: "${MONITOR_HEARTBEAT_TOKEN:-}"
       TZ: UTC
@@ -77,8 +66,10 @@ services:
       - api-files:/files:ro
       - backup-dump:/var/lib/twes-backup/dump
 
-  # What a restore runs in (docs/START.md § 13), only when asked for: the backup service's image, keys and bucket, writing
-  # the database's volume, which pgBackRest fills only when it is empty, and the files volume, which restic overwrites.
+  # What a restore runs in (docs/START.md § 13), only when asked for: the backup service's image, keys and repositories,
+  # writing the database's volume, which pgBackRest fills only when it is empty, and the files volume, which restic
+  # overwrites. A destination layer names its repositories to it as to the backup service: `extends` is read within this
+  # file, before any layer above it.
   restore:
     extends:
       service: backup

@@ -1,0 +1,83 @@
+# A shop's installation on its own machine (docs/START.md § 16): the production stack, its backups in its own folder
+# (compose.backup-local.yaml, copied off site by compose.backup-offsite.yaml when switched on), behind an edge of its
+# own. scripts/onprem/twes starts it, through scripts/deploy/deploy.sh with TWES_INSTALL=onprem in the values:
+#   docker compose --env-file <values> -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml \
+#     -f compose.backup-local.yaml [-f compose.backup-offsite.yaml] -f compose.onprem.yaml -f compose.release.yaml \
+#     up -d --no-build --wait
+# Two addresses, and no name to buy: the shop's computer opens https://localhost, where passkeys work (a browser binds a
+# passkey to a name, never to an address); a phone or another computer on the shop's network opens
+# https://LAN_HOST, this machine's address, which scripts/onprem/twes reads at each start, since a router may hand out
+# another. The edge's certificates come from its own authority, which a phone trusts once from http://LAN_HOST/root.crt.
+# Mailed links open from any device, so they name the network address. The monitor is optional here: an empty
+# SENTRY_DSN reports nothing, and the backups send no heartbeat without MONITOR_URL. Only the edge publishes, on 80 and
+# 443. scripts/gates/onprem-overlay.sh holds each of those promises.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+# Written out for the api, the worker and the migrations: an anchor in compose.yaml does not reach this file, and the
+# worker sends the mails whose links must be the api's.
+x-onprem-environment: &onprem-environment
+  DEPLOY_ENV: prod
+  DEFAULT_URI: "https://${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
+  APP_WEBAUTHN_RP_ID: localhost
+  APP_WEBAUTHN_ORIGINS: https://localhost
+  PAIRING_ORIGIN: "https://${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
+  MAILER_DSN: "${MAILER_DSN:?set MAILER_DSN, the shop's mail account, such as smtp://shop%40gmail.com:app-password@smtp.gmail.com:587}"
+  MAILER_SENDER: "${MAILER_SENDER:?set MAILER_SENDER, the address mails come from, the account's own for Gmail}"
+  # The application's role, never the schema's owner, whose address only the migrate service below is handed.
+  DATABASE_URL: "postgresql://twes_app:${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD}@postgres:5432/twes?serverVersion=18&charset=utf8"
+  FILES_STORAGE: local
+  # What an update's health check reads /api/health/deep with (scripts/onprem/twes), and a monitor later.
+  MONITOR_TOKEN: "${MONITOR_TOKEN:?set MONITOR_TOKEN, the token the deep health check is read with}"
+  SENTRY_DSN: "${SENTRY_DSN:-}"
+
+services:
+  edge:
+    logging: *logging
+    restart: unless-stopped
+    image: caddy:2.11.7-alpine
+    environment:
+      LAN_HOST: "${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
+    volumes:
+      - ./infra/onprem/Caddyfile:/etc/caddy/Caddyfile:ro
+      # The authority and its certificates: kept, or every phone would have to trust a new one after a restart.
+      - edge-data:/data
+      - edge-config:/config
+    depends_on:
+      web:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+
+  api:
+    ports: !reset []
+    environment: *onprem-environment
+  worker:
+    environment: *onprem-environment
+  migrate:
+    environment:
+      <<: *onprem-environment
+      DATABASE_MIGRATION_URL: "postgresql://twes:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/twes?serverVersion=18&charset=utf8"
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}"
+  centrifugo:
+    environment:
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "https://localhost https://${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
+  web:
+    ports: !reset []
+  gotenberg:
+    ports: !reset []
+  # Development's mail catcher: the shop sends through its own account, so it never starts unless asked for by name.
+  mailpit:
+    profiles: [mailpit]
+    ports: !reset []
+
+volumes:
+  edge-data:
+  edge-config:

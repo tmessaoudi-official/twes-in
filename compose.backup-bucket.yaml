@@ -1,0 +1,32 @@
+# A server's backups go to an S3-compatible bucket, over compose.backup.yaml (docs/START.md § 13): pgBackRest archives
+# into it as the database writes, restic copies the nightly dump and the files beside it, each under its own path below
+# the instance's prefix. Every value is the instance's own and required: compose stops before starting anything while
+# one is missing. Each service that reaches the repositories is named them, the restore as much as the backup service.
+x-bucket-environment: &bucket-environment
+  PGBACKREST_REPO1_TYPE: s3
+  PGBACKREST_REPO1_S3_ENDPOINT: "${BACKUP_S3_ENDPOINT:?set BACKUP_S3_ENDPOINT, the bucket service's host name}"
+  PGBACKREST_REPO1_STORAGE_PORT: "${BACKUP_S3_PORT:-443}"
+  PGBACKREST_REPO1_S3_BUCKET: "${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}"
+  PGBACKREST_REPO1_S3_REGION: "${BACKUP_S3_REGION:?set BACKUP_S3_REGION}"
+  PGBACKREST_REPO1_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
+  # Production's repositories sit at the bucket's root; staging's under staging/ (scripts/deploy/new-instance.sh --staging),
+  # so a staging that was handed production's bucket by mistake still never writes over its backups.
+  PGBACKREST_REPO1_PATH: "/${BACKUP_S3_PREFIX:-}pgbackrest"
+  PGBACKREST_REPO1_S3_KEY: "${BACKUP_S3_KEY:?set BACKUP_S3_KEY}"
+  PGBACKREST_REPO1_S3_KEY_SECRET: "${BACKUP_S3_SECRET:?set BACKUP_S3_SECRET}"
+
+x-copy-environment: &copy-environment
+  <<: *bucket-environment
+  BACKUP_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
+  RESTIC_REPOSITORY: "s3:https://${BACKUP_S3_ENDPOINT}:${BACKUP_S3_PORT:-443}/${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX:-}restic"
+  AWS_ACCESS_KEY_ID: "${BACKUP_S3_KEY}"
+  AWS_SECRET_ACCESS_KEY: "${BACKUP_S3_SECRET}"
+  AWS_DEFAULT_REGION: "${BACKUP_S3_REGION}"
+
+services:
+  postgres:
+    environment: *bucket-environment
+  backup:
+    environment: *copy-environment
+  restore:
+    environment: *copy-environment
