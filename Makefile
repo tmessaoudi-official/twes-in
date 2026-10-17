@@ -31,7 +31,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-image gate-powershell in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -49,6 +49,13 @@ tools-image:   ## build the PHP toolchain image (a no-op when nothing under infr
 
 web-tools-image: ## build the Node + Playwright toolchain image
 	docker build -q --load -f infra/web/tools.Dockerfile -t twes-in-web-tools infra/web >/dev/null
+
+ps-tools-image: ## build the PowerShell toolchain image: the Windows installer's parser and PSScriptAnalyzer
+	docker build -q --load -f infra/powershell/Dockerfile -t twes-in-ps-tools infra/powershell >/dev/null
+
+gate-powershell: ps-tools-image   ## the Windows installer, scripts/onprem/install.ps1: parsed, PSScriptAnalyzer clean, its .wslconfig editing run
+	@# Read-only and with no network: the test reads the installer and writes only inside the container.
+	docker run --rm --network none -v "$(CURDIR)/scripts:/scripts:ro" twes-in-ps-tools pwsh -NoLogo -NoProfile -File /scripts/tests/install-ps1.test.ps1
 
 up:            ## start the whole stack LIVE: an edit under api/ or web/ shows without a rebuild (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed
 	@# The live volumes mount inside the host's api/ and web/; made here, as this user, or Docker makes them as root.
@@ -157,6 +164,7 @@ gate:          ## everything CI checks except e2e: the api half, the web half, t
 
 gate-licences: tools-image
 	$(TOOLS) make --no-print-directory in-gate-licences
+	$(MAKE) --no-print-directory gate-powershell
 gate-stamps: tools-image   ## the Decisions Log stamps alone: what a push touching only docs/SPEC.md is checked by
 	$(TOOLS) make --no-print-directory in-gate-stamps
 in-gate-stamps:
@@ -208,6 +216,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-monitor.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/deploy.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/wsl-engine.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-steps.test.sh

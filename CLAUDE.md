@@ -233,9 +233,12 @@ tables, essay gotchas) was retired with the reset. What applies here:
   restore-commands, pin-key, schedule: Linux's systemd units; test `scripts/tests/twes.test.sh`), which reaches the stack
   through `deploy.sh --compose`. A release is taken only from a tag `scripts/release/tag-release.sh` signed, verified
   against the key pinned at install (`infra/onprem/release-key.asc`, the developer's public key, pinned once its
-  fingerprint is confirmed). Windows: `scripts/onprem/install.ps1` (WSL, Docker Desktop, the checkout verified against the
-  fingerprint the installer carries before anything from it runs, its `$verify` line run by twes.test.sh, `twes install`,
-  the authority trusted, the `\twes-in\` scheduled tasks; ASCII only, PSScriptAnalyzer clean). `make onprem-check`
+  fingerprint is confirmed). Windows: `scripts/onprem/install.ps1` (WSL, then `-Engine Desktop`, Docker Desktop and the
+  `\twes-in\` start and tick tasks, or `-Engine Wsl`, Docker Engine inside Ubuntu through `scripts/onprem/wsl-engine.sh`,
+  systemd's units and the `keep` task; the checkout verified against the fingerprint the installer carries before
+  anything from it runs, its `$verify` line run by twes.test.sh, `twes install`, the authority trusted; ASCII only;
+  `make gate-powershell`, part of `make gate-licences`, parses it, runs PSScriptAnalyzer and its `.wslconfig` editing in
+  `infra/powershell/`'s image, the .NET SDK's, which is where Microsoft ships PowerShell now). `make onprem-check`
   (`scripts/onprem/onprem-check.sh`, compose project `twes-onprem-check`, ports 80 and 443, about ten minutes) installs,
   rolls back, restores and refuses an unsigned tag for real; the restore steps are docs/RUNBOOK.md « Restore a shop »,
   releasing to shops « Release to the shops ».

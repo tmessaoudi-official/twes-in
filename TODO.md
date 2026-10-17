@@ -56,17 +56,35 @@ cp /stack/projects/twes-in/scripts/onprem/install.ps1 /media/$USER/<your-usb>/in
 
 ## 6. The Windows test — yours, Monday or Tuesday
 
-After step 3, on the Windows computer, from the shop's own account, PowerShell opened as administrator (`D:\` is the USB
-key's letter):
+Two ways to run Docker on Windows; pick one at the shop (docs/START.md § 16 compares them):
+
+- **6A, Docker Desktop**: the simpler install. Nothing runs before someone signs in to Windows; after a restart the shop
+  opens once the account is signed in.
+- **6B, Docker inside Ubuntu (no Docker Desktop)**: runs from Windows' start with nobody signed in, and comes back by
+  itself after a restart, a Docker restart or a WSL stop. Needs Windows 11 22H2 or later. Its start before anyone signs
+  in is untried: 6B's first check proves it or not.
+
+First, on the Windows computer, in PowerShell (any window): the build must be 22621 or more for 6B, and no range listed
+may hold 80 or 443 (both routes; the installer refuses it too):
+
+```powershell
+[Environment]::OSVersion.Version.Build
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
+
+Each route: after step 3, from the shop's own account, PowerShell opened as administrator (`D:\` is the USB key's letter).
+Run it again after each stop it asks for. At `twes install`: the Gmail address and its app password, who is alerted, the
+backups' folder (blank for this disk), `yes` only if the fingerprint is step 5's, then the operator's address and
+password.
+
+### 6A. Docker Desktop
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File D:\install.ps1
 ```
 
-Run it again after each stop it asks for (a restart, Ubuntu opened once, Docker Desktop started with « Start Docker
-Desktop when you sign in » ticked). At `twes install`: the Gmail address and its app password, who is alerted, the
-backups' folder (blank for this disk), `yes` only if the fingerprint is step 5's, then the operator's address and
-password. Then restart, sign in, and check:
+Its stops: a restart, Ubuntu opened once, Docker Desktop started with « Start Docker Desktop when you sign in » ticked.
+Then restart, sign in, and check:
 
 ```powershell
 Get-ScheduledTaskInfo -TaskPath '\twes-in\' -TaskName start | Select-Object LastRunTime, LastTaskResult
@@ -80,8 +98,42 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
 - [ ] `https://localhost` opens in Edge without a warning.
 - [ ] A phone on the shop's network opens `http://<this computer's address>/root.crt` once, then the HTTPS address
       `twes status` names, and scans.
+- [ ] Docker Desktop restarted (its tray icon, « Restart »): `twes status` healthy again within two minutes, nothing done.
 - [ ] Once with `-HideWindows` (`powershell -ExecutionPolicy Bypass -File D:\install.ps1 -HideWindows`): no window shows
       when a task runs at the next quarter hour. Keep it only if so.
+
+### 6B. Docker inside Ubuntu
+
+Docker Desktop must not be installed (the installer refuses it; Settings > Apps uninstalls it).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File D:\install.ps1 -Engine Wsl
+```
+
+Its stops: a restart, Ubuntu opened once. It stops WSL once or twice by itself (`.wslconfig`, then systemd), and
+`twes install` asks Ubuntu's password once, for systemd's units. Then check:
+
+```powershell
+Get-ScheduledTaskInfo -TaskPath '\twes-in\' -TaskName keep | Select-Object LastRunTime, LastTaskResult
+wsl -d Ubuntu -- systemctl is-active docker.service twes-in-tick.timer
+wsl -d Ubuntu -- systemctl is-enabled twes-in-start.service
+wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
+```
+
+- [ ] Installed to the end.
+- [ ] `keep`'s `LastTaskResult` is `267009` (it runs as long as Windows does).
+- [ ] `active` twice, then `enabled`.
+- [ ] `twes status` reads healthy, its backups due.
+- [ ] `https://localhost` opens in Edge without a warning; a phone opens `http://<this computer's address>/root.crt`
+      once, then the HTTPS address `twes status` names, and scans.
+- [ ] **Restart Windows and do NOT sign in.** Wait three minutes, then the phone opens the HTTPS address. If it does not,
+      sign in: it should open within three minutes then, and tell me which happened.
+- [ ] Docker restarted: `wsl -d Ubuntu -u root -- systemctl restart docker`, then `twes status` healthy within two
+      minutes, nothing done.
+- [ ] WSL stopped: `wsl --shutdown`; the phone opens again within a quarter hour, by itself.
+- [ ] A container stopped: `wsl -d Ubuntu -- bash -c 'docker stop $(docker ps -q --filter name=worker)'`; within a
+      quarter hour `twes status` is healthy again and
+      `wsl -d Ubuntu --cd ~ -- grep 'starting the installation again' .twes-in/state/twes.log` shows the line.
 
 ## Also waiting on you
 
