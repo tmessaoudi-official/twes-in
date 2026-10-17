@@ -113,12 +113,19 @@ class Role
      * A company renaming its own role. Refusing here rather than only in the use case keeps the rule where the
      * invariant is: a built-in role is the release's, and every company reads the same row.
      *
+     * @return bool whether the name changed
+     *
      * @throws \LogicException when the role is a built-in one
      */
-    public function rename(string $name): void
+    public function rename(string $name): bool
     {
         $this->assertCustom('renamed');
+        if ($name === $this->name) {
+            return false;
+        }
         $this->name = $name;
+
+        return true;
     }
 
     /**
@@ -126,12 +133,25 @@ class Role
      *
      * @param list<string> $permissions
      *
+     * @return bool whether what it grants changed; the same permissions in another order are the same role, so its
+     *              stored order, and its version, stay as they are
+     *
      * @throws \LogicException when the role is a built-in one
      */
-    public function redefine(array $permissions): void
+    public function redefine(array $permissions): bool
     {
         $this->assertCustom('redefined');
-        $this->permissions = array_values(array_unique($permissions));
+        $permissions = array_values(array_unique($permissions));
+        $wanted = $permissions;
+        $held = $this->permissions;
+        sort($wanted);
+        sort($held);
+        if ($wanted === $held) {
+            return false;
+        }
+        $this->permissions = $permissions;
+
+        return true;
     }
 
     /** @throws \LogicException */

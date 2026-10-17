@@ -129,6 +129,31 @@ final class RolesTest extends ApiTestCase
         self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
+    public function testTheSameTicksInAnotherOrderChangeNothing(): void
+    {
+        // The screen sends its ticks in the order they were ticked: unticking one and ticking it again is the same role,
+        // and must neither move its version, which would refuse another open editor, nor tell anyone it was revised.
+        $this->signedInAsOwner();
+        $this->postJson($this->path(), ['name' => 'waiter', 'permissions' => ['customer.read', 'product.read']]);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'waiter', 'permissions' => ['product.read', 'customer.read'], 'version' => 1]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([1, ['customer.read', 'product.read']], [$this->json()['version'], $this->json()['permissions']]);
+        self::assertSame(
+            ['role.created'],
+            $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'role'"),
+        );
+
+        // A new name alone is a revision.
+        $this->sendJson('PUT', $this->path($id), ['name' => 'serveur', 'permissions' => ['product.read', 'customer.read'], 'version' => 1]);
+        self::assertSame(['serveur', 2], [$this->json()['name'], $this->json()['version']]);
+        $actions = $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'role'");
+        sort($actions);
+        self::assertSame(['role.created', 'role.revised'], $actions);
+    }
+
     public function testEveryChangeToARoleIsAudited(): void
     {
         // A role is what decides who may do what, so it is the last thing that should change unrecorded. The audit
