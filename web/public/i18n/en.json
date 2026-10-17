@@ -91,7 +91,8 @@
       "stock_quantity": "18 units",
       "stock_threshold": "Below the threshold of 25 units"
     },
-    "demo_banner": "Demo: a made-up company. No mail leaves, no document has fiscal value, and it all goes when you sign out."
+    "demo_banner": "Demo: a made-up company. No mail leaves, no document has fiscal value, and it all goes when you sign out.",
+    "demo_banner_mails": "See the mail"
   },
   "hello": {
     "greeting": "Hello, {{name}}",
@@ -4902,5 +4903,8 @@
     "banner_members": "The platform’s support may read the company until {{until}}.",
     "manage": "Manage",
     "switcher": "Support"
+  },
+  "demo_mails": {
+    "title": "Demo mail"
   }
 }

@@ -179,6 +179,13 @@ export const routes: Routes = [
         loadComponent: () => import('./account/account-page').then((m) => m.AccountPage),
       },
       {
+        // « Courriers de la démo »: what a sandbox would have mailed its visitor, kept instead (docs/SPEC.md § 7).
+        path: 'demo-mails',
+        title: 'demo_mails.title',
+        ...textsPart('demo-mails'),
+        loadComponent: () => import('./demo/demo-mails-page').then((m) => m.DemoMailsPage),
+      },
+      {
         // What the vision holds and is not built yet (docs/SPEC.md § 7, 2026-09-25 17:22).
         path: 'coming/:key',
         title: 'titles.coming',

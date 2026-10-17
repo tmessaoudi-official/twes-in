@@ -99,6 +99,21 @@ final readonly class DoctrineDemoSandboxRepository implements DemoSandboxReposit
         return false !== $this->entityManager->getConnection()->fetchOne('SELECT 1 FROM demo_sandbox WHERE owner_id = ?', [$userId->toRfc4122()]);
     }
 
+    public function ownedByAddress(string $address): ?DemoSandbox
+    {
+        $id = $this->entityManager->getConnection()->fetchOne(
+            'SELECT s.id FROM demo_sandbox s JOIN "user" u ON u.id = s.owner_id WHERE u.email = ?',
+            [$address],
+        );
+
+        return false === $id ? null : $this->ofId(Uuid::fromString(\is_string($id) ? $id : throw new \LogicException('A sandbox id reads as text.')));
+    }
+
+    public function ofCompany(Uuid $companyId): ?DemoSandbox
+    {
+        return $this->entityManager->getRepository(DemoSandbox::class)->findOneBy(['company' => $companyId]);
+    }
+
     public function count(): int
     {
         $count = $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM demo_sandbox');

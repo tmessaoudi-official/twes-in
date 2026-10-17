@@ -1,0 +1,7 @@
+{
+  "demo_mails": {
+    "intro": "Ce que l’application vous aurait envoyé par courrier, gardé ici à la place : dans la démo, aucun courrier ne part.",
+    "none": "Aucun courrier pour l’instant. Ceux que l’application enverrait apparaîtront ici.",
+    "unavailable": "Les courriers ne peuvent pas être lus pour l’instant. Réessayez dans un moment."
+  }
+}

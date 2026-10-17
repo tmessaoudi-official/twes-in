@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Architecture;
 
 use App\Audit\Domain\Model\AuditLog;
+use App\Demo\Domain\Model\DemoMail;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Identity\Domain\Model\Passkey;
 use App\Identity\Domain\Model\PasswordReset;
@@ -48,6 +49,7 @@ final class CompanyColumnTest extends KernelTestCase
         RecoveryCodeEntry::class => "one of an account's second factors",
         CustomerTaxRegime::class => "a country preset's reference data, which no company edits",
         LegalText::class => "the platform's own legal pages, the same for every company",
+        DemoMail::class => 'a mail kept for a demo sandbox, reached only through the sandbox, which names its company',
     ];
 
     /** What carries a company_id the company filter leaves alone, and why. */
