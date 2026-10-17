@@ -73,13 +73,41 @@ Untried end to end; `tag-release.sh` and `deploy.sh --release` each have their t
 1. Pick the commit staging runs and you have tried there: `tail -1 /etc/twes-in/releases/history` on staging.
 2. On your machine, at that commit of master (`git fetch && git checkout <commit>`):
    `bash scripts/release/tag-release.sh ghcr.io/tmessaoudi-official v<YYYY.MM.DD.N>`. It refuses a commit master does
-   not hold and images that say they were built from another; it writes the three digests into the annotated tag.
+   not hold and images that say they were built from another; it writes the three digests into the annotated tag and
+   signs it with your git `user.signingkey` (or `TWES_RELEASE_KEY`), which shops verify before taking it.
 3. Push the tag: `git push origin v<YYYY.MM.DD.N>`. A pushed tag is never moved.
 4. Announce the window (about 30 seconds of restart; migrations run at start, so a migration is written to be safe
    while the previous version still runs: expand first, contract in a later release).
 5. On production: `git fetch --tags && git checkout v<YYYY.MM.DD.N>` then
    `bash scripts/deploy/deploy.sh --release /etc/twes-in/deploy.env`.
 6. Check: the footer's build line, `/api/health`, the monitor's lines green, a sign-in.
+
+## Release to the shops
+
+Tried on the check stack (`make onprem-check`: two releases signed with a key made for the check and pinned by the shop,
+the first installed, the second rolled back, then a newer unsigned tag refused with the release unchanged). Untried with
+GHCR and a shop's own computer.
+
+Once, before the first release:
+
+1. The repository variable `PUBLISH_IMAGES=true` (GitHub, Settings, Secrets and variables, Actions, Variables), so CI's
+   `publish` job pushes the images.
+2. After that first publish, each of the three packages (`twes-in-api`, `twes-in-web`, `twes-in-database`) made public
+   in its package settings: GitHub creates a package private, whatever the repository's visibility, and a shop pulls
+   with no credential. Making a package public cannot be undone.
+3. The release key: the public half is `infra/onprem/release-key.asc`, the fingerprint the one `docs/START.md` § 16
+   gives, and the shop's installer is told it out of band (a message, a call) before it types `yes`. The secret half
+   never leaves your machine; keep a copy offline, since a lost key means every shop pins a new one by hand
+   (`twes pin-key <file>`).
+
+Each release: steps 1 to 3 of « Promote to production ». Shops then take it by their policy: `auto` inside their daily
+window, `notify` tells their owners, who update with `twes update`; never in the minutes after a start.
+
+**A shop refused a release.** The mail and the operators' notification say « Mise à jour refusée »: the newest tag did
+not verify against the key that shop pinned. Nothing changed there. Check the tag with `git verify-tag v<…>`; a tag you
+did not make means someone could push to the repository: rotate the token or key that let them, delete the tag
+(`git push origin :refs/tags/v<…>`), and tell the shops. A tag you made with another key: tag again with the right one,
+under the next number.
 
 ## Roll back
 

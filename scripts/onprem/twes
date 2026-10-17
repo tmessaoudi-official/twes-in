@@ -13,13 +13,21 @@
 #                                  outcomes and their schedule, then the update policy
 #   twes status                    what runs, its policy, address, health and backups
 #   twes restore-commands          what takes the installation back to the backup made before the last update
+#   twes pin-key <file>            pins the developer's public release key: every release tag must verify against it
+#   twes install                   asks for the shop's facts, writes the values, pins the release key once its fingerprint
+#                                  is confirmed, installs the newest release and makes the operator; run again, it asks
+#                                  only what is still missing; on Linux, schedules start and tick as well
+#   twes schedule                  Linux: systemd units running twes start at boot and twes tick every quarter hour, as
+#                                  this account, once Docker runs (sudo asks for the password); Windows' are install.ps1's
 # The values are the file scripts/deploy/new-instance.sh --onprem wrote, TWES_VALUES, by default ~/.twes-in/install.env;
 # beside it, releases/ (deploy.sh's record) and state/ (this script's). Alerts are mailed through the shop's own account
 # to ALERT_EMAIL, so a mail leaves while the application is down, and recorded in the application, held under state/
-# until it answers. Every secret it hands to curl goes through a file of mode 600, never the command line.
+# until it answers. Every secret it hands to curl goes through a file of mode 600, never the command line. A release is
+# taken only from a tag signed by the key pinned at install, in release-keys/ beside the values: never from a key the
+# checkout carries, which whoever forged a tag could change too.
 set -euo pipefail
 usage() {
-  echo "Usage: twes start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands" >&2
+  echo "Usage: twes install | start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands | pin-key <file> | schedule" >&2
   exit 2
 }
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -27,6 +35,7 @@ deploy=$root/scripts/deploy/deploy.sh
 values=${TWES_VALUES:-$HOME/.twes-in/install.env}
 state=$(dirname "$values")/state
 records=$(dirname "$values")/releases
+keys=$(dirname "$values")/release-keys
 # The shop's time, which its window is read in; the backups keep UTC.
 zone=${TWES_ZONE:-Africa/Tunis}
 release_tags='v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*'
@@ -47,9 +56,14 @@ shop_day() {
   if date -d @0 +%s >/dev/null 2>&1; then TZ=$zone date -d "@$1" +%F; else TZ=$zone date -r "$1" +%F; fi
 }
 
-[[ -f "$values" ]] || refuse "no values at $values (scripts/deploy/new-instance.sh --onprem writes them; TWES_VALUES names another)"
-[[ "$(value TWES_INSTALL)" == onprem ]] || refuse "$values are not a shop's (TWES_INSTALL=onprem)"
 umask 077
+# Install writes the values; every other command needs them.
+if [[ "${1:-}" == install && ! -f "$values" ]]; then
+  mkdir -p "$(dirname "$values")"; chmod 700 "$(dirname "$values")"
+  bash "$root/scripts/deploy/new-instance.sh" --onprem "$values" >&2
+fi
+[[ -f "$values" ]] || refuse "no values at $values (twes install writes them; TWES_VALUES names another)"
+[[ "$(value TWES_INSTALL)" == onprem ]] || refuse "$values are not a shop's (TWES_INSTALL=onprem)"
 mkdir -p "$state"
 
 # This machine's address on the shop's network, as a phone reaches it: the router may hand out another one any morning.
@@ -179,9 +193,151 @@ deep_health() {
 
 # --- Commands ----------------------------------------------------------------------------------------------------------
 
+# At logon Docker Desktop comes up after the session that runs this, with no way to be waited for but asking: its daemon
+# is asked a bounded number of times. Where a service manager orders the two (After=docker.service), it answers at once.
+docker_ready() {
+  local tries=0 limit=${TWES_DOCKER_TRIES:-60}
+  until docker info >/dev/null 2>&1; do
+    tries=$((tries + 1))
+    ((tries < limit)) || refuse "Docker did not answer after $limit tries: start Docker Desktop (or the docker service), then twes start"
+    sleep "${TWES_DOCKER_PAUSE:-5}"
+  done
+  ((tries == 0)) || say "Docker answered after $tries tries"
+}
+
+# The public key every release tag must be signed with; a file holding any secret key is refused, so none is ever kept.
+pin_key() {
+  local listing fingerprints
+  [[ -f "$1" ]] || refuse "no key file at $1"
+  listing=$(gpg --batch --with-colons --show-keys "$1" 2>/dev/null) || listing=''
+  [[ "$listing" != *$'\n'sec:* && "$listing" != sec:* ]] || refuse "$1 holds a secret key: pin the public key alone (gpg --armor --export <key>)"
+  fingerprints=$(awk -F: '$1 == "pub" { want = 1; next } want && $1 == "fpr" { print $10; want = 0 }' <<<"$listing")
+  [[ -n "$fingerprints" ]] || refuse "$1 holds no public key"
+  mkdir -p "$keys"; chmod 700 "$keys"
+  GNUPGHOME=$keys gpg --batch --quiet --import "$1" 2>/dev/null || refuse "gpg could not import $1"
+  say "release key pinned: $(tr '\n' ' ' <<<"$fingerprints")— compare it with the developer's before trusting it"
+}
+# Why a release tag cannot be taken, or nothing when the pinned key verifies it.
+unsigned() {
+  GNUPGHOME=$keys gpg --batch --with-colons --list-keys 2>/dev/null | grep -q '^pub:' \
+    || { echo "no release key is pinned here (twes pin-key <the developer's public key>)"; return 0; }
+  GNUPGHOME=$keys git -C "$root" verify-tag "$1" >/dev/null 2>&1 || echo "$1 is not signed by the release key pinned here"
+}
+
+# A question on the terminal; its answer on stdout. A secret is read without echo.
+ask() { # prompt, secret
+  local answer=''
+  printf '%s ' "$1" >&2
+  if [[ "${2:-}" == secret ]]; then IFS= read -rs answer || true; echo >&2; else IFS= read -r answer || true; fi
+  printf '%s' "$answer"
+}
+address_asked() { # prompt
+  local a; a=$(ask "$1")
+  [[ "$a" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]] || refuse "not a mail address: $a"
+  printf '%s' "$a"
+}
+urlencode() { local LC_ALL=C s=$1 out='' c i; for ((i = 0; i < ${#s}; i++)); do c=${s:i:1}; case "$c" in [A-Za-z0-9._~-]) out+=$c ;; *) printf -v c '%%%02X' "'$c"; out+=$c ;; esac; done; printf '%s' "$out"; }
+
+install() {
+  local sender password alert folder listing fingerprint email first second
+  if [[ -z "$(value MAILER_DSN)" ]]; then
+    sender=$(address_asked "The shop's Gmail address, which mails leave from:")
+    password=$(ask "Its app password (Google Account > Security > App passwords):" secret)
+    password=${password//[[:space:]]/}
+    [[ -n "$password" ]] || refuse "no app password given"
+    set_value MAILER_DSN "smtp://$(urlencode "$sender"):$(urlencode "$password")@smtp.gmail.com:587"
+    set_value MAILER_SENDER "$sender"
+  fi
+  if [[ -z "$(value ALERT_EMAIL)" ]]; then
+    alert=$(address_asked "Who is mailed when something goes wrong (the developer):")
+    set_value ALERT_EMAIL "$alert"
+    folder=$(ask "The backups' folder, on a second disk or a USB drive (blank: this disk):")
+    if [[ -n "$folder" ]]; then
+      [[ -d "$folder" && -w "$folder" ]] || refuse "no folder at $folder that this account may write: make it, then twes install again"
+      set_value BACKUP_DIRECTORY "$folder"
+    fi
+  fi
+  if ! GNUPGHOME=$keys gpg --batch --with-colons --list-keys 2>/dev/null | grep -q '^pub:'; then
+    listing=$(gpg --batch --with-colons --show-keys "$root/infra/onprem/release-key.asc" 2>/dev/null) || listing=''
+    fingerprint=$(awk -F: '$1 == "pub" { want = 1; next } want && $1 == "fpr" { print $10; exit }' <<<"$listing")
+    [[ -n "$fingerprint" ]] || refuse "the checkout holds no release key at infra/onprem/release-key.asc"
+    echo "The release key this checkout names: $(sed -E 's/(.{4})/\1 /g' <<<"$fingerprint")" >&2
+    [[ "$(ask "Type yes if it is the fingerprint the developer gave you:")" == yes ]] \
+      || refuse "the release key was not pinned: nothing is installed from a key no one confirmed"
+    pin_key "$root/infra/onprem/release-key.asc"
+  fi
+  if [[ -z "$(running)" ]]; then update || refuse "the first install did not finish: read the lines above, then twes install again"; fi
+  if [[ ! -s "$state/operator" ]]; then
+    email=$(address_asked "The platform operator's mail address (the developer's sign-in):")
+    first=$(ask "Their password:" secret); second=$(ask "Again:" secret)
+    [[ "$first" == "$second" ]] || refuse "the two passwords differ: twes install again"
+    printf '%s\n' "$first" | compose exec -T api bin/console app:seed --no-interaction "--operator-email=$email" \
+      --operator-password-stdin --without-company >&2 || refuse "the application did not make the operator: read its answer above, then twes install again"
+    echo "$email" > "$state/operator"
+  fi
+  case "$(platform)" in
+    linux) schedule ;;
+    macos) say "twes start and twes tick are not scheduled on macOS yet: run twes start after each start of the computer, and twes tick every quarter hour (docs/START.md section 16)" ;;
+  esac
+  say "installed: $(tag_of "$(running)"), https://localhost on this computer; the operator is $(cat "$state/operator")"
+}
+
+# A path as a systemd unit reads it: quoted, a percent sign doubled, as systemd takes % for its specifiers. A double
+# quote, a backslash or a line break would end or bend the quoting, so a path holding one is refused, never escaped.
+unit_path() {
+  [[ "$1" != *[\"\\$'\n']* ]] || refuse "$1 cannot be written in a systemd unit: install from a folder without a double quote, a backslash or a line break"
+  printf '"%s"' "${1//%/%%}"
+}
+# Docker on Linux is a system service, so the units are the system's, run as this account, which Docker's group admits.
+schedule() {
+  local where units account bash_path script path_values action
+  case "$(platform)" in
+    linux) ;;
+    wsl) refuse "under Windows, scripts/onprem/install.ps1 schedules twes start and twes tick" ;;
+    *) refuse "scheduling on $(platform) is not built: run twes start after each start of the computer, and twes tick every quarter hour" ;;
+  esac
+  where=${TWES_SYSTEMD_DIR:-/etc/systemd/system}
+  # By number: systemd takes a UID for User=, and it survives a rename of the account.
+  account=$(id -u)
+  bash_path=$(command -v bash)
+  script=$(unit_path "$root/scripts/onprem/twes")
+  path_values=$(unit_path "TWES_VALUES=$(cd "$(dirname "$values")" && pwd)/$(basename "$values")")
+  units=$(mktemp -d)
+  for action in start tick; do
+    {
+      echo '[Unit]'
+      if [[ $action == start ]]; then echo 'Description=twes-in: starts the installation at boot'
+      else echo 'Description=twes-in: health, backups and updates'; fi
+      echo 'Requires=docker.service'
+      echo 'After=docker.service network-online.target'
+      echo 'Wants=network-online.target'
+      echo
+      echo '[Service]'
+      echo 'Type=oneshot'
+      echo "User=$account"
+      echo "Environment=$path_values"
+      echo "ExecStart=$bash_path $script $action"
+      # An update backs up first and waits for the release's health: as long as Windows' tasks are given.
+      echo 'TimeoutStartSec=2h'
+      if [[ $action == start ]]; then echo; echo '[Install]'; echo 'WantedBy=multi-user.target'; fi
+    } > "$units/twes-in-$action.service"
+  done
+  # A tick still running when the next is due is left to finish: systemd starts no unit that is already active.
+  printf '%s\n' '[Unit]' 'Description=twes-in: twes tick every quarter hour' '' '[Timer]' 'OnCalendar=*:0/15' 'Unit=twes-in-tick.service' \
+    '' '[Install]' 'WantedBy=timers.target' > "$units/twes-in-tick.timer"
+  as_root install -m 644 "$units/twes-in-start.service" "$units/twes-in-tick.service" "$units/twes-in-tick.timer" "$where/" \
+    && as_root systemctl daemon-reload && as_root systemctl enable twes-in-start.service \
+    && as_root systemctl enable --now twes-in-tick.timer \
+    || { rm -rf "$units"; refuse "systemd did not take the units in $where: read its answer above"; }
+  rm -rf "$units"
+  say "scheduled: twes-in-start.service at boot, twes-in-tick.timer every quarter hour, as user $account"
+}
+as_root() { if [[ "$(id -u)" == 0 ]]; then "$@"; else sudo "$@"; fi; }
+
 start() {
   local address
   [[ -n "$(running)" ]] || refuse "nothing is deployed here yet: twes update installs the newest release"
+  docker_ready
   address=$(lan_address)
   [[ "$address" != 127.0.0.1 ]] || say "no network address found: only this computer opens https://localhost"
   echo "$address" > "$state/lan-host"
@@ -214,7 +370,7 @@ restore_last() {
 }
 
 update() {
-  local auto=${1:-} newest current previous='' label='' failure address
+  local auto=${1:-} newest current previous='' label='' failure address why
   exec 8> "$state/update.lock"
   flock -n 8 || { say "an update is already running"; return 0; }
   git -C "$root" fetch --quiet --tags origin || { say "the releases could not be read (no network?): nothing changed"; return 1; }
@@ -226,6 +382,18 @@ update() {
   if [[ "$newest" == "$current" ]]; then say "up to date: $current"; return 0; fi
   if [[ -n "$auto" ]] && listed "$newest" failed-releases; then
     say "$newest failed here before: it is applied only by hand (twes update)"; return 0
+  fi
+  if [[ -n "$auto" ]] && listed "$newest" refused-releases; then
+    say "$newest was refused here: it is applied only by hand (twes update), once its signature verifies"; return 0
+  fi
+  why=$(unsigned "$newest")
+  if [[ -n "$why" ]]; then
+    echo "$newest" >> "$state/refused-releases"
+    alert installation.update_refused "Mise à jour refusée : $newest n'est pas signée" \
+      "La mise à jour vers $newest a été refusée : $why. Rien n'a été changé, ${current:-aucune version} tourne toujours. Une version que la clé de publication ne signe pas peut venir de quelqu'un d'autre que le développeur." \
+      "version=$newest"
+    say "refused: $why"
+    return 1
   fi
   address=$(recall lan-host)
   [[ -n "$address" ]] || address=$(lan_address)
@@ -374,7 +542,7 @@ tick() {
       git -C "$root" fetch --quiet --tags origin || return 0
       newest=$(git -C "$root" tag --list "$release_tags" --sort=-v:refname | head -n 1)
       current=$(tag_of "$(running)")
-      if [[ -n "$newest" && "$newest" != "$current" ]] && ! listed "$newest" notified; then
+      if [[ -n "$newest" && "$newest" != "$current" && -z "$(unsigned "$newest")" ]] && ! listed "$newest" notified; then
         echo "$newest" >> "$state/notified"
         tell installation.update_available "version=$newest" "previous=${current:--}"
         say "$newest is out; the owners are told"
@@ -415,5 +583,8 @@ case "${1:-}" in
   tick) [[ $# -eq 1 ]] || usage; tick ;;
   status) [[ $# -eq 1 ]] || usage; status ;;
   restore-commands) [[ $# -eq 1 ]] || usage; restore_last ;;
+  pin-key) [[ $# -eq 2 ]] || usage; pin_key "$2" ;;
+  install) [[ $# -eq 1 ]] || usage; install ;;
+  schedule) [[ $# -eq 1 ]] || usage; schedule ;;
   *) usage ;;
 esac

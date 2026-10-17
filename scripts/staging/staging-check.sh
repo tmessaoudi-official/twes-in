@@ -20,6 +20,8 @@
 # and removes its containers, volumes, images and directories at the end.
 # Usage: scripts/staging/staging-check.sh   (make staging-check; CI's staging-check workflow)
 set -euo pipefail
+# None of the machine's own git settings: a developer's commit.gpgsign would sign the fixtures with a real key.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 
 PROJECT=twes-staging-check
 REGISTRY_PORT=5099

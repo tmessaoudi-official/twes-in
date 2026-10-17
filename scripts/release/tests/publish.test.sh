@@ -3,6 +3,8 @@
 # publish.sh against a stand-in docker that records every call: what it refuses, the order it pushes in, when it moves
 # :master and what it writes. The real round trip through a registry is make staging-check's (scripts/staging/).
 set -uo pipefail
+# None of the machine's own git settings: a developer's commit.gpgsign would sign the fixtures with a real key.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 SCRIPT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/publish.sh
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)

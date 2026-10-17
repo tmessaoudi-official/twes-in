@@ -63,9 +63,10 @@ RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 # php.ini-development caps a CLI process at 128M, and the functional suite alone peaks at 216M: the first container run
 # died with "Allowed memory size of 134217728 bytes exhausted" in the DOM crawler. A test runner is not a web worker.
 RUN printf 'memory_limit=-1\n' > "$PHP_INI_DIR/conf.d/40-tools.ini"
+# gnupg: the release tags are signed, and the tests of what signs and verifies them run here.
 # hadolint ignore=DL3008
 RUN apt-get update \
- && apt-get install -y --no-install-recommends bash ca-certificates git jq logrotate make perl python3 \
+ && apt-get install -y --no-install-recommends bash ca-certificates git gnupg jq logrotate make perl python3 \
  && rm -rf /var/lib/apt/lists/*
 # The Docker CLI and Compose, for the gates that drive containers through the host's socket.
 COPY --from=docker:29.9.0-cli /usr/local/bin/docker /usr/local/bin/docker

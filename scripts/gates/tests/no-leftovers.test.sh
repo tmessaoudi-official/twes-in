@@ -28,6 +28,12 @@ check "nothing is left after a failing run either" 0 0 "$(none_left)" "none"
 out=$(bash "$RUN" "$(fake args 'echo "got $1"')" two 2>&1); s=$?
 check "arguments reach the test" "$s" 0 "$out" "got two"
 
+# A machine whose git signs every commit: the test it runs sees none of that setting.
+mkdir -p "$TMPDIR/home"; printf '[commit]\n\tgpgsign = true\n' > "$TMPDIR/home/.gitconfig"
+out=$(cd "$TMPDIR" && HOME=$TMPDIR/home bash "$RUN" "$(fake git 'echo "gpgsign=[$(git config --get commit.gpgsign)]"')" 2>&1); s=$?
+check "the machine's own git settings do not reach the test" "$s" 0 "$out" "gpgsign=[]"
+rm -r "$TMPDIR/home"
+
 out=$(bash "$RUN" 2>&1); s=$?
 check "no test named is a usage error" "$s" 2 "$out" "usage"
 

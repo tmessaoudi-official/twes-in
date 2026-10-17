@@ -668,6 +668,7 @@
       "installation_update_available": "Version {{version}} is out; this computer runs {{previous}}. Ask whoever runs the installation to update it.",
       "installation_rolled_back": "The update to {{version}} did not answer: {{previous}} is back. Backup taken before: {{label}}.",
       "installation_update_failed": "The update to {{version}} failed and {{previous}} does not answer: restore the backup {{label}} (commands in the mail).",
+      "installation_update_refused": "The update to {{version}} was refused: it is not signed by this installation’s release key. Nothing changed.",
       "installation_unhealthy": "The installation’s health check fails: {{check}}.",
       "installation_backup_failed": "The backup “{{step}}” failed.",
       "installation_backup_stopped": "The backups no longer run."
@@ -702,6 +703,7 @@
       "installation_update_available": "New version out",
       "installation_rolled_back": "Update rolled back",
       "installation_update_failed": "Update failed",
+      "installation_update_refused": "Update refused",
       "installation_unhealthy": "Installation unhealthy",
       "installation_backup_failed": "Backup failed",
       "installation_backup_stopped": "Backups stopped"

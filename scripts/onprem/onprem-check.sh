@@ -12,6 +12,9 @@
 #                written down as failed here, the operator is told in the application, and still signs in
 #   restore      the commands twes restore-commands prints, the same a failed rollback's alert mails, run as written,
 #                take the database back to the backup made before B: B's table gone, the operator there, A healthy
+#   signatures   A and B are tagged by tag-release.sh with a key made for the check, which the shop pins as it would the
+#                developer's; a newer tag nobody signed (C) is refused before anything moves, written down, and the
+#                operator told in the application
 # What it checks is the working tree as it is, committed or not: a snapshot commit made through a temporary index (the
 # real index is never touched), as make staging-check makes. B is that snapshot with one migration more, and an api
 # handed another MONITOR_TOKEN than the one its health is read with, which reads as unhealthy as a broken release does.
@@ -39,6 +42,10 @@ shop=$WORK/shop/twes-in
 values=$WORK/shop/etc/install.env
 state=$WORK/shop/etc/state
 export TWES_VALUES=$values
+# The publisher's keyring holds the check's own key, never the developer's, and the host's git settings (a global
+# commit.gpgsign among them) reach none of the check's repositories.
+export GNUPGHOME=$WORK/gnupg GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+C=v2026.10.22.1
 revisions=()
 
 started=$(date +%s); step_started=$started
@@ -62,6 +69,7 @@ cleanup() {
   done
   docker image ls --format '{{.Repository}}:{{.Tag}}' | grep "^$PREFIX/" | xargs -r docker image rm -f >/dev/null 2>&1 || true
   docker image ls --format '{{.Repository}}@{{.Digest}}' | grep "^$PREFIX/" | xargs -r docker image rm -f >/dev/null 2>&1 || true
+  for part in "$GNUPGHOME" "$WORK/shop/etc/release-keys"; do [[ -d "$part" ]] && GNUPGHOME=$part gpgconf --kill all; done
   rm -rf "$WORK"
   exit "$status"
 }
@@ -82,7 +90,12 @@ git -C "$root" push -q "$WORK/origin.git" "$snapshot:refs/heads/master"
 git clone -q "$WORK/origin.git" "$WORK/publish"
 git -C "$WORK/publish" config user.name onprem-check
 git -C "$WORK/publish" config user.email onprem-check@twes.test
-step "snapshot $snapshot cloned to an origin and a publisher"
+mkdir -m 700 "$GNUPGHOME"
+gpg --batch --quiet --passphrase '' --quick-generate-key 'onprem-check <onprem-check@twes.test>' ed25519 sign never
+export TWES_RELEASE_KEY
+TWES_RELEASE_KEY=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" { print $10; exit }')
+gpg --batch --armor --export "$TWES_RELEASE_KEY" > "$WORK/release-key.asc"
+step "snapshot $snapshot cloned to an origin and a publisher, its release key made"
 
 docker run -d --name "$REGISTRY_NAME" --log-opt max-size=10m --log-opt max-file=5 -p "127.0.0.1:$REGISTRY_PORT:5000" "$REGISTRY_IMAGE" >/dev/null
 for _ in $(seq 1 30); do (exec 3<>"/dev/tcp/127.0.0.1/$REGISTRY_PORT") 2>/dev/null && break; sleep 1; done
@@ -105,6 +118,8 @@ bash "$shop/scripts/deploy/new-instance.sh" --onprem "$values" >/dev/null
 fact() { sed -i "s|^$1=.*|$1=$2|" "$values"; grep -q "^$1=$2\$" "$values" || fail "could not set $1"; }
 fact MAILER_DSN null://null
 fact MAILER_SENDER no-reply@onprem-check.twes.test
+out=$(twes pin-key "$WORK/release-key.asc" 2>&1) || fail "the shop could not pin the release key: $out"
+[[ "$out" == *"$TWES_RELEASE_KEY"* ]] || fail "pinning did not show the key's fingerprint: $out"
 
 out=$(twes update 2>&1) || { echo "$out" >&2; fail "the first install did not come up"; }
 [[ "$out" == *"updated to $A"* ]] || fail "the first install did not deploy $A: $out"
@@ -213,4 +228,16 @@ code=$(deep); [[ "$code" == 200 ]] || fail "$A after the restore answers its dee
 signs_in "restored"
 step "the restore commands took it back to before $B"
 
-printf 'onprem-check: OK — installed, rolled back and restored in %ss in all\n' "$(($(date +%s) - started))"
+# C: a newer tag nobody signed, as one pushed by someone who is not the developer would be.
+before=$(tail -n 1 "$WORK/shop/etc/releases/history")
+git -C "$WORK/publish" tag -a "$C" -m "$C" --no-sign
+git -C "$WORK/publish" push -q origin "$C"
+out=$(twes update 2>&1) && fail "an unsigned $C was applied: $out"
+[[ "$out" == *"refused: $C is not signed by the release key pinned here"* ]] || fail "twes update did not refuse $C for its signature: $out"
+[[ "$(tail -n 1 "$WORK/shop/etc/releases/history")" == "$before" ]] || fail "refusing $C moved the release: $(tail -n 2 "$WORK/shop/etc/releases/history")"
+grep -qxF -e "$C" "$state/refused-releases" || fail "$C is not written down as refused here"
+code=$(deep); [[ "$code" == 200 ]] || fail "$A after refusing $C answers its deep health $code"
+[[ "$(sql "SELECT count(*) FROM inbox_item WHERE type = 'installation.update_refused'")" == 1 ]] || fail "the operator was not told of the refused $C in the application"
+step "$C unsigned: refused before anything moved, told"
+
+printf 'onprem-check: OK — installed, rolled back, restored and an unsigned release refused in %ss in all\n' "$(($(date +%s) - started))"

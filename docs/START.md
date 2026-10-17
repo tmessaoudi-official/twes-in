@@ -809,42 +809,66 @@ goes in the values as `LAN_HOST`. With no network at all, the computer alone ope
 certificates come from its own authority: a phone trusts it once, from `http://<address>/root.crt`, then opens the
 HTTPS address. Mailed links name the network address.
 
-**Installing, by hand for now** (the installer that schedules the tasks below comes next). On Windows: Docker Desktop
-with WSL 2, and the checkout inside WSL's own filesystem (`~`, never `/mnt/c`), where `.gitattributes` keeps every file
-as git holds it. Then, in that shell:
+**Installing on Windows.** Docker Desktop with WSL 2 runs it; the checkout lives inside WSL's own filesystem (`~`,
+never `/mnt/c`), where `.gitattributes` keeps every file as git holds it. From the shop's own Windows account, the one
+signed in every morning, in PowerShell opened as administrator:
 
-```sh
-git clone https://github.com/<owner>/twes-in.git ~/twes-in
-bash ~/twes-in/scripts/deploy/new-instance.sh --onprem ~/.twes-in/install.env
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
-Fill in the facts it leaves blank: the shop's mail account (`MAILER_DSN`, `MAILER_SENDER`; for Gmail an app password at
-`smtp.gmail.com:587`), `ALERT_EMAIL`, who is mailed when something goes wrong, and `BACKUP_DIRECTORY`, a folder on a
-second disk or a USB drive (`/mnt/d/twes-backups`), or blank for a volume on this disk. Keep a copy of the keys it
-lists (§ 14) away from this computer. Then the first install, and the operator:
+`scripts/onprem/install.ps1` does what is still missing and stops at each step that needs a person, to be run again
+after it: WSL and Ubuntu (a restart, then Ubuntu opened once to make its user), Docker Desktop (started once, its terms
+accepted, « Start Docker Desktop when you sign in » ticked, WSL integration on for Ubuntu), git, gpg, curl and flock in
+Ubuntu, the checkout at the newest release tag, then `twes install` in Ubuntu. On Windows' side it then trusts the
+edge's authority (Edge and Chrome read Windows' store; Firefox only once « Allow Firefox to automatically trust
+third-party root certificates you install » is ticked), schedules `twes start` at each sign-in and `twes tick` every
+quarter hour as tasks under `\twes-in\`, and puts a twes-in shortcut on the desktop. The tasks run `wsl.exe`, which
+shows a console window for the moment it runs; `-HideWindows` runs them through `conhost.exe --headless`, which shows
+none but which Microsoft does not document, so it is kept only once tried on that computer. The file stays ASCII:
+Windows PowerShell 5.1 reads a script without a byte-order mark in the computer's ANSI code page
+(`scripts/tests/twes.test.sh` checks it).
+
+**Installing on Linux.** Docker Engine, the account in the `docker` group, git, gpg, curl and flock, then:
 
 ```sh
-bash ~/twes-in/scripts/onprem/twes update
-read -rs PW && printf '%s\n' "$PW" | LAN_HOST=$(cat ~/.twes-in/state/lan-host) bash ~/twes-in/scripts/deploy/deploy.sh \
-  --compose ~/.twes-in/install.env exec -T api bin/console app:seed --no-interaction --operator-email=<address> \
-  --operator-password-stdin --without-company; unset PW
+git clone https://github.com/<owner>/twes-in.git ~/twes-in && cd ~/twes-in
+git checkout --detach "$(git tag --list 'v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*' --sort=-v:refname | head -n 1)"
+bash scripts/onprem/twes install
 ```
 
-`twes start` runs at each logon and `twes tick` every quarter hour; until the installer schedules them, run `start` after
-a restart by hand.
+`twes install` asks for the shop's facts and writes the values (`~/.twes-in/install.env`, mode 600, through
+`new-instance.sh --onprem`): the shop's Gmail address and an app password (the mail goes through `smtp.gmail.com:587`),
+`ALERT_EMAIL`, who is mailed when something goes wrong, and the backups' folder, on a second disk or a USB drive, or
+blank for a volume on this disk. It shows the release key's fingerprint and pins it only once `yes` is typed, installs
+the newest release, makes the platform's operator (the password read twice, hidden, handed to `app:seed` on its input),
+and on Linux writes `twes schedule`'s units. Run again, it asks only what is still missing. Keep a copy of the keys the
+values list (§ 14) away from this computer. On macOS nothing is scheduled yet: `twes start` after each start of the
+computer and `twes tick` every quarter hour are run by hand, and `twes install` says so.
+
+**Signed releases.** `twes update` takes a release only from a tag signed by the key pinned at install
+(`~/.twes-in/release-keys/`): the checkout's own `infra/onprem/release-key.asc` is what `twes install` offers, and is
+pinned only once the fingerprint the developer gave is confirmed, because whoever could forge a tag could change that
+file too. A newer tag nobody signed, or signed by another key, is refused before anything is backed up or checked out,
+written down in `state/refused-releases` (`tick` never tries it again; by hand it is checked again), and mailed and told
+to the operators in the application. The developer's key: ed25519, fingerprint
+`0201 4686 9960 09C7 41A9 2ADF 0C53 7690 706E B7F5`. `twes pin-key <file>` pins another (a secret key is refused).
 
 **What `twes` does.**
 
 | Command | What it does |
 |---|---|
-| `twes start` | reads this computer's address, starts the release deployed here again; nothing is fetched, so a morning without the internet still opens |
-| `twes update` | the newest release tag: the database and the files backed up first, the release deployed by digest, its deep health read through the edge; unhealthy, the release before it is started again on the new schema and the developer told |
+| `twes start` | waits for Docker (five minutes), reads this computer's address, starts the release deployed here again; nothing is fetched, so a morning without the internet still opens |
+| `twes update` | the newest release tag, once its signature verifies: the database and the files backed up first, the release deployed by digest, its deep health read through the edge; unhealthy, the release before it is started again on the new schema and the developer told |
 | `twes policy auto 13:00-14:00` | updates applied by `tick` inside that daily window, in the shop's time, never just after a start, a release that failed here never retried by itself |
 | `twes policy notify` / `off` | a release out is told to each company's owners in the application (the default), or nothing |
 | `twes offsite on` / `off` | the off-site copy of the backups, once the bucket's values are given |
 | `twes tick` | a new address, alerts held back, the deep health, the backups' outcomes and schedule, then the policy |
 | `twes status` | the release, the address, the policy, the health and the backups |
 | `twes restore-commands` | what takes the installation back to the backup made before the last update (docs/RUNBOOK.md, « Restore a shop ») |
+| `twes install` | asks for the shop's facts, pins the release key once its fingerprint is confirmed, installs the newest release and makes the operator; on Linux, schedules as well |
+| `twes pin-key <file>` | pins a public release key: every release tag must verify against it |
+| `twes schedule` | Linux: system units running `twes start` at boot and `twes tick` every quarter hour as this account, once Docker runs (`sudo` asks for the password) |
 
 **Backups.** The computer is off at night, so its backups run when due: every half hour the schedule runs each step whose
 last success is older than its period (a full backup weekly, a differential daily, the dump and the files daily, a
@@ -864,9 +888,18 @@ the contraction comes in a later release, its line saying why that is safe.
 with `twes update` from a clone of the release tags, asks both addresses for health and the operator's sign-in, then
 publishes a second release with one migration more and an api that fails its deep health: `twes update` must back up,
 deploy it, read it unhealthy and start the first again on the new schema, the operator told and still signing in; then
-`twes restore-commands`, run as written, must take the database back to the backup made before it. It runs as the
-compose project `twes-onprem-check` and needs ports 80 and 443 free.
+`twes restore-commands`, run as written, must take the database back to the backup made before it. Both releases are
+signed by `tag-release.sh` with a key made for the check, which the shop pins; a newer tag nobody signed must then be
+refused with the release unchanged and the operator told. It runs as the compose project `twes-onprem-check`, needs
+ports 80 and 443 free, and takes about ten minutes.
 
-What it does not prove: Windows and macOS (it runs on Linux), the mail to `ALERT_EMAIL` (the relay is the shop's), a
-phone trusting the authority, an off-site copy, and a real release's own rollback, which depends on that release keeping
-its schema additive.
+What it does not prove: Windows and macOS (it runs on Linux, and `install.ps1` is checked by PSScriptAnalyzer only), the
+scheduled tasks and units firing (`systemd-analyze verify` reads the units), the mail to `ALERT_EMAIL` (the relay is the
+shop's), a phone trusting the authority, an off-site copy, and a real release's own rollback, which depends on that
+release keeping its schema additive.
+
+**The first Windows install, tried before a shop's.** On a Windows computer with nothing installed: run `install.ps1` to
+the end, restart, sign in, and check that Docker Desktop starts, `\twes-in\start` ran (Task Scheduler, its last result
+0), `https://localhost` opens without a warning in Edge, a phone opens `http://<address>/root.crt` then the HTTPS
+address and scans, `\twes-in\tick` runs every quarter hour, and `wsl -d Ubuntu -- bash twes-in/scripts/onprem/twes
+status` reads healthy with its backups due. Then once with `-HideWindows`: no window shows when a task runs.

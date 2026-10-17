@@ -29,6 +29,7 @@ final readonly class TellInstallation
     public const string UPDATE_AVAILABLE = 'installation.update_available';
     public const string ROLLED_BACK = 'installation.rolled_back';
     public const string UPDATE_FAILED = 'installation.update_failed';
+    public const string UPDATE_REFUSED = 'installation.update_refused';
     public const string UNHEALTHY = 'installation.unhealthy';
     public const string BACKUP_FAILED = 'installation.backup_failed';
     public const string BACKUP_STOPPED = 'installation.backup_stopped';
@@ -38,6 +39,7 @@ final readonly class TellInstallation
         self::UPDATE_AVAILABLE => ['version' => true, 'previous' => true],
         self::ROLLED_BACK => ['version' => true, 'previous' => true, 'label' => true],
         self::UPDATE_FAILED => ['version' => true, 'previous' => true, 'label' => true],
+        self::UPDATE_REFUSED => ['version' => true],
         self::UNHEALTHY => ['check' => true],
         self::BACKUP_FAILED => ['step' => true, 'version' => false],
         self::BACKUP_STOPPED => ['step' => true],

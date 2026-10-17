@@ -3,6 +3,8 @@
 # staging-follow.sh against a stand-in docker and a stand-in deploy.sh, in a checkout cloned from a local origin: when it
 # deploys, what it hands deploy.sh, and when it waits, holds or refuses.
 set -uo pipefail
+# None of the machine's own git settings: a developer's commit.gpgsign would sign the fixtures with a real key.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 SCRIPT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/staging-follow.sh
 pass=0; fail=0
