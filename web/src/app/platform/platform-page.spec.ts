@@ -337,18 +337,18 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
     expect(query('subscription-panel-Nouvelle Société')).not.toBeNull();
 
-    const paidThrough = query<HTMLInputElement>('subscription-paid-through')!;
+    const paidThrough = query<HTMLInputElement>('field-paidThrough')!;
     paidThrough.value = '2026-12-31';
     paidThrough.dispatchEvent(new Event('input'));
     // The two choices are Selects: opened, the option taken, as a person does.
     for (const [select, option] of [
-      ['subscription-period-unit', 'subscription-period-unit-option-year'],
-      ['subscription-unpaid-mode', 'subscription-unpaid-mode-option-locked'],
+      ['field-periodUnit', 'platform.subscription.units.year'],
+      ['field-unpaidMode', 'platform.subscription.modes.locked'],
     ] as const) {
       query(select)!.click();
       await fixture.whenStable();
       fixture.detectChanges();
-      document.body.querySelector<HTMLElement>(`[data-testid="${option}"]`)!.click();
+      optionNamed(option).click();
       await fixture.whenStable();
       fixture.detectChanges();
     }
@@ -361,6 +361,7 @@ describe('PlatformPage', () => {
         paidThrough: '2026-12-31',
         periodUnit: 'year',
         unpaidMode: 'locked',
+        graceDays: null,
       }),
       0,
     );
@@ -370,7 +371,7 @@ describe('PlatformPage', () => {
     expect(facade.closeSubscription).toHaveBeenCalled();
   });
 
-  it('keeps the terms typed over terms another operator set since, and takes theirs for the rest', async () => {
+  it('takes the terms another operator set since where none was typed, and offers both ways one both changed', async () => {
     const held: PlatformSubscriptionRow = {
       companyId: 'c1',
       periodCount: 1,
@@ -390,7 +391,13 @@ describe('PlatformPage', () => {
       updatedAt: '2026-10-17T10:00:00+00:00',
       version: 3,
     };
-    const theirs: PlatformSubscriptionRow = { ...held, price: '700.000', graceDays: 5, version: 4 };
+    const theirs: PlatformSubscriptionRow = {
+      ...held,
+      price: '700.000',
+      graceDays: 5,
+      holdDays: 4,
+      version: 4,
+    };
     facade.openSubscription.mockImplementation(async (companyId: string) => {
       openedSubscription.set(companyId);
       subscription.set(held);
@@ -400,9 +407,14 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const grace = query<HTMLInputElement>('subscription-grace-days')!;
-    grace.value = '9';
-    grace.dispatchEvent(new Event('input'));
+    for (const [field, value] of [
+      ['field-graceDays', '9'],
+      ['field-holdDays', '4'],
+    ] as const) {
+      const input = query<HTMLInputElement>(field)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
     facade.saveSubscription.mockImplementationOnce(async () => {
       error.set('record_changed');
       subscription.set(theirs);
@@ -414,16 +426,23 @@ describe('PlatformPage', () => {
 
     expect(facade.saveSubscription).toHaveBeenLastCalledWith(
       'c1',
-      expect.objectContaining({ graceDays: 9 }),
+      expect.objectContaining({ graceDays: 9, holdDays: 4, price: '600.000' }),
       3,
     );
-    expect([
-      query<HTMLInputElement>('subscription-grace-days')!.value,
-      query<HTMLInputElement>('subscription-price')!.value,
-    ]).toEqual(['9', '700.000']);
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
       { kind: 'failure', key: 'live.saved_since', params: undefined },
     ]);
+    // Their price is taken, the hold days both typed alike need nothing, and the grace days both changed are offered.
+    expect(query<HTMLInputElement>('field-price')!.value).toContain('700');
+    expect(query('field-conflict-holdDays')).toBeNull();
+    expect(query('field-conflict-graceDays')).not.toBeNull();
+    expect(query<HTMLInputElement>('field-graceDays')!.value).toBe('9');
+
+    query('field-take-theirs-graceDays')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(query('field-conflict-graceDays')).toBeNull();
+    expect(query<HTMLInputElement>('field-graceDays')!.value).toBe('5');
 
     // Refused again: the price taken from them the first time is theirs now, so their next price is taken too.
     facade.saveSubscription.mockImplementationOnce(async () => {
@@ -432,19 +451,14 @@ describe('PlatformPage', () => {
     });
     query('subscription-save')!.click();
     await fixture.whenStable();
+    fixture.detectChanges();
     expect(facade.saveSubscription).toHaveBeenLastCalledWith(
       'c1',
-      expect.objectContaining({ graceDays: 9, price: '700.000' }),
+      expect.objectContaining({ graceDays: 5, holdDays: 4, price: '700.000' }),
       4,
     );
-
-    query('subscription-save')!.click();
-    await fixture.whenStable();
-    expect(facade.saveSubscription).toHaveBeenLastCalledWith(
-      'c1',
-      expect.objectContaining({ graceDays: 9, price: '800.000' }),
-      5,
-    );
+    expect(query('field-conflict-price')).toBeNull();
+    expect(query<HTMLInputElement>('field-price')!.value).toContain('800');
   });
 
   it('loads the platform when it opens', async () => {
@@ -786,3 +800,12 @@ describe('PlatformPage', () => {
     expect(rows[0].textContent).toContain('Sociétés : 2');
   });
 });
+
+/** An option of the Select open now, by what it reads. */
+function optionNamed(label: string): HTMLElement {
+  const option = Array.from(document.body.querySelectorAll<HTMLElement>('[role="option"]')).find(
+    (candidate) => candidate.textContent?.includes(label),
+  );
+  if (option === undefined) throw new Error(`No option reads ${label}.`);
+  return option;
+}

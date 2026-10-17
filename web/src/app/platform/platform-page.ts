@@ -11,8 +11,6 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DayCalendarButton } from '../shared/form/day-calendar-button';
-import { DayInput } from '../shared/form/day-input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -22,6 +20,10 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
+import { DescriptorForm } from '../shared/form/descriptor-form';
+import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import { mergeSavedVersion, type FieldConflict } from '../shared/form/form-merge';
+import type { FormValues } from '../shared/form/form-types';
 import { Select, type SelectOption } from '../shared/form/select';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListQuery } from '../shared/list/list-types';
@@ -43,8 +45,8 @@ import {
   type PlatformDelay,
   type PlatformSupport,
   type PlatformSubscriptionRow,
-  type SubscriptionTerms,
 } from './platform-types';
+import { subscriptionForm, subscriptionTerms, subscriptionValues } from './subscription-form';
 
 /** What a list keeps in the address besides the tab: switching tabs must not carry one list's words into the next. */
 const LIST_PARAMS = ['q', 'status', 'country', 'state', 'sort', 'page', 'size', 'company'] as const;
@@ -59,22 +61,6 @@ const FAILED_KINDS: Readonly<Record<string, string>> = {
   InvitationToMail: 'invitation',
   PasswordResetAsked: 'password_reset',
   SignupAsked: 'signup',
-};
-const PERIOD_UNITS: readonly SubscriptionTerms['periodUnit'][] = ['day', 'month', 'year'];
-const UNPAID_MODES: readonly NonNullable<SubscriptionTerms['unpaidMode']>[] = [
-  'read_only',
-  'locked',
-];
-const EMPTY_TERMS: SubscriptionTerms = {
-  periodCount: 1,
-  periodUnit: 'month',
-  trialEndsOn: null,
-  paidThrough: null,
-  price: null,
-  currency: null,
-  graceDays: null,
-  unpaidMode: null,
-  holdDays: null,
 };
 import { Feedback } from '../shared/feedback/feedback';
 import { SubscriptionFacade } from '../licensing/subscription-facade';
@@ -93,8 +79,6 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
-    DayInput,
-    DayCalendarButton,
     MatSlideToggleModule,
     MatTabsModule,
     RouterLink,
@@ -104,6 +88,7 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
     StatusBadge,
     CountBadge,
     Select,
+    DescriptorForm,
   ],
   templateUrl: './platform-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -247,28 +232,15 @@ export class PlatformPage implements OnInit {
     label: `platform.companies.countries.${code}`,
     testId: `platform-company-country-option-${code}`,
   }));
-  protected readonly periodUnitOptions: SelectOption[] = PERIOD_UNITS.map((unit) => ({
-    value: unit,
-    label: `platform.subscription.units.${unit}`,
-    testId: `subscription-period-unit-option-${unit}`,
-  }));
-  /** « Default » is the empty answer: the company follows the platform's way of handling an unpaid subscription. */
-  protected readonly unpaidModeOptions: SelectOption[] = [
-    {
-      value: '',
-      label: 'platform.subscription.modes.default',
-      testId: 'subscription-unpaid-mode-option-default',
-    },
-    ...UNPAID_MODES.map((mode) => ({
-      value: mode,
-      label: `platform.subscription.modes.${mode}`,
-      testId: `subscription-unpaid-mode-option-${mode}`,
-    })),
-  ];
-  /** The terms in the open panel, which start from what the company holds, or empty where it holds none. */
-  protected readonly terms = signal<SubscriptionTerms>({ ...EMPTY_TERMS });
-  /** The terms as the panel last read them, against which what was typed is told apart. */
-  private readonly readTerms = signal<SubscriptionTerms>({ ...EMPTY_TERMS });
+  protected readonly subscriptionDescriptor = subscriptionForm();
+  /** The terms in the open panel, which start from what the company holds, or a month where it holds none. */
+  protected readonly subscriptionGroup = signal<DescriptorFormGroup>(
+    buildFormGroup(this.subscriptionDescriptor, subscriptionValues(null)),
+  );
+  /** The terms as the panel last read them, against which what was typed is told apart from what was not. */
+  private readonly readTerms = signal<FormValues>(subscriptionValues(null));
+  /** The terms both this operator and another changed since the panel read them, each offered both ways. */
+  protected readonly subscriptionConflicts = signal<readonly FieldConflict[]>([]);
 
   async ngOnInit(): Promise<void> {
     await this.platform.load();
@@ -363,38 +335,15 @@ export class PlatformPage implements OnInit {
       return;
     }
     await this.platform.openSubscription(companyId);
-    this.readTerms.set(termsOf(this.subscription()));
-    this.terms.set(this.readTerms());
+    this.showTerms(this.subscription());
   }
 
-  /** One field of the terms being edited; an emptied field is null, which is what "follow the platform" means. */
-  protected type(field: keyof SubscriptionTerms, event: Event): void {
-    this.set(field, (event.target as HTMLInputElement).value);
-  }
-
-  /** A day term once it is a day, or emptied; text still being typed leaves the term as it was. */
-  protected setDay(field: 'trialEndsOn' | 'paidThrough', value: string): void {
-    if (value === '' || /^\d{4}-\d{2}-\d{2}$/.test(value)) this.set(field, value);
-  }
-
-  /** One term, from what an input holds or a Select chose. */
-  protected set(field: keyof SubscriptionTerms, value: string): void {
-    this.terms.update((terms) => {
-      switch (field) {
-        case 'periodCount':
-          return { ...terms, periodCount: Number.parseInt(value, 10) || 1 };
-        case 'periodUnit':
-          return { ...terms, periodUnit: PERIOD_UNITS.find((unit) => unit === value) ?? 'month' };
-        case 'graceDays':
-          return { ...terms, graceDays: '' === value ? null : Number.parseInt(value, 10) };
-        case 'holdDays':
-          return { ...terms, holdDays: '' === value ? null : Number.parseInt(value, 10) };
-        case 'unpaidMode':
-          return { ...terms, unpaidMode: UNPAID_MODES.find((mode) => mode === value) ?? null };
-        default:
-          return { ...terms, [field]: '' === value.trim() ? null : value.trim() };
-      }
-    });
+  /** The panel shows the terms held, what the API kept rather than what was typed, with nothing left to settle. */
+  private showTerms(held: PlatformSubscriptionRow | null): void {
+    const values = subscriptionValues(held);
+    this.readTerms.set(values);
+    this.subscriptionGroup.set(buildFormGroup(this.subscriptionDescriptor, values));
+    this.subscriptionConflicts.set([]);
   }
 
   protected typedSupport(channel: SupportChannel, event: Event): void {
@@ -433,28 +382,39 @@ export class PlatformPage implements OnInit {
   }
 
   /**
-   * Refused as saved since by another operator, the panel shows what they hold: a term typed here is kept and saved on
-   * their version at the next save, every other term is theirs.
+   * Refused as saved since by another operator, the panel takes what they changed where nothing was typed, keeps what
+   * was typed, and offers both ways a term both changed; the next save names their version.
    */
-  protected async saveSubscription(companyId: string): Promise<void> {
-    const typed = this.terms();
+  protected async saveSubscription(companyId: string, values: FormValues): Promise<void> {
     const version = this.subscription()?.version ?? 0;
-    if (await this.platform.saveSubscription(companyId, typed, version)) {
-      this.readTerms.set(termsOf(this.subscription()));
+    if (await this.platform.saveSubscription(companyId, subscriptionTerms(values), version)) {
+      this.showTerms(this.subscription());
       this.feedback.success('platform.subscription.saved');
     } else if (this.platform.error() === 'record_changed') {
-      const theirs = termsOf(this.subscription());
-      this.terms.set(keepTyped(this.readTerms(), typed, theirs));
+      const theirs = subscriptionValues(this.subscription());
+      const merged = mergeSavedVersion(this.subscriptionGroup(), this.readTerms(), theirs);
       this.readTerms.set(theirs);
+      this.subscriptionConflicts.set(merged.conflicts);
       this.savedSince();
     }
+  }
+
+  /** A term both changed, settled: theirs is taken into the field, or what was typed stays. */
+  protected resolveTerm(resolution: { field: string; choice: 'theirs' | 'mine' }): void {
+    const conflict = this.subscriptionConflicts().find(({ field }) => field === resolution.field);
+    if (conflict === undefined) return;
+    if (resolution.choice === 'theirs') {
+      this.subscriptionGroup().controls[conflict.field]?.setValue(conflict.theirs);
+    }
+    this.subscriptionConflicts.update((conflicts) =>
+      conflicts.filter(({ field }) => field !== conflict.field),
+    );
   }
 
   protected async stopSubscription(companyId: string): Promise<void> {
     if (await this.platform.stopSubscription(companyId)) {
       this.feedback.success('platform.subscription.stopped');
-      this.terms.set({ ...EMPTY_TERMS });
-      this.readTerms.set({ ...EMPTY_TERMS });
+      this.showTerms(null);
     }
   }
 
@@ -465,41 +425,4 @@ export class PlatformPage implements OnInit {
   protected async reject(companyId: string): Promise<void> {
     await this.platform.reject(companyId);
   }
-}
-
-/** The terms a subscription holds, or the empty ones where licensing does not manage the company. */
-function termsOf(held: PlatformSubscriptionRow | null): SubscriptionTerms {
-  if (held === null) return { ...EMPTY_TERMS };
-  return {
-    periodCount: held.periodCount,
-    periodUnit: held.periodUnit,
-    trialEndsOn: held.trialEndsOn,
-    paidThrough: held.paidThrough,
-    price: held.price,
-    currency: held.currency,
-    graceDays: held.graceDays,
-    unpaidMode: held.unpaidMode,
-    holdDays: held.holdDays,
-  };
-}
-
-/** Each term typed since the panel read it, over what is held now; every other term as held now. */
-function keepTyped(
-  read: SubscriptionTerms,
-  typed: SubscriptionTerms,
-  theirs: SubscriptionTerms,
-): SubscriptionTerms {
-  const pick = <K extends keyof SubscriptionTerms>(key: K): SubscriptionTerms[K] =>
-    typed[key] === read[key] ? theirs[key] : typed[key];
-  return {
-    periodCount: pick('periodCount'),
-    periodUnit: pick('periodUnit'),
-    trialEndsOn: pick('trialEndsOn'),
-    paidThrough: pick('paidThrough'),
-    price: pick('price'),
-    currency: pick('currency'),
-    graceDays: pick('graceDays'),
-    unpaidMode: pick('unpaidMode'),
-    holdDays: pick('holdDays'),
-  };
 }

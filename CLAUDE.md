@@ -548,6 +548,9 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - When a PUT starts requiring a version, `git grep` its address over `web/e2e` before the push: a scenario's cleanup
   calls it straight from the page, without one, and turns red after passing (`numbering.spec.ts`, 2026-10-17). A
   cleanup sends the version read just before, never the one read when the scenario began.
+- `make up` is what migrates the development database: a migration committed while the live stack runs leaves the database
+  behind the source it serves, and every sign-in then failed on `role.version` for two hours. Run `make up` after any
+  change that adds a migration, and read `doctrine_migration_versions` before blaming the code (2026-10-17).
 - Doctrine reads `Query::HINT_REFRESH` with `isset()`: `setHint(HINT_REFRESH, false)` still refreshes, so a mutant flipping it
   to false is equivalent and survives. Sabotage a locked re-read by removing the hint line (2026-10-17).
 - `make up`'s api and worker run the `api-vendor` volume, which only the one-shot `migrate` service's `composer install`
