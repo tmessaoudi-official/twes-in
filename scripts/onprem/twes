@@ -9,8 +9,9 @@
 #   twes policy auto HH:MM-HH:MM   updates applied by tick inside that daily window, in the shop's time
 #   twes policy notify | off       the owners told in the app that a release is out, or nothing
 #   twes offsite on | off          the off-site copy of the backups (its bucket's values given first)
-#   twes tick                      every quarter hour: a new network address, alerts held back, deep health, the backups'
-#                                  outcomes and their schedule, then the update policy
+#   twes tick                      every quarter hour: a new network address, alerts held back, deep health (failing, the
+#                                  installation started again once before anyone is told), the backups' outcomes and their
+#                                  schedule, then the update policy
 #   twes status                    what runs, its policy, address, health and backups
 #   twes restore-commands          what takes the installation back to the backup made before the last update
 #   twes pin-key <file>            pins the developer's public release key: every release tag must verify against it
@@ -351,6 +352,10 @@ as_root() { if [[ "$(id -u)" == 0 ]]; then "$@"; else sudo "$@"; fi; }
 start() {
   local address
   [[ -n "$(running)" ]] || refuse "nothing is deployed here yet: twes update installs the newest release"
+  # The boot's start, tick's and a shortcut clicked twice would otherwise run compose over each other: one waits for the
+  # other, which ends within Docker's tries and a compose up.
+  exec 9> "$state/start.lock"
+  flock -w "${TWES_START_WAIT:-900}" 9 || refuse "another twes start is running and has not ended: read $state/twes.log"
   docker_ready
   address=$(lan_address)
   [[ "$address" != 127.0.0.1 ]] || say "no network address found: only this computer opens https://localhost"
@@ -512,13 +517,27 @@ tick() {
   fi
   deliver_held
 
+  # Unhealthy, the installation is started again once, as a container Docker left stopped comes back with compose up;
+  # still unhealthy, the developer and the operators are told. Once per episode: a start that does not mend it is not
+  # repeated every quarter hour, and a start just made is left its ten minutes to settle.
   if failing=$(deep_health 1); then
     rm -f "$state/unhealthy"
-  elif [[ ! -f "$state/unhealthy" ]]; then
+  elif [[ -f "$state/unhealthy" ]]; then
+    :
+  elif (($(now) - $(recall started-at 0) < 600)); then
+    say "unhealthy ($failing) within ten minutes of a start: read again at the next tick"
+  else
     echo "$failing" > "$state/unhealthy"
-    alert installation.unhealthy "L'installation ne va pas bien ($failing)" \
-      "Le contrôle de santé de l'installation échoue : $failing. Il est relu toutes les quinze minutes ; une alerte nouvelle viendra s'il se remet puis échoue encore." \
-      "check=$failing"
+    say "unhealthy ($failing): starting the installation again"
+    now >> "$state/self-restarts"
+    if (start) && failing=$(deep_health 18); then
+      rm -f "$state/unhealthy"
+      say "healthy again once started again"
+    else
+      alert installation.unhealthy "L'installation ne va pas bien ($failing)" \
+        "Le contrôle de santé de l'installation échoue : $failing. L'installation a été relancée et échoue encore. Il est relu toutes les quinze minutes ; une alerte nouvelle viendra s'il se remet puis échoue encore." \
+        "check=$failing"
+    fi
   fi
 
   # The schedule runs every half hour: silent for an hour and a half once the application has run for one, it stopped.
@@ -570,12 +589,16 @@ tick() {
 }
 
 status() {
-  local failing
+  local failing t
   echo "release:  $(tag_of "$(running)")"
   echo "address:  https://localhost, https://$(recall lan-host '(not started)')"
   echo "updates:  $(value UPDATE_POLICY) $(value UPDATE_WINDOW)"
   echo "off site: $(value BACKUP_OFFSITE)"
   if failing=$(deep_health 1); then echo "health:   ok"; else echo "health:   failing ($failing)"; fi
+  if [[ -s "$state/self-restarts" ]]; then
+    t=$(tail -n 1 "$state/self-restarts")
+    echo "          started again by tick: $(wc -l < "$state/self-restarts") time(s), last $(shop_day "$t") $(shop_time "$t")"
+  fi
   echo "backups:"
   backup_outcomes | sed 's/^/  /' || echo "  (the backup service does not answer)"
   [[ ! -s "$state/pending-alerts" ]] || echo "held back: $(wc -l < "$state/pending-alerts") alert(s)"
