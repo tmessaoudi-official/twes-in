@@ -218,10 +218,13 @@ export class ProductsFacade {
     }
   }
 
-  /** The codes the codes tab just saved, written into the product this screen holds (the tab saves on its own). */
-  barcodesSaved(productId: string, barcodes: ProductBarcode[]): void {
+  /**
+   * The codes the codes tab just saved, written into the product this screen holds (the tab saves on its own), with
+   * the version they left.
+   */
+  barcodesSaved(productId: string, barcodes: ProductBarcode[], version: number): void {
     const product = this.productSignal();
-    if (product?.id === productId) this.productSignal.set({ ...product, barcodes });
+    if (product?.id === productId) this.productSignal.set({ ...product, barcodes, version });
   }
 
   private async save(call: () => Promise<ProductRow>): Promise<ProductRow | null> {

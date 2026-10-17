@@ -19,6 +19,7 @@ use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\ClearProduct
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\ReplaceProductHomesProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\SetProductHomeProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Provider\ProductHomeCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -57,8 +58,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             output: false,
-            denormalizationContext: ['groups' => [self::ORDER]],
-            validationContext: ['groups' => [self::ORDER]],
+            denormalizationContext: ['groups' => [self::ORDER, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::ORDER, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/products/{productId}/home-locations/{establishmentId}',
@@ -122,6 +123,15 @@ final class ProductHomeResource
     #[Assert\All([new Assert\Uuid(groups: [self::ORDER])], groups: [self::ORDER])]
     #[Groups([self::ORDER])]
     public array $locationIds = [];
+
+    /**
+     * The version of the product the list was read at (the PUT on the establishment): homes are shown beside the product
+     * form, so a change of them moves the product's version, and a list read before another person's change answers 409.
+     */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([RecordVersion::REVISE])]
+    public ?int $version = null;
 
     public static function of(ProductHomeLocation $home): self
     {

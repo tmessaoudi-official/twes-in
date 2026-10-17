@@ -10,8 +10,11 @@ import type { FieldConflict } from './form-merge';
 import { type ChangedBy, RecordSync } from './record-sync';
 
 export interface LiveRecordOptions<V = number | null> {
-  /** The API's audit entity type the record is saved under (`customer`, `invoice`…). */
-  readonly kind: string;
+  /**
+   * The API's audit entity type the record is saved under (`customer`, `invoice`…), or each of them when what the page
+   * shows beside the record is audited under its own (a product's homes).
+   */
+  readonly kind: string | readonly string[];
   /** The open record's id; null while a new one is being written. */
   readonly id: () => string | null;
   readonly form: () => DescriptorFormGroup | null;
@@ -65,6 +68,13 @@ export class LiveRecord<V = number | null> extends RecordSync {
    * gives it what it needs to read and to say so.
    */
   savedElsewhere: () => Promise<void> = async () => undefined;
+
+  /**
+   * Reads the record again and merges it after this tab saved something the page shows beside the form (a product's
+   * codes, its homes), which moved the record's version: the form stands on that version, what is typed is kept and
+   * nothing is said, the tab having said it.
+   */
+  savedBeside: () => Promise<void> = async () => undefined;
 
   constructor(
     private readonly parts: readonly LivePart[] = [],
@@ -191,6 +201,13 @@ export function liveRecord<V = number | null>(options: LiveRecordOptions<V>): Li
     feedback.failure('live.saved_since');
   };
 
+  sync.savedBeside = async () => {
+    await activity.quietly(options.reload);
+    const form = options.form();
+    const incoming = options.saved();
+    if (form !== null && incoming !== null) sync.merge(form, incoming, null);
+  };
+
   // The id last tracked; undefined while no form is open.
   let tracked: string | null | undefined;
   effect(() => {
@@ -227,7 +244,8 @@ export function liveRecord<V = number | null>(options: LiveRecordOptions<V>): Li
       feedback.notice(name ? 'live.notice' : 'live.notice_someone', said);
     }
   };
-  inject(LiveChanges).on([options.kind], (changes) => void receive(changes), inject(DestroyRef));
+  const kinds = typeof options.kind === 'string' ? [options.kind] : options.kind;
+  inject(LiveChanges).on(kinds, (changes) => void receive(changes), inject(DestroyRef));
 
   return sync;
 }

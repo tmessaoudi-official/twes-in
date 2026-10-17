@@ -158,18 +158,24 @@ describe('ProductsApi', () => {
       ['l2', 0, false],
     ]);
 
-    const written = api.replaceHomes('c1', 'p 1', 'e/1', ['l2', 'l1']);
+    const written = api.replaceHomes('c1', 'p 1', 'e/1', ['l2', 'l1'], 5);
     const put = http.expectOne('/api/companies/c1/products/p%201/home-locations/e%2F1');
     expect(put.request.method).toBe('PUT');
-    expect(put.request.body).toEqual({ locationIds: ['l2', 'l1'] });
+    expect(put.request.body).toEqual({ locationIds: ['l2', 'l1'], version: 5 });
     put.flush(null, { status: 204, statusText: 'No Content' });
     await expect(written).resolves.toBeUndefined();
 
-    const refused = api.replaceHomes('c1', 'p1', 'e1', ['elsewhere']);
+    const refused = api.replaceHomes('c1', 'p1', 'e1', ['elsewhere'], 5);
     http
       .expectOne('/api/companies/c1/products/p1/home-locations/e1')
       .flush(null, { status: 422, statusText: 'Unprocessable' });
     await expect(refused).rejects.toBeInstanceOf(ProductsRefused);
+
+    const stale = api.replaceHomes('c1', 'p1', 'e1', ['l1'], 4);
+    http
+      .expectOne('/api/companies/c1/products/p1/home-locations/e1')
+      .flush({ type: '/problems/record-changed' }, { status: 409, statusText: 'Conflict' });
+    await expect(stale).rejects.toEqual(new ProductsRefused('record_changed'));
   });
 
   it('reads, sets and clears a reorder point per establishment', async () => {
@@ -302,13 +308,14 @@ describe('ProductsApi', () => {
       { role: 'unit' as const, code: '3017620422003', quantity: 1, supplierId: null },
       { role: 'pack' as const, code: '13017620422000', quantity: 12, supplierId: null },
     ];
-    const saved = api.replaceBarcodes('c1', 'p 1', codes);
+    const saved = api.replaceBarcodes('c1', 'p 1', codes, 3);
     const put = http.expectOne('/api/companies/c1/products/p%201/barcodes');
     expect(put.request.method).toBe('PUT');
-    expect(put.request.body).toEqual({ barcodes: codes });
-    put.flush({ productId: 'p 1', barcodes: codes });
+    expect(put.request.body).toEqual({ barcodes: codes, version: 3 });
+    put.flush({ productId: 'p 1', barcodes: codes, version: 4 });
 
-    expect(await saved).toEqual(codes);
+    // The codes are shown beside the product form: the version they left is the one its next save stands on.
+    expect(await saved).toEqual({ barcodes: codes, version: 4 });
   });
 
   it('reads the labels of the products asked for, naming each in the order asked', async () => {
@@ -387,7 +394,7 @@ describe('ProductsApi', () => {
   });
 
   it('names the row a refusal is about, and whose code it is when another product holds it', async () => {
-    const taken = api.replaceBarcodes('c1', 'p1', []);
+    const taken = api.replaceBarcodes('c1', 'p1', [], 1);
     http
       .expectOne('/api/companies/c1/products/p1/barcodes')
       .flush(
@@ -398,7 +405,7 @@ describe('ProductsApi', () => {
       refusal: { code: 'barcode_taken', index: 1, field: 'code', heldBy: 'ART-001' },
     });
 
-    const shape = api.replaceBarcodes('c1', 'p1', []);
+    const shape = api.replaceBarcodes('c1', 'p1', [], 1);
     http
       .expectOne('/api/companies/c1/products/p1/barcodes')
       .flush(
@@ -407,6 +414,17 @@ describe('ProductsApi', () => {
       );
     await expect(shape).rejects.toMatchObject({
       refusal: { code: 'invalid', index: 2, field: 'role', heldBy: null },
+    });
+
+    const stale = api.replaceBarcodes('c1', 'p1', [], 1);
+    http
+      .expectOne('/api/companies/c1/products/p1/barcodes')
+      .flush(
+        { type: '/problems/record-changed', title: 'Saved since' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(stale).rejects.toMatchObject({
+      refusal: { code: 'record_changed', index: null, field: null, heldBy: null },
     });
   });
 

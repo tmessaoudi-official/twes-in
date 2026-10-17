@@ -60,6 +60,14 @@
       }
     }
 
+    @if (changedSince()) {
+      <app-part-conflict
+        field="barcodes"
+        message="products.barcodes.changed_since"
+        (resolved)="resolve($event.choice)"
+      />
+    }
+
     @if (rows().length === 0) {
       <p data-testid="product-barcodes-none">{{ 'products.barcodes.none' | translate }}</p>
     } @else {

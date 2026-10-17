@@ -58,8 +58,8 @@ describe('ProductHomes', () => {
     await facade.load('c1', 'p1');
     api.homes.mockResolvedValue([home('l1'), home('l2', 'e1', 1), home('l3', 'e2')]);
 
-    expect(await facade.add('c1', 'p1', 'l2')).toBe(true);
-    expect(api.replaceHomes).toHaveBeenCalledWith('c1', 'p1', 'e1', ['l1', 'l2']);
+    expect(await facade.add('c1', 'p1', 'l2', 7)).toBe('saved');
+    expect(api.replaceHomes).toHaveBeenCalledWith('c1', 'p1', 'e1', ['l1', 'l2'], 7);
     expect(facade.homes().map((row) => row.locationId)).toEqual(['l1', 'l2', 'l3']);
     expect([...facade.establishmentsAtHome()]).toEqual(['e1', 'e2']);
   });
@@ -67,14 +67,14 @@ describe('ProductHomes', () => {
   it('makes the first home of an establishment the main one', async () => {
     await facade.load('c1', 'p1');
 
-    expect(await facade.add('c1', 'p1', 'l3')).toBe(true);
-    expect(api.replaceHomes).toHaveBeenCalledWith('c1', 'p1', 'e2', ['l3']);
+    expect(await facade.add('c1', 'p1', 'l3', 7)).toBe('saved');
+    expect(api.replaceHomes).toHaveBeenCalledWith('c1', 'p1', 'e2', ['l3'], 7);
   });
 
   it('refuses a place the company does not have, without asking the API', async () => {
     await facade.load('c1', 'p1');
 
-    expect(await facade.add('c1', 'p1', 'nowhere')).toBe(false);
+    expect(await facade.add('c1', 'p1', 'nowhere', 7)).toBe('refused');
     expect(facade.error()).toBe('invalid');
     expect(api.replaceHomes).not.toHaveBeenCalled();
   });
@@ -83,19 +83,19 @@ describe('ProductHomes', () => {
     api.homes.mockResolvedValue([home('l1'), home('l2', 'e1', 1)]);
     await facade.load('c1', 'p1');
 
-    expect(await facade.move('c1', 'p1', home('l2', 'e1', 1), -1)).toBe(true);
-    expect(api.replaceHomes).toHaveBeenCalledWith('c1', 'p1', 'e1', ['l2', 'l1']);
+    expect(await facade.move('c1', 'p1', home('l2', 'e1', 1), -1, 7)).toBe('saved');
+    expect(api.replaceHomes).toHaveBeenCalledWith('c1', 'p1', 'e1', ['l2', 'l1'], 7);
   });
 
   it('removes a home, and clears the establishment when it was the last', async () => {
     api.homes.mockResolvedValue([home('l1'), home('l2', 'e1', 1), home('l3', 'e2')]);
     await facade.load('c1', 'p1');
 
-    expect(await facade.remove('c1', 'p1', home('l1'))).toBe(true);
-    expect(api.replaceHomes).toHaveBeenCalledWith('c1', 'p1', 'e1', ['l2']);
+    expect(await facade.remove('c1', 'p1', home('l1'), 7)).toBe('saved');
+    expect(api.replaceHomes).toHaveBeenCalledWith('c1', 'p1', 'e1', ['l2'], 7);
     expect(api.clearHome).not.toHaveBeenCalled();
 
-    expect(await facade.remove('c1', 'p1', home('l3', 'e2'))).toBe(true);
+    expect(await facade.remove('c1', 'p1', home('l3', 'e2'), 7)).toBe('saved');
     expect(api.clearHome).toHaveBeenCalledWith('c1', 'p1', 'e2');
   });
 
@@ -113,10 +113,21 @@ describe('ProductHomes', () => {
     await facade.load('c1', 'p1');
     api.replaceHomes.mockRejectedValue(new ProductsRefused('invalid'));
 
-    expect(await facade.add('c1', 'p1', 'l2')).toBe(false);
+    expect(await facade.add('c1', 'p1', 'l2', 7)).toBe('refused');
     expect(facade.error()).toBe('invalid');
     expect(facade.homes()).toEqual([home('l1')]);
     expect(facade.busy()).toBe(false);
+  });
+
+  /** The product page says it and reads the product again; the homes shown become the ones saved since. */
+  it('reads the homes again, saying nothing itself, when the product was saved since', async () => {
+    await facade.load('c1', 'p1');
+    api.replaceHomes.mockRejectedValue(new ProductsRefused('record_changed'));
+    api.homes.mockResolvedValue([home('l3', 'e2')]);
+
+    expect(await facade.add('c1', 'p1', 'l2', 7)).toBe('changed');
+    expect(facade.error()).toBeNull();
+    expect(facade.homes()).toEqual([home('l3', 'e2')]);
   });
 
   it('calls anything else a network failure rather than passing it on', async () => {

@@ -148,7 +148,7 @@ final class ProductScanTest extends ApiTestCase
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
-        $this->sendJson('PUT', "$base/$id/barcodes", ['barcodes' => $codes]);
+        $this->sendJson('PUT', "$base/$id/barcodes", ['version' => $this->storedVersion('product', $id), 'barcodes' => $codes]);
         self::assertResponseIsSuccessful();
 
         return $id;

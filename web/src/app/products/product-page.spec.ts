@@ -23,6 +23,9 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { By } from '@angular/platform-browser';
+import { ProductBarcodesSection } from './product-barcodes';
+import { ProductHomesSection } from './product-homes';
 import { ProductPage } from './product-page';
 import { ProductOnView } from './product-on-view';
 import type { SettingRow } from '../shared/settings/settings-types';
@@ -543,6 +546,51 @@ describe('ProductPage', () => {
     );
   });
 
+  // The codes and the homes are shown beside the form and move the product's version (docs/SPEC.md § 7, 2026-10-17 08:55).
+  it('stands on the version a codes save left, keeping what is typed, and saves on it next', async () => {
+    product.set(laptop);
+    await open('p1');
+    type('field-unitPriceNet', '1300');
+    await settle();
+    facade.loadProduct.mockImplementationOnce(async () => product.set({ ...laptop, version: 2 }));
+
+    await openTab('products.tabs.barcodes');
+    const codes = fixture.debugElement.query(By.directive(ProductBarcodesSection));
+    (codes.componentInstance as ProductBarcodesSection).moved.emit('saved');
+    await settle();
+
+    expect(facade.loadProduct).toHaveBeenLastCalledWith('c1', 'p1');
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).not.toContainEqual(
+      expect.objectContaining({ key: 'live.saved_since' }),
+    );
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseProduct).toHaveBeenLastCalledWith(
+      'c1',
+      'p1',
+      expect.objectContaining({ unitPriceNet: '1300' }),
+      2,
+    );
+  });
+
+  it('reads the product again and says nothing was saved when the homes were refused as made over a version saved since', async () => {
+    product.set(laptop);
+    await open('p1');
+    facade.loadProduct.mockImplementationOnce(async () => product.set({ ...laptop, version: 3 }));
+
+    await openTab('products.tabs.homes');
+    const homes = fixture.debugElement.query(By.directive(ProductHomesSection));
+    (homes.componentInstance as ProductHomesSection).moved.emit('changed');
+    await settle();
+
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+    expect((homes.componentInstance as ProductHomesSection).version()).toBe(3);
+  });
+
   it('revises a product shown at the currency scale and says it was saved', async () => {
     product.set(laptop);
     await open('p1');
@@ -806,6 +854,28 @@ describe('ProductPage', () => {
     expect(TestBed.inject(Feedback) as RecordedFeedback).toMatchObject({
       said: [{ kind: 'notice', key: 'live.notice', params: { name: 'Nadia' } }],
     });
+  });
+
+  // Its homes are audited under their own kind, and their change moves the product's version.
+  it('reads the product again when another person changed its homes, standing on the version they left', async () => {
+    product.set(laptop);
+    await open('p1');
+    type('field-unitPriceNet', '1300');
+    await settle();
+    facade.loadProduct.mockImplementation(async () => product.set({ ...laptop, version: 2 }));
+
+    await announceSaved('product_home_location', 'p1', undefined, 'product_home_location.set');
+    await settle();
+
+    expect(facade.loadProduct).toHaveBeenLastCalledWith('c1', 'p1');
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseProduct).toHaveBeenLastCalledWith(
+      'c1',
+      'p1',
+      expect.objectContaining({ unitPriceNet: '1300' }),
+      2,
+    );
   });
 
   it('shows another product when another one is opened', async () => {

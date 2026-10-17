@@ -2151,6 +2151,7 @@
       "taken": "This code already belongs to article {{reference}}.",
       "refused": "This code was refused.",
       "saved": "Codes saved.",
+      "changed_since": "The codes were changed in the saved version too.",
       "problems": {
         "code_required": "Type the code.",
         "code_shape": "A code has 1 to 64 characters, without spaces.",

@@ -233,7 +233,12 @@ refused, and shows the permission gone, rather than giving it back to everyone h
 stock map takes its version from the drawing itself, and pointing it at another place moves it even where it stands, so
 two people relabelling it are told; a group's move, turn or erasure (`…/drawing-changes`) names each rectangle with the
 version it was chosen at, one changed since refuses the whole step, and the screen reads the floor again with the group
-still chosen (§ 7 2026-10-17 08:55).
+still chosen (§ 7 2026-10-17 08:55). A product's codes and its homes, written by PUTs of their own beside its form, name
+the product's version and move it: the inventory moves it through `Inventory/Application/HomedProducts`, a port the
+products answer, which holds the product under its row lock for every homes write, a receipt's or an import's too; the
+product page then reads the product again (`LiveRecord.savedBeside`) and listens to `product_home_location` changes as
+its own, and the codes tab keeps rows being typed over codes saved since, with « Prendre la version enregistrée » or
+« Garder ma saisie ». Making one place the main home (`PUT …/home-locations`, which no screen sends) takes no version.
 
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,

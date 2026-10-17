@@ -28,6 +28,7 @@ describe('liveRecord', () => {
     initial: FormValues = saved,
     parts: LivePart[] = [],
     matches?: (change: LiveChange) => boolean,
+    kind: string | readonly string[] = 'customer',
   ) {
     handlers = [];
     reloads = 0;
@@ -50,7 +51,7 @@ describe('liveRecord', () => {
     let next: FormValues | null = initial;
     const sync = TestBed.runInInjectionContext(() =>
       liveRecord({
-        kind: 'customer',
+        kind,
         id,
         form,
         reload: async () => {
@@ -93,6 +94,17 @@ describe('liveRecord', () => {
     expect(handlers.map((listener) => listener.kinds)).toEqual([['customer']]);
     expect(reloads).toBe(0);
     expect(page.form()?.controls['phone'].value).toBe('0612');
+  });
+
+  it('listens to every kind a record is saved under, such as a product and its homes', async () => {
+    const page = setUp(saved, [], undefined, ['product', 'product_home_location']);
+
+    await page.savedElsewhere({ ...saved, phone: '0698' }, { kind: 'product_home_location' });
+
+    expect(handlers.map((listener) => listener.kinds)).toEqual([
+      ['product', 'product_home_location'],
+    ]);
+    expect(page.form()?.controls['phone'].value).toBe('0698');
   });
 
   it('on a quiet form, reads the record again, takes it and says who changed it', async () => {
@@ -194,6 +206,20 @@ describe('liveRecord', () => {
       page.sync.savedHere(page.form() as DescriptorFormGroup);
 
       expect(page.sync.version()).toBe(3);
+    });
+
+    it('after this tab saved something kept beside the form, stands on the version it left and keeps what is typed, quietly', async () => {
+      const page = setUp();
+      page.form()?.controls['name'].setValue('Durand & fils');
+      version.set(2);
+      page.nowSaved({ ...saved });
+
+      await page.sync.savedBeside();
+
+      expect(reloads).toBe(1);
+      expect(page.form()?.controls['name'].value).toBe('Durand & fils');
+      expect(page.sync.version()).toBe(2);
+      expect(page.feedback.said).toEqual([]);
     });
 
     it('after a save refused as made over a version saved since, reads it again, merges it and says nothing was saved', async () => {

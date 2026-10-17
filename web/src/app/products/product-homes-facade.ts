@@ -17,6 +17,9 @@ import type { ProductHomeRow, ProductsError } from './products-types';
  * locations, not the state of the stock screens, and sharing their signals would have this tab reload whenever a
  * movement was recorded elsewhere.
  */
+/** A homes write: saved, refused with the reason kept, or refused as made over a product saved since. */
+export type HomesWrite = 'saved' | 'refused' | 'changed';
+
 @Injectable()
 export class ProductHomes {
   private readonly api = inject(ProductsApi);
@@ -50,14 +53,22 @@ export class ProductHomes {
   /** Where it lives, establishment by establishment, each in its order: the first of each is the main home. */
   readonly groups = computed(() => groupByEstablishment(this.homesSignal()));
 
-  /** A home added after the others of its establishment, which a location knows; its first one is the main one. */
-  async add(companyId: string, productId: string, locationId: string): Promise<boolean> {
+  /**
+   * A home added after the others of its establishment, which a location knows; its first one is the main one. Every
+   * write names the product's version the homes were read at: they are shown beside the product form and move it.
+   */
+  async add(
+    companyId: string,
+    productId: string,
+    locationId: string,
+    version: number,
+  ): Promise<HomesWrite> {
     const place = this.locationsSignal().find((location) => location.id === locationId);
     if (place === undefined) {
       this.errorSignal.set('invalid');
-      return false;
+      return 'refused';
     }
-    return this.write(companyId, productId, place.establishmentId, (ids) =>
+    return this.write(companyId, productId, place.establishmentId, version, (ids) =>
       appended(ids, locationId),
     );
   }
@@ -68,33 +79,48 @@ export class ProductHomes {
     productId: string,
     home: ProductHomeRow,
     step: -1 | 1,
-  ): Promise<boolean> {
-    return this.write(companyId, productId, home.establishmentId, (ids) =>
+    version: number,
+  ): Promise<HomesWrite> {
+    return this.write(companyId, productId, home.establishmentId, version, (ids) =>
       moved(ids, home.locationId, step),
     );
   }
 
   /** A place stops being a home; the last one of an establishment clears it, the API having no empty list. */
-  async remove(companyId: string, productId: string, home: ProductHomeRow): Promise<boolean> {
-    return this.write(companyId, productId, home.establishmentId, (ids) =>
+  async remove(
+    companyId: string,
+    productId: string,
+    home: ProductHomeRow,
+    version: number,
+  ): Promise<HomesWrite> {
+    return this.write(companyId, productId, home.establishmentId, version, (ids) =>
       without(ids, home.locationId),
     );
   }
 
-  /** The establishment's homes as a new list, written whole and read again: the API keeps the order. */
+  /**
+   * The establishment's homes as a new list, written whole and read again: the API keeps the order. A product saved
+   * since refuses the list and the homes are read again, which the product page says as it reads the product again.
+   */
   private async write(
     companyId: string,
     productId: string,
     establishmentId: string,
+    version: number,
     change: (ids: readonly string[]) => readonly string[],
-  ): Promise<boolean> {
+  ): Promise<HomesWrite> {
     const own = this.groups().find((group) => group.establishmentId === establishmentId);
     const ids = change((own?.homes ?? []).map((home) => home.locationId));
-    return this.run(async () => {
+    const done = await this.run(async () => {
       if (ids.length === 0) await this.api.clearHome(companyId, productId, establishmentId);
-      else await this.api.replaceHomes(companyId, productId, establishmentId, ids);
+      else await this.api.replaceHomes(companyId, productId, establishmentId, ids, version);
       this.homesSignal.set(await this.api.homes(companyId, productId));
     });
+    if (done) return 'saved';
+    if (this.errorSignal() !== 'record_changed') return 'refused';
+    this.errorSignal.set(null);
+    await this.run(async () => this.homesSignal.set(await this.api.homes(companyId, productId)));
+    return 'changed';
   }
 
   async clear(companyId: string, productId: string, establishmentId: string): Promise<boolean> {

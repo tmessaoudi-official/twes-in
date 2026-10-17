@@ -36,7 +36,7 @@ final readonly class ReplaceProductBarcodesProcessor implements ProcessorInterfa
 
         try {
             $seesCosts = $this->guard->may($company, ProductPermission::COST_READ);
-            $product = $this->manage->replaceBarcodes($company, CompanyPath::identifier($uriVariables, 'productId'), $data->input(), $this->guard->account()->getId(), $seesCosts);
+            $product = $this->manage->replaceBarcodes($company, CompanyPath::identifier($uriVariables, 'productId'), $data->input(), $this->guard->account()->getId(), $seesCosts, $data->version);
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException('No such product.', $absent);
         } catch (ProductBarcodeTaken $taken) {

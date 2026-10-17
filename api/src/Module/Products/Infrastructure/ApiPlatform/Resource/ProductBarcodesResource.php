@@ -16,6 +16,7 @@ use App\Module\Products\Application\BarcodeInput;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Infrastructure\ApiPlatform\Output\ProductBarcodeRow;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\ReplaceProductBarcodesProcessor;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -29,6 +30,9 @@ use Symfony\Component\Validator\Constraints as Assert;
  *
  * A caller without product.cost.read neither reads nor writes a supplier's code (docs/SPEC.md § 7, 2026-09-23 09:45):
  * one in what they send answers 422 on its `role`, and the ones stored are kept through their save.
+ *
+ * The list names the version of the product it was read at, since the codes are shown beside the product form: one
+ * changed since answers 409, and a change moves the version, which the answer carries.
  */
 #[ApiResource(
     shortName: 'ProductBarcodes',
@@ -39,8 +43,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ], 'skip_null_values' => false],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
     ],
 )]
@@ -60,11 +64,18 @@ final class ProductBarcodesResource
     #[Groups([self::READ, self::WRITE])]
     public array $barcodes = [];
 
+    /** The version of the product the list was read at; the answer carries the one it left. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(Product $product, bool $withCosts): self
     {
         $resource = new self();
         $resource->productId = $product->getId()->toRfc4122();
         $resource->barcodes = ProductBarcodeRow::listOf($product, $withCosts);
+        $resource->version = $product->getVersion();
 
         return $resource;
     }

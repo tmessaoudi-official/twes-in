@@ -306,7 +306,7 @@ final class ProductPhotosTest extends ApiTestCase
     {
         $this->signedIn(['product.read', 'product.write', 'invoice.read', 'delivery_note.read', 'quote.read']);
         $product = $this->aProduct();
-        $this->sendJson('PUT', $this->products()."/$product/barcodes", ['barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
+        $this->sendJson('PUT', $this->products()."/$product/barcodes", ['version' => $this->storedVersion('product', $product), 'barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
         self::assertResponseIsSuccessful();
         $company = '/api/companies/'.$this->company->getId()->toRfc4122();
         $pickers = ["$company/invoice-options/products", "$company/delivery-note-options/products", "$company/quote-options/products"];

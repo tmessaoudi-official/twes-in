@@ -54,27 +54,30 @@ export class ProductBarcodes {
     }
   }
 
-  /** Makes the product's codes exactly these; false with the refusal kept when the API said no. */
+  /**
+   * Makes the product's codes exactly these, on the product's version they were read at. `refused` keeps the refusal
+   * to show; `changed` is a product saved since, which the product page reads again rather than this tab saying it.
+   */
   async save(
     companyId: string,
     productId: string,
     rows: readonly ProductBarcode[],
-  ): Promise<boolean> {
+    version: number,
+  ): Promise<'saved' | 'refused' | 'changed'> {
     this.busySignal.set(true);
     this.refusalSignal.set(null);
     try {
-      this.products.barcodesSaved(
-        productId,
-        await this.api.replaceBarcodes(companyId, productId, rows),
-      );
-      return true;
+      const saved = await this.api.replaceBarcodes(companyId, productId, rows, version);
+      this.products.barcodesSaved(productId, saved.barcodes, saved.version);
+      return 'saved';
     } catch (error) {
-      this.refusalSignal.set(
+      const refusal: BarcodesRefusal =
         error instanceof BarcodesRefused
           ? error.refusal
-          : { code: 'network', index: null, field: null, heldBy: null },
-      );
-      return false;
+          : { code: 'network', index: null, field: null, heldBy: null };
+      if (refusal.code === 'record_changed') return 'changed';
+      this.refusalSignal.set(refusal);
+      return 'refused';
     } finally {
       this.busySignal.set(false);
     }

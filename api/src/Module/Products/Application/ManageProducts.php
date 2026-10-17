@@ -238,18 +238,23 @@ final readonly class ManageProducts
 
     /**
      * The codes a product answers to become exactly these (docs/SPEC.md § 7, 2026-09-22 11:05), written on their own
-     * like the product's other tabs, and audited as a revision of the product's `barcodes`.
+     * like the product's other tabs, and audited as a revision of the product's `barcodes`. A change moves the product's
+     * version; given the version the list was read at, a product changed since is refused and nothing is written.
      *
      * @param list<BarcodeInput> $rows
      *
      * @throws ProductNotFound
      * @throws ProductBarcodeTaken
      * @throws InvalidProduct
+     * @throws RecordChanged
      */
-    public function replaceBarcodes(Company $company, Uuid $id, array $rows, ?Uuid $actorUserId, bool $seesCosts = true): Product
+    public function replaceBarcodes(Company $company, Uuid $id, array $rows, ?Uuid $actorUserId, bool $seesCosts = true, ?int $version = null): Product
     {
-        return $this->transactions->run(function () use ($company, $id, $rows, $actorUserId, $seesCosts): Product {
+        return $this->transactions->run(function () use ($company, $id, $rows, $actorUserId, $seesCosts, $version): Product {
             $product = $this->locked($company, $id);
+            if (null !== $version) {
+                $this->versions->expect($product, $version);
+            }
             $rows = $seesCosts ? $rows : $this->unseenCodesKept($rows, $product);
             if ($product->replaceBarcodes($this->barcodeLines($company, $rows, $product), $this->clock->now())) {
                 $this->products->save($product);

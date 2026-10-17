@@ -161,6 +161,16 @@ describe('ProductsFacade', () => {
     expect(facade.product()).toBeNull();
   });
 
+  it('writes the codes its tab saved into the product held, with the version they left', async () => {
+    api.product.mockResolvedValue(laptop);
+    await facade.loadProduct('c1', 'p1');
+    const codes = [{ role: 'unit' as const, code: '3017620422003', quantity: 1, supplierId: null }];
+
+    facade.barcodesSaved('p1', codes, laptop.version + 1);
+
+    expect(facade.product()).toEqual({ ...laptop, barcodes: codes, version: laptop.version + 1 });
+  });
+
   it("starts a new product in the unit the company's articles chain resolves", async () => {
     settingsApi.chain.mockResolvedValue([
       { key: 'article.stock_tracking', value: false } as SettingRow,

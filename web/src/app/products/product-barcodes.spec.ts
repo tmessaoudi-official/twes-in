@@ -41,6 +41,8 @@ describe('ProductBarcodesSection', () => {
     hasPermission: (permission: string) => !denied.has(permission),
   };
   let fixture: ComponentFixture<ProductBarcodesSection>;
+  /** What the section told the product page about the product's version. */
+  const moved: string[] = [];
 
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
@@ -52,7 +54,10 @@ describe('ProductBarcodesSection', () => {
     fixture = TestBed.createComponent(ProductBarcodesSection);
     fixture.componentRef.setInput('productId', 'p1');
     fixture.componentRef.setInput('saved', saved);
+    fixture.componentRef.setInput('version', 3);
     fixture.componentRef.setInput('readOnly', readOnly);
+    moved.length = 0;
+    fixture.componentInstance.moved.subscribe((how) => moved.push(how));
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -78,7 +83,7 @@ describe('ProductBarcodesSection', () => {
     modules.add('vendors');
     denied.clear();
     facade.loadSuppliers.mockReset().mockResolvedValue(undefined);
-    facade.save.mockReset().mockResolvedValue(true);
+    facade.save.mockReset().mockResolvedValue('saved');
     facade.forget.mockReset();
     TestBed.configureTestingModule({
       imports: [ProductBarcodesSection],
@@ -115,11 +120,91 @@ describe('ProductBarcodesSection', () => {
     (q('product-barcodes-save') as HTMLButtonElement).click();
     await fixture.whenStable();
 
-    expect(facade.save).toHaveBeenCalledWith('c1', 'p1', [
-      unit,
-      { role: 'internal', code: '10012345678902', quantity: 1, supplierId: null },
-    ]);
+    // The product's version the list was read at: the codes are shown beside the product form.
+    expect(facade.save).toHaveBeenCalledWith(
+      'c1',
+      'p1',
+      [unit, { role: 'internal', code: '10012345678902', quantity: 1, supplierId: null }],
+      3,
+    );
     expect(successToasts()).toContain('products.barcodes.saved');
+    expect(moved).toEqual(['saved']);
+  });
+
+  it('says a save refused as made over a version saved since, keeping the rows typed', async () => {
+    facade.save.mockResolvedValue('changed');
+    await open();
+    await scan('10012345678902');
+
+    (q('product-barcodes-save') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(moved).toEqual(['changed']);
+    expect(successToasts()).not.toContain('products.barcodes.saved');
+    expect(codes()).toEqual(['3017620422003', '10012345678902']);
+  });
+
+  const pack: ProductBarcode = {
+    role: 'pack',
+    code: '13017620422000',
+    quantity: 12,
+    supplierId: null,
+  };
+
+  /** Another person's save of the codes arriving, as the product page reads it again. */
+  async function savedElsewhere(saved: ProductBarcode[], version: number): Promise<void> {
+    fixture.componentRef.setInput('saved', saved);
+    fixture.componentRef.setInput('version', version);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it("takes another person's codes over rows nobody touched, saying nothing", async () => {
+    await open();
+
+    await savedElsewhere([unit, pack], 4);
+
+    expect(codes()).toEqual(['3017620422003', '13017620422000']);
+    expect(q('field-conflict-barcodes')).toBeNull();
+  });
+
+  // Docs/SPEC.md § 7, 2026-09-17: a form being typed in keeps what is typed and shows the banner.
+  it("keeps rows being typed when another person's codes arrive, and takes theirs on request", async () => {
+    await open();
+    await scan('10012345678902');
+
+    await savedElsewhere([pack], 4);
+
+    expect(codes()).toEqual(['3017620422003', '10012345678902']);
+    expect(q('field-conflict-barcodes')).not.toBeNull();
+
+    (q('field-take-theirs-barcodes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(codes()).toEqual(['13017620422000']);
+    expect(q('field-conflict-barcodes')).toBeNull();
+  });
+
+  it("keeps rows being typed over another person's codes on request, and saves them on the version read", async () => {
+    await open();
+    await scan('10012345678902');
+    await savedElsewhere([pack], 4);
+
+    (q('field-keep-mine-barcodes') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(q('field-conflict-barcodes')).toBeNull();
+
+    (q('product-barcodes-save') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(facade.save).toHaveBeenCalledWith(
+      'c1',
+      'p1',
+      [unit, { role: 'internal', code: '10012345678902', quantity: 1, supplierId: null }],
+      4,
+    );
   });
 
   // Developer, 2026-09-25: a code typed by hand left « Enregistrer » greyed with nothing saying Enter adds it.
@@ -157,10 +242,12 @@ describe('ProductBarcodesSection', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(facade.save).toHaveBeenCalledWith('c1', 'p1', [
-      unit,
-      { role: 'internal', code: '10012345678902', quantity: 1, supplierId: null },
-    ]);
+    expect(facade.save).toHaveBeenCalledWith(
+      'c1',
+      'p1',
+      [unit, { role: 'internal', code: '10012345678902', quantity: 1, supplierId: null }],
+      3,
+    );
     expect(field.value).toBe('');
   });
 
@@ -243,6 +330,7 @@ describe('ProductBarcodesSection', () => {
     fixture = TestBed.createComponent(ProductBarcodesSection);
     fixture.componentRef.setInput('productId', 'p1');
     fixture.componentRef.setInput('saved', [unit]);
+    fixture.componentRef.setInput('version', 3);
     fixture.componentRef.setInput('adding', '5449000000996');
     fixture.detectChanges();
     await fixture.whenStable();
@@ -264,6 +352,7 @@ describe('ProductBarcodesSection', () => {
     fixture = TestBed.createComponent(ProductBarcodesSection);
     fixture.componentRef.setInput('productId', 'p1');
     fixture.componentRef.setInput('saved', [unit]);
+    fixture.componentRef.setInput('version', 3);
     fixture.componentRef.setInput('readOnly', true);
     fixture.componentRef.setInput('adding', '5449000000996');
     fixture.detectChanges();

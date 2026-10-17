@@ -112,7 +112,7 @@ final class ProductCostTest extends ApiTestCase
     {
         $this->signedIn(['product.read', 'product.write']);
 
-        $this->sendJson('PUT', $this->path().'/barcodes', ['barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
+        $this->sendJson('PUT', $this->path().'/barcodes', ['version' => $this->storedVersion('product', $this->productId), 'barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
 
         self::assertResponseIsSuccessful();
         self::assertSame(['3017620422003'], array_column($this->listAt($this->json(), 'barcodes'), 'code'));
@@ -123,7 +123,7 @@ final class ProductCostTest extends ApiTestCase
     {
         $this->signedIn(['product.read', 'product.write']);
 
-        $this->sendJson('PUT', $this->path().'/barcodes', ['barcodes' => [
+        $this->sendJson('PUT', $this->path().'/barcodes', ['version' => $this->storedVersion('product', $this->productId), 'barcodes' => [
             ['role' => 'unit', 'code' => self::UNIT_CODE, 'quantity' => 1],
             ['role' => 'supplier', 'code' => 'F-OTHER', 'quantity' => 1, 'supplierId' => $this->vendor->getId()->toRfc4122()],
         ]]);

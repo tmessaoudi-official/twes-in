@@ -251,7 +251,7 @@ final class ProductsTest extends ApiTestCase
         $this->postJson($this->path(), $this->product());
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id).'/barcodes', ['barcodes' => [['role' => 'pack', 'code' => '13017620422000', 'quantity' => 12], ['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
+        $this->sendJson('PUT', $this->path($id).'/barcodes', ['version' => $this->storedVersion('product', $id), 'barcodes' => [['role' => 'pack', 'code' => '13017620422000', 'quantity' => 12], ['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
 
         self::assertResponseIsSuccessful();
         $codes = [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1, 'supplierId' => null], ['role' => 'pack', 'code' => '13017620422000', 'quantity' => 12, 'supplierId' => null]];
@@ -263,6 +263,40 @@ final class ProductsTest extends ApiTestCase
         self::assertSame($codes, $this->json()['barcodes'], 'a revision of the product keeps its codes, whatever it sends');
         $this->getJson($this->path($id));
         self::assertSame($codes, $this->json()['barcodes']);
+    }
+
+    /**
+     * The codes are written beside the product's form, so they name the product's version and move it (docs/SPEC.md
+     * § 7, 2026-10-17 08:55): a list read before another person's change is refused rather than written over it, and
+     * a product form open elsewhere is told.
+     */
+    public function testACodeListNamesTheProductVersionItWasReadAtAndMovesIt(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->postJson($this->path(), $this->product());
+        $id = $this->stringAt($this->json(), 'id');
+        $read = $this->intAt($this->json(), 'version');
+        $unit = ['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1];
+
+        $this->sendJson('PUT', $this->path($id).'/barcodes', ['barcodes' => [$unit]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a list sent without the version it was read at');
+        self::assertContains(['propertyPath' => 'version', 'reason' => 'value_required', 'params' => []], $this->refusals());
+
+        $this->sendJson('PUT', $this->path($id).'/barcodes', ['barcodes' => [$unit], 'version' => $read]);
+        self::assertResponseIsSuccessful();
+        $moved = $this->intAt($this->json(), 'version');
+        self::assertSame($read + 1, $moved, 'the codes changed, so the product\'s version moved, and the answer says which');
+        self::assertSame($moved, $this->storedVersion('product', $id));
+
+        $this->sendJson('PUT', $this->path($id).'/barcodes', ['barcodes' => [], 'version' => $read]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a list read before the change is refused');
+        self::assertSame('/problems/record-changed', $this->stringAt($this->json(), 'type'));
+        $this->getJson($this->path($id));
+        self::assertSame([$unit + ['supplierId' => null]], $this->json()['barcodes'], 'and nothing of it is written');
+
+        $this->sendJson('PUT', $this->path($id).'/barcodes', ['barcodes' => [$unit], 'version' => $moved]);
+        self::assertResponseIsSuccessful();
+        self::assertSame($moved, $this->intAt($this->json(), 'version'), 'the same codes change nothing, the version neither');
     }
 
     /** @return iterable<string, array{string, array<string, mixed>}> */
@@ -284,7 +318,7 @@ final class ProductsTest extends ApiTestCase
         $this->postJson($this->path(), $this->product());
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id).'/barcodes', ['barcodes' => [$row]]);
+        $this->sendJson('PUT', $this->path($id).'/barcodes', ['version' => $this->storedVersion('product', $id), 'barcodes' => [$row]]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
@@ -299,16 +333,16 @@ final class ProductsTest extends ApiTestCase
         $this->signedIn(['product.read', 'product.write']);
         $first = $this->created($this->product());
         $second = $this->created($this->product(['reference' => 'ART-002']));
-        $this->sendJson('PUT', $this->path($first).'/barcodes', ['barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
+        $this->sendJson('PUT', $this->path($first).'/barcodes', ['version' => $this->storedVersion('product', $first), 'barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
         self::assertResponseIsSuccessful();
 
         // The same GTIN with a leading zero, on a pack: still the same code.
-        $this->sendJson('PUT', $this->path($second).'/barcodes', ['barcodes' => [['role' => 'internal', 'code' => 'X-1', 'quantity' => 1], ['role' => 'pack', 'code' => '03017620422003', 'quantity' => 6]]]);
+        $this->sendJson('PUT', $this->path($second).'/barcodes', ['version' => $this->storedVersion('product', $second), 'barcodes' => [['role' => 'internal', 'code' => 'X-1', 'quantity' => 1], ['role' => 'pack', 'code' => '03017620422003', 'quantity' => 6]]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a second product cannot take the same code');
         self::assertStringContainsString('barcodes.1.code: 03017620422003 is already a code of ART-001', $this->stringAt($this->json(), 'detail'));
 
         // Its own code is not "taken" by anyone else, and the same list again is no change: nothing more is audited.
-        $this->sendJson('PUT', $this->path($first).'/barcodes', ['barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
+        $this->sendJson('PUT', $this->path($first).'/barcodes', ['version' => $this->storedVersion('product', $first), 'barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
         self::assertResponseIsSuccessful();
         self::assertCount(1, $this->em()->getConnection()->fetchFirstColumn("SELECT id FROM audit_log WHERE action = 'product.revised'"));
     }
@@ -318,7 +352,7 @@ final class ProductsTest extends ApiTestCase
     {
         $this->signedIn(['product.read', 'product.write', 'invoice.read', 'invoice.write']);
         $screws = $this->created($this->product(['reference' => 'ZZZ-9', 'name' => 'Carton de vis']));
-        $this->sendJson('PUT', $this->path($screws).'/barcodes', ['barcodes' => [['role' => 'pack', 'code' => '10012345678902', 'quantity' => 100]]]);
+        $this->sendJson('PUT', $this->path($screws).'/barcodes', ['version' => $this->storedVersion('product', $screws), 'barcodes' => [['role' => 'pack', 'code' => '10012345678902', 'quantity' => 100]]]);
         // Its name matches the words "carton" too; the product whose code the words ARE comes first all the same.
         $this->created($this->product(['reference' => 'AAA-1', 'name' => 'Carton vide']));
 
@@ -353,7 +387,7 @@ final class ProductsTest extends ApiTestCase
         // Each its own unit and codes, so the identity map cannot hide a read per row.
         foreach (['C62', 'H87', 'HUR', 'DAY', 'KGM', 'MTR'] as $n => $unit) {
             $id = $this->created($this->product(['reference' => 'ART-10'.$n, 'unitId' => $this->unitId($unit)]));
-            $this->sendJson('PUT', $this->path($id).'/barcodes', ['barcodes' => [['role' => 'unit', 'code' => 'CODE-'.$n, 'quantity' => 1]]]);
+            $this->sendJson('PUT', $this->path($id).'/barcodes', ['version' => $this->storedVersion('product', $id), 'barcodes' => [['role' => 'unit', 'code' => 'CODE-'.$n, 'quantity' => 1]]]);
             self::assertResponseIsSuccessful();
         }
         $this->em()->clear();
@@ -428,7 +462,7 @@ final class ProductsTest extends ApiTestCase
         $this->postJson($this->path(), $this->product());
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id).'/barcodes', ['barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
+        $this->sendJson('PUT', $this->path($id).'/barcodes', ['version' => $this->storedVersion('product', $id), 'barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
         self::assertResponseIsSuccessful();
         $this->getJson($this->path($id));
         self::assertSame(2, $this->json()['version']);

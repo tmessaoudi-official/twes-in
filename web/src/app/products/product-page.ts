@@ -207,7 +207,8 @@ export class ProductPage {
 
   /** The saved version the form stands on, and what another person's save changed in it. */
   protected readonly sync = liveRecord({
-    kind: 'product',
+    // Its homes are audited under their own kind and shown beside the form, which their change moves.
+    kind: ['product', 'product_home_location'],
     id: this.id,
     form: this.form,
     reload: async () => {
@@ -280,12 +281,13 @@ export class ProductPage {
     const current = this.current();
     return current && this.showsCost() ? current.id : null;
   });
+  /** The saved product whose homes may be read, whose version their writes send back. */
   protected readonly homesOf = computed(() => {
     const current = this.current();
     if (!current || !this.auth.hasModule('inventory') || !this.auth.hasPermission('stock.read')) {
       return null;
     }
-    return current.id;
+    return current;
   });
 
   /** The subject of the defaults panel: the product once it exists. */
@@ -488,6 +490,15 @@ export class ProductPage {
     } else {
       this.showRefused();
     }
+  }
+
+  /**
+   * A tab beside the form (the codes, the homes) moved the product's version: the form stands on the version it left,
+   * or, refused as made over one saved since, the product is read again and merged, saying nothing was saved.
+   */
+  protected async productMoved(how: 'saved' | 'changed'): Promise<void> {
+    if (how === 'saved') await this.sync.savedBeside();
+    else await this.sync.savedElsewhere();
   }
 
   /** Each field the API refused said on that field; the line above the form stays for what it says as a whole. */

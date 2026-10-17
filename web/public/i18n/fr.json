@@ -2151,6 +2151,7 @@
       "taken": "Ce code est déjà celui de l’article {{reference}}.",
       "refused": "Ce code a été refusé.",
       "saved": "Codes enregistrés.",
+      "changed_since": "Les codes ont aussi été modifiés dans la version enregistrée.",
       "problems": {
         "code_required": "Saisissez le code.",
         "code_shape": "Un code a de 1 à 64 caractères, sans espace.",
