@@ -28,13 +28,16 @@ echo "restic $*" >> "$TMPDIR/calls"
 [[ " $* " == *" cat config "* ]] && exit "${RESTIC_MISSING:-0}"
 exit "${RESTIC_STATUS:-0}"
 EOF
-for tool in pg_isready pg_dump mv curl; do printf '#!/usr/bin/env bash\necho "%s $*" >> "$TMPDIR/calls"\n' "$tool" > "$TMPDIR/bin/$tool"; done
+for tool in pg_isready pg_dump mv curl supercronic; do printf '#!/usr/bin/env bash\necho "%s $*" >> "$TMPDIR/calls"\n' "$tool" > "$TMPDIR/bin/$tool"; done
 cat > "$TMPDIR/bin/install" <<'EOF'
 #!/usr/bin/env bash
 echo "install $*" >> "$TMPDIR/calls"
 EOF
 chmod +x "$TMPDIR/bin/"*
-run() { rm -f "$TMPDIR/calls"; env PATH="$TMPDIR/bin:$PATH" MONITOR_URL= "$@" bash "$SCRIPT" "$STEP" 2>&1; }
+O=$TMPDIR/outcome
+run() { rm -f "$TMPDIR/calls"; env PATH="$TMPDIR/bin:$PATH" MONITOR_URL= OUTCOME_DIRECTORY="$O" BACKUP_LOCK="$TMPDIR/lock" "$@" bash "$SCRIPT" "$STEP" 2>&1; }
+# A step's last success, so many hours ago.
+done_ago() { mkdir -p "$O"; echo "$(( $(date +%s) - $2 * 3600 ))" > "$O/$1.ok"; }
 calls() { [[ -f "$TMPDIR/calls" ]] && tr '\n' '|' < "$TMPDIR/calls"; }
 echo "backup steps"
 
@@ -72,6 +75,54 @@ check "a base backup that fails stops the update before anything else" $? 5 "$ou
 [[ "$(calls)" != *"restic"* ]]; check "and nothing is copied after it" $? 0 "$(calls)" ""
 out=$(STEP=before-update run INFO_JSON='[]')
 check "a backup it cannot name is a failure, never an update without a way back" $? 1 "$out" "names no backup"
+
+# Each step writes down how it ended, monitor or not: what due reads, and what a shop's twes tick alerts on.
+rm -rf "$O"; out=$(STEP=full run)
+check "a step that worked is written down as such" $? 0 "$(cat "$O/full" 2>&1)" " ok"
+[[ -s "$O/full.ok" ]]; check "  with the moment of its last success" $? 0 "" ""
+out=$(STEP=diff run PGBR_STATUS=2)
+check "a step that failed is written down with why" 0 0 "$(cat "$O/diff" 2>&1)" "failed diff exited 2"
+[[ ! -e "$O/diff.ok" ]]; check "  and no success is claimed for it" $? 0 "" ""
+
+# due: what a computer switched off at night runs once it is on, each step once its last success is older than its period.
+rm -rf "$O"; before=$(date +%s); out=$(STEP=due run)
+check "nothing done yet: a full backup first" $? 0 "$(calls)" "pgbackrest --stanza=twes --type=full backup"
+ran='' word=''; [[ -f "$O/due" ]] && read -r ran word < "$O/due"; [[ "$ran" =~ ^[0-9]+$ && "$ran" -ge "$before" && "$word" == ran ]]
+check "  and the schedule writes down that it ran, which twes tick reads to know it is alive" $? 0 "$(cat "$O/due" 2>&1)" ""
+check "  then the copy" 0 0 "$(calls)" "pg_dump"
+check "  then both repositories read back" 0 0 "$(calls)" "pgbackrest --stanza=twes verify"
+[[ "$(calls)" != *"--type=diff"* && "$(calls)" != *"offsite"* ]]; check "  and no differential, nor the off-site copy while it is off" $? 0 "$(calls)" ""
+
+rm -rf "$O"; done_ago full 30; done_ago copy 1; done_ago verify 30
+out=$(STEP=due run)
+check "a day since the full backup: a differential" $? 0 "$(calls)" "--type=diff backup"
+[[ "$(calls)" != *"--type=full"* && "$(calls)" != *"pg_dump"* && "$(calls)" != *"pgbackrest --stanza=twes verify"* ]]
+check "  and nothing whose last success is recent" $? 0 "$(calls)" ""
+
+rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30
+out=$(STEP=due run); [[ "$(calls)" != *"pgbackrest --stanza=twes --type"* ]]
+check "a differential two hours old: no base backup" $? 0 "$(calls)" ""
+
+rm -rf "$O"; done_ago full 200; done_ago diff 2; done_ago copy 2; done_ago verify 30
+out=$(STEP=due run); check "a full backup older than a week: a full one, whatever the differentials" $? 0 "$(calls)" "--type=full backup"
+
+rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 30; done_ago verify 200
+out=$(STEP=due run); check "a week since the last read-back: read back" $? 0 "$(calls)" "pgbackrest --stanza=twes verify"
+
+rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30
+out=$(STEP=due run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
+check "the off-site copy switched on is due once a day" $? 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite backup"
+
+rm -rf "$O"; out=$(STEP=due run PGBR_STATUS=2)
+check "a base backup that fails fails the run" $? 1 "$out" "failed"
+check "  and the copy still runs" 0 0 "$(calls)" "pg_dump"
+
+out=$(STEP=run run BACKUP_SCHEDULE=due)
+check "a shop's schedule runs due every half hour" $? 0 "$(calls)" "supercronic -passthrough-logs /etc/twes-backup/crontab.due"
+out=$(STEP=run run)
+check "a server keeps the nightly schedule" $? 0 "$(calls)" "supercronic -passthrough-logs /etc/twes-backup/crontab|"
+out=$(STEP=run run BACKUP_SCHEDULE=weekly)
+check "a schedule of another name is refused" $? 1 "$out" "BACKUP_SCHEDULE"
 
 echo "backup steps: $pass passed, $fail failed"
 ((fail == 0))

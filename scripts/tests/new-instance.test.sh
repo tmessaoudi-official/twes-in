@@ -48,5 +48,23 @@ check "  saying it is staging, which its errors and deploy.sh read" 0 0 "$(value
 check "  and the operator told to give it a bucket and keys of its own" 0 0 "$out" "never production's"
 [[ "$(value "$s" APP_MFA_KEY)" != "$(value "$f" APP_MFA_KEY)" ]]; check "  sharing no secret with production" $? 0 "" ""
 
+# --onprem: a shop's installation (docs/START.md § 16), which deploy.sh and scripts/onprem/twes read.
+o="$TMPDIR/shop/install.env"
+out=$(bash "$SCRIPT" --onprem "$o" 2>&1); check "a shop's file is written" $? 0 "$out" "$o"
+check "  readable by its owner alone" 0 0 "$(stat -c %a "$o")" "600"
+check "  saying it is a shop's, which deploy.sh reads for its layers" 0 0 "$(value "$o" TWES_INSTALL)" "onprem"
+missing=(); for k in "${SECRETS[@]}"; do [[ -n "$(value "$o" "$k")" ]] || missing+=("$k"); done
+check "  with every secret filled in" "${#missing[@]}" 0 "${missing[*]:-}" ""
+filled=(); for k in MAILER_DSN MAILER_SENDER ALERT_EMAIL BACKUP_DIRECTORY BACKUP_S3_ENDPOINT BACKUP_S3_BUCKET BACKUP_S3_REGION \
+  BACKUP_S3_KEY BACKUP_S3_SECRET MONITOR_URL SENTRY_DSN UPDATE_WINDOW; do grep -qE "^$k=$" "$o" || filled+=("$k"); done
+check "  every fact left blank for whoever installs it" "${#filled[@]}" 0 "${filled[*]:-}" ""
+check "  the off-site copy off until a bucket is given" 0 0 "$(value "$o" BACKUP_OFFSITE)" "off"
+check "  updates announced, never applied, until a window is set" 0 0 "$(value "$o" UPDATE_POLICY)" "notify"
+grep -qE '^(TWES_HOST|EDGE_TLS|LAN_HOST|DEPLOY_ENV|BACKUP_S3_PREFIX)=' "$o"; check "  naming no server's host, no fixed address and nothing of staging's" $? 1 "" ""
+check "  the shop's Gmail shown as the relay's shape" 0 0 "$(cat "$o")" "smtp.gmail.com:587"
+check "  and the escrow list given" 0 0 "$out" "BACKUP_DATABASE_PASSPHRASE"
+[[ "$(value "$o" APP_SECRET)" != "$(value "$f" APP_SECRET)" ]]; check "  sharing no secret with any other instance" $? 0 "" ""
+out=$(bash "$SCRIPT" --onprem --staging "$TMPDIR/both.env" 2>&1); check "a shop is never staging" $? 2 "$out" "Usage"
+
 echo "new-instance: $pass passed, $fail failed"
 ((fail == 0))

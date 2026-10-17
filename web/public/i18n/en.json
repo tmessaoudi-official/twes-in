@@ -664,7 +664,13 @@
       "invoice_recurring_stopped": "Recurring invoice for {{customer}} paused: invoice {{number}}, which it copies, can no longer be copied.",
       "expense_recurring_drafted": "Recurring expense “{{description}}”: a draft is waiting to be checked and recorded.",
       "expense_recurring_stopped": "Recurring expense “{{description}}” paused: the expense it copies can no longer be copied.",
-      "stock_imported": "A stock import found {{differences}} {differences, plural, one {difference} other {differences}} in {{counted}} {counted, plural, one {counted row} other {counted rows}}."
+      "stock_imported": "A stock import found {{differences}} {differences, plural, one {difference} other {differences}} in {{counted}} {counted, plural, one {counted row} other {counted rows}}.",
+      "installation_update_available": "Version {{version}} is out; this computer runs {{previous}}. Ask whoever runs the installation to update it.",
+      "installation_rolled_back": "The update to {{version}} did not answer: {{previous}} is back. Backup taken before: {{label}}.",
+      "installation_update_failed": "The update to {{version}} failed and {{previous}} does not answer: restore the backup {{label}} (commands in the mail).",
+      "installation_unhealthy": "The installation’s health check fails: {{check}}.",
+      "installation_backup_failed": "The backup “{{step}}” failed.",
+      "installation_backup_stopped": "The backups no longer run."
     },
     "kinds": {
       "membership_added": "Added to a company",
@@ -692,7 +698,13 @@
       "support_access_granted": "Support access opened",
       "support_access_ended": "Support access closed",
       "unknown": "Other notification",
-      "stock_imported": "Stock import differences"
+      "stock_imported": "Stock import differences",
+      "installation_update_available": "New version out",
+      "installation_rolled_back": "Update rolled back",
+      "installation_update_failed": "Update failed",
+      "installation_unhealthy": "Installation unhealthy",
+      "installation_backup_failed": "Backup failed",
+      "installation_backup_stopped": "Backups stopped"
     }
   },
   "invitation": {

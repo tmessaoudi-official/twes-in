@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# A shop's schedule (BACKUP_SCHEDULE=due, compose.backup-local.yaml): its computer is off at night, so every half hour
+# the backup service runs each step whose last success is older than its period (twes-backup due).
+*/30 * * * * twes-backup due

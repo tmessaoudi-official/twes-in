@@ -52,6 +52,12 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'support_access.granted',
   'support_access.ended',
   'data.check_failed',
+  'installation.update_available',
+  'installation.rolled_back',
+  'installation.update_failed',
+  'installation.unhealthy',
+  'installation.backup_failed',
+  'installation.backup_stopped',
 ] as const;
 
 /** "membership.added" → "notifications.types.membership_added"; an unknown type → the generic key. */
@@ -227,6 +233,14 @@ const RECORDS = new Map<string, NotificationRecord>([
   ],
   // An operator's, about a company not theirs: the mail says it all, and there is nothing here to open.
   ['data.check_failed', { icon: 'notifications', route: null, permission: null }],
+  // The installation's own (scripts/onprem/twes): an owner asks whoever runs it to apply a release, and an operator
+  // reads the mail the script sent with the commands; there is nothing in a company to open for either.
+  ['installation.update_available', { icon: 'fiber_new', route: null, permission: null }],
+  ['installation.rolled_back', { icon: 'undo', route: null, permission: null }],
+  ['installation.update_failed', { icon: 'error', route: null, permission: null }],
+  ['installation.unhealthy', { icon: 'sync_problem', route: null, permission: null }],
+  ['installation.backup_failed', { icon: 'cloud_off', route: null, permission: null }],
+  ['installation.backup_stopped', { icon: 'cloud_off', route: null, permission: null }],
 ]);
 
 export function notificationRecord(type: string): NotificationRecord {

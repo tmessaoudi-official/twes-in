@@ -1,0 +1,419 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# A shop's installation on its own computer (docs/START.md § 16): what its scheduled tasks and its shortcuts run.
+#   twes start                     reads this machine's network address, then starts the release deployed here again,
+#                                  nothing fetched, so a morning without the internet still opens
+#   twes update                    the newest release tag: the database and the files backed up first (their label kept),
+#                                  the release deployed by digest, its deep health read through the edge; unhealthy,
+#                                  the release it left is started again on the current schema and the developer told
+#   twes policy auto HH:MM-HH:MM   updates applied by tick inside that daily window, in the shop's time
+#   twes policy notify | off       the owners told in the app that a release is out, or nothing
+#   twes offsite on | off          the off-site copy of the backups (its bucket's values given first)
+#   twes tick                      every quarter hour: a new network address, alerts held back, deep health, the backups'
+#                                  outcomes and their schedule, then the update policy
+#   twes status                    what runs, its policy, address, health and backups
+#   twes restore-commands          what takes the installation back to the backup made before the last update
+# The values are the file scripts/deploy/new-instance.sh --onprem wrote, TWES_VALUES, by default ~/.twes-in/install.env;
+# beside it, releases/ (deploy.sh's record) and state/ (this script's). Alerts are mailed through the shop's own account
+# to ALERT_EMAIL, so a mail leaves while the application is down, and recorded in the application, held under state/
+# until it answers. Every secret it hands to curl goes through a file of mode 600, never the command line.
+set -euo pipefail
+usage() {
+  echo "Usage: twes start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands" >&2
+  exit 2
+}
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+deploy=$root/scripts/deploy/deploy.sh
+values=${TWES_VALUES:-$HOME/.twes-in/install.env}
+state=$(dirname "$values")/state
+records=$(dirname "$values")/releases
+# The shop's time, which its window is read in; the backups keep UTC.
+zone=${TWES_ZONE:-Africa/Tunis}
+release_tags='v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*'
+
+say() { printf '%s twes %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$state/twes.log"; }
+refuse() { echo "twes: refused — $*" >&2; exit 1; }
+value() { awk -v k="$1" 'index($0, k "=") == 1 { v = substr($0, length(k) + 2) } END { print v }' "$values"; }
+now() { echo "${TWES_NOW:-$(date +%s)}"; }
+# A state file's first line, or the default when it was never written.
+recall() { if [[ -f "$state/$1" ]]; then head -n 1 "$state/$1"; else echo "${2:-}"; fi; }
+# Whether a state file lists a line, exactly.
+listed() { [[ -f "$state/$2" ]] && grep -qxF -e "$1" "$state/$2"; }
+# A moment in the shop's time, HH:MM; GNU date and BSD date (macOS) each take the epoch their own way.
+shop_time() {
+  if date -d @0 +%s >/dev/null 2>&1; then TZ=$zone date -d "@$1" +%H:%M; else TZ=$zone date -r "$1" +%H:%M; fi
+}
+shop_day() {
+  if date -d @0 +%s >/dev/null 2>&1; then TZ=$zone date -d "@$1" +%F; else TZ=$zone date -r "$1" +%F; fi
+}
+
+[[ -f "$values" ]] || refuse "no values at $values (scripts/deploy/new-instance.sh --onprem writes them; TWES_VALUES names another)"
+[[ "$(value TWES_INSTALL)" == onprem ]] || refuse "$values are not a shop's (TWES_INSTALL=onprem)"
+umask 077
+mkdir -p "$state"
+
+# This machine's address on the shop's network, as a phone reaches it: the router may hand out another one any morning.
+# Under WSL it is Windows', whose ports Docker Desktop publishes, never the Linux side's own. Without a network, only this
+# computer opens the application, at https://localhost.
+platform() {
+  if [[ -n "${TWES_PLATFORM:-}" ]]; then echo "$TWES_PLATFORM"
+  elif [[ "$(uname -s)" == Darwin ]]; then echo macos
+  elif grep -qi microsoft /proc/version; then echo wsl
+  else echo linux
+  fi
+}
+detect_address() {
+  case "$(platform)" in
+    wsl)
+      powershell.exe -NoProfile -NonInteractive -Command \
+        "(Get-NetIPConfiguration | Where-Object { \$_.IPv4DefaultGateway -ne \$null -and \$_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1).IPv4Address.IPAddress" \
+        | tr -d '\r' ;;
+    macos) ipconfig getifaddr "$(route -n get default | awk '/interface:/ { print $2 }')" ;;
+    *) ip -4 route get 1.1.1.1 | sed -n 's/.* src \([0-9.]*\).*/\1/p' ;;
+  esac
+}
+lan_address() {
+  local fixed found
+  fixed=$(value LAN_HOST)
+  if [[ -n "$fixed" ]]; then echo "$fixed"; return 0; fi
+  # A machine with no route answers with an error, which is that case and no other: the fallback says so.
+  found=$(detect_address 2>/dev/null | head -n 1) || found=''
+  if [[ "$found" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ && "$found" != 127.* ]]; then echo "$found"; else echo 127.0.0.1; fi
+}
+
+# Compose on the release running here, at the address it was started with.
+compose() { LAN_HOST=$(cat "$state/lan-host") bash "$deploy" --compose "$values" "$@"; }
+
+# What runs now: the last release deploy.sh started here, whichever way.
+running() { if [[ -f "$records/history" ]]; then awk '$2 == "deployed" || $2 == "started" { r = $3 } END { print r }' "$records/history"; fi; }
+# A commit's release tag; a commit at none (a checkout made by hand) is named by itself.
+tag_of() { git -C "$root" describe --exact-match --tags --match "$release_tags" "$1" 2>/dev/null || echo "$1"; }
+
+# --- Alerts ------------------------------------------------------------------------------------------------------------
+
+# A parameter is a word and a value of one line with no tab: what a held-back alert is written down as.
+check_params() {
+  local p
+  for p in "$@"; do [[ "$p" =~ ^[a-z_]+=[^$'\t\n']*$ ]] || refuse "an alert's parameter must be name=value on one line: $p"; done
+}
+urldecode() { local s=${1//+/ }; printf '%b' "${s//%/\\x}"; }
+
+# Through the shop's own account (MAILER_DSN, smtp://user:password@host:port), STARTTLS required, or TLS from the start
+# on 465. The account and its password reach curl through a netrc file, never its command line.
+mail_alert() {
+  local subject=$1 body=$2 dsn to from rest auth hostport host port user pass url
+  dsn=$(value MAILER_DSN) to=$(value ALERT_EMAIL) from=$(value MAILER_SENDER)
+  if [[ -z "$dsn" || -z "$to" || -z "$from" ]]; then say "not mailed (MAILER_DSN, MAILER_SENDER and ALERT_EMAIL are needed): $subject"; return 0; fi
+  [[ "$dsn" =~ ^smtps?://([^@]+)@([^/?]+) ]] || { say "not mailed: MAILER_DSN is not smtp://user:password@host:port"; return 0; }
+  auth=${BASH_REMATCH[1]} hostport=${BASH_REMATCH[2]}
+  user=$(urldecode "${auth%%:*}") pass=$(urldecode "${auth#*:}")
+  host=${hostport%:*} port=${hostport##*:}
+  [[ "$port" != "$hostport" ]] || port=587
+  if [[ "$port" == 465 ]]; then url="smtps://$host:465"; else url="smtp://$host:$port"; fi
+  rest=$state/mail.$$
+  printf 'machine %s login %s password %s\n' "$host" "$user" "$pass" > "$rest.netrc"
+  {
+    # A header is ASCII: the subject, accented, is written as RFC 2047 says.
+    printf 'From: twes-in <%s>\r\nTo: %s\r\nSubject: =?UTF-8?B?%s?=\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n' \
+      "$from" "$to" "$(printf '%s' "$subject" | base64 | tr -d '\n')"
+    printf '%s\n' "$body" | sed 's/$/\r/'
+  } > "$rest.eml"
+  if curl -sS --max-time 60 --ssl-reqd --netrc-file "$rest.netrc" --url "$url" --mail-from "$from" --mail-rcpt "$to" --upload-file "$rest.eml"; then
+    say "mailed to $to: $subject"
+  else
+    say "the mail to $to did not leave: $subject"
+  fi
+  rm -f "$rest.netrc" "$rest.eml"
+}
+
+# Recorded in the application (app:installation:tell), or held back until it answers. A line it refuses exits 2
+# (INVALID): it would be refused at every try, so it is said, with the application's reason, and never kept.
+deliver() {
+  local said code=0
+  said=$(compose exec -T api bin/console app:installation:tell --no-interaction "$@" 2>&1) || code=$?
+  if ((code == 2)); then say "the application refused $1: $(tr '\n' ' ' <<<"$said" | sed 's/ *$//')"; return 0; fi
+  return "$code"
+}
+tell() {
+  deliver "$@" && return 0
+  (IFS=$'\t'; echo "$*") >> "$state/pending-alerts"
+  say "held back until the application answers: $1"
+}
+deliver_held() {
+  [[ -s "$state/pending-alerts" ]] || return 0
+  local line kept=() fields
+  while IFS= read -r line; do
+    IFS=$'\t' read -ra fields <<<"$line"
+    deliver "${fields[@]}" || kept+=("$line")
+  done < "$state/pending-alerts"
+  if ((${#kept[@]})); then printf '%s\n' "${kept[@]}" > "$state/pending-alerts"; else rm -f "$state/pending-alerts"; fi
+}
+
+# kind, the mail's subject, its body, then the parameters the application's notification carries.
+alert() {
+  local kind=$1 subject=$2 body=$3; shift 3
+  check_params "$@"
+  mail_alert "[twes-in $(hostname)] $subject" "$body"
+  tell "$kind" "$@"
+}
+
+# --- Health ------------------------------------------------------------------------------------------------------------
+
+# The deep health check through the edge, as the shop's browser reaches it, trusting the installation's own authority.
+# Prints what fails when it fails; a release just started gets three minutes to settle.
+deep_health() {
+  local tries=${1:-1} code
+  curl -fsS --max-time 10 -o "$state/root.crt" http://localhost/root.crt || { echo edge; return 1; }
+  printf 'Authorization: Bearer %s\n' "$(value MONITOR_TOKEN)" > "$state/health.header"
+  while :; do
+    code=$(curl -sS --max-time 15 --cacert "$state/root.crt" -H "@$state/health.header" -o "$state/health.json" \
+      -w '%{http_code}' https://localhost/api/health/deep) || code=000
+    [[ "$code" == 200 ]] && return 0
+    tries=$((tries - 1))
+    ((tries > 0)) || break
+    sleep "${TWES_HEALTH_PAUSE:-10}"
+  done
+  if [[ "$code" == 503 ]]; then sed -n 's/.*"failing":\[\([^]]*\)\].*/\1/p' "$state/health.json" | tr -d '"'; else echo "api ($code)"; fi
+  return 1
+}
+
+# --- Commands ----------------------------------------------------------------------------------------------------------
+
+start() {
+  local address
+  [[ -n "$(running)" ]] || refuse "nothing is deployed here yet: twes update installs the newest release"
+  address=$(lan_address)
+  [[ "$address" != 127.0.0.1 ]] || say "no network address found: only this computer opens https://localhost"
+  echo "$address" > "$state/lan-host"
+  LAN_HOST=$address bash "$deploy" --again "$values"
+  now > "$state/started-at"
+  deliver_held
+  say "running: https://localhost here, https://$address from the shop's network (a phone trusts http://$address/root.crt once)"
+}
+
+# Each run reads no input: pasted as one block, docker compose run would take the lines after it as its own input.
+restore_commands() { # label, commit, address
+  local dc="LAN_HOST=$3 bash scripts/deploy/deploy.sh --compose $values"
+  cat <<EOF
+Nothing was deleted. To go back to the moment before the update, on the shop's computer, in $root:
+  git checkout --detach $2
+  $dc stop
+  $dc run --rm --no-deps restore gosu postgres pgbackrest --stanza=twes --spool-path=/tmp --set=$1 --type=immediate --target-action=promote --delta restore < /dev/null
+  $dc run --rm --no-deps restore restic restore latest --tag before-update --host twes --include /files --target / < /dev/null
+  bash scripts/onprem/twes start
+docs/RUNBOOK.md, « Restore a shop », gives each step and what to check after it.
+EOF
+}
+# The same, for the last update made here, at any time after it: what the developer runs when the mail is not at hand.
+restore_last() {
+  local newest previous label
+  [[ -s "$state/last-update" ]] || refuse "no update was made here, so there is no backup taken before one to go back to"
+  read -r newest previous label < "$state/last-update"
+  echo "The last update here was to $newest, from $(tag_of "$previous"), backed up before as $label."
+  restore_commands "$label" "$previous" "$(recall lan-host 127.0.0.1)"
+}
+
+update() {
+  local auto=${1:-} newest current previous='' label='' failure address
+  exec 8> "$state/update.lock"
+  flock -n 8 || { say "an update is already running"; return 0; }
+  git -C "$root" fetch --quiet --tags origin || { say "the releases could not be read (no network?): nothing changed"; return 1; }
+  newest=$(git -C "$root" tag --list "$release_tags" --sort=-v:refname | head -n 1)
+  [[ -n "$newest" ]] || { say "no release published yet"; return 0; }
+  previous=$(running)
+  current=''
+  [[ -z "$previous" ]] || current=$(tag_of "$previous")
+  if [[ "$newest" == "$current" ]]; then say "up to date: $current"; return 0; fi
+  if [[ -n "$auto" ]] && listed "$newest" failed-releases; then
+    say "$newest failed here before: it is applied only by hand (twes update)"; return 0
+  fi
+  address=$(recall lan-host)
+  [[ -n "$address" ]] || address=$(lan_address)
+  echo "$address" > "$state/lan-host"
+
+  if [[ -n "$previous" ]]; then
+    label=$(compose exec -T backup twes-backup before-update | sed -n 's/.*before-update: //p' | tail -n 1) || label=''
+    if [[ ! "$label" =~ ^[0-9]{8}-[0-9]{6}F(_[0-9]{8}-[0-9]{6}[DI])?$ ]]; then
+      alert installation.backup_failed "Mise à jour annulée : la sauvegarde d'avant n'a pas été faite" \
+        "La sauvegarde prise avant la mise à jour vers $newest n'a pas abouti : rien n'a été changé, $current tourne toujours." \
+        "version=$newest" "step=before-update"
+      return 1
+    fi
+    printf '%s %s %s\n' "$newest" "$previous" "$label" > "$state/last-update"
+    say "backed up before the update: $label"
+  fi
+
+  git -C "$root" checkout --quiet --detach "$newest"
+  if LAN_HOST=$address bash "$deploy" --release "$values" && failure=$(deep_health 18); then
+    say "updated to $newest"
+    if [[ -f "$state/failed-releases" ]]; then
+      awk -v t="$newest" '$0 != t' "$state/failed-releases" > "$state/failed-releases.new"
+      mv -f "$state/failed-releases.new" "$state/failed-releases"
+    fi
+    return 0
+  fi
+  failure=${failure:-the start}
+  echo "$newest" >> "$state/failed-releases"
+  if [[ -z "$previous" ]]; then
+    alert installation.update_failed "Installation de $newest en échec" \
+      "La première installation de $newest ne répond pas (en échec : $failure). Rien d'autre ne tournait sur cet ordinateur." \
+      "version=$newest" "previous=-" "label=-"
+    return 1
+  fi
+  say "$newest is unhealthy ($failure): starting $current again on the current schema"
+  git -C "$root" checkout --quiet --detach "$previous"
+  if LAN_HOST=$address bash "$deploy" --again "$values" && deep_health 18 >/dev/null; then
+    alert installation.rolled_back "Mise à jour vers $newest annulée, $current a repris" \
+      "La mise à jour vers $newest ne répondait pas (en échec : $failure). $current a été redémarré sur le schéma actuel et répond.
+Sauvegarde prise avant la mise à jour : $label" \
+      "version=$newest" "previous=$current" "label=$label"
+    return 1
+  fi
+  alert installation.update_failed "URGENT : mise à jour vers $newest en échec, et le retour à $current aussi" \
+    "La mise à jour vers $newest ne répondait pas (en échec : $failure), et $current redémarré ne répond pas non plus.
+$(restore_commands "$label" "$previous" "$address")" \
+    "version=$newest" "previous=$current" "label=$label"
+  return 1
+}
+
+set_value() { # name value: the values file rewritten beside itself, readable by its owner alone
+  local tmp=$values.new.$$
+  awk -v k="$1" -v v="$2" 'index($0, k "=") == 1 { if (!done) print k "=" v; done = 1; next } { print } END { if (!done) print k "=" v }' \
+    "$values" > "$tmp"
+  chmod 600 "$tmp"
+  mv -f "$tmp" "$values"
+}
+
+policy() {
+  case "${1:-}" in
+    auto)
+      [[ "${2:-}" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$ ]] || refuse "a window is HH:MM-HH:MM in the shop's time, such as 13:00-14:00"
+      [[ "${2%-*}" < "${2#*-}" ]] || refuse "the window $2 ends before it starts"
+      set_value UPDATE_POLICY auto; set_value UPDATE_WINDOW "$2"
+      say "updates applied between ${2%-*} and ${2#*-}, $zone time" ;;
+    notify | off)
+      [[ $# -eq 1 ]] || usage
+      set_value UPDATE_POLICY "$1"; set_value UPDATE_WINDOW ''
+      say "update policy: $1" ;;
+    *) usage ;;
+  esac
+}
+
+offsite() {
+  local name
+  case "${1:-}" in
+    on)
+      for name in BACKUP_S3_ENDPOINT BACKUP_S3_BUCKET BACKUP_S3_REGION BACKUP_S3_KEY BACKUP_S3_SECRET; do
+        [[ -n "$(value "$name")" ]] || refuse "$name is empty in $values: the bucket's values come first"
+      done ;;
+    off) ;;
+    *) usage ;;
+  esac
+  set_value BACKUP_OFFSITE "$1"
+  say "off-site copy $1"
+  start
+}
+
+# What the backup service wrote down, as `<step> <line>`, one step a line; fails when the service does not answer.
+backup_outcomes() {
+  compose exec -T backup sh -c 'cd /var/lib/twes-backup/outcome || exit 0; for f in full diff copy verify offsite due; do [ -f "$f" ] && echo "$f $(cat "$f")"; done; true'
+}
+backup_stopped() { # why
+  local day
+  day=$(shop_day "$(now)")
+  [[ "$(recall backup-stopped)" != "$day" ]] || return 0
+  echo "$day" > "$state/backup-stopped"
+  alert installation.backup_stopped "Les sauvegardes ne tournent plus" "$1" "step=due"
+}
+
+tick() {
+  local address failing line step t policy window newest current day outcomes
+  exec 8> "$state/update.lock"
+  flock -n 8 || return 0
+  [[ -f "$state/lan-host" ]] || { say "not started yet: twes start"; return 0; }
+  address=$(lan_address)
+  if [[ "$address" != "$(recall lan-host)" ]]; then
+    say "the network address moved from $(recall lan-host) to $address"
+    flock -u 8; start; flock -n 8 || return 0
+  fi
+  deliver_held
+
+  if failing=$(deep_health 1); then
+    rm -f "$state/unhealthy"
+  elif [[ ! -f "$state/unhealthy" ]]; then
+    echo "$failing" > "$state/unhealthy"
+    alert installation.unhealthy "L'installation ne va pas bien ($failing)" \
+      "Le contrôle de santé de l'installation échoue : $failing. Il est relu toutes les quinze minutes ; une alerte nouvelle viendra s'il se remet puis échoue encore." \
+      "check=$failing"
+  fi
+
+  # The schedule runs every half hour: silent for an hour and a half once the application has run for one, it stopped.
+  if outcomes=$(backup_outcomes); then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] || continue
+      step=${line%% *}
+      if [[ "$step" == due ]]; then
+        t=${line#due }
+        t=${t%% *}
+        if [[ "$t" =~ ^[0-9]+$ ]] && (($(now) - t > 5400 && $(now) - $(recall started-at "$(now)") > 3600)); then
+          backup_stopped "Le calendrier des sauvegardes n'a pas tourné depuis plus d'une heure et demie alors que l'application tourne."
+        fi
+      elif [[ "$line" == *" failed "* ]] && ! listed "$line" backup-alerted; then
+        echo "$line" >> "$state/backup-alerted"
+        alert installation.backup_failed "Sauvegarde en échec : $step" "La sauvegarde « $step » a échoué : ${line#* }." "step=$step"
+      fi
+    done <<<"$outcomes"
+  elif (($(now) - $(recall started-at "$(now)") > 3600)); then
+    backup_stopped "Le service des sauvegardes ne répond pas alors que l'application tourne depuis plus d'une heure."
+  fi
+
+  policy=$(value UPDATE_POLICY)
+  case "$policy" in
+    off) return 0 ;;
+    notify)
+      git -C "$root" fetch --quiet --tags origin || return 0
+      newest=$(git -C "$root" tag --list "$release_tags" --sort=-v:refname | head -n 1)
+      current=$(tag_of "$(running)")
+      if [[ -n "$newest" && "$newest" != "$current" ]] && ! listed "$newest" notified; then
+        echo "$newest" >> "$state/notified"
+        tell installation.update_available "version=$newest" "previous=${current:--}"
+        say "$newest is out; the owners are told"
+      fi ;;
+    auto)
+      window=$(value UPDATE_WINDOW)
+      [[ "$window" =~ ^[0-9]{2}:[0-9]{2}-[0-9]{2}:[0-9]{2}$ ]] || { say "UPDATE_POLICY=auto without a window: nothing applied (twes policy auto HH:MM-HH:MM)"; return 0; }
+      t=$(shop_time "$(now)")
+      [[ ! "$t" < "${window%-*}" && "$t" < "${window#*-}" ]] || return 0
+      # Never at start: a computer switched on inside the window waits for the next tick past its first half hour.
+      (($(now) - $(recall started-at "$(now)") >= 1800)) || return 0
+      day=$(shop_day "$(now)")
+      [[ "$(recall update-tried)" != "$day" ]] || return 0
+      echo "$day" > "$state/update-tried"
+      flock -u 8
+      update --auto ;;
+    *) say "UPDATE_POLICY=$policy: auto, notify or off" ;;
+  esac
+}
+
+status() {
+  local failing
+  echo "release:  $(tag_of "$(running)")"
+  echo "address:  https://localhost, https://$(recall lan-host '(not started)')"
+  echo "updates:  $(value UPDATE_POLICY) $(value UPDATE_WINDOW)"
+  echo "off site: $(value BACKUP_OFFSITE)"
+  if failing=$(deep_health 1); then echo "health:   ok"; else echo "health:   failing ($failing)"; fi
+  echo "backups:"
+  backup_outcomes | sed 's/^/  /' || echo "  (the backup service does not answer)"
+  [[ ! -s "$state/pending-alerts" ]] || echo "held back: $(wc -l < "$state/pending-alerts") alert(s)"
+}
+
+case "${1:-}" in
+  start) [[ $# -eq 1 ]] || usage; start ;;
+  update) [[ $# -eq 1 ]] || usage; update ;;
+  policy) shift; policy "$@" ;;
+  offsite) [[ $# -eq 2 ]] || usage; offsite "$2" ;;
+  tick) [[ $# -eq 1 ]] || usage; tick ;;
+  status) [[ $# -eq 1 ]] || usage; status ;;
+  restore-commands) [[ $# -eq 1 ]] || usage; restore_last ;;
+  *) usage ;;
+esac

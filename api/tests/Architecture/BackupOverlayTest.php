@@ -112,6 +112,24 @@ final class BackupOverlayTest extends TestCase
         }
     }
 
+    /**
+     * A shop's computer is off at night, when the server's schedule runs: there each step runs once it is due, which it
+     * reads from the outcomes kept in a volume of their own, so a step's last success outlives the container.
+     */
+    public function testAShopsBackupsRunWhenDueFromOutcomesThatOutliveTheContainer(): void
+    {
+        self::assertSame('due', self::environment('compose.backup-local.yaml', 'backup')['BACKUP_SCHEDULE'] ?? null);
+        self::assertArrayNotHasKey('BACKUP_SCHEDULE', self::environment('compose.backup.yaml', 'backup'), 'a server keeps the nightly schedule');
+        self::assertContains('backup-outcome:/var/lib/twes-backup/outcome', self::volumeLines(self::service('compose.backup.yaml', 'backup')));
+        $compose = Yaml::parseFile(\dirname(__DIR__, 3).'/compose.backup.yaml', Yaml::PARSE_CUSTOM_TAGS);
+        self::assertIsArray($compose);
+        self::assertIsArray($compose['volumes'] ?? null);
+        self::assertArrayHasKey('backup-outcome', $compose['volumes']);
+
+        self::assertMatchesRegularExpression('#^\*/30 \* \* \* \* twes-backup due$#m', self::read('infra/postgres/backup/crontab.due'));
+        self::assertStringContainsString('COPY backup/crontab.due /etc/twes-backup/crontab.due', self::read('infra/postgres/Dockerfile'));
+    }
+
     public function testTheOffSiteCopyNeedsEveryValueOnceSwitchedOn(): void
     {
         foreach (['backup', 'restore'] as $name) {

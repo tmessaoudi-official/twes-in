@@ -618,9 +618,10 @@ overwrites. Every value as above, the database server stopped:
 ```sh
 B="docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml"
 $B run --rm --no-deps restore gosu postgres pgbackrest --stanza=twes --spool-path=/tmp \
-  --type=time "--target=2026-10-12 08:25:00+00" --target-action=promote restore
+  --type=time "--target=2026-10-12 08:25:00+00" --target-action=promote restore < /dev/null
   # without --type, --target and --target-action: the latest that reached the bucket
-$B run --rm --no-deps restore restic restore latest --host twes --include /files --target /
+$B run --rm --no-deps restore restic restore latest --host twes --include /files --target / < /dev/null
+  # each run reads no input: pasted as one block, it would take the lines after it as its own
 $B up -d --build --wait
 ```
 
@@ -793,3 +794,79 @@ push that changes the monitor or what reports to it (`.github/workflows/monitor-
 What it does not prove: the mail and Telegram alerts (the relay and the bot are yours: an alert that fires during the
 check goes nowhere); the « Site » line, which an internal certificate of hours always fails; a certificate from Let's
 Encrypt; and the monitor itself staying up, which nothing watches.
+
+## 16. A shop's own computer
+
+A shop can run twes-in on its own computer instead of a server: the production images (`compose.prod.yaml`), its
+backups in a folder of its own (`compose.backup-local.yaml`, copied off site when switched on by
+`compose.backup-offsite.yaml`) and an edge of its own (`compose.onprem.yaml`, `infra/onprem/Caddyfile`). Nothing is
+built there: the images are pulled by the digests a release tag names (§ 14), and `scripts/onprem/twes` runs everything.
+
+**Two addresses, no name to buy.** The computer itself opens `https://localhost`, where passkeys work (a browser binds a
+passkey to a name, never to an address). A phone or another computer on the shop's network opens
+`https://<this computer's address>`, which `twes` reads at each start, since a router may hand out another; a fixed one
+goes in the values as `LAN_HOST`. With no network at all, the computer alone opens `https://localhost`. The edge's
+certificates come from its own authority: a phone trusts it once, from `http://<address>/root.crt`, then opens the
+HTTPS address. Mailed links name the network address.
+
+**Installing, by hand for now** (the installer that schedules the tasks below comes next). On Windows: Docker Desktop
+with WSL 2, and the checkout inside WSL's own filesystem (`~`, never `/mnt/c`), where `.gitattributes` keeps every file
+as git holds it. Then, in that shell:
+
+```sh
+git clone https://github.com/<owner>/twes-in.git ~/twes-in
+bash ~/twes-in/scripts/deploy/new-instance.sh --onprem ~/.twes-in/install.env
+```
+
+Fill in the facts it leaves blank: the shop's mail account (`MAILER_DSN`, `MAILER_SENDER`; for Gmail an app password at
+`smtp.gmail.com:587`), `ALERT_EMAIL`, who is mailed when something goes wrong, and `BACKUP_DIRECTORY`, a folder on a
+second disk or a USB drive (`/mnt/d/twes-backups`), or blank for a volume on this disk. Keep a copy of the keys it
+lists (§ 14) away from this computer. Then the first install, and the operator:
+
+```sh
+bash ~/twes-in/scripts/onprem/twes update
+read -rs PW && printf '%s\n' "$PW" | LAN_HOST=$(cat ~/.twes-in/state/lan-host) bash ~/twes-in/scripts/deploy/deploy.sh \
+  --compose ~/.twes-in/install.env exec -T api bin/console app:seed --no-interaction --operator-email=<address> \
+  --operator-password-stdin --without-company; unset PW
+```
+
+`twes start` runs at each logon and `twes tick` every quarter hour; until the installer schedules them, run `start` after
+a restart by hand.
+
+**What `twes` does.**
+
+| Command | What it does |
+|---|---|
+| `twes start` | reads this computer's address, starts the release deployed here again; nothing is fetched, so a morning without the internet still opens |
+| `twes update` | the newest release tag: the database and the files backed up first, the release deployed by digest, its deep health read through the edge; unhealthy, the release before it is started again on the new schema and the developer told |
+| `twes policy auto 13:00-14:00` | updates applied by `tick` inside that daily window, in the shop's time, never just after a start, a release that failed here never retried by itself |
+| `twes policy notify` / `off` | a release out is told to each company's owners in the application (the default), or nothing |
+| `twes offsite on` / `off` | the off-site copy of the backups, once the bucket's values are given |
+| `twes tick` | a new address, alerts held back, the deep health, the backups' outcomes and schedule, then the policy |
+| `twes status` | the release, the address, the policy, the health and the backups |
+| `twes restore-commands` | what takes the installation back to the backup made before the last update (docs/RUNBOOK.md, « Restore a shop ») |
+
+**Backups.** The computer is off at night, so its backups run when due: every half hour the schedule runs each step whose
+last success is older than its period (a full backup weekly, a differential daily, the dump and the files daily, a
+read-back weekly), the outcomes kept in a volume of their own. Both repositories are encrypted under the values'
+passphrases. An update always backs up first, locally, and keeps that backup's label.
+
+**Alerts.** A failed or rolled-back update, a failing deep health, a failed backup step and a backup schedule gone quiet
+are mailed through the shop's own account to `ALERT_EMAIL`, so a mail leaves while the application is down, and told
+to the platform's operators in the application (`app:installation:tell`), held under `~/.twes-in/state/` until it
+answers. A release out is told to the owners only.
+
+**The schema only grows.** Since an unhealthy update starts the release before it on the new schema, a migration added
+after a release tag never drops, renames or narrows what that release reads (`scripts/gates/additive-migrations.sh`);
+the contraction comes in a later release, its line saying why that is safe.
+
+**The on-premises check.** `make onprem-check` publishes the working tree to a local registry as a release, installs it
+with `twes update` from a clone of the release tags, asks both addresses for health and the operator's sign-in, then
+publishes a second release with one migration more and an api that fails its deep health: `twes update` must back up,
+deploy it, read it unhealthy and start the first again on the new schema, the operator told and still signing in; then
+`twes restore-commands`, run as written, must take the database back to the backup made before it. It runs as the
+compose project `twes-onprem-check` and needs ports 80 and 443 free.
+
+What it does not prove: Windows and macOS (it runs on Linux), the mail to `ALERT_EMAIL` (the relay is the shop's), a
+phone trusting the authority, an off-site copy, and a real release's own rollback, which depends on that release keeping
+its schema additive.

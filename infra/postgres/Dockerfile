@@ -32,3 +32,4 @@ COPY --from=supercronic --chmod=0755 /supercronic /usr/local/bin/supercronic
 COPY pgbackrest.conf /etc/pgbackrest/pgbackrest.conf
 COPY backup/twes-backup /usr/local/bin/twes-backup
 COPY backup/crontab /etc/twes-backup/crontab
+COPY backup/crontab.due /etc/twes-backup/crontab.due

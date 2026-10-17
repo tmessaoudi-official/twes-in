@@ -10,6 +10,8 @@
 #   twes-backup offsite       a shop's whole local folder copied off site, when compose.backup-offsite.yaml is on
 #   twes-backup before-update an incremental base backup, the dump and the files, and the base backup's label, which
 #                             a restore to the moment before an update names (scripts/onprem/twes update)
+#   twes-backup due           each step whose last success is older than its period: a shop's computer is off at night,
+#                             so its schedule (BACKUP_SCHEDULE=due, compose.backup-local.yaml) asks every half hour
 # pgBackRest runs as postgres, whose data it reads; restic runs as root, which can read the files the api wrote as
 # its own user. Output goes to the container's log; a failure exits non-zero, which supercronic logs as such.
 #
@@ -17,12 +19,17 @@
 # heartbeat Gatus expects at its interval: base (full and diff), copy and verify. Without it (development, the drill)
 # no heartbeat is sent; that is the setting, not a failure. A heartbeat the monitor does not take never fails the
 # step: a monitor that hears nothing raises the alert for a missing heartbeat itself.
+# Every scheduled step also writes down how it ended under OUTCOME_DIRECTORY, monitor or not: <step> the last outcome,
+# <step>.ok the moment of its last success, which due reads and a shop's twes tick alerts on. One step runs at a time,
+# so the copy taken before an update never meets a scheduled one in pgBackRest's own lock.
 set -euo pipefail
 
 STANZA=twes
 DUMP_DIR=/var/lib/twes-backup/dump
 FILES_DIR=/files
 KEEP=14d
+OUTCOME_DIRECTORY=${OUTCOME_DIRECTORY:-/var/lib/twes-backup/outcome}
+BACKUP_LOCK=${BACKUP_LOCK:-/tmp/twes-backup.lock}
 
 say() { printf '%s twes-backup %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 pgbr() { gosu postgres pgbackrest --stanza="$STANZA" "$@"; }
@@ -116,6 +123,12 @@ verify() {
 heartbeat() {
   local status=$? endpoint=$1 success=true reason=''
   ((status == 0)) || { success=false; reason="$2 exited $status"; }
+  # The step's own status is what it exits with: an outcome that cannot be written is said, and due runs the step again.
+  if mkdir -p "$OUTCOME_DIRECTORY" && if ((status == 0)); then
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) ok" > "$OUTCOME_DIRECTORY/$2" && date +%s > "$OUTCOME_DIRECTORY/$2.ok"
+  else
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) failed $reason" > "$OUTCOME_DIRECTORY/$2"
+  fi; then :; else say "the outcome of $2 could not be written under $OUTCOME_DIRECTORY"; fi
   if [[ -n "${MONITOR_URL:-}" ]]; then
     curl -fsS --max-time 15 -o /dev/null -X POST -H "Authorization: Bearer ${MONITOR_HEARTBEAT_TOKEN:?set MONITOR_HEARTBEAT_TOKEN with MONITOR_URL}" \
       --data-urlencode "success=$success" --data-urlencode "error=$reason" -G \
@@ -125,19 +138,54 @@ heartbeat() {
   exit "$status"
 }
 
+# How long ago a step last succeeded, in seconds; never is longer than any period.
+since() {
+  local t=''
+  [[ -f "$OUTCOME_DIRECTORY/$1.ok" ]] && read -r t < "$OUTCOME_DIRECTORY/$1.ok"
+  [[ "$t" =~ ^[0-9]+$ ]] || { echo 999999999; return 0; }
+  echo $(($(date +%s) - t))
+}
+
+# Each step in its own process, as the schedule runs it, so it writes its outcome and takes the lock itself. A failed
+# step leaves the others to run: a base backup that fails is no reason to skip the night's copy.
+due() {
+  local self=${BASH_SOURCE[0]} failed=0 day=$((20 * 3600)) week=$((7 * 86400))
+  # That the schedule is alive, whatever ran: a shop's twes tick alerts when this goes quiet while the application runs.
+  mkdir -p "$OUTCOME_DIRECTORY" && echo "$(date +%s) ran" > "$OUTCOME_DIRECTORY/due"
+  if (($(since full) >= week)); then
+    bash "$self" full || failed=1
+  elif (($(since full) >= day && $(since diff) >= day)); then
+    bash "$self" diff || failed=1
+  fi
+  (($(since copy) < day)) || bash "$self" copy || failed=1
+  if [[ -n "${OFFSITE_REPOSITORY:-}" ]] && (($(since offsite) >= day)); then bash "$self" offsite || failed=1; fi
+  (($(since verify) < week)) || bash "$self" verify || failed=1
+  ((failed == 0)) || { say "due: a step failed, written down under $OUTCOME_DIRECTORY"; return 1; }
+}
+
+hold() { exec 9> "$BACKUP_LOCK"; flock 9; }
+
 main() {
   case "${1:-}" in
-    run) init; exec supercronic -passthrough-logs /etc/twes-backup/crontab ;;
+    run)
+      local schedule
+      case "${BACKUP_SCHEDULE:-nightly}" in
+        nightly) schedule=/etc/twes-backup/crontab ;;
+        due) schedule=/etc/twes-backup/crontab.due ;;
+        *) echo "BACKUP_SCHEDULE=$BACKUP_SCHEDULE: nightly or due, nothing else" >&2; exit 1 ;;
+      esac
+      init; exec supercronic -passthrough-logs "$schedule" ;;
     init) init ;;
     # Each name is the step's line on the public status page (infra/monitor/gatus.yaml), unaccented: Gatus takes no
     # heartbeat for a name with an accent.
-    full|diff) trap "heartbeat Base $1" EXIT; base_backup "$1" ;;
-    copy) trap 'heartbeat Copie copy' EXIT; copy ;;
-    verify) trap 'heartbeat Relecture verify' EXIT; verify ;;
+    full|diff) hold; trap "heartbeat Base $1" EXIT; base_backup "$1" ;;
+    copy) hold; trap 'heartbeat Copie copy' EXIT; copy ;;
+    verify) hold; trap 'heartbeat Relecture verify' EXIT; verify ;;
     # Off, the step never ran: a monitor that never expects it hears nothing.
-    offsite) [[ -z "${OFFSITE_REPOSITORY:-}" ]] || trap 'heartbeat Hors_site offsite' EXIT; offsite ;;
-    before-update) before_update ;;
-    *) echo "usage: twes-backup run|init|full|diff|copy|verify|offsite|before-update" >&2; exit 64 ;;
+    offsite) hold; [[ -z "${OFFSITE_REPOSITORY:-}" ]] || trap 'heartbeat Hors_site offsite' EXIT; offsite ;;
+    before-update) hold; before_update ;;
+    due) due ;;
+    *) echo "usage: twes-backup run|init|full|diff|copy|verify|offsite|before-update|due" >&2; exit 64 ;;
   esac
 }
 

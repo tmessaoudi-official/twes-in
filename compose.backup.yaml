@@ -65,6 +65,8 @@ services:
       - postgres-socket:/var/run/postgresql
       - api-files:/files:ro
       - backup-dump:/var/lib/twes-backup/dump
+      # How each step last ended and when it last worked: what a shop's schedule runs by and its twes tick alerts on.
+      - backup-outcome:/var/lib/twes-backup/outcome
 
   # What a restore runs in (docs/START.md § 13), only when asked for: the backup service's image, keys and repositories,
   # writing the database's volume, which pgBackRest fills only when it is empty, and the files volume, which restic
@@ -86,3 +88,4 @@ volumes:
   pgbackrest-spool:
   postgres-socket:
   backup-dump:
+  backup-outcome:

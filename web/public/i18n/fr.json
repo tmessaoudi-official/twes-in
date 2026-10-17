@@ -664,7 +664,13 @@
       "invoice_recurring_stopped": "Facture récurrente de {{customer}} mise en pause : la facture {{number}} qu’elle copie ne peut plus l’être.",
       "expense_recurring_drafted": "Dépense récurrente « {{description}} » : un brouillon attend d’être vérifié et enregistré.",
       "expense_recurring_stopped": "Dépense récurrente « {{description}} » mise en pause : la dépense qu’elle copie ne peut plus l’être.",
-      "stock_imported": "Un import de stock a trouvé {{differences}} {differences, plural, one {écart} other {écarts}} sur {{counted}} {counted, plural, one {ligne comptée} other {lignes comptées}}."
+      "stock_imported": "Un import de stock a trouvé {{differences}} {differences, plural, one {écart} other {écarts}} sur {{counted}} {counted, plural, one {ligne comptée} other {lignes comptées}}.",
+      "installation_update_available": "La version {{version}} est disponible ; cet ordinateur tourne sur la {{previous}}. Demandez à qui gère l’installation de la mettre à jour.",
+      "installation_rolled_back": "La mise à jour vers {{version}} ne répondait pas : {{previous}} a repris. Sauvegarde d’avant : {{label}}.",
+      "installation_update_failed": "La mise à jour vers {{version}} a échoué et {{previous}} ne répond pas : restaurez la sauvegarde {{label}} (commandes dans le courriel).",
+      "installation_unhealthy": "Le contrôle de santé de l’installation échoue : {{check}}.",
+      "installation_backup_failed": "La sauvegarde « {{step}} » a échoué.",
+      "installation_backup_stopped": "Les sauvegardes ne tournent plus."
     },
     "kinds": {
       "membership_added": "Ajout à une société",
@@ -692,7 +698,13 @@
       "support_access_granted": "Accès du support ouvert",
       "support_access_ended": "Accès du support fermé",
       "unknown": "Autre notification",
-      "stock_imported": "Écarts d’un import de stock"
+      "stock_imported": "Écarts d’un import de stock",
+      "installation_update_available": "Nouvelle version disponible",
+      "installation_rolled_back": "Mise à jour annulée",
+      "installation_update_failed": "Mise à jour en échec",
+      "installation_unhealthy": "Installation en mauvaise santé",
+      "installation_backup_failed": "Sauvegarde en échec",
+      "installation_backup_stopped": "Sauvegardes arrêtées"
     }
   },
   "invitation": {
