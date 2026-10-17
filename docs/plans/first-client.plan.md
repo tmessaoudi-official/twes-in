@@ -43,6 +43,10 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-17 21:59] AGREED: The demo is entered by an « Essayer la démo » button on the sign-in page, no password; the account shows as demo@example.com.
 - [2026-10-17 21:59] AGREED: Mail a sandbox would send is captured, never sent, and listed on a « Courriers de la démo » page inside it; it goes with the sandbox.
 - [2026-10-17 21:59] AGREED: The demo is on by default, a shop's own install included; the platform operator can switch it off.
+- [2026-10-17 22:22] AGREED: A visitor picks the demo's country on « Essayer la démo »: Tunisia (Carthage Conseil) or France (Atelier Mercier); the pool keeps one ready sandbox of each.
+- [2026-10-17 22:22] AGREED: A sandbox's audit journal lines stay when it is deleted (field names only, about 66 kB a demo, under a company id that no longer exists); everything else goes. Amends the earlier ruling that all of it is deleted: the journal's protection from the app's own database account is unchanged.
+- [2026-10-17 22:22] AGREED: Factur-X (the XML and factur-x.pdf) is refused in a sandbox with « Non disponible dans la démo »; the stamped plain PDF still downloads.
+- [2026-10-17 22:22] AGREED: A demo PDF carries « DÉMO — sans valeur fiscale » in a fixed band across every page, top and bottom; the diagonal watermark keeps showing the document's state (BROUILLON, ANNULÉE, PAYÉ).
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
