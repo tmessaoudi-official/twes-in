@@ -224,10 +224,15 @@ tables, essay gotchas) was retired with the reset. What applies here:
   for passkeys and https://<its network address> through an authority of its own, whose `root.crt` plain HTTP serves),
   `compose.backup-local.yaml` (backups in its own folder, run when due, `BACKUP_SCHEDULE=due`) and
   `compose.backup-offsite.yaml`; values from `scripts/deploy/new-instance.sh --onprem`, `TWES_INSTALL=onprem`. Everything
-  runs through `scripts/onprem/twes` (start, update with its backup and rollback, policy, offsite, tick, status,
-  restore-commands; test `scripts/tests/twes.test.sh`), which reaches the stack through `deploy.sh --compose`. `make
-  onprem-check` (`scripts/onprem/onprem-check.sh`, compose project `twes-onprem-check`, ports 80 and 443) installs,
-  rolls back and restores for real; the restore steps are docs/RUNBOOK.md « Restore a shop ».
+  runs through `scripts/onprem/twes` (install, start, update with its backup and rollback, policy, offsite, tick, status,
+  restore-commands, pin-key, schedule: Linux's systemd units; test `scripts/tests/twes.test.sh`), which reaches the stack
+  through `deploy.sh --compose`. A release is taken only from a tag `scripts/release/tag-release.sh` signed, verified
+  against the key pinned at install (`infra/onprem/release-key.asc`, the developer's public key, pinned once its
+  fingerprint is confirmed). Windows: `scripts/onprem/install.ps1` (WSL, Docker Desktop, the checkout, `twes install`,
+  the authority trusted, the `\twes-in\` scheduled tasks; ASCII only, PSScriptAnalyzer clean). `make onprem-check`
+  (`scripts/onprem/onprem-check.sh`, compose project `twes-onprem-check`, ports 80 and 443, about ten minutes) installs,
+  rolls back, restores and refuses an unsigned tag for real; the restore steps are docs/RUNBOOK.md « Restore a shop »,
+  releasing to shops « Release to the shops ».
 - The monitor (`docs/START.md` § 15), on a machine of its own: `infra/monitor/compose.yaml` (Gatus reading `/api/health/deep`
   with `MONITOR_TOKEN` and taking the backups' heartbeats, alerting by mail and Telegram on a public page whose lines hide
   their details, `gatus.yaml`; GlitchTip all-in-one with no Valkey and its PostgreSQL; a Caddy edge), values from
@@ -564,6 +569,12 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   change that adds a migration, and read `doctrine_migration_versions` before blaming the code (2026-10-17).
 - Doctrine reads `Query::HINT_REFRESH` with `isset()`: `setHint(HINT_REFRESH, false)` still refreshes, so a mutant flipping it
   to false is equivalent and survives. Sabotage a locked re-read by removing the hint line (2026-10-17).
+- A `docker compose run` without `< /dev/null` reads the input of whatever runs it: in a `while read` loop or a block of
+  commands pasted into a terminal, it swallows the lines after it, which then never run, and the block reads as done.
+  Every `run` line a person may paste ends `< /dev/null`; a check running such lines counts that all of them ran (2026-10-17).
+- A test that makes commits or tags exports `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1` (and `no-leftovers.sh`
+  does for every gate test): on the host, the developer's global `commit.gpgsign` signed every fixture with the real
+  release key, and a locked agent turned the same tests red. A repository's own `.git/config` still applies (2026-10-17).
 - `make up`'s api and worker run the `api-vendor` volume, which only the one-shot `migrate` service's `composer install`
   fills: after a Composer change the live api dies at boot until `make up` runs again (2026-10-16: « Rate limiter
   "mfa_verify" requires the Lock component », five hours unhealthy while CI, on fresh images, was green).

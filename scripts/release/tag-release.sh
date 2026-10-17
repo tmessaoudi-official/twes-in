@@ -4,7 +4,9 @@
 # images publish.sh pushed for this commit, by the digests the registry holds now, resolved once. deploy.sh --release
 # deploys exactly those, so production runs what staging ran, and a tag pushed is the record of what a version was.
 # Tags only a commit master holds, whose three images say they were built from it. Never pushes: the tag goes up on the
-# developer's word, with the command it prints.
+# developer's word, with the command it prints. The tag is signed: a shop updates only to a tag its pinned key verifies
+# (scripts/onprem/twes), so a forged tag on a stolen account names images no shop runs. The key is TWES_RELEASE_KEY,
+# else git's user.signingkey.
 # Usage: tag-release.sh <registry prefix, such as ghcr.io/owner> <tag>
 set -euo pipefail
 [[ $# -eq 2 ]] || { echo "Usage: tag-release.sh <registry prefix> <tag vYYYY.MM.DD.N>" >&2; exit 2; }
@@ -14,6 +16,8 @@ refuse() { echo "tag-release: refused — $*" >&2; exit 1; }
 
 [[ "$tag" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[0-9]+$ ]] || refuse "$tag is not a release's name, vYYYY.MM.DD.N"
 ! git -C "$root" rev-parse -q --verify "refs/tags/$tag" >/dev/null || refuse "$tag exists; a release tag is never moved"
+key=${TWES_RELEASE_KEY:-$(git -C "$root" config --get user.signingkey || true)}
+[[ -n "$key" ]] || refuse "no signing key: set git's user.signingkey, or TWES_RELEASE_KEY, to the key shops have pinned"
 revision=$(git -C "$root" rev-parse HEAD)
 git -C "$root" merge-base --is-ancestor "$revision" refs/remotes/origin/master \
   || refuse "origin/master does not hold $revision: only what master published is released (git fetch, then check out a master commit)"
@@ -29,7 +33,7 @@ for part in api web database; do
   lines+=("TWES_${part^^}_IMAGE=$digest")
 done
 
-git -C "$root" tag -a "$tag" -F - <<EOF
+git -C "$root" tag -s -u "$key" "$tag" -F - <<EOF || refuse "git could not sign $tag with $key: is that key in this keyring, and its agent answering?"
 twes-in $tag
 
 $(printf '%s\n' "${lines[@]}")

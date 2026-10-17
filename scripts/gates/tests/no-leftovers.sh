@@ -8,7 +8,8 @@
 set -uo pipefail
 [[ $# -ge 1 ]] || { echo "usage: $(basename "$0") <test-script> [args…]" >&2; exit 2; }
 own=$(mktemp -d)
-TMPDIR="$own" bash "$@"
+# None of the machine's own git settings either: a developer's commit.gpgsign would sign a test's fixtures with a real key.
+GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 TMPDIR="$own" bash "$@"
 status=$?
 left=$(find "$own" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)
 rm -rf "$own"

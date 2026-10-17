@@ -4,11 +4,33 @@
 # deploy.sh (it writes down how it was called and keeps the history as the real one does), curl (the edge's health and
 # the mail relay) and the probes of the network address.
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+TMPDIR=$(mktemp -d); export TMPDIR
+# Every case's fixture is made here and goes with it, each keyring's agents stopped first.
+trap 'for g in "$TMPDIR"/*gnupg "$TMPDIR"/*/etc/release-keys; do [[ -d "$g" ]] && GNUPGHOME=$g gpgconf --kill all 2>/dev/null; done; rm -rf "$TMPDIR"' EXIT
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
+# None of the machine's own git settings: a developer's commit.gpgsign would sign the fixtures with a real key.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+# The developer's release key and a stranger's, each a throwaway with no passphrase in a keyring of its own.
+newkey() { # keyring, name: prints the fingerprint
+  mkdir -m 700 "$1"
+  GNUPGHOME=$1 gpg --batch --quiet --pinentry-mode loopback --passphrase '' --quick-gen-key "$2 <$2@twes.test>" ed25519 sign never 2>/dev/null
+  GNUPGHOME=$1 gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" { print $10; exit }'
+}
+DEV=$(newkey "$TMPDIR/dev-gnupg" release) OTHER=$(newkey "$TMPDIR/other-gnupg" stranger)
+GNUPGHOME=$TMPDIR/dev-gnupg gpg --batch --armor --export "$DEV" > "$TMPDIR/release-key.asc"
+GNUPGHOME=$TMPDIR/other-gnupg gpg --batch --armor --export "$OTHER" > "$TMPDIR/other-key.asc"
+GNUPGHOME=$TMPDIR/dev-gnupg gpg --batch --armor --pinentry-mode loopback --passphrase '' --export-secret-keys "$DEV" > "$TMPDIR/secret-key.asc"
+sign() { # repository, tag; SIGN_NEW says how the newest is made: dev (the default), other or none
+  local by=${3:-dev}
+  case "$by" in
+    dev) GNUPGHOME=$TMPDIR/dev-gnupg git -C "$1" tag -s -u "$DEV" "$2" -m "$2" ;;
+    other) GNUPGHOME=$TMPDIR/other-gnupg git -C "$1" tag -s -u "$OTHER" "$2" -m "$2" ;;
+    none) git -C "$1" tag -a "$2" -m "$2" ;;
+  esac
+}
 OLD=v2026.10.20.1 NEW=v2026.10.21.1
 LABEL=20261020-101500F_20261021-120000I
 # 2026-10-21 12:30 UTC, 13:30 in Tunis.
@@ -34,6 +56,7 @@ case "$mode" in
     case "$*" in
       "exec -T backup twes-backup before-update") [[ -n "${BACKUP_LABEL:-}" ]] || exit 1; echo "2026 twes-backup before-update: $BACKUP_LABEL" ;;
       "exec -T api bin/console app:installation:tell"*) echo "$*" >> "$TMPDIR/told"; [[ -z "${TELL_SAYS:-}" ]] || echo "$TELL_SAYS"; exit "${TELL_EXIT:-0}" ;;
+      "exec -T api bin/console app:seed"*) { echo "$*"; cat; } > "$TMPDIR/seeded"; exit "${SEED_EXIT:-0}" ;;
       "exec -T backup sh -c"*) [[ -z "${OUTCOMES_DOWN:-}" ]] || exit 1; printf '%b' "${OUTCOMES:-}" ;;
     esac ;;
 esac
@@ -59,15 +82,26 @@ esac
 EOF
 printf '#!/usr/bin/env bash\n[[ -z "${NO_ROUTE:-}" ]] || { echo "RTNETLINK answers: Network is unreachable" >&2; exit 2; }\necho "1.1.1.1 via 192.168.1.1 dev eth0 src ${ADDRESS:-192.168.1.20} uid 1000"\n' > "$TMPDIR/bin/ip"
 printf '#!/usr/bin/env bash\nprintf "%%s\\r\\n" "${ADDRESS:-192.168.1.30}"\n' > "$TMPDIR/bin/powershell.exe"
+# docker: its daemon answers info once DOCKER_LATE tries have been made, never when it is "never".
+cat > "$TMPDIR/bin/docker" <<'EOF'
+#!/usr/bin/env bash
+[[ "$1" == info ]] || exit 0
+tries=$(($(cat "$TMPDIR/docker.tries" 2>/dev/null || echo 0) + 1)); echo "$tries" > "$TMPDIR/docker.tries"
+[[ "${DOCKER_LATE:-0}" != never ]] && ((tries > ${DOCKER_LATE:-0})) || { echo "Cannot connect to the Docker daemon" >&2; exit 1; }
+EOF
+# sudo and systemctl: what they were asked is written down; systemctl fails when SYSTEMCTL_EXIT says so.
+printf '#!/usr/bin/env bash\necho "sudo $*" >> "$TMPDIR/systemd.calls"\nexec "$@"\n' > "$TMPDIR/bin/sudo"
+printf '#!/usr/bin/env bash\necho "systemctl $*" >> "$TMPDIR/systemd.calls"\nexit "${SYSTEMCTL_EXIT:-0}"\n' > "$TMPDIR/bin/systemctl"
 chmod +x "$TMPDIR/bin/"* "$TMPDIR/stand-ins/deploy.sh"
 
 # An origin with two releases, each carrying this script and the stand-in deploy.sh, and a shop's clone of it at none.
 origin() {
   local w; w=$(mktemp -d)
-  mkdir -p "$w/scripts/onprem" "$w/scripts/deploy"
+  mkdir -p "$w/scripts/onprem" "$w/scripts/deploy" "$w/infra/onprem"
   cp "$HERE/onprem/twes" "$w/scripts/onprem/twes"; cp "$TMPDIR/stand-ins/deploy.sh" "$w/scripts/deploy/deploy.sh"
-  git -C "$w" init -q -b master && git -C "$w" add -A && git -C "$w" commit -qm one && git -C "$w" tag -a "$OLD" -m "$OLD"
-  echo two > "$w/two"; git -C "$w" add -A && git -C "$w" commit -qm two && git -C "$w" tag -a "$NEW" -m "$NEW"
+  cp "$HERE/deploy/new-instance.sh" "$w/scripts/deploy/new-instance.sh"; cp "$TMPDIR/release-key.asc" "$w/infra/onprem/release-key.asc"
+  git -C "$w" init -q -b master && git -C "$w" add -A && git -C "$w" commit -qm one && sign "$w" "$OLD"
+  echo two > "$w/two"; git -C "$w" add -A && git -C "$w" commit -qm two && sign "$w" "$NEW" "${SIGN_NEW:-dev}"
   git clone -q --bare "$w" "$w.git"; echo "$w.git"
 }
 shop() { # the clone, and its values beside it under its own folder
@@ -76,13 +110,16 @@ shop() { # the clone, and its values beside it under its own folder
   mkdir -p "$d/etc"; bash "$HERE/deploy/new-instance.sh" --onprem "$d/etc/install.env" >/dev/null
   sed -i -e 's|^MAILER_DSN=.*|MAILER_DSN=smtp://shop%40gmail.com:abcd%20efgh@smtp.gmail.com:587|' \
     -e 's|^MAILER_SENDER=.*|MAILER_SENDER=shop@gmail.com|' -e 's|^ALERT_EMAIL=.*|ALERT_EMAIL=dev@example.test|' "$d/etc/install.env"
+  [[ -n "${UNPINNED:-}" ]] || twes "$d" pin-key "$TMPDIR/release-key.asc" >/dev/null
   echo "$d"
 }
 twes() { # shop folder, then the command
   local d=$1; shift
-  rm -f "$TMPDIR/deploy.calls" "$TMPDIR/curl.calls" "$TMPDIR/told" "$TMPDIR/mail.eml" "$TMPDIR/mail.netrc"
-  (cd "$TMPDIR" && env PATH="$TMPDIR/bin:$PATH" TWES_VALUES="$d/etc/install.env" TWES_ROOT="$d/twes-in" TWES_PLATFORM="${PLATFORM:-linux}" \
-    TWES_HEALTH_PAUSE=0 TWES_NOW="${AT:-$NOON}" bash "$d/twes-in/scripts/onprem/twes" "$@" 2>&1)
+  rm -f "$TMPDIR/deploy.calls" "$TMPDIR/curl.calls" "$TMPDIR/told" "$TMPDIR/mail.eml" "$TMPDIR/mail.netrc" "$TMPDIR/docker.tries" "$TMPDIR/seeded" \
+    "$TMPDIR/systemd.calls"
+  mkdir -p "$d/units"
+  (cd "$TMPDIR" && env PATH="$TMPDIR/bin:$PATH" TWES_VALUES="$d/etc/install.env" TWES_ROOT="$d/twes-in" TWES_PLATFORM="${PLATFORM:-linux}" TWES_SYSTEMD_DIR="$d/units" \
+    TWES_HEALTH_PAUSE=0 TWES_DOCKER_PAUSE=0 TWES_DOCKER_TRIES=4 TWES_NOW="${AT:-$NOON}" bash "$d/twes-in/scripts/onprem/twes" "$@" 2>&1)
 }
 at_tag() { git -C "$1/twes-in" describe --exact-match --tags HEAD 2>/dev/null; }
 deployed() { [[ -f "$TMPDIR/deploy.calls" ]] && tr '\n' '|' < "$TMPDIR/deploy.calls"; }
@@ -95,6 +132,11 @@ installed() { # a shop running the old release
   mkdir -p "$d/etc/state"; echo 192.168.1.20 > "$d/etc/state/lan-host"; echo $((NOON - 7200)) > "$d/etc/state/started-at"
   echo "$d"
 }
+bare() { local d; d=$(mktemp -d); git clone -q "$(origin)" "$d/twes-in"; echo "$d"; } # a clone, nothing else yet
+value_of() { awk -F= -v k="$2" '$1 == k { v = substr($0, length(k) + 2) } END { print v }' "$1/etc/install.env"; }
+FPR=$(GNUPGHOME=$TMPDIR/dev-gnupg gpg --batch --with-colons --list-keys "$DEV" | awk -F: '$1 == "fpr" { print $10; exit }')
+answers() { printf '%s\n' shop@gmail.com 'abcd efgh ijkl mnop' dev@example.test "${BACKUPS:-}" "${CONFIRM:-yes}" op@shop.test \
+  "${PW1:-a long passphrase 2026}" "${PW2:-a long passphrase 2026}"; }
 echo "twes"
 
 # start
@@ -108,6 +150,74 @@ out=$(NO_ROUTE=1 twes "$d" start); check "no network: this computer alone, said 
 check "  at 127.0.0.1" 0 0 "$(deployed)" "LAN_HOST=127.0.0.1 --again"
 echo 'LAN_HOST=192.168.1.99' >> "$d/etc/install.env"
 out=$(twes "$d" start); check "an address fixed in the values wins" $? 0 "$(deployed)" "LAN_HOST=192.168.1.99 --again"
+d=$(installed)
+out=$(DOCKER_LATE=2 twes "$d" start); check "Docker still starting at logon: waited for, then started" $? 0 "$out" "Docker answered after 2 tries"
+check "  then the release" 0 0 "$(deployed)" "--again"
+out=$(DOCKER_LATE=never twes "$d" start); check "Docker never answering: refused after its tries, saying what to start" $? 1 "$out" "Docker did not answer after 4 tries"
+[[ -z "$(deployed)" ]]; check "  and nothing started" $? 0 "$(deployed)" ""
+out=$(twes "$d" start); check "Docker up already: no word about waiting" $? 0 "$out" "running:"
+[[ "$out" != *"Docker answered"* ]]; check "  (none)" $? 0 "$out" ""
+
+# schedule
+unit() { cat "$1/units/$2"; }
+systemd_calls() { [[ -f "$TMPDIR/systemd.calls" ]] && tr '\n' '|' < "$TMPDIR/systemd.calls"; }
+d=$(installed)
+out=$(twes "$d" schedule); check "schedule on Linux: done" $? 0 "$out" "scheduled: twes-in-start.service at boot, twes-in-tick.timer every quarter hour, as user $(id -u)"
+check "  start runs as this account" 0 0 "$(unit "$d" twes-in-start.service)" "User=$(id -u)"
+check "  with these values" 0 0 "$(unit "$d" twes-in-start.service)" "Environment=\"TWES_VALUES=$d/etc/install.env\""
+check "  this checkout's twes start" 0 0 "$(unit "$d" twes-in-start.service)" "ExecStart=$(command -v bash) \"$d/twes-in/scripts/onprem/twes\" start"
+check "  once Docker runs" 0 0 "$(unit "$d" twes-in-start.service)" "Requires=docker.service
+After=docker.service network-online.target"
+check "  at boot" 0 0 "$(unit "$d" twes-in-start.service)" "WantedBy=multi-user.target"
+check "  tick the same way" 0 0 "$(unit "$d" twes-in-tick.service)" "ExecStart=$(command -v bash) \"$d/twes-in/scripts/onprem/twes\" tick"
+check "  every quarter hour" 0 0 "$(unit "$d" twes-in-tick.timer)" "OnCalendar=*:0/15"
+check "  through sudo: units read again, start enabled, the timer enabled and started" 0 0 "$(systemd_calls)" \
+  "sudo systemctl daemon-reload|systemctl daemon-reload|sudo systemctl enable twes-in-start.service|systemctl enable twes-in-start.service|sudo systemctl enable --now twes-in-tick.timer|systemctl enable --now twes-in-tick.timer|"
+[[ "$(stat -c %a "$d/units/twes-in-start.service")" == 644 ]]; check "  units readable by systemd" $? 0 "$(stat -c '%a %n' "$d/units/"*)" ""
+out=$(PLATFORM=wsl twes "$d" schedule); check "schedule under WSL: refused, install.ps1 schedules there" $? 1 "$out" "install.ps1"
+out=$(PLATFORM=macos twes "$d" schedule); check "schedule on macOS: refused, not built" $? 1 "$out" "not built"
+out=$(SYSTEMCTL_EXIT=1 twes "$d" schedule); check "systemctl refusing: said" $? 1 "$out" "systemd did not take"
+d=$(mktemp -d)/'100% shop'; mkdir -p "$d"; cp -r "$(installed)"/. "$d"
+out=$(twes "$d" schedule); check "a percent sign in a path is written as systemd reads it" $? 0 "$(unit "$d" twes-in-start.service)" "TWES_VALUES=${d//%/%%}/etc/install.env"
+d=$(mktemp -d)/'a "quoted" shop'; mkdir -p "$d"; cp -r "$(installed)"/. "$d"
+out=$(twes "$d" schedule); check "a double quote in a path: refused" $? 1 "$out" "cannot be written in a systemd unit"
+
+# install
+d=$(bare)
+out=$(answers | twes "$d" install); check "install on a computer with nothing: done" $? 0 "$out" "installed: $NEW"
+check "  start and tick scheduled, on Linux" 0 0 "$out" "scheduled: twes-in-start.service"
+check "  its values written, a shop's" 0 0 "$(value_of "$d" TWES_INSTALL)" "onprem"
+[[ "$(stat -c %a "$d/etc/install.env")" == 600 && "$(stat -c %a "$d/etc")" == 700 ]]; check "  readable by its owner alone" $? 0 "$(stat -c '%a %n' "$d/etc" "$d/etc/install.env")" ""
+check "  the shop's Gmail as the relay, the address and the app password encoded, its spaces gone" 0 0 "$(value_of "$d" MAILER_DSN)" "smtp://shop%40gmail.com:abcdefghijklmnop@smtp.gmail.com:587"
+check "  the sender" 0 0 "$(value_of "$d" MAILER_SENDER)" "shop@gmail.com"
+check "  who is alerted" 0 0 "$(value_of "$d" ALERT_EMAIL)" "dev@example.test"
+check "  the release key's fingerprint shown before it is pinned" 0 0 "$out" "$FPR"
+check "  pinned" 0 0 "$(GNUPGHOME=$d/etc/release-keys gpg --batch --with-colons --list-keys 2>/dev/null)" "$FPR"
+check "  the newest signed release deployed" 0 0 "$(at_tag "$d")" "$NEW"
+check "  the operator made through the application" 0 0 "$(head -n 1 "$TMPDIR/seeded")" "app:seed --no-interaction --operator-email=op@shop.test --operator-password-stdin --without-company"
+check "  the password on its input" 0 0 "$(sed -n 2p "$TMPDIR/seeded")" "a long passphrase 2026"
+[[ "$(head -n 1 "$TMPDIR/seeded")" != *passphrase* ]]; check "  never on its command line" $? 0 "$(head -n 1 "$TMPDIR/seeded")" ""
+[[ "$out" != *"a long passphrase"* && "$out" != *abcd* ]]; check "  and no secret said back" $? 0 "$out" ""
+out=$(twes "$d" install < /dev/null); check "install again: nothing asked, nothing redone" $? 0 "$out" "installed: $NEW"
+[[ ! -e "$TMPDIR/seeded" && "$(deployed)" != *--release* ]]; check "  (no operator, no deployment)" $? 0 "$(deployed)" ""
+out=$(PLATFORM=macos twes "$d" install); check "install again on macOS: scheduling said not built" $? 0 "$out" "not scheduled on macOS"
+out=$(PLATFORM=wsl twes "$d" install); [[ "$out" != *scheduled* ]]; check "install again under WSL: scheduling left to install.ps1" $? 0 "$out" ""
+d=$(bare); mkdir -p "$TMPDIR/usb"
+out=$(BACKUPS=$TMPDIR/usb answers | twes "$d" install); check "a backup folder given is the backups' folder" $? 0 "$(value_of "$d" BACKUP_DIRECTORY)" "$TMPDIR/usb"
+d=$(bare)
+out=$(BACKUPS=$TMPDIR/nowhere/at/all answers | twes "$d" install); check "a backup folder that does not exist: refused" $? 1 "$out" "no folder at $TMPDIR/nowhere/at/all"
+d=$(bare)
+out=$(CONFIRM=no answers | twes "$d" install); check "the fingerprint not confirmed: refused" $? 1 "$out" "not pinned"
+[[ ! -d "$d/etc/release-keys" && "$(deployed)" != *--release* ]]; check "  nothing pinned, nothing deployed" $? 0 "$(deployed)" ""
+d=$(bare)
+out=$(PW2='another one entirely' answers | twes "$d" install); check "the operator's two passwords differ: refused" $? 1 "$out" "differ"
+[[ ! -e "$TMPDIR/seeded" ]]; check "  no operator made" $? 0 "" ""
+out=$(printf '%s\n' op@shop.test 'a long passphrase 2026' 'a long passphrase 2026' | twes "$d" install); check "  asked again on the next run, nothing else" $? 0 "$(head -n 1 "$TMPDIR/seeded")" "--operator-email=op@shop.test"
+d=$(bare)
+out=$(printf '%s\n' 'not an address' | twes "$d" install); check "a mail address that is none: refused" $? 1 "$out" "not a mail address"
+d=$(bare)
+out=$(answers | SEED_EXIT=1 twes "$d" install); check "the application refusing the operator: said" $? 1 "$out" "operator"
+out=$(twes "$d" status 2>&1); check "  the rest stays installed" 0 0 "$out" "release:  $NEW"
 
 # update
 d=$(shop)
@@ -141,8 +251,35 @@ runs=$(grep -c ' run --rm ' <<<"$out"); safe=$(grep -c ' run --rm .* < /dev/null
 check "  safe to paste as one block: both restores read no input" 0 0 "$runs $safe" "2 2"
 d=$(installed)
 out=$(twes "$d" restore-commands); check "restore-commands with no update made here: refused" $? 1 "$out" "no update"
+
 out=$(AT=$((NOON + 86400)) BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" update)
 check "a release that failed may be tried again by hand" $? 1 "$(deployed)" "--release"
+# signed releases
+d=$(UNPINNED=1 shop)
+out=$(twes "$d" pin-key "$TMPDIR/release-key.asc"); check "pin-key: the release key pinned, its fingerprint said" $? 0 "$out" "$DEV"
+out=$(twes "$d" pin-key "$TMPDIR/secret-key.asc"); check "pin-key: a file holding a secret key refused" $? 1 "$out" "secret key"
+out=$(twes "$d" pin-key "$TMPDIR/release-key.asc.none"); check "pin-key: no such file refused" $? 1 "$out" "no key file"
+printf 'not a key\n' > "$TMPDIR/nothing.asc"
+out=$(twes "$d" pin-key "$TMPDIR/nothing.asc"); check "pin-key: a file holding no key refused" $? 1 "$out" "no public key"
+d=$(UNPINNED=1 shop)
+out=$(twes "$d" update); check "no key pinned: nothing installed, saying how to pin one" $? 1 "$out" "twes pin-key"
+[[ "$(deployed)" != *--release* ]]; check "  nothing deployed" $? 0 "$(deployed)" ""
+d=$(SIGN_NEW=none installed)
+out=$(BACKUP_LABEL=$LABEL twes "$d" update); check "an unsigned release tag: refused" $? 1 "$out" "$NEW is not signed by the release key pinned here"
+[[ "$(at_tag "$d")" == "$OLD" ]]; check "  the checkout left where it was" $? 0 "$(at_tag "$d")" ""
+[[ "$(deployed)" != *--release* && "$(deployed)" != *before-update* ]]; check "  nothing backed up or deployed" $? 0 "$(deployed)" ""
+check "  the developer mailed" 0 0 "$(subject)" "Mise à jour refusée"
+check "  and the operators told" 0 0 "$(told)" "installation.update_refused version=$NEW"
+d=$(SIGN_NEW=other installed)
+out=$(BACKUP_LABEL=$LABEL twes "$d" update); check "a tag signed by another key: refused" $? 1 "$out" "not signed by the release key pinned here"
+d=$(SIGN_NEW=other installed); twes "$d" policy auto 13:00-14:00 >/dev/null
+out=$(BACKUP_LABEL=$LABEL twes "$d" tick); check "auto: a refused tag refused, the operators told" 0 0 "$(told)" "installation.update_refused"
+rm -f "$d/etc/state/update-tried"
+out=$(AT=$((NOON + 86400)) BACKUP_LABEL=$LABEL twes "$d" tick); [[ -z "$(told)" && "$(deployed)" != *--release* ]]; check "  and the next day neither tried nor told again" $? 0 "$(told)$(deployed)" ""
+check "  saying it waits for a hand" 0 0 "$out" "applied only by hand"
+d=$(SIGN_NEW=none installed); twes "$d" policy notify >/dev/null
+out=$(twes "$d" tick); [[ "$(told)" != *update_available* ]]; check "notify: an unsigned release never announced to the owners" $? 0 "$(told)" ""
+
 
 d=$(installed)
 out=$(ALL_BAD=1 BACKUP_LABEL=$LABEL twes "$d" update); check "the way back unhealthy too: an urgent mail" $? 1 "$(subject)" "URGENT"
@@ -243,7 +380,11 @@ out=$(AT=$((NOON + 600)) BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" !
 out=$(AT=$((NOON + 86400)) BACKUP_LABEL=$LABEL twes "$d" tick); check "  and never again a release that failed here" $? 0 "$out" "applied only by hand"
 
 out=$(twes "$d" sometimes); check "an unknown command is refused" $? 2 "$out" "Usage"
-d=$(installed); rm "$d/etc/install.env"; out=$(twes "$d" status); check "no values: refused, naming where they are looked for" $? 1 "$out" "new-instance.sh --onprem"
+d=$(installed); rm "$d/etc/install.env"; out=$(twes "$d" status); check "no values: refused, naming where they are looked for" $? 1 "$out" "twes install writes them"
+
+# Windows PowerShell 5.1 reads a script without a byte-order mark in the computer's ANSI code page.
+# grep answers 1 when no line holds anything else, 2 when it could not read the file.
+out=$(LC_ALL=C grep -n '[^ -~	]' "$HERE/onprem/install.ps1" 2>&1); check "the Windows installer is plain ASCII" $? 1 "$out" ""
 
 echo "twes: $pass passed, $fail failed"
 ((fail == 0))

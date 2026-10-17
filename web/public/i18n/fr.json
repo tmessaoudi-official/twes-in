@@ -668,6 +668,7 @@
       "installation_update_available": "La version {{version}} est disponible ; cet ordinateur tourne sur la {{previous}}. Demandez à qui gère l’installation de la mettre à jour.",
       "installation_rolled_back": "La mise à jour vers {{version}} ne répondait pas : {{previous}} a repris. Sauvegarde d’avant : {{label}}.",
       "installation_update_failed": "La mise à jour vers {{version}} a échoué et {{previous}} ne répond pas : restaurez la sauvegarde {{label}} (commandes dans le courriel).",
+      "installation_update_refused": "La mise à jour vers {{version}} a été refusée : elle n’est pas signée par la clé de publication de cette installation. Rien n’a changé.",
       "installation_unhealthy": "Le contrôle de santé de l’installation échoue : {{check}}.",
       "installation_backup_failed": "La sauvegarde « {{step}} » a échoué.",
       "installation_backup_stopped": "Les sauvegardes ne tournent plus."
@@ -702,6 +703,7 @@
       "installation_update_available": "Nouvelle version disponible",
       "installation_rolled_back": "Mise à jour annulée",
       "installation_update_failed": "Mise à jour en échec",
+      "installation_update_refused": "Mise à jour refusée",
       "installation_unhealthy": "Installation en mauvaise santé",
       "installation_backup_failed": "Sauvegarde en échec",
       "installation_backup_stopped": "Sauvegardes arrêtées"
