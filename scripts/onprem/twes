@@ -17,9 +17,11 @@
 #   twes pin-key <file>            pins the developer's public release key: every release tag must verify against it
 #   twes install                   asks for the shop's facts, writes the values, pins the release key once its fingerprint
 #                                  is confirmed, installs the newest release and makes the operator; run again, it asks
-#                                  only what is still missing; on Linux, schedules start and tick as well
-#   twes schedule                  Linux: systemd units running twes start at boot and twes tick every quarter hour, as
-#                                  this account, once Docker runs (sudo asks for the password); Windows' are install.ps1's
+#                                  only what is still missing; on Linux and under Docker Engine in WSL, schedules start
+#                                  and tick as well
+#   twes schedule                  Linux, and Docker Engine inside WSL's Ubuntu: systemd units running twes start at boot
+#                                  and twes tick every quarter hour, as this account, once Docker runs (sudo asks for the
+#                                  password); with Docker Desktop, Windows' tasks are install.ps1's
 # The values are the file scripts/deploy/new-instance.sh --onprem wrote, TWES_VALUES, by default ~/.twes-in/install.env;
 # beside it, releases/ (deploy.sh's record) and state/ (this script's). Alerts are mailed through the shop's own account
 # to ALERT_EMAIL, so a mail leaves while the application is down, and recorded in the application, held under state/
@@ -292,6 +294,7 @@ install() {
   fi
   case "$(platform)" in
     linux) schedule ;;
+    wsl) docker_desktop || schedule ;;
     macos) say "twes start and twes tick are not scheduled on macOS yet: run twes start after each start of the computer, and twes tick every quarter hour (docs/START.md section 16)" ;;
   esac
   say "installed: $(tag_of "$(running)"), https://localhost on this computer; the operator is $(cat "$state/operator")"
@@ -303,12 +306,19 @@ unit_path() {
   [[ "$1" != *[\"\\$'\n']* ]] || refuse "$1 cannot be written in a systemd unit: install from a folder without a double quote, a backslash or a line break"
   printf '"%s"' "${1//%/%%}"
 }
+# Under Windows, Docker Desktop runs only in a signed-in session, so Windows' own tasks start twes there (install.ps1);
+# Docker Engine inside Ubuntu is a systemd service, as on Linux. Asked of the daemon itself, never guessed.
+docker_desktop() {
+  local system
+  system=$(docker info --format '{{.OperatingSystem}}') || refuse "Docker does not answer: start it, then run this again"
+  [[ "$system" == *"Docker Desktop"* ]]
+}
 # Docker on Linux is a system service, so the units are the system's, run as this account, which Docker's group admits.
 schedule() {
   local where units account bash_path script path_values action
   case "$(platform)" in
     linux) ;;
-    wsl) refuse "under Windows, scripts/onprem/install.ps1 schedules twes start and twes tick" ;;
+    wsl) ! docker_desktop || refuse "under Windows with Docker Desktop, scripts/onprem/install.ps1 schedules twes start and twes tick" ;;
     *) refuse "scheduling on $(platform) is not built: run twes start after each start of the computer, and twes tick every quarter hour" ;;
   esac
   where=${TWES_SYSTEMD_DIR:-/etc/systemd/system}

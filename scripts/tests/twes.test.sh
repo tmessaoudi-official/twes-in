@@ -84,12 +84,14 @@ esac
 EOF
 printf '#!/usr/bin/env bash\n[[ -z "${NO_ROUTE:-}" ]] || { echo "RTNETLINK answers: Network is unreachable" >&2; exit 2; }\necho "1.1.1.1 via 192.168.1.1 dev eth0 src ${ADDRESS:-192.168.1.20} uid 1000"\n' > "$TMPDIR/bin/ip"
 printf '#!/usr/bin/env bash\nprintf "%%s\\r\\n" "${ADDRESS:-192.168.1.30}"\n' > "$TMPDIR/bin/powershell.exe"
-# docker: its daemon answers info once DOCKER_LATE tries have been made, never when it is "never".
+# docker: its daemon answers info once DOCKER_LATE tries have been made, never when it is "never"; asked its system, it
+# names DOCKER_OS, Docker Engine's Ubuntu by default.
 cat > "$TMPDIR/bin/docker" <<'EOF'
 #!/usr/bin/env bash
 [[ "$1" == info ]] || exit 0
 tries=$(($(cat "$TMPDIR/docker.tries" 2>/dev/null || echo 0) + 1)); echo "$tries" > "$TMPDIR/docker.tries"
 [[ "${DOCKER_LATE:-0}" != never ]] && ((tries > ${DOCKER_LATE:-0})) || { echo "Cannot connect to the Docker daemon" >&2; exit 1; }
+[[ "$*" != *--format* ]] || echo "${DOCKER_OS:-Ubuntu 24.04.1 LTS}"
 EOF
 # sudo and systemctl: what they were asked is written down; systemctl fails when SYSTEMCTL_EXIT says so.
 printf '#!/usr/bin/env bash\necho "sudo $*" >> "$TMPDIR/systemd.calls"\nexec "$@"\n' > "$TMPDIR/bin/sudo"
@@ -176,7 +178,10 @@ check "  every quarter hour" 0 0 "$(unit "$d" twes-in-tick.timer)" "OnCalendar=*
 check "  through sudo: units read again, start enabled, the timer enabled and started" 0 0 "$(systemd_calls)" \
   "sudo systemctl daemon-reload|systemctl daemon-reload|sudo systemctl enable twes-in-start.service|systemctl enable twes-in-start.service|sudo systemctl enable --now twes-in-tick.timer|systemctl enable --now twes-in-tick.timer|"
 [[ "$(stat -c %a "$d/units/twes-in-start.service")" == 644 ]]; check "  units readable by systemd" $? 0 "$(stat -c '%a %n' "$d/units/"*)" ""
-out=$(PLATFORM=wsl twes "$d" schedule); check "schedule under WSL: refused, install.ps1 schedules there" $? 1 "$out" "install.ps1"
+out=$(PLATFORM=wsl DOCKER_OS='Docker Desktop' twes "$d" schedule); check "schedule under WSL with Docker Desktop: refused, install.ps1 schedules there" $? 1 "$out" "install.ps1"
+out=$(PLATFORM=wsl twes "$d" schedule); check "schedule under WSL with Docker Engine in Ubuntu: systemd's units, as on Linux" $? 0 "$out" "scheduled: twes-in-start.service at boot"
+check "  once Docker runs" 0 0 "$(unit "$d" twes-in-start.service)" "Requires=docker.service"
+out=$(PLATFORM=wsl DOCKER_LATE=never twes "$d" schedule); check "  Docker not answering: refused, nothing guessed" $? 1 "$out" "Docker does not answer"
 out=$(PLATFORM=macos twes "$d" schedule); check "schedule on macOS: refused, not built" $? 1 "$out" "not built"
 out=$(SYSTEMCTL_EXIT=1 twes "$d" schedule); check "systemctl refusing: said" $? 1 "$out" "systemd did not take"
 d=$(mktemp -d)/'100% shop'; mkdir -p "$d"; cp -r "$(installed)"/. "$d"
@@ -203,7 +208,8 @@ check "  the password on its input" 0 0 "$(sed -n 2p "$TMPDIR/seeded")" "a long 
 out=$(twes "$d" install < /dev/null); check "install again: nothing asked, nothing redone" $? 0 "$out" "installed: $NEW"
 [[ ! -e "$TMPDIR/seeded" && "$(deployed)" != *--release* ]]; check "  (no operator, no deployment)" $? 0 "$(deployed)" ""
 out=$(PLATFORM=macos twes "$d" install); check "install again on macOS: scheduling said not built" $? 0 "$out" "not scheduled on macOS"
-out=$(PLATFORM=wsl twes "$d" install); [[ "$out" != *scheduled* ]]; check "install again under WSL: scheduling left to install.ps1" $? 0 "$out" ""
+out=$(PLATFORM=wsl DOCKER_OS='Docker Desktop' twes "$d" install); [[ "$out" != *scheduled* ]]; check "install again under WSL with Docker Desktop: scheduling left to install.ps1" $? 0 "$out" ""
+out=$(PLATFORM=wsl twes "$d" install); check "install again under WSL with Docker Engine: scheduled by systemd" $? 0 "$out" "scheduled: twes-in-start.service"
 d=$(bare); mkdir -p "$TMPDIR/usb"
 out=$(BACKUPS=$TMPDIR/usb answers | twes "$d" install); check "a backup folder given is the backups' folder" $? 0 "$(value_of "$d" BACKUP_DIRECTORY)" "$TMPDIR/usb"
 d=$(bare)

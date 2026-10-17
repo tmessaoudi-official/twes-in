@@ -813,13 +813,44 @@ goes in the values as `LAN_HOST`. With no network at all, the computer alone ope
 certificates come from its own authority: a phone trusts it once, from `http://<address>/root.crt`, then opens the
 HTTPS address. Mailed links name the network address.
 
-**Installing on Windows.** Docker Desktop with WSL 2 runs it; the checkout lives inside WSL's own filesystem (`~`,
-never `/mnt/c`), where `.gitattributes` keeps every file as git holds it. From the shop's own Windows account, the one
-signed in every morning, in PowerShell opened as administrator:
+**Installing on Windows.** The checkout lives inside WSL's own filesystem (`~`, never `/mnt/c`), where `.gitattributes`
+keeps every file as git holds it, and Docker runs one of two ways, chosen at the shop:
+
+| | `-Engine Desktop` (the default) | `-Engine Wsl` |
+|---|---|---|
+| Docker | Docker Desktop | Docker Engine inside Ubuntu, a systemd service; no Docker Desktop |
+| Windows restarted | up once the shop's account signs in (Docker Desktop is per session) | up from Windows' start, nobody signed in: the `\twes-in\keep` task (S4U, no password stored) starts WSL, systemd starts Docker and `twes start` |
+| Docker restarted | the containers come back (`restart: unless-stopped`) | the same; systemd restarts Docker itself |
+| WSL stopped | Docker Desktop's own | `keep` runs it again within a quarter hour (it also runs at each sign-in and every quarter hour) |
+| A container stopped, the health failing | `twes tick` starts the installation again once, then alerts if that did not mend it | the same, `tick` run by systemd's timer |
+| Phones | Docker Desktop's port publishing | WSL's mirrored network (`.wslconfig` `networkingMode=mirrored`) and a Hyper-V firewall rule for ports 80 and 443 |
+| Needs | Windows 10 or 11 | Windows 11 22H2 or later (build 22621), WSL from the Microsoft Store |
+
+From the shop's own Windows account, the one signed in every morning, in PowerShell opened as administrator:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1
+powershell -ExecutionPolicy Bypass -File install.ps1               # Docker Desktop
+powershell -ExecutionPolicy Bypass -File install.ps1 -Engine Wsl   # Docker inside Ubuntu
 ```
+
+`-Engine Wsl` adds `[general] instanceIdleTimeout=-1` and `[wsl2] networkingMode=mirrored` to `%UserProfile%\.wslconfig`
+(a key the shop set to another value stops it, never overwritten; [Microsoft's settings](https://learn.microsoft.com/windows/wsl/wsl-config)),
+then runs the checkout's `scripts/onprem/wsl-engine.sh` as root once the tag is verified: systemd switched on in
+`/etc/wsl.conf`, WSL started again, Docker Engine installed from Docker's own apt repository (its key's fingerprint
+checked first, as [Docker's page](https://docs.docker.com/engine/install/ubuntu/) installs it), `docker` and
+`containerd` enabled and the account added to the `docker` group. `twes install` then writes systemd's units, as on
+Linux (`twes schedule` writes them under WSL whenever Docker is not Docker Desktop), and the installer registers `keep`
+and the firewall rule instead of the `start` and `tick` tasks; switching engines removes the other engine's tasks. It
+refuses while Docker Desktop is installed, since Docker Desktop's own `docker` would answer inside Ubuntu instead.
+Untried on Windows: WSL starting under an S4U task before anyone signs in, and the phones reaching Docker through the
+mirrored network, are what TODO step 6B checks; Docker Desktop stays the way back.
+
+**Windows reserving a port.** Hyper-V may reserve ranges of ports, and the edge cannot publish 80 or 443 inside one:
+`netsh interface ipv4 show excludedportrange protocol=tcp` lists them, and the installer refuses to go on while one holds
+80 or 443. A reserved range moves at each restart; one that keeps coming back is reserved by hand, in PowerShell as
+administrator, before Hyper-V starts: `net stop winnat`, `netsh int ipv4 add excludedportrange protocol=tcp startport=80
+numberofports=1` (and 443), `net start winnat`: a port excluded by hand is never handed out again, and stays free for
+the edge. That is the fix Docker's and WSL's users give; it is untried here.
 
 `scripts/onprem/install.ps1` does what is still missing and stops at each step that needs a person, to be run again
 after it: WSL and Ubuntu (a restart, then Ubuntu opened once to make its user), Docker Desktop (started once, its terms
@@ -883,9 +914,9 @@ root on this computer; keep the computer's accounts to the shop's own, and the a
 | `twes tick` | a new address, alerts held back, the deep health (failing, the installation started again once, the developer told only if that did not mend it, never within ten minutes of a start), the backups' outcomes and schedule, then the policy |
 | `twes status` | the release, the address, the policy, the health, how often `tick` started it again, and the backups |
 | `twes restore-commands` | what takes the installation back to the backup made before the last update (docs/RUNBOOK.md, « Restore a shop ») |
-| `twes install` | asks for the shop's facts, pins the release key once its fingerprint is confirmed, installs the newest release and makes the operator; on Linux, schedules as well |
+| `twes install` | asks for the shop's facts, pins the release key once its fingerprint is confirmed, installs the newest release and makes the operator; on Linux and under `-Engine Wsl`, schedules as well |
 | `twes pin-key <file>` | pins a public release key: every release tag must verify against it |
-| `twes schedule` | Linux: system units running `twes start` at boot and `twes tick` every quarter hour as this account, once Docker runs (`sudo` asks for the password) |
+| `twes schedule` | Linux, and Docker Engine inside WSL (`-Engine Wsl`): system units running `twes start` at boot and `twes tick` every quarter hour as this account, once Docker runs (`sudo` asks for the password) |
 
 **Backups.** The computer is off at night, so its backups run when due: every half hour the schedule runs each step whose
 last success is older than its period (a full backup weekly, a differential daily, the dump and the files daily, a
@@ -910,7 +941,9 @@ signed by `tag-release.sh` with a key made for the check, which the shop pins; a
 refused with the release unchanged and the operator told. It runs as the compose project `twes-onprem-check`, needs
 ports 80 and 443 free, and takes about ten minutes.
 
-What it does not prove: Windows and macOS (it runs on Linux, and `install.ps1` is checked by PSScriptAnalyzer only), the
+What it does not prove: Windows and macOS (it runs on Linux; `make gate-powershell` parses `install.ps1`, runs
+PSScriptAnalyzer over it and its `.wslconfig` editing, and `scripts/tests/wsl-engine.test.sh` runs `wsl-engine.sh` against
+stand-ins, but neither starts WSL), the
 scheduled tasks and units firing (`systemd-analyze verify` reads the units), the mail to `ALERT_EMAIL` (the relay is the
 shop's), a phone trusting the authority, an off-site copy, and a real release's own rollback, which depends on that
 release keeping its schema additive.

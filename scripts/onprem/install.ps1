@@ -8,19 +8,31 @@
 
     powershell -ExecutionPolicy Bypass -File install.ps1
 
+  Docker runs one of two ways, chosen at the shop with -Engine:
+    Desktop (the default): Docker Desktop, which runs only once the shop's account has signed in, so nothing is up
+      before someone signs in; Windows' tasks start twes at each sign-in and run twes tick every quarter hour.
+    Wsl: Docker Engine inside Ubuntu, no Docker Desktop. systemd in Ubuntu starts Docker, twes start and twes tick; a
+      Windows task keeps WSL running from Windows' start, before anyone signs in, and starts it again within a quarter
+      hour of any stop; WSL's mirrored network lets phones reach it. Needs Windows 11 22H2 or later.
+
   Each run does what is still missing and skips what is done, so it is run again after each step it asks for:
     1. WSL and its Ubuntu (a restart of Windows may be asked, then Ubuntu opened once to make its user);
-    2. Docker Desktop (started once by hand, its terms accepted, "Start Docker Desktop when you sign in" ticked);
+    2. Desktop: Docker Desktop (started once by hand, its terms accepted, "Start Docker Desktop when you sign in" ticked);
     3. git, gpg, curl and flock inside Ubuntu;
     4. the checkout, in Ubuntu's own home (never under /mnt/c), at the newest release;
+       Wsl: then WSL's settings (.wslconfig) and Docker Engine, through the checkout's scripts/onprem/wsl-engine.sh;
     5. scripts/onprem/twes install there: the shop's facts, the release key once its fingerprint is confirmed, the
-       release, the operator;
-    6. on the Windows side: the installation's certificate authority trusted, twes start at each sign-in and twes tick
-       every quarter hour as scheduled tasks under \twes-in\, and a twes-in shortcut on the desktop.
+       release, the operator (Wsl: and systemd's units, sudo asking Ubuntu's password);
+    6. on the Windows side: the installation's certificate authority trusted, the scheduled tasks under \twes-in\
+       (Desktop: start at each sign-in and tick every quarter hour; Wsl: keep, and WSL's firewall letting the shop
+       network in on ports 80 and 443), and a twes-in shortcut on the desktop.
 
   The scheduled tasks run wsl.exe, which opens a console window for the moment it runs. -HideWindows runs them through
   conhost.exe --headless instead, which shows none; that switch is not documented by Microsoft, so it is tried on the
   computer before it is kept (docs/START.md section 16). VBScript wrappers are not used: Windows is retiring VBScript.
+
+.PARAMETER Engine
+  Desktop (the default) or Wsl, as above.
 
 .PARAMETER Distribution
   The WSL distribution that holds the checkout. Ubuntu by default.
@@ -36,12 +48,14 @@
   it runs. The developer's own by default; this file is what carries it, so it comes from the developer, not the checkout.
 #>
 # Write-Host is how an installer run by hand talks to the person running it; Stop-Install and New-TwesAction change
-# nothing that -WhatIf could hold back. The file stays ASCII: Windows PowerShell 5.1 reads a file without a byte-order
+# nothing that -WhatIf could hold back, and Add-WslSetting only adds a line that is missing. The file stays ASCII: Windows PowerShell 5.1 reads a file without a byte-order
 # mark in the computer's ANSI code page.
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'an interactive installer')]
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'no state changed')]
 [CmdletBinding()]
 param(
+    [ValidateSet('Desktop', 'Wsl')]
+    [string]$Engine = 'Desktop',
     [string]$Distribution = 'Ubuntu',
     [string]$Repository = 'https://github.com/tmessaoudi-official/twes-in.git',
     [switch]$HideWindows,
@@ -80,7 +94,23 @@ if ($signedIn -and $signedIn -ne $identity.Name) {
     Stop-Install "this PowerShell runs as $($identity.Name) while $signedIn is signed in: run it from $signedIn's own account, as administrator."
 }
 $user = $identity.Name
-Write-Host "twes-in: installing for $user"
+Write-Host "twes-in: installing for $user, Docker through $Engine"
+
+# Phones reach Docker inside WSL only through WSL's mirrored network, which Windows 11 22H2 brought.
+$build = [int](Get-CimInstance -ClassName Win32_OperatingSystem).BuildNumber
+if ($Engine -eq 'Wsl' -and $build -lt 22621) {
+    Stop-Install "-Engine Wsl needs Windows 11 22H2 or later (build 22621; this computer is $build): run this with -Engine Desktop instead."
+}
+# Windows may reserve port ranges for Hyper-V, and a reserved port cannot be published: the edge would never start.
+foreach ($line in (& netsh.exe interface ipv4 show excludedportrange protocol=tcp)) {
+    if ($line -match '^\s*(\d+)\s+(\d+)') {
+        foreach ($port in @(80, 443)) {
+            if ($port -ge [int]$Matches[1] -and $port -le [int]$Matches[2]) {
+                Stop-Install "Windows reserves ports $($Matches[1]) to $($Matches[2]), port $port among them, which the installation publishes: docs/START.md section 16 says what to do."
+            }
+        }
+    }
+}
 
 # --- 1. WSL and Ubuntu ------------------------------------------------------------------------------------------------
 & wsl.exe --status *> $null
@@ -92,30 +122,42 @@ if ($distributions -notcontains $Distribution) {
 }
 & wsl.exe --set-default $Distribution
 if ((Invoke-Ubuntu 'true') -ne 0) { Stop-Install "$Distribution does not start: open it once from the Start menu, then run this again." }
+# systemd, instanceIdleTimeout and the mirrored network belong to the WSL from the Microsoft Store, which answers --version.
+if ($Engine -eq 'Wsl') {
+    & wsl.exe --version *> $null
+    if ($LASTEXITCODE -ne 0) { Stop-Install 'this WSL is the one built into Windows: run wsl --update, then run this again.' }
+}
 
 # --- 2. Docker Desktop ------------------------------------------------------------------------------------------------
 $dockerDesktop = Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'
-if (-not (Test-Path $dockerDesktop)) {
+if ($Engine -eq 'Wsl') {
+    # Its WSL integration puts its own docker in Ubuntu, which would answer instead of Docker Engine.
+    if (Test-Path $dockerDesktop) {
+        Stop-Install 'Docker Desktop is installed: -Engine Wsl runs Docker inside Ubuntu instead. Uninstall Docker Desktop (Settings > Apps), or run this with -Engine Desktop.'
+    }
+} elseif (-not (Test-Path $dockerDesktop)) {
     & winget.exe install --exact --id Docker.DockerDesktop --accept-package-agreements --accept-source-agreements
     Stop-Install 'Docker Desktop is installed: start it once, accept its terms, tick "Start Docker Desktop when you sign in" (Settings > General), then run this again.'
 }
-if ((Invoke-Ubuntu 'docker info >/dev/null 2>&1') -ne 0) {
+if ($Engine -eq 'Desktop' -and (Invoke-Ubuntu 'docker info >/dev/null 2>&1') -ne 0) {
     Stop-Install "Docker Desktop does not answer inside ${Distribution}: start it, and in Settings > Resources > WSL integration switch $Distribution on, then run this again."
 }
 # Its settings file's name and keys are Docker's own and change between versions: read, said, never written.
-$autoStart = $null
-foreach ($name in @('settings-store.json', 'settings.json')) {
-    $file = Join-Path $env:APPDATA "Docker\$name"
-    if (Test-Path $file) {
-        $settings = Get-Content -Raw $file | ConvertFrom-Json
-        foreach ($key in @('AutoStart', 'autoStart')) {
-            if ($settings.PSObject.Properties.Name -contains $key) { $autoStart = $settings.$key }
+if ($Engine -eq 'Desktop') {
+    $autoStart = $null
+    foreach ($name in @('settings-store.json', 'settings.json')) {
+        $file = Join-Path $env:APPDATA "Docker\$name"
+        if (Test-Path $file) {
+            $settings = Get-Content -Raw $file | ConvertFrom-Json
+            foreach ($key in @('AutoStart', 'autoStart')) {
+                if ($settings.PSObject.Properties.Name -contains $key) { $autoStart = $settings.$key }
+            }
+            if ($null -ne $autoStart) { break }
         }
-        if ($null -ne $autoStart) { break }
     }
-}
-if ($autoStart -ne $true) {
-    Write-Host 'twes-in: check Docker Desktop > Settings > General > "Start Docker Desktop when you sign in": twes start waits five minutes for it at each sign-in.' -ForegroundColor Yellow
+    if ($autoStart -ne $true) {
+        Write-Host 'twes-in: check Docker Desktop > Settings > General > "Start Docker Desktop when you sign in": twes start waits five minutes for it at each sign-in.' -ForegroundColor Yellow
+    }
 }
 
 # --- 3. The tools inside Ubuntu ---------------------------------------------------------------------------------------
@@ -144,6 +186,64 @@ switch (Invoke-Ubuntu $verify.Replace('RELEASE_KEY', $ReleaseKey)) {
     default { Stop-Install "the release in ~/twes-in is not signed by the release key ${ReleaseKey}: nothing from it was run. Tell the developer." }
 }
 
+# --- 4b. Docker Engine inside Ubuntu (-Engine Wsl) --------------------------------------------------------------------
+# What WSL reads at its start from %UserProfile%\.wslconfig (https://learn.microsoft.com/windows/wsl/wsl-config): a key
+# missing is added; one set to another value is the shop's own choice, said and never overwritten. True once a line is added.
+function Add-WslSetting([string]$Section, [string]$Key, [string]$Value) {
+    $path = Join-Path $env:USERPROFILE '.wslconfig'
+    $lines = [Collections.Generic.List[string]]::new()
+    if (Test-Path $path) { foreach ($line in (Get-Content -Path $path)) { $lines.Add($line) } }
+    $inside = $false
+    $header = -1
+    $end = $lines.Count
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i].Trim()
+        if ($line -match '^\[(.+)\]$') {
+            if ($inside) { $end = $i; break }
+            $inside = $Matches[1].Trim() -ieq $Section
+            if ($inside) { $header = $i }
+        } elseif ($inside -and $line -match '^([^=#;]+)=(.*)$' -and $Matches[1].Trim() -ieq $Key) {
+            if ($Matches[2].Trim() -ieq $Value) { return $false }
+            Stop-Install "$path sets $Key=$($Matches[2].Trim()) under [$Section], where this installation needs $Key=${Value}: change that line, then run this again."
+        }
+    }
+    if ($header -lt 0) {
+        $lines.Add("[$Section]")
+        $lines.Add("$Key=$Value")
+    } else {
+        # After the section's last line, before the blank lines that part it from the next.
+        while ($end -gt $header + 1 -and -not $lines[$end - 1].Trim()) { $end-- }
+        $lines.Insert($end, "$Key=$Value")
+    }
+    Set-Content -Path $path -Value $lines -Encoding ASCII
+    return $true
+}
+if ($Engine -eq 'Wsl') {
+    # Never stopped for being idle: what runs inside is the shop's till. Mirrored: Ubuntu shares Windows' addresses, so a
+    # phone reaches the edge at this computer's own address.
+    $idle = Add-WslSetting -Section 'general' -Key 'instanceIdleTimeout' -Value '-1'
+    $mirrored = Add-WslSetting -Section 'wsl2' -Key 'networkingMode' -Value 'mirrored'
+    if ($idle -or $mirrored) {
+        Write-Host 'twes-in: WSL settings written to .wslconfig; WSL starts again to read them'
+        & wsl.exe --shutdown
+    }
+    $account = (& wsl.exe -d $Distribution -- id -un | Out-String).Trim()
+    if ($account -cnotmatch '^[a-z_][a-z0-9_-]*$') { Stop-Install "$Distribution's account could not be read (got '$account')." }
+    $engineScript = "bash ~$account/twes-in/scripts/onprem/wsl-engine.sh $account"
+    $code = Invoke-Ubuntu $engineScript -AsRoot
+    # 10: systemd was just switched on in /etc/wsl.conf, which WSL reads at its start.
+    if ($code -eq 10) {
+        & wsl.exe --shutdown
+        $code = Invoke-Ubuntu $engineScript -AsRoot
+    }
+    if ($code -ne 0) { Stop-Install "Docker Engine could not be installed in ${Distribution}: read the lines above, then run this again." }
+    # The docker group is read when Ubuntu starts a session: a WSL started before the account joined it starts again.
+    if ((Invoke-Ubuntu 'docker info >/dev/null 2>&1') -ne 0) {
+        & wsl.exe --terminate $Distribution
+        if ((Invoke-Ubuntu 'docker info >/dev/null') -ne 0) { Stop-Install "Docker Engine does not answer $account in ${Distribution}: read the line above." }
+    }
+}
+
 # --- 5. The installation itself ---------------------------------------------------------------------------------------
 # It asks its questions on this console, so its output is not taken through PowerShell's pipeline.
 & wsl.exe -d $Distribution --cd '~' -- bash twes-in/scripts/onprem/twes install
@@ -165,6 +265,12 @@ function New-TwesAction([string]$Command, [bool]$Hidden) {
     if ($Hidden) { return New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless wsl.exe $line" }
     return New-ScheduledTaskAction -Execute 'wsl.exe' -Argument $line
 }
+# A switch from one engine to the other leaves no task of the first behind.
+function Remove-TwesTask([string]$Name) {
+    if (Get-ScheduledTask | Where-Object { $_.TaskPath -eq '\twes-in\' -and $_.TaskName -eq $Name }) {
+        Unregister-ScheduledTask -TaskPath '\twes-in\' -TaskName $Name -Confirm:$false
+    }
+}
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 2)
@@ -173,11 +279,37 @@ $atSignIn = New-ScheduledTaskTrigger -AtLogOn -User $user
 # installer starts them again.
 $quarterly = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 15) `
     -RepetitionDuration (New-TimeSpan -Days 3650)
-Register-ScheduledTask -TaskPath '\twes-in\' -TaskName 'start' -Action (New-TwesAction 'start' $HideWindows.IsPresent) -Trigger $atSignIn `
-    -Principal $principal -Settings $settings -Description 'twes-in: starts the installation at sign-in' -Force | Out-Null
-Register-ScheduledTask -TaskPath '\twes-in\' -TaskName 'tick' -Action (New-TwesAction 'tick' $HideWindows.IsPresent) -Trigger $quarterly `
-    -Principal $principal -Settings $settings -Description 'twes-in: health, backups and updates every quarter hour' -Force | Out-Null
-Write-Host 'twes-in: scheduled \twes-in\start at each sign-in and \twes-in\tick every quarter hour'
+if ($Engine -eq 'Desktop') {
+    Remove-TwesTask 'keep'
+    Register-ScheduledTask -TaskPath '\twes-in\' -TaskName 'start' -Action (New-TwesAction 'start' $HideWindows.IsPresent) -Trigger $atSignIn `
+        -Principal $principal -Settings $settings -Description 'twes-in: starts the installation at sign-in' -Force | Out-Null
+    Register-ScheduledTask -TaskPath '\twes-in\' -TaskName 'tick' -Action (New-TwesAction 'tick' $HideWindows.IsPresent) -Trigger $quarterly `
+        -Principal $principal -Settings $settings -Description 'twes-in: health, backups and updates every quarter hour' -Force | Out-Null
+    Write-Host 'twes-in: scheduled \twes-in\start at each sign-in and \twes-in\tick every quarter hour'
+} else {
+    # systemd in Ubuntu runs twes start and twes tick (twes install wrote its units); this task only keeps WSL running.
+    Remove-TwesTask 'start'
+    Remove-TwesTask 'tick'
+    # From Windows' start with no one signed in (S4U: no password stored), at each sign-in, and every quarter hour, so a
+    # WSL stopped by an update or by hand runs again within one; a run while one is running is ignored. No window shows:
+    # an S4U task runs outside the desktop.
+    $keepAction = New-ScheduledTaskAction -Execute 'wsl.exe' -Argument "-d $Distribution -u root -e sleep infinity"
+    $keepPrincipal = New-ScheduledTaskPrincipal -UserId $user -LogonType S4U -RunLevel Limited
+    $keepSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+        -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero)
+    $keepTriggers = @((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -AtLogOn -User $user), $quarterly)
+    Register-ScheduledTask -TaskPath '\twes-in\' -TaskName 'keep' -Action $keepAction -Trigger $keepTriggers `
+        -Principal $keepPrincipal -Settings $keepSettings -Description 'twes-in: keeps WSL, and the installation inside it, running' -Force | Out-Null
+    Start-ScheduledTask -TaskPath '\twes-in\' -TaskName 'keep'
+    Write-Host 'twes-in: scheduled \twes-in\keep at the start of Windows, at each sign-in and every quarter hour'
+    # WSL's own firewall (Hyper-V's) refuses what comes in from the network unless a rule lets it, as Microsoft's
+    # networking page for the mirrored mode shows; the VM creator id is WSL's.
+    if (-not (Get-NetFirewallHyperVRule | Where-Object { $_.Name -eq 'twes-in-web' })) {
+        New-NetFirewallHyperVRule -Name 'twes-in-web' -DisplayName 'twes-in: the shop network opens HTTP and HTTPS' -Direction Inbound `
+            -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Protocol TCP -LocalPorts 80, 443 | Out-Null
+    }
+    Write-Host 'twes-in: WSL lets the shop network in on ports 80 and 443'
+}
 
 $shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'twes-in.url'
 Set-Content -Path $shortcut -Value "[InternetShortcut]`r`nURL=https://localhost/`r`n" -Encoding ASCII
