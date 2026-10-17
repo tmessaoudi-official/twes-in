@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Doctrine;
 
-use App\DataFixtures\Scale\ScaleGenerator;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -76,11 +75,11 @@ final class ApplicationRoleCommand extends Command
             $this->owner->executeStatement($statement);
         }
         // The scale generator makes a schema of its own, and works only on a database named for it or for the tests
-        // (ScaleGenerator::isScaleDatabase); no other database lets the role make anything, and a grant found there is
+        // (ScaleDatabase); no other database lets the role make anything, and a grant found there is
         // taken back.
         $database = (string) $this->owner->getDatabase();
         $this->owner->executeStatement(\sprintf(
-            ScaleGenerator::isScaleDatabase($database) ? 'GRANT CREATE ON DATABASE %s TO %s' : 'REVOKE CREATE ON DATABASE %s FROM %s',
+            ScaleDatabase::is($database) ? 'GRANT CREATE ON DATABASE %s TO %s' : 'REVOKE CREATE ON DATABASE %s FROM %s',
             $this->owner->quoteSingleIdentifier($database),
             $role,
         ));

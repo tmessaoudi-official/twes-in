@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\DataFixtures;
+namespace App\Demo\Infrastructure\Dataset;
 
 use App\Module\Inventory\Application\Location\ManageStockLocations;
 use App\Module\Inventory\Application\StockMap\DrawStockMap;
