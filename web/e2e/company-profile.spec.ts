@@ -42,13 +42,20 @@ async function currentProfile(page: Page): Promise<Record<string, unknown>> {
 }
 
 async function putProfile(page: Page, body: Record<string, unknown>): Promise<void> {
-  const companyId = await page.evaluate(
-    async () =>
-      ((await (await fetch('/api/auth/me')).json()) as { company: { id: string } }).company.id,
-  );
+  const [companyId, version] = await page.evaluate(async () => {
+    const id = ((await (await fetch('/api/auth/me')).json()) as { company: { id: string } }).company
+      .id;
+    const held = (await (await fetch(`/api/companies/${id}/profile`)).json()) as {
+      version: number;
+    };
+    return [id, held.version] as const;
+  });
+  // Put back over whatever the scenario saved since the profile was first read, so on the version held now.
   // Putting the bank details back waits for a recent proof (docs/SPEC.md § 7), given only when asked.
   const url = `/api/companies/${companyId}/profile`;
-  expect((await sendProving(page, OPERATOR_PASSWORD, 'PUT', url, body)).status).toBe(200);
+  expect(
+    (await sendProving(page, OPERATOR_PASSWORD, 'PUT', url, { ...body, version })).status,
+  ).toBe(200);
 }
 
 test("the owner fills the company's profile with the identifier its preset requires", async ({

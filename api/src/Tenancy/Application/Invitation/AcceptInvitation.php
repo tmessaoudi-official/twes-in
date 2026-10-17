@@ -89,6 +89,8 @@ final readonly class AcceptInvitation
             }
 
             if (Role::OWNER === $role->getName()) {
+                // Written over whatever was saved since the invitation was read: the row is held, never an earlier read.
+                $company = $this->companies->lockedOfId($company->getId()) ?? throw new InvitationNotUsable('The company of that invitation is gone.');
                 $company->activate($now);
                 $this->companies->save($company);
             }

@@ -10,6 +10,7 @@ const profile: CompanyProfile = {
   countryCode: 'TN',
   writable: true,
   logoVersion: null,
+  version: 1,
   legalName: 'Demo SARL',
   legalForm: null,
   identifiers: { matricule_fiscal: '1234567A/B/M/000' },

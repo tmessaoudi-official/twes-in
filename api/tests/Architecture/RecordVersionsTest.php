@@ -57,7 +57,6 @@ final class RecordVersionsTest extends KernelTestCase
         '/companies/{companyId}/recurring-expenses/{recurringExpenseId}',
         '/companies/{companyId}/settings/{key}',
         '/platform/settings/{key}',
-        '/companies/{companyId}/profile',
         '/companies/{companyId}/establishments/{establishmentId}',
         '/companies/{companyId}/numbering-series/{seriesId}',
         '/companies/{companyId}/roles/{roleId}',

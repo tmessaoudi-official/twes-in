@@ -40,6 +40,7 @@ final readonly class CompanyProfileRepresentation
         $resource->countryCode = $company->getCountryCode();
         $resource->writable = $this->guard->may($company, CompanyProfileResource::WRITE_PERMISSION);
         $resource->logoVersion = $this->logo->current($company)?->getFile()->getId()->toRfc4122();
+        $resource->version = $company->getVersion();
         $resource->legalName = $profile->legalName;
         $resource->legalForm = $profile->legalForm;
         $resource->identifiers = $profile->identifiers;

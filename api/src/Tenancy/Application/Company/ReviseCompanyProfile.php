@@ -13,6 +13,8 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\CompanyRepository;
@@ -37,11 +39,12 @@ final readonly class ReviseCompanyProfile
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
-    /** @throws InvalidCompanyProfile */
-    public function handle(Company $company, CompanyProfile $profile, ?Uuid $actorUserId): Company
+    /** @throws InvalidCompanyProfile|RecordChanged */
+    public function handle(Company $company, CompanyProfile $profile, ?Uuid $actorUserId, ?int $version = null): Company
     {
         $preset = $this->presets->get($company->getFiscalPreset());
 
@@ -58,7 +61,11 @@ final readonly class ReviseCompanyProfile
             throw new InvalidCompanyProfile($refusal->field, $refusal->message, $refusal->reason, $refusal->params);
         }
 
-        return $this->transactions->run(function () use ($company, $profile, $actorUserId): Company {
+        return $this->transactions->run(function () use ($company, $profile, $actorUserId, $version): Company {
+            $company = $this->companies->lockedOfId($company->getId()) ?? throw new CompanyNotFound('No such company.');
+            if (null !== $version) {
+                $this->versions->expect($company, $version);
+            }
             $changed = $profile->differencesFrom($company->getProfile());
             if ($company->reviseProfile($profile, $this->clock->now())) {
                 $this->companies->save($company);

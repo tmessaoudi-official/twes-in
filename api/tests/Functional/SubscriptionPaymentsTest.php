@@ -182,7 +182,7 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         $this->getJson($this->subscriptionOf($company));
         self::assertSame('unpaid', $this->json()['stage']);
         self::assertSame('read_only', $this->json()['access']);
-        $this->sendJson('PUT', $this->profileOf($company), ['legalName' => 'Acme SARL']);
+        $this->sendJson('PUT', $this->profileOf($company), ['version' => $this->storedVersion('company', $company->getId()->toRfc4122()), 'legalName' => 'Acme SARL']);
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
 
         // Rejected, so the way is open to declare again.

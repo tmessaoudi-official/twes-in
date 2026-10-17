@@ -31,6 +31,7 @@ const saved: CompanyProfile = {
   countryCode: 'TN',
   writable: true,
   logoVersion: null,
+  version: 1,
   identifierFields: [],
   vatRegimes: [{ code: 'standard', label: 'Régime normal' }],
 };
@@ -73,9 +74,9 @@ describe('CompanyProfileFacade', () => {
   it('shows what the API kept after a revision', async () => {
     api.reviseProfile.mockResolvedValue(saved);
 
-    expect(await facade.save('c1', changes)).toBe(true);
+    expect(await facade.save('c1', changes, 1)).toBe(true);
 
-    expect(api.reviseProfile).toHaveBeenCalledWith('c1', changes);
+    expect(api.reviseProfile).toHaveBeenCalledWith('c1', changes, 1);
     expect(facade.profile()).toEqual(saved);
   });
 
@@ -84,7 +85,7 @@ describe('CompanyProfileFacade', () => {
     await facade.load('c1');
     api.reviseProfile.mockRejectedValue(new CompanyRefused('invalid'));
 
-    expect(await facade.save('c1', changes)).toBe(false);
+    expect(await facade.save('c1', changes, 1)).toBe(false);
 
     expect(facade.error()).toBe('invalid');
     expect(facade.profile()).toEqual(saved);
@@ -93,11 +94,11 @@ describe('CompanyProfileFacade', () => {
   it('keeps the fields a save was refused on until the next save', async () => {
     const email = { field: 'email', reason: 'invalid_email', params: {} };
     api.reviseProfile.mockRejectedValueOnce(new CompanyRefused('invalid', [email]));
-    expect(await facade.save('c1', changes)).toBe(false);
+    expect(await facade.save('c1', changes, 1)).toBe(false);
     expect(facade.refusals()).toEqual([email]);
 
     api.reviseProfile.mockResolvedValueOnce(saved);
-    await facade.save('c1', changes);
+    await facade.save('c1', changes, 1);
     expect(facade.refusals()).toEqual([]);
   });
 
@@ -132,7 +133,7 @@ describe('CompanyProfileFacade', () => {
       .mockRejectedValueOnce(new CompanyRefused('step_up_required'))
       .mockResolvedValueOnce(saved);
 
-    expect(await facade.save('c1', changes)).toBe(true);
+    expect(await facade.save('c1', changes, 1)).toBe(true);
     expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
     expect(facade.profile()).toEqual(saved);
   });
@@ -141,7 +142,7 @@ describe('CompanyProfileFacade', () => {
     stepUp.request.mockReset().mockResolvedValue(false);
     api.reviseProfile.mockRejectedValue(new CompanyRefused('step_up_required'));
 
-    expect(await facade.save('c1', changes)).toBe(false);
+    expect(await facade.save('c1', changes, 1)).toBe(false);
     expect(facade.error()).toBe('step_up_required');
   });
 });

@@ -106,7 +106,7 @@ final class SubscriptionsTest extends ApiTestCase
         $this->getJson($this->profileOf($company));
         self::assertResponseIsSuccessful();
 
-        $this->sendJson('PUT', $this->profileOf($company), ['legalName' => 'Acme SARL']);
+        $this->sendJson('PUT', $this->profileOf($company), ['version' => $this->storedVersion('company', $company->getId()->toRfc4122()), 'legalName' => 'Acme SARL']);
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
         self::assertStringContainsString('subscription_read_only', $this->stringAt($this->json(), 'detail'));
 

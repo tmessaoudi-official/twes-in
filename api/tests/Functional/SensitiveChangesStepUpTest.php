@@ -260,6 +260,7 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
     private function profile(array $changes = []): array
     {
         return [...[
+            'version' => $this->storedVersion('company', $this->company->getId()->toRfc4122()),
             'legalName' => null,
             'legalForm' => 'SARL',
             'identifiers' => ['matricule_fiscal' => '1234567A/B/M/000'],

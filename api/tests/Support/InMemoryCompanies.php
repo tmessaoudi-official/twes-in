@@ -31,6 +31,11 @@ final class InMemoryCompanies implements CompanyRepository
         return null;
     }
 
+    public function lockedOfId(\Symfony\Component\Uid\Uuid $id): ?Company
+    {
+        return $this->ofId($id);
+    }
+
     public function ofName(string $name): ?Company
     {
         foreach ($this->companies as $company) {

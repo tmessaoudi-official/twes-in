@@ -37,6 +37,7 @@ final readonly class RequireSecondFactor
     public function handle(Company $company, bool $required, ?Uuid $actorUserId): Company
     {
         return $this->transactions->run(function () use ($company, $required, $actorUserId): Company {
+            $company = $this->companies->lockedOfId($company->getId()) ?? throw new CompanyNotFound('No such company.');
             if ($company->requireMfa($required, $this->clock->now())) {
                 $this->companies->save($company);
                 $this->audit->record(new AuditEntry(CreateCompany::ENTITY_TYPE, $company->getId(), self::CHANGED, $actorUserId, ['required' => $required], $company->getId()));

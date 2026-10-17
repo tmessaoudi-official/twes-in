@@ -63,9 +63,9 @@ describe('CompanyApi, the profile', () => {
   });
 
   it('names a value the preset refused as invalid, not as a member error', async () => {
-    const revising = api.reviseProfile('c1', changes);
+    const revising = api.reviseProfile('c1', changes, 4);
     const request = http.expectOne({ method: 'PUT', url: '/api/companies/c1/profile' });
-    expect(request.request.body).toEqual(changes);
+    expect(request.request.body).toEqual({ ...changes, version: 4 });
     request.flush(
       { detail: 'identifiers.matricule_fiscal: shape' },
       { status: 422, statusText: 'Unprocessable' },
@@ -74,8 +74,25 @@ describe('CompanyApi, the profile', () => {
     await expect(revising).rejects.toEqual(new CompanyRefused('invalid'));
   });
 
+  it('names a revision of a version saved since as changed, and another conflict as invalid', async () => {
+    const changed = api.reviseProfile('c1', changes, 1);
+    http
+      .expectOne({ method: 'PUT', url: '/api/companies/c1/profile' })
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toEqual(new CompanyRefused('record_changed'));
+
+    const other = api.reviseProfile('c1', changes, 1);
+    http
+      .expectOne({ method: 'PUT', url: '/api/companies/c1/profile' })
+      .flush(null, { status: 409, statusText: 'Conflict' });
+    await expect(other).rejects.toEqual(new CompanyRefused('invalid'));
+  });
+
   it('names each field a revision was refused on, a registration number on its own field', async () => {
-    const revising = api.reviseProfile('c1', changes);
+    const revising = api.reviseProfile('c1', changes, 1);
     http.expectOne({ method: 'PUT', url: '/api/companies/c1/profile' }).flush(
       {
         violations: [
@@ -139,7 +156,7 @@ describe('CompanyApi, the members', () => {
       .flush({ detail }, { status: 403, statusText: 'Forbidden' });
     await expect(removing).rejects.toEqual(new CompanyRefused('step_up_required'));
 
-    const saving = api.reviseProfile('c1', {} as never);
+    const saving = api.reviseProfile('c1', {} as never, 1);
     http
       .expectOne({ method: 'PUT', url: '/api/companies/c1/profile' })
       .flush({ detail }, { status: 403, statusText: 'Forbidden' });

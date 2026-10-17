@@ -19,8 +19,10 @@ use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Repository\CompanyRepository;
 use App\Tenancy\Domain\ValueObject\CompanySearch;
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\LockMode;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
@@ -33,6 +35,23 @@ final readonly class DoctrineCompanyRepository implements CompanyRepository
     public function ofId(Uuid $id): ?Company
     {
         return $this->entityManager->getRepository(Company::class)->find($id);
+    }
+
+    public function lockedOfId(Uuid $id): ?Company
+    {
+        $company = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Company::class, 'c')
+            ->where('c.id = :id')
+            ->setParameter('id', $id, 'uuid')
+            ->getQuery()
+            // SELECT … FOR UPDATE, which Doctrine refuses outside a transaction; the refresh hint replaces whatever an
+            // earlier read of the row in this request left in memory with what the lock just read.
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+
+        return $company instanceof Company ? $company : null;
     }
 
     public function ofName(string $name): ?Company

@@ -19,6 +19,9 @@ interface CompanyRepository
 {
     public function ofId(Uuid $id): ?Company;
 
+    /** The same, its row held until the transaction this runs in ends; outside a transaction it refuses. */
+    public function lockedOfId(Uuid $id): ?Company;
+
     public function ofName(string $name): ?Company;
 
     /** @return list<Company> every company, by name */
