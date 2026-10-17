@@ -880,8 +880,8 @@ root on this computer; keep the computer's accounts to the shop's own, and the a
 | `twes policy auto 13:00-14:00` | updates applied by `tick` inside that daily window, in the shop's time, never just after a start, a release that failed here never retried by itself |
 | `twes policy notify` / `off` | a release out is told to each company's owners in the application (the default), or nothing |
 | `twes offsite on` / `off` | the off-site copy of the backups, once the bucket's values are given |
-| `twes tick` | a new address, alerts held back, the deep health, the backups' outcomes and schedule, then the policy |
-| `twes status` | the release, the address, the policy, the health and the backups |
+| `twes tick` | a new address, alerts held back, the deep health (failing, the installation started again once, the developer told only if that did not mend it, never within ten minutes of a start), the backups' outcomes and schedule, then the policy |
+| `twes status` | the release, the address, the policy, the health, how often `tick` started it again, and the backups |
 | `twes restore-commands` | what takes the installation back to the backup made before the last update (docs/RUNBOOK.md, « Restore a shop ») |
 | `twes install` | asks for the shop's facts, pins the release key once its fingerprint is confirmed, installs the newest release and makes the operator; on Linux, schedules as well |
 | `twes pin-key <file>` | pins a public release key: every release tag must verify against it |
@@ -892,7 +892,7 @@ last success is older than its period (a full backup weekly, a differential dail
 read-back weekly), the outcomes kept in a volume of their own. Both repositories are encrypted under the values'
 passphrases. An update always backs up first, locally, and keeps that backup's label.
 
-**Alerts.** A failed or rolled-back update, a failing deep health, a failed backup step and a backup schedule gone quiet
+**Alerts.** A failed or rolled-back update, a failing deep health that starting the installation again did not mend, a failed backup step and a backup schedule gone quiet
 are mailed through the shop's own account to `ALERT_EMAIL`, so a mail leaves while the application is down, and told
 to the platform's operators in the application (`app:installation:tell`), held under `~/.twes-in/state/` until it
 answers. A release out is told to the owners only.

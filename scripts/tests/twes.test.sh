@@ -61,8 +61,9 @@ case "$mode" in
     esac ;;
 esac
 EOF
-# curl: the edge's root certificate, the deep health (503 for the release named in BAD, or every release when ALL_BAD),
-# and the relay, whose message and netrc it keeps.
+# curl: the edge's root certificate, the deep health (503 for the release named in BAD, or every release when ALL_BAD, or
+# for the first HEALTH_FAILS reads, as a container stopped and started again), and the relay, whose message and netrc it
+# keeps.
 cat > "$TMPDIR/bin/curl" <<'EOF'
 #!/usr/bin/env bash
 echo "$*" >> "$TMPDIR/curl.calls"
@@ -75,7 +76,8 @@ case "$url" in
   */root.crt) [[ -z "${EDGE_DOWN:-}" ]] || exit 7; echo cert > "$out" ;;
   */api/health/deep)
     tag=$(git -C "$TWES_ROOT" describe --exact-match --tags HEAD 2>/dev/null)
-    if [[ -n "${ALL_BAD:-}" || "$tag" == "${BAD:-none}" ]]; then echo '{"status":"failing","failing":["queue"]}' > "$out"; printf 503
+    reads=$(($(cat "$TMPDIR/health.reads" 2>/dev/null || echo 0) + 1)); echo "$reads" > "$TMPDIR/health.reads"
+    if [[ -n "${ALL_BAD:-}" || "$tag" == "${BAD:-none}" ]] || ((reads <= ${HEALTH_FAILS:-0})); then echo '{"status":"failing","failing":["queue"]}' > "$out"; printf 503
     else echo '{"status":"ok","failing":[]}' > "$out"; printf 200; fi ;;
   smtp*) cp "$upload" "$TMPDIR/mail.eml"; cp "$netrc" "$TMPDIR/mail.netrc"; echo "$url" > "$TMPDIR/mail.url"; exit "${MAIL_EXIT:-0}" ;;
 esac
@@ -116,7 +118,7 @@ shop() { # the clone, and its values beside it under its own folder
 twes() { # shop folder, then the command
   local d=$1; shift
   rm -f "$TMPDIR/deploy.calls" "$TMPDIR/curl.calls" "$TMPDIR/told" "$TMPDIR/mail.eml" "$TMPDIR/mail.netrc" "$TMPDIR/docker.tries" "$TMPDIR/seeded" \
-    "$TMPDIR/systemd.calls"
+    "$TMPDIR/systemd.calls" "$TMPDIR/health.reads"
   mkdir -p "$d/units"
   (cd "$TMPDIR" && env PATH="$TMPDIR/bin:$PATH" TWES_VALUES="$d/etc/install.env" TWES_ROOT="$d/twes-in" TWES_PLATFORM="${PLATFORM:-linux}" TWES_SYSTEMD_DIR="$d/units" \
     TWES_HEALTH_PAUSE=0 TWES_DOCKER_PAUSE=0 TWES_DOCKER_TRIES=4 TWES_NOW="${AT:-$NOON}" bash "$d/twes-in/scripts/onprem/twes" "$@" 2>&1)
@@ -350,10 +352,28 @@ check "  and the installation started again over it" 0 0 "$(deployed)" "--again"
 # tick
 d=$(installed)
 out=$(ADDRESS=192.168.1.42 twes "$d" tick); check "a new network address: started again at it" $? 0 "$(deployed)" "LAN_HOST=192.168.1.42 --again"
+d=$(installed)
 out=$(ALL_BAD=1 twes "$d" tick); check "unhealthy: the developer told" $? 0 "$(subject)" "ne va pas bien (queue)"
 check "  and the operators" 0 0 "$(told)" "installation.unhealthy check=queue"
-out=$(ALL_BAD=1 twes "$d" tick); [[ -z "$(told)" ]]; check "  once, not every quarter hour" $? 0 "$(told)" ""
-out=$(twes "$d" tick); out=$(ALL_BAD=1 twes "$d" tick); check "  and again once it mended and failed anew" $? 0 "$(told)" "installation.unhealthy"
+out=$(AT=$((NOON + 900)) ALL_BAD=1 twes "$d" tick); [[ -z "$(told)" ]]; check "  once, not every quarter hour" $? 0 "$(told)" ""
+out=$(AT=$((NOON + 1800)) twes "$d" tick); out=$(AT=$((NOON + 1800)) ALL_BAD=1 twes "$d" tick)
+check "  and again once it mended and failed anew" $? 0 "$(told)" "installation.unhealthy"
+
+d=$(installed)
+out=$(HEALTH_FAILS=1 twes "$d" tick); check "unhealthy, as after Docker restarted: started again by itself" $? 0 "$(deployed)" "LAN_HOST=192.168.1.20 --again"
+check "  said in its log" 0 0 "$(cat "$d/etc/state/twes.log")" "unhealthy (queue): starting the installation again"
+[[ "$(told)" != *installation.unhealthy* && -z "$(mailed)" ]]; check "  healthy again, nobody told" $? 0 "$(told)$(mailed)" ""
+check "  and twes status says when" 0 0 "$(twes "$d" status)" "started again by tick: 1 time(s), last "
+out=$(AT=$((NOON + 900)) HEALTH_FAILS=1 twes "$d" tick); check "  a new episode: started again once more" $? 0 "$(deployed)" "--again"
+d=$(installed)
+out=$(ALL_BAD=1 twes "$d" tick); check "still unhealthy once started again: told, saying so" $? 0 "$(mailed)" "relancée"
+out=$(AT=$((NOON + 900)) ALL_BAD=1 twes "$d" tick); [[ "$(deployed)" != *--again* ]]; check "  started again once per episode, not every quarter hour" $? 0 "$(deployed)" ""
+d=$(installed); echo $((NOON - 300)) > "$d/etc/state/started-at"
+out=$(ALL_BAD=1 twes "$d" tick); [[ "$(deployed)" != *--again* && "$(told)" != *installation.unhealthy* ]]
+check "  never within ten minutes of a start: it may still be settling" $? 0 "$(deployed)" ""
+d=$(installed); exec 9> "$d/etc/state/start.lock"; flock 9
+out=$(TWES_START_WAIT=1 twes "$d" start); check "a start while another runs: waits for it, then refused naming it" $? 1 "$out" "another twes start is running"
+exec 9>&-
 
 d=$(installed)
 out=$(OUTCOMES="copy 2026-10-21T01:00:00Z failed copy exited 1\ndue $NOON ran\n" twes "$d" tick)
