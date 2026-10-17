@@ -36,6 +36,9 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-17 19:34] ASSUMED (review): A shop updates only to a release tag signed by the developer's GPG key (0C537690706EB7F5): tag-release.sh signs (git tag -s), the installer pins the public key in a keyring of the installation's own under ~/.twes-in/, and twes update refuses, mails and tells the operators of a tag that keyring cannot verify — because a GitHub account or origin compromise would otherwise ship images to every shop. Alternatives: HTTPS and digests only (a forged tag names forged digests); an SSH allowed-signers file (the developer signs with GPG already).
 - [2026-10-17 19:34] ASSUMED (review): The Windows scheduled tasks run wsl.exe plainly by default; install.ps1 -HideWindows tries conhost.exe --headless for the quarter-hourly tick, to be judged on the developer's Monday run — because VBScript wrappers are deprecated and the headless switch is undocumented. Alternatives: S4U tasks (WSL in a non-interactive session unverified), a long-running loop window.
 - [2026-10-17 19:34] ASSUMED (review): Order of step 1d: Windows (install.ps1 and twes install) first and pushed for Monday, then Linux systemd, then macOS launchd marked untried; macOS ships in an update if it is not ready by Wednesday — because the client runs Windows. Alternatives: all three together.
+- [2026-10-17 20:58] ASSUMED (review): A release tag the pinned key does not verify is alerted to the operators once from tick under every policy, notify included, and on each manual twes update — because a forged tag is a security alarm, not update news. Alternatives: alert only when an update is attempted (silent under the default policy).
+- [2026-10-17 20:58] ASSUMED (review): install.ps1 carries the release key's fingerprint and verifies the checked-out tag against it before anything from the checkout runs; the shop gets install.ps1 from the developer out of band — because twes install shows the checkout's own key, which a forged tag controls. Alternatives: rely on the typed yes alone; a GitHub tag ruleset alone (recommended in addition, the developer's action).
+- [2026-10-17 20:58] ASSUMED (review): Linux schedules start and tick as systemd system units (User= the account's UID, Requires/After docker.service, a quarter-hour timer) written by twes schedule through sudo, and twes install runs it on Linux — because Docker Engine is a system service there. Alternatives: user units with lingering; cron.
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -78,6 +81,9 @@ was and was not certified by execution.
 | 8 | Guides, help and README on the final screens | M | todo | - | docs/** web/** |
 <!-- /progress-block -->
 ### Blocked
+- Step 1 waits on the developer: `PUBLISH_IMAGES=true`; the three GHCR packages made public after the first publish
+  (irreversible); the first release tagged with `scripts/release/tag-release.sh` (signed) and pushed; a `v*` tag ruleset;
+  the Windows install tried Monday or Tuesday by docs/START.md § 16 « The first Windows install ».
 ### Needs input
 - Their Excel file, to map its columns into the importer (expected tonight or tomorrow).
 - After Wednesday, in an order to set: declarations (fiscal rules await an accountant), composite products, jobs, the till (the Tunisian homologated-register question), zakat (its research pass, row 120).
@@ -88,3 +94,6 @@ was and was not certified by execution.
   `scripts/backup/restore-drill.sh` now waits for promotion (`promoted`) and prints the container's log on that failure;
   the four runs since passed, waiting 0 s each. Read that log if it comes back.
 ### Known issues
+- Step 1 on macOS: nothing schedules `twes start` and `twes tick` (run by hand, and `twes install` says so); untried.
+- Step 1 on Windows: `install.ps1` is checked by PowerShell's parser and PSScriptAnalyzer and its `$verify` line runs in
+  `twes.test.sh`; the rest is untried until the developer's test.
