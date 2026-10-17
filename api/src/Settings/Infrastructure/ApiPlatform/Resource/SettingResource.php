@@ -101,9 +101,9 @@ final class SettingResource
     public const string WRITE = 'setting:write';
     /** A platform value names no level: the platform is the only one there is. */
     public const string PLATFORM_WRITE = 'setting:platform_write';
-    private const string KEY = '[a-z][a-z0-9_.-]*';
+    public const string KEY = '[a-z][a-z0-9_.-]*';
     /** A setting's value is any JSON value its type allows; the contract says so rather than "string". */
-    private const array ANY_VALUE = ['anyOf' => [['type' => 'string'], ['type' => 'number'], ['type' => 'boolean'], ['type' => 'array'], ['type' => 'object', 'additionalProperties' => true], ['type' => 'null']]];
+    public const array ANY_VALUE = ['anyOf' => [['type' => 'string'], ['type' => 'number'], ['type' => 'boolean'], ['type' => 'array'], ['type' => 'object', 'additionalProperties' => true], ['type' => 'null']]];
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
@@ -138,6 +138,14 @@ final class SettingResource
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['level', 'value'], 'properties' => ['level' => ['type' => 'string'], 'value' => self::ANY_VALUE]]])]
     #[Groups([self::READ])]
     public array $levels = [];
+
+    /**
+     * @var array<string, int> the version of each row stored along the caller's chain, by level, a value no longer
+     *                         applying included; a level absent holds no row, which a save names as version 0
+     */
+    #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'integer']])]
+    #[Groups([self::READ])]
+    public array $versions = [];
 
     /** @var list<string> */
     #[Groups([self::READ])]
@@ -208,6 +216,7 @@ final class SettingResource
         foreach ($setting->explicit as $level => $value) {
             $resource->levels[] = new SettingLevelValue($level, $value);
         }
+        $resource->versions = $setting->versions;
         foreach ($definition->chain->levels() as $level) {
             if ($definition->allows($level)) {
                 $resource->overridableLevels[] = $level->value;

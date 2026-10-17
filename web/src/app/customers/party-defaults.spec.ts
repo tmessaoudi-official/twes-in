@@ -35,6 +35,7 @@ const terms: SettingRow = {
   source: 'customer_group',
   levels: [{ level: 'customer_group', value: 45 }],
   overridableLevels: ['company', 'customer_group', 'customer', 'document'],
+  versions: { customer_group: 1 },
   writableLevels: ['customer'],
   choices: [],
   min: 0,
@@ -109,7 +110,7 @@ describe('PartyDefaults', () => {
     await fixture.whenStable();
 
     expect(facade.save).toHaveBeenCalledWith('c1', { customerId: 'k1' }, [
-      { key: 'document.payment_terms_days', value: 10 },
+      { key: 'document.payment_terms_days', value: 10, version: 0 },
     ]);
   });
 

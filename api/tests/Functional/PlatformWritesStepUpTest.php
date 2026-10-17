@@ -61,6 +61,7 @@ final class PlatformWritesStepUpTest extends ApiTestCase
         yield 'write a legal text' => ['POST', '/api/platform/legal-texts/mentions/fr/versions'];
         yield 'validate a legal text' => ['POST', '/api/platform/legal-texts/mentions/fr/validate'];
         yield 'change a platform setting' => ['PUT', '/api/platform/settings/support.email'];
+        yield 'change several platform settings' => ['PUT', '/api/platform/settings'];
     }
 
     #[DataProvider('platformWrites')]

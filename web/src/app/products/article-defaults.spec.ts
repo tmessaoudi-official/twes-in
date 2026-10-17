@@ -37,6 +37,7 @@ const unit: SettingRow = {
   source: 'product_category',
   levels: [{ level: 'product_category', value: 'HUR' }],
   overridableLevels: ['company', 'product_category', 'product', 'document_line'],
+  versions: { product_category: 1 },
   writableLevels: ['product'],
   choices: [],
   min: null,
@@ -127,13 +128,20 @@ describe('ArticleDefaults', () => {
     await fixture.whenStable();
 
     expect(facade.save).toHaveBeenCalledWith('c1', { productId: 'p1' }, [
-      { key: 'article.default_unit', value: 'KGM' },
+      { key: 'article.default_unit', value: 'KGM', version: 0 },
     ]);
   });
 
   it("stores a category's own values at the category's level", async () => {
     rows.set([
-      { ...unit, source: null, value: 'C62', levels: [], writableLevels: ['product_category'] },
+      {
+        ...unit,
+        source: null,
+        value: 'C62',
+        levels: [],
+        versions: { product_category: 3 },
+        writableLevels: ['product_category'],
+      },
     ]);
     await open({ productCategoryId: 'k1' });
     const input = q('field-article__default_unit') as HTMLInputElement;
@@ -143,7 +151,7 @@ describe('ArticleDefaults', () => {
     await fixture.whenStable();
 
     expect(facade.save).toHaveBeenCalledWith('c1', { productCategoryId: 'k1' }, [
-      { key: 'article.default_unit', value: 'HUR' },
+      { key: 'article.default_unit', value: 'HUR', version: 3 },
     ]);
   });
 

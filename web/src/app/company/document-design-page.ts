@@ -27,6 +27,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { debounceTime } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanySettings } from '../settings/company-settings-facade';
+import { type SettingVersions, versioned, versionsAt } from '../shared/settings/setting-forms';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
 import { ColourField } from '../shared/form/colour-field';
@@ -107,6 +108,11 @@ export class DocumentDesignPage implements OnInit {
   private readonly saved = signal<DocumentDesign>(DEFAULT_DESIGN);
   /** What saving would change, which the save and cancel buttons follow. */
   protected readonly changes = signal(0);
+  /**
+   * The version of each setting the form was last set from, which a save sends back: a design saved elsewhere while
+   * something is chosen here moves the saved design, not this, so the save is refused instead of writing over it.
+   */
+  private versions: SettingVersions = {};
 
   constructor() {
     this.form.valueChanges
@@ -162,9 +168,16 @@ export class DocumentDesignPage implements OnInit {
     const companyId = this.company()?.id;
     const changes = designChanges(this.saved(), this.chosen());
     if (!companyId || this.busy() || this.form.invalid || changes.length === 0) return;
-    if (await this.settings.save(companyId, changes)) {
+    if (await this.settings.save(companyId, versioned(changes, this.versions))) {
       this.adopt(savedDesign(this.settings.rows()));
       this.feedback.success('documents.saved');
+    } else if (this.settings.error() === 'record_changed') {
+      // The form shows the design as it is now saved; what was chosen here was not kept, which the toast says.
+      this.settings.clearError();
+      await this.settings.load(companyId);
+      this.adopt(savedDesign(this.settings.rows()));
+      await this.showPreview();
+      this.feedback.failure('live.saved_since');
     }
   }
 
@@ -191,6 +204,7 @@ export class DocumentDesignPage implements OnInit {
   /** Takes a design as the saved one and shows it, without asking for a second preview. */
   private adopt(design: DocumentDesign): void {
     this.saved.set(design);
+    this.versions = versionsAt(this.settings.rows(), 'company');
     this.form.setValue({ ...design }, { emitEvent: false });
     this.locked.set(design.logoKeepsProportions);
     this.form.markAsPristine();

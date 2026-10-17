@@ -23,6 +23,8 @@ import {
   overridesAt,
   settingsForm,
   settingsValues,
+  versioned,
+  versionsAt,
 } from '../shared/settings/setting-forms';
 import type { SettingChain, PartySubject } from '../shared/settings/settings-types';
 import { levelOf, PartySettings } from './party-settings-facade';
@@ -92,6 +94,7 @@ export class PartyDefaults {
       if (companyId) await this.settings.load(companyId, this.subject());
     },
     saved: () => this.values(),
+    version: () => versionsAt(this.settings.rows(), this.level()),
   });
   protected readonly overrides = computed(() =>
     overridesAt(this.settings.rows(), this.level(), !this.writable()),
@@ -123,10 +126,16 @@ export class PartyDefaults {
   protected async save(values: FormValues): Promise<void> {
     const companyId = this.companyId();
     if (!companyId || this.busy()) return;
-    const changes = changedSettingsAt(this.settings.rows(), values, this.level());
+    const changes = versioned(
+      changedSettingsAt(this.settings.rows(), values, this.level()),
+      this.sync.version(),
+    );
     if (changes.length === 0 || (await this.settings.save(companyId, this.subject(), changes))) {
       this.revision.update((revision) => revision + 1);
       this.feedback.success('customers.defaults.saved');
+    } else if (this.settings.error() === 'record_changed') {
+      this.settings.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 

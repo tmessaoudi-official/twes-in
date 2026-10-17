@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../form/form-types';
-import type { SettingChain, SettingLevel, SettingRow } from './settings-types';
+import type {
+  SettingChain,
+  SettingLevel,
+  SettingRow,
+  VersionedSettingChange,
+} from './settings-types';
 
 /** Each chain's levels, most general first, the order the API walks them in (docs/SPEC.md § 3 Settings). */
 const CHAIN_LEVELS: Record<SettingChain, readonly SettingLevel[]> = {
@@ -94,6 +99,26 @@ export function changedSettingsAt(
         ? [{ key: row.key, value: values[id] }]
         : [];
     });
+}
+
+/** The version each setting's row held at the level when read, by key: what a save of the form sends back. */
+export type SettingVersions = Readonly<Record<string, number>>;
+
+/** Every setting's version at the level; a level holding no row is version 0, as the API reads it. */
+export function versionsAt(rows: readonly SettingRow[], level: SettingLevel): SettingVersions {
+  return Object.fromEntries(rows.map((row) => [row.key, row.versions[level] ?? 0]));
+}
+
+/** The changes of a save, each with the version the form stood on; a key the form never read is a fault here. */
+export function versioned(
+  changes: readonly SettingChange[],
+  versions: SettingVersions | null,
+): VersionedSettingChange[] {
+  return changes.map(({ key, value }) => {
+    const version = versions?.[key];
+    if (version === undefined) throw new Error(`No version was read for ${key}.`);
+    return { key, value, version };
+  });
 }
 
 /** The settings the level holds a value of its own for; a reset returns each to the level above. */

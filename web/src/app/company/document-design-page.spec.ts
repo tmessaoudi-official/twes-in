@@ -12,9 +12,9 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanySettings } from '../settings/company-settings-facade';
-import type { SettingRow } from '../shared/settings/settings-types';
+import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
 import { Session } from '../shared/session/session';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { failureToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { DocumentDesignFacade } from './document-design-facade';
 import { DocumentDesignPage, PREVIEW_DELAY_MS } from './document-design-page';
 import type { PreviewState } from './document-design-types';
@@ -62,6 +62,7 @@ function row(
     source: company === undefined ? null : 'company',
     levels: company === undefined ? [] : [{ level: 'company', value: company }],
     overridableLevels: ['company'],
+    versions: company === undefined ? {} : { company: 1 },
     writableLevels: ['company'],
     choices: key === 'document.layout' ? ['classic', 'modern', 'compact'] : [],
     min: bounds[key]?.[0] ?? null,
@@ -73,12 +74,14 @@ function row(
 
 describe('DocumentDesignPage', () => {
   const rows = signal<readonly SettingRow[]>([]);
+  const error = signal<SettingsError | null>(null);
   const settings = {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal(null).asReadonly(),
+    error: error.asReadonly(),
     load: vi.fn(),
     save: vi.fn(),
+    clearError: vi.fn(() => error.set(null)),
   };
   const picture = signal<string | null>(null);
   const state = signal<PreviewState>('loading');
@@ -119,6 +122,7 @@ describe('DocumentDesignPage', () => {
     permissions.clear();
     permissions.add('company.settings');
     rows.set([]);
+    error.set(null);
     picture.set(null);
     state.set('loading');
     settings.load.mockReset().mockImplementation(async () => {
@@ -210,11 +214,46 @@ describe('DocumentDesignPage', () => {
     await settle();
 
     expect(settings.save).toHaveBeenCalledWith('c1', [
-      { key: 'document.layout', value: 'compact' },
+      { key: 'document.layout', value: 'compact', version: 1 },
     ]);
     expect(successToasts()).toEqual(['documents.saved']);
     expect(layoutChecked()).toBe('documents-layout-compact');
     expect(button('documents-save').disabled).toBe(true);
+  });
+
+  it('after a save refused as made since, shows the design as now saved, says nothing was, and saves on it next', async () => {
+    await open();
+    settings.save.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    settings.load.mockImplementationOnce(async () => {
+      rows.set([
+        { ...row('document.layout', 'classic', 'classic'), versions: { company: 2 } },
+        row('document.accent', '#1f2328', '#1f6feb'),
+        row('document.logo_width', 48),
+        row('document.logo_height', 17),
+        row('document.logo_keep_proportions', true),
+      ]);
+    });
+    (q('documents-layout-compact')?.querySelector('input') as HTMLInputElement).click();
+    await settle();
+
+    button('documents-save').click();
+    await settle();
+
+    expect(layoutChecked()).toBe('documents-layout-classic');
+    expect(error()).toBeNull();
+    expect(failureToasts()).toEqual(['live.saved_since']);
+    expect(successToasts()).toEqual([]);
+
+    (q('documents-layout-compact')?.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    button('documents-save').click();
+    await settle();
+    expect(settings.save).toHaveBeenLastCalledWith('c1', [
+      { key: 'document.layout', value: 'compact', version: 2 },
+    ]);
   });
 
   it('goes back to the saved design, and shows it again', async () => {
@@ -271,8 +310,8 @@ describe('DocumentDesignPage', () => {
     button('documents-save').click();
     await settle();
     expect(settings.save).toHaveBeenCalledWith('c1', [
-      { key: 'document.logo_width', value: 60 },
-      { key: 'document.logo_height', value: 20 },
+      { key: 'document.logo_width', value: 60, version: 0 },
+      { key: 'document.logo_height', value: 20, version: 0 },
     ]);
   });
 
@@ -301,8 +340,8 @@ describe('DocumentDesignPage', () => {
     button('documents-save').click();
     await settle();
     expect(settings.save).toHaveBeenCalledWith('c1', [
-      { key: 'document.logo_height', value: 30 },
-      { key: 'document.logo_keep_proportions', value: false },
+      { key: 'document.logo_height', value: 30, version: 0 },
+      { key: 'document.logo_keep_proportions', value: false, version: 0 },
     ]);
   });
 

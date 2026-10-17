@@ -24,7 +24,7 @@ import { CompanySettings } from './company-settings-facade';
 import { FiscalFacade } from '../fiscal/fiscal-facade';
 import type { UnitRow } from '../fiscal/fiscal-types';
 import { SettingsPage } from './settings-page';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { failureToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
@@ -50,6 +50,7 @@ const terms: SettingRow = {
   source: 'company',
   levels: [{ level: 'company', value: 45 }],
   overridableLevels: ['company', 'customer_group', 'customer', 'document'],
+  versions: { company: 1 },
   writableLevels: ['company'],
   choices: [],
   min: '0',
@@ -70,16 +71,18 @@ const rackWidth: SettingRow = {
   value: '2.400',
   levels: [{ level: 'company', value: '2.400' }],
   overridableLevels: ['company'],
+  versions: { company: 1 },
   min: '0.250',
   max: '9999.999',
 };
 
 describe('SettingsPage', () => {
   const rows = signal<readonly SettingRow[]>([terms, rackWidth]);
+  const error = signal<SettingsError | null>(null);
   const settings = {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal<SettingsError | null>(null).asReadonly(),
+    error: error.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     save: vi.fn(),
@@ -142,6 +145,8 @@ describe('SettingsPage', () => {
 
   beforeEach(() => {
     rows.set([terms]);
+    error.set(null);
+    settings.clearError.mockReset();
     settings.load.mockReset().mockResolvedValue(undefined);
     settings.save.mockReset().mockResolvedValue(true);
     settings.reset.mockReset().mockResolvedValue(true);
@@ -217,9 +222,51 @@ describe('SettingsPage', () => {
     await settle();
 
     expect(settings.save).toHaveBeenCalledWith('c1', [
-      { key: 'document.payment_terms_days', value: 60 },
+      { key: 'document.payment_terms_days', value: 60, version: 1 },
     ]);
     expect(successToasts()).toContain('settings.saved');
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    await open();
+    settings.save.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    settings.clearError.mockImplementationOnce(() => error.set(null));
+    settings.load.mockImplementationOnce(async () =>
+      rows.set([
+        { ...terms, levels: [{ level: 'company', value: 45 }], versions: { company: 2 } },
+        {
+          ...rackWidth,
+          levels: [{ level: 'company', value: '2.500' }],
+          versions: { company: 4 },
+        },
+      ]),
+    );
+    rows.set([terms, rackWidth]);
+    await settle();
+
+    const input = q('field-document__payment_terms_days') as HTMLInputElement;
+    input.value = '60';
+    input.dispatchEvent(new Event('input'));
+    q('settings-save')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect((q('field-venue__shape__rack__width') as HTMLInputElement).value).toBe('2,500'),
+    );
+
+    expect(input.value).toBe('60');
+    expect(error()).toBeNull();
+    expect(failureToasts()).toEqual(['live.saved_since']);
+    expect(successToasts()).not.toContain('settings.saved');
+
+    settings.save.mockResolvedValueOnce(true);
+    q('settings-save')!.click();
+    await settle();
+    expect(settings.save).toHaveBeenLastCalledWith('c1', [
+      { key: 'document.payment_terms_days', value: 60, version: 2 },
+    ]);
   });
 
   it('keeps what is typed when the chain is read again with the same content', async () => {

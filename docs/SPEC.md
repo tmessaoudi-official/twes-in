@@ -215,9 +215,12 @@ The screen reads the record again, merges it as a live change would (`liveRecord
 nothing was saved. A write no person's form made (a cost from a receipt, an issued document's PDF stored) holds the row
 with a locked read (`SELECT … FOR UPDATE`, refreshed) instead of sending a version, so a save made since is never
 refused under it (§ 7 2026-10-17 01:14); a PDF is rendered before the row is held. An import or a fixture revising what
-it finds names no version. `tests/Architecture/RecordVersionsTest`
-reads every PUT: each takes a version, or is listed with its reason (a person's own toggles, a company's single
-switches), or waits for its slice.
+it finds names no version. A setting is a row per key and level, so a settings page saves every key it changed at one
+level in one PUT (`/companies/{companyId}/settings`, `/platform/settings`), each with the version its row held when read
+(the read's `versions`, by level; 0 for no row), all or none (§ 7 2026-10-17 03:44); two first values of one key meet
+at the unique index, which answers the same 409. `tests/Architecture/RecordVersionsTest`
+reads every PUT: each takes a version (a batch's on each item), or is listed with its reason (a person's own toggles,
+a company's single switches, a single key's PUT), or waits for its slice.
 
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,

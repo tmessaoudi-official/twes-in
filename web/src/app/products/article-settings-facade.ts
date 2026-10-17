@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
-import type { SettingChange } from '../shared/settings/setting-forms';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import type {
   ArticleSubject,
   SettingLevel,
   SettingRow,
   SettingsError,
+  VersionedSettingChange,
 } from '../shared/settings/settings-types';
 
 /** The level a product's, a product category's or an establishment's own values are stored at. */
@@ -42,24 +42,15 @@ export class ArticleSettings {
     }
   }
 
-  /** True when the API accepted every change; the chain is read again after. */
+  /** True when the API accepted every change, together; the chain is read again after. */
   async save(
     companyId: string,
     subject: ArticleSubject,
-    changes: readonly SettingChange[],
+    changes: readonly VersionedSettingChange[],
   ): Promise<boolean> {
-    return this.write(companyId, subject, async () => {
-      for (const change of changes) {
-        await this.api.change(
-          companyId,
-          change.key,
-          articleLevelOf(subject),
-          change.value,
-          undefined,
-          subject,
-        );
-      }
-    });
+    return this.write(companyId, subject, () =>
+      this.api.changeAll(companyId, articleLevelOf(subject), changes, subject),
+    );
   }
 
   /** Forgets the subject's own value: the setting falls back to the category's or the company's. */

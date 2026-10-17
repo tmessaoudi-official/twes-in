@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { SILENT } from '../feedback/activity-interceptor';
+import { RECORD_CHANGED } from '../errors/record-changed';
 import { SettingsApi, SettingsRefused } from './settings-api';
 
 const density = {
@@ -16,6 +17,7 @@ const density = {
   value: 'compact',
   source: 'company',
   levels: [{ level: 'company', value: 'compact' }],
+  versions: { company: 3 },
   overridableLevels: ['company', 'role', 'user'],
   writableLevels: ['user'],
   choices: ['comfortable', 'compact'],
@@ -56,6 +58,7 @@ describe('SettingsApi', () => {
         value: 'compact',
         source: 'company',
         levels: [{ level: 'company', value: 'compact' }],
+        versions: { company: 3 },
         overridableLevels: ['company', 'role', 'user'],
         writableLevels: ['user'],
         choices: ['comfortable', 'compact'],
@@ -103,6 +106,45 @@ describe('SettingsApi', () => {
     expect(reset.request.context.get(SILENT)).toBe(true);
     reset.flush(null, { status: 204, statusText: 'No Content' });
     await forgotten;
+  });
+
+  it('saves every change of a page at one level in one request, each with the version read', async () => {
+    const saved = api.changeAll(
+      'c1',
+      'customer',
+      [
+        { key: 'document.payment_terms_days', value: 45, version: 2 },
+        { key: 'customer.tags', value: ['a', 'b'], version: 0 },
+      ],
+      { customerId: 'k1' },
+    );
+    const request = http.expectOne('/api/companies/c1/settings');
+
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({
+      level: 'customer',
+      customerId: 'k1',
+      changes: [
+        { key: 'document.payment_terms_days', value: 45, version: 2 },
+        { key: 'customer.tags', value: ['a', 'b'], version: 0 },
+      ],
+    });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(saved).resolves.toBeUndefined();
+  });
+
+  it('tells a save made over a version saved since from another conflict', async () => {
+    const since = api.changeAll('c1', 'company', [{ key: 'k', value: 1, version: 1 }]);
+    http
+      .expectOne('/api/companies/c1/settings')
+      .flush({ type: RECORD_CHANGED, status: 409 }, { status: 409, statusText: 'Conflict' });
+    await expect(since).rejects.toEqual(new SettingsRefused('record_changed'));
+
+    const other = api.changeAll('c1', 'company', [{ key: 'k', value: 1, version: 1 }]);
+    http
+      .expectOne('/api/companies/c1/settings')
+      .flush({ type: '/errors/409' }, { status: 409, statusText: 'Conflict' });
+    await expect(other).rejects.toEqual(new SettingsRefused('network'));
   });
 
   it('stores a role default for the role it names', async () => {

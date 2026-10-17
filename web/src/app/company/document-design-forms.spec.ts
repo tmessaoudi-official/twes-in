@@ -27,6 +27,7 @@ function designRow(
     source: company === undefined ? null : 'company',
     levels: company === undefined ? [] : [{ level: 'company', value: company }],
     overridableLevels: ['company'],
+    versions: company === undefined ? {} : { company: 1 },
     writableLevels: ['company'],
     choices: key === 'document.layout' ? ['classic', 'modern', 'compact'] : [],
     min: bounds?.[0] ?? null,

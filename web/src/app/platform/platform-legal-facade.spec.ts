@@ -18,8 +18,11 @@ const proofWanted = new HttpErrorResponse({ status: 403, error: { error: 'step_u
 describe('PlatformLegalFacade', () => {
   const api = {
     overview: vi.fn(async () => []),
-    identity: vi.fn(async () => ({ 'publisher.name': 'twes' })),
-    setIdentity: vi.fn(),
+    identity: vi.fn(async () => ({
+      values: { 'publisher.name': 'twes' },
+      versions: { 'publisher.name': 2 },
+    })),
+    saveIdentity: vi.fn(),
     versions: vi.fn(async () => []),
     write: vi.fn(),
     validate: vi.fn(),
@@ -28,7 +31,7 @@ describe('PlatformLegalFacade', () => {
 
   beforeEach(() => {
     api.identity.mockClear();
-    api.setIdentity.mockReset();
+    api.saveIdentity.mockReset();
     api.write.mockReset();
     api.validate.mockReset();
     TestBed.configureTestingModule({
@@ -54,11 +57,35 @@ describe('PlatformLegalFacade', () => {
 
   it('changes nothing when the operator does not give the proof', async () => {
     stepUp.request.mockReset().mockResolvedValue(false);
-    api.setIdentity.mockRejectedValue(proofWanted);
+    await facade.load();
+    api.identity.mockClear();
+    api.saveIdentity.mockRejectedValue(proofWanted);
 
-    expect(await facade.saveIdentity({ 'publisher.name': 'Autre' })).toBe(false);
+    expect(await facade.saveIdentity({ 'publisher.name': 'Autre' })).toBe('failed');
 
-    expect(api.setIdentity).toHaveBeenCalledTimes(1);
+    expect(api.saveIdentity).toHaveBeenCalledTimes(1);
     expect(api.identity).not.toHaveBeenCalled();
+  });
+
+  it('saves the facts changed with the versions read, and after one saved since shows what is saved', async () => {
+    await facade.load();
+    api.saveIdentity.mockResolvedValueOnce('saved_since');
+    api.identity.mockResolvedValueOnce({
+      values: { 'publisher.name': 'twes SARL' },
+      versions: { 'publisher.name': 3 },
+    });
+
+    expect(await facade.saveIdentity({ 'publisher.name': 'Autre' })).toBe('saved_since');
+
+    expect(api.saveIdentity).toHaveBeenCalledWith([
+      { placeholder: 'publisher.name', value: 'Autre', version: 2 },
+    ]);
+    expect(facade.identity()).toEqual({ 'publisher.name': 'twes SARL' });
+
+    api.saveIdentity.mockResolvedValueOnce('saved');
+    expect(await facade.saveIdentity({ 'publisher.name': 'Autre' })).toBe('saved');
+    expect(api.saveIdentity).toHaveBeenLastCalledWith([
+      { placeholder: 'publisher.name', value: 'Autre', version: 3 },
+    ]);
   });
 });

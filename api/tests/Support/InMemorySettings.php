@@ -37,6 +37,11 @@ final class InMemorySettings implements SettingRepository
         return null;
     }
 
+    public function lockedFind(SettingAddress $address, string $key): ?Setting
+    {
+        return $this->find($address, $key);
+    }
+
     public function save(Setting $setting): void
     {
         if (!\in_array($setting, $this->settings, true)) {

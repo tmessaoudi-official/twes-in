@@ -12,7 +12,11 @@ namespace App\Settings\Infrastructure\Doctrine;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\Repository\SettingRepository;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Application\RecordChanged;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 
 final readonly class DoctrineSettingRepository implements SettingRepository
 {
@@ -43,10 +47,37 @@ final readonly class DoctrineSettingRepository implements SettingRepository
         return $this->entityManager->getRepository(Setting::class)->findOneBy(['level' => $address->level, 'levelId' => $address->levelId, 'key' => $key]);
     }
 
+    public function lockedFind(SettingAddress $address, string $key): ?Setting
+    {
+        $setting = $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Setting::class, 's')
+            ->where('s.level = :level')
+            ->andWhere('s.levelId = :levelId')
+            ->andWhere('s.key = :key')
+            ->setParameter('level', $address->level)
+            ->setParameter('levelId', $address->levelId)
+            ->setParameter('key', $key)
+            ->getQuery()
+            // SELECT … FOR UPDATE, which Doctrine refuses outside a transaction; the refresh hint replaces whatever an
+            // earlier read of the row in this request left in memory with what the lock just read.
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+
+        return $setting instanceof Setting ? $setting : null;
+    }
+
     public function save(Setting $setting): void
     {
         $this->entityManager->persist($setting);
-        $this->entityManager->flush();
+        try {
+            $this->entityManager->flush();
+        } catch (UniqueConstraintViolationException $clash) {
+            // A row that is not there yet cannot be held: two first values of one key meet here, and the later one
+            // was written over a version it never read.
+            throw new RecordChanged($clash);
+        }
     }
 
     public function remove(Setting $setting): void

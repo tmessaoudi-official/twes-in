@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { PlatformLegalApi } from './platform-legal-api';
+import { RECORD_CHANGED } from '../shared/errors/record-changed';
 
 describe('PlatformLegalApi', () => {
   let api: PlatformLegalApi;
@@ -22,22 +23,39 @@ describe('PlatformLegalApi', () => {
   it('reads the identity from the legal.* platform settings, by placeholder, in their order, the empty ones included', async () => {
     const identity = api.identity();
     http.expectOne('/api/platform/settings').flush([
-      { key: 'signup.enabled', value: true },
-      { key: 'legal.publisher.name', value: 'twes SAS' },
-      { key: 'legal.host.name', value: '' },
+      { key: 'signup.enabled', value: true, versions: { platform: 9 } },
+      { key: 'legal.publisher.name', value: 'twes SAS', versions: { platform: 2 } },
+      { key: 'legal.host.name', value: '', versions: [] },
     ]);
     const read = await identity;
-    expect(read).toEqual({ 'publisher.name': 'twes SAS', 'host.name': '' });
-    expect(Object.keys(read)).toEqual(['publisher.name', 'host.name']);
+    expect(read).toEqual({
+      values: { 'publisher.name': 'twes SAS', 'host.name': '' },
+      versions: { 'publisher.name': 2, 'host.name': 0 },
+    });
+    expect(Object.keys(read.values)).toEqual(['publisher.name', 'host.name']);
   });
 
-  it('saves one fact as its platform setting', async () => {
-    const saved = api.setIdentity('host.name', 'OVH SAS');
-    const request = http.expectOne('/api/platform/settings/legal.host.name');
+  it('saves every fact changed as its platform setting, together, each with the version read', async () => {
+    const saved = api.saveIdentity([
+      { placeholder: 'host.name', value: 'OVH SAS', version: 0 },
+      { placeholder: 'publisher.name', value: 'twes', version: 2 },
+    ]);
+    const request = http.expectOne('/api/platform/settings');
     expect(request.request.method).toBe('PUT');
-    expect(request.request.body).toEqual({ value: 'OVH SAS' });
-    request.flush({ key: 'legal.host.name', value: 'OVH SAS' });
-    await saved;
+    expect(request.request.body).toEqual({
+      changes: [
+        { key: 'legal.host.name', value: 'OVH SAS', version: 0 },
+        { key: 'legal.publisher.name', value: 'twes', version: 2 },
+      ],
+    });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    expect(await saved).toBe('saved');
+
+    const since = api.saveIdentity([{ placeholder: 'host.name', value: 'OVH', version: 1 }]);
+    http
+      .expectOne('/api/platform/settings')
+      .flush({ type: RECORD_CHANGED, status: 409 }, { status: 409, statusText: 'Conflict' });
+    expect(await since).toBe('saved_since');
   });
 
   it('writes a new version and validates the latest at the page and language path', async () => {

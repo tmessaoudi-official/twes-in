@@ -3,7 +3,10 @@
 import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { SettingSettingRead } from '../../api/types.gen';
+import type {
+  SettingChangesSettingChangesWriteSettingChangesCompanyRecordReviseValidationSettingChangesWriteSettingChangesCompanyRecordRevise as SettingChangesBody,
+  SettingSettingRead,
+} from '../../api/types.gen';
 import type {
   SettingChain,
   SettingLevel,
@@ -11,8 +14,10 @@ import type {
   SettingsError,
   SettingSubject,
   SettingType,
+  VersionedSettingChange,
 } from './settings-types';
 import { SILENT } from '../feedback/activity-interceptor';
+import { isRecordChanged } from '../errors/record-changed';
 
 /** A preference written as it is clicked is quiet: nobody waits for it, so it never shows the activity bar. */
 const quietly = (quiet: boolean) => new HttpContext().set(SILENT, quiet);
@@ -69,6 +74,20 @@ export class SettingsApi {
     );
   }
 
+  /**
+   * Every key a page changed at one level, stored together or not at all: each sends the version its row held when
+   * read, and one saved since refuses the whole save as `record_changed`.
+   */
+  async changeAll(
+    companyId: string,
+    level: SettingLevel,
+    changes: readonly VersionedSettingChange[],
+    subject?: SettingSubject,
+  ): Promise<void> {
+    const body: SettingChangesBody = { level, ...subject, changes: changes.map(toApiChange) };
+    await this.guard(() => firstValueFrom(this.http.put<null>(this.path(companyId), body)));
+  }
+
   async reset(
     companyId: string,
     key: string,
@@ -106,9 +125,21 @@ export class SettingsApi {
       if (error instanceof HttpErrorResponse && (error.status === 400 || error.status === 422)) {
         throw new SettingsRefused('invalid');
       }
+      if (
+        error instanceof HttpErrorResponse &&
+        error.status === 409 &&
+        isRecordChanged(error.error)
+      ) {
+        throw new SettingsRefused('record_changed');
+      }
       throw new SettingsRefused('network');
     }
   }
+}
+
+/** A change as the API takes it: a list is sent as a copy, which the contract types as mutable. */
+export function toApiChange({ key, value, version }: VersionedSettingChange) {
+  return { key, version, value: typeof value === 'object' && value !== null ? [...value] : value };
 }
 
 function toRow(raw: SettingSettingRead): SettingRow {
@@ -125,6 +156,7 @@ function toRow(raw: SettingSettingRead): SettingRow {
       level: level.level as SettingLevel,
       value: level.value ?? null,
     })),
+    versions: (raw.versions ?? {}) as Partial<Record<SettingLevel, number>>,
     overridableLevels: (raw.overridableLevels ?? []) as SettingLevel[],
     writableLevels: (raw.writableLevels ?? []) as SettingLevel[],
     choices: (raw.choices ?? []).filter((choice): choice is string => choice !== null),

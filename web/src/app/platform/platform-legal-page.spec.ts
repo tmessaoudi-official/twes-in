@@ -141,7 +141,7 @@ describe('PlatformLegalPage', () => {
         'host.name': '',
       }),
       load: vi.fn(async () => undefined),
-      saveIdentity: vi.fn(async () => true),
+      saveIdentity: vi.fn(async () => 'saved'),
       open: vi.fn(async (page: string, language: string) => {
         facade.versions.set(histories[`${page}.${language}`] ?? []);
       }),

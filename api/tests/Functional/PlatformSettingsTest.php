@@ -77,6 +77,39 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertSame([null], $companies);
     }
 
+    /** A platform page saves every key it changed in one go, as a company's does (docs/SPEC.md § 7, 2026-10-17 03:44). */
+    public function testAnOperatorSavesSeveralPlatformSettingsTogetherOrNone(): void
+    {
+        $this->signedInAsOperator();
+
+        $this->sendJson('PUT', self::PATH, ['changes' => [
+            ['key' => 'support.email', 'value' => 'help@twes.tn', 'version' => 0],
+            ['key' => 'licensing.grace_days', 'value' => 10, 'version' => 0],
+        ]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $rows = $this->platformRows();
+        self::assertSame(['help@twes.tn', ['platform' => 1]], [$rows['support.email']['value'], $rows['support.email']['versions']]);
+        self::assertSame(10, $rows['licensing.grace_days']['value']);
+
+        // The grace days were saved since this page read them: the phone is not kept either.
+        $this->sendJson('PUT', self::PATH, ['changes' => [
+            ['key' => 'support.phone', 'value' => '+216 71 000 000', 'version' => 0],
+            ['key' => 'licensing.grace_days', 'value' => 12, 'version' => 0],
+        ]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        $rows = $this->platformRows();
+        self::assertSame(['', 10], [$rows['support.phone']['value'], $rows['licensing.grace_days']['value']]);
+
+        // A company's key is no platform setting, whatever else the save holds.
+        $this->sendJson('PUT', self::PATH, ['changes' => [
+            ['key' => 'support.phone', 'value' => '+216 71 000 000', 'version' => 0],
+            ['key' => 'presentation.density', 'value' => 'compact', 'version' => 0],
+        ]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame('', $this->platformRows()['support.phone']['value']);
+    }
+
     public function testAValueOfTheWrongShapeIsUnprocessable(): void
     {
         $this->signedInAsOperator();
@@ -127,6 +160,20 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
 
         self::assertSame([], $this->em()->getConnection()->fetchFirstColumn("SELECT key FROM setting WHERE level = 'platform'"));
+    }
+
+    /** @return array<string, array<string, mixed>> the platform's settings, by key */
+    private function platformRows(): array
+    {
+        $this->getJson(self::PATH);
+        self::assertResponseIsSuccessful();
+        $rows = [];
+        foreach ($this->jsonList() as $row) {
+            self::assertIsString($row['key']);
+            $rows[$row['key']] = $row;
+        }
+
+        return $rows;
     }
 
     private function signedInAsOperator(): void

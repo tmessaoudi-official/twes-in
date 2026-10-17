@@ -23,6 +23,10 @@ interface SettingRepository
 
     public function find(SettingAddress $address, string $key): ?Setting;
 
+    /** The same, its row held until the transaction this runs in ends; outside a transaction it refuses. */
+    public function lockedFind(SettingAddress $address, string $key): ?Setting;
+
+    /** A first value of a key meeting another written meanwhile at the same level is refused as a save made since. */
     public function save(Setting $setting): void;
 
     public function remove(Setting $setting): void;

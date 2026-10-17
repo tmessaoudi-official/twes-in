@@ -30,6 +30,7 @@ function row(key: string, defaultValue: unknown, ...levels: SettingLevelValue[])
     source: last ? last.level : null,
     levels,
     overridableLevels: ['company', 'role', 'user'],
+    versions: {},
     writableLevels: ['user'],
     choices: [],
     min: null,

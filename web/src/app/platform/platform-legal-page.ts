@@ -139,9 +139,9 @@ export class PlatformLegalPage implements OnInit {
   }
 
   protected async saveIdentity(): Promise<void> {
-    if (await this.facade.saveIdentity(this.identityChanges())) {
-      this.feedback.success('platform.legal.identity.saved');
-    }
+    const outcome = await this.facade.saveIdentity(this.identityChanges());
+    if (outcome === 'saved') this.feedback.success('platform.legal.identity.saved');
+    else if (outcome === 'saved_since') this.feedback.failure('live.saved_since');
   }
 
   protected typed(event: Event): void {

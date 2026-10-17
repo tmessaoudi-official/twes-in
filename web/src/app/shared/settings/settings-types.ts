@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { FieldValue } from '../form/form-types';
+
 /**
  * The settings engine seen from the web: one row per setting of a chain, as the API resolved it for the signed-in
  * person in their working company (docs/SPEC.md § 3 Settings). Built by settings-api.ts from the generated types.
@@ -39,6 +41,8 @@ export interface SettingRow {
   source: SettingLevel | null;
   /** what each level of the chain holds, most general first */
   levels: SettingLevelValue[];
+  /** the version of each level's stored row, a value no longer applying included; a level absent holds no row */
+  versions: Partial<Record<SettingLevel, number>>;
   overridableLevels: SettingLevel[];
   writableLevels: SettingLevel[];
   choices: string[];
@@ -49,7 +53,15 @@ export interface SettingRow {
   pattern: string | null;
 }
 
-export type SettingsError = 'not_found' | 'invalid' | 'network';
+/** One key of a save, with the version its row held at the level when read, 0 for none. */
+export interface VersionedSettingChange {
+  key: string;
+  value: FieldValue;
+  version: number;
+}
+
+/** `record_changed`: a key of the save was saved, created or reset since it was read, and nothing was kept. */
+export type SettingsError = 'not_found' | 'invalid' | 'record_changed' | 'network';
 
 /** Whom a parties-chain read or change is for, below the company: one customer, or one customer group. */
 export type PartySubject = { customerId: string } | { customerGroupId: string };
