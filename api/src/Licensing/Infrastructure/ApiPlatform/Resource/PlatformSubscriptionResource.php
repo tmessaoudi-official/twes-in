@@ -24,7 +24,9 @@ use App\Licensing\Domain\ValueObject\UnpaidMode;
 use App\Licensing\Infrastructure\ApiPlatform\State\Processor\SetSubscriptionProcessor;
 use App\Licensing\Infrastructure\ApiPlatform\State\Processor\StopSubscriptionProcessor;
 use App\Licensing\Infrastructure\ApiPlatform\State\Provider\PlatformSubscriptionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * A company's subscription as its operators set it (docs/SPEC.md § 7, 2026-09-17). Dates are days in the company's
@@ -46,7 +48,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
             processor: SetSubscriptionProcessor::class,
             security: 'is_granted("'.self::PERMISSION.'")',
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/platform/companies/{companyId}/subscription',
@@ -133,6 +136,15 @@ final class PlatformSubscriptionResource
     #[Groups([self::READ])]
     public string $updatedAt = '';
 
+    /**
+     * The version read; terms send back the one they were read at, 0 when the company had no subscription, and one
+     * set, stopped or carried forward since answers 409.
+     */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\PositiveOrZero(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(Subscription $subscription, Standing $standing): self
     {
         $company = $subscription->getCompany();
@@ -156,6 +168,7 @@ final class PlatformSubscriptionResource
         $resource->graceEndsAt = $standing->graceEndsAt->format(\DATE_ATOM);
         $resource->daysLeft = $standing->daysLeft;
         $resource->updatedAt = $subscription->getUpdatedAt()->format(\DATE_ATOM);
+        $resource->version = $subscription->getVersion();
 
         return $resource;
     }

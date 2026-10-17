@@ -250,6 +250,12 @@ both move, the run holding the row as it already did: a pause from the list send
 refused as saved since reads the list again and says so. A recurring expense's revision, asked in a dialog, is asked
 again over the version saved when it is refused: what was typed is kept, what they changed and was not typed is
 taken, and a field both changed is offered both ways, as the page editors do.
+A company's subscription carries a version, which the operator's terms and a payment's confirmation both move. Terms
+send the version they were read at, 0 when the company had none, so two operators starting to manage one company, or
+terms read before another's, a confirmation's or a stop, answer 409 with nothing written; both writers hold the
+company's subscription, and a confirmation holds its declaration, so one decided since is refused rather than decided
+twice. The platform panel keeps each term typed over the terms held now and takes theirs for the rest; a term both
+changed keeps what was typed, which the panel shows before the next save.
 
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,

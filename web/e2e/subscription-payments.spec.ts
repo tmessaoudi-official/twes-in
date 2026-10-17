@@ -90,6 +90,8 @@ test('a locked company declares what it paid and the operator confirms it back o
           graceDays: 0,
           unpaidMode: 'locked',
           holdDays: 7,
+          // A company just made has no subscription: none read is 0.
+          version: 0,
         },
       )
     ).status,

@@ -32,6 +32,8 @@ export interface PlatformSubscriptionRow extends SubscriptionTerms {
   readonly graceEndsAt: string;
   readonly daysLeft: number | null;
   readonly updatedAt: string;
+  /** What terms set over it send back; one saved since refuses them as `record_changed`. */
+  readonly version: number;
 }
 
 /** A company as the platform's operators review it. */

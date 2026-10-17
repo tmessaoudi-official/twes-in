@@ -9,6 +9,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Licensing\Application\ManageSubscriptions;
+use App\Licensing\Domain\Model\Subscription;
+use App\Licensing\Domain\ValueObject\BillingPeriod;
+use App\Licensing\Domain\ValueObject\PeriodUnit;
+use App\Licensing\Domain\ValueObject\SubscriptionTerms;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -45,6 +50,7 @@ final class SubscriptionsTest extends ApiTestCase
             'currency' => 'TND',
             'graceDays' => 3,
             'unpaidMode' => 'locked',
+            'version' => 1,
         ]));
         self::assertResponseIsSuccessful();
         $this->getJson($this->subscriptionOf($company));
@@ -64,6 +70,62 @@ final class SubscriptionsTest extends ApiTestCase
             [$company->getId()->toRfc4122()],
         );
         self::assertSame(['subscription.set', 'subscription.set', 'subscription.stopped'], $actions);
+    }
+
+    public function testTheTermsNameTheVersionTheyWereReadAtAndNoneReadAsNoneIsZero(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->signInOperator();
+        $paid = ['paidThrough' => $this->daysFromToday(30)];
+
+        $without = $this->terms($paid);
+        unset($without['version']);
+        $this->sendJson('PUT', $this->subscriptionOf($company), $without);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'terms without the version they were read at');
+        self::assertContains(['propertyPath' => 'version', 'reason' => 'value_required', 'params' => []], $this->refusals());
+
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$paid, 'version' => 2]));
+        $this->assertChangedSince('terms read on a subscription that is not there');
+
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms($paid));
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version'], 'none read is 0, and the first terms start it at 1');
+
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$paid, 'graceDays' => 9]));
+        $this->assertChangedSince('none read, while another operator set terms since');
+
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$paid, 'graceDays' => 5, 'version' => 1]));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$paid, 'graceDays' => 9, 'version' => 1]));
+        $this->assertChangedSince('terms read before the change');
+        $this->getJson($this->subscriptionOf($company));
+        self::assertSame(5, $this->json()['graceDays'], 'and nothing of them is written');
+
+        $this->sendJson('DELETE', $this->subscriptionOf($company));
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$paid, 'version' => 2]));
+        $this->assertChangedSince('terms read on a subscription stopped since');
+        $this->getJson($this->subscriptionOf($company));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'and it stays stopped');
+    }
+
+    /** The terms an operator read are checked against the row held, not against what this request read before it. */
+    public function testTermsAreCheckedAgainstTheRowTheyHold(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->subscribe($company, ['paidThrough' => $this->daysFromToday(30)]);
+        $operator = $this->createUser('other-op@twes.local', 'password-1234', operator: true);
+        $id = $this->stringAt($this->json(), 'companyId');
+        $held = $this->em()->getRepository(Subscription::class)->findOneBy(['company' => $company->getId()]);
+        self::assertNotNull($held, 'read as the request would');
+        $this->em()->getConnection()->executeStatement('UPDATE subscription SET version = version + 1, grace_days = 4 WHERE company_id = ?', [$id]);
+
+        $terms = new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Month), null, new \DateTimeImmutable('+30 days'), null, null, 6);
+        static::getContainer()->get(ManageSubscriptions::class)->set($company->getId(), $terms, $operator->getId(), 2);
+
+        self::assertSame([6, 3], [$this->em()->getConnection()->fetchOne('SELECT grace_days FROM subscription WHERE company_id = ?', [$id]), $this->seen($company)]);
     }
 
     public function testTermsTheDomainRefusesAreUnprocessable(): void
@@ -211,8 +273,27 @@ final class SubscriptionsTest extends ApiTestCase
     private function subscribe(Company $company, array $terms): void
     {
         $this->signInOperator();
-        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms($terms));
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$terms, 'version' => $this->seen($company)]));
         self::assertResponseIsSuccessful();
+    }
+
+    /** The version of the company's subscription, 0 while it has none: what an operator who just read it sends. */
+    private function seen(Company $company): int
+    {
+        $version = $this->em()->getConnection()->fetchOne('SELECT version FROM subscription WHERE company_id = ?', [$company->getId()->toRfc4122()]);
+
+        if (false === $version) {
+            return 0;
+        }
+        self::assertIsInt($version);
+
+        return $version;
+    }
+
+    private function assertChangedSince(string $why): void
+    {
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, $why);
+        self::assertSame('/problems/record-changed', $this->stringAt($this->json(), 'type'));
     }
 
     private function signInOperator(): void
@@ -241,6 +322,7 @@ final class SubscriptionsTest extends ApiTestCase
             'currency' => null,
             'graceDays' => null,
             'unpaidMode' => null,
+            'version' => 0,
             ...$overrides,
         ];
     }

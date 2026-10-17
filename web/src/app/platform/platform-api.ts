@@ -11,7 +11,7 @@ import type {
   PlatformAccountPlatformAccountRead,
   PlatformCompanyPlatformCompanyRead,
   PlatformSubscriptionPlatformSubscriptionRead,
-  PlatformSubscriptionPlatformSubscriptionWrite,
+  PlatformSubscriptionPlatformSubscriptionWriteRecordReviseValidationRecordRevise as PlatformSubscriptionPlatformSubscriptionWrite,
   PlatformOwnerInvitationPlatformOwnerInvitationReadValidationInvite as PlatformOwnerInvitationPlatformOwnerInvitationRead,
   PlatformOwnerInvitationPlatformOwnerInvitationWriteValidationInvite as PlatformOwnerInvitationPlatformOwnerInvitationWrite,
   SettingChangesSettingChangesWriteRecordReviseValidationSettingChangesWriteRecordRevise as PlatformSettingChangesBody,
@@ -209,9 +209,16 @@ export class PlatformApi {
     }
   }
 
-  /** Sets the terms, starting to manage the company or revising what it holds. */
-  setSubscription(companyId: string, terms: SubscriptionTerms): Promise<PlatformSubscriptionRow> {
-    const body: PlatformSubscriptionPlatformSubscriptionWrite = { ...terms };
+  /**
+   * Sets the terms, starting to manage the company or revising what it holds, on the version they were read at: 0 when
+   * the company had no subscription. One set, stopped or carried forward since refuses them as `record_changed`.
+   */
+  setSubscription(
+    companyId: string,
+    terms: SubscriptionTerms,
+    version: number,
+  ): Promise<PlatformSubscriptionRow> {
+    const body: PlatformSubscriptionPlatformSubscriptionWrite = { ...terms, version };
     return this.guard(
       async () =>
         toSubscription(
@@ -353,6 +360,7 @@ function toSubscription(
     graceEndsAt: read.graceEndsAt,
     daysLeft: read.daysLeft ?? null,
     updatedAt: read.updatedAt,
+    version: read.version ?? 0,
   };
 }
 

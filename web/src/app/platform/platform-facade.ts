@@ -167,17 +167,33 @@ export class PlatformFacade {
     this.subscriptionSignal.set(null);
   }
 
-  /** True once the terms are held; the company list is read again, since its standing changed. */
-  async saveSubscription(companyId: string, terms: SubscriptionTerms): Promise<boolean> {
-    return this.write(async () => {
+  /**
+   * True once the terms are held; the company list is read again, since its standing changed. Refused as saved since,
+   * the subscription is read again, so the panel shows what is held now and the next save names its version.
+   */
+  async saveSubscription(
+    companyId: string,
+    terms: SubscriptionTerms,
+    version: number,
+  ): Promise<boolean> {
+    const saved = await this.write(async () => {
       this.subscriptionSignal.set(
-        await this.proven(() => this.api.setSubscription(companyId, terms)),
+        await this.proven(() => this.api.setSubscription(companyId, terms, version)),
       );
       await this.refreshCompanies();
       await this.auth.refresh();
 
       return true;
     });
+    if (saved === false && this.errorSignal() === 'record_changed') {
+      try {
+        this.subscriptionSignal.set(await this.api.subscription(companyId));
+      } catch (error) {
+        this.errorSignal.set(codeOf(error));
+      }
+    }
+
+    return saved;
   }
 
   async stopSubscription(companyId: string): Promise<boolean> {

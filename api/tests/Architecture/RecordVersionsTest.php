@@ -22,7 +22,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 /**
  * Every revision says which version of the record it revises (docs/SPEC.md § 3 « Saving over someone else »): its PUT
  * takes a required `version` in the RecordVersion group, so a save of a version someone else saved since answers 409
- * instead of overwriting it. The PUTs that take none say why, and those not yet done are struck off as they are.
+ * instead of overwriting it. The PUTs that take none say why.
  */
 final class RecordVersionsTest extends KernelTestCase
 {
@@ -42,11 +42,6 @@ final class RecordVersionsTest extends KernelTestCase
     private const array BATCHES = [
         '/companies/{companyId}/settings' => SettingChangeRow::class,
         '/platform/settings' => SettingChangeRow::class,
-    ];
-
-    /** Not done yet: each slice strikes its own off. */
-    private const array WAITING = [
-        '/platform/companies/{companyId}/subscription',
     ];
 
     public function testEveryRevisionSaysWhichVersionItRevises(): void
@@ -70,7 +65,7 @@ final class RecordVersionsTest extends KernelTestCase
                     $input = \is_array($declared) && isset($declared['class']) ? $declared['class'] : $operation->getClass();
                     $input = self::BATCHES[$template] ?? $input;
                     $takes = \is_string($input) && self::takesAVersion($validator->getMetadataFor($input), $operation->getDenormalizationContext() ?? [], $operation->getValidationContext() ?? []);
-                    if (\array_key_exists($template, self::WITHOUT) || \in_array($template, self::WAITING, true)) {
+                    if (\array_key_exists($template, self::WITHOUT)) {
                         if ($takes) {
                             $wrong[] = "$template takes its version: strike it off the list";
                         }
@@ -85,7 +80,7 @@ final class RecordVersionsTest extends KernelTestCase
 
         // Fewer PUTs found than there are means the discovery broke, not that the rule holds.
         self::assertGreaterThanOrEqual(37, \count($found), 'every PUT is read');
-        foreach ([...array_keys(self::WITHOUT), ...self::WAITING, ...array_keys(self::BATCHES)] as $listed) {
+        foreach ([...array_keys(self::WITHOUT), ...array_keys(self::BATCHES)] as $listed) {
             if (!\in_array($listed, $found, true)) {
                 $wrong[] = "$listed is listed but no PUT has that address";
             }

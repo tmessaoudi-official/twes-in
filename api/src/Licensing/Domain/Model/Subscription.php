@@ -75,6 +75,10 @@ class Subscription implements CompanyOwned
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     public function __construct(Company $company, SubscriptionTerms $terms, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
@@ -135,6 +139,11 @@ class Subscription implements CompanyOwned
         $from = max($terms->coveredUntil(), $now);
         $this->paidUntil = $terms->period->after($from, $periods);
         $this->updatedAt = $now;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getTerms(): SubscriptionTerms
