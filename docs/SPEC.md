@@ -212,7 +212,10 @@ checks it through `Shared/Application/RecordVersions` (`EntityManager::lock(…,
 flush's `UPDATE … WHERE version` catches a save landing between that check and the write; both answer 409 with the
 problem type `/problems/record-changed` (`RecordChangedProblem`), which a screen tells from the request's other 409s.
 The screen reads the record again, merges it as a live change would (`liveRecord`'s `savedElsewhere`), and says
-nothing was saved. An import or a fixture revising what it finds names no version. `tests/Architecture/RecordVersionsTest`
+nothing was saved. A write no person's form made (a cost from a receipt, an issued document's PDF stored) holds the row
+with a locked read (`SELECT … FOR UPDATE`, refreshed) instead of sending a version, so a save made since is never
+refused under it (§ 7 2026-10-17 01:14); a PDF is rendered before the row is held. An import or a fixture revising what
+it finds names no version. `tests/Architecture/RecordVersionsTest`
 reads every PUT: each takes a version, or is listed with its reason (a person's own toggles, a company's single
 switches), or waits for its slice.
 

@@ -21,6 +21,7 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Settings\Application\ReadSetting;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 use Symfony\Component\Uid\Uuid;
@@ -40,6 +41,7 @@ final readonly class PrintDeliveryNote
         private PdfRenderer $renderer,
         private Files $files,
         private ReadSetting $settings,
+        private Transactions $transactions,
     ) {
     }
 
@@ -81,11 +83,21 @@ final readonly class PrintDeliveryNote
             return $this->files->contents($stored);
         }
 
+        // Rendered before the row is held, which is not kept waiting on the renderer: what a numbered note says no
+        // longer changes. Then held, as delivering it may have saved it since it was read, and read again as it stands.
         $contents = $this->render($note, null);
-        $note->attachPdf($this->files->store($note->getCompany(), self::fileName($note), 'application/pdf', $contents, null));
-        $this->notes->save($note);
 
-        return $contents;
+        return $this->transactions->run(function () use ($note, $contents): string {
+            $held = $this->notes->lockedOfIdsInCompany([$note->getId()], $note->getCompany()->getId())[0] ?? throw new DeliveryNoteNotFound();
+            $stored = $held->getPdfFile();
+            if (null !== $stored) {
+                return $this->files->contents($stored);
+            }
+            $held->attachPdf($this->files->store($held->getCompany(), self::fileName($held), 'application/pdf', $contents, null));
+            $this->notes->save($held);
+
+            return $contents;
+        });
     }
 
     /** @param DeliveryNotePage::DRAFT|DeliveryNotePage::CANCELLED|null $watermark */

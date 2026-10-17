@@ -53,4 +53,5 @@ deploy check before each push.
 ### Needs research
 ### Fragile
 - The sweep reports live in `var/claude/tool-audit/raw/` only (not in git); the page carries each finding's fix, documentation and grade.
+- Sealing every unsealed document at once (`SealInvoiceChains::all`, a maintenance run) reads them without holding their rows: a payment saved on one of them meanwhile ends that slice as `RecordChanged`, rolled back and run again. Issuing seals inside the transaction that already holds the document, so only the maintenance run meets it; a locked read there cannot be shown by a single-process test, so it was left out.
 ### Known issues

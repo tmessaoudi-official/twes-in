@@ -8,6 +8,7 @@ import type {
   DeliveryNoteDeliveryNoteDeliverValidationDeliveryNoteDeliver as DeliveryNoteDeliveryNoteDeliver,
   DeliveryNoteDeliveryNoteRead,
   DeliveryNoteDocumentPreviewDocumentPreviewValidationDeliveryNoteWrite as DeliveryNoteDocumentPreview,
+  DeliveryNoteDeliveryNoteWriteRecordReviseValidationDeliveryNoteWriteRecordRevise as DeliveryNoteDeliveryNoteRevise,
   DeliveryNoteDeliveryNoteWriteValidationDeliveryNoteWrite as DeliveryNoteDeliveryNoteWrite,
   DeliveryNoteJsonldDeliveryNoteRead,
   DeliveryNoteCustomerPickDeliveryNoteCustomerPickRead,
@@ -22,6 +23,7 @@ import type {
   InvoicingCheckInvoicingCheckWriteValidationInvoicingCheckWrite as InvoicingCheckWrite,
 } from '../api/types.gen';
 import type { PreviewBody } from '../shared/documents/document-figures';
+import { isRecordChanged } from '../shared/errors/record-changed';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import { apiRangeKey } from '../shared/list/list-filters';
@@ -207,12 +209,21 @@ export class DeliveryNotesApi {
     );
   }
 
-  /** 409 once the note is no longer a draft. */
-  async revise(companyId: string, id: string, input: DeliveryNoteInput): Promise<DeliveryNoteRow> {
+  /**
+   * 409 once the note is no longer a draft; `version` is the one the form was opened at, and a later one saved
+   * elsewhere answers `record_changed`.
+   */
+  async revise(
+    companyId: string,
+    id: string,
+    input: DeliveryNoteInput,
+    version: number | null,
+  ): Promise<DeliveryNoteRow> {
+    const body: DeliveryNoteDeliveryNoteRevise = { ...toBody(input), version };
     return this.guard(async () =>
       toNote(
         await firstValueFrom(
-          this.http.put<DeliveryNoteDeliveryNoteRead>(notePath(companyId, id), toBody(input)),
+          this.http.put<DeliveryNoteDeliveryNoteRead>(notePath(companyId, id), body),
         ),
       ),
     );
@@ -391,7 +402,7 @@ function codeOf(error: unknown): DeliveryNotesError {
     case 404:
       return 'not_found';
     case 409:
-      return 'conflict';
+      return isRecordChanged(error.error) ? 'record_changed' : 'conflict';
     default:
       // A customer deactivated since the note was started, named by the field the API refused.
       return refusedField(error) === 'customerId' ? 'customer_unavailable' : 'invalid';
@@ -437,6 +448,7 @@ function toNote(
 ): DeliveryNoteRow {
   return {
     id: raw.id ?? '',
+    version: raw.version ?? 0,
     number: raw.number ?? null,
     status: DELIVERY_NOTE_STATUSES.find((status) => status === raw.status) ?? 'draft',
     customerId: raw.customerId ?? '',

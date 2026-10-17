@@ -38,6 +38,7 @@ import type {
 import type { PickAsked } from '../shared/form/pick-api';
 import {
   effectToasts,
+  failureToasts,
   noticeToasts,
   offeredNext,
   provideQuietFeedback,
@@ -95,6 +96,7 @@ const products: ProductOption[] = [
 
 const draft: DeliveryNoteRow = {
   id: 'n1',
+  version: 1,
   number: null,
   status: 'draft',
   customerId: 'k1',
@@ -738,6 +740,7 @@ describe('DeliveryNotePage', () => {
       'c1',
       'n1',
       expect.objectContaining({ lines: [expect.objectContaining({ quantity: '3' })] }),
+      1,
     );
     expect(successToasts()).toContain('delivery_notes.saved');
 
@@ -752,6 +755,8 @@ describe('DeliveryNotePage', () => {
       'c1',
       'n1',
       expect.objectContaining({ lines: [expect.objectContaining({ quantity: '4' })] }),
+      1,
+      expect.any(Function),
     );
     await vi.waitFor(() =>
       expect(effectToasts()).toEqual(['delivery_notes.validated:corrigeable']),
@@ -774,10 +779,113 @@ describe('DeliveryNotePage', () => {
       'c1',
       'n1',
       expect.objectContaining({ lines: [expect.objectContaining({ quantity: '5' })] }),
+      1,
+      expect.any(Function),
     );
     expect(facade.reviseAndValidate).not.toHaveBeenCalled();
     await vi.waitFor(() =>
       expect(effectToasts()).toEqual(['delivery_notes.validated_delivered:corrigeable']),
+    );
+  });
+
+  /** The next save is refused as made over a version saved since, and the read after it brings that version. */
+  function savedSinceBy(call: 'revise' | 'reviseAndValidate' | 'reviseValidateAndDeliver'): void {
+    facade[call].mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.clearError.mockImplementationOnce(() => error.set(null));
+    facade.loadNote.mockImplementationOnce(async () =>
+      note.set({ ...draft, version: 2, customerReference: 'BC-7' }),
+    );
+  }
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    note.set(draft);
+    await open('n1');
+    savedSinceBy('revise');
+
+    type('line-0-quantity', '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-7'),
+    );
+
+    expect((q('line-0-quantity') as HTMLInputElement).value).toBe('3');
+    expect(error()).toBeNull();
+    expect(failureToasts()).toEqual(['live.saved_since']);
+    expect(successToasts()).not.toContain('delivery_notes.saved');
+
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.revise).toHaveBeenLastCalledWith(
+      'c1',
+      'n1',
+      expect.objectContaining({ customerReference: 'BC-7' }),
+      2,
+    );
+  });
+
+  for (const [action, call] of [
+    ['validate', 'reviseAndValidate'],
+    ['validate-deliver', 'reviseValidateAndDeliver'],
+  ] as const) {
+    it(`numbers nothing over a version saved since (${action}): it merges it and says so`, async () => {
+      note.set(draft);
+      await open('n1');
+      savedSinceBy(call);
+
+      q(`document-action-${action}`)!.click();
+      await settle();
+      over('confirm-run')!.click();
+      await settle();
+      await vi.waitFor(() =>
+        expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-7'),
+      );
+
+      expect(facade[call]).toHaveBeenCalledWith(
+        'c1',
+        'n1',
+        expect.anything(),
+        1,
+        expect.any(Function),
+      );
+      expect(error()).toBeNull();
+      expect(failureToasts()).toEqual(['live.saved_since']);
+      expect(effectToasts()).toEqual([]);
+    });
+  }
+
+  it('validates again on the version its kept save gave, when validating was refused after it', async () => {
+    note.set(draft);
+    await open('n1');
+    facade.reviseAndValidate.mockImplementationOnce(
+      async (_c: string, _n: string, _input: unknown, _v: number, revised: () => void) => {
+        note.set({ ...draft, version: 2 });
+        revised();
+        error.set('invalid');
+        return null;
+      },
+    );
+
+    q('document-action-validate')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+    error.set(null);
+    q('document-action-validate')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+
+    expect(facade.reviseAndValidate).toHaveBeenLastCalledWith(
+      'c1',
+      'n1',
+      expect.anything(),
+      2,
+      expect.any(Function),
     );
   });
 

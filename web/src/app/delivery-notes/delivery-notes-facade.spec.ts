@@ -18,6 +18,7 @@ const options: DeliveryNoteOptions = {
 };
 const draft: DeliveryNoteRow = {
   id: 'n1',
+  version: 1,
   number: null,
   status: 'draft',
   customerId: 'k1',
@@ -144,8 +145,15 @@ describe('DeliveryNotesFacade', () => {
     const numbered = { ...draft, status: 'validated' as const, number: 'BL-2026-00001' };
     api.revise.mockResolvedValue(draft);
     api.validate.mockResolvedValue(numbered);
-    expect(await facade.reviseAndValidate('c1', 'n1', input)).toEqual(numbered);
-    expect(api.revise).toHaveBeenCalledWith('c1', 'n1', input);
+    const order: string[] = [];
+    api.revise.mockImplementationOnce(async () => (order.push('revise'), draft));
+    api.validate.mockImplementationOnce(async () => (order.push('validate'), numbered));
+    expect(
+      await facade.reviseAndValidate('c1', 'n1', input, 3, () => order.push('revised')),
+    ).toEqual(numbered);
+    expect(api.revise).toHaveBeenCalledWith('c1', 'n1', input, 3);
+    // The form is told the save was kept before validating answers, whatever validating then says.
+    expect(order).toEqual(['revise', 'revised', 'validate']);
     expect(facade.note()).toEqual(numbered);
 
     api.deliver.mockResolvedValue({ ...numbered, status: 'delivered' });
@@ -158,15 +166,18 @@ describe('DeliveryNotesFacade', () => {
 
   it('does not validate a draft whose changes were refused, and says why', async () => {
     api.revise.mockRejectedValue(new DeliveryNotesRefused('invalid'));
+    const revised = vi.fn();
 
-    expect(await facade.reviseAndValidate('c1', 'n1', input)).toBeNull();
+    expect(await facade.reviseAndValidate('c1', 'n1', input, 1, revised)).toBeNull();
+    expect(revised).not.toHaveBeenCalled();
     expect(api.validate).not.toHaveBeenCalled();
     expect(facade.error()).toBe('invalid');
     expect(facade.busy()).toBe(false);
 
     api.validate.mockRejectedValue(new DeliveryNotesRefused('conflict'));
     api.revise.mockResolvedValue(draft);
-    expect(await facade.reviseAndValidate('c1', 'n1', input)).toBeNull();
+    expect(await facade.reviseAndValidate('c1', 'n1', input, 1, revised)).toBeNull();
+    expect(revised).toHaveBeenCalledTimes(1);
     expect(facade.error()).toBe('conflict');
     expect(facade.note()).toEqual(draft);
   });
@@ -175,14 +186,17 @@ describe('DeliveryNotesFacade', () => {
     const delivered = { ...draft, status: 'delivered' as const, number: 'BL-2026-00001' };
     api.revise.mockResolvedValue(draft);
     api.validateAndDeliver.mockResolvedValue(delivered);
-    expect(await facade.reviseValidateAndDeliver('c1', 'n1', input)).toEqual(delivered);
-    expect(api.revise).toHaveBeenCalledWith('c1', 'n1', input);
+    const revised = vi.fn();
+    expect(await facade.reviseValidateAndDeliver('c1', 'n1', input, 2, revised)).toEqual(delivered);
+    expect(api.revise).toHaveBeenCalledWith('c1', 'n1', input, 2);
+    expect(revised).toHaveBeenCalledTimes(1);
     expect(api.validateAndDeliver).toHaveBeenCalledWith('c1', 'n1');
     expect(facade.note()).toEqual(delivered);
 
     api.validateAndDeliver.mockClear();
     api.revise.mockRejectedValue(new DeliveryNotesRefused('invalid'));
-    expect(await facade.reviseValidateAndDeliver('c1', 'n1', input)).toBeNull();
+    expect(await facade.reviseValidateAndDeliver('c1', 'n1', input, 2, revised)).toBeNull();
+    expect(revised).toHaveBeenCalledTimes(1);
     expect(api.validateAndDeliver).not.toHaveBeenCalled();
     expect(facade.error()).toBe('invalid');
   });

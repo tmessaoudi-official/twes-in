@@ -132,6 +132,7 @@ describe('DeliveryNotesApi', () => {
     const pending = api.note('c1', 'n 1');
     http.expectOne('/api/companies/c1/delivery-notes/n%201').flush({
       id: 'n 1',
+      version: 4,
       number: 'BL-2026-00001',
       status: 'validated',
       customerId: 'k1',
@@ -147,6 +148,7 @@ describe('DeliveryNotesApi', () => {
 
     expect(await pending).toEqual({
       id: 'n 1',
+      version: 4,
       number: 'BL-2026-00001',
       status: 'validated',
       customerId: 'k1',
@@ -219,11 +221,28 @@ describe('DeliveryNotesApi', () => {
     post.flush({ id: 'n1', status: 'draft', customerId: 'k1' });
     expect((await created).id).toBe('n1');
 
-    const revised = api.revise('c1', 'n1', input);
+    const revised = api.revise('c1', 'n1', input, 4);
     const put = http.expectOne('/api/companies/c1/delivery-notes/n1');
     expect(put.request.method).toBe('PUT');
-    put.flush({ id: 'n1', status: 'draft', customerId: 'k1' });
-    await revised;
+    // The version the form stands on, which the API refuses once someone else saved a later one.
+    expect(put.request.body).toEqual(expect.objectContaining({ version: 4 }));
+    put.flush({ id: 'n1', version: 5, status: 'draft', customerId: 'k1' });
+    expect((await revised).version).toBe(5);
+
+    const changed = api.revise('c1', 'n1', input, 4);
+    http
+      .expectOne('/api/companies/c1/delivery-notes/n1')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toEqual(new DeliveryNotesRefused('record_changed'));
+
+    const fixed = api.revise('c1', 'n1', input, 4);
+    http
+      .expectOne('/api/companies/c1/delivery-notes/n1')
+      .flush(null, { status: 409, statusText: 'Conflict' });
+    await expect(fixed).rejects.toEqual(new DeliveryNotesRefused('conflict'));
 
     const list = api.notes('c1', SEARCH);
     http

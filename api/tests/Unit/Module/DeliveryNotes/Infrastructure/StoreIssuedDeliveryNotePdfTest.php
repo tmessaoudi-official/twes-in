@@ -32,6 +32,7 @@ use App\Settings\Application\SettingCatalog;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakePdfRenderer;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryDeliveryNotes;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryFileStorage;
@@ -66,6 +67,7 @@ final class StoreIssuedDeliveryNotePdfTest extends TestCase
             $renderer,
             new Files(new InMemoryFileStorage(), $records, $clock),
             new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(), new DeliveryNoteSettings(), new PresentationSettings()]), new InMemorySettings())),
+            new FakeTransactions(),
         );
         $logger = new class extends AbstractLogger {
             /** @var list<array{string, string, array<array-key, mixed>}> */

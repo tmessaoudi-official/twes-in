@@ -90,6 +90,7 @@ final class PrintDeliveryNoteTest extends TestCase
             $this->renderer,
             new Files($this->storage, $this->records, $this->clock),
             new ReadSetting($resolve),
+            new FakeTransactions(),
         );
         $now = $this->clock->now();
         $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);

@@ -25,6 +25,8 @@ use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteLineDetails;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteSearch;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
@@ -59,6 +61,7 @@ final readonly class ManageDeliveryNotes
         private ClockInterface $clock,
         private DeliveryNoteLinePrices $linePrices,
         private ExcludedTaxFamilies $excluded,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -109,15 +112,21 @@ final readonly class ManageDeliveryNotes
     }
 
     /**
+     * `$version` is the one the editor opened; a save over a later one is refused before anything is changed.
+     *
      * @throws DeliveryNoteNotFound
      * @throws DeliveryNoteNotDraft
      * @throws InvalidDeliveryNote
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, DeliveryNoteInput $input, ?Uuid $actorUserId): DeliveryNote
+    public function revise(Company $company, Uuid $id, DeliveryNoteInput $input, ?Uuid $actorUserId, ?int $version = null): DeliveryNote
     {
-        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): DeliveryNote {
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): DeliveryNote {
             // Held until this transaction ends and read as it stands: a draft check on it cannot be overtaken.
             $note = $this->notes->lockedOfIdsInCompany([$id], $company->getId())[0] ?? throw new DeliveryNoteNotFound();
+            if (null !== $version) {
+                $this->versions->expect($note, $version);
+            }
             [$establishment, $customer, $lines] = $this->checked($company, $input, $note);
             $changed = $note->revise($establishment, $customer, $input->header, $lines, $this->clock->now());
             if ([] !== $changed) {
