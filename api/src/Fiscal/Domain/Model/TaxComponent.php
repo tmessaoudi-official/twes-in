@@ -87,6 +87,11 @@ class TaxComponent implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /** Doctrine counts each save, so an editor of an older version is told rather than overwriting it. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     private function __construct(Company $company, string $code, TaxFamily $family, \DateTimeImmutable $now)
     {
         if (1 !== preg_match(self::CODE, $code)) {
@@ -207,6 +212,11 @@ class TaxComponent implements CompanyOwned
     private function state(): array
     {
         return [$this->name, $this->rate, $this->amount, $this->threshold, $this->entersVatBase, $this->isDefault, $this->isActive, $this->exemptionMention, $this->sortOrder];
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getId(): Uuid

@@ -45,7 +45,9 @@ final class UnitsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path().'/'.$id, ['code' => 'XXX', 'name' => 'Tonne métrique', 'decimals' => 2, 'isActive' => false, 'sortOrder' => 90]);
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => 1, 'code' => 'XXX', 'name' => 'Tonne métrique', 'decimals' => 2, 'isActive' => false, 'sortOrder' => 90]);
 
         self::assertResponseIsSuccessful();
         $body = $this->json();
@@ -53,6 +55,48 @@ final class UnitsTest extends ApiTestCase
         self::assertSame('Tonne métrique', $body['name']);
         self::assertSame(2, $body['decimals']);
         self::assertFalse($body['isActive']);
+        self::assertSame(2, $body['version']);
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['fiscal.read', 'fiscal.write']);
+        $this->postJson($this->path(), ['code' => 'TNE', 'name' => 'Tonne', 'decimals' => 3, 'sortOrder' => 90]);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => 1, 'name' => 'Tonne métrique', 'decimals' => 3, 'isActive' => true, 'sortOrder' => 90]);
+        self::assertResponseIsSuccessful();
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => 1, 'name' => 'Tonne courte', 'decimals' => 3, 'isActive' => true, 'sortOrder' => 90]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path());
+        $saved = array_values(array_filter($this->jsonList(), static fn (array $row): bool => $id === $row['id']))[0];
+        self::assertSame(['Tonne métrique', 2], [$saved['name'], $saved['version']]);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(['fiscal.read', 'fiscal.write']);
+        $this->postJson($this->path(), ['code' => 'TNE', 'name' => 'Tonne', 'decimals' => 3, 'sortOrder' => 90]);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => 1, 'name' => 'Tonne', 'decimals' => 3, 'isActive' => true, 'sortOrder' => 90]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+    }
+
+    public function testARevisionSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(['fiscal.read', 'fiscal.write']);
+        $this->postJson($this->path(), ['code' => 'TNE', 'name' => 'Tonne', 'decimals' => 3, 'sortOrder' => 90]);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['name' => 'Tonne métrique', 'decimals' => 3, 'isActive' => true, 'sortOrder' => 90]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     public function testADuplicateCodeIsAConflict(): void

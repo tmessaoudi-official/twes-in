@@ -16,6 +16,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { liveRecord } from '../shared/form/live-record';
+import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
@@ -33,7 +35,15 @@ import { Feedback } from '../shared/feedback/feedback';
 /** The units a company sells in: UN/ECE Recommendation 20 codes, named in the company's own words. */
 @Component({
   selector: 'app-fiscal-units-page',
-  imports: [MatButtonModule, MatCardModule, TranslatePipe, DataList, DataListCell, DescriptorForm],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    TranslatePipe,
+    DataList,
+    DataListCell,
+    DescriptorForm,
+    RecordChanged,
+  ],
   templateUrl: './fiscal-units-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -78,6 +88,29 @@ export class FiscalUnitsPage implements OnInit {
     return buildFormGroup(descriptor, editing === 'new' ? {} : unitFormValues(editing));
   });
 
+  /** The unit being revised as the list now holds it: what another person's save is merged from. */
+  private readonly savedRow = computed(() => {
+    const editing = this.editing();
+    if (editing === null || editing === 'new') return null;
+    return this.units().find((row) => row.id === editing.id) ?? null;
+  });
+
+  /** The saved version the open form stands on, and what another person's save changed in it. */
+  protected readonly sync = liveRecord({
+    kind: 'unit',
+    id: () => this.savedRow()?.id ?? null,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.fiscal.loadUnits(companyId);
+    },
+    saved: () => {
+      const row = this.savedRow();
+      return row === null ? null : unitFormValues(row);
+    },
+    version: () => this.savedRow()?.version ?? null,
+  });
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
@@ -106,10 +139,18 @@ export class FiscalUnitsPage implements OnInit {
     const accepted =
       editing === 'new'
         ? await this.fiscal.createUnit(companyId, unitInput(values))
-        : await this.fiscal.reviseUnit(companyId, editing.id, unitInput(values, editing.code));
+        : await this.fiscal.reviseUnit(
+            companyId,
+            editing.id,
+            unitInput(values, editing.code),
+            this.sync.version(),
+          );
     if (accepted) {
       this.editing.set(null);
       this.feedback.success('fiscal.units.saved');
+    } else if (this.error() === 'record_changed') {
+      this.fiscal.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 

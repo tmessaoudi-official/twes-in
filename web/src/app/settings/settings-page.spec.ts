@@ -173,7 +173,15 @@ describe('SettingsPage', () => {
     ]);
     fiscal.loadUnits.mockImplementation(async () =>
       units.set([
-        { id: 'u', code: 'C62', name: 'Pièce', decimals: 0, isActive: true, sortOrder: 0 },
+        {
+          id: 'u',
+          code: 'C62',
+          name: 'Pièce',
+          decimals: 0,
+          isActive: true,
+          sortOrder: 0,
+          version: 1,
+        },
       ]),
     );
     await open();

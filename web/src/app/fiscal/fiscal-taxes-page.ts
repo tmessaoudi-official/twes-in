@@ -16,6 +16,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { liveRecord } from '../shared/form/live-record';
+import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
@@ -43,6 +45,7 @@ import { AmountPipe } from '../shared/i18n/format-pipes';
     DataList,
     DataListCell,
     DescriptorForm,
+    RecordChanged,
   ],
   templateUrl: './fiscal-taxes-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -92,6 +95,29 @@ export class FiscalTaxesPage implements OnInit {
     return buildFormGroup(descriptor, editing === 'new' ? {} : taxFormValues(editing));
   });
 
+  /** The tax being revised as the list now holds it: what another person's save is merged from. */
+  private readonly savedRow = computed(() => {
+    const editing = this.editing();
+    if (editing === null || editing === 'new') return null;
+    return this.fiscal.taxes().find((row) => row.id === editing.id) ?? null;
+  });
+
+  /** The saved version the open form stands on, and what another person's save changed in it. */
+  protected readonly sync = liveRecord({
+    kind: 'tax_component',
+    id: () => this.savedRow()?.id ?? null,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.fiscal.loadTaxes(companyId);
+    },
+    saved: () => {
+      const row = this.savedRow();
+      return row === null ? null : taxFormValues(row);
+    },
+    version: () => this.savedRow()?.version ?? null,
+  });
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
@@ -124,10 +150,18 @@ export class FiscalTaxesPage implements OnInit {
     const accepted =
       editing === 'new'
         ? await this.fiscal.createTax(companyId, taxInput(values))
-        : await this.fiscal.reviseTax(companyId, editing.id, taxInput(values, editing));
+        : await this.fiscal.reviseTax(
+            companyId,
+            editing.id,
+            taxInput(values, editing),
+            this.sync.version(),
+          );
     if (accepted) {
       this.editing.set(null);
       this.feedback.success('fiscal.taxes.saved');
+    } else if (this.fiscal.error() === 'record_changed') {
+      this.fiscal.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 

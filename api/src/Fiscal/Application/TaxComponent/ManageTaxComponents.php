@@ -16,6 +16,8 @@ use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -34,6 +36,7 @@ final readonly class ManageTaxComponents
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -78,14 +81,20 @@ final readonly class ManageTaxComponents
     }
 
     /**
+     * `$version` is the one the editor opened; a caller revising what it finds names none.
+     *
      * @throws TaxComponentNotFound for a component that does not exist or belongs to another company
      * @throws InvalidFiscalValue
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $componentId, TaxComponentChanges $changes, ?Uuid $actorUserId): TaxComponent
+    public function revise(Company $company, Uuid $componentId, TaxComponentChanges $changes, ?Uuid $actorUserId, ?int $version = null): TaxComponent
     {
-        return $this->transactions->run(function () use ($company, $componentId, $changes, $actorUserId): TaxComponent {
+        return $this->transactions->run(function () use ($company, $componentId, $changes, $actorUserId, $version): TaxComponent {
             $component = $this->components->ofIdInCompany($componentId, $company->getId())
                 ?? throw new TaxComponentNotFound('No such tax component.');
+            if (null !== $version) {
+                $this->versions->expect($component, $version);
+            }
 
             $changed = $component->revise(
                 $changes->name,

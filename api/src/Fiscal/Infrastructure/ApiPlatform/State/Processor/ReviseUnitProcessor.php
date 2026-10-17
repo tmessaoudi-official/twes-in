@@ -39,6 +39,7 @@ final readonly class ReviseUnitProcessor implements ProcessorInterface
                 CompanyPath::identifier($uriVariables, 'unitId'),
                 new UnitChanges($data->name, $data->decimals, $data->isActive, $data->sortOrder),
                 $this->guard->account()->getId(),
+                $data->version,
             );
         } catch (UnitNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);

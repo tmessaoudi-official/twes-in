@@ -37,7 +37,7 @@ describe('FiscalApi', () => {
   afterEach(() => http.verify());
 
   it('revises a tax without sending its code or family, which are fixed', async () => {
-    const revised = api.reviseTaxComponent('c1', 's1', stamp);
+    const revised = api.reviseTaxComponent('c1', 's1', stamp, 3);
     const request = http.expectOne({
       method: 'PUT',
       url: '/api/companies/c1/tax-components/s1',
@@ -53,9 +53,15 @@ describe('FiscalApi', () => {
       isActive: true,
       exemptionMention: null,
       sortOrder: 50,
+      version: 3,
     });
-    request.flush({ ...stamp, id: 's1', kind: 'fixed_document' });
-    await expect(revised).resolves.toMatchObject({ id: 's1', code: 'TIMBRE', family: 'stamp' });
+    request.flush({ ...stamp, id: 's1', kind: 'fixed_document', version: 4 });
+    await expect(revised).resolves.toMatchObject({
+      id: 's1',
+      code: 'TIMBRE',
+      family: 'stamp',
+      version: 4,
+    });
   });
 
   it('adds a unit without an active flag, and revises one without its code', async () => {
@@ -70,16 +76,37 @@ describe('FiscalApi', () => {
     creation.flush({ ...tonne, id: 'u9' });
     await created;
 
-    const revised = api.reviseUnit('c1', 'u9', { ...tonne, isActive: false });
+    const revised = api.reviseUnit('c1', 'u9', { ...tonne, isActive: false }, 1);
     const revision = http.expectOne({ method: 'PUT', url: '/api/companies/c1/units/u9' });
     expect(revision.request.body).toEqual({
       name: 'Tonne',
       decimals: 3,
       isActive: false,
       sortOrder: 0,
+      version: 1,
     });
-    revision.flush({ ...tonne, id: 'u9', isActive: false });
-    await revised;
+    revision.flush({ ...tonne, id: 'u9', isActive: false, version: 2 });
+    await expect(revised).resolves.toMatchObject({ version: 2 });
+  });
+
+  it('tells a version saved since from a code taken', async () => {
+    const changed = api.reviseUnit('c1', 'u9', tonne, 1);
+    http
+      .expectOne({ method: 'PUT', url: '/api/companies/c1/units/u9' })
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toMatchObject({ code: 'record_changed' });
+
+    const stale = api.reviseTaxComponent('c1', 's1', stamp, 1);
+    http
+      .expectOne({ method: 'PUT', url: '/api/companies/c1/tax-components/s1' })
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(stale).rejects.toMatchObject({ code: 'record_changed' });
   });
 
   it.each([

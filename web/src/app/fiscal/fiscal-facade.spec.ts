@@ -24,6 +24,7 @@ const vat: TaxComponentRow = {
   isActive: true,
   exemptionMention: null,
   sortOrder: 10,
+  version: 1,
 };
 
 const exportRegime: CustomerTaxRegimeRow = {
@@ -41,6 +42,7 @@ const kilogram: UnitRow = {
   decimals: 3,
   isActive: true,
   sortOrder: 40,
+  version: 1,
 };
 
 const input: TaxComponentInput = {
@@ -121,14 +123,14 @@ describe('FiscalFacade', () => {
     api.reviseTaxComponent.mockResolvedValue(vat);
     api.taxComponents.mockResolvedValue([vat]);
 
-    expect(await facade.reviseTax('c1', 't1', input)).toBe(true);
-    expect(api.reviseTaxComponent).toHaveBeenCalledWith('c1', 't1', input);
+    expect(await facade.reviseTax('c1', 't1', input, 2)).toBe(true);
+    expect(api.reviseTaxComponent).toHaveBeenCalledWith('c1', 't1', input, 2);
   });
 
   it('reports a unit the API refused', async () => {
     api.reviseUnit.mockRejectedValue(new FiscalRefused('invalid'));
 
-    const accepted = await facade.reviseUnit('c1', 'u1', { ...kilogram, decimals: 7 });
+    const accepted = await facade.reviseUnit('c1', 'u1', { ...kilogram, decimals: 7 }, 1);
 
     expect(accepted).toBe(false);
     expect(facade.error()).toBe('invalid');

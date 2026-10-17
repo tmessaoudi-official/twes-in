@@ -23,7 +23,13 @@ import {
 import { FiscalFacade } from './fiscal-facade';
 import { FiscalTaxesPage } from './fiscal-taxes-page';
 import type { CustomerTaxRegimeRow, TaxComponentRow } from './fiscal-types';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import {
+  provideQuietFeedback,
+  type RecordedFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -63,6 +69,7 @@ const vat: TaxComponentRow = {
   isActive: true,
   exemptionMention: null,
   sortOrder: 10,
+  version: 1,
 };
 
 const stamp: TaxComponentRow = {
@@ -119,6 +126,7 @@ describe('FiscalTaxesPage', () => {
     fiscal.loadTaxes.mockReset().mockResolvedValue(undefined);
     fiscal.createTax.mockReset().mockResolvedValue(true);
     fiscal.reviseTax.mockReset().mockResolvedValue(true);
+    fiscal.clearError.mockReset().mockImplementation(() => error.set(null));
     auth.hasPermission.mockReset().mockReturnValue(true);
 
     TestBed.configureTestingModule({
@@ -189,9 +197,60 @@ describe('FiscalTaxesPage', () => {
         amount: '1.000',
         rate: null,
       }),
+      1,
     );
     expect(q('tax-form')).toBeNull();
     expect(successToasts()).toContain('fiscal.taxes.saved');
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    q('row-action-edit-s1')!.click();
+    await settle();
+    fiscal.reviseTax.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    fiscal.loadTaxes.mockImplementationOnce(async () =>
+      taxes.set([vat, { ...stamp, amount: '1.500', version: 2 }]),
+    );
+
+    const name = q('field-name') as HTMLInputElement;
+    name.value = 'Timbre fiscal';
+    name.dispatchEvent(new Event('input'));
+    q('tax-save')!.click();
+    await settle();
+    // The decimal field shows the screen's separator; the control keeps the API's point.
+    await vi.waitFor(() => expect((q('field-amount') as HTMLInputElement).value).toBe('1,500'));
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Timbre fiscal');
+    expect(q('tax-form')).not.toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('tax-save')!.click();
+    await settle();
+    expect(fiscal.reviseTax).toHaveBeenLastCalledWith(
+      'c1',
+      's1',
+      expect.objectContaining({ name: 'Timbre fiscal', amount: '1.500' }),
+      2,
+    );
+  });
+
+  it('takes into the open form what another person saved on the same tax', async () => {
+    q('row-action-edit-s1')!.click();
+    await settle();
+    fiscal.loadTaxes.mockImplementationOnce(async () =>
+      taxes.set([vat, { ...stamp, name: 'Timbre', version: 2 }]),
+    );
+
+    await announceSaved('tax_component', 's1');
+    await settle();
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Timbre');
   });
 
   it('keeps the form open when the API refused', async () => {

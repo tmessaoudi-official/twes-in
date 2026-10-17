@@ -39,6 +39,7 @@ final readonly class ReviseTaxComponentProcessor implements ProcessorInterface
                 CompanyPath::identifier($uriVariables, 'componentId'),
                 new TaxComponentChanges($data->name, $data->rate, $data->amount, $data->threshold, $data->entersVatBase, $data->isDefault, $data->isActive, $data->exemptionMention, $data->sortOrder),
                 $this->guard->account()->getId(),
+                $data->version,
             );
         } catch (TaxComponentNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);
