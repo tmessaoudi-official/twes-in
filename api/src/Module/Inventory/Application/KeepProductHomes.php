@@ -17,6 +17,7 @@ use App\Module\Inventory\Domain\Repository\ProductHomeLocationRepository;
 use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\Tree;
 use App\Tenancy\Domain\Model\Company;
@@ -46,6 +47,7 @@ final readonly class KeepProductHomes
         private ProductHomeLocationRepository $homes,
         private StockLocationRepository $locations,
         private ProductRepository $products,
+        private HomedProducts $held,
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
@@ -138,7 +140,9 @@ final readonly class KeepProductHomes
     }
 
     /**
-     * Writes the homes of one establishment as this list, in this order: the first is the main one.
+     * Writes the homes of one establishment as this list, in this order: the first is the main one. A change moves the
+     * product's version; given the version the list was read at, a product changed since is refused and nothing is
+     * written.
      *
      * @param list<Uuid> $locationIds
      *
@@ -146,11 +150,12 @@ final readonly class KeepProductHomes
      *
      * @throws ProductNotInCompany
      * @throws InvalidStockLocation
+     * @throws RecordChanged
      */
-    public function replace(Company $company, Uuid $productId, Uuid $establishmentId, array $locationIds, ?Uuid $actorUserId): array
+    public function replace(Company $company, Uuid $productId, Uuid $establishmentId, array $locationIds, ?Uuid $actorUserId, ?int $version = null): array
     {
-        return $this->transactions->run(function () use ($company, $productId, $establishmentId, $locationIds, $actorUserId): array {
-            $product = $this->product($company, $productId);
+        return $this->transactions->run(function () use ($company, $productId, $establishmentId, $locationIds, $actorUserId, $version): array {
+            $product = $this->held->held($company, $productId, $version) ?? throw new ProductNotInCompany();
             $places = [];
             foreach ($locationIds as $locationId) {
                 $key = $locationId->toRfc4122();
@@ -196,6 +201,7 @@ final readonly class KeepProductHomes
                 }
             }
             if ($changed) {
+                $this->held->homesChanged($product);
                 $this->record($company, $product, $establishmentId, [] === $homes ? self::CLEARED : self::SET, $actorUserId);
             }
 

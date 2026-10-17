@@ -8,6 +8,7 @@ import {
   input,
   linkedSignal,
   type OnInit,
+  output,
   signal,
   untracked,
 } from '@angular/core';
@@ -20,6 +21,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
+import { PartConflict } from '../shared/form/part-conflict';
 import { Select } from '../shared/form/select';
 import { addScanned, BARCODE_QUANTITY_MAX, rowProblem, sameCodes, withRole } from './barcode-rows';
 import { ProductBarcodes } from './product-barcodes-facade';
@@ -41,6 +43,7 @@ import { BARCODE_ROLES, type BarcodeRole, type ProductBarcode } from './products
     Select,
     TranslatePipe,
     Label,
+    PartConflict,
   ],
   templateUrl: './product-barcodes.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,9 +57,16 @@ export class ProductBarcodesSection implements OnInit {
   readonly productId = input.required<string>();
   /** What the API holds for the product. */
   readonly saved = input.required<readonly ProductBarcode[]>();
+  /** The product's version, which a save sends back: the codes are shown beside the product form and move it. */
+  readonly version = input.required<number>();
   readonly readOnly = input(false);
   /** A code a scan card sent here to be added (`?add=`), listed as a new row the person saves like any other. */
   readonly adding = input<string | undefined>(undefined);
+  /**
+   * The product's version moved here (`saved`), or a save was refused as made over one saved since (`changed`): the
+   * product page reads the product again, so its form stands on the version the codes left.
+   */
+  readonly moved = output<'saved' | 'changed'>();
 
   protected readonly busy = this.facade.busy;
   protected readonly suppliers = this.facade.suppliers;
@@ -68,29 +78,53 @@ export class ProductBarcodesSection implements OnInit {
 
   /**
    * What the saved list SAYS, so a reload answering the same codes as new objects keeps what is being typed
-   * (CLAUDE.md lesson, 2026-09-14): only another product or a different saved list starts the rows again.
+   * (CLAUDE.md lesson, 2026-09-14).
    */
   private readonly savedKey = computed(() => `${this.productId()}|${JSON.stringify(this.saved())}`);
-  private readonly rowsKey = computed(() => ({ saved: this.savedKey(), adding: this.adding() }), {
-    equal: (a, b) => a.saved === b.saved && a.adding === b.adding,
-  });
-  protected readonly rows = linkedSignal<
-    { saved: string; adding: string | undefined },
-    ProductBarcode[]
+  private readonly rowsKey = computed(
+    () => ({
+      productId: this.productId(),
+      saved: this.savedKey(),
+      list: this.saved(),
+      adding: this.adding(),
+    }),
+    { equal: (a, b) => a.saved === b.saved && a.adding === b.adding },
+  );
+  /**
+   * The rows being edited and the saved list they stand on. Another product starts them again; a list saved since by
+   * someone else replaces rows nobody touched, and rows being typed are kept while the conflict says so (docs/SPEC.md
+   * § 7, 2026-09-17: a form being typed in keeps what is typed and shows the banner).
+   */
+  private readonly draft = linkedSignal<
+    {
+      productId: string;
+      saved: string;
+      list: readonly ProductBarcode[];
+      adding: string | undefined;
+    },
+    { rows: ProductBarcode[]; base: string }
   >({
     source: this.rowsKey,
     computation: (key, previous) =>
       untracked(() => {
-        // A code sent while the same list is being edited (a scan on the product's own page, docs/SPEC.md § 7,
-        // 2026-09-25 10:13) joins the rows not saved yet; another product or another saved list starts them again.
-        const rows =
-          previous !== undefined && previous.source.saved === key.saved
-            ? previous.value
-            : this.saved().map((row) => ({ ...row }));
+        let draft = { rows: key.list.map((row) => ({ ...row })), base: key.saved };
+        if (previous !== undefined && previous.source.productId === key.productId) {
+          const kept = previous.value;
+          const typed =
+            !sameCodes(kept.rows, previous.source.list) && !sameCodes(kept.rows, key.list);
+          // A code sent while the same list is being edited (a scan on the product's own page, docs/SPEC.md § 7,
+          // 2026-09-25 10:13) joins the rows not saved yet, as do rows typed over a list saved since.
+          if (kept.base === key.saved || typed) draft = kept;
+        }
         // Read-only, the section shows what is saved and never these rows.
-        return key.adding === undefined ? rows : addScanned(rows, key.adding).rows;
+        return key.adding === undefined
+          ? draft
+          : { ...draft, rows: addScanned(draft.rows, key.adding).rows };
       }),
   });
+  protected readonly rows = computed(() => this.draft().rows);
+  /** Codes saved by someone else while these were being typed: theirs replace these, or these are kept. */
+  protected readonly changedSince = computed(() => this.draft().base !== this.savedKey());
 
   /** The supplier's role is offered only where there is somebody to name. */
   protected readonly roles = computed<readonly BarcodeRole[]>(() =>
@@ -137,7 +171,7 @@ export class ProductBarcodesSection implements OnInit {
   protected add(field: HTMLInputElement): void {
     const { rows, duplicate } = addScanned(this.rows(), field.value);
     this.duplicate.set(duplicate);
-    this.rows.set(rows);
+    this.setRows(rows);
     field.value = '';
     this.pending.set('');
     this.facade.forget();
@@ -160,15 +194,21 @@ export class ProductBarcodesSection implements OnInit {
   }
 
   protected remove(index: number): void {
-    this.rows.update((rows) => rows.filter((_, at) => at !== index));
+    this.setRows(this.rows().filter((_, at) => at !== index));
     this.duplicate.set(null);
     this.facade.forget();
   }
 
   protected revert(): void {
-    this.rows.set(this.saved().map((row) => ({ ...row })));
+    this.draft.set({ rows: this.saved().map((row) => ({ ...row })), base: this.savedKey() });
     this.duplicate.set(null);
     this.facade.forget();
+  }
+
+  /** The choice made over codes saved by someone else: theirs, or the rows typed here, saved over theirs. */
+  protected resolve(choice: 'theirs' | 'mine'): void {
+    if (choice === 'theirs') this.revert();
+    else this.draft.update((draft) => ({ ...draft, base: this.savedKey() }));
   }
 
   /**
@@ -182,13 +222,22 @@ export class ProductBarcodesSection implements OnInit {
       this.add(field);
       if (!this.savable()) return;
     }
-    if (await this.facade.save(companyId, this.productId(), this.rows())) {
-      this.feedback.success('products.barcodes.saved');
-    }
+    const outcome = await this.facade.save(
+      companyId,
+      this.productId(),
+      this.rows(),
+      this.version(),
+    );
+    if (outcome === 'saved') this.feedback.success('products.barcodes.saved');
+    if (outcome !== 'refused') this.moved.emit(outcome);
+  }
+
+  private setRows(rows: ProductBarcode[]): void {
+    this.draft.update((draft) => ({ ...draft, rows }));
   }
 
   private edit(index: number, change: (row: ProductBarcode) => ProductBarcode): void {
-    this.rows.update((rows) => rows.map((row, at) => (at === index ? change(row) : row)));
+    this.setRows(this.rows().map((row, at) => (at === index ? change(row) : row)));
     this.duplicate.set(null);
     this.facade.forget();
   }

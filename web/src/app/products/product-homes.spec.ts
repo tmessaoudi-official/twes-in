@@ -75,6 +75,8 @@ describe('ProductHomesSection', () => {
   };
   const auth = { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }) };
   let fixture: ComponentFixture<ProductHomesSection>;
+  /** What the section told the product page about the product's version. */
+  const moved: string[] = [];
 
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
@@ -82,7 +84,10 @@ describe('ProductHomesSection', () => {
   async function open(readOnly = false): Promise<void> {
     fixture = TestBed.createComponent(ProductHomesSection);
     fixture.componentRef.setInput('productId', 'p1');
+    fixture.componentRef.setInput('version', 7);
     fixture.componentRef.setInput('readOnly', readOnly);
+    moved.length = 0;
+    fixture.componentInstance.moved.subscribe((how) => moved.push(how));
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -92,9 +97,9 @@ describe('ProductHomesSection', () => {
     homes.set([]);
     locations.set([location('l1', 'A-12')]);
     facade.load.mockReset().mockResolvedValue(undefined);
-    facade.add.mockReset().mockResolvedValue(true);
-    facade.move.mockReset().mockResolvedValue(true);
-    facade.remove.mockReset().mockResolvedValue(true);
+    facade.add.mockReset().mockResolvedValue('saved');
+    facade.move.mockReset().mockResolvedValue('saved');
+    facade.remove.mockReset().mockResolvedValue('saved');
     TestBed.configureTestingModule({
       imports: [ProductHomesSection],
       providers: [
@@ -159,8 +164,35 @@ describe('ProductHomesSection', () => {
     q('product-home-add')!.click();
     await fixture.whenStable();
 
-    expect(facade.add).toHaveBeenCalledWith('c1', 'p1', 'l1');
+    // The product's version the homes were read at: they are shown beside the product form.
+    expect(facade.add).toHaveBeenCalledWith('c1', 'p1', 'l1', 7);
     expect(successToasts()).toContain('products.homes.saved');
+    expect(moved).toEqual(['saved']);
+  });
+
+  it('says nothing saved and tells the product page when the product was saved since', async () => {
+    facade.add.mockResolvedValue('changed');
+    await open();
+    fixture.componentInstance['chosen'].set('l1');
+    fixture.detectChanges();
+
+    q('product-home-add')!.click();
+    await fixture.whenStable();
+
+    expect(successToasts()).not.toContain('products.homes.saved');
+    expect(moved).toEqual(['changed']);
+  });
+
+  it('tells the product page nothing when a home is refused for itself', async () => {
+    facade.add.mockResolvedValue('refused');
+    await open();
+    fixture.componentInstance['chosen'].set('l1');
+    fixture.detectChanges();
+
+    q('product-home-add')!.click();
+    await fixture.whenStable();
+
+    expect(moved).toEqual([]);
   });
 
   /** Nothing chosen is not a home at the empty string: the API would answer 422 on a claim nobody made. */
@@ -179,8 +211,9 @@ describe('ProductHomesSection', () => {
     q('product-home-up-l2')!.click();
     await fixture.whenStable();
 
-    expect(facade.move).toHaveBeenCalledWith('c1', 'p1', second, -1);
+    expect(facade.move).toHaveBeenCalledWith('c1', 'p1', second, -1, 7);
     expect(successToasts()).toContain('products.homes.reordered');
+    expect(moved).toEqual(['saved']);
   });
 
   it('removes one home, naming it', async () => {
@@ -190,8 +223,9 @@ describe('ProductHomesSection', () => {
     q('product-home-remove-l1')!.click();
     await fixture.whenStable();
 
-    expect(facade.remove).toHaveBeenCalledWith('c1', 'p1', home);
+    expect(facade.remove).toHaveBeenCalledWith('c1', 'p1', home, 7);
     expect(successToasts()).toContain('products.homes.cleared');
+    expect(moved).toEqual(['saved']);
   });
 
   /** A home is set with product.write; somebody who may only read one sees where it lives and changes nothing. */

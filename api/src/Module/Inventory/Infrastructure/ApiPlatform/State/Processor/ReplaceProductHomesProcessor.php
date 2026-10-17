@@ -44,6 +44,7 @@ final readonly class ReplaceProductHomesProcessor implements ProcessorInterface
                 CompanyPath::identifier($uriVariables, 'establishmentId'),
                 array_map(static fn (string $id): Uuid => Uuid::fromString($id), $data->locationIds),
                 $this->guard->account()->getId(),
+                $data->version,
             );
         } catch (ProductNotInCompany $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);

@@ -58,24 +58,64 @@ final class ProductHomeTest extends ApiTestCase
         self::assertSame($this->bayId, $this->pick()['homeLocationId'], 'a receipt proposes the main home');
 
         // The whole order in one request, so a swap of the first and the second collides with nothing on the way.
-        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->rackId, $this->bayId]]);
+        $this->sendJson('PUT', $establishment, ['version' => $this->storedVersion('product', $this->productId), 'locationIds' => [$this->rackId, $this->bayId]]);
         self::assertResponseIsSuccessful();
         self::assertSame([[$this->rackId, 0, true], [$this->bayId, 1, false]], $this->orderOfHomes());
         self::assertSame($this->rackId, $this->pick()['homeLocationId']);
 
-        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->bayId]]);
+        $this->sendJson('PUT', $establishment, ['version' => $this->storedVersion('product', $this->productId), 'locationIds' => [$this->bayId]]);
         self::assertResponseIsSuccessful();
         self::assertSame([[$this->bayId, 0, true]], $this->orderOfHomes(), 'what the list leaves out is no longer a home');
 
-        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->bayId, $this->bayId]]);
+        $this->sendJson('PUT', $establishment, ['version' => $this->storedVersion('product', $this->productId), 'locationIds' => [$this->bayId, $this->bayId]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a place twice');
-        $this->sendJson('PUT', $establishment, ['locationIds' => [Uuid::v7()->toRfc4122()]]);
+        $this->sendJson('PUT', $establishment, ['version' => $this->storedVersion('product', $this->productId), 'locationIds' => [Uuid::v7()->toRfc4122()]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a place of no company of ours');
         self::assertSame([[$this->bayId, 0, true]], $this->orderOfHomes(), 'a refused list changes nothing');
 
-        $this->sendJson('PUT', $establishment, ['locationIds' => []]);
+        $this->sendJson('PUT', $establishment, ['version' => $this->storedVersion('product', $this->productId), 'locationIds' => []]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         self::assertSame([], $this->orderOfHomes());
+    }
+
+    /**
+     * A product's homes are written beside its form, so a change of them moves the product's version (docs/SPEC.md § 7,
+     * 2026-10-17 08:55): a list read before another person's change is refused rather than written over it, and a
+     * product form open elsewhere is told. Making a place the main home or clearing an establishment moves it too.
+     */
+    public function testAListOfHomesNamesTheProductVersionItWasReadAtAndMovesIt(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $this->ground();
+        $establishment = $this->homes().'/'.$this->establishmentId;
+        $read = $this->storedVersion('product', $this->productId);
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->rackId]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a list sent without the version it was read at');
+        self::assertContains(['propertyPath' => 'version', 'reason' => 'value_required', 'params' => []], $this->refusals());
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->rackId], 'version' => $read]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $moved = $this->storedVersion('product', $this->productId);
+        self::assertSame($read + 1, $moved, 'the homes changed, so the product\'s version moved');
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->bayId], 'version' => $read]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a list read before the change is refused');
+        self::assertSame('/problems/record-changed', $this->stringAt($this->json(), 'type'));
+        self::assertSame([[$this->rackId, 0, true]], $this->orderOfHomes(), 'and nothing of it is written');
+        self::assertSame($moved, $this->storedVersion('product', $this->productId));
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->rackId], 'version' => $moved]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame($moved, $this->storedVersion('product', $this->productId), 'the same list changes nothing, its version neither');
+
+        $this->sendJson('PUT', $this->homes(), ['locationId' => $this->bayId]);
+        self::assertResponseIsSuccessful();
+        self::assertSame($moved + 1, $this->storedVersion('product', $this->productId), 'a place made the main home moves it');
+
+        $this->sendJson('DELETE', $establishment);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame($moved + 2, $this->storedVersion('product', $this->productId), 'an establishment cleared moves it');
     }
 
     public function testAProductIsGivenOneHomePerEstablishmentAndMovedRatherThanDoubled(): void

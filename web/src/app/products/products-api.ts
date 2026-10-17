@@ -9,6 +9,7 @@ import type {
   ProductJsonldProductRead,
   ProductCategoryProductCategoryWriteRecordReviseValidationProductCategoryWriteRecordRevise as ProductCategoryRevise,
   ProductCategoryProductCategoryWriteValidationProductCategoryWrite as ProductCategoryProductCategoryWrite,
+  ProductHomeProductHomeOrderRecordReviseValidationProductHomeOrderRecordRevise,
   ProductHomeProductHomeRead,
   ProductReorderPointProductReorderPointRead,
   ProductOptionsProductOptionsRead,
@@ -17,8 +18,8 @@ import type {
   ProductBarcodeRowJsonldProductRead,
   ProductBarcodeRowProductBarcodesRead,
   ProductBarcodeRowProductRead,
-  ProductBarcodesProductBarcodesReadValidationProductBarcodesWrite as ProductBarcodesProductBarcodesRead,
-  ProductBarcodesProductBarcodesWriteValidationProductBarcodesWrite as ProductBarcodesProductBarcodesWrite,
+  ProductBarcodesProductBarcodesReadValidationProductBarcodesWriteRecordRevise as ProductBarcodesProductBarcodesRead,
+  ProductBarcodesProductBarcodesWriteRecordReviseValidationProductBarcodesWriteRecordRevise as ProductBarcodesProductBarcodesWrite,
   ProductProductRead,
   ProductReferencePreviewProductReferencePreviewRead,
   ProductProductWriteRecordReviseValidationProductWriteRecordRevise as ProductProductRevise,
@@ -221,15 +222,18 @@ export class ProductsApi {
   /**
    * The product's codes become exactly these (docs/SPEC.md § 7, 2026-09-22 11:05). A code another product holds
    * answers 409 naming the row and that product; a malformed row answers 422 naming it. Both reach the caller as a
-   * `BarcodesRefused` carrying the row.
+   * `BarcodesRefused` carrying the row. `version` is the product's, the one the list was read at: the codes are shown
+   * beside the product form, so one saved since answers `record_changed`, and the answer carries the version they left.
    */
   async replaceBarcodes(
     companyId: string,
     productId: string,
     barcodes: readonly ProductBarcode[],
-  ): Promise<ProductBarcode[]> {
+    version: number,
+  ): Promise<{ barcodes: ProductBarcode[]; version: number }> {
     const body: ProductBarcodesProductBarcodesWrite = {
       barcodes: barcodes.map((row) => ({ ...row })),
+      version,
     };
     try {
       const saved = await firstValueFrom(
@@ -238,7 +242,8 @@ export class ProductsApi {
           body,
         ),
       );
-      return (saved.barcodes ?? []).map(toBarcode);
+      // Every answer carries it; a 0 would be refused by the API rather than taken for a version.
+      return { barcodes: (saved.barcodes ?? []).map(toBarcode), version: saved.version ?? 0 };
     } catch (error) {
       throw new BarcodesRefused(barcodesRefusal(error));
     }
@@ -351,18 +356,25 @@ export class ProductsApi {
   /**
    * One establishment's homes written as a whole list, in order, the first the main one a receipt proposes: the places
    * named are its homes and any it had that are not named stop being homes. 204; what the screen shows is read again.
+   * `version` is the product's, the one the list was read at: a product saved since answers `record_changed`.
    */
   async replaceHomes(
     companyId: string,
     productId: string,
     establishmentId: string,
     locationIds: readonly string[],
+    version: number,
   ): Promise<void> {
+    const body: ProductHomeProductHomeOrderRecordReviseValidationProductHomeOrderRecordRevise = {
+      locationIds: [...locationIds],
+      version,
+    };
     await this.guard(async () =>
       firstValueFrom(
-        this.http.put(`${homesPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`, {
-          locationIds,
-        }),
+        this.http.put(
+          `${homesPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`,
+          body,
+        ),
       ),
     );
   }
@@ -644,6 +656,7 @@ export function barcodesRefusal(error: unknown): BarcodesRefusal {
     case 404:
       return { ...none, code: 'not_found' };
     case 409: {
+      if (isRecordChanged(body)) return { ...none, code: 'record_changed' };
       const detail =
         typeof body === 'object' &&
         body !== null &&

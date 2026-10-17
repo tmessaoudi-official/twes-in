@@ -320,6 +320,15 @@ class Product implements CompanyOwned
         return true;
     }
 
+    /**
+     * Something a product form shows beside the product, and kept outside it, changed (where it lives): its version
+     * moves, so a list read before that change is refused rather than written over it.
+     */
+    public function touched(\DateTimeImmutable $now): void
+    {
+        $this->updatedAt = $now;
+    }
+
     private function apply(ProductDetails $details): void
     {
         $this->name = $details->name;

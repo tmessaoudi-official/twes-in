@@ -7,6 +7,7 @@ import {
   inject,
   input,
   type OnInit,
+  output,
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -19,7 +20,7 @@ import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
 import { Select } from '../shared/form/select';
 import { StatusBadge } from '../shared/ui/status-badge';
-import { ProductHomes } from './product-homes-facade';
+import { type HomesWrite, ProductHomes } from './product-homes-facade';
 import type { ProductHomeRow } from './products-types';
 
 /**
@@ -42,7 +43,14 @@ export class ProductHomesSection implements OnInit {
   private readonly feedback = inject(Feedback);
 
   readonly productId = input.required<string>();
+  /** The product's version, which a write sends back: the homes are shown beside the product form and move it. */
+  readonly version = input.required<number>();
   readonly readOnly = input(false);
+  /**
+   * The product's version moved here (`saved`), or a write was refused as made over one saved since (`changed`): the
+   * product page reads the product again, so its form stands on the version the homes left.
+   */
+  readonly moved = output<'saved' | 'changed'>();
 
   protected readonly groups = this.homes.groups;
   protected readonly busy = this.homes.busy;
@@ -65,25 +73,31 @@ export class ProductHomesSection implements OnInit {
     const companyId = this.companyId();
     const locationId = this.chosen();
     if (companyId === null || locationId === '') return;
-    if (await this.homes.add(companyId, this.productId(), locationId)) {
+    const outcome = await this.homes.add(companyId, this.productId(), locationId, this.version());
+    if (outcome === 'saved') {
       this.chosen.set('');
       this.feedback.success('products.homes.saved');
     }
+    this.told(outcome);
   }
 
   protected async move(home: ProductHomeRow, step: -1 | 1): Promise<void> {
     const companyId = this.companyId();
     if (companyId === null) return;
-    if (await this.homes.move(companyId, this.productId(), home, step)) {
-      this.feedback.success('products.homes.reordered');
-    }
+    const outcome = await this.homes.move(companyId, this.productId(), home, step, this.version());
+    if (outcome === 'saved') this.feedback.success('products.homes.reordered');
+    this.told(outcome);
   }
 
   protected async remove(home: ProductHomeRow): Promise<void> {
     const companyId = this.companyId();
     if (companyId === null) return;
-    if (await this.homes.remove(companyId, this.productId(), home)) {
-      this.feedback.success('products.homes.cleared');
-    }
+    const outcome = await this.homes.remove(companyId, this.productId(), home, this.version());
+    if (outcome === 'saved') this.feedback.success('products.homes.cleared');
+    this.told(outcome);
+  }
+
+  private told(outcome: HomesWrite): void {
+    if (outcome !== 'refused') this.moved.emit(outcome);
   }
 }

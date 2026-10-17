@@ -69,10 +69,14 @@ export async function forget(page: Page, ids: string[]): Promise<void> {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
       const base = `/api/companies/${me.company.id}`;
       for (const id of productIds) {
+        // The codes name the product's version they were read at, and move it: the retirement reads it again after.
+        const { version } = (await (await fetch(`${base}/products/${id}`)).json()) as {
+          version: number;
+        };
         const cleared = await fetch(`${base}/products/${id}/barcodes`, {
           method: 'PUT',
           headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-          body: JSON.stringify({ barcodes: [] }),
+          body: JSON.stringify({ barcodes: [], version }),
         });
         if (!cleared.ok) throw new Error(`clearing the codes of ${id} answered ${cleared.status}`);
         const {
@@ -97,10 +101,14 @@ export async function withCodes(page: Page, id: string, codes: readonly string[]
   await page.evaluate(
     async ([csrf, productId, barcodes]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const saved = await fetch(`/api/companies/${me.company.id}/products/${productId}/barcodes`, {
+      const product = `/api/companies/${me.company.id}/products/${productId}`;
+      // The codes name the product's version they were read at.
+      const { version } = (await (await fetch(product)).json()) as { version: number };
+      const saved = await fetch(`${product}/barcodes`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', 'csrf-token': csrf },
         body: JSON.stringify({
+          version,
           barcodes: barcodes.map((code, at) => ({
             role: at === 0 ? 'unit' : 'internal',
             code,

@@ -35,6 +35,7 @@ final class RecordVersionsTest extends KernelTestCase
         '/companies/{companyId}/closing' => 'one date of the company, set as a whole; it still moves the version the profile form is checked against',
         '/companies/{companyId}/settings/{key}' => 'one key, a person\'s own preference or a value set by a script, where the last word is what they want; a page saves through the batch',
         '/platform/settings/{key}' => 'one key set by a script, where the last word is what they want; a page saves through the batch',
+        '/companies/{companyId}/products/{productId}/home-locations' => 'one place made the main home, which no screen sends; it still moves the version the product form and the list of homes are checked against',
     ];
 
     /** Saving several records in one go: each item says which version it revises. */
@@ -46,11 +47,8 @@ final class RecordVersionsTest extends KernelTestCase
     /** Not done yet: each slice strikes its own off. */
     private const array WAITING = [
         '/platform/companies/{companyId}/subscription',
-        '/companies/{companyId}/products/{productId}/home-locations',
-        '/companies/{companyId}/products/{productId}/home-locations/{establishmentId}',
         '/companies/{companyId}/products/{productId}/reorder-points/{establishmentId}',
         '/companies/{companyId}/price-lists/{priceListId}',
-        '/companies/{companyId}/products/{productId}/barcodes',
         '/companies/{companyId}/recurring-invoices/{recurringInvoiceId}',
         '/companies/{companyId}/recurring-expenses/{recurringExpenseId}',
     ];
