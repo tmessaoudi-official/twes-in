@@ -64,6 +64,7 @@ const site: StockLocationRow = {
   isDefault: true,
   childCount: 0,
   movementCount: 2,
+  version: 1,
 };
 /** A second location, so a move has somewhere to go. */
 const rack: StockLocationRow = {
@@ -76,6 +77,7 @@ const rack: StockLocationRow = {
   isDefault: false,
   childCount: 0,
   movementCount: 0,
+  version: 1,
 };
 const options: StockOptions = {
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],

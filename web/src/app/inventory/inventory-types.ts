@@ -8,6 +8,7 @@ export type InventoryError =
   | 'in_use'
   | 'invalid'
   | 'level_taken'
+  | 'record_changed'
   | 'cost_known'
   | 'file_refused'
   | 'files_full'
@@ -83,6 +84,8 @@ export interface StockLocationRow {
   isDefault: boolean;
   childCount: number;
   movementCount: number;
+  /** The version read, which a revision sends back. */
+  version: number;
 }
 
 /** A null parent places a new location under its establishment's default one. */

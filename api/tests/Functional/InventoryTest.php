@@ -71,6 +71,31 @@ final class InventoryTest extends ApiTestCase
         $this->consumableId = $consumable->getId()->toRfc4122();
     }
 
+    public function testALocationRevisedOverAVersionSavedSinceIsRefusedAndOneWithoutAVersionToo(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'zone', 'code' => 'Z1', 'name' => 'Zone froide']));
+        $zoneId = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path('stock-locations', $zoneId), $this->location(['kind' => 'zone', 'code' => 'Z1', 'name' => 'Zone froide', 'version' => 1]));
+        self::assertSame(1, $this->json()['version'], 'a revision that changes nothing keeps its version');
+        $this->sendJson('PUT', $this->path('stock-locations', $zoneId), $this->location(['kind' => 'zone', 'code' => 'Z1', 'name' => 'Chambre froide', 'version' => 1]));
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path('stock-locations', $zoneId), $this->location(['kind' => 'zone', 'code' => 'Z2', 'name' => 'Zone froide', 'version' => 1]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+
+        $this->sendJson('PUT', $this->path('stock-locations', $zoneId), $this->location(['kind' => 'zone', 'code' => 'Z2', 'name' => 'Zone froide']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
+
+        $this->getJson($this->path('stock-locations'));
+        $zone = array_column($this->jsonList(), null, 'id')[$zoneId];
+        self::assertSame(['Z1', 'Chambre froide', 2], [$zone['code'], $zone['name'], $zone['version']]);
+    }
+
     public function testEachEstablishmentHasADefaultLocationAndAWriterArrangesItsTree(): void
     {
         $this->signedIn(['stock.read', 'stock.write']);
@@ -88,13 +113,13 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $rackId = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path('stock-locations', $zoneId), $this->location(['kind' => 'building', 'code' => 'B1', 'name' => 'Bâtiment B']));
+        $this->sendJson('PUT', $this->path('stock-locations', $zoneId), $this->location(['kind' => 'building', 'code' => 'B1', 'name' => 'Bâtiment B', 'version' => 1]));
         self::assertResponseIsSuccessful();
-        self::assertSame(['building', 'B1', 'Bâtiment B', $defaultId, 1], [$this->json()['kind'], $this->json()['code'], $this->json()['name'], $this->json()['parentId'], $this->json()['childCount']]);
+        self::assertSame(['building', 'B1', 'Bâtiment B', $defaultId, 1, 2], [$this->json()['kind'], $this->json()['code'], $this->json()['name'], $this->json()['parentId'], $this->json()['childCount'], $this->json()['version']]);
 
         $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'zone', 'code' => 'B1', 'name' => 'Doublon']));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
-        $this->sendJson('PUT', $this->path('stock-locations', $zoneId), $this->location(['parentId' => $rackId, 'kind' => 'building', 'code' => 'B1', 'name' => 'Bâtiment B']));
+        $this->sendJson('PUT', $this->path('stock-locations', $zoneId), $this->location(['parentId' => $rackId, 'kind' => 'building', 'code' => 'B1', 'name' => 'Bâtiment B', 'version' => 2]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('parentId', (string) $this->client->getResponse()->getContent());
         $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'cellar', 'code' => 'C1', 'name' => 'Cave']));

@@ -115,6 +115,7 @@ const rack: StockLocationRow = {
   isDefault: false,
   childCount: 0,
   movementCount: 0,
+  version: 1,
 };
 const zone: StockLocationRow = { ...rack, id: 'l2', kind: 'zone', code: 'Z1', name: 'Visserie' };
 const bin: StockLocationRow = { ...rack, id: 'l3', kind: 'bin', code: 'R1-A1', name: 'Bac A1' };

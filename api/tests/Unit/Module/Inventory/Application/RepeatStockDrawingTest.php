@@ -21,6 +21,7 @@ use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockMovements;
 use App\Tests\Support\InMemoryVenueAreas;
@@ -67,7 +68,7 @@ final class RepeatStockDrawingTest extends TestCase
         $establishments->save($this->establishment);
         $this->spots = new InMemoryVenueSpots();
         $this->venue = new ArrangeVenue(new InMemoryVenueAreas(), $this->spots, new InMemoryVenueStructures(), $establishments, $audit, $clock, $transactions);
-        $this->locations = new ManageStockLocations(new InMemoryStockLocations(), new InMemoryStockMovements(), $establishments, $audit, $clock, $transactions);
+        $this->locations = new ManageStockLocations(new InMemoryStockLocations(), new InMemoryStockMovements(), $establishments, $audit, $clock, $transactions, new InMemoryRecordVersions());
         $this->map = new DrawStockMap($this->venue, $this->locations, $transactions);
         $this->actor = Uuid::v7();
         $this->ground = $this->map->addFloor($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, '24', '15', $this->actor)->getId();

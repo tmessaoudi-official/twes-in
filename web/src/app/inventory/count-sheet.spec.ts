@@ -37,6 +37,7 @@ const location = (id: string, code: string): StockLocationRow => ({
   isDefault: false,
   childCount: 0,
   movementCount: 0,
+  version: 1,
 });
 
 describe('the count sheet', () => {

@@ -373,9 +373,14 @@ export class InventoryFacade {
     );
   }
 
-  async reviseLocation(companyId: string, id: string, input: StockLocationInput): Promise<boolean> {
+  async reviseLocation(
+    companyId: string,
+    id: string,
+    input: StockLocationInput,
+    version: number | null,
+  ): Promise<boolean> {
     return this.write(
-      () => this.api.reviseLocation(companyId, id, input),
+      () => this.api.reviseLocation(companyId, id, input, version),
       () => this.reloadLocations(companyId),
     );
   }

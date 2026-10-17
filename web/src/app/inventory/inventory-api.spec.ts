@@ -17,6 +17,7 @@ const zone: StockLocationRow = {
   isDefault: false,
   childCount: 1,
   movementCount: 4,
+  version: 2,
 };
 
 /** A search that asks for nothing but the first page, so a case names only what it changes. */
@@ -516,11 +517,20 @@ describe('InventoryApi', () => {
     post.flush(zone);
     expect(await created).toEqual(zone);
 
-    const revised = api.reviseLocation('c1', 'l2', input);
+    const revised = api.reviseLocation('c1', 'l2', input, 2);
     const put = http.expectOne('/api/companies/c1/stock-locations/l2');
-    expect(put.request.method).toBe('PUT');
+    expect([put.request.method, put.request.body]).toEqual(['PUT', { ...input, version: 2 }]);
     put.flush({ detail: 'taken' }, { status: 409, statusText: 'Conflict' });
     await expect(revised).rejects.toMatchObject({ code: 'code_taken' });
+
+    const changed = api.reviseLocation('c1', 'l2', input, 2);
+    http
+      .expectOne('/api/companies/c1/stock-locations/l2')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toMatchObject({ code: 'record_changed' });
 
     const deleted = api.deleteLocation('c1', 'l2');
     const del = http.expectOne('/api/companies/c1/stock-locations/l2');

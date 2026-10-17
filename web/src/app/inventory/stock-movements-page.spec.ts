@@ -62,6 +62,7 @@ const site: StockLocationRow = {
   isDefault: true,
   childCount: 0,
   movementCount: 1,
+  version: 1,
 };
 const options: StockOptions = {
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],

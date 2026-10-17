@@ -20,6 +20,7 @@ use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockMovements;
 use App\Tests\Support\InMemoryVenueAreas;
@@ -63,7 +64,7 @@ final class DrawStockMapTest extends TestCase
         $areas = new InMemoryVenueAreas();
         $this->spots = new InMemoryVenueSpots();
         $venue = new ArrangeVenue($areas, $this->spots, new InMemoryVenueStructures(), $establishments, $audit, $clock, $transactions);
-        $this->locations = new ManageStockLocations(new InMemoryStockLocations(), new InMemoryStockMovements(), $establishments, $audit, $clock, $transactions);
+        $this->locations = new ManageStockLocations(new InMemoryStockLocations(), new InMemoryStockMovements(), $establishments, $audit, $clock, $transactions, new InMemoryRecordVersions());
         $this->map = new DrawStockMap($venue, $this->locations, $transactions);
         $this->actor = Uuid::v7();
         $this->rack = $this->locations->create($this->company, $this->establishment->getId(), null, StockLocationKind::Rack, 'R1', 'Rayonnage 1', $this->actor);

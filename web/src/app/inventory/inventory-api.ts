@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { isRecordChanged } from '../shared/errors/record-changed';
 import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -20,6 +21,7 @@ import type {
   StockMovementJsonldStockMovementRead,
   StockLocationStockLocationRead,
   StockLocationStockLocationWriteValidationStockLocationWrite as StockLocationStockLocationWrite,
+  StockLocationStockLocationWriteRecordReviseValidationStockLocationWriteRecordRevise as StockLocationStockLocationRevise,
   StockMovementStockMovementReadValidationStockMovementWrite as StockMovementStockMovementRead,
   StockMovementStockMovementWriteValidationStockMovementWrite as StockMovementStockMovementWrite,
   StockValuationStockValuationRead,
@@ -378,8 +380,9 @@ export class InventoryApi {
     companyId: string,
     id: string,
     input: StockLocationInput,
+    version: number | null,
   ): Promise<StockLocationRow> {
-    const body: StockLocationStockLocationWrite = { ...input };
+    const body: StockLocationStockLocationRevise = { ...input, version };
     return this.guard(
       async () =>
         toLocation(
@@ -812,7 +815,7 @@ function codeOf(
     case 404:
       return 'not_found';
     case 409:
-      return conflict;
+      return isRecordChanged(error.error) ? 'record_changed' : conflict;
     default:
       return invalid;
   }
@@ -998,6 +1001,8 @@ function toLocation(raw: StockLocationStockLocationRead): StockLocationRow {
     isDefault: raw.isDefault ?? false,
     childCount: raw.childCount ?? 0,
     movementCount: raw.movementCount ?? 0,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }
 

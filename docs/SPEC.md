@@ -221,7 +221,7 @@ level in one PUT (`/companies/{companyId}/settings`, `/platform/settings`), each
 at the unique index, which answers the same 409. `tests/Architecture/RecordVersionsTest`
 reads every PUT: each takes a version (a batch's on each item), or is listed with its reason (a person's own toggles,
 a company's single switches, a single key's PUT), or waits for its slice. An editor opened inside a list (a unit, a
-tax, a custom field, an establishment, a numbering series, a customer group, a customer's contact, an expense or product category) is a
+tax, a custom field, an establishment, a numbering series, a customer group, a customer's contact, an expense or product category, a stock location) is a
 `liveRecord` too, through `shared/form/listRecord`, over the row the list holds now: another person's save merges into
 it as on a record's own page (§ 7 2026-09-17 (2)), and its save sends the version of the row it stands on. A reload of
 the list leaves what is typed alone: the form is keyed on plain values, or, where the options it offers follow the

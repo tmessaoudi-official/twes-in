@@ -23,7 +23,13 @@ import {
 import { InventoryFacade } from './inventory-facade';
 import type { InventoryError, StockLocationRow, StockOptions } from './inventory-types';
 import { StockLocationsPage } from './stock-locations-page';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import {
+  provideQuietFeedback,
+  type RecordedFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -47,6 +53,7 @@ const site: StockLocationRow = {
   isDefault: true,
   childCount: 1,
   movementCount: 3,
+  version: 1,
 };
 const zone: StockLocationRow = {
   id: 'l2',
@@ -58,6 +65,7 @@ const zone: StockLocationRow = {
   isDefault: false,
   childCount: 0,
   movementCount: 0,
+  version: 1,
 };
 const options: StockOptions = {
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
@@ -113,6 +121,7 @@ describe('StockLocationsPage', () => {
     error.set(null);
     locations.set([site, zone]);
     facade.loadLocations.mockReset().mockResolvedValue(undefined);
+    facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.createLocation.mockReset().mockResolvedValue(true);
     facade.reviseLocation.mockReset().mockResolvedValue(true);
     facade.deleteLocation.mockReset().mockResolvedValue(true);
@@ -192,13 +201,18 @@ describe('StockLocationsPage', () => {
     type('field-name', 'Chambre froide');
     q('stock-location-save')!.click();
     await settle();
-    expect(facade.reviseLocation).toHaveBeenCalledWith('c1', 'l2', {
-      establishmentId: 'e1',
-      parentId: 'l1',
-      kind: 'zone',
-      code: 'Z1',
-      name: 'Chambre froide',
-    });
+    expect(facade.reviseLocation).toHaveBeenCalledWith(
+      'c1',
+      'l2',
+      {
+        establishmentId: 'e1',
+        parentId: 'l1',
+        kind: 'zone',
+        code: 'Z1',
+        name: 'Chambre froide',
+      },
+      1,
+    );
 
     // The default location has nowhere to move its stock to, so it offers nothing at all rather than refusing;
     // deleting is destructive, so where it is offered it sits behind "⋮".
@@ -214,6 +228,53 @@ describe('StockLocationsPage', () => {
     (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
     await settle();
     expect(facade.deleteLocation).toHaveBeenCalledWith('c1', 'l2');
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    q('row-action-edit-l2')!.click();
+    await settle();
+    facade.reviseLocation.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    facade.loadLocations.mockImplementationOnce(async () =>
+      locations.set([site, { ...zone, code: 'Z9', version: 2 }]),
+    );
+
+    type('field-name', 'Chambre froide');
+    q('stock-location-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-code') as HTMLInputElement).value).toBe('Z9'));
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Chambre froide');
+    expect(q('stock-locations-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('stock-location-save')!.click();
+    await settle();
+    expect(facade.reviseLocation).toHaveBeenLastCalledWith(
+      'c1',
+      'l2',
+      { establishmentId: 'e1', parentId: 'l1', kind: 'zone', code: 'Z9', name: 'Chambre froide' },
+      2,
+    );
+  });
+
+  it('takes into the open form what another person saved on the same location', async () => {
+    q('row-action-edit-l2')!.click();
+    await settle();
+    facade.loadLocations.mockImplementationOnce(async () =>
+      locations.set([site, { ...zone, name: 'Zone sèche', version: 2 }]),
+    );
+
+    await announceSaved('stock_location', 'l2');
+    await settle();
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Zone sèche');
   });
 
   it('says a location in use cannot go', async () => {

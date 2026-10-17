@@ -20,6 +20,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import { listRecord } from '../shared/form/list-record';
+import { RecordChanged } from '../shared/form/record-changed';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
@@ -51,6 +53,7 @@ import { PlaceContentsDialog, type PlaceContentsDialogData } from './place-conte
     DataList,
     DataListCell,
     DescriptorForm,
+    RecordChanged,
     StatusBadge,
   ],
   templateUrl: './stock-locations-page.html',
@@ -156,6 +159,23 @@ export class StockLocationsPage implements OnInit {
     },
   });
 
+  /** The saved version the open form stands on, and what another person's save changed in it. */
+  protected readonly sync = listRecord({
+    kind: 'stock_location',
+    editing: this.editing,
+    rows: this.facade.locations,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.loadLocations(companyId);
+    },
+    values: (row) =>
+      locationValues(
+        row,
+        this.facade.options() ?? { establishments: [], planShapes: [], structureShapes: [] },
+      ),
+  });
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
@@ -196,10 +216,13 @@ export class StockLocationsPage implements OnInit {
     const accepted =
       editing === 'new'
         ? await this.facade.createLocation(companyId, input)
-        : await this.facade.reviseLocation(companyId, editing.id, input);
+        : await this.facade.reviseLocation(companyId, editing.id, input, this.sync.version());
     if (accepted) {
       this.editing.set(null);
       this.feedback.success('inventory.locations.saved');
+    } else if (this.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 

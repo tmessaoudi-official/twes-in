@@ -16,6 +16,8 @@ use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
@@ -45,6 +47,7 @@ final readonly class ManageStockLocations
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -113,11 +116,15 @@ final readonly class ManageStockLocations
      * @throws StockLocationNotFound
      * @throws StockLocationCodeTaken
      * @throws InvalidStockLocation
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, ?Uuid $parentId, StockLocationKind $kind, string $code, string $name, ?Uuid $actorUserId): array
+    public function revise(Company $company, Uuid $id, ?Uuid $parentId, StockLocationKind $kind, string $code, string $name, ?Uuid $actorUserId, ?int $version = null): array
     {
-        return $this->transactions->run(function () use ($company, $id, $parentId, $kind, $code, $name, $actorUserId): array {
+        return $this->transactions->run(function () use ($company, $id, $parentId, $kind, $code, $name, $actorUserId, $version): array {
             $location = $this->get($company, $id);
+            if (null !== $version) {
+                $this->versions->expect($location, $version);
+            }
             $parent = match (true) {
                 null !== $parentId => $this->parent($company, $parentId),
                 $location->isDefault() => null,

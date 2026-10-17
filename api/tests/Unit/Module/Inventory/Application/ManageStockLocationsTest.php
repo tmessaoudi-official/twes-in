@@ -27,6 +27,7 @@ use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockMovements;
 use PHPUnit\Framework\TestCase;
@@ -53,7 +54,7 @@ final class ManageStockLocationsTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->clock = new MockClock('2026-09-15 09:00:00');
-        $this->manage = new ManageStockLocations($this->locations, $this->movements, $this->establishments, $this->audit, $this->clock, $transactions);
+        $this->manage = new ManageStockLocations($this->locations, $this->movements, $this->establishments, $this->audit, $this->clock, $transactions, new InMemoryRecordVersions());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->main = Establishment::create($this->company, '000', 'Siège', true, $this->clock->now());
         $this->depot = Establishment::create($this->company, '001', 'Dépôt de Sfax', false, $this->clock->now());
