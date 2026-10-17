@@ -10,6 +10,9 @@
 - [2026-10-17 01:03] AGREED: All 62 findings marked « fix » by the developer (no notes, no reordering); step 2 done.
 - [2026-10-17 01:03] ASSUMED (review): Step 5 follows the findings page's ranked order (unchanged by the developer's marks; advisor agreed).
 - [2026-10-17 01:14] AGREED: System writes lock the versioned row (SELECT … FOR UPDATE); the product's save and the cost on receipt first (SPEC § 7).
+- [2026-10-17 04:27] ASSUMED (review): Settings slice: the single key's PUTs stay, listed without a version (a person's own preference, a value set by a script: the last word is the intent, and the row is held); every page saving several keys goes through the batch PUT, each key with its version, an item checked by RecordVersionsTest's BATCHES list. Alternatives: remove the single key's PUT (breaks scripts and the click-as-you-go preferences).
+- [2026-10-17 04:27] ASSUMED (review): Forms without a field-by-field merge (the platform's support channels and delays, the legal identity, the document design) answer a save made since by showing what is saved now, dropping what was typed, with the « Rien n'a été enregistré » toast; the settings, customer and product defaults merge through liveRecord, made generic over a version per key. Alternatives: give those three forms liveRecord too (more code for operator-only and single-owner screens).
+- [2026-10-17 05:04] ASSUMED (review): Editors opened inside a list (units, taxes, then every catalogue with an inline form) take liveRecord over the row the list now holds, with the banner, and merge a save made since field by field; basis: the AGREED ruling of 2026-09-17 (2), « a record another person changes while I edit it merges per field », which no later ruling narrows. It also corrects the 04:27 pick for the document design, the platform's support channels and delays and the legal identity, which drop what was typed: they follow in step 3. Alternatives: reload and reopen the row, dropping what was typed (contradicts the ruling).
 
 ## Formal Plan
 
@@ -42,7 +45,7 @@ deploy check before each push.
 |---|------|------|-------|----------|-------|
 | 1 | Sweep, five groups of tools | L | done | - | var/claude/tool-audit/** |
 | 2 | Synthesis and the findings page | M | done | - | docs/SPEC.md |
-| 3 | Optimistic locking (slice 1: the mechanism, the gate and the customer; then the other live kinds, then the dialogs by context) | L | doing | - | api/** web/** |
+| 3 | Optimistic locking (done: the mechanism and the customer; vendor, product, expense; invoice, quote, delivery note; the company profile; the settings batch save, 236d859c. Left: the WAITING PUTs of RecordVersionsTest, by context) | L | doing | - | api/** web/** |
 | 4 | The refusal contract | L | todo | - | api/** web/** |
 | 5 | The other fixes, in the developer's order | L | todo | - | |
 <!-- /progress-block -->
