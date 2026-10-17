@@ -228,7 +228,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   restore-commands, pin-key, schedule: Linux's systemd units; test `scripts/tests/twes.test.sh`), which reaches the stack
   through `deploy.sh --compose`. A release is taken only from a tag `scripts/release/tag-release.sh` signed, verified
   against the key pinned at install (`infra/onprem/release-key.asc`, the developer's public key, pinned once its
-  fingerprint is confirmed). Windows: `scripts/onprem/install.ps1` (WSL, Docker Desktop, the checkout, `twes install`,
+  fingerprint is confirmed). Windows: `scripts/onprem/install.ps1` (WSL, Docker Desktop, the checkout verified against the
+  fingerprint the installer carries before anything from it runs, its `$verify` line run by twes.test.sh, `twes install`,
   the authority trusted, the `\twes-in\` scheduled tasks; ASCII only, PSScriptAnalyzer clean). `make onprem-check`
   (`scripts/onprem/onprem-check.sh`, compose project `twes-onprem-check`, ports 80 and 443, about ten minutes) installs,
   rolls back, restores and refuses an unsigned tag for real; the restore steps are docs/RUNBOOK.md « Restore a shop »,

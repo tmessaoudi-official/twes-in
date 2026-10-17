@@ -30,6 +30,10 @@
 
 .PARAMETER HideWindows
   Runs the scheduled tasks through conhost.exe --headless, so no console window shows.
+
+.PARAMETER ReleaseKey
+  The fingerprint of the developer's release key, which the release checked out must be signed by before anything from
+  it runs. The developer's own by default; this file is what carries it, so it comes from the developer, not the checkout.
 #>
 # Write-Host is how an installer run by hand talks to the person running it; Stop-Install and New-TwesAction change
 # nothing that -WhatIf could hold back. The file stays ASCII: Windows PowerShell 5.1 reads a file without a byte-order
@@ -40,7 +44,9 @@
 param(
     [string]$Distribution = 'Ubuntu',
     [string]$Repository = 'https://github.com/tmessaoudi-official/twes-in.git',
-    [switch]$HideWindows
+    [switch]$HideWindows,
+    [ValidatePattern('^[0-9A-F]{40}$')]
+    [string]$ReleaseKey = '02014686996009C741A92ADF0C537690706EB7F5'
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -124,9 +130,19 @@ if ((Invoke-Ubuntu "test -d ~/twes-in/.git || git clone --quiet '$Repository' ~/
     Stop-Install "the checkout could not be cloned from $Repository into $Distribution's ~/twes-in."
 }
 # The installer runs released code: the checkout moves to the newest release tag, whose signature twes checks from then on.
-# A checkout with changes of its own is left as it is: twes refuses to deploy from one, and says so.
+# A checkout with changes of its own is left as it is, and the check below refuses it.
 $atRelease = 'cd ~/twes-in && git fetch --quiet --tags origin && t=$(git tag --list ''v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*'' --sort=-v:refname | head -n 1) && case $t in v*) ;; *) exit 1 ;; esac && { git diff --quiet HEAD || exit 0; git checkout --quiet --detach $t; }'
 if ((Invoke-Ubuntu $atRelease) -ne 0) { Stop-Install "no release is published at $Repository yet, or it could not be read." }
+# The tag is verified here, against the fingerprint this installer carries, before anything from the checkout runs: twes
+# install shows the checkout's own key to confirm, and a forged tag's twes could show any. A tag signed by a key a forged
+# checkout carries fails too, since the fingerprint compared is this file's.
+$verify = 'cd ~/twes-in || exit 2; git status --porcelain | grep -q . && exit 3; t=$(git describe --exact-match --tags HEAD) || exit 4; g=$(mktemp -d); gpg --homedir $g --batch --quiet --import infra/onprem/release-key.asc; f=$(GNUPGHOME=$g git verify-tag --raw $t 2>&1 | awk ''$2 ~ /^VALIDSIG$/ { print $NF }''); gpgconf --homedir $g --kill all; rm -rf $g; test x$f = xRELEASE_KEY || exit 5'
+switch (Invoke-Ubuntu $verify.Replace('RELEASE_KEY', $ReleaseKey)) {
+    0 { Write-Host "twes-in: the release checked out is signed by the release key $ReleaseKey" }
+    3 { Stop-Install "the checkout ~/twes-in in $Distribution holds changes of its own: nothing from it is run. Remove it (wsl -d $Distribution -- rm -rf ~/twes-in), then run this again." }
+    4 { Stop-Install "the checkout ~/twes-in in $Distribution is at no release tag: nothing from it is run." }
+    default { Stop-Install "the release in ~/twes-in is not signed by the release key ${ReleaseKey}: nothing from it was run. Tell the developer." }
+}
 
 # --- 5. The installation itself ---------------------------------------------------------------------------------------
 # It asks its questions on this console, so its output is not taken through PowerShell's pipeline.

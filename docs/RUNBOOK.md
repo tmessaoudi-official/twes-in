@@ -96,9 +96,11 @@ Once, before the first release:
    in its package settings: GitHub creates a package private, whatever the repository's visibility, and a shop pulls
    with no credential. Making a package public cannot be undone.
 3. The release key: the public half is `infra/onprem/release-key.asc`, the fingerprint the one `docs/START.md` § 16
-   gives, and the shop's installer is told it out of band (a message, a call) before it types `yes`. The secret half
-   never leaves your machine; keep a copy offline, since a lost key means every shop pins a new one by hand
-   (`twes pin-key <file>`).
+   gives and the one `scripts/onprem/install.ps1` carries; the shop gets `install.ps1` and the fingerprint from you, out
+   of band (a USB key, a message, a call), never from the repository alone. The secret half never leaves your machine;
+   keep a copy offline, since a lost key means every shop pins a new one by hand (`twes pin-key <file>`).
+4. A tag ruleset on the repository for `v*` (GitHub, Settings, Rules, Rulesets): only you may create one, and none may
+   be updated or deleted. A signed tag already stops a forged release at the shops; the ruleset stops one being pushed.
 
 Each release: steps 1 to 3 of « Promote to production ». Shops then take it by their policy: `auto` inside their daily
 window, `notify` tells their owners, who update with `twes update`; never in the minutes after a start.
