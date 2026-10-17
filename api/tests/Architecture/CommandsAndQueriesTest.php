@@ -65,8 +65,6 @@ final class CommandsAndQueriesTest extends TestCase
         PasskeyAssertions::class => "a passkey's signature counter, kept by the sign-in or step-up that audits it",
         NotificationCentre::class => 'whether a person has read their own notifications',
         NotificationPreferences::class => 'how a person chooses to be told their own notifications, as reading them is',
-        PrintDeliveryNote::class => 'the PDF of a note already issued, stored once when issuing could not render it',
-        PrintInvoice::class => 'the PDF of a document already issued, stored once when issuing could not render it',
         RemindLateInvoices::class => 'a scheduled run with no actor; the stage it records stops it telling twice, its notification is the signal, and a late fee it drafts goes through ManageInvoices, which audits it',
         ForgetSettings::class => 'a part of deleting the subject, whose own use case records the deletion',
         SeedPlatform::class => 'the seed and the convergence at start, which no person changes',
@@ -88,6 +86,8 @@ final class CommandsAndQueriesTest extends TestCase
         AllocateNumber::class => 'a part of issuing, inside the transaction of the document it numbers, which records it',
         SealInvoiceChains::class => 'the chain is itself the record: issuing seals within its own audited transaction, and the start seals what an earlier release issued, which no person changes',
         ProductReferences::class => 'a part of creating a product, inside the transaction of the product it names, which records it',
+        PrintDeliveryNote::class => 'the PDF of a note already issued, stored once when issuing could not render it, which no person changes',
+        PrintInvoice::class => 'the PDF of a document already issued, stored once when issuing could not render it, which no person changes',
         CashInvoicesInBulk::class => 'every payment goes through ManagePayments, which records it on its invoice',
         ResealSecondFactors::class => 'the same secrets under a new key, run on the console with the service stopped, which no person changes; the runbook is its record',
     ];
