@@ -820,7 +820,10 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 `scripts/onprem/install.ps1` does what is still missing and stops at each step that needs a person, to be run again
 after it: WSL and Ubuntu (a restart, then Ubuntu opened once to make its user), Docker Desktop (started once, its terms
 accepted, « Start Docker Desktop when you sign in » ticked, WSL integration on for Ubuntu), git, gpg, curl and flock in
-Ubuntu, the checkout at the newest release tag, then `twes install` in Ubuntu. On Windows' side it then trusts the
+Ubuntu, the checkout at the newest release tag, which it verifies against the release key's fingerprint it carries
+itself (`-ReleaseKey`, the developer's by default) before anything from the checkout runs, then `twes install` in
+Ubuntu. Bring `install.ps1` from the developer (a USB key, a mail from them), not from the repository: it is what
+vouches for the checkout. On Windows' side it then trusts the
 edge's authority (Edge and Chrome read Windows' store; Firefox only once « Allow Firefox to automatically trust
 third-party root certificates you install » is ticked), schedules `twes start` at each sign-in and `twes tick` every
 quarter hour as tasks under `\twes-in\`, and puts a twes-in shortcut on the desktop. The tasks run `wsl.exe`, which
@@ -834,8 +837,13 @@ Windows PowerShell 5.1 reads a script without a byte-order mark in the computer'
 ```sh
 git clone https://github.com/<owner>/twes-in.git ~/twes-in && cd ~/twes-in
 git checkout --detach "$(git tag --list 'v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*' --sort=-v:refname | head -n 1)"
+g=$(mktemp -d) && gpg --homedir "$g" --batch --quiet --import infra/onprem/release-key.asc
+GNUPGHOME=$g git verify-tag --raw "$(git describe --exact-match --tags HEAD)" 2>&1 | awk '$2 == "VALIDSIG" { print $NF }'
 bash scripts/onprem/twes install
 ```
+
+The fingerprint `verify-tag` prints must be the developer's, below, before `twes install` runs: what the checkout runs
+is only as trustworthy as that comparison.
 
 `twes install` asks for the shop's facts and writes the values (`~/.twes-in/install.env`, mode 600, through
 `new-instance.sh --onprem`): the shop's Gmail address and an app password (the mail goes through `smtp.gmail.com:587`),
@@ -853,6 +861,11 @@ file too. A newer tag nobody signed, or signed by another key, is refused before
 written down in `state/refused-releases`, and mailed and told to the operators in the application: once from `tick`,
 under `notify` as under `auto`, and again each time `twes update` asks for it by hand. The developer's key: ed25519, fingerprint
 `0201 4686 9960 09C7 41A9 2ADF 0C53 7690 706E B7F5`. `twes pin-key <file>` pins another (a secret key is refused).
+
+**The edge's authority.** Trusting it lets this computer and the shop's phones open the HTTPS addresses without a
+warning; it also means that whoever reads its key, in the edge's Docker volume, could impersonate any site to them, as
+with any local authority (mkcert says the same of its own). Whoever can read a Docker volume here already runs as
+root on this computer; keep the computer's accounts to the shop's own, and the authority is never copied elsewhere.
 
 **What `twes` does.**
 

@@ -388,6 +388,25 @@ out=$(AT=$((NOON + 86400)) BACKUP_LABEL=$LABEL twes "$d" tick); check "  and nev
 out=$(twes "$d" sometimes); check "an unknown command is refused" $? 2 "$out" "Usage"
 d=$(installed); rm "$d/etc/install.env"; out=$(twes "$d" status); check "no values: refused, naming where they are looked for" $? 1 "$out" "twes install writes them"
 
+# What install.ps1 runs in Ubuntu before anything from the checkout runs, read out of install.ps1 itself and run with the
+# shop's folder as home: the tag HEAD is at, verified against the fingerprint the installer carries.
+checkout_check() { # shop folder
+  local line
+  line=$(sed -n "s/^\$verify = '\(.*\)'\$/\1/p" "$HERE/onprem/install.ps1")
+  [[ -n "$line" ]] || { echo "install.ps1 holds no \$verify line"; return 99; }
+  line=${line//\'\'/\'}; line=${line//RELEASE_KEY/$FPR}
+  (HOME=$1 bash -c "$line" 2>&1)
+}
+d=$(installed); out=$(checkout_check "$d"); check "installer: a clean checkout at a tag the developer signed passes" $? 0 "$out" ""
+echo '# changed' >> "$d/twes-in/scripts/onprem/twes"; out=$(checkout_check "$d"); check "  a changed file refused" $? 3 "$out" ""
+d=$(installed); touch "$d/twes-in/extra.sh"; out=$(checkout_check "$d"); check "  a file of its own refused" $? 3 "$out" ""
+d=$(installed); git -C "$d/twes-in" commit -q --allow-empty -m three; out=$(checkout_check "$d"); check "  a checkout at no tag refused" $? 4 "$out" ""
+d=$(SIGN_NEW=none installed); git -C "$d/twes-in" checkout -q --detach "$NEW"; out=$(checkout_check "$d"); check "  an unsigned tag refused" $? 5 "$out" ""
+d=$(SIGN_NEW=other installed); git -C "$d/twes-in" checkout -q --detach "$NEW"; out=$(checkout_check "$d"); check "  a tag signed by another key refused" $? 5 "$out" ""
+d=$(installed); cp "$TMPDIR/other-key.asc" "$d/twes-in/infra/onprem/release-key.asc"
+git -C "$d/twes-in" commit -qam "another key"; sign "$d/twes-in" v2026.10.22.1 other; git -C "$d/twes-in" checkout -q --detach v2026.10.22.1
+out=$(checkout_check "$d"); check "  a tag signed by the key a forged checkout carries refused" $? 5 "$out" ""
+
 # Windows PowerShell 5.1 reads a script without a byte-order mark in the computer's ANSI code page.
 # grep answers 1 when no line holds anything else, 2 when it could not read the file.
 out=$(LC_ALL=C grep -n '[^ -~	]' "$HERE/onprem/install.ps1" 2>&1); check "the Windows installer is plain ASCII" $? 1 "$out" ""
