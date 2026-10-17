@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\DataFixtures\Scale;
 
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
+use App\Shared\Infrastructure\Doctrine\ScaleDatabase;
 use App\Tenancy\Domain\Model\NumberingSeries;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -121,15 +122,9 @@ final class ScaleGenerator
      */
     public static function refuseUnlessScaleDatabase(string $name): void
     {
-        if (!self::isScaleDatabase($name)) {
+        if (!ScaleDatabase::is($name)) {
             throw new \RuntimeException(\sprintf('The database "%s" is not a scale or test one, and the generator writes freely: name it twes_scale and point DATABASE_URL at it.', $name));
         }
-    }
-
-    /** A `_scale` database, or the test one (a parallel writer's `_test_w<n>` included): the only ones it writes to. */
-    public static function isScaleDatabase(string $name): bool
-    {
-        return 1 === preg_match('/_(scale|test\d*(_w\d+)?)$/', $name);
     }
 
     /**

@@ -7,12 +7,12 @@
 
 declare(strict_types=1);
 
-namespace App\DataFixtures;
+namespace App\Demo\Infrastructure\Dataset;
 
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 
 /**
- * One demo company as data: who it is and what it keeps. `DemoCompanies` writes it through the use cases; nothing
+ * One demo company as data: who it is and what it keeps. `DemoDataset` writes it through the use cases; nothing
  * here is random, so every load yields the same rows, only dated relative to the day it runs.
  *
  * Tax codes and unit codes are the fiscal preset's (api/config/fiscal/<CC>.yaml).

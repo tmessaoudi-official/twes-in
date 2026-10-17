@@ -110,9 +110,12 @@ tables, essay gotchas) was retired with the reset. What applies here:
   real). A service picks its channel with `#[WithMonologChannel]`; list them with `bin/console debug:autowiring logger`.
 - `docs/fiscal/<CC>.md` — sourced fiscal rules per country; `api/config/fiscal/<CC>.yaml` — the preset.
 - `docs/spec/pricing-vectors.json` — the calculator's fixture set.
-- `api/src/DataFixtures/` — the demo dataset (`make fixtures`, `docs/START.md` § 4), DoctrineFixturesBundle's own place,
-  outside the contexts: `DemoCatalogue` is the data, `DemoCompanies` writes it through the use cases only, `Timeline`
-  runs dated steps in order under a moved clock. A new workflow or state belongs in it; `DemoFixturesTest` loads it.
+- `api/src/Demo/Infrastructure/Dataset/` — the demo dataset, production code (the demo sandbox writes it too):
+  `DemoCatalogue` is the data, `DemoDataset` writes one company through the use cases only, under a moved clock
+  (`Timeline` runs dated steps in order), for whoever the caller makes its owner. A new workflow or state belongs in it;
+  `DemoFixturesTest` loads it. `api/src/DataFixtures/` is DoctrineFixturesBundle's own place, development only, outside
+  the contexts (`LayerDependenciesTest` reds on a context naming it): `DemoCompanies` gives the catalogue to the seeded
+  operator with one tester per role (`make fixtures`, `docs/START.md` § 4).
   `DataFixtures/Scale/` is the large-data generator (`make scale-data`, docs/START.md § 4): it clones the demo company's
   invoice graph in SQL, and `ScaleGenerator::unaccounted` fails when a new table reaching that graph is not classified.
 - `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity`, `Tenancy`, `Audit`, `Inbox` (the notification

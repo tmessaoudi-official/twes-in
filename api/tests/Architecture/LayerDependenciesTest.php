@@ -87,6 +87,28 @@ final class LayerDependenciesTest extends TestCase
         self::assertSame([], $violations, "Application depends on Domain, Application and the ruled ports only:\n".implode("\n", $violations));
     }
 
+    /**
+     * DataFixtures/ is development data: its classes extend DoctrineFixturesBundle's, which the production image leaves
+     * out, so a context that names one breaks there and nowhere a development run would show it.
+     */
+    public function testNoContextNamesTheDevelopmentFixtures(): void
+    {
+        $violations = [];
+        $read = 0;
+        foreach (['Domain', 'Application', 'Infrastructure'] as $layer) {
+            foreach ($this->files($layer) as $file) {
+                ++$read;
+                foreach ($this->namesUsedIn($file) as $name) {
+                    if (str_starts_with($name, 'App\DataFixtures\\')) {
+                        $violations[] = "$file names $name";
+                    }
+                }
+            }
+        }
+        self::assertGreaterThan(1700, $read, 'the contexts hold some 1,800 classes: a scan reading fewer has stopped finding them');
+        self::assertSame([], $violations, "No context depends on the development fixtures:\n".implode("\n", $violations));
+    }
+
     public function testEveryClassLivesInTheNamespaceItsPathSays(): void
     {
         $mismatches = [];

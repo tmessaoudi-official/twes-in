@@ -7,9 +7,9 @@
 
 declare(strict_types=1);
 
-namespace App\DataFixtures;
+namespace App\Demo\Infrastructure\Dataset;
 
-/** One customer of a demo company, as `DemoCompanies` writes it. */
+/** One customer of a demo company, as `DemoDataset` writes it. */
 final readonly class DemoCustomer
 {
     /** @param array<string, string> $identifiers keyed by the preset's identifier keys */
