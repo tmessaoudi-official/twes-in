@@ -14,6 +14,7 @@
 - [2026-10-17 04:27] ASSUMED (review): Forms without a field-by-field merge (the platform's support channels and delays, the legal identity, the document design) answer a save made since by showing what is saved now, dropping what was typed, with the « Rien n'a été enregistré » toast; the settings, customer and product defaults merge through liveRecord, made generic over a version per key. Alternatives: give those three forms liveRecord too (more code for operator-only and single-owner screens).
 - [2026-10-17 05:04] ASSUMED (review): Editors opened inside a list (units, taxes, then every catalogue with an inline form) take liveRecord over the row the list now holds, with the banner, and merge a save made since field by field; basis: the AGREED ruling of 2026-09-17 (2), « a record another person changes while I edit it merges per field », which no later ruling narrows. It also corrects the 04:27 pick for the document design, the platform's support channels and delays and the legal identity, which drop what was typed: they follow in step 3. Alternatives: reload and reopen the row, dropping what was typed (contradicts the ruling).
 - [2026-10-17 07:08] ASSUMED (review): The roles editor, which has no descriptor form, merges another person's save as two parts over a form with no controls: the name and the set of ticks, each one field (the ticks compared as a sorted set), as the 2026-09-17 (2) ruling merges a document's lines as one field; a save sends the version the open role stands on, so a form opened before a permission was taken away is refused rather than giving it back. Alternatives: one tick per field (a conflict per permission, more precise, a second merge mechanism for one screen); refuse the stale save without merging (no merge, the person reopens).
+- [2026-10-17 08:56] AGREED: the stock map's group moves send each rectangle's version (one stale refuses the group, the floor is read again, the selection stays); « Annuler » sends the version the save produced and is refused if changed since; a product's barcodes and home locations send and move the product's version (SPEC § 7 2026-10-17 08:55).
 
 ## Formal Plan
 
@@ -53,7 +54,6 @@ deploy check before each push.
 ### Blocked
 ### Needs input
 - Optimistic locking leaves out, as the 17:17 ruling wrote « edit »: the item POST actions (issue, validate, cancel, pay…) and the deletes; bulk payment already refuses an invoice changed since its check. Whether they check a version too is asked once the PUTs are done.
-- A product's barcodes and home locations are replaced as a set by a PUT of their own, and change no product row, so the product's version does not move with them: their slice decides what version they send (the product's, bumped by the replacement, or none, listed).
 ### Needs research
 ### Fragile
 - The sweep reports live in `var/claude/tool-audit/raw/` only (not in git); the page carries each finding's fix, documentation and grade.
