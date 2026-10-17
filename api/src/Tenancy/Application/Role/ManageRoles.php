@@ -127,10 +127,12 @@ final readonly class ManageRoles
             // Only what is being ADDED must be held: a role may already carry what its editor lacks, and keeping it is not granting it.
             $this->assertHeld(array_values(array_diff($permissions, $role->getPermissions())), $actorMay);
 
-            $role->rename($name);
-            $role->redefine($permissions);
-            $this->roles->save($role);
-            $this->record($company, $role, self::REVISED, $actorUserId);
+            $renamed = $role->rename($name);
+            // A revision that changes nothing is not one: no row tells anyone the role was revised.
+            if ($role->redefine($permissions) || $renamed) {
+                $this->roles->save($role);
+                $this->record($company, $role, self::REVISED, $actorUserId);
+            }
 
             return new RoleView(
                 $role->getId()->toRfc4122(),
