@@ -279,6 +279,12 @@ out=$(AT=$((NOON + 86400)) BACKUP_LABEL=$LABEL twes "$d" tick); [[ -z "$(told)" 
 check "  saying it waits for a hand" 0 0 "$out" "applied only by hand"
 d=$(SIGN_NEW=none installed); twes "$d" policy notify >/dev/null
 out=$(twes "$d" tick); [[ "$(told)" != *update_available* ]]; check "notify: an unsigned release never announced to the owners" $? 0 "$(told)" ""
+check "  but the operators alerted: the default policy hides no forged tag" 0 0 "$(told)" "installation.update_refused version=$NEW"
+check "  mailed too" 0 0 "$(subject)" "Mise à jour refusée"
+check "  written down as refused" 0 0 "$(cat "$d/etc/state/refused-releases")" "$NEW"
+out=$(AT=$((NOON + 900)) twes "$d" tick); [[ -z "$(told)" && -z "$(mailed)" ]]; check "  and the next tick alerts it no more" $? 0 "$(told)$(mailed)" ""
+d=$(installed); twes "$d" policy notify >/dev/null
+out=$(twes "$d" tick); [[ "$(told)" != *update_refused* ]]; check "notify: a signed release alerts no one" $? 0 "$(told)" ""
 
 
 d=$(installed)
