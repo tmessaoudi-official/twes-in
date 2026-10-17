@@ -36,7 +36,7 @@ final readonly class ReviseProductCategoryProcessor implements ProcessorInterfac
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::WRITE);
 
         try {
-            $category = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'categoryId'), $data->name, null === $data->parentId ? null : Uuid::fromString($data->parentId), $this->guard->account()->getId());
+            $category = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'categoryId'), $data->name, null === $data->parentId ? null : Uuid::fromString($data->parentId), $this->guard->account()->getId(), $data->version);
         } catch (ProductCategoryNotFound $absent) {
             throw new NotFoundHttpException('No such product category.', $absent);
         } catch (ProductCategoryNameTaken $taken) {

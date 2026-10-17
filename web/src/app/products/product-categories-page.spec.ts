@@ -25,7 +25,9 @@ import type { SettingRow } from '../shared/settings/settings-types';
 import { ArticleSettings } from './article-settings-facade';
 import { ProductsFacade } from './products-facade';
 import type { ProductCategoryRow, ProductsError } from './products-types';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -47,6 +49,7 @@ const hardware: ProductCategoryRow = {
   parentId: null,
   productCount: 0,
   childCount: 1,
+  version: 1,
 };
 const laptops: ProductCategoryRow = {
   id: 'k2',
@@ -54,6 +57,7 @@ const laptops: ProductCategoryRow = {
   parentId: 'k1',
   productCount: 4,
   childCount: 0,
+  version: 1,
 };
 const archives: ProductCategoryRow = {
   id: 'k3',
@@ -61,6 +65,7 @@ const archives: ProductCategoryRow = {
   parentId: null,
   productCount: 0,
   childCount: 0,
+  version: 1,
 };
 
 describe('ProductCategoriesPage', () => {
@@ -116,7 +121,9 @@ describe('ProductCategoriesPage', () => {
   beforeEach(async () => {
     error.set(null);
     categories.set([hardware, laptops, archives]);
+    error.set(null);
     facade.loadCategories.mockReset().mockResolvedValue(undefined);
+    facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.createCategory.mockReset().mockResolvedValue(true);
     facade.reviseCategory.mockReset().mockResolvedValue(true);
     facade.deleteCategory.mockReset().mockResolvedValue(true);
@@ -193,10 +200,15 @@ describe('ProductCategoriesPage', () => {
     type('field-name', 'Ordinateurs portables');
     q('product-category-save')!.click();
     await settle();
-    expect(facade.reviseCategory).toHaveBeenCalledWith('c1', 'k2', {
-      name: 'Ordinateurs portables',
-      parentId: 'k1',
-    });
+    expect(facade.reviseCategory).toHaveBeenCalledWith(
+      'c1',
+      'k2',
+      {
+        name: 'Ordinateurs portables',
+        parentId: 'k1',
+      },
+      1,
+    );
 
     // Deleting is destructive, so it sits behind "⋮" rather than under the pointer.
     q('row-more-k3')!.click();
@@ -212,6 +224,54 @@ describe('ProductCategoriesPage', () => {
     (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
     await settle();
     expect(facade.deleteCategory).toHaveBeenCalledWith('c1', 'k3');
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    q('row-action-edit-k2')!.click();
+    await settle();
+    facade.reviseCategory.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    facade.loadCategories.mockImplementationOnce(async () =>
+      categories.set([hardware, { ...laptops, parentId: null, version: 2 }, archives]),
+    );
+
+    type('field-name', 'Ordinateurs portables');
+    q('product-category-save')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+        kind: 'failure',
+        key: 'live.saved_since',
+        params: undefined,
+      }),
+    );
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Ordinateurs portables');
+    expect(q('product-categories-error')).toBeNull();
+
+    q('product-category-save')!.click();
+    await settle();
+    expect(facade.reviseCategory).toHaveBeenLastCalledWith(
+      'c1',
+      'k2',
+      { name: 'Ordinateurs portables', parentId: null },
+      2,
+    );
+  });
+
+  it('takes into the open form what another person saved on the same category', async () => {
+    q('row-action-edit-k2')!.click();
+    await settle();
+    facade.loadCategories.mockImplementationOnce(async () =>
+      categories.set([hardware, { ...laptops, name: 'Ordinateurs', version: 2 }, archives]),
+    );
+
+    await announceSaved('product_category', 'k2');
+    await settle();
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Ordinateurs');
   });
 
   it('offers no delete for a category that still holds products or sub-categories', () => {

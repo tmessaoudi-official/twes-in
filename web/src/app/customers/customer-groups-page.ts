@@ -26,12 +26,15 @@ import type { CustomerGroupRow } from './customers-types';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { CUSTOMERS_TABS } from './customers-nav';
 import { Feedback } from '../shared/feedback/feedback';
+import { listRecord } from '../shared/form/list-record';
+import { RecordChanged } from '../shared/form/record-changed';
 
 /** The groups customers are sorted into; a group's settings apply to every customer in it. */
 @Component({
   selector: 'app-customer-groups-page',
   imports: [
     PageTabs,
+    RecordChanged,
     MatButtonModule,
     MatCardModule,
     TranslatePipe,
@@ -104,6 +107,19 @@ export class CustomerGroupsPage implements OnInit {
     return editing === null || editing === 'new' ? null : { customerGroupId: editing.id };
   });
 
+  /** The saved version the open form stands on, and what another person's save changed in it. */
+  protected readonly sync = listRecord({
+    kind: 'customer_group',
+    editing: this.editing,
+    rows: this.facade.groups,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.loadGroups(companyId);
+    },
+    values: groupValues,
+  });
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
@@ -134,10 +150,13 @@ export class CustomerGroupsPage implements OnInit {
     const accepted =
       editing === 'new'
         ? await this.facade.createGroup(companyId, input)
-        : await this.facade.reviseGroup(companyId, editing.id, input);
+        : await this.facade.reviseGroup(companyId, editing.id, input, this.sync.version());
     if (accepted) {
       this.editing.set(null);
       this.feedback.success('customers.groups.saved');
+    } else if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 

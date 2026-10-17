@@ -17,6 +17,7 @@ import type {
   CustomerCustomerWriteRecordReviseValidationCustomerWriteRecordRevise as CustomerCustomerRevise,
   CustomerJsonldCustomerRead,
   CustomerGroupCustomerGroupRead,
+  CustomerGroupCustomerGroupWriteRecordReviseValidationCustomerGroupWriteRecordRevise as CustomerGroupRevise,
   CustomerGroupCustomerGroupWriteValidationCustomerGroupWrite as CustomerGroupCustomerGroupWrite,
   CustomerOptionsCustomerOptionsRead,
   CustomerStatementCustomerStatementRead,
@@ -204,12 +205,14 @@ export class CustomersApi {
     );
   }
 
+  /** `version` is the one the form was opened at: a later one saved elsewhere answers `record_changed`. */
   async reviseGroup(
     companyId: string,
     id: string,
     input: CustomerGroupInput,
+    version: number | null,
   ): Promise<CustomerGroupRow> {
-    const body: CustomerGroupCustomerGroupWrite = { ...input };
+    const body: CustomerGroupRevise = { ...input, version };
     return this.guard(
       async () =>
         toGroup(
@@ -421,6 +424,8 @@ function toGroup(raw: CustomerGroupCustomerGroupRead): CustomerGroupRow {
     name: raw.name ?? '',
     description: raw.description ?? null,
     customerCount: raw.customerCount ?? 0,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }
 

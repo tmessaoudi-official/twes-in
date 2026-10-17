@@ -578,7 +578,7 @@ describe('ProductsApi', () => {
       .expectOne('/api/companies/c1/product-categories')
       .flush([{ id: 'k1', name: 'Matériel', productCount: 2, childCount: 1 }]);
     expect(await list).toEqual([
-      { id: 'k1', name: 'Matériel', parentId: null, productCount: 2, childCount: 1 },
+      { id: 'k1', name: 'Matériel', parentId: null, productCount: 2, childCount: 1, version: 0 },
     ]);
 
     const created = api.createCategory('c1', { name: 'Portables', parentId: 'k1' });
@@ -587,11 +587,30 @@ describe('ProductsApi', () => {
     post.flush(null, { status: 409, statusText: 'Conflict' });
     await expect(created).rejects.toEqual(new ProductsRefused('name_taken'));
 
-    const revised = api.reviseCategory('c1', 'k 2', { name: 'Portables', parentId: null });
+    const revised = api.reviseCategory('c1', 'k 2', { name: 'Portables', parentId: null }, 5);
     const put = http.expectOne('/api/companies/c1/product-categories/k%202');
-    expect(put.request.method).toBe('PUT');
-    put.flush({ id: 'k 2', name: 'Portables', parentId: null, productCount: 0, childCount: 0 });
-    expect((await revised).id).toBe('k 2');
+    expect([put.request.method, put.request.body]).toEqual([
+      'PUT',
+      { name: 'Portables', parentId: null, version: 5 },
+    ]);
+    put.flush({
+      id: 'k 2',
+      name: 'Portables',
+      parentId: null,
+      productCount: 0,
+      childCount: 0,
+      version: 6,
+    });
+    expect(await revised).toMatchObject({ id: 'k 2', version: 6 });
+
+    const changed = api.reviseCategory('c1', 'k 2', { name: 'Ordinateurs', parentId: null }, 5);
+    http
+      .expectOne('/api/companies/c1/product-categories/k%202')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toEqual(new ProductsRefused('record_changed'));
 
     const removed = api.deleteCategory('c1', 'k1');
     const del = http.expectOne('/api/companies/c1/product-categories/k1');

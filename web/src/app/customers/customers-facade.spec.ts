@@ -70,6 +70,7 @@ const wholesalers: CustomerGroupRow = {
   name: 'Grossistes',
   description: null,
   customerCount: 0,
+  version: 1,
 };
 const leila: ContactInput = {
   firstName: 'Leila',

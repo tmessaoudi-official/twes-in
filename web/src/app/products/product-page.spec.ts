@@ -400,7 +400,14 @@ describe('ProductPage', () => {
 
     it('keeps a reference the person typed, through a change of category too', async () => {
       categories.set([
-        { id: 'cat1', name: 'Boulonnerie', parentId: null, productCount: 0, childCount: 0 },
+        {
+          id: 'cat1',
+          name: 'Boulonnerie',
+          parentId: null,
+          productCount: 0,
+          childCount: 0,
+          version: 1,
+        },
       ]);
       await open(undefined);
       type('field-reference', 'VIS-6X40');
@@ -420,7 +427,14 @@ describe('ProductPage', () => {
 
     it("replaces the proposal with the category's own while nobody changed it", async () => {
       categories.set([
-        { id: 'cat1', name: 'Boulonnerie', parentId: null, productCount: 0, childCount: 0 },
+        {
+          id: 'cat1',
+          name: 'Boulonnerie',
+          parentId: null,
+          productCount: 0,
+          childCount: 0,
+          version: 1,
+        },
       ]);
       await open(undefined);
       facade.referencePreview.mockResolvedValue('BOI-0001');

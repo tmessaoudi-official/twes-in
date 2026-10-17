@@ -45,7 +45,7 @@ final class ProductCategoriesTest extends ApiTestCase
         $this->getJson($this->path());
         self::assertSame([['Matériel', null, 1], ['Portables', $hardwareId, 0]], array_map(static fn (array $row) => [$row['name'], $row['parentId'], $row['childCount']], $this->jsonList()));
 
-        $this->sendJson('PUT', $this->path($laptopsId), ['name' => 'Ordinateurs portables', 'parentId' => null]);
+        $this->sendJson('PUT', $this->path($laptopsId), ['name' => 'Ordinateurs portables', 'parentId' => null, 'version' => 1]);
         self::assertResponseIsSuccessful();
         self::assertNull($this->json()['parentId']);
 
@@ -57,6 +57,38 @@ final class ProductCategoriesTest extends ApiTestCase
         $actions = $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'product_category' ORDER BY at, action");
         self::assertEqualsCanonicalizing(['product_category.created', 'product_category.created', 'product_category.revised', 'product_category.deleted'], $actions);
         self::assertSame('{"fields": ["name", "parentId"]}', $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'product_category.revised'"));
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->postJson($this->path(), ['name' => 'Matériel']);
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version']);
+        $this->sendJson('PUT', $this->path($id), ['name' => 'Outillage', 'parentId' => null, 'version' => 1]);
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'Quincaillerie', 'parentId' => null, 'version' => 1]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path());
+        self::assertSame([['Outillage', 2]], array_map(static fn (array $row): array => [$row['name'], $row['version']], $this->jsonList()));
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersionAndOneWithoutAVersionIsRefused(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->postJson($this->path(), ['name' => 'Matériel']);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'Matériel', 'parentId' => null, 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'Outillage', 'parentId' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     public function testATakenNameAnswersConflictAndACycleOrABlankNameIsRefused(): void
@@ -73,7 +105,7 @@ final class ProductCategoriesTest extends ApiTestCase
         $this->postJson($this->path(), ['name' => '  ']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
 
-        $this->sendJson('PUT', $this->path($hardwareId), ['name' => 'Matériel', 'parentId' => $laptopsId]);
+        $this->sendJson('PUT', $this->path($hardwareId), ['name' => 'Matériel', 'parentId' => $laptopsId, 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('parentId', (string) $this->client->getResponse()->getContent());
 
@@ -121,7 +153,7 @@ final class ProductCategoriesTest extends ApiTestCase
 
         $this->sendJson('POST', '/api/auth/logout');
         $this->login('writer@twes.local', 'password-1234');
-        $this->sendJson('PUT', $this->path($theirs->getId()->toRfc4122()), ['name' => 'Mine now']);
+        $this->sendJson('PUT', $this->path($theirs->getId()->toRfc4122()), ['name' => 'Mine now', 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->sendJson('DELETE', $this->path($theirs->getId()->toRfc4122()));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

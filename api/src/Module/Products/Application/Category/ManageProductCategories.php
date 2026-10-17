@@ -17,6 +17,8 @@ use App\Module\Products\Domain\Repository\ProductCategoryRepository;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -41,6 +43,7 @@ final readonly class ManageProductCategories
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -84,11 +87,15 @@ final readonly class ManageProductCategories
      * @throws ProductCategoryNotFound
      * @throws ProductCategoryNameTaken
      * @throws InvalidProductCategory
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, string $name, ?Uuid $parentId, ?Uuid $actorUserId): ProductCategory
+    public function revise(Company $company, Uuid $id, string $name, ?Uuid $parentId, ?Uuid $actorUserId, ?int $version = null): ProductCategory
     {
-        return $this->transactions->run(function () use ($company, $id, $name, $parentId, $actorUserId): ProductCategory {
+        return $this->transactions->run(function () use ($company, $id, $name, $parentId, $actorUserId, $version): ProductCategory {
             $category = $this->find($company, $id);
+            if (null !== $version) {
+                $this->versions->expect($category, $version);
+            }
             $holder = $this->categories->ofNameInCompany(trim($name), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($category->getId())) {
                 throw new ProductCategoryNameTaken();

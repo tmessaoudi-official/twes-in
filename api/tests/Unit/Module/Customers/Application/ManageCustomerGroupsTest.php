@@ -25,6 +25,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomerGroups;
 use App\Tests\Support\InMemoryCustomers;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySettings;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -46,7 +47,7 @@ final class ManageCustomerGroupsTest extends TestCase
         $this->settings = new InMemorySettings();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManageCustomerGroups($this->groups, $this->customers, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
+        $this->manage = new ManageCustomerGroups($this->groups, $this->customers, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 

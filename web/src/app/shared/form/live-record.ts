@@ -31,6 +31,13 @@ export interface LiveRecordOptions<V = number | null> {
    * settings page answers one version per key, each row having its own.
    */
   readonly version?: () => V;
+  /**
+   * The page builds its form again while the record stays open (the options it offers follow a list read again), over
+   * what was typed or over the record as it was opened, never over what is saved since. Such a form keeps the base and
+   * the version the open form stood on: tracked as the saved version, what was typed would read as saved, and a save
+   * made since would be merged over it.
+   */
+  readonly keepsBaseOnRebuild?: boolean;
 }
 
 /**
@@ -184,9 +191,20 @@ export function liveRecord<V = number | null>(options: LiveRecordOptions<V>): Li
     feedback.failure('live.saved_since');
   };
 
+  // The id last tracked; undefined while no form is open.
+  let tracked: string | null | undefined;
   effect(() => {
     const form = options.form();
-    if (form !== null) untracked(() => sync.track(form.getRawValue()));
+    if (form === null) {
+      tracked = undefined;
+      return;
+    }
+    untracked(() => {
+      const id = options.id();
+      if (options.keepsBaseOnRebuild === true && tracked !== undefined && tracked === id) return;
+      tracked = id;
+      sync.track(form.getRawValue());
+    });
   });
 
   const receive = async (changes: readonly LiveChange[]): Promise<void> => {

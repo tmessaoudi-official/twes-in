@@ -29,8 +29,9 @@ export interface ListRecordOptions<R extends VersionedRow> {
 /**
  * liveRecord for an editor opened inside a list. The record is the row the list holds now, found by the id of the
  * row that was opened: the row kept when it was opened never changes, so another person's save, read again by the
- * list, would never reach the form through it. A save sends the version the form stands on. Call it in the page's
- * injection context.
+ * list, would never reach the form through it. A save sends the version the form stands on. A form the page builds
+ * again while the row stays open keeps the base it stood on (`keepsBaseOnRebuild`). Call it in the page's injection
+ * context.
  */
 export function listRecord<R extends VersionedRow>(options: ListRecordOptions<R>): LiveRecord {
   const saved = computed(() => {
@@ -48,5 +49,6 @@ export function listRecord<R extends VersionedRow>(options: ListRecordOptions<R>
       return row === null ? null : options.values(row);
     },
     version: () => saved()?.version ?? null,
+    keepsBaseOnRebuild: true,
   });
 }

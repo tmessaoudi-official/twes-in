@@ -23,7 +23,13 @@ import {
 import { ExpenseCategoriesPage } from './expense-categories-page';
 import { ExpensesFacade } from './expenses-facade';
 import type { ExpenseCategoryRow, ExpensesError } from './expenses-types';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import {
+  provideQuietFeedback,
+  type RecordedFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -40,8 +46,15 @@ const vehicles: ExpenseCategoryRow = {
   name: 'Véhicules',
   parentId: null,
   isActive: true,
+  version: 1,
 };
-const fuel: ExpenseCategoryRow = { id: 'k2', name: 'Carburant', parentId: 'k1', isActive: false };
+const fuel: ExpenseCategoryRow = {
+  id: 'k2',
+  name: 'Carburant',
+  parentId: 'k1',
+  isActive: false,
+  version: 1,
+};
 
 describe('ExpenseCategoriesPage', () => {
   const error = signal<ExpensesError | null>(null);
@@ -85,7 +98,9 @@ describe('ExpenseCategoriesPage', () => {
   beforeEach(() => {
     error.set(null);
     categories.set([vehicles, fuel]);
+    error.set(null);
     facade.loadCategories.mockReset().mockResolvedValue(undefined);
+    facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.createCategory.mockReset().mockResolvedValue(true);
     facade.reviseCategory.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -126,7 +141,11 @@ describe('ExpenseCategoriesPage', () => {
     await settle();
     type('field-name', 'Péages');
 
-    categories.set([vehicles, fuel, { id: 'k3', name: 'Bureau', parentId: null, isActive: true }]);
+    categories.set([
+      vehicles,
+      fuel,
+      { id: 'k3', name: 'Bureau', parentId: null, isActive: true, version: 1 },
+    ]);
     await settle();
     q('expense-category-save')!.click();
     await settle();
@@ -148,11 +167,64 @@ describe('ExpenseCategoriesPage', () => {
     q('expense-category-save')!.click();
     await settle();
 
-    expect(facade.reviseCategory).toHaveBeenCalledWith('c1', 'k2', {
-      name: 'Carburant',
-      parentId: 'k1',
-      isActive: true,
+    expect(facade.reviseCategory).toHaveBeenCalledWith(
+      'c1',
+      'k2',
+      {
+        name: 'Carburant',
+        parentId: 'k1',
+        isActive: true,
+      },
+      1,
+    );
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    await create();
+    q('row-action-edit-k2')!.click();
+    await settle();
+    facade.reviseCategory.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
     });
+    facade.loadCategories.mockImplementationOnce(async () =>
+      categories.set([vehicles, { ...fuel, name: 'Gazole', version: 2 }]),
+    );
+
+    (q('field-isActive')!.querySelector('input') as HTMLInputElement).click();
+    q('expense-category-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-name') as HTMLInputElement).value).toBe('Gazole'));
+
+    expect(q('expense-categories-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('expense-category-save')!.click();
+    await settle();
+    expect(facade.reviseCategory).toHaveBeenLastCalledWith(
+      'c1',
+      'k2',
+      { name: 'Gazole', parentId: 'k1', isActive: true },
+      2,
+    );
+  });
+
+  it('takes into the open form what another person saved on the same category', async () => {
+    await create();
+    q('row-action-edit-k2')!.click();
+    await settle();
+    facade.loadCategories.mockImplementationOnce(async () =>
+      categories.set([vehicles, { ...fuel, name: 'Gazole', version: 2 }]),
+    );
+
+    await announceSaved('expense_category', 'k2');
+    await settle();
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Gazole');
   });
 
   it('keeps the form open and says why when the name is taken', async () => {

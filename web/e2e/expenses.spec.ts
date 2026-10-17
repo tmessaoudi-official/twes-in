@@ -21,6 +21,7 @@ async function retire(page: Page, name: string): Promise<void> {
         id: string;
         name: string;
         parentId: string | null;
+        version: number;
       }[];
       const category = categories.find((row) => row.name === categoryName);
       if (category) {
@@ -31,6 +32,7 @@ async function retire(page: Page, name: string): Promise<void> {
             name: category.name,
             parentId: category.parentId,
             isActive: false,
+            version: category.version,
           }),
         });
         if (!revised.ok) throw new Error(`retiring ${categoryName} answered ${revised.status}`);

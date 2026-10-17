@@ -105,11 +105,11 @@ final class ExpensesTest extends ApiTestCase
         $this->postJson($this->companyPath().'/expense-categories', ['name' => 'Carburant', 'parentId' => null, 'isActive' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
 
-        $this->sendJson('PUT', $this->companyPath().'/expense-categories/'.$vehicles, ['name' => 'Véhicules', 'parentId' => $fuel, 'isActive' => true]);
+        $this->sendJson('PUT', $this->companyPath().'/expense-categories/'.$vehicles, ['name' => 'Véhicules', 'parentId' => $fuel, 'isActive' => true, 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('parentId', (string) $this->client->getResponse()->getContent());
 
-        $this->sendJson('PUT', $this->companyPath().'/expense-categories/'.$fuel, ['name' => 'Carburant', 'parentId' => $vehicles, 'isActive' => false]);
+        $this->sendJson('PUT', $this->companyPath().'/expense-categories/'.$fuel, ['name' => 'Carburant', 'parentId' => $vehicles, 'isActive' => false, 'version' => 1]);
         self::assertResponseIsSuccessful();
         $this->getJson($this->companyPath().'/expense-categories');
         self::assertSame([['Carburant', $vehicles, false], ['Véhicules', null, true]], array_map(static fn (array $row) => [$row['name'], $row['parentId'], $row['isActive']], $this->jsonList()));
@@ -117,6 +117,27 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame(['Véhicules'], array_column($this->arrayAt($this->json(), 'categories'), 'name'), 'an inactive category is not offered');
         $this->sendJson('DELETE', $this->companyPath().'/expense-categories/'.$fuel);
         self::assertResponseStatusCodeSame(Response::HTTP_METHOD_NOT_ALLOWED);
+    }
+
+    public function testACategoryRevisedOverAVersionSavedSinceIsRefusedAndOneWithoutAVersionToo(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $fuel = $this->category('Carburant');
+        $path = $this->companyPath().'/expense-categories/'.$fuel;
+        $this->sendJson('PUT', $path, ['name' => 'Carburant', 'parentId' => null, 'isActive' => true, 'version' => 1]);
+        self::assertSame(1, $this->json()['version'], 'a revision that changes nothing keeps its version');
+        $this->sendJson('PUT', $path, ['name' => 'Gazole', 'parentId' => null, 'isActive' => true, 'version' => 1]);
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $path, ['name' => 'Essence', 'parentId' => null, 'isActive' => true, 'version' => 1]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+
+        $this->sendJson('PUT', $path, ['name' => 'Essence', 'parentId' => null, 'isActive' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
+        $this->getJson($this->companyPath().'/expense-categories');
+        self::assertSame([['Gazole', 2]], array_map(static fn (array $row): array => [$row['name'], $row['version']], $this->jsonList()));
     }
 
     public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void

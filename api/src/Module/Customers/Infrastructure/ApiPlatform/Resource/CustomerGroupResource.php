@@ -20,6 +20,7 @@ use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\CreateCustom
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\DeleteCustomerGroupProcessor;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\ReviseCustomerGroupProcessor;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\CustomerGroupCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -50,8 +51,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/customer-groups/{groupId}',
@@ -83,10 +84,17 @@ final class CustomerGroupResource
     #[Groups([self::READ])]
     public int $customerCount = 0;
 
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(CustomerGroup $group, int $customerCount): self
     {
         $resource = new self();
         $resource->id = $group->getId()->toRfc4122();
+        $resource->version = $group->getVersion();
         $resource->name = $group->getName();
         $resource->description = $group->getDescription();
         $resource->customerCount = $customerCount;

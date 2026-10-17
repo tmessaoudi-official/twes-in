@@ -187,6 +187,8 @@ export interface ProductCategoryRow {
   parentId: string | null;
   productCount: number;
   childCount: number;
+  /** The version read, which a revision sends back; one saved since answers `record_changed`. */
+  version: number;
 }
 
 export type ProductCategoryInput = Pick<ProductCategoryRow, 'name' | 'parentId'>;

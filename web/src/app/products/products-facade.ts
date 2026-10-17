@@ -151,9 +151,10 @@ export class ProductsFacade {
     companyId: string,
     id: string,
     input: ProductCategoryInput,
+    version: number | null,
   ): Promise<boolean> {
     return this.write(
-      () => this.api.reviseCategory(companyId, id, input),
+      () => this.api.reviseCategory(companyId, id, input, version),
       () => this.reloadCategories(companyId),
     );
   }

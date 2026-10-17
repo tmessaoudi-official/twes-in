@@ -20,6 +20,7 @@ use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\CreateProduct
 use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\DeleteProductCategoryProcessor;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\ReviseProductCategoryProcessor;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Provider\ProductCategoryCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -51,8 +52,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/product-categories/{categoryId}',
@@ -89,10 +90,17 @@ final class ProductCategoryResource
     #[Groups([self::READ])]
     public int $childCount = 0;
 
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(ProductCategory $category, int $productCount, int $childCount): self
     {
         $resource = new self();
         $resource->id = $category->getId()->toRfc4122();
+        $resource->version = $category->getVersion();
         $resource->name = $category->getName();
         $resource->parentId = $category->getParent()?->getId()->toRfc4122();
         $resource->productCount = $productCount;

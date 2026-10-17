@@ -71,7 +71,7 @@ describe('ProductsPage', () => {
     busy: signal(false).asReadonly(),
     products: signal<readonly ProductRow[]>([laptop]).asReadonly(),
     categories: signal<readonly ProductCategoryRow[]>([
-      { id: 'k1', name: 'Matériel', parentId: null, productCount: 1, childCount: 0 },
+      { id: 'k1', name: 'Matériel', parentId: null, productCount: 1, childCount: 0, version: 1 },
     ]).asReadonly(),
     options: signal<ProductOptions | null>({
       currency: 'TND',

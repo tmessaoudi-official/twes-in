@@ -36,7 +36,7 @@ final readonly class ReviseExpenseCategoryProcessor implements ProcessorInterfac
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ExpensePermission::WRITE);
 
         try {
-            $category = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'categoryId'), $data->name, null === $data->parentId ? null : Uuid::fromString($data->parentId), $data->isActive, $this->guard->account()->getId());
+            $category = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'categoryId'), $data->name, null === $data->parentId ? null : Uuid::fromString($data->parentId), $data->isActive, $this->guard->account()->getId(), $data->version);
         } catch (ExpenseCategoryNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (ExpenseCategoryNameTaken $taken) {

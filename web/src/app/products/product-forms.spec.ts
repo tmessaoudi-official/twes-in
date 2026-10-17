@@ -36,6 +36,7 @@ const hardware: ProductCategoryRow = {
   parentId: null,
   productCount: 0,
   childCount: 1,
+  version: 1,
 };
 const laptops: ProductCategoryRow = {
   id: 'k2',
@@ -43,6 +44,7 @@ const laptops: ProductCategoryRow = {
   parentId: 'k1',
   productCount: 1,
   childCount: 1,
+  version: 1,
 };
 const gaming: ProductCategoryRow = {
   id: 'k3',
@@ -50,6 +52,7 @@ const gaming: ProductCategoryRow = {
   parentId: 'k2',
   productCount: 0,
   childCount: 0,
+  version: 1,
 };
 const laptop: ProductRow = {
   id: 'p1',

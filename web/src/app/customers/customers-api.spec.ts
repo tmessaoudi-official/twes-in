@@ -221,6 +221,32 @@ describe('CustomersApi', () => {
     await expect(inUse).rejects.toMatchObject({ code: 'in_use' });
   });
 
+  it('revises a group with the version it was opened at, and tells one saved since from a name taken', async () => {
+    const revised = api.reviseGroup('c1', 'g1', { name: 'Grossistes', description: null }, 3);
+    const put = http.expectOne('/api/companies/c1/customer-groups/g1');
+    expect([put.request.method, put.request.body]).toEqual([
+      'PUT',
+      { name: 'Grossistes', description: null, version: 3 },
+    ]);
+    put.flush({ id: 'g1', name: 'Grossistes', description: null, customerCount: 0, version: 4 });
+    expect((await revised).version).toBe(4);
+
+    const changed = api.reviseGroup('c1', 'g1', { name: 'Revendeurs', description: null }, 3);
+    http
+      .expectOne('/api/companies/c1/customer-groups/g1')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(changed).rejects.toMatchObject({ code: 'record_changed' });
+
+    const taken = api.reviseGroup('c1', 'g1', { name: 'Revendeurs', description: null }, 4);
+    http
+      .expectOne('/api/companies/c1/customer-groups/g1')
+      .flush({}, { status: 409, statusText: 'Conflict' });
+    await expect(taken).rejects.toMatchObject({ code: 'name_taken' });
+  });
+
   it('adds a contact under its customer and removes one', async () => {
     const contact = {
       firstName: 'Leila',

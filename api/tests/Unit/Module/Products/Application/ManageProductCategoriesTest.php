@@ -26,6 +26,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryProductCategories;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySettings;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -47,7 +48,7 @@ final class ManageProductCategoriesTest extends TestCase
         $this->settings = new InMemorySettings();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManageProductCategories($this->categories, $this->products, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
+        $this->manage = new ManageProductCategories($this->categories, $this->products, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 
