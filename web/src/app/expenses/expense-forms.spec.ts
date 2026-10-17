@@ -35,10 +35,29 @@ const vehicles: ExpenseCategoryRow = {
   name: 'Véhicules',
   parentId: null,
   isActive: true,
+  version: 1,
 };
-const fuel: ExpenseCategoryRow = { id: 'k2', name: 'Carburant', parentId: 'k1', isActive: true };
-const diesel: ExpenseCategoryRow = { id: 'k3', name: 'Gasoil', parentId: 'k2', isActive: false };
-const office: ExpenseCategoryRow = { id: 'k4', name: 'Bureau', parentId: null, isActive: true };
+const fuel: ExpenseCategoryRow = {
+  id: 'k2',
+  name: 'Carburant',
+  parentId: 'k1',
+  isActive: true,
+  version: 1,
+};
+const diesel: ExpenseCategoryRow = {
+  id: 'k3',
+  name: 'Gasoil',
+  parentId: 'k2',
+  isActive: false,
+  version: 1,
+};
+const office: ExpenseCategoryRow = {
+  id: 'k4',
+  name: 'Bureau',
+  parentId: null,
+  isActive: true,
+  version: 1,
+};
 
 const options: ExpenseOptions = {
   currency: 'TND',

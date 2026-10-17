@@ -39,9 +39,11 @@ final class CustomerGroupsTest extends ApiTestCase
         self::assertSame(0, $created['customerCount']);
         $id = $this->stringAt($created, 'id');
 
-        $this->sendJson('PUT', $this->path($id), ['name' => 'Grossistes B2B', 'description' => null]);
+        self::assertSame(1, $created['version']);
+        $this->sendJson('PUT', $this->path($id), ['name' => 'Grossistes B2B', 'description' => null, 'version' => 1]);
         self::assertResponseIsSuccessful();
         self::assertNull($this->json()['description']);
+        self::assertSame(2, $this->json()['version']);
 
         $this->getJson($this->path());
         self::assertSame(['Grossistes B2B'], array_column($this->jsonList(), 'name'));
@@ -53,6 +55,37 @@ final class CustomerGroupsTest extends ApiTestCase
 
         $actions = $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'customer_group' ORDER BY at, action");
         self::assertEqualsCanonicalizing(['customer_group.created', 'customer_group.revised', 'customer_group.deleted'], $actions);
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->postJson($this->path(), ['name' => 'Grossistes', 'description' => null]);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->sendJson('PUT', $this->path($id), ['name' => 'Grossistes B2B', 'description' => null, 'version' => 1]);
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'Revendeurs', 'description' => null, 'version' => 1]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path());
+        self::assertSame([['Grossistes B2B', 2]], array_map(static fn (array $row): array => [$row['name'], $row['version']], $this->jsonList()));
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersionAndOneWithoutAVersionIsRefused(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->postJson($this->path(), ['name' => 'Grossistes', 'description' => null]);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'Grossistes', 'description' => null, 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'Revendeurs', 'description' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     public function testANameAnotherGroupHasAnswersConflictAndABlankOneIsRefused(): void
@@ -106,7 +139,7 @@ final class CustomerGroupsTest extends ApiTestCase
 
         $this->sendJson('DELETE', $this->path($theirs->getId()->toRfc4122()));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        $this->sendJson('PUT', $this->path('not-a-uuid'), ['name' => 'x']);
+        $this->sendJson('PUT', $this->path('not-a-uuid'), ['name' => 'x', 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 

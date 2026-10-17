@@ -56,6 +56,7 @@ const hardware: ProductCategoryRow = {
   parentId: null,
   productCount: 0,
   childCount: 0,
+  version: 1,
 };
 const options: ProductOptions = {
   currency: 'TND',
@@ -216,8 +217,14 @@ describe('ProductsFacade', () => {
     api.createCategory.mockResolvedValue(hardware);
     expect(await facade.createCategory('c1', { name: 'Matériel', parentId: null })).toBe(true);
     api.reviseCategory.mockResolvedValue(hardware);
-    expect(await facade.reviseCategory('c1', 'k1', { name: 'Matériel', parentId: null })).toBe(
+    expect(await facade.reviseCategory('c1', 'k1', { name: 'Matériel', parentId: null }, 2)).toBe(
       true,
+    );
+    expect(api.reviseCategory).toHaveBeenCalledWith(
+      'c1',
+      'k1',
+      { name: 'Matériel', parentId: null },
+      2,
     );
     api.deleteCategory.mockResolvedValue(undefined);
     expect(await facade.deleteCategory('c1', 'k1')).toBe(true);

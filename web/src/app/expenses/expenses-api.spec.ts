@@ -438,6 +438,25 @@ describe('ExpensesApi', () => {
       .flush(null, { status: 409, statusText: 'Conflict' });
     await expect(taken).rejects.toEqual(new ExpensesRefused('name_taken'));
 
+    const fuelCategory = { name: 'Carburant', parentId: null, isActive: true };
+    const revised = api.reviseCategory('c1', 'k1', fuelCategory, 2);
+    const put = http.expectOne('/api/companies/c1/expense-categories/k1');
+    expect([put.request.method, put.request.body]).toEqual([
+      'PUT',
+      { ...fuelCategory, version: 2 },
+    ]);
+    put.flush({ id: 'k1', ...fuelCategory, version: 3 });
+    expect((await revised).version).toBe(3);
+
+    const stale = api.reviseCategory('c1', 'k1', fuelCategory, 2);
+    http
+      .expectOne('/api/companies/c1/expense-categories/k1')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(stale).rejects.toEqual(new ExpensesRefused('record_changed'));
+
     const file = new File(['Bonjour'], 'facture.pdf', { type: 'application/pdf' });
     const refused = api.attach('c1', 'e1', file);
     http
@@ -597,7 +616,7 @@ describe('ExpensesApi', () => {
       .expectOne('/api/companies/c1/expense-categories')
       .flush([{ id: 'k1', name: 'Carburant', parentId: null, isActive: false }]);
     expect(await categories).toEqual([
-      { id: 'k1', name: 'Carburant', parentId: null, isActive: false },
+      { id: 'k1', name: 'Carburant', parentId: null, isActive: false, version: 0 },
     ]);
   });
 });

@@ -230,9 +230,10 @@ export class ExpensesFacade {
     companyId: string,
     id: string,
     input: ExpenseCategoryInput,
+    version: number | null,
   ): Promise<boolean> {
     return this.write(
-      () => this.api.reviseCategory(companyId, id, input),
+      () => this.api.reviseCategory(companyId, id, input, version),
       async () => this.categoriesSignal.set(await this.api.categories(companyId)),
     );
   }

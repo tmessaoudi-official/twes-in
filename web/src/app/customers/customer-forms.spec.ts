@@ -35,7 +35,7 @@ const options: CustomerOptions = {
 };
 
 const groups: CustomerGroupRow[] = [
-  { id: 'g1', name: 'Grossistes', description: null, customerCount: 2 },
+  { id: 'g1', name: 'Grossistes', description: null, customerCount: 2, version: 1 },
 ];
 
 const carthage: CustomerRow = {

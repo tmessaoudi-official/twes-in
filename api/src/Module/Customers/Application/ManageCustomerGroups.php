@@ -17,6 +17,8 @@ use App\Module\Customers\Domain\Repository\CustomerGroupRepository;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -41,6 +43,7 @@ final readonly class ManageCustomerGroups
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -78,11 +81,15 @@ final readonly class ManageCustomerGroups
      * @throws CustomerGroupNotFound
      * @throws CustomerGroupNameTaken
      * @throws InvalidCustomerGroup
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, string $name, ?string $description, ?Uuid $actorUserId): CustomerGroup
+    public function revise(Company $company, Uuid $id, string $name, ?string $description, ?Uuid $actorUserId, ?int $version = null): CustomerGroup
     {
-        return $this->transactions->run(function () use ($company, $id, $name, $description, $actorUserId): CustomerGroup {
+        return $this->transactions->run(function () use ($company, $id, $name, $description, $actorUserId, $version): CustomerGroup {
             $group = $this->find($company, $id);
+            if (null !== $version) {
+                $this->versions->expect($group, $version);
+            }
             $holder = $this->groups->ofNameInCompany(trim($name), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($group->getId())) {
                 throw new CustomerGroupNameTaken();

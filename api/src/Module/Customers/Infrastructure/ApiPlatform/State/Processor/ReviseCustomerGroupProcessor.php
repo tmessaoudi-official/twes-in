@@ -35,7 +35,7 @@ final readonly class ReviseCustomerGroupProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CustomerPermission::WRITE);
 
         try {
-            $group = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'groupId'), $data->name, $data->description, $this->guard->account()->getId());
+            $group = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'groupId'), $data->name, $data->description, $this->guard->account()->getId(), $data->version);
         } catch (CustomerGroupNotFound $absent) {
             throw new NotFoundHttpException('No such customer group.', $absent);
         } catch (CustomerGroupNameTaken $taken) {

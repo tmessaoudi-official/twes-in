@@ -66,6 +66,7 @@ const wholesalers: CustomerGroupRow = {
   name: 'Grossistes',
   description: null,
   customerCount: 1,
+  version: 1,
 };
 
 describe('CustomersPage', () => {

@@ -73,6 +73,8 @@ export interface CustomerGroupRow {
   name: string;
   description: string | null;
   customerCount: number;
+  /** The version read, which a revision sends back; one saved since answers `record_changed`. */
+  version: number;
 }
 
 export type CustomerGroupInput = Pick<CustomerGroupRow, 'name' | 'description'>;

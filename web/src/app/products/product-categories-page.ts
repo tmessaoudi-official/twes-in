@@ -34,12 +34,15 @@ import { PageTabs } from '../shared/ui/page-tabs';
 import { PRODUCTS_TABS } from './products-nav';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { listRecord } from '../shared/form/list-record';
+import { RecordChanged } from '../shared/form/record-changed';
 
 /** The tree products are filed in: a category sits under another or at the top, and goes only once empty. */
 @Component({
   selector: 'app-product-categories-page',
   imports: [
     PageTabs,
+    RecordChanged,
     MatButtonModule,
     MatCardModule,
     TranslatePipe,
@@ -140,6 +143,19 @@ export class ProductCategoriesPage implements OnInit {
     return editing === null || editing === 'new' ? null : { productCategoryId: editing.id };
   });
 
+  /** The saved version the open form stands on, and what another person's save changed in it. */
+  protected readonly sync = listRecord({
+    kind: 'product_category',
+    editing: this.editing,
+    rows: this.facade.categories,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.loadCategories(companyId);
+    },
+    values: categoryValues,
+  });
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
@@ -170,10 +186,13 @@ export class ProductCategoriesPage implements OnInit {
     const accepted =
       editing === 'new'
         ? await this.facade.createCategory(companyId, input)
-        : await this.facade.reviseCategory(companyId, editing.id, input);
+        : await this.facade.reviseCategory(companyId, editing.id, input, this.sync.version());
     if (accepted) {
       this.editing.set(null);
       this.feedback.success('products.categories.saved');
+    } else if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 

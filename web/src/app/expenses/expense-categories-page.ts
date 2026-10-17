@@ -34,12 +34,15 @@ import { ExpensesFacade } from './expenses-facade';
 import { expensesTabs, RECURRING_EXPENSES_MODULE } from './expenses-nav';
 import type { ExpenseCategoryRow } from './expenses-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { listRecord } from '../shared/form/list-record';
+import { RecordChanged } from '../shared/form/record-changed';
 
 /** The tree expenses are filed in: a category sits under another or at the top, and is deactivated, never deleted. */
 @Component({
   selector: 'app-expense-categories-page',
   imports: [
     PageTabs,
+    RecordChanged,
     MatButtonModule,
     MatCardModule,
     TranslatePipe,
@@ -112,6 +115,19 @@ export class ExpenseCategoriesPage implements OnInit {
     },
   });
 
+  /** The saved version the open form stands on, and what another person's save changed in it. */
+  protected readonly sync = listRecord({
+    kind: 'expense_category',
+    editing: this.editing,
+    rows: this.facade.categories,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      if (companyId) await this.facade.loadCategories(companyId);
+    },
+    values: categoryValues,
+  });
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
@@ -142,10 +158,13 @@ export class ExpenseCategoriesPage implements OnInit {
     const accepted =
       editing === 'new'
         ? await this.facade.createCategory(companyId, input)
-        : await this.facade.reviseCategory(companyId, editing.id, input);
+        : await this.facade.reviseCategory(companyId, editing.id, input, this.sync.version());
     if (accepted) {
       this.editing.set(null);
       this.feedback.success('expenses.categories.saved');
+    } else if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 }

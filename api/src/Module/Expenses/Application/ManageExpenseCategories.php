@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Module\Expenses\Domain\Exception\InvalidExpense;
 use App\Module\Expenses\Domain\Model\ExpenseCategory;
 use App\Module\Expenses\Domain\Repository\ExpenseCategoryRepository;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -35,6 +37,7 @@ final readonly class ManageExpenseCategories
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -69,11 +72,15 @@ final readonly class ManageExpenseCategories
      * @throws ExpenseCategoryNotFound
      * @throws ExpenseCategoryNameTaken
      * @throws InvalidExpense
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, string $name, ?Uuid $parentId, bool $isActive, ?Uuid $actorUserId): ExpenseCategory
+    public function revise(Company $company, Uuid $id, string $name, ?Uuid $parentId, bool $isActive, ?Uuid $actorUserId, ?int $version = null): ExpenseCategory
     {
-        return $this->transactions->run(function () use ($company, $id, $name, $parentId, $isActive, $actorUserId): ExpenseCategory {
+        return $this->transactions->run(function () use ($company, $id, $name, $parentId, $isActive, $actorUserId, $version): ExpenseCategory {
             $category = $this->categories->ofIdInCompany($id, $company->getId()) ?? throw new ExpenseCategoryNotFound();
+            if (null !== $version) {
+                $this->versions->expect($category, $version);
+            }
             $holder = $this->categories->ofNameInCompany(trim($name), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($category->getId())) {
                 throw new ExpenseCategoryNameTaken();

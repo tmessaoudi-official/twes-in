@@ -128,9 +128,14 @@ export class CustomersFacade {
     );
   }
 
-  async reviseGroup(companyId: string, id: string, input: CustomerGroupInput): Promise<boolean> {
+  async reviseGroup(
+    companyId: string,
+    id: string,
+    input: CustomerGroupInput,
+    version: number | null,
+  ): Promise<boolean> {
     return this.write(
-      () => this.api.reviseGroup(companyId, id, input),
+      () => this.api.reviseGroup(companyId, id, input, version),
       () => this.reloadGroups(companyId),
     );
   }

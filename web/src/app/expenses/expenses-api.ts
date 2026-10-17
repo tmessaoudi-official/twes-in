@@ -11,6 +11,7 @@ import type {
   ApiCompaniesCompanyIdexpensesGetCollectionResponse,
   ExpenseAttachmentExpenseAttachmentRead,
   ExpenseCategoryExpenseCategoryRead,
+  ExpenseCategoryExpenseCategoryWriteRecordReviseValidationExpenseCategoryWriteRecordRevise as ExpenseCategoryRevise,
   ExpenseCategoryExpenseCategoryWriteValidationExpenseCategoryWrite as ExpenseCategoryExpenseCategoryWrite,
   ExpenseExpensePayValidationExpensePay as ExpenseExpensePay,
   ExpenseExpenseRead,
@@ -303,12 +304,14 @@ export class ExpensesApi {
     );
   }
 
+  /** `version` is the one the form was opened at: a later one saved elsewhere answers `record_changed`. */
   async reviseCategory(
     companyId: string,
     id: string,
     input: ExpenseCategoryInput,
+    version: number | null,
   ): Promise<ExpenseCategoryRow> {
-    const body: ExpenseCategoryExpenseCategoryWrite = { ...input };
+    const body: ExpenseCategoryRevise = { ...input, version };
     return this.guard(CATEGORY, async () =>
       toCategory(
         await firstValueFrom(
@@ -540,6 +543,8 @@ function toCategory(raw: ExpenseCategoryExpenseCategoryRead): ExpenseCategoryRow
     name: raw.name ?? '',
     parentId: raw.parentId ?? null,
     isActive: raw.isActive ?? true,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }
 

@@ -7,6 +7,7 @@ import type {
   ApiCompaniesCompanyIdproductsGetCollectionResponse,
   ProductCategoryProductCategoryRead,
   ProductJsonldProductRead,
+  ProductCategoryProductCategoryWriteRecordReviseValidationProductCategoryWriteRecordRevise as ProductCategoryRevise,
   ProductCategoryProductCategoryWriteValidationProductCategoryWrite as ProductCategoryProductCategoryWrite,
   ProductHomeProductHomeRead,
   ProductReorderPointProductReorderPointRead,
@@ -304,13 +305,17 @@ export class ProductsApi {
     );
   }
 
-  /** 422 when the new parent is the category itself or one of its subcategories. */
+  /**
+   * 422 when the new parent is the category itself or one of its subcategories. `version` is the one the form was
+   * opened at: a later one saved elsewhere answers `record_changed`.
+   */
   async reviseCategory(
     companyId: string,
     id: string,
     input: ProductCategoryInput,
+    version: number | null,
   ): Promise<ProductCategoryRow> {
-    const body: ProductCategoryProductCategoryWrite = { ...input };
+    const body: ProductCategoryRevise = { ...input, version };
     return this.guard(
       async () =>
         toCategory(
@@ -680,5 +685,7 @@ function toCategory(raw: ProductCategoryProductCategoryRead): ProductCategoryRow
     parentId: raw.parentId ?? null,
     productCount: raw.productCount ?? 0,
     childCount: raw.childCount ?? 0,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }

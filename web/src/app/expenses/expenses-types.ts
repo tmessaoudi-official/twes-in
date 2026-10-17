@@ -180,9 +180,11 @@ export interface ExpenseCategoryRow {
   name: string;
   parentId: string | null;
   isActive: boolean;
+  /** The version read, which a revision sends back; one saved since answers `record_changed`. */
+  version: number;
 }
 
-export type ExpenseCategoryInput = Omit<ExpenseCategoryRow, 'id'>;
+export type ExpenseCategoryInput = Omit<ExpenseCategoryRow, 'id' | 'version'>;
 
 /** One vendor as the expense form's picker answers it. */
 export interface ExpenseVendorOption {
@@ -217,7 +219,7 @@ export interface ExpenseChargeOption {
 export interface ExpenseOptions {
   currency: string;
   currencyScale: number;
-  categories: Omit<ExpenseCategoryRow, 'isActive'>[];
+  categories: Omit<ExpenseCategoryRow, 'isActive' | 'version'>[];
   taxes: ExpenseTaxOption[];
   charges: ExpenseChargeOption[];
   paymentMethods: PaymentMethod[];

@@ -25,7 +25,9 @@ import { CustomersFacade } from './customers-facade';
 import { PartySettings } from './party-settings-facade';
 import type { SettingRow } from '../shared/settings/settings-types';
 import type { CustomerGroupRow, CustomersError } from './customers-types';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -45,12 +47,14 @@ const wholesalers: CustomerGroupRow = {
   name: 'Grossistes',
   description: 'Remise 5 %',
   customerCount: 3,
+  version: 1,
 };
 
 describe('CustomerGroupsPage', () => {
   const error = signal<CustomersError | null>(null);
+  const groups = signal<readonly CustomerGroupRow[]>([wholesalers]);
   const facade = {
-    groups: signal<readonly CustomerGroupRow[]>([wholesalers]).asReadonly(),
+    groups: groups.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     loadGroups: vi.fn(),
@@ -98,7 +102,10 @@ describe('CustomerGroupsPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    groups.set([wholesalers]);
+    error.set(null);
     facade.loadGroups.mockReset().mockResolvedValue(undefined);
+    facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.createGroup.mockReset().mockResolvedValue(true);
     facade.reviseGroup.mockReset().mockResolvedValue(true);
     facade.deleteGroup.mockReset().mockResolvedValue(true);
@@ -160,10 +167,15 @@ describe('CustomerGroupsPage', () => {
     type('field-name', 'Grossistes TN');
     q('customer-group-save')!.click();
     await settle();
-    expect(facade.reviseGroup).toHaveBeenCalledWith('c1', 'g1', {
-      name: 'Grossistes TN',
-      description: 'Remise 5 %',
-    });
+    expect(facade.reviseGroup).toHaveBeenCalledWith(
+      'c1',
+      'g1',
+      {
+        name: 'Grossistes TN',
+        description: 'Remise 5 %',
+      },
+      1,
+    );
 
     // Deleting is destructive, so it sits behind "⋮" rather than under the pointer.
     q('row-more-g1')!.click();
@@ -177,6 +189,55 @@ describe('CustomerGroupsPage', () => {
     (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
     await settle();
     expect(facade.deleteGroup).toHaveBeenCalledWith('c1', 'g1');
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    q('row-action-edit-g1')!.click();
+    await settle();
+    facade.reviseGroup.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    facade.loadGroups.mockImplementationOnce(async () =>
+      groups.set([{ ...wholesalers, description: 'Remise 8 %', version: 2 }]),
+    );
+
+    type('field-name', 'Grossistes TN');
+    q('customer-group-save')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect((q('field-description') as HTMLTextAreaElement).value).toBe('Remise 8 %'),
+    );
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Grossistes TN');
+    expect(q('customer-groups-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('customer-group-save')!.click();
+    await settle();
+    expect(facade.reviseGroup).toHaveBeenLastCalledWith(
+      'c1',
+      'g1',
+      { name: 'Grossistes TN', description: 'Remise 8 %' },
+      2,
+    );
+  });
+
+  it('takes into the open form what another person saved on the same group', async () => {
+    q('row-action-edit-g1')!.click();
+    await settle();
+    facade.loadGroups.mockImplementationOnce(async () =>
+      groups.set([{ ...wholesalers, name: 'Revendeurs', version: 2 }]),
+    );
+
+    await announceSaved('customer_group', 'g1');
+    await settle();
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Revendeurs');
   });
 
   it('says a group still holding customers cannot go', async () => {

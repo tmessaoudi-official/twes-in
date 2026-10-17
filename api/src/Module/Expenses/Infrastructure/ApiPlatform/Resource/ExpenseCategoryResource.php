@@ -18,6 +18,7 @@ use App\Module\Expenses\Domain\Model\ExpenseCategory;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\CreateExpenseCategoryProcessor;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\ReviseExpenseCategoryProcessor;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Provider\ExpenseCategoryCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -49,8 +50,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
     ],
 )]
@@ -76,10 +77,17 @@ final class ExpenseCategoryResource
     #[Groups([self::READ, self::WRITE])]
     public bool $isActive = true;
 
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(ExpenseCategory $category): self
     {
         $resource = new self();
         $resource->id = $category->getId()->toRfc4122();
+        $resource->version = $category->getVersion();
         $resource->name = $category->getName();
         $resource->parentId = $category->getParent()?->getId()->toRfc4122();
         $resource->isActive = $category->isActive();

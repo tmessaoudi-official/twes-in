@@ -47,8 +47,6 @@ final class RecordVersionsTest extends KernelTestCase
     private const array WAITING = [
         '/platform/companies/{companyId}/subscription',
         '/companies/{companyId}/customers/{customerId}/contacts/{contactId}',
-        '/companies/{companyId}/customer-groups/{groupId}',
-        '/companies/{companyId}/expense-categories/{categoryId}',
         '/companies/{companyId}/products/{productId}/home-locations',
         '/companies/{companyId}/products/{productId}/home-locations/{establishmentId}',
         '/companies/{companyId}/products/{productId}/reorder-points/{establishmentId}',
@@ -58,7 +56,6 @@ final class RecordVersionsTest extends KernelTestCase
         '/companies/{companyId}/stock-structures/{structureId}',
         '/companies/{companyId}/price-lists/{priceListId}',
         '/companies/{companyId}/products/{productId}/barcodes',
-        '/companies/{companyId}/product-categories/{categoryId}',
         '/companies/{companyId}/recurring-invoices/{recurringInvoiceId}',
         '/companies/{companyId}/recurring-expenses/{recurringExpenseId}',
         '/companies/{companyId}/roles/{roleId}',
