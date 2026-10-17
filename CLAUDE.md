@@ -545,6 +545,9 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   test's `mkdir` of a fixture folder are followed by hand. A class moved into a folder of its own changes API Platform's
   discovery order, which the oracle reads as another order, not another content; two routes that can match one request
   must not change places (2026-10-16; flagged for the next expertise refresh).
+- When a PUT starts requiring a version, `git grep` its address over `web/e2e` before the push: a scenario's cleanup
+  calls it straight from the page, without one, and turns red after passing (`numbering.spec.ts`, 2026-10-17). A
+  cleanup sends the version read just before, never the one read when the scenario began.
 - `make up`'s api and worker run the `api-vendor` volume, which only the one-shot `migrate` service's `composer install`
   fills: after a Composer change the live api dies at boot until `make up` runs again (2026-10-16: « Rate limiter
   "mfa_verify" requires the Lock component », five hours unhealthy while CI, on fresh images, was green).
