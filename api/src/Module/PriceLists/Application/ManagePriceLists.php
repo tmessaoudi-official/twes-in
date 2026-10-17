@@ -18,6 +18,8 @@ use App\Module\PriceLists\Domain\Model\PriceList;
 use App\Module\PriceLists\Domain\Model\PriceListItem;
 use App\Module\PriceLists\Domain\Repository\PriceListRepository;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -43,6 +45,7 @@ final readonly class ManagePriceLists
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -83,11 +86,15 @@ final readonly class ManagePriceLists
      * @throws PriceListNotFound
      * @throws PriceListNameTaken
      * @throws InvalidPriceList
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $id, PriceListInput $input, ?Uuid $actorUserId): PriceList
+    public function revise(Company $company, Uuid $id, PriceListInput $input, ?Uuid $actorUserId, ?int $version = null): PriceList
     {
-        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): PriceList {
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): PriceList {
             $list = $this->get($company, $id);
+            if (null !== $version) {
+                $this->versions->expect($list, $version);
+            }
             $holder = $this->lists->ofNameInCompany(trim($input->name), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($list->getId())) {
                 throw new PriceListNameTaken();

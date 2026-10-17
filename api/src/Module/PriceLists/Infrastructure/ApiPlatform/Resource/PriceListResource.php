@@ -24,6 +24,7 @@ use App\Module\PriceLists\Infrastructure\ApiPlatform\State\Processor\DeletePrice
 use App\Module\PriceLists\Infrastructure\ApiPlatform\State\Processor\RevisePriceListProcessor;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\State\Provider\PriceListCollectionProvider;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\State\Provider\PriceListItemProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -65,8 +66,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Delete(
             uriTemplate: '/companies/{companyId}/price-lists/{priceListId}',
@@ -117,6 +118,12 @@ final class PriceListResource
     #[Groups([self::READ])]
     public int $itemCount = 0;
 
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     /**
      * Its prices; sent on a save they become exactly these, left out they stay. Read on one list, not in the collection.
      *
@@ -139,6 +146,7 @@ final class PriceListResource
         $resource->validTo = $list->getValidTo()?->format('Y-m-d');
         $resource->isActive = $list->isActive();
         $resource->itemCount = \count($list->getItems());
+        $resource->version = $list->getVersion();
         $resource->items = $withItems ? array_map(PriceListItemRow::of(...), $list->getItems()) : null;
 
         return $resource;

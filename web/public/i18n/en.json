@@ -4084,7 +4084,9 @@
       "name_taken": "Another price list already has this name.",
       "invalid": "The price list is refused: check the name, the dates, the customer or group and the prices.",
       "refused": "You are not allowed to do this."
-    }
+    },
+    "scope_conflict": "Whom it is for was changed in the saved version too.",
+    "prices_conflict": "The prices were changed in the saved version too."
   },
   "select": {
     "placeholder": "Choose",

@@ -21,6 +21,13 @@
   }
 
   @if (editing() !== null) {
+    @if (sync.changedBy(); as changedBy) {
+      <app-record-changed
+        [changedBy]="changedBy"
+        [conflictCount]="sync.conflicts().length"
+        (reload)="reloadSaved()"
+      />
+    }
     <mat-card appearance="outlined">
       <mat-card-content>
         <form
@@ -30,7 +37,11 @@
           data-testid="price-list-form"
         >
           <div class="flex flex-wrap items-start gap-3">
-            <mat-form-field class="min-w-0 flex-1" subscriptSizing="dynamic">
+            <mat-form-field
+              class="min-w-0 flex-1"
+              subscriptSizing="dynamic"
+              [class.twes-field-updated]="sync.updated().has('name')"
+            >
               <mat-label>{{ 'price_lists.fields.name' | translate }}</mat-label>
               <input matInput formControlName="name" required data-testid="price-list-name" />
             </mat-form-field>
@@ -66,6 +77,14 @@
               </div>
             }
           </div>
+          <ng-container *ngTemplateOutlet="fieldConflict; context: { $implicit: 'name' }" />
+          @if (sync.conflicts().some(isScopeConflict)) {
+            <app-part-conflict
+              field="scope"
+              message="price_lists.scope_conflict"
+              (resolved)="resolve($event)"
+            />
+          }
           <div class="flex flex-wrap items-center gap-3">
             <mat-form-field subscriptSizing="dynamic">
               <mat-label>{{ 'price_lists.fields.valid_from' | translate }}</mat-label>
@@ -101,76 +120,92 @@
               'price_lists.fields.active' | translate
             }}</mat-slide-toggle>
           </div>
+          @for (field of ['validFrom', 'validTo', 'isActive']; track field) {
+            <ng-container *ngTemplateOutlet="fieldConflict; context: { $implicit: field }" />
+          }
 
           <h2 class="text-lg font-semibold">{{ 'price_lists.prices.title' | translate }}</h2>
-          <div class="flex flex-col gap-3" formArrayName="items">
-            @for (row of form.controls.items.controls; track row; let i = $index) {
-              <div
-                class="grid items-start gap-x-3 sm:grid-cols-12"
-                [formGroupName]="i"
-                [attr.data-testid]="'price-row-' + i"
-              >
-                <div class="sm:col-span-5">
-                  <app-pick-field
-                    [label]="'price_lists.prices.product' | translate"
-                    [testId]="'price-row-' + i + '-product'"
-                    [search]="searchProducts"
-                    [value]="productOf(row)"
-                    [noneFoundLabel]="'price_lists.no_product_found' | translate"
-                    (picked)="chooseProduct(row, $event)"
-                  />
-                </div>
-                <mat-form-field class="sm:col-span-3">
-                  <mat-label>{{ 'price_lists.prices.min_quantity' | translate }}</mat-label>
-                  <input
-                    matInput
-                    formControlName="minQuantity"
-                    appDecimal
-                    [attr.data-testid]="'price-row-' + i + '-min'"
-                  />
-                </mat-form-field>
-                <mat-form-field class="sm:col-span-3">
-                  <mat-label>{{ 'price_lists.prices.unit_price' | translate }}</mat-label>
-                  <input
-                    matInput
-                    formControlName="unitPriceNet"
-                    appDecimal
-                    [attr.data-testid]="'price-row-' + i + '-price'"
-                  />
-                </mat-form-field>
-                <div class="pt-2 sm:col-span-1">
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    (click)="removeRow(i)"
-                    [attr.data-testid]="'price-row-' + i + '-remove'"
-                  >
-                    {{ 'price_lists.prices.remove' | translate }}
-                  </button>
-                </div>
-                @if (figuresOf(row); as figures) {
-                  @let line = lineOf(figures);
-                  <p
-                    class="m-0 pb-2 text-sm opacity-80 sm:col-span-12"
-                    [attr.data-testid]="'price-row-' + i + '-figures'"
-                  >
-                    {{ line.key | translate: line.params }}
-                  </p>
-                  @if (figures.belowCost) {
-                    <p
-                      class="m-0 pb-2 text-sm font-medium text-error sm:col-span-12"
-                      [attr.data-testid]="'price-row-' + i + '-below-cost'"
+          @if (sync.conflicts().some(isPricesConflict)) {
+            <app-part-conflict
+              field="items"
+              message="price_lists.prices_conflict"
+              (resolved)="resolve($event)"
+            />
+          }
+          <div
+            class="flex flex-col gap-3"
+            [formGroup]="prices"
+            [class.twes-field-updated]="sync.updated().has('items')"
+          >
+            <div class="flex flex-col gap-3" formArrayName="items">
+              @for (row of prices.controls.items.controls; track row; let i = $index) {
+                <div
+                  class="grid items-start gap-x-3 sm:grid-cols-12"
+                  [formGroupName]="i"
+                  [attr.data-testid]="'price-row-' + i"
+                >
+                  <div class="sm:col-span-5">
+                    <app-pick-field
+                      [label]="'price_lists.prices.product' | translate"
+                      [testId]="'price-row-' + i + '-product'"
+                      [search]="searchProducts"
+                      [value]="productOf(row)"
+                      [noneFoundLabel]="'price_lists.no_product_found' | translate"
+                      (picked)="chooseProduct(row, $event)"
+                    />
+                  </div>
+                  <mat-form-field class="sm:col-span-3">
+                    <mat-label>{{ 'price_lists.prices.min_quantity' | translate }}</mat-label>
+                    <input
+                      matInput
+                      formControlName="minQuantity"
+                      appDecimal
+                      [attr.data-testid]="'price-row-' + i + '-min'"
+                    />
+                  </mat-form-field>
+                  <mat-form-field class="sm:col-span-3">
+                    <mat-label>{{ 'price_lists.prices.unit_price' | translate }}</mat-label>
+                    <input
+                      matInput
+                      formControlName="unitPriceNet"
+                      appDecimal
+                      [attr.data-testid]="'price-row-' + i + '-price'"
+                    />
+                  </mat-form-field>
+                  <div class="pt-2 sm:col-span-1">
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      (click)="removeRow(i)"
+                      [attr.data-testid]="'price-row-' + i + '-remove'"
                     >
-                      {{ 'price_lists.prices.below_cost' | translate }}
+                      {{ 'price_lists.prices.remove' | translate }}
+                    </button>
+                  </div>
+                  @if (figuresOf(row); as figures) {
+                    @let line = lineOf(figures);
+                    <p
+                      class="m-0 pb-2 text-sm opacity-80 sm:col-span-12"
+                      [attr.data-testid]="'price-row-' + i + '-figures'"
+                    >
+                      {{ line.key | translate: line.params }}
                     </p>
+                    @if (figures.belowCost) {
+                      <p
+                        class="m-0 pb-2 text-sm font-medium text-error sm:col-span-12"
+                        [attr.data-testid]="'price-row-' + i + '-below-cost'"
+                      >
+                        {{ 'price_lists.prices.below_cost' | translate }}
+                      </p>
+                    }
                   }
-                }
-              </div>
-            } @empty {
-              <p class="text-sm" data-testid="price-rows-empty">
-                {{ 'price_lists.prices.none' | translate }}
-              </p>
-            }
+                </div>
+              } @empty {
+                <p class="text-sm" data-testid="price-rows-empty">
+                  {{ 'price_lists.prices.none' | translate }}
+                </p>
+              }
+            </div>
           </div>
           <div>
             <button mat-stroked-button type="button" (click)="addRow()" data-testid="price-row-add">
@@ -189,6 +224,33 @@
         </form>
       </mat-card-content>
     </mat-card>
+    <ng-template #fieldConflict let-field>
+      @if (conflictOf(field); as conflict) {
+        <div class="twes-field-conflict" [attr.data-testid]="'field-conflict-' + field">
+          <span>{{
+            'live.theirs' | translate: { value: (theirsShown(conflict) | translate) }
+          }}</span>
+          <span class="flex flex-wrap gap-1">
+            <button
+              mat-button
+              type="button"
+              (click)="resolve({ field, choice: 'theirs' })"
+              [attr.data-testid]="'field-take-theirs-' + field"
+            >
+              {{ 'live.take_theirs' | translate }}
+            </button>
+            <button
+              mat-button
+              type="button"
+              (click)="resolve({ field, choice: 'mine' })"
+              [attr.data-testid]="'field-keep-mine-' + field"
+            >
+              {{ 'live.keep_mine' | translate }}
+            </button>
+          </span>
+        </div>
+      }
+    </ng-template>
   }
 
   <app-data-list

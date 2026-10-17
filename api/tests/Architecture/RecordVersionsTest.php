@@ -47,7 +47,6 @@ final class RecordVersionsTest extends KernelTestCase
     /** Not done yet: each slice strikes its own off. */
     private const array WAITING = [
         '/platform/companies/{companyId}/subscription',
-        '/companies/{companyId}/price-lists/{priceListId}',
         '/companies/{companyId}/recurring-invoices/{recurringInvoiceId}',
         '/companies/{companyId}/recurring-expenses/{recurringExpenseId}',
     ];

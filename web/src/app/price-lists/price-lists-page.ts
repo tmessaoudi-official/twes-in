@@ -21,8 +21,15 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { NgTemplateOutlet } from '@angular/common';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import type { DescriptorFormGroup } from '../shared/form/form-builder';
+import type { FieldValue } from '../shared/form/form-types';
+import type { FieldConflict } from '../shared/form/form-merge';
+import { liveRecord } from '../shared/form/live-record';
+import { PartConflict } from '../shared/form/part-conflict';
+import { RecordChanged } from '../shared/form/record-changed';
 import { Select, type SelectOption } from '../shared/form/select';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
@@ -65,10 +72,18 @@ function itemGroup(item: PriceListItem | null): ItemGroup {
   });
 }
 
+/** The prices as one comparable text: equal texts are the same prices, in the same order. */
+function pricesKey(
+  items: readonly Pick<PriceListItem, 'productId' | 'minQuantity' | 'unitPriceNet'>[],
+): string {
+  return JSON.stringify(items.map((item) => [item.productId, item.minQuantity, item.unitPriceNet]));
+}
+
 /**
  * Price lists: each for everyone, for the customers of a group or for one customer, between two days or without end,
  * holding the net price of a product from a quantity up. An edit sends the whole list, its prices included, which
- * become exactly the rows shown.
+ * become exactly the rows shown. Another person's save of the open list merges into it: each field with a control on
+ * its own, whom it is for and its prices each as one part.
  */
 @Component({
   selector: 'app-price-lists-page',
@@ -89,6 +104,9 @@ function itemGroup(item: PriceListItem | null): ItemGroup {
     DayCalendarButton,
     PickField,
     StatusBadge,
+    RecordChanged,
+    PartConflict,
+    NgTemplateOutlet,
   ],
   templateUrl: './price-lists-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -129,14 +147,84 @@ export class PriceListsPage implements OnInit {
   protected readonly editing = signal<PriceListRow | 'new' | null>(null);
   protected readonly scope = signal<PriceListScope>('everyone');
   protected readonly customer = signal<PickOption | null>(null);
-  protected readonly form = new FormGroup({
+  /** The list's own fields, typed as the page reads them. */
+  private readonly fields = {
     name: new FormControl('', { nonNullable: true }),
     customerGroupId: new FormControl('', { nonNullable: true }),
     validFrom: new FormControl('', { nonNullable: true }),
     validTo: new FormControl('', { nonNullable: true }),
     isActive: new FormControl(true, { nonNullable: true }),
-    items: new FormArray<ItemGroup>([]),
+  };
+  /** The same fields as a form the merge reads, each a control holding a value. */
+  protected readonly form: DescriptorFormGroup = new FormGroup<
+    Record<string, FormControl<FieldValue>>
+  >(this.fields);
+  /** The prices, a group of their own beside the form: they merge as one part, never field by field. */
+  protected readonly prices = new FormGroup({ items: new FormArray<ItemGroup>([]) });
+  /** The open list as it is saved, its prices included, read again when someone saves it. */
+  private readonly saved = signal<PriceListRow | null>(null);
+
+  /**
+   * The saved version the open list stands on, and what another person's save changed in it. The group is left out of
+   * the fields merged one by one: it is part of whom the list is for, and taken alone it could land behind another
+   * scope, where nobody sees it and a save drops it.
+   */
+  protected readonly sync = liveRecord({
+    kind: 'price_list',
+    id: () => this.openId(),
+    form: () => (this.openId() === null ? null : this.form),
+    reload: () => this.readOpen(),
+    saved: () => {
+      const row = this.saved();
+      return row === null
+        ? null
+        : {
+            name: row.name,
+            validFrom: row.validFrom ?? '',
+            validTo: row.validTo ?? '',
+            isActive: row.isActive,
+          };
+    },
+    version: () => this.saved()?.version ?? null,
+    parts: [
+      {
+        field: 'scope',
+        saved: () => {
+          const row = this.saved();
+          return row === null
+            ? null
+            : `${scopeOf(row)}|${row.customerGroupId ?? ''}|${row.customerId ?? ''}`;
+        },
+        shown: () => {
+          const scope = this.scope();
+          const group = scope === 'group' ? this.fields.customerGroupId.value : '';
+          return `${scope}|${group}|${scope === 'customer' ? (this.customer()?.id ?? '') : ''}`;
+        },
+        take: () => {
+          const row = this.saved();
+          if (row === null) return;
+          this.showScope(row);
+          void this.nameCustomer(row);
+        },
+      },
+      {
+        field: 'items',
+        saved: () => {
+          const items = this.saved()?.items;
+          return items == null ? null : pricesKey(items);
+        },
+        shown: () => pricesKey(this.prices.controls.items.getRawValue()),
+        take: () => {
+          const row = this.saved();
+          if (row !== null) this.showPrices(row);
+        },
+      },
+    ],
   });
+  protected readonly isScopeConflict = (conflict: FieldConflict): boolean =>
+    conflict.field === 'scope';
+  protected readonly isPricesConflict = (conflict: FieldConflict): boolean =>
+    conflict.field === 'items';
 
   protected readonly list = computed<ListDescriptor<PriceListRow>>(() => ({
     ...PRICE_LISTS_LIST,
@@ -197,25 +285,89 @@ export class PriceListsPage implements OnInit {
       validTo: row?.validTo ?? '',
       isActive: row?.isActive ?? true,
     });
-    this.form.controls.items.clear();
-    for (const item of row?.items ?? []) this.form.controls.items.push(itemGroup(item));
-    if (companyId && row?.items) {
+    this.prices.controls.items.clear();
+    if (row !== null) this.showPrices(row);
+    this.scope.set('everyone');
+    this.customer.set(null);
+    if (row !== null) this.showScope(row);
+    if (row?.customerId) await this.nameCustomer(row);
+    // Before the list counts as open: the form it is tracked from stands on this version.
+    this.saved.set(row);
+    this.editing.set(target === 'new' ? 'new' : row);
+  }
+
+  /** The id of the saved list open in the editor; null while none is, or a new one is written. */
+  private openId(): string | null {
+    const editing = this.editing();
+    return editing === null || editing === 'new' ? null : editing.id;
+  }
+
+  /** Reads the open list again, its prices included, which the collection does not carry. */
+  private async readOpen(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.openId();
+    if (!companyId || id === null) return;
+    const row = await this.facade.open(companyId, id);
+    if (row !== null && this.openId() === id) this.saved.set(row);
+  }
+
+  /** Whom the list is for, as saved: the scope, its group and its customer, named by `nameCustomer`. */
+  private showScope(row: PriceListRow): void {
+    this.scope.set(scopeOf(row));
+    this.fields.customerGroupId.setValue(row.customerGroupId ?? '');
+    this.customer.set(row.customerId ? { id: row.customerId, code: '', name: '' } : null);
+  }
+
+  /** The saved list's customer named as the picker names one, unless another was picked meanwhile. */
+  private async nameCustomer(row: PriceListRow): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!row.customerId || !companyId) return;
+    const [found] = await this.facade.pickCustomerIds(companyId, [row.customerId]);
+    if (found !== undefined && this.customer()?.id === row.customerId) this.customer.set(found);
+  }
+
+  /** The list's prices as saved, each row with its product's figures. */
+  private showPrices(row: PriceListRow): void {
+    const items = this.prices.controls.items;
+    items.clear();
+    for (const item of row.items ?? []) items.push(itemGroup(item));
+    const companyId = this.company()?.id;
+    if (companyId && row.items) {
       void this.facade.loadFigures(
         companyId,
         row.items.map((item) => item.productId),
       );
     }
-    this.scope.set(row === null ? 'everyone' : scopeOf(row));
-    this.customer.set(null);
-    if (row?.customerId && companyId) {
-      const [found] = await this.facade.pickCustomerIds(companyId, [row.customerId]);
-      this.customer.set(found ?? { id: row.customerId, code: '', name: '' });
+  }
+
+  /** Drops what was typed and shows the open list as it is saved. */
+  protected reloadSaved(): void {
+    this.sync.reloadSaved(this.form);
+  }
+
+  /** The choice made on what both sides changed: the saved version, or what is typed here. */
+  protected resolve(choice: { field: string; choice: 'theirs' | 'mine' }): void {
+    this.sync.resolve(this.form, choice);
+  }
+
+  /** The field both sides changed, when the field shown is one of them. */
+  protected conflictOf(field: string): FieldConflict | null {
+    return this.sync.conflicts().find((conflict) => conflict.field === field) ?? null;
+  }
+
+  /** What the saved version holds for a field both sides changed, as the field shows it. */
+  protected theirsShown(conflict: FieldConflict): string {
+    if (typeof conflict.theirs === 'boolean') {
+      return conflict.theirs ? 'price_lists.active' : 'price_lists.inactive';
     }
-    this.editing.set(target === 'new' ? 'new' : row);
+    const value = String(conflict.theirs ?? '');
+    if (value === '') return '—';
+    return conflict.field === 'name' ? value : this.format.day(value);
   }
 
   protected cancel(): void {
     this.editing.set(null);
+    this.saved.set(null);
     this.facade.clearError();
   }
 
@@ -224,11 +376,11 @@ export class PriceListsPage implements OnInit {
   }
 
   protected addRow(): void {
-    this.form.controls.items.push(itemGroup(null));
+    this.prices.controls.items.push(itemGroup(null));
   }
 
   protected removeRow(index: number): void {
-    this.form.controls.items.removeAt(index);
+    this.prices.controls.items.removeAt(index);
   }
 
   protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> =>
@@ -285,11 +437,18 @@ export class PriceListsPage implements OnInit {
     const companyId = this.company()?.id;
     const editing = this.editing();
     if (!companyId || editing === null || this.busy()) return;
-    if (this.form.invalid) {
+    if (this.form.invalid || this.prices.invalid) {
       this.form.markAllAsTouched();
+      this.prices.markAllAsTouched();
       return;
     }
-    const value = this.form.getRawValue();
+    const value = {
+      name: this.fields.name.value,
+      customerGroupId: this.fields.customerGroupId.value,
+      validFrom: this.fields.validFrom.value,
+      validTo: this.fields.validTo.value,
+      isActive: this.fields.isActive.value,
+    };
     const scope = this.scope();
     const input: PriceListInput = {
       name: value.name.trim(),
@@ -299,16 +458,27 @@ export class PriceListsPage implements OnInit {
       validFrom: value.validFrom === '' ? null : value.validFrom,
       validTo: value.validTo === '' ? null : value.validTo,
       isActive: value.isActive,
-      items: value.items.map((item) => ({ ...item })),
+      items: this.prices.controls.items.getRawValue().map((item) => ({ ...item })),
     };
-    const accepted =
-      editing === 'new'
-        ? await this.facade.create(companyId, input)
-        : await this.facade.revise(companyId, editing.id, input);
-    if (accepted) {
-      this.editing.set(null);
-      this.feedback.success('price_lists.saved');
+    if (editing === 'new') {
+      if (await this.facade.create(companyId, input)) this.closeSaved();
+      return;
     }
+    const outcome = await this.facade.revise(
+      companyId,
+      editing.id,
+      input,
+      this.sync.version() ?? editing.version,
+    );
+    if (outcome === 'saved') this.closeSaved();
+    else if (outcome === 'changed') await this.sync.savedElsewhere();
+  }
+
+  /** The list was saved: the editor closes and says so. */
+  private closeSaved(): void {
+    this.editing.set(null);
+    this.saved.set(null);
+    this.feedback.success('price_lists.saved');
   }
 
   protected async remove(row: PriceListRow): Promise<void> {

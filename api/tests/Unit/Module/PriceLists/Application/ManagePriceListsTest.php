@@ -31,6 +31,7 @@ use App\Tests\Support\InMemoryCustomerGroups;
 use App\Tests\Support\InMemoryCustomers;
 use App\Tests\Support\InMemoryPriceLists;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemoryRecordVersions;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -57,7 +58,7 @@ final class ManagePriceListsTest extends TestCase
         $this->groups = new InMemoryCustomerGroups();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManagePriceLists($this->lists, $this->products, $this->customers, $this->groups, $this->audit, new MockClock('2026-10-02 09:00:00'), $transactions);
+        $this->manage = new ManagePriceLists($this->lists, $this->products, $this->customers, $this->groups, $this->audit, new MockClock('2026-10-02 09:00:00'), $transactions, new InMemoryRecordVersions());
         $this->screw = $this->productIn($this->company, 'ART-001');
     }
 

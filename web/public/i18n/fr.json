@@ -4084,7 +4084,9 @@
       "name_taken": "Un autre tarif porte déjà ce nom.",
       "invalid": "Le tarif est refusé : vérifiez le nom, les dates, le client ou le groupe et les prix.",
       "refused": "Vous n’avez pas le droit de faire cela."
-    }
+    },
+    "scope_conflict": "Le public visé a aussi été modifié dans la version enregistrée.",
+    "prices_conflict": "Les prix ont aussi été modifiés dans la version enregistrée."
   },
   "select": {
     "placeholder": "Choisir",

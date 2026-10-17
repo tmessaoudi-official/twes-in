@@ -241,7 +241,10 @@ its own, and the codes tab keeps rows being typed over codes saved since, with �
 « Garder ma saisie ». Making one place the main home (`PUT …/home-locations`, which no screen sends) takes no version.
 Its reorder points do the same through the same port: a point set or cleared moves the product's version, the PUT
 names it, the page listens to `product_reorder_point` changes, and the points tab reads them again as they change,
-keeping a threshold being typed over one saved since with the same two choices.
+keeping a threshold being typed over one saved since with the same two choices. A price list carries a version of its
+own, which any change of it moves, its prices included: its name and days merge field by field, whom it is for (the
+scope with its group or customer) merges as one part, and so do its prices, so a group never lands unseen behind
+another scope and a price row is never paired with another person's.
 
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,
