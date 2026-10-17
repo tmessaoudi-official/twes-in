@@ -59,6 +59,7 @@ const laptop: ProductOption = {
 
 const validated: DeliveryNoteRow = {
   id: 'n1',
+  version: 1,
   number: 'BL-2026-00001',
   status: 'validated',
   customerId: 'k9',

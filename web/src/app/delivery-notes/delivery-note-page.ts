@@ -225,6 +225,7 @@ export class DeliveryNotePage {
       const options = this.options();
       return current && options ? deliveryNoteValues(current, options) : null;
     },
+    version: () => this.current()?.version ?? null,
     // The lines are one field: a line is never merged with another person's.
     parts: [
       {
@@ -752,10 +753,25 @@ export class DeliveryNotePage {
         this.handedOver = true;
         await this.router.navigate(['/delivery-notes', created.id], { replaceUrl: true });
       }
-    } else if ((await this.facade.revise(companyId, id, input)) !== null) {
-      const form = this.form();
-      if (form !== null) this.sync.savedHere(form);
+    } else if ((await this.facade.revise(companyId, id, input, this.sync.version())) !== null) {
+      this.revisedHere();
       this.feedback.success('delivery_notes.saved');
+    } else {
+      await this.refused();
+    }
+  }
+
+  /** The form now stands on what this tab saved, before anything else is asked of the note. */
+  private readonly revisedHere = (): void => {
+    const form = this.form();
+    if (form !== null) this.sync.savedHere(form);
+  };
+
+  /** A save made over a version saved since is merged and said; any other refusal stays as the screen shows it. */
+  private async refused(): Promise<void> {
+    if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 
@@ -773,7 +789,14 @@ export class DeliveryNotePage {
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
     const kind = kindAmong(this.actions(), 'validate');
-    const validated = await this.facade.reviseAndValidate(companyId, id, input);
+    const validated = await this.facade.reviseAndValidate(
+      companyId,
+      id,
+      input,
+      this.sync.version(),
+      this.revisedHere,
+    );
+    if (validated === null) await this.refused();
     if (validated === null || kind === undefined) return;
     // Its next step, to whoever may take it (docs/SPEC.md § 7, 2026-09-26, row 139).
     const next = this.invoiceable(validated.status)
@@ -788,7 +811,14 @@ export class DeliveryNotePage {
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
     const kind = kindAmong(this.actions(), 'validate-deliver');
-    const delivered = await this.facade.reviseValidateAndDeliver(companyId, id, input);
+    const delivered = await this.facade.reviseValidateAndDeliver(
+      companyId,
+      id,
+      input,
+      this.sync.version(),
+      this.revisedHere,
+    );
+    if (delivered === null) await this.refused();
     if (delivered === null || kind === undefined) return;
     const next = this.invoiceable(delivered.status)
       ? { key: 'delivery_notes.suggest.invoice', run: () => void this.invoice() }

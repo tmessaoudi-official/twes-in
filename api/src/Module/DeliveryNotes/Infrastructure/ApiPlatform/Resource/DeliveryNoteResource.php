@@ -40,6 +40,7 @@ use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\Validate
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Provider\DeliveryNoteCollectionProvider;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Provider\DeliveryNoteItemProvider;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -96,8 +97,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: self::NORMALIZATION,
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/delivery-notes/preview',
@@ -179,6 +180,12 @@ final class DeliveryNoteResource
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
     public ?string $id = null;
+
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
 
     /** The number validation gives the note; null while it is a draft. */
     #[ApiProperty(writable: false)]
@@ -372,6 +379,7 @@ final class DeliveryNoteResource
         $header = $note->getHeader();
         $resource = new self();
         $resource->id = $note->getId()->toRfc4122();
+        $resource->version = $note->getVersion();
         $resource->number = $note->getNumber();
         $resource->status = $note->getStatus()->value;
         $resource->invoicedByInvoiceId = $note->getInvoicedByInvoiceId()?->toRfc4122();

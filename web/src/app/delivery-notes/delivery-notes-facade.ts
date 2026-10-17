@@ -137,8 +137,9 @@ export class DeliveryNotesFacade {
     companyId: string,
     id: string,
     input: DeliveryNoteInput,
+    version: number | null,
   ): Promise<DeliveryNoteRow | null> {
-    return this.step(() => this.api.revise(companyId, id, input));
+    return this.step(() => this.api.revise(companyId, id, input, version));
   }
 
   /**
@@ -157,26 +158,35 @@ export class DeliveryNotesFacade {
     }
   }
 
-  /** Saves what is on screen, then numbers it: a note is never validated with content other than the one shown. */
+  /**
+   * Saves what is on screen, then numbers it: a note is never validated with content other than the one shown.
+   * `revised` is told once the save is kept, whatever validating then answers, so the form stands on what was saved.
+   */
   async reviseAndValidate(
     companyId: string,
     id: string,
     input: DeliveryNoteInput,
+    version: number | null,
+    revised: () => void,
   ): Promise<DeliveryNoteRow | null> {
     return this.step(async () => {
-      this.noteSignal.set(await this.api.revise(companyId, id, input));
+      this.noteSignal.set(await this.api.revise(companyId, id, input, version));
+      revised();
       return this.api.validate(companyId, id);
     });
   }
 
-  /** Saves what is on screen, then numbers it and marks it delivered today in one step. */
+  /** Saves what is on screen, then numbers it and marks it delivered today in one step; `revised` as above. */
   async reviseValidateAndDeliver(
     companyId: string,
     id: string,
     input: DeliveryNoteInput,
+    version: number | null,
+    revised: () => void,
   ): Promise<DeliveryNoteRow | null> {
     return this.step(async () => {
-      this.noteSignal.set(await this.api.revise(companyId, id, input));
+      this.noteSignal.set(await this.api.revise(companyId, id, input, version));
+      revised();
       return this.api.validateAndDeliver(companyId, id);
     });
   }

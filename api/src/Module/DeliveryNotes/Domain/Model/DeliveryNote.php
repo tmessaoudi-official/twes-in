@@ -133,6 +133,11 @@ class DeliveryNote implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /** Doctrine counts each save, so an editor of an older version is told rather than overwriting it. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     private function __construct(Company $company, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
@@ -471,6 +476,11 @@ class DeliveryNote implements CompanyOwned
     public function getId(): Uuid
     {
         return $this->id;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getCompany(): Company

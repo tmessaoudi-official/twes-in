@@ -36,7 +36,7 @@ final readonly class ReviseDeliveryNoteProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::WRITE);
 
         try {
-            $note = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'deliveryNoteId'), $data->input(), $this->guard->account()->getId());
+            $note = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'deliveryNoteId'), $data->input(), $this->guard->account()->getId(), $data->version);
         } catch (DeliveryNoteNotFound $absent) {
             throw new NotFoundHttpException('No such delivery note.', $absent);
         } catch (DeliveryNoteNotDraft $fixed) {

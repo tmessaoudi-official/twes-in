@@ -6,7 +6,13 @@ import type { ProductTracking } from '../products/products-types';
 
 /** Why the API refused, as the delivery notes screens translate it. */
 export type DeliveryNotesError =
-  'network' | 'not_found' | 'conflict' | 'invalid' | 'customer_unavailable';
+  | 'network'
+  | 'not_found'
+  | 'conflict'
+  /** Saved over a version someone else saved since: nothing was saved, and what they saved is to be merged. */
+  | 'record_changed'
+  | 'invalid'
+  | 'customer_unavailable';
 
 export type DeliveryNoteStatus = 'draft' | 'validated' | 'delivered' | 'cancelled' | 'invoiced';
 /** The sorts the API answers; the total is worked out per row and is not a column it can order by. */
@@ -157,6 +163,8 @@ export interface TaxTotal {
 
 export interface DeliveryNoteRow {
   id: string;
+  /** The version read, which a revision sends back; one saved since is refused as `record_changed`. */
+  version: number;
   /** Null until the note is validated. */
   number: string | null;
   status: DeliveryNoteStatus;

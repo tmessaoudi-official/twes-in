@@ -45,6 +45,7 @@ class StaticLoader implements TranslateLoader {
 
 const numbered: DeliveryNoteRow = {
   id: 'n1',
+  version: 1,
   number: 'BL-2026-00001',
   status: 'validated',
   customerId: 'k1',

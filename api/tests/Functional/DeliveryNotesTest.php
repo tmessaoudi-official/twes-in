@@ -17,6 +17,7 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteHeader;
 use App\Module\Products\Domain\Model\Product;
@@ -26,7 +27,9 @@ use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
+use App\Tests\Support\FakePdfRenderer;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 final class DeliveryNotesTest extends ApiTestCase
 {
@@ -158,7 +161,7 @@ final class DeliveryNotesTest extends ApiTestCase
         $this->postJson($this->path(), $this->note(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id), $this->note(['customerReference' => 'PO-78', 'lines' => [['productId' => $this->productId, 'quantity' => '3']]]));
+        $this->sendJson('PUT', $this->path($id), $this->note(['version' => 1, 'customerReference' => 'PO-78', 'lines' => [['productId' => $this->productId, 'quantity' => '3']]]));
 
         self::assertResponseIsSuccessful();
         $note = $this->json();
@@ -167,8 +170,92 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertIsString($changes);
         self::assertSame(['fields' => ['customerReference', 'lines']], json_decode($changes, true));
 
-        $this->sendJson('PUT', $this->path(self::ABSENT), $this->note());
+        $this->sendJson('PUT', $this->path(self::ABSENT), $this->note(['version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write']);
+        $id = $this->draftWithALine();
+        self::assertSame(1, $this->json()['version']);
+        $line = [['productId' => $this->productId, 'quantity' => '1']];
+
+        $this->sendJson('PUT', $this->path($id), $this->note(['version' => 1, 'customerReference' => 'PO-78', 'lines' => $line]));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), $this->note(['version' => 1, 'customerReference' => 'PO-79', 'lines' => $line]));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path($id));
+        self::assertSame(['PO-78', 2], [$this->json()['customerReference'], $this->json()['version']]);
+    }
+
+    /** A document's lines are one field of it: a revision of them alone moves the version its form is checked against. */
+    public function testARevisionOfItsLinesAloneMovesTheVersion(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write']);
+        $sold = ['productId' => $this->productId, 'quantity' => '1'];
+        $fitting = ['description' => 'Pose', 'quantity' => '1.5', 'unitId' => $this->unitId('HUR'), 'unitPriceNet' => '40', 'taxComponentIds' => [$this->taxId('TVA19')]];
+        $this->postJson($this->path(), $this->note(['lines' => [$sold, $fitting]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $total = $this->json()['total'];
+
+        // The same lines in another order: every total stays, and only the lines say the note changed.
+        $this->sendJson('PUT', $this->path($id), $this->note(['version' => 1, 'lines' => [$fitting, $sold]]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame($total, $this->json()['total']);
+        self::assertSame(2, $this->json()['version']);
+        $this->sendJson('PUT', $this->path($id), $this->note(['version' => 1, 'customerReference' => 'PO-78', 'lines' => [$fitting, $sold]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write']);
+        $id = $this->draftWithALine();
+
+        $this->sendJson('PUT', $this->path($id), $this->note(['version' => 1, 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+    }
+
+    public function testARevisionSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write']);
+        $id = $this->draftWithALine();
+
+        $this->sendJson('PUT', $this->path($id), $this->note(['customerReference' => 'PO-78', 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
+    }
+
+    public function testAnIssuedPdfStoredAfterTheNoteWasSavedSinceItWasReadIsKept(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $id = $this->draftWithALine();
+        // Kept across requests, so the renderer is down while the note is validated and nothing is stored then.
+        $this->client->disableReboot();
+        $renderer = static::getContainer()->get(FakePdfRenderer::class);
+        $renderer->failing = true;
+        $this->postJson($this->path($id).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $renderer->failing = false;
+        self::assertNull($this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM delivery_note WHERE id = ?', [$id]));
+        $version = $this->storedVersion('delivery_note', $id);
+        // Read as a download reads it, then delivering it saves the note before its PDF is stored.
+        self::assertNotNull($this->em()->find(DeliveryNote::class, Uuid::fromString($id)));
+        $this->em()->getConnection()->executeStatement('UPDATE delivery_note SET version = version + 1 WHERE id = ?', [$id]);
+
+        static::getContainer()->get(PrintDeliveryNote::class)->storeIssued($this->company->getId(), Uuid::fromString($id));
+
+        self::assertNotNull($this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM delivery_note WHERE id = ?', [$id]));
+        self::assertSame($version + 2, $this->storedVersion('delivery_note', $id));
     }
 
     public function testAValidatorNumbersANoteWithoutGapsAndItThenOnlyMovesForward(): void
@@ -190,8 +277,9 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertIsString($changes);
         self::assertSame(['number' => $number(1)], json_decode($changes, true));
 
-        $this->sendJson('PUT', $this->path($id), $this->note());
+        $this->sendJson('PUT', $this->path($id), $this->note(['version' => $this->storedVersion('delivery_note', $id)]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a validated note is no longer revised');
+        self::assertStringNotContainsString('record-changed', (string) $this->client->getResponse()->getContent(), 'fixed, not saved since');
         $this->postJson($this->path($id).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a note is numbered once');
 
@@ -427,7 +515,7 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->getJson($this->companyPath().'/delivery-note-options');
         self::assertResponseIsSuccessful();
-        $this->sendJson('PUT', $this->path($mine), $this->note());
+        $this->sendJson('PUT', $this->path($mine), $this->note(['version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson($this->path(), $this->note());
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
