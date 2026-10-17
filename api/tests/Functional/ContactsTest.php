@@ -53,15 +53,49 @@ final class ContactsTest extends ApiTestCase
         $this->postJson($this->path(), ['firstName' => 'Leila', 'isPrimary' => true]);
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id), ['firstName' => 'Leila', 'lastName' => 'Trabelsi', 'phone' => '+216 71 000 000', 'isPrimary' => true]);
+        $this->sendJson('PUT', $this->path($id), ['firstName' => 'Leila', 'lastName' => 'Trabelsi', 'phone' => '+216 71 000 000', 'isPrimary' => true, 'version' => 1]);
         self::assertResponseIsSuccessful();
-        self::assertSame('Trabelsi', $this->json()['lastName']);
+        self::assertSame(['Trabelsi', 2], [$this->json()['lastName'], $this->json()['version']]);
 
         $this->sendJson('DELETE', $this->path($id));
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         $this->getJson($this->path());
         self::assertSame([], $this->jsonList());
         self::assertEquals(3, $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM audit_log WHERE entity_type = 'contact'"));
+    }
+
+    public function testAFormOpenedBeforeAnotherContactTookOverCannotTakeItBack(): void
+    {
+        // Another contact becoming the primary one steps this one down: a form opened before that, still showing it
+        // primary, would take the role back unseen when saved for a new phone number.
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->postJson($this->path(), ['firstName' => 'Leila', 'isPrimary' => true]);
+        $leila = $this->stringAt($this->json(), 'id');
+        self::assertSame(1, $this->json()['version']);
+        $this->postJson($this->path(), ['firstName' => 'Karim', 'isPrimary' => true]);
+
+        $this->sendJson('PUT', $this->path($leila), ['firstName' => 'Leila', 'phone' => '+216 71 000 000', 'isPrimary' => true, 'version' => 1]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path());
+        $rows = array_column($this->jsonList(), null, 'firstName');
+        self::assertSame([true, false, 2, null], [$rows['Karim']['isPrimary'], $rows['Leila']['isPrimary'], $rows['Leila']['version'], $rows['Leila']['phone']]);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersionAndOneWithoutAVersionIsRefused(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->postJson($this->path(), ['firstName' => 'Leila', 'isPrimary' => true]);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), ['firstName' => 'Leila', 'isPrimary' => true, 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path($id), ['firstName' => 'Leïla', 'isPrimary' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     public function testAContactWithoutANameIsRefused(): void
@@ -82,7 +116,7 @@ final class ContactsTest extends ApiTestCase
         $this->postJson($this->path(), ['firstName' => 'Leila', 'isPrimary' => true]);
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id, $other), ['firstName' => 'Hijacked', 'isPrimary' => true]);
+        $this->sendJson('PUT', $this->path($id, $other), ['firstName' => 'Hijacked', 'isPrimary' => true, 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson($this->path(null, $theirs));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

@@ -160,9 +160,10 @@ export class CustomersFacade {
     customerId: string,
     id: string,
     input: ContactInput,
+    version: number | null,
   ): Promise<boolean> {
     return this.write(
-      () => this.api.reviseContact(companyId, customerId, id, input),
+      () => this.api.reviseContact(companyId, customerId, id, input, version),
       () => this.reloadContacts(companyId, customerId),
     );
   }
@@ -180,6 +181,11 @@ export class CustomersFacade {
 
   private async reloadGroups(companyId: string): Promise<void> {
     this.groupsSignal.set(await this.api.groups(companyId));
+  }
+
+  /** Reads a customer's contacts again, as an open contact editor does when another person saved one. */
+  async loadContacts(companyId: string, customerId: string): Promise<void> {
+    await this.read(() => this.reloadContacts(companyId, customerId));
   }
 
   private async reloadContacts(companyId: string, customerId: string): Promise<void> {

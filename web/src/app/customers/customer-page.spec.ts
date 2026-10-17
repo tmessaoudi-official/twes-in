@@ -113,10 +113,12 @@ const leila: ContactRow = {
   phone: null,
   role: 'Comptable',
   isPrimary: true,
+  version: 1,
 };
 
 describe('CustomerPage', () => {
   const error = signal<CustomersError | null>(null);
+  const contacts = signal<readonly ContactRow[]>([leila]);
   const refusals = signal<readonly FieldRefusal[]>([]);
   const customer = signal<CustomerRow | null>(null);
   const customFields = signal<readonly CustomFieldDefinition[]>([]);
@@ -125,7 +127,8 @@ describe('CustomerPage', () => {
     options: optionsSignal.asReadonly(),
     groups: signal<readonly CustomerGroupRow[]>([]).asReadonly(),
     customer: customer.asReadonly(),
-    contacts: signal<readonly ContactRow[]>([leila]).asReadonly(),
+    contacts: contacts.asReadonly(),
+    loadContacts: vi.fn(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     refusals: refusals.asReadonly(),
@@ -263,6 +266,8 @@ describe('CustomerPage', () => {
     facade.addContact.mockReset().mockResolvedValue(true);
     facade.reviseContact.mockReset().mockResolvedValue(true);
     facade.removeContact.mockReset().mockResolvedValue(true);
+    facade.loadContacts.mockReset().mockResolvedValue(undefined);
+    contacts.set([leila]);
     auth.hasPermission.mockReset().mockReturnValue(true);
     modules.clear();
     ['customers', 'invoices'].forEach((each) => modules.add(each));
@@ -689,6 +694,72 @@ describe('CustomerPage', () => {
     (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
     await settle();
     await vi.waitFor(() => expect(facade.removeContact).toHaveBeenCalledWith('c1', 'k1', 'p1'));
+  });
+
+  it('after a contact saved over a version saved since is refused, merges what was saved and saves on it next', async () => {
+    customer.set(carthage);
+    await open('k1');
+    await openTab('Contacts');
+    q('row-action-edit-p1')!.click();
+    await settle();
+    facade.reviseContact.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    facade.clearError.mockImplementationOnce(() => error.set(null));
+    facade.loadContacts.mockImplementationOnce(async () =>
+      contacts.set([{ ...leila, role: 'Gérante', version: 2 }]),
+    );
+
+    type('field-firstName', 'Leïla');
+    await settle();
+    q('contact-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-role') as HTMLInputElement).value).toBe('Gérante'));
+
+    expect((q('field-firstName') as HTMLInputElement).value).toBe('Leïla');
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('contact-save')!.click();
+    await settle();
+    expect(facade.reviseContact).toHaveBeenLastCalledWith(
+      'c1',
+      'k1',
+      'p1',
+      expect.objectContaining({ firstName: 'Leïla', role: 'Gérante' }),
+      2,
+    );
+  });
+
+  it('takes into an open contact what another person saved on it', async () => {
+    customer.set(carthage);
+    await open('k1');
+    await openTab('Contacts');
+    q('row-action-edit-p1')!.click();
+    await settle();
+    facade.loadContacts.mockImplementationOnce(async () =>
+      contacts.set([{ ...leila, role: 'Gérante', version: 2 }]),
+    );
+
+    for (const listener of heard.filter((entry) => entry.kinds.includes('contact'))) {
+      listener.handler([
+        {
+          kind: 'contact',
+          id: 'p1',
+          action: 'contact.revised',
+          actor: { id: 'u2', name: 'Nadia' },
+        },
+      ]);
+    }
+    await vi.waitFor(() => expect(facade.loadContacts).toHaveBeenCalledWith('c1', 'k1'));
+    await settle();
+
+    expect((q('field-role') as HTMLInputElement).value).toBe('Gérante');
+    expect(facade.loadContacts).toHaveBeenCalledWith('c1', 'k1');
   });
 
   it('keeps what was typed when the customer and its options are read again', async () => {

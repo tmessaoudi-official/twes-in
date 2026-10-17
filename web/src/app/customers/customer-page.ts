@@ -19,6 +19,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { RecordChanged } from '../shared/form/record-changed';
 import { liveRecord } from '../shared/form/live-record';
+import { listRecord } from '../shared/form/list-record';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
@@ -204,6 +205,20 @@ export class CustomerPage {
       : buildFormGroup(CONTACT_FORM, contactValues(editing === 'new' ? null : editing));
   });
 
+  /** The saved version the open contact stands on, and what another person's save changed in it. */
+  protected readonly contactSync = listRecord({
+    kind: 'contact',
+    editing: this.contactEditing,
+    rows: this.contacts,
+    form: this.contactForm,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      const id = this.id();
+      if (companyId && id !== null) await this.facade.loadContacts(companyId, id);
+    },
+    values: contactValues,
+  });
+
   constructor() {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45).
     inject(ScreenActions).declare(this.recordActions);
@@ -355,9 +370,18 @@ export class CustomerPage {
     const accepted =
       editing === 'new'
         ? await this.facade.addContact(companyId, id, input)
-        : await this.facade.reviseContact(companyId, id, editing.id, input);
+        : await this.facade.reviseContact(
+            companyId,
+            id,
+            editing.id,
+            input,
+            this.contactSync.version(),
+          );
     if (accepted) {
       this.contactEditing.set(null);
+    } else if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.contactSync.savedElsewhere();
     }
   }
 

@@ -63,6 +63,11 @@ class Contact implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /** Doctrine counts each save, a step down included, so an editor of an older version is told rather than overwriting it. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     private function __construct(Customer $customer, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
@@ -133,5 +138,10 @@ class Contact implements CompanyOwned
     public function isPrimary(): bool
     {
         return $this->isPrimary;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 }

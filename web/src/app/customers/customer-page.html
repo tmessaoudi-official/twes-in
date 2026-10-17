@@ -104,11 +104,21 @@
               </div>
 
               @if (contactForm(); as contactForm) {
+                @if (contactSync.changedBy(); as changedBy) {
+                  <app-record-changed
+                    [changedBy]="changedBy"
+                    [conflictCount]="contactSync.conflicts().length"
+                    (reload)="contactSync.reloadSaved(contactForm)"
+                  />
+                }
                 <mat-card>
                   <mat-card-content>
                     <app-descriptor-form
                       [descriptor]="contactDescriptor"
                       [form]="contactForm"
+                      [updated]="contactSync.updated()"
+                      [conflicts]="contactSync.conflicts()"
+                      (resolved)="contactSync.resolve(contactForm, $event)"
                       testId="contact-form"
                       (submitted)="saveContact($event)"
                     >

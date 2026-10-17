@@ -16,6 +16,8 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Repository\ContactRepository;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\Customers\Domain\ValueObject\ContactDetails;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -38,6 +40,7 @@ final readonly class ManageContacts
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -72,11 +75,15 @@ final readonly class ManageContacts
     /**
      * @throws CustomerNotFound
      * @throws ContactNotFound
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $customerId, Uuid $contactId, ContactDetails $details, bool $isPrimary, ?Uuid $actorUserId): Contact
+    public function revise(Company $company, Uuid $customerId, Uuid $contactId, ContactDetails $details, bool $isPrimary, ?Uuid $actorUserId, ?int $version = null): Contact
     {
-        return $this->transactions->run(function () use ($company, $customerId, $contactId, $details, $isPrimary, $actorUserId): Contact {
+        return $this->transactions->run(function () use ($company, $customerId, $contactId, $details, $isPrimary, $actorUserId, $version): Contact {
             $contact = $this->contact($company, $customerId, $contactId);
+            if (null !== $version) {
+                $this->versions->expect($contact, $version);
+            }
             $now = $this->clock->now();
             $changed = $contact->revise($details, $now);
             if ($isPrimary && !$contact->isPrimary()) {

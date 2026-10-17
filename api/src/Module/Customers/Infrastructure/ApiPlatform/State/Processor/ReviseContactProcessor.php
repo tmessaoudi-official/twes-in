@@ -41,6 +41,7 @@ final readonly class ReviseContactProcessor implements ProcessorInterface
                 $data->details(),
                 $data->isPrimary,
                 $this->guard->account()->getId(),
+                $data->version,
             );
         } catch (CustomerNotFound|ContactNotFound $absent) {
             throw new NotFoundHttpException('No such contact.', $absent);

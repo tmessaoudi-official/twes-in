@@ -276,7 +276,13 @@ describe('customer forms', () => {
       phone: null,
       role: 'Comptable',
       isPrimary: true,
+      version: 3,
     };
-    expect(contactInput(contactValues(contact))).toEqual({ ...contact, id: undefined });
+    // The version is the row's, which a revision sends beside what was typed, never part of it.
+    expect(contactInput(contactValues(contact))).toEqual({
+      ...contact,
+      id: undefined,
+      version: undefined,
+    });
   });
 });
