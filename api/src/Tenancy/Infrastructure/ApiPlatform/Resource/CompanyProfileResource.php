@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Put;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tenancy\Infrastructure\ApiPlatform\Output\CompanyIdentifierField;
 use App\Tenancy\Infrastructure\ApiPlatform\Output\CompanyVatRegimeOption;
@@ -43,8 +44,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: self::NORMALIZATION,
-            denormalizationContext: ['groups' => [self::WRITE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
     ],
 )]
@@ -81,6 +82,12 @@ final class CompanyProfileResource
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
     public ?string $logoVersion = null;
+
+    /** The version read; a save sends back the one the form was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
 
     #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_legal_name'])]
     #[Groups([self::READ, self::WRITE])]

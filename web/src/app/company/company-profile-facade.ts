@@ -35,7 +35,11 @@ export class CompanyProfileFacade {
   }
 
   /** True when the API kept the revision; the page then shows what it kept, normalised. */
-  async save(companyId: string, changes: CompanyProfileChanges): Promise<boolean> {
+  async save(
+    companyId: string,
+    changes: CompanyProfileChanges,
+    version: number | null,
+  ): Promise<boolean> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     this.refusalsSignal.set([]);
@@ -43,7 +47,7 @@ export class CompanyProfileFacade {
       // New bank details wait for the person to prove who they are again; the rest of the profile asks nothing.
       this.profileSignal.set(
         await this.stepUp.retrying(
-          () => this.api.reviseProfile(companyId, changes),
+          () => this.api.reviseProfile(companyId, changes, version),
           (error) => error instanceof CompanyRefused && error.code === 'step_up_required',
           'step_up.intro_sensitive',
         ),
@@ -56,6 +60,10 @@ export class CompanyProfileFacade {
     } finally {
       this.busySignal.set(false);
     }
+  }
+
+  clearError(): void {
+    this.errorSignal.set(null);
   }
 
   /** True when the API kept the picture; the profile then names the new version, so the screen reads it again. */

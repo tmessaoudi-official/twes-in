@@ -41,7 +41,7 @@ final readonly class ReviseCompanyProfileProcessor implements ProcessorInterface
         }
 
         try {
-            $this->revise->handle($company, $profile, $this->guard->account()->getId());
+            $this->revise->handle($company, $profile, $this->guard->account()->getId(), $data->version);
         } catch (InvalidCompanyProfile $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }

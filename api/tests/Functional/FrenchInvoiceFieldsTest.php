@@ -291,6 +291,7 @@ final class FrenchInvoiceFieldsTest extends ApiTestCase
         $this->login('admin@twes.tn', 'password-1234');
 
         $this->sendJson('PUT', '/api/companies/'.$carthage->getId()->toRfc4122().'/profile', [
+            'version' => $this->storedVersion('company', $carthage->getId()->toRfc4122()),
             'legalName' => 'Carthage SARL', 'legalForm' => null, 'identifiers' => ['matricule_fiscal' => '1234567A/B/M/000'],
             'addressLine1' => 'Rue de Marseille', 'addressLine2' => null, 'postalCode' => '1000', 'city' => 'Tunis', 'email' => null,
             'phone' => null, 'website' => null, 'iban' => null, 'bic' => null, 'vatRegime' => 'standard', 'vatOnDebits' => true,
@@ -331,7 +332,7 @@ final class FrenchInvoiceFieldsTest extends ApiTestCase
     private function optForTheDebits(bool $opted): void
     {
         $this->getJson($this->companyPath().'/profile');
-        $profile = array_intersect_key($this->json(), array_flip(['legalName', 'legalForm', 'identifiers', 'addressLine1', 'addressLine2', 'postalCode', 'city', 'email', 'phone', 'website', 'iban', 'bic', 'vatRegime', 'invoiceFooterText', 'latePenaltyText']));
+        $profile = array_intersect_key($this->json(), array_flip(['version', 'legalName', 'legalForm', 'identifiers', 'addressLine1', 'addressLine2', 'postalCode', 'city', 'email', 'phone', 'website', 'iban', 'bic', 'vatRegime', 'invoiceFooterText', 'latePenaltyText']));
         $this->sendJson('PUT', $this->companyPath().'/profile', [...$profile, 'vatOnDebits' => $opted]);
         self::assertResponseIsSuccessful();
     }

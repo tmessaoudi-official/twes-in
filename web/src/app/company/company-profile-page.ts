@@ -96,6 +96,7 @@ export class CompanyProfilePage implements OnInit {
       const profile = this.facade.profile();
       return profile ? profileValues(profile) : null;
     },
+    version: () => this.facade.profile()?.version ?? null,
   });
 
   /** What the form holds that the API has not been told yet; the bar beside the title shows it. */
@@ -188,9 +189,12 @@ export class CompanyProfilePage implements OnInit {
     const companyId = this.company()?.id;
     const profile = this.facade.profile();
     if (!companyId || !profile || this.busy()) return;
-    if (await this.facade.save(companyId, profileChanges(profile, values))) {
+    if (await this.facade.save(companyId, profileChanges(profile, values), this.sync.version())) {
       this.revision.update((revision) => revision + 1);
       this.feedback.success('company.profile.saved');
+    } else if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     } else {
       // Each field the API refused said on that field; the line above the form stays for what it says as a whole.
       const refused = this.facade.refusals();

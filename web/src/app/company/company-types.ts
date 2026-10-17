@@ -80,6 +80,8 @@ export interface CompanyProfile extends CompanyProfileChanges {
   readonly writable: boolean;
   /** The id of the stored logo, which changes when the logo does; null without one. */
   readonly logoVersion: string | null;
+  /** The version read, which a save sends back: one saved since is refused. */
+  readonly version: number;
   readonly identifierFields: readonly IdentifierField[];
   readonly vatRegimes: readonly VatRegimeOption[];
   /** Whether the company's fiscal preset offers the débits option (France). */
@@ -97,6 +99,8 @@ export type CompanyError =
   | 'logo_refused'
   /** A change on the step-up list, refused until the person proves who they are again. */
   | 'step_up_required'
+  /** Saved by someone else since the profile was read; the screen merges their save rather than saying it. */
+  | 'record_changed'
   | 'network';
 
 /** One place the company issues documents from, as the establishments page lists it. */

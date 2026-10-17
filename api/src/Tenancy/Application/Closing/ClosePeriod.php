@@ -12,6 +12,7 @@ namespace App\Tenancy\Application\Closing;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Shared\Application\Transactions;
+use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\CreateCompany;
 use App\Tenancy\Domain\Exception\InvalidClosing;
 use App\Tenancy\Domain\Model\Company;
@@ -40,6 +41,8 @@ final readonly class ClosePeriod
     public function handle(Company $company, \DateTimeImmutable $through, ?Uuid $actorUserId): Company
     {
         return $this->transactions->run(function () use ($company, $through, $actorUserId): Company {
+            // The closed period moves forward only: checked against the row held, never an earlier read of it.
+            $company = $this->companies->lockedOfId($company->getId()) ?? throw new CompanyNotFound('No such company.');
             $now = $this->clock->now();
             $today = $now->setTimezone(new \DateTimeZone($company->getTimezone()));
             if ($company->closeThrough($through, $today, $now)) {

@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import type {
   CompanyProfileCompanyProfileRead,
   UploadCompanyLogoResponse,
-  CompanyProfileCompanyProfileWriteValidationCompanyProfileWrite as CompanyProfileCompanyProfileWrite,
+  CompanyProfileCompanyProfileWriteRecordReviseValidationCompanyProfileWriteRecordRevise as CompanyProfileReviseBody,
   EstablishmentEstablishmentRead,
   EstablishmentEstablishmentWriteValidationEstablishmentWrite as EstablishmentEstablishmentWrite,
   MemberMemberRead,
@@ -29,6 +29,7 @@ import {
 } from './company-types';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
+import { isRecordChanged } from '../shared/errors/record-changed';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CompanyRefused extends Error {
@@ -151,10 +152,15 @@ export class CompanyApi {
   }
 
   /** Answers the profile as the API kept it, normalised; 422 when the preset refuses a value. */
-  async reviseProfile(companyId: string, changes: CompanyProfileChanges): Promise<CompanyProfile> {
-    const body: CompanyProfileCompanyProfileWrite = {
+  async reviseProfile(
+    companyId: string,
+    changes: CompanyProfileChanges,
+    version: number | null,
+  ): Promise<CompanyProfile> {
+    const body: CompanyProfileReviseBody = {
       ...changes,
       identifiers: { ...changes.identifiers },
+      version,
     };
     try {
       return toProfile(
@@ -278,6 +284,7 @@ function toProfile(raw: CompanyProfileCompanyProfileRead): CompanyProfile {
     countryCode: raw.countryCode ?? '',
     writable: raw.writable ?? false,
     logoVersion: raw.logoVersion ?? null,
+    version: raw.version ?? 0,
     legalName: raw.legalName ?? null,
     legalForm: raw.legalForm ?? null,
     identifiers: raw.identifiers ?? {},
@@ -330,6 +337,7 @@ function profileCodeOf(error: unknown): CompanyError {
     return 'network';
   }
   if (stepUpAsked(error)) return 'step_up_required';
+  if (error.status === 409 && isRecordChanged(error.error)) return 'record_changed';
   return error.status === 404 ? 'not_found' : 'invalid';
 }
 

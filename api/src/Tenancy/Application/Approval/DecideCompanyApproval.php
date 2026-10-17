@@ -47,16 +47,22 @@ final readonly class DecideCompanyApproval
     /** @throws CompanyNotFound */
     public function approve(Uuid $companyId, Uuid $operatorId): Company
     {
-        $company = $this->companyOf($companyId);
-        if ($company->isActive()) {
-            return $company;
-        }
-        $this->transactions->run(function () use ($company, $operatorId): void {
+        // Decided on the row held, never on an earlier read: a suspension saved in between is what is approved.
+        [$company, $approved] = $this->transactions->run(function () use ($companyId, $operatorId): array {
+            $company = $this->heldCompany($companyId);
+            if ($company->isActive()) {
+                return [$company, false];
+            }
             $from = $company->getStatus();
             $company->activate($this->clock->now());
             $this->companies->save($company);
             $this->record($company, self::APPROVED, $from, $operatorId);
+
+            return [$company, true];
         });
+        if (!$approved) {
+            return $company;
+        }
 
         // The owners hear of it once the approval is stored, never of one that rolled back.
         foreach ($this->memberships->ofCompany($company->getId()) as $membership) {
@@ -72,12 +78,11 @@ final readonly class DecideCompanyApproval
     /** @throws CompanyNotFound */
     public function reject(Uuid $companyId, Uuid $operatorId): Company
     {
-        $company = $this->companyOf($companyId);
-        if (Company::STATUS_SUSPENDED === $company->getStatus()) {
-            return $company;
-        }
-
-        return $this->transactions->run(function () use ($company, $operatorId): Company {
+        return $this->transactions->run(function () use ($companyId, $operatorId): Company {
+            $company = $this->heldCompany($companyId);
+            if (Company::STATUS_SUSPENDED === $company->getStatus()) {
+                return $company;
+            }
             $from = $company->getStatus();
             $company->suspend($this->clock->now());
             $this->companies->save($company);
@@ -87,9 +92,9 @@ final readonly class DecideCompanyApproval
         });
     }
 
-    private function companyOf(Uuid $companyId): Company
+    private function heldCompany(Uuid $companyId): Company
     {
-        return $this->companies->ofId($companyId) ?? throw new CompanyNotFound('No such company.');
+        return $this->companies->lockedOfId($companyId) ?? throw new CompanyNotFound('No such company.');
     }
 
     private function record(Company $company, string $action, string $from, Uuid $operatorId): void

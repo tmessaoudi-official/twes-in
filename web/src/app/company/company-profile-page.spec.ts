@@ -16,7 +16,7 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 import { CompanyProfileFacade } from './company-profile-facade';
 import { CompanyProfilePage } from './company-profile-page';
 import type { CompanyError, CompanyProfile } from './company-types';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { failureToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
@@ -38,6 +38,7 @@ const profile: CompanyProfile = {
   countryCode: 'TN',
   writable: true,
   logoVersion: null,
+  version: 1,
   legalName: null,
   legalForm: null,
   identifiers: { matricule_fiscal: '1234567A/B/M/000' },
@@ -78,6 +79,7 @@ describe('CompanyProfilePage', () => {
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     save: vi.fn(),
+    clearError: vi.fn(),
     uploadLogo: vi.fn(),
     removeLogo: vi.fn(),
   };
@@ -124,6 +126,7 @@ describe('CompanyProfilePage', () => {
     refusals.set([]);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.save.mockReset().mockResolvedValue(true);
+    facade.clearError.mockReset();
     facade.uploadLogo.mockReset().mockResolvedValue(true);
     facade.removeLogo.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -261,8 +264,42 @@ describe('CompanyProfilePage', () => {
         identifiers: { matricule_fiscal: '1234567A/B/M/000' },
         vatRegime: 'standard',
       }),
+      1,
     );
     expect(successToasts()).toContain('company.profile.saved');
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    await open();
+    facade.save.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    facade.clearError.mockImplementationOnce(() => error.set(null));
+    facade.load.mockImplementationOnce(async () =>
+      profileSignal.set({ ...profile, version: 2, city: 'Sfax' }),
+    );
+
+    const legalName = q('field-legalName') as HTMLInputElement;
+    legalName.value = 'Demo SARL';
+    legalName.dispatchEvent(new Event('input'));
+    await settle();
+    q('record-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-city') as HTMLInputElement).value).toBe('Sfax'));
+
+    expect((q('field-legalName') as HTMLInputElement).value).toBe('Demo SARL');
+    expect(error()).toBeNull();
+    expect(failureToasts()).toEqual(['live.saved_since']);
+    expect(successToasts()).not.toContain('company.profile.saved');
+
+    q('record-save')!.click();
+    await settle();
+    expect(facade.save).toHaveBeenLastCalledWith(
+      'c1',
+      expect.objectContaining({ legalName: 'Demo SARL', city: 'Sfax' }),
+      2,
+    );
   });
 
   it('keeps what is typed when the profile is read again with the same content', async () => {

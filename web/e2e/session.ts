@@ -82,8 +82,9 @@ export async function inACompany(page: Page, csrf: string): Promise<void> {
   }, csrf);
 }
 
-/** What a PUT of the company profile accepts, in the order the API reads it. */
+/** What a PUT of the company profile accepts, in the order the API reads it; the version read is sent back. */
 const PROFILE_FIELDS = [
+  'version',
   'legalName',
   'legalForm',
   'identifiers',

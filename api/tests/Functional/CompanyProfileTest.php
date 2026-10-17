@@ -147,6 +147,63 @@ final class CompanyProfileTest extends ApiTestCase
         }
     }
 
+    public function testASaveOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->getJson($this->path());
+        self::assertSame(1, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path(), $this->profile(['version' => 1, 'city' => 'Sfax']));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path(), $this->profile(['version' => 1, 'city' => 'Sousse']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path());
+        self::assertSame(['Sfax', 2], [$this->json()['city'], $this->json()['version']]);
+    }
+
+    /** The closed period is a setting of its own, yet it moves the version the form is checked against. */
+    public function testASwitchSetSinceTheFormWasReadRefusesItsSave(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->sendJson('PUT', $this->path(), $this->profile(['version' => 1]));
+        self::assertResponseIsSuccessful();
+        $read = $this->json()['version'];
+
+        $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/closing', ['closedThrough' => '2026-01-31']);
+        self::assertResponseIsSuccessful();
+
+        $this->sendJson('PUT', $this->path(), $this->profile(['version' => $read, 'city' => 'Sfax']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+    }
+
+    public function testASaveThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->sendJson('PUT', $this->path(), $this->profile());
+        $version = $this->json()['version'];
+
+        $this->sendJson('PUT', $this->path(), $this->profile());
+
+        self::assertResponseIsSuccessful();
+        self::assertSame($version, $this->json()['version']);
+    }
+
+    public function testASaveSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $profile = $this->profile(['city' => 'Sfax']);
+        unset($profile['version']);
+
+        $this->sendJson('PUT', $this->path(), $profile);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
+    }
+
     public function testAReaderMayNotReviseTheProfile(): void
     {
         $this->signedIn(['company.read']);
@@ -181,6 +238,7 @@ final class CompanyProfileTest extends ApiTestCase
     private function profile(array $changes = []): array
     {
         return [...[
+            'version' => $this->storedVersion('company', $this->company->getId()->toRfc4122()),
             'legalName' => null,
             'legalForm' => 'SARL',
             'identifiers' => ['matricule_fiscal' => '1234567A/B/M/000'],

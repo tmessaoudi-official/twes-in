@@ -78,6 +78,11 @@ class Company
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $closedThrough = null;
 
+    /** Moved by every save: the profile form sends back the one it read, and a save of an older one is refused. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     /** When its owner closed the company down; null while it works. Not the accounting period's closedThrough. */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $closedDownAt = null;
@@ -286,6 +291,11 @@ class Company
     public function getTimezone(): string
     {
         return $this->timezone;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getStatus(): string
