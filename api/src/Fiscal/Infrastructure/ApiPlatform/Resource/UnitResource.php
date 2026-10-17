@@ -18,6 +18,7 @@ use App\Fiscal\Domain\Model\Unit;
 use App\Fiscal\Infrastructure\ApiPlatform\State\Processor\CreateUnitProcessor;
 use App\Fiscal\Infrastructure\ApiPlatform\State\Processor\ReviseUnitProcessor;
 use App\Fiscal\Infrastructure\ApiPlatform\State\Provider\UnitCollectionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -45,8 +46,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: ['groups' => [self::READ]],
-            denormalizationContext: ['groups' => [self::WRITE, self::REVISE]],
-            validationContext: ['groups' => [self::WRITE]],
+            denormalizationContext: ['groups' => [self::WRITE, self::REVISE, RecordVersion::REVISE]],
+            validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
     ],
 )]
@@ -83,10 +84,17 @@ final class UnitResource
     #[Groups([self::READ, self::WRITE])]
     public int $sortOrder = 0;
 
+    /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
+    #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
+    #[Assert\Positive(groups: [RecordVersion::REVISE])]
+    #[Groups([self::READ, RecordVersion::REVISE])]
+    public ?int $version = null;
+
     public static function of(Unit $unit): self
     {
         $resource = new self();
         $resource->id = $unit->getId()->toRfc4122();
+        $resource->version = $unit->getVersion();
         $resource->code = $unit->getCode();
         $resource->name = $unit->getName();
         $resource->decimals = $unit->getDecimals();

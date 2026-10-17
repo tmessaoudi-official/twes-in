@@ -61,7 +61,7 @@ final class TaxComponentsTest extends ApiTestCase
         $this->signedIn(['fiscal.read', 'fiscal.write']);
         $stamp = $this->idOf('TIMBRE');
 
-        $this->sendJson('PUT', $this->path().'/'.$stamp, ['code' => 'OTHER', 'family' => 'vat', 'name' => 'Droit de timbre', 'amount' => '1.500', 'isDefault' => true, 'isActive' => true, 'sortOrder' => 50]);
+        $this->sendJson('PUT', $this->path().'/'.$stamp, ['version' => 1, 'code' => 'OTHER', 'family' => 'vat', 'name' => 'Droit de timbre', 'amount' => '1.500', 'isDefault' => true, 'isActive' => true, 'sortOrder' => 50]);
 
         self::assertResponseIsSuccessful();
         $body = $this->json();
@@ -75,7 +75,7 @@ final class TaxComponentsTest extends ApiTestCase
     {
         $this->signedIn(['fiscal.read', 'fiscal.write']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('TVA7'), ['name' => 'TVA 7 %', 'rate' => '7', 'isActive' => false, 'sortOrder' => 30]);
+        $this->sendJson('PUT', $this->path().'/'.$this->idOf('TVA7'), ['version' => 1, 'name' => 'TVA 7 %', 'rate' => '7', 'isActive' => false, 'sortOrder' => 30]);
 
         self::assertResponseIsSuccessful();
         self::assertFalse($this->json()['isActive']);
@@ -125,7 +125,7 @@ final class TaxComponentsTest extends ApiTestCase
         $theirs = $this->em()->getRepository(\App\Fiscal\Domain\Model\TaxComponent::class)->findOneBy(['company' => $globex, 'code' => 'TVA19']);
         self::assertNotNull($theirs);
 
-        $this->sendJson('PUT', $this->path().'/'.$theirs->getId()->toRfc4122(), ['name' => 'Hijacked', 'rate' => '0', 'isActive' => true, 'sortOrder' => 0]);
+        $this->sendJson('PUT', $this->path().'/'.$theirs->getId()->toRfc4122(), ['version' => 1, 'name' => 'Hijacked', 'rate' => '0', 'isActive' => true, 'sortOrder' => 0]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
@@ -151,7 +151,7 @@ final class TaxComponentsTest extends ApiTestCase
     {
         $this->signedIn(['fiscal.read', 'fiscal.write']);
 
-        $this->sendJson('PUT', $this->path().'/'.Uuid::v7()->toRfc4122(), ['name' => 'Ghost', 'rate' => '1', 'isActive' => true, 'sortOrder' => 0]);
+        $this->sendJson('PUT', $this->path().'/'.Uuid::v7()->toRfc4122(), ['version' => 1, 'name' => 'Ghost', 'rate' => '1', 'isActive' => true, 'sortOrder' => 0]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
@@ -160,11 +160,50 @@ final class TaxComponentsTest extends ApiTestCase
     {
         $this->signedIn(['fiscal.read', 'fiscal.write']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('TVA13'), ['name' => 'TVA 13 %', 'rate' => '13.5', 'isActive' => true, 'sortOrder' => 20]);
+        $this->sendJson('PUT', $this->path().'/'.$this->idOf('TVA13'), ['version' => 1, 'name' => 'TVA 13 %', 'rate' => '13.5', 'isActive' => true, 'sortOrder' => 20]);
 
         self::assertResponseIsSuccessful();
         $count = $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM audit_log WHERE action = 'tax_component.revised'");
         self::assertEquals(1, $count);
+    }
+
+    public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
+    {
+        $this->signedIn(['fiscal.read', 'fiscal.write']);
+        $id = $this->idOf('TVA13');
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => 1, 'name' => 'TVA 13 %', 'rate' => '13.5', 'isActive' => true, 'sortOrder' => 20]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['version']);
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => 1, 'name' => 'TVA 13 %', 'rate' => '14', 'isActive' => true, 'sortOrder' => 20]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path());
+        $saved = array_values(array_filter($this->jsonList(), static fn (array $row): bool => $id === $row['id']))[0];
+        self::assertSame(['13.500', 2], [$saved['rate'], $saved['version']]);
+    }
+
+    public function testARevisionThatChangesNothingKeepsItsVersion(): void
+    {
+        $this->signedIn(['fiscal.read', 'fiscal.write']);
+        $this->getJson($this->path());
+        $row = array_values(array_filter($this->jsonList(), static fn (array $row): bool => 'TVA7' === $row['code']))[0];
+
+        $this->sendJson('PUT', $this->path().'/'.$this->stringAt($row, 'id'), ['version' => 1, 'name' => $row['name'], 'rate' => $row['rate'], 'isDefault' => $row['isDefault'], 'isActive' => true, 'sortOrder' => $row['sortOrder']]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['version']);
+    }
+
+    public function testARevisionSaysWhichVersionItRevises(): void
+    {
+        $this->signedIn(['fiscal.read', 'fiscal.write']);
+
+        $this->sendJson('PUT', $this->path().'/'.$this->idOf('TVA7'), ['name' => 'TVA 7 %', 'rate' => '7', 'isActive' => true, 'sortOrder' => 30]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
     /** @param list<string> $permissions */

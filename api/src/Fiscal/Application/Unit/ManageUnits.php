@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Domain\Model\Unit;
 use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Shared\Application\RecordChanged;
+use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -31,6 +33,7 @@ final readonly class ManageUnits
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private RecordVersions $versions,
     ) {
     }
 
@@ -59,13 +62,19 @@ final readonly class ManageUnits
     }
 
     /**
+     * `$version` is the one the editor opened; a caller revising what it finds names none.
+     *
      * @throws UnitNotFound       for a unit that does not exist or belongs to another company
      * @throws InvalidFiscalValue
+     * @throws RecordChanged
      */
-    public function revise(Company $company, Uuid $unitId, UnitChanges $changes, ?Uuid $actorUserId): Unit
+    public function revise(Company $company, Uuid $unitId, UnitChanges $changes, ?Uuid $actorUserId, ?int $version = null): Unit
     {
-        return $this->transactions->run(function () use ($company, $unitId, $changes, $actorUserId): Unit {
+        return $this->transactions->run(function () use ($company, $unitId, $changes, $actorUserId, $version): Unit {
             $unit = $this->units->ofIdInCompany($unitId, $company->getId()) ?? throw new UnitNotFound('No such unit.');
+            if (null !== $version) {
+                $this->versions->expect($unit, $version);
+            }
             if ($unit->revise($changes->name, $changes->decimals, $changes->isActive, $changes->sortOrder, $this->clock->now())) {
                 $this->units->save($unit);
                 $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::REVISED, $actorUserId, self::snapshot($unit), $company->getId()));

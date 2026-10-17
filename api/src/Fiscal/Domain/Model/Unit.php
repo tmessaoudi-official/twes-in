@@ -59,6 +59,11 @@ class Unit implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /** Doctrine counts each save, so an editor of an older version is told rather than overwriting it. */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     private function __construct(Company $company, string $code, \DateTimeImmutable $now)
     {
         if (1 !== preg_match(self::CODE, $code)) {
@@ -108,6 +113,11 @@ class Unit implements CompanyOwned
         $this->decimals = $decimals;
         $this->isActive = $isActive;
         $this->sortOrder = $sortOrder;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     public function getId(): Uuid

@@ -17,6 +17,7 @@ use App\Fiscal\Application\Unit\UnitNotFound;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
+use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemoryUnits;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -33,7 +34,7 @@ final class ManageUnitsTest extends TestCase
         $this->units = new InMemoryUnits();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManageUnits($this->units, $this->audit, new MockClock('2026-09-13 10:00:00'), $transactions);
+        $this->manage = new ManageUnits($this->units, $this->audit, new MockClock('2026-09-13 10:00:00'), $transactions, new InMemoryRecordVersions());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 

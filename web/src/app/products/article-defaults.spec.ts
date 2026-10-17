@@ -219,8 +219,24 @@ describe('ArticleDefaults', () => {
   });
   it("offers a category's default unit as the company's units by name, once they are read", async () => {
     units.set([
-      { id: 'u1', code: 'C62', name: 'Unité', decimals: 0, isActive: true, sortOrder: 0 },
-      { id: 'u2', code: 'HUR', name: 'Heure', decimals: 2, isActive: true, sortOrder: 1 },
+      {
+        id: 'u1',
+        code: 'C62',
+        name: 'Unité',
+        decimals: 0,
+        isActive: true,
+        sortOrder: 0,
+        version: 1,
+      },
+      {
+        id: 'u2',
+        code: 'HUR',
+        name: 'Heure',
+        decimals: 2,
+        isActive: true,
+        sortOrder: 1,
+        version: 1,
+      },
     ]);
     await open({ productCategoryId: 'k1' });
 
@@ -236,8 +252,24 @@ describe('ArticleDefaults', () => {
       new Promise<void>((resolve) => {
         unitsRead = () => {
           units.set([
-            { id: 'u1', code: 'C62', name: 'Unité', decimals: 0, isActive: true, sortOrder: 0 },
-            { id: 'u2', code: 'HUR', name: 'Heure', decimals: 2, isActive: true, sortOrder: 1 },
+            {
+              id: 'u1',
+              code: 'C62',
+              name: 'Unité',
+              decimals: 0,
+              isActive: true,
+              sortOrder: 0,
+              version: 1,
+            },
+            {
+              id: 'u2',
+              code: 'HUR',
+              name: 'Heure',
+              decimals: 2,
+              isActive: true,
+              sortOrder: 1,
+              version: 1,
+            },
           ]);
           resolve();
         };

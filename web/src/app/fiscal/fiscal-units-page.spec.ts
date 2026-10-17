@@ -23,7 +23,9 @@ import {
 import { FiscalFacade } from './fiscal-facade';
 import { FiscalUnitsPage } from './fiscal-units-page';
 import type { UnitRow } from './fiscal-types';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -38,13 +40,16 @@ const hour: UnitRow = {
   decimals: 2,
   isActive: true,
   sortOrder: 20,
+  version: 1,
 };
 
 describe('FiscalUnitsPage', () => {
+  const units = signal<readonly UnitRow[]>([hour]);
+  const error = signal<string | null>(null);
   const fiscal = {
-    units: signal<readonly UnitRow[]>([hour]).asReadonly(),
+    units: units.asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal<string | null>(null).asReadonly(),
+    error: error.asReadonly(),
     loadUnits: vi.fn(),
     createUnit: vi.fn(),
     reviseUnit: vi.fn(),
@@ -72,7 +77,10 @@ describe('FiscalUnitsPage', () => {
   }
 
   beforeEach(async () => {
+    units.set([hour]);
+    error.set(null);
     fiscal.loadUnits.mockReset().mockResolvedValue(undefined);
+    fiscal.clearError.mockReset().mockImplementation(() => error.set(null));
     fiscal.createUnit.mockReset().mockResolvedValue(true);
     fiscal.reviseUnit.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -137,6 +145,54 @@ describe('FiscalUnitsPage', () => {
       'c1',
       'u1',
       expect.objectContaining({ code: 'HUR', name: 'Heure de travail' }),
+      1,
     );
+  });
+
+  it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
+    q('row-action-edit-u1')!.click();
+    await settle();
+    fiscal.reviseUnit.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    fiscal.loadUnits.mockImplementationOnce(async () =>
+      units.set([{ ...hour, sortOrder: 70, version: 2 }]),
+    );
+
+    type('field-name', 'Heure de travail');
+    q('unit-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect((q('field-sortOrder') as HTMLInputElement).value).toBe('70'));
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Heure de travail');
+    expect(q('units-error')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+
+    q('unit-save')!.click();
+    await settle();
+    expect(fiscal.reviseUnit).toHaveBeenLastCalledWith(
+      'c1',
+      'u1',
+      expect.objectContaining({ name: 'Heure de travail', sortOrder: 70 }),
+      2,
+    );
+  });
+
+  it('takes into the open form what another person saved on the same unit', async () => {
+    q('row-action-edit-u1')!.click();
+    await settle();
+    fiscal.loadUnits.mockImplementationOnce(async () =>
+      units.set([{ ...hour, name: 'Heure facturée', version: 2 }]),
+    );
+
+    await announceSaved('unit', 'u1');
+    await settle();
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Heure facturée');
   });
 });

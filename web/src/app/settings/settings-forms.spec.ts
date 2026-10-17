@@ -214,6 +214,7 @@ describe('withUnitChoice', () => {
     decimals: 0,
     isActive,
     sortOrder: 0,
+    version: 1,
   });
 
   it("offers the default unit as the company's units by name, not as a code to type", () => {

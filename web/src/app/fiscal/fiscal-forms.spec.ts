@@ -35,6 +35,7 @@ const stamp: TaxComponentRow = {
   isActive: true,
   exemptionMention: null,
   sortOrder: 50,
+  version: 1,
 };
 
 describe('fiscal forms', () => {
@@ -147,6 +148,7 @@ describe('fiscal forms', () => {
       decimals: 2,
       isActive: false,
       sortOrder: 20,
+      version: 1,
     };
     expect(unitInput(unitFormValues(hour), 'HUR')).toEqual({
       code: 'HUR',

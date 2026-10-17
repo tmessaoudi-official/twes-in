@@ -20,6 +20,8 @@ export interface TaxComponentRow {
   readonly isActive: boolean;
   readonly exemptionMention: string | null;
   readonly sortOrder: number;
+  /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
+  readonly version: number;
 }
 
 /** What a person fills in to add a tax; the code and the family are fixed once it exists. */
@@ -44,6 +46,8 @@ export interface UnitRow {
   readonly decimals: number;
   readonly isActive: boolean;
   readonly sortOrder: number;
+  /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
+  readonly version: number;
 }
 
 export interface UnitInput {
@@ -67,4 +71,4 @@ export interface CustomerTaxRegimeRow {
  * Why the API refused. "not_found" covers a company or a row that does not exist and one the caller has nothing to
  * do with, which the API answers identically on purpose.
  */
-export type FiscalError = 'code_taken' | 'invalid' | 'not_found' | 'network';
+export type FiscalError = 'code_taken' | 'invalid' | 'not_found' | 'network' | 'record_changed';

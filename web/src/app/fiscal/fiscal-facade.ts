@@ -51,9 +51,14 @@ export class FiscalFacade {
     );
   }
 
-  async reviseTax(companyId: string, id: string, input: TaxComponentInput): Promise<boolean> {
+  async reviseTax(
+    companyId: string,
+    id: string,
+    input: TaxComponentInput,
+    version: number | null,
+  ): Promise<boolean> {
     return this.write(
-      () => this.api.reviseTaxComponent(companyId, id, input),
+      () => this.api.reviseTaxComponent(companyId, id, input, version),
       async () => this.taxesSignal.set(await this.api.taxComponents(companyId)),
     );
   }
@@ -65,9 +70,14 @@ export class FiscalFacade {
     );
   }
 
-  async reviseUnit(companyId: string, id: string, input: UnitInput): Promise<boolean> {
+  async reviseUnit(
+    companyId: string,
+    id: string,
+    input: UnitInput,
+    version: number | null,
+  ): Promise<boolean> {
     return this.write(
-      () => this.api.reviseUnit(companyId, id, input),
+      () => this.api.reviseUnit(companyId, id, input, version),
       async () => this.unitsSignal.set(await this.api.units(companyId)),
     );
   }

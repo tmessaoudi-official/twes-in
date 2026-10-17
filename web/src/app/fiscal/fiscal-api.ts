@@ -6,8 +6,11 @@ import { firstValueFrom } from 'rxjs';
 import type {
   CustomerTaxRegimeCustomerTaxRegimeRead,
   TaxComponentTaxComponentRead,
+  TaxComponentTaxComponentWriteTaxComponentReviseRecordReviseValidationTaxComponentWriteRecordRevise as TaxComponentRevise,
   UnitUnitRead,
+  UnitUnitWriteUnitReviseRecordReviseValidationUnitWriteRecordRevise as UnitRevise,
 } from '../api/types.gen';
+import { isRecordChanged } from '../shared/errors/record-changed';
 import {
   TAX_FAMILIES,
   type CustomerTaxRegimeRow,
@@ -54,13 +57,17 @@ export class FiscalApi {
     );
   }
 
-  /** The code and the family are fixed once a tax exists; the API ignores them in a revision. */
+  /**
+   * The code and the family are fixed once a tax exists; the API ignores them in a revision. `version` is the one the
+   * form was opened at: a later one saved elsewhere answers `record_changed`.
+   */
   async reviseTaxComponent(
     companyId: string,
     id: string,
     input: TaxComponentInput,
+    version: number | null,
   ): Promise<TaxComponentRow> {
-    const changes = {
+    const changes: TaxComponentRevise = {
       name: input.name,
       rate: input.rate,
       amount: input.amount,
@@ -70,6 +77,7 @@ export class FiscalApi {
       isActive: input.isActive,
       exemptionMention: input.exemptionMention,
       sortOrder: input.sortOrder,
+      version,
     };
     return this.guard(async () =>
       toTax(
@@ -106,12 +114,19 @@ export class FiscalApi {
     );
   }
 
-  async reviseUnit(companyId: string, id: string, input: UnitInput): Promise<UnitRow> {
-    const changes = {
+  /** `version` is the one the form was opened at: a later one saved elsewhere answers `record_changed`. */
+  async reviseUnit(
+    companyId: string,
+    id: string,
+    input: UnitInput,
+    version: number | null,
+  ): Promise<UnitRow> {
+    const changes: UnitRevise = {
       name: input.name,
       decimals: input.decimals,
       isActive: input.isActive,
       sortOrder: input.sortOrder,
+      version,
     };
     return this.guard(async () =>
       toUnit(
@@ -168,6 +183,8 @@ function toTax(row: TaxComponentTaxComponentRead): TaxComponentRow {
     isActive: row.isActive ?? true,
     exemptionMention: row.exemptionMention ?? null,
     sortOrder: row.sortOrder ?? 0,
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: row.version ?? 0,
   };
 }
 
@@ -179,6 +196,7 @@ function toUnit(row: UnitUnitRead): UnitRow {
     decimals: row.decimals ?? 0,
     isActive: row.isActive ?? true,
     sortOrder: row.sortOrder ?? 0,
+    version: row.version ?? 0,
   };
 }
 
@@ -200,7 +218,7 @@ function codeOf(error: unknown): FiscalError {
     case 404:
       return 'not_found';
     case 409:
-      return 'code_taken';
+      return isRecordChanged(error.error) ? 'record_changed' : 'code_taken';
     default:
       return 'invalid';
   }
