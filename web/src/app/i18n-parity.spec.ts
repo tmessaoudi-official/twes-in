@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import enAccount from '../../public/i18n/account/en.json';
 import frAccount from '../../public/i18n/account/fr.json';
+import enDemoMails from '../../public/i18n/demo-mails/en.json';
+import frDemoMails from '../../public/i18n/demo-mails/fr.json';
 import en from '../../public/i18n/en.json';
 import enExpense from '../../public/i18n/expense/en.json';
 import frExpense from '../../public/i18n/expense/fr.json';
@@ -30,6 +32,7 @@ function keysOf(value: unknown, prefix = ''): string[] {
 /** The texts a page loads with itself (`textsPart`), beside the language's own file: checked as one with it. */
 const parts: Record<string, Record<string, unknown>> = {
   account: { fr: frAccount, en: enAccount },
+  'demo-mails': { fr: frDemoMails, en: enDemoMails },
   expense: { fr: frExpense, en: enExpense },
   import: { fr: frImport, en: enImport },
   schedule: { fr: frSchedule, en: enSchedule },

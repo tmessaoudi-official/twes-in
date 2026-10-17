@@ -1,0 +1,7 @@
+{
+  "demo_mails": {
+    "intro": "What the application would have mailed you, kept here instead: in the demo, no mail leaves.",
+    "none": "No mail yet. What the application would send will show here.",
+    "unavailable": "The mail cannot be read just now. Try again in a moment."
+  }
+}

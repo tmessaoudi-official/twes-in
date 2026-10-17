@@ -1,0 +1,53 @@
+<section class="flex flex-col gap-4 p-4" data-testid="demo-mails-page">
+  <h1 class="text-2xl font-semibold">{{ 'demo_mails.title' | translate }}</h1>
+  <p class="text-sm text-on-surface-variant">{{ 'demo_mails.intro' | translate }}</p>
+
+  @if (failed()) {
+    <p role="alert" class="text-error" data-testid="demo-mails-error">
+      {{ 'demo_mails.unavailable' | translate }}
+    </p>
+  }
+
+  @if (mails(); as list) {
+    @if (list.length === 0) {
+      <p class="flex items-center gap-2" data-testid="demo-mails-none">
+        <mat-icon aria-hidden="true">mail</mat-icon>{{ 'demo_mails.none' | translate }}
+      </p>
+    } @else {
+      <div class="grid gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+        <ul class="m-0 flex list-none flex-col gap-2 p-0" data-testid="demo-mails-list">
+          @for (mail of list; track mail.id) {
+            <li>
+              <button
+                type="button"
+                class="flex w-full flex-col items-start gap-1 rounded-lg border border-outline-variant px-3 py-2 text-start"
+                [class.bg-secondary-container]="mail.id === opened()?.id"
+                [class.text-on-secondary-container]="mail.id === opened()?.id"
+                [attr.aria-current]="mail.id === opened()?.id ? 'true' : null"
+                [attr.data-testid]="'demo-mail-' + mail.id"
+                (click)="open(mail)"
+              >
+                <span class="font-medium">{{ mail.subject }}</span>
+                <span class="text-sm text-on-surface-variant">{{ mail.capturedAt | moment }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+        @if (opened(); as mail) {
+          <article
+            class="flex min-w-0 flex-col gap-3 rounded-lg border border-outline-variant p-4"
+            data-testid="demo-mail-opened"
+          >
+            <h2 class="m-0 text-lg font-medium">{{ mail.subject }}</h2>
+            <p class="m-0 text-sm text-on-surface-variant">{{ mail.capturedAt | moment }}</p>
+            <div
+              class="min-w-0 overflow-x-auto"
+              data-testid="demo-mail-body"
+              [innerHTML]="mail.html"
+            ></div>
+          </article>
+        }
+      </div>
+    }
+  }
+</section>

@@ -2,6 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -13,7 +14,12 @@ import { DemoBanner } from './demo-banner';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({ auth: { demo_banner: 'Démo : une entreprise fictive.' } });
+    return of({
+      auth: {
+        demo_banner: 'Démo : une entreprise fictive.',
+        demo_banner_mails: 'Voir les courriers',
+      },
+    });
   }
 }
 
@@ -36,6 +42,7 @@ describe('DemoBanner', () => {
           fallbackLang: 'fr',
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
+        provideRouter([]),
         { provide: AuthFacade, useValue: { me } },
       ],
     });
@@ -46,6 +53,13 @@ describe('DemoBanner', () => {
 
     expect(banner?.getAttribute('role')).toBe('status');
     expect(banner?.textContent).toContain('Démo : une entreprise fictive.');
+  });
+
+  it('opens the mails the demo kept instead of sending them', () => {
+    const link = shown(true).querySelector('[data-testid="demo-banner-mails"]');
+
+    expect(link?.getAttribute('href')).toBe('/demo-mails');
+    expect(link?.textContent?.trim()).toBe('Voir les courriers');
   });
 
   it('says nothing to anyone else', () => {

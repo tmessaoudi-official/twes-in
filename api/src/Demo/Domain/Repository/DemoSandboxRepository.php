@@ -44,6 +44,12 @@ interface DemoSandboxRepository
     /** Whether the account is the owner of a sandbox, whatever its state. */
     public function ownsOne(Uuid $userId): bool;
 
+    /** The sandbox whose owner has that address, as `Email` writes it, whatever its state. */
+    public function ownedByAddress(string $address): ?DemoSandbox;
+
+    /** The sandbox the company is, whatever its state; null for any company that is no sandbox. */
+    public function ofCompany(Uuid $companyId): ?DemoSandbox;
+
     /** How many sandboxes there are, whatever their state. */
     public function count(): int;
 }

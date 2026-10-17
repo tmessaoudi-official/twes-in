@@ -91,7 +91,8 @@
       "stock_quantity": "18 unités",
       "stock_threshold": "Sous le seuil de 25 unités"
     },
-    "demo_banner": "Démo : une entreprise fictive. Aucun courrier ne part, aucun document n’a de valeur fiscale, et tout disparaît à la déconnexion."
+    "demo_banner": "Démo : une entreprise fictive. Aucun courrier ne part, aucun document n’a de valeur fiscale, et tout disparaît à la déconnexion.",
+    "demo_banner_mails": "Voir les courriers"
   },
   "hello": {
     "greeting": "Bonjour, {{name}}",
@@ -4902,5 +4903,8 @@
     "banner_members": "Le support de la plateforme peut lire la société jusqu’au {{until}}.",
     "manage": "Gérer",
     "switcher": "Support"
+  },
+  "demo_mails": {
+    "title": "Courriers de la démo"
   }
 }
