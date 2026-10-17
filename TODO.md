@@ -6,8 +6,8 @@ box (`- [x]`) once a step is done; the steps run in this order, each needing the
 ## 1. Image publishing on — done by Claude
 
 - [x] `PUBLISH_IMAGES=true` set as a repository variable. Check: `gh variable list --repo tmessaoudi-official/twes-in`.
-- [ ] CI's `publish` job green on the next push to master (it runs only on a push once the variable exists). Check:
-      `gh run list --branch master --limit 1`, then the run's `publish` job.
+- [x] CI's `publish` job green on the next push to master (it runs only on a push once the variable exists). Check:
+      `gh run list --branch master --limit 1`, then the run's `publish` job. Green on fb8b63fc.
 
 ## 2. The three packages public — yours, cannot be undone
 
