@@ -437,135 +437,34 @@
                     class="mt-4 flex flex-col gap-3 border-t border-outline-variant pt-4"
                     [attr.data-testid]="'subscription-panel-' + company.name"
                   >
-                    <div class="flex flex-wrap gap-3">
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{
-                          'platform.subscription.trial_ends_on' | translate
-                        }}</mat-label>
-                        <input
-                          matInput
-                          appDay
-                          #dayField="appDay"
-                          type="text"
-                          inputmode="numeric"
-                          autocomplete="off"
-                          [ngModel]="terms().trialEndsOn ?? ''"
-                          (ngModelChange)="setDay('trialEndsOn', $event)"
-                          data-testid="subscription-trial-ends-on"
-                        />
-                        <app-day-calendar-button matSuffix [field]="dayField" />
-                      </mat-form-field>
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{
-                          'platform.subscription.paid_through' | translate
-                        }}</mat-label>
-                        <input
-                          matInput
-                          appDay
-                          #dayField="appDay"
-                          type="text"
-                          inputmode="numeric"
-                          autocomplete="off"
-                          [ngModel]="terms().paidThrough ?? ''"
-                          (ngModelChange)="setDay('paidThrough', $event)"
-                          data-testid="subscription-paid-through"
-                        />
-                        <app-day-calendar-button matSuffix [field]="dayField" />
-                      </mat-form-field>
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{
-                          'platform.subscription.period_count' | translate
-                        }}</mat-label>
-                        <input
-                          matInput
-                          type="number"
-                          min="1"
-                          [value]="terms().periodCount"
-                          (input)="type('periodCount', $event)"
-                          data-testid="subscription-period-count"
-                        />
-                      </mat-form-field>
-                      <app-select
-                        [label]="'platform.subscription.period_unit' | translate"
-                        [labelInside]="true"
-                        [options]="periodUnitOptions"
-                        [translateLabels]="true"
-                        [ngModel]="terms().periodUnit"
-                        (ngModelChange)="set('periodUnit', $event)"
-                        [ngModelOptions]="{ standalone: true }"
-                        testId="subscription-period-unit"
-                      />
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{ 'platform.subscription.price' | translate }}</mat-label>
-                        <input
-                          matInput
-                          [value]="terms().price ?? ''"
-                          (input)="type('price', $event)"
-                          data-testid="subscription-price"
-                        />
-                      </mat-form-field>
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{ 'platform.subscription.currency' | translate }}</mat-label>
-                        <input
-                          matInput
-                          [value]="terms().currency ?? ''"
-                          (input)="type('currency', $event)"
-                          data-testid="subscription-currency"
-                        />
-                      </mat-form-field>
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{ 'platform.subscription.grace_days' | translate }}</mat-label>
-                        <input
-                          matInput
-                          type="number"
-                          min="0"
-                          [value]="terms().graceDays ?? ''"
-                          (input)="type('graceDays', $event)"
-                          data-testid="subscription-grace-days"
-                        />
-                      </mat-form-field>
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{ 'platform.subscription.hold_days' | translate }}</mat-label>
-                        <input
-                          matInput
-                          type="number"
-                          min="0"
-                          [value]="terms().holdDays ?? ''"
-                          (input)="type('holdDays', $event)"
-                          data-testid="subscription-hold-days"
-                        />
-                      </mat-form-field>
-                      <app-select
-                        [label]="'platform.subscription.unpaid_mode' | translate"
-                        [labelInside]="true"
-                        [options]="unpaidModeOptions"
-                        [translateLabels]="true"
-                        [ngModel]="terms().unpaidMode ?? ''"
-                        (ngModelChange)="set('unpaidMode', $event)"
-                        [ngModelOptions]="{ standalone: true }"
-                        testId="subscription-unpaid-mode"
-                      />
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                      <button
-                        mat-flat-button
-                        type="button"
-                        (click)="saveSubscription(company.id)"
-                        [disabled]="busy()"
-                        data-testid="subscription-save"
-                      >
-                        {{ 'platform.subscription.save' | translate }}
-                      </button>
-                      <button
-                        mat-stroked-button
-                        type="button"
-                        (click)="stopSubscription(company.id)"
-                        [disabled]="busy() || subscription() === null"
-                        data-testid="subscription-stop"
-                      >
-                        {{ 'platform.subscription.stop' | translate }}
-                      </button>
-                    </div>
+                    <app-descriptor-form
+                      [descriptor]="subscriptionDescriptor"
+                      [form]="subscriptionGroup()"
+                      [conflicts]="subscriptionConflicts()"
+                      (resolved)="resolveTerm($event)"
+                      (submitted)="saveSubscription(company.id, $event)"
+                      testId="subscription-form"
+                    >
+                      <div class="flex flex-wrap gap-2">
+                        <button
+                          mat-flat-button
+                          type="submit"
+                          [disabled]="busy()"
+                          data-testid="subscription-save"
+                        >
+                          {{ 'platform.subscription.save' | translate }}
+                        </button>
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          (click)="stopSubscription(company.id)"
+                          [disabled]="busy() || subscription() === null"
+                          data-testid="subscription-stop"
+                        >
+                          {{ 'platform.subscription.stop' | translate }}
+                        </button>
+                      </div>
+                    </app-descriptor-form>
                   </div>
                 }
               </mat-card-content>
