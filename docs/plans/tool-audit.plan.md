@@ -47,7 +47,7 @@ deploy check before each push.
 |---|------|------|-------|----------|-------|
 | 1 | Sweep, five groups of tools | L | done | - | var/claude/tool-audit/** |
 | 2 | Synthesis and the findings page | M | done | - | docs/SPEC.md |
-| 3 | Optimistic locking (done: the mechanism and the customer; vendor, product, expense; invoice, quote, delivery note; the company profile; the settings batch save, 236d859c; units and taxes, 2a0ed3cf; custom fields, establishments, numbering series, 6d9178df; customer groups, expense and product categories, 9cacee28; roles, merged by name and by ticks, 087f6973; contacts, aa4a1857; stock locations, 37843ee7; stock floors and structures, « Annuler » on the version the save produced. Left: the WAITING PUTs of RecordVersionsTest, by context) | L | doing | - | api/** web/** |
+| 3 | Optimistic locking (done: the mechanism and the customer; vendor, product, expense; invoice, quote, delivery note; the company profile; the settings batch save, 236d859c; units and taxes, 2a0ed3cf; custom fields, establishments, numbering series, 6d9178df; customer groups, expense and product categories, 9cacee28; roles, merged by name and by ticks, 087f6973; contacts, aa4a1857; stock locations, 37843ee7; stock floors and structures, « Annuler » on the version the save produced, 99d14b55; drawings, one and as a group. Left: the WAITING PUTs of RecordVersionsTest, by context) | L | doing | - | api/** web/** |
 | 4 | The refusal contract | L | todo | - | api/** web/** |
 | 5 | The other fixes, in the developer's order | L | todo | - | |
 <!-- /progress-block -->

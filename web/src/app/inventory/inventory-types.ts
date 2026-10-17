@@ -475,6 +475,8 @@ export interface StockDrawingRow {
   rotation: number;
   /** How tall it stands, for the 3D view; zero for a bay marked out on the floor. */
   height: string;
+  /** The version read, which a move sends back. */
+  version: number;
 }
 
 export type StockDrawingInput = Pick<
@@ -499,8 +501,9 @@ export type StockDrawingRect = Pick<
  */
 export interface StockDrawingChanges {
   draws: readonly (StockDrawingRect & { locationId: string })[];
-  moves: readonly (StockDrawingRect & { drawingId: string })[];
-  erasures: readonly string[];
+  /** Each with the version it was chosen at: one changed since refuses the whole step. */
+  moves: readonly (StockDrawingRect & { drawingId: string; version: number })[];
+  erasures: readonly { drawingId: string; version: number }[];
 }
 
 /**

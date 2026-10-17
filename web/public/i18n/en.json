@@ -2490,6 +2490,7 @@
       "group_turn_right": "Turn {{degrees}}° right",
       "group_saved": "{{count}} {count, plural, one {rectangle moved} other {rectangles moved}}",
       "group_erased": "{{count}} {count, plural, one {rectangle erased} other {rectangles erased}}",
+      "group_changed": "A rectangle of the group was changed in the meantime: nothing was changed. The plan has been read again; make the move again.",
       "nothing_drawn": "No location is drawn on this floor yet.",
       "plan_of": "Plan of {{floor}}: {{count}} {count, plural, one {rectangle} other {rectangles}} drawn",
       "trace": "Trace a rectangle",

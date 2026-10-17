@@ -1544,10 +1544,20 @@
               data-testid="stock-map-inspector"
             >
               @if (drawingFormGroup(); as group) {
+                @if (drawingSync.changedBy(); as changedBy) {
+                  <app-record-changed
+                    [changedBy]="changedBy"
+                    [conflictCount]="drawingSync.conflicts().length"
+                    (reload)="drawingSync.reloadSaved(group)"
+                  />
+                }
                 @if (drawingDescriptor(); as descriptor) {
                   <app-descriptor-form
                     [descriptor]="descriptor"
                     [form]="group"
+                    [updated]="drawingSync.updated()"
+                    [conflicts]="drawingSync.conflicts()"
+                    (resolved)="drawingSync.resolve(group, $event)"
                     testId="stock-drawing-form"
                     (submitted)="saveDrawing($event)"
                   >

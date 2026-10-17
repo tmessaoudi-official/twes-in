@@ -76,6 +76,7 @@ const drawing = (over: Partial<StockDrawingRow> = {}): StockDrawingRow => ({
   depth: '0.600',
   rotation: 0,
   height: '2.100',
+  version: 1,
   ...over,
 });
 

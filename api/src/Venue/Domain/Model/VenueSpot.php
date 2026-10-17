@@ -66,6 +66,10 @@ class VenueSpot implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     private function __construct(VenueArea $area, PlanRect $rect, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
@@ -98,6 +102,15 @@ class VenueSpot implements CompanyOwned
         return true;
     }
 
+    /**
+     * Something else is now drawn on this rectangle. The spot itself knows nothing of what that is, but a person who
+     * opened the rectangle labelled as it was must be told, so it counts as a change of the spot.
+     */
+    public function rebound(\DateTimeImmutable $now): void
+    {
+        $this->updatedAt = $now;
+    }
+
     public function getRect(): PlanRect
     {
         return new PlanRect($this->x, $this->y, $this->width, $this->depth, $this->rotation, $this->height);
@@ -126,6 +139,11 @@ class VenueSpot implements CompanyOwned
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     private function write(PlanRect $rect): void

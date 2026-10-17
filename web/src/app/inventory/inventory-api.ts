@@ -14,6 +14,7 @@ import type {
   StockDrawingChangesStockDrawingChangesWriteValidationStockDrawingChangesWrite as StockDrawingChangesStockDrawingChangesWrite,
   StockDrawingStockDrawingRead,
   StockHoldingStockHoldingRead,
+  StockDrawingStockDrawingWriteRecordReviseValidationStockDrawingWriteRecordRevise as StockDrawingStockDrawingRevise,
   StockDrawingStockDrawingWriteValidationStockDrawingWrite as StockDrawingStockDrawingWrite,
   StockFloorStockFloorRead,
   StockFloorStockFloorWriteValidationStockFloorWriteStockFloorCreate as StockFloorStockFloorWrite,
@@ -529,13 +530,15 @@ export class InventoryApi {
     companyId: string,
     drawingId: string,
     input: StockDrawingInput,
+    version: number | null,
   ): Promise<StockDrawingRow> {
+    const body: StockDrawingStockDrawingRevise = { ...drawingBody(input), version };
     return this.guard(async () =>
       toDrawing(
         await firstValueFrom(
           this.http.put<StockDrawingStockDrawingRead>(
             path(companyId, 'stock-drawings', drawingId),
-            drawingBody(input),
+            body,
           ),
         ),
       ),
@@ -581,7 +584,7 @@ export class InventoryApi {
     const body: StockDrawingChangesStockDrawingChangesWrite = {
       draws: [...changes.draws],
       moves: [...changes.moves],
-      erasures: [...changes.erasures],
+      erasures: changes.erasures.map(({ drawingId, version }) => ({ drawingId, version })),
     };
 
     return this.guard(
@@ -998,6 +1001,8 @@ function toDrawing(raw: StockDrawingStockDrawingRead): StockDrawingRow {
     depth: raw.depth ?? '0.000',
     rotation: raw.rotation ?? 0,
     height: raw.height ?? '0.000',
+    // Every read carries it; a 0 would be refused by the API rather than taken for a version.
+    version: raw.version ?? 0,
   };
 }
 

@@ -50,14 +50,11 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
         }
         $moves = [];
         foreach ($data->moves as $at => $entry) {
-            $moves[] = [self::id($entry, 'drawingId', "moves[$at]"), self::rect($entry, "moves[$at]")];
+            $moves[] = [self::id($entry, 'drawingId', "moves[$at]"), self::rect($entry, "moves[$at]"), self::version($entry, "moves[$at]")];
         }
         $erasures = [];
-        foreach ($data->erasures as $at => $drawingId) {
-            if (!\is_string($drawingId) || !Uuid::isValid($drawingId)) {
-                throw new UnprocessableEntityHttpException("erasures[$at]: A rectangle is named by its id.");
-            }
-            $erasures[] = Uuid::fromString($drawingId);
+        foreach ($data->erasures as $at => $entry) {
+            $erasures[] = [self::id($entry, 'drawingId', "erasures[$at]"), self::version($entry, "erasures[$at]")];
         }
 
         try {
@@ -84,6 +81,17 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
         }
 
         return Uuid::fromString($id);
+    }
+
+    /** The version a rectangle was chosen at, which a group step stands on: see DrawStockMap::change(). */
+    private static function version(mixed $entry, string $at): int
+    {
+        $version = \is_array($entry) ? ($entry['version'] ?? null) : null;
+        if (!\is_int($version) || $version < 1) {
+            throw new UnprocessableEntityHttpException("$at.version: The version the rectangle was read at is expected here.");
+        }
+
+        return $version;
     }
 
     /** The rectangle an entry carries: the four distances it must have, a turn of 0 and no height when it has none. */

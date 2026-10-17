@@ -576,12 +576,17 @@ export class InventoryFacade {
     floorId: string,
     input: StockDrawingInput,
     drawingId: string | null,
-  ): Promise<boolean> {
-    return this.write(
-      () =>
-        drawingId === null
-          ? this.api.draw(companyId, floorId, input)
-          : this.api.moveDrawing(companyId, drawingId, input),
+    version: number | null,
+  ): Promise<StockDrawingRow | null> {
+    // The rectangle as the API kept it: its version is the one « Annuler » takes it back on.
+    const kept: { row: StockDrawingRow | null } = { row: null };
+    const accepted = await this.write(
+      async () => {
+        kept.row =
+          drawingId === null
+            ? await this.api.draw(companyId, floorId, input)
+            : await this.api.moveDrawing(companyId, drawingId, input, version);
+      },
       // A place created with its rectangle is read again with the floor, or every picker would miss it.
       async () => {
         await Promise.all([
@@ -590,6 +595,7 @@ export class InventoryFacade {
         ]);
       },
     );
+    return accepted ? kept.row : null;
   }
 
   async eraseDrawing(companyId: string, floorId: string, drawingId: string): Promise<boolean> {
@@ -599,16 +605,23 @@ export class InventoryFacade {
     );
   }
 
-  /** A group's step: moved, turned or undrawn together, all or nothing, then the floor read again. */
+  /**
+   * A group's step: moved, turned or undrawn together, all or nothing, then the floor read again. It answers the
+   * rectangles as the step left them, whose versions are what its « Annuler » stands on.
+   */
   async changeDrawings(
     companyId: string,
     floorId: string,
     changes: StockDrawingChanges,
-  ): Promise<boolean> {
-    return this.write(
-      () => this.api.changeDrawings(companyId, floorId, changes),
+  ): Promise<StockDrawingRow[] | null> {
+    const kept: { rows: StockDrawingRow[] } = { rows: [] };
+    const accepted = await this.write(
+      async () => {
+        kept.rows = await this.api.changeDrawings(companyId, floorId, changes);
+      },
       () => this.afterDrawing(companyId, floorId),
     );
+    return accepted ? kept.rows : null;
   }
 
   /**
