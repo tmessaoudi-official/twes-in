@@ -14,6 +14,7 @@ import { decimalShown } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { Session } from '../shared/session/session';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import { ProductReorderPoints } from './product-reorder-points-facade';
 import { ProductReorderPointsSection } from './product-reorder-points';
 import type { ProductReorderPointRow } from './products-types';
@@ -44,6 +45,7 @@ describe('ProductReorderPointsSection', () => {
   };
   const auth = { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }) };
   let fixture: ComponentFixture<ProductReorderPointsSection>;
+  const moved: string[] = [];
 
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
@@ -51,7 +53,10 @@ describe('ProductReorderPointsSection', () => {
   async function open(readOnly = false): Promise<void> {
     fixture = TestBed.createComponent(ProductReorderPointsSection);
     fixture.componentRef.setInput('productId', 'p1');
+    fixture.componentRef.setInput('version', 7);
     fixture.componentRef.setInput('readOnly', readOnly);
+    moved.length = 0;
+    fixture.componentInstance.moved.subscribe((how) => moved.push(how));
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -69,8 +74,8 @@ describe('ProductReorderPointsSection', () => {
   beforeEach(() => {
     rows.set([row('SIEGE', '12.000'), row('SFAX', null)]);
     facade.load.mockReset().mockResolvedValue(undefined);
-    facade.set.mockReset().mockResolvedValue(true);
-    facade.clear.mockReset().mockResolvedValue(true);
+    facade.set.mockReset().mockResolvedValue('saved');
+    facade.clear.mockReset().mockResolvedValue('saved');
     TestBed.configureTestingModule({
       imports: [ProductReorderPointsSection],
       providers: [
@@ -113,8 +118,98 @@ describe('ProductReorderPointsSection', () => {
     q('product-reorder-save-SFAX')!.click();
     await fixture.whenStable();
 
-    expect(facade.set).toHaveBeenCalledWith('c1', 'p1', 'e-SFAX', '2.5');
+    expect(facade.set).toHaveBeenCalledWith('c1', 'p1', 'e-SFAX', '2.5', 7);
     expect(successToasts()).toContain('products.reorder.saved');
+    expect(moved).toEqual(['saved']);
+  });
+
+  it('tells the page a point read before the product was saved elsewhere, keeping what was typed', async () => {
+    facade.set.mockResolvedValue('changed');
+    await open();
+    await typeInto('SFAX', '3');
+
+    q('product-reorder-save-SFAX')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(moved).toEqual(['changed']);
+    expect(successToasts()).not.toContain('products.reorder.saved');
+    expect((q('product-reorder-quantity-SFAX') as HTMLInputElement).value).toBe('3');
+  });
+
+  it('tells the page nothing when a point is refused', async () => {
+    facade.set.mockResolvedValue('refused');
+    await open();
+    await typeInto('SFAX', '3');
+
+    q('product-reorder-save-SFAX')!.click();
+    await fixture.whenStable();
+
+    expect(moved).toEqual([]);
+  });
+
+  it('reads the points again when another person changed them', async () => {
+    await open();
+    expect(facade.load).toHaveBeenCalledTimes(1);
+
+    await announceSaved('product_reorder_point', 'p1', undefined, 'product_reorder_point.set');
+
+    expect(facade.load).toHaveBeenCalledTimes(2);
+  });
+
+  it('takes a point saved by someone else where nothing was typed', async () => {
+    await open();
+
+    rows.set([row('SIEGE', '20.000'), row('SFAX', null)]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((q('product-reorder-quantity-SIEGE') as HTMLInputElement).value).toBe('20');
+    expect(q('field-conflict-reorder-SIEGE')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-17: what is being typed is kept, and the conflict says so.
+  it('keeps a point typed over one saved since by someone else, and offers theirs', async () => {
+    await open();
+    await typeInto('SIEGE', '15');
+
+    rows.set([row('SIEGE', '20.000'), row('SFAX', null)]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((q('product-reorder-quantity-SIEGE') as HTMLInputElement).value).toBe('15');
+    expect(q('field-conflict-reorder-SIEGE')).not.toBeNull();
+    expect(q('field-conflict-reorder-SFAX')).toBeNull();
+
+    (q('field-take-theirs-reorder-SIEGE') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((q('product-reorder-quantity-SIEGE') as HTMLInputElement).value).toBe('20');
+    expect(q('field-conflict-reorder-SIEGE')).toBeNull();
+  });
+
+  it('keeps the typed point over theirs when asked, still to be saved', async () => {
+    await open();
+    await typeInto('SIEGE', '15');
+    rows.set([row('SIEGE', '20.000'), row('SFAX', null)]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    (q('field-keep-mine-reorder-SIEGE') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(q('field-conflict-reorder-SIEGE')).toBeNull();
+    expect((q('product-reorder-quantity-SIEGE') as HTMLInputElement).value).toBe('15');
+    q('product-reorder-save-SIEGE')!.click();
+    await fixture.whenStable();
+    expect(facade.set).toHaveBeenCalledWith('c1', 'p1', 'e-SIEGE', '15', 7);
   });
 
   it('says what is wrong with a quantity the API would refuse, and does not send it', async () => {
@@ -134,6 +229,7 @@ describe('ProductReorderPointsSection', () => {
 
     expect(facade.clear).toHaveBeenCalledWith('c1', 'p1', 'e-SIEGE');
     expect(successToasts()).toContain('products.reorder.cleared');
+    expect(moved).toEqual(['saved']);
   });
 
   it('shows somebody who may not write the points and changes nothing', async () => {

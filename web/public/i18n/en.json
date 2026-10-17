@@ -2128,6 +2128,7 @@
       "none": "No reorder point",
       "malformed": "A quantity from 0, with at most three decimals.",
       "saved": "The reorder point was saved.",
+      "changed_since": "This threshold was changed in the saved version too.",
       "cleared": "The reorder point was removed."
     },
     "barcodes": {

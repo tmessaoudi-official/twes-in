@@ -43,6 +43,7 @@ final readonly class SetProductReorderPointProcessor implements ProcessorInterfa
                 CompanyPath::identifier($uriVariables, 'establishmentId'),
                 (string) $data->quantity,
                 $this->guard->account()->getId(),
+                $data->version,
             );
         } catch (ProductNotInCompany $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);

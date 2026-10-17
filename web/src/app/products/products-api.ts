@@ -12,6 +12,7 @@ import type {
   ProductHomeProductHomeOrderRecordReviseValidationProductHomeOrderRecordRevise,
   ProductHomeProductHomeRead,
   ProductReorderPointProductReorderPointRead,
+  ProductReorderPointProductReorderPointWriteRecordReviseValidationProductReorderPointWriteRecordRevise,
   ProductOptionsProductOptionsRead,
   PricePreviewPricePreviewReadValidationPricePreviewWrite as PricePreviewRead,
   PricePreviewPricePreviewWriteValidationPricePreviewWrite as PricePreviewWrite,
@@ -403,19 +404,25 @@ export class ProductsApi {
     );
   }
 
-  /** Sets the product's reorder point in that establishment, changing the one it had there. */
+  /**
+   * Sets the product's reorder point in that establishment, changing the one it had there. `version` is the product's,
+   * the one the points were read at: a product saved since answers `record_changed`.
+   */
   async setReorderPoint(
     companyId: string,
     productId: string,
     establishmentId: string,
     quantity: string,
+    version: number,
   ): Promise<ProductReorderPointRow> {
+    const body: ProductReorderPointProductReorderPointWriteRecordReviseValidationProductReorderPointWriteRecordRevise =
+      { quantity, version };
     return this.guard(async () =>
       toReorderPoint(
         await firstValueFrom(
           this.http.put<ProductReorderPointProductReorderPointRead>(
             `${reorderPointsPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`,
-            { quantity },
+            body,
           ),
         ),
       ),

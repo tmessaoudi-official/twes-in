@@ -201,9 +201,12 @@ describe('ProductsApi', () => {
       ['e2', null],
     ]);
 
-    const set = api.setReorderPoint('c1', 'p1', 'e2', '2.5');
+    const set = api.setReorderPoint('c1', 'p1', 'e2', '2.5', 3);
     const put = http.expectOne('/api/companies/c1/products/p1/reorder-points/e2');
-    expect([put.request.method, put.request.body]).toEqual(['PUT', { quantity: '2.5' }]);
+    expect([put.request.method, put.request.body]).toEqual([
+      'PUT',
+      { quantity: '2.5', version: 3 },
+    ]);
     put.flush({
       establishmentId: 'e2',
       establishmentCode: 'SFAX',
@@ -217,6 +220,14 @@ describe('ProductsApi', () => {
     expect(del.request.method).toBe('DELETE');
     del.flush(null);
     await cleared;
+  });
+
+  it('says a reorder point read before the product was saved elsewhere is refused as such', async () => {
+    const stale = api.setReorderPoint('c1', 'p1', 'e2', '2.5', 3);
+    http
+      .expectOne('/api/companies/c1/products/p1/reorder-points/e2')
+      .flush({ type: '/problems/record-changed' }, { status: 409, statusText: 'Conflict' });
+    await expect(stale).rejects.toEqual(new ProductsRefused('record_changed'));
   });
 
   it('reads the form options, keeping only line taxes it knows', async () => {

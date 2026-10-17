@@ -47,7 +47,7 @@ final readonly class KeepProductHomes
         private ProductHomeLocationRepository $homes,
         private StockLocationRepository $locations,
         private ProductRepository $products,
-        private HomedProducts $held,
+        private ProductsHeld $held,
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
@@ -201,7 +201,7 @@ final readonly class KeepProductHomes
                 }
             }
             if ($changed) {
-                $this->held->homesChanged($product);
+                $this->held->changedBeside($product);
                 $this->record($company, $product, $establishmentId, [] === $homes ? self::CLEARED : self::SET, $actorUserId);
             }
 

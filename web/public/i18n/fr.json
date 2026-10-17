@@ -2128,6 +2128,7 @@
       "none": "Aucun seuil",
       "malformed": "Une quantité à partir de 0, avec au plus trois décimales.",
       "saved": "Le seuil a été enregistré.",
+      "changed_since": "Ce seuil a aussi été modifié dans la version enregistrée.",
       "cleared": "Le seuil a été retiré."
     },
     "barcodes": {

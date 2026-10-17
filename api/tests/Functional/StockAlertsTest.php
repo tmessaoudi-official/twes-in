@@ -75,7 +75,7 @@ final class StockAlertsTest extends ApiTestCase
     public function testStockThatFallsToItsReorderPointTellsAllTheKeepersOnceAndNotWhileItStaysThere(): void
     {
         $site = $this->site();
-        $this->sendJson('PUT', $this->path('products/'.$this->laptopId.'/reorder-points/'.$this->establishmentId($site)), ['quantity' => '5']);
+        $this->sendJson('PUT', $this->path('products/'.$this->laptopId.'/reorder-points/'.$this->establishmentId($site)), ['quantity' => '5', 'version' => $this->storedVersion('product', $this->laptopId)]);
         self::assertResponseIsSuccessful();
         $this->movement('receive', $site, '10');
         self::assertSame([], $this->told('stock.low'), 'above the point');
@@ -97,7 +97,7 @@ final class StockAlertsTest extends ApiTestCase
         // 24 on the floor and a point of 10: putting 20 aside leaves 4 that can be sold, which is the fall (audit
         // 2026-10-06, D-3). A move between two places that sell is still no fall, and goods coming back are none either.
         $site = $this->site();
-        $this->sendJson('PUT', $this->path('products/'.$this->laptopId.'/reorder-points/'.$this->establishmentId($site)), ['quantity' => '10']);
+        $this->sendJson('PUT', $this->path('products/'.$this->laptopId.'/reorder-points/'.$this->establishmentId($site)), ['quantity' => '10', 'version' => $this->storedVersion('product', $this->laptopId)]);
         self::assertResponseIsSuccessful();
         $floor = $this->em()->find(StockLocation::class, Uuid::fromString($site));
         self::assertNotNull($floor);
@@ -128,7 +128,7 @@ final class StockAlertsTest extends ApiTestCase
         // Five counted missing on the floor and found on the rack is stock that did not fall: the alert reads the count
         // as a whole, not the floor alone before the rack is written (audit 2026-10-06, N-e).
         $site = $this->site();
-        $this->sendJson('PUT', $this->path('products/'.$this->laptopId.'/reorder-points/'.$this->establishmentId($site)), ['quantity' => '5']);
+        $this->sendJson('PUT', $this->path('products/'.$this->laptopId.'/reorder-points/'.$this->establishmentId($site)), ['quantity' => '5', 'version' => $this->storedVersion('product', $this->laptopId)]);
         self::assertResponseIsSuccessful();
         $floor = $this->em()->find(StockLocation::class, Uuid::fromString($site));
         self::assertNotNull($floor);

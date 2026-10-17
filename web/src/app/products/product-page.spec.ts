@@ -26,6 +26,7 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import { By } from '@angular/platform-browser';
 import { ProductBarcodesSection } from './product-barcodes';
 import { ProductHomesSection } from './product-homes';
+import { ProductReorderPointsSection } from './product-reorder-points';
 import { ProductPage } from './product-page';
 import { ProductOnView } from './product-on-view';
 import type { SettingRow } from '../shared/settings/settings-types';
@@ -589,6 +590,37 @@ describe('ProductPage', () => {
       params: undefined,
     });
     expect((homes.componentInstance as ProductHomesSection).version()).toBe(3);
+  });
+
+  it('reads the product again and says nothing was saved when a reorder point was refused as made over a version saved since', async () => {
+    product.set(laptop);
+    await open('p1');
+    facade.loadProduct.mockImplementationOnce(async () => product.set({ ...laptop, version: 3 }));
+
+    await openTab('products.tabs.homes');
+    const points = fixture.debugElement.query(By.directive(ProductReorderPointsSection));
+    expect((points.componentInstance as ProductReorderPointsSection).version()).toBe(1);
+    (points.componentInstance as ProductReorderPointsSection).moved.emit('changed');
+    await settle();
+
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'failure',
+      key: 'live.saved_since',
+      params: undefined,
+    });
+    expect((points.componentInstance as ProductReorderPointsSection).version()).toBe(3);
+  });
+
+  // Its reorder points are audited under their own kind, and their change moves the product's version.
+  it('reads the product again when another person changed its reorder points', async () => {
+    product.set(laptop);
+    await open('p1');
+    facade.loadProduct.mockClear();
+
+    await announceSaved('product_reorder_point', 'p1', undefined, 'product_reorder_point.set');
+    await settle();
+
+    expect(facade.loadProduct).toHaveBeenLastCalledWith('c1', 'p1');
   });
 
   it('revises a product shown at the currency scale and says it was saved', async () => {

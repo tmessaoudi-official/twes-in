@@ -17,10 +17,16 @@ async function reorderPoint(page: Page, productId: string, quantity: string | nu
         await fetch(base, { headers: { Accept: 'application/json' } })
       ).json()) as { establishmentId: string }[];
       for (const row of rows) {
+        // Each point set moves the product's version, which the next one names: read it just before.
+        const { version } = (await (
+          await fetch(`/api/companies/${me.company.id}/products/${id}`, {
+            headers: { Accept: 'application/json' },
+          })
+        ).json()) as { version: number };
         const answered = await fetch(`${base}/${row.establishmentId}`, {
           method: point === null ? 'DELETE' : 'PUT',
           headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-          body: point === null ? undefined : JSON.stringify({ quantity: point }),
+          body: point === null ? undefined : JSON.stringify({ quantity: point, version }),
         });
         if (!answered.ok) throw new Error(`the reorder point answered ${answered.status}`);
       }

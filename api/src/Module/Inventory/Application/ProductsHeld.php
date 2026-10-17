@@ -15,22 +15,22 @@ use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The product whose homes are written, which the products module holds for the write. Its homes are part of what a
- * product form shows beside it, so a change of them moves the product's version: a list of homes read before another
+ * The product whose homes or reorder points are written, which the products module holds for the write. Both are shown
+ * on the product's page beside its form, so a change of them moves the product's version: a list read before another
  * person's change is refused rather than written over it, and a product form open elsewhere is told. A port this module
- * owns, answered by the products', so this module never writes their product itself (docs/SPEC.md § 7, audit
- * 2026-10-06 C-4). It runs inside the homes' transaction, so the version moves with them.
+ * owns, answered by the products', so this module never writes their product itself. It runs inside the write's
+ * transaction, so the version moves with what changed.
  */
-interface HomedProducts
+interface ProductsHeld
 {
     /**
      * The product under a row lock, so another write of it waits; null when the company has none by this id. With a
-     * version, the one the homes were read at, a product saved since is refused.
+     * version, the one the homes or points were read at, a product saved since is refused.
      *
      * @throws RecordChanged
      */
     public function held(Company $company, Uuid $productId, ?int $version): ?Product;
 
-    /** Its homes changed: its version moves. */
-    public function homesChanged(Product $product): void;
+    /** Its homes or reorder points changed: its version moves. */
+    public function changedBeside(Product $product): void;
 }

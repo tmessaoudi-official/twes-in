@@ -46,11 +46,11 @@ final class ProductReorderPointTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame([[$this->establishmentId, null]], $this->rows(), 'every establishment, with none set: no alert');
 
-        $this->sendJson('PUT', $this->points($this->establishmentId), ['quantity' => ' 12 ']);
+        $this->sendJson('PUT', $this->points($this->establishmentId), ['quantity' => ' 12 ', 'version' => $this->storedVersion('product', $this->productId)]);
         self::assertResponseIsSuccessful();
         self::assertSame([$this->establishmentId, $this->establishmentCode, '12.000'], [$this->json()['establishmentId'], $this->json()['establishmentCode'], $this->json()['quantity']]);
 
-        $this->sendJson('PUT', $this->points($this->establishmentId), ['quantity' => '0']);
+        $this->sendJson('PUT', $this->points($this->establishmentId), ['quantity' => '0', 'version' => $this->storedVersion('product', $this->productId)]);
         self::assertResponseIsSuccessful();
         $this->getJson($this->points());
         self::assertSame([[$this->establishmentId, '0.000']], $this->rows(), 'one per establishment, changed in place; zero reorders once none is left');
@@ -66,13 +66,52 @@ final class ProductReorderPointTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'clearing what is clear is no error');
     }
 
+    /** Shown on the product's page beside its form, the points move the product's version, as its homes do. */
+    public function testAReorderPointNamesTheProductVersionItWasReadAtAndMovesIt(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->product();
+        $point = $this->points($this->establishmentId);
+        $read = $this->storedVersion('product', $this->productId);
+
+        $this->sendJson('PUT', $point, ['quantity' => '12']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a point sent without the version it was read at');
+        self::assertContains(['propertyPath' => 'version', 'reason' => 'value_required', 'params' => []], $this->refusals());
+
+        $this->sendJson('PUT', $point, ['quantity' => '12', 'version' => $read]);
+        self::assertResponseIsSuccessful();
+        $moved = $this->storedVersion('product', $this->productId);
+        self::assertSame($read + 1, $moved, 'a point set moves the product\'s version');
+
+        $this->sendJson('PUT', $point, ['quantity' => '15', 'version' => $read]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a point read before the change is refused');
+        self::assertSame('/problems/record-changed', $this->stringAt($this->json(), 'type'));
+        $this->getJson($this->points());
+        self::assertSame([[$this->establishmentId, '12.000']], $this->rows(), 'and nothing of it is written');
+        self::assertSame($moved, $this->storedVersion('product', $this->productId));
+
+        $this->sendJson('PUT', $point, ['quantity' => '12', 'version' => $moved]);
+        self::assertResponseIsSuccessful();
+        self::assertSame($moved, $this->storedVersion('product', $this->productId), 'the same point changes nothing, its version neither');
+
+        $this->sendJson('PUT', $point, ['quantity' => '15', 'version' => $moved]);
+        self::assertResponseIsSuccessful();
+        self::assertSame($moved + 1, $this->storedVersion('product', $this->productId), 'a point changed moves it');
+
+        $this->sendJson('DELETE', $point);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame($moved + 2, $this->storedVersion('product', $this->productId), 'a point cleared moves it');
+        $this->sendJson('DELETE', $point);
+        self::assertSame($moved + 2, $this->storedVersion('product', $this->productId), 'clearing what is clear moves nothing');
+    }
+
     public function testWhatIsRefusedIsRefusedWithItsField(): void
     {
         $this->signedIn(['product.read', 'product.write']);
         $this->product();
 
         foreach (['-1' => 'a negative quantity', '1.5' => 'finer than the piece counts', 'douze' => 'not a number', '' => 'blank'] as $quantity => $case) {
-            $this->sendJson('PUT', $this->points($this->establishmentId), ['quantity' => (string) $quantity]);
+            $this->sendJson('PUT', $this->points($this->establishmentId), ['quantity' => (string) $quantity, 'version' => $this->storedVersion('product', $this->productId)]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
             self::assertStringContainsString('quantity', (string) $this->client->getResponse()->getContent(), $case);
         }
@@ -80,11 +119,11 @@ final class ProductReorderPointTest extends ApiTestCase
         $other = $this->createCompany('Ailleurs');
         static::getContainer()->get(ProvisionCompany::class)->handle($other);
         $foreign = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($other->getId())[0]->getId()->toRfc4122();
-        $this->sendJson('PUT', $this->points($foreign), ['quantity' => '3']);
+        $this->sendJson('PUT', $this->points($foreign), ['quantity' => '3', 'version' => $this->storedVersion('product', $this->productId)]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'another company’s establishment');
         self::assertStringContainsString('establishmentId', (string) $this->client->getResponse()->getContent());
 
-        $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.Uuid::v7()->toRfc4122().'/reorder-points/'.$this->establishmentId, ['quantity' => '3']);
+        $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.Uuid::v7()->toRfc4122().'/reorder-points/'.$this->establishmentId, ['quantity' => '3', 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
@@ -98,7 +137,7 @@ final class ProductReorderPointTest extends ApiTestCase
         $this->getJson($this->points());
         self::assertResponseIsSuccessful();
         // As for a home: the company answers 404 to a member who may read a product and not revise one.
-        $this->sendJson('PUT', $this->points($this->establishmentId), ['quantity' => '3']);
+        $this->sendJson('PUT', $this->points($this->establishmentId), ['quantity' => '3', 'version' => $this->storedVersion('product', $this->productId)]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'reading a product is not revising one');
         $this->sendJson('DELETE', $this->points($this->establishmentId));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

@@ -16,6 +16,7 @@ use App\Module\Inventory\Domain\Model\ProductReorderPoint;
 use App\Module\Inventory\Domain\Repository\ProductReorderPointRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
@@ -25,7 +26,9 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * The quantity at or under which each product is to be reordered, per establishment (docs/SPEC.md § 7, 2026-09-24
- * 11:40). Setting one where the establishment already has one changes it; clearing one means no alert there.
+ * 11:40). Setting one where the establishment already has one changes it; clearing one means no alert there. The
+ * points are shown on the product's page beside its form, so a change of them moves the product's version, which a
+ * screen's write names: a point read before another person's change is refused rather than written over it.
  */
 final readonly class KeepReorderPoints
 {
@@ -37,6 +40,7 @@ final readonly class KeepReorderPoints
         private ProductReorderPointRepository $points,
         private EstablishmentRepository $establishments,
         private ProductRepository $products,
+        private ProductsHeld $held,
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
@@ -66,13 +70,17 @@ final readonly class KeepReorderPoints
     }
 
     /**
+     * `$version` is the product's, the one the point was read at; an import, which read nothing, passes none and
+     * still holds the product, so two writes of its points never run side by side.
+     *
      * @throws ProductNotInCompany
      * @throws InvalidReorderPoint
+     * @throws RecordChanged
      */
-    public function set(Company $company, Uuid $productId, Uuid $establishmentId, string $quantity, ?Uuid $actorUserId): ProductReorderPoint
+    public function set(Company $company, Uuid $productId, Uuid $establishmentId, string $quantity, ?Uuid $actorUserId, ?int $version = null): ProductReorderPoint
     {
-        return $this->transactions->run(function () use ($company, $productId, $establishmentId, $quantity, $actorUserId): ProductReorderPoint {
-            $product = $this->product($company, $productId);
+        return $this->transactions->run(function () use ($company, $productId, $establishmentId, $quantity, $actorUserId, $version): ProductReorderPoint {
+            $product = $this->held->held($company, $productId, $version) ?? throw new ProductNotInCompany();
             $establishment = $this->establishments->ofIdInCompany($establishmentId, $company->getId())
                 ?? throw new InvalidReorderPoint('establishmentId', 'No establishment of this company has this id.');
 
@@ -80,12 +88,14 @@ final readonly class KeepReorderPoints
             if (null === $existing) {
                 $point = ProductReorderPoint::of($product, $establishment, $quantity, $this->clock->now());
                 $this->points->save($point);
+                $this->held->changedBeside($product);
                 $this->record($company, $point, self::SET, $actorUserId);
 
                 return $point;
             }
             if ($existing->change($quantity, $this->clock->now())) {
                 $this->points->save($existing);
+                $this->held->changedBeside($product);
                 $this->record($company, $existing, self::SET, $actorUserId);
             }
 
@@ -101,12 +111,13 @@ final readonly class KeepReorderPoints
     public function clear(Company $company, Uuid $productId, Uuid $establishmentId, ?Uuid $actorUserId): void
     {
         $this->transactions->run(function () use ($company, $productId, $establishmentId, $actorUserId): void {
-            $this->product($company, $productId);
+            $product = $this->held->held($company, $productId, null) ?? throw new ProductNotInCompany();
             $point = $this->points->ofProductInEstablishment($productId, $establishmentId);
             if (null === $point) {
                 return;
             }
             $this->points->remove($point);
+            $this->held->changedBeside($product);
             $this->record($company, $point, self::CLEARED, $actorUserId);
         });
     }
