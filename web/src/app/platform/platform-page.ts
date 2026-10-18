@@ -40,9 +40,9 @@ import {
   type CompanyCountry,
   type PlatformCompanyRow,
   type PlatformTab,
-  type SignupSwitch,
+  type PlatformSwitch,
   type SupportChannel,
-  type PlatformDelay,
+  type PlatformNumber,
   type PlatformSupport,
   type PlatformSubscriptionRow,
 } from './platform-types';
@@ -189,7 +189,7 @@ export class PlatformPage implements OnInit {
   protected readonly delays = this.platform.delays;
   /** The delays as typed, by key, until saved; a field never typed in shows what the platform holds. */
   protected readonly delayDraft = linkedSignal<
-    readonly PlatformDelay[] | null,
+    readonly PlatformNumber[] | null,
     Record<string, number>
   >({
     source: () => this.platform.delays(),
@@ -213,6 +213,27 @@ export class PlatformPage implements OnInit {
   protected readonly delaysReady = computed(() => {
     const changes = this.delayChanges();
     return changes !== null && Object.keys(changes).length > 0;
+  });
+  protected readonly demo = this.platform.demo;
+  private readonly demoMostHeld = computed(() => this.platform.demo()?.most?.value ?? null);
+  /** The count as typed until saved, null when untouched: a switch turned meanwhile leaves what is typed alone. */
+  protected readonly demoMostDraft = linkedSignal<number | null, number | null>({
+    source: this.demoMostHeld,
+    computation: () => null,
+  });
+  /** A typed count differing from the platform's, whole and within its bounds. */
+  protected readonly demoMostReady = computed(() => {
+    const most = this.platform.demo()?.most;
+    const typed = this.demoMostDraft();
+    return (
+      most !== null &&
+      most !== undefined &&
+      typed !== null &&
+      typed !== most.value &&
+      Number.isInteger(typed) &&
+      (most.min === null || typed >= most.min) &&
+      (most.max === null || typed <= most.max)
+    );
   });
   protected readonly busy = this.platform.busy;
   protected readonly error = this.platform.error;
@@ -269,8 +290,8 @@ export class PlatformPage implements OnInit {
     }
   }
 
-  protected async turn(key: SignupSwitch, value: boolean): Promise<void> {
-    await this.platform.setSignup(key, value);
+  protected async turn(key: PlatformSwitch, value: boolean): Promise<void> {
+    await this.platform.setSwitch(key, value);
   }
 
   /** The address a tab opens: its own name and none of the words another list left behind. */
@@ -354,6 +375,21 @@ export class PlatformPage implements OnInit {
   protected typedDelay(key: string, event: Event): void {
     const raw = (event.target as HTMLInputElement).value.trim();
     this.delayDraft.update((draft) => ({ ...draft, [key]: raw === '' ? Number.NaN : Number(raw) }));
+  }
+
+  protected typedDemoMost(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value.trim();
+    this.demoMostDraft.set(raw === '' ? Number.NaN : Number(raw));
+  }
+
+  protected async saveDemoMost(): Promise<void> {
+    const typed = this.demoMostDraft();
+    if (!this.demoMostReady() || typed === null) return;
+    if (await this.platform.saveDemoMost(typed)) {
+      this.feedback.success('platform.demo.saved');
+    } else {
+      this.savedSince();
+    }
   }
 
   protected async saveDelays(): Promise<void> {

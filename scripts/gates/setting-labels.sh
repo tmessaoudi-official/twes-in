@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Every setting a company may set, and every chain heading its settings page draws a section under, has a label a
-# person can read, in both languages (docs/SPEC.md § 3 Settings).
+# Every setting a company may set, every chain heading its settings page draws a section under, and every whole-number
+# platform setting, which the operators' page draws by its declared label, has a label a person can read, in both
+# languages (docs/SPEC.md § 3 Settings).
 #
 # The same drift `permission-labels.sh` guards one layer over: the settings catalogue is COLLECTED from every
 # `DeclaresSettings` service, so declaring a setting is one `yield` and nothing warns that the settings page will
@@ -32,6 +33,9 @@ floor=${SETTING_LABELS_FLOOR:-23}
 chains_floor=${SETTING_CHAINS_FLOOR:-4}
 # 16 choices on 2026-09-23 (presentation 14, document language 2): losing the document's pair or any select reds.
 choices_floor=${SETTING_CHOICES_FLOOR:-15}
+# Five whole-number platform settings, from four declarations (accounts, companies, licensing's two, the demo's count):
+# losing any one file's reds.
+platform_floor=${SETTING_PLATFORM_FLOOR:-5}
 
 # One key, one language: present, a string, and not blank. The dots are nesting, as ngx-translate reads them.
 labelled() {
@@ -52,8 +56,9 @@ if ((${#files[@]} == 0)); then
   exit 1
 fi
 
-# The label key of each declaration. Two kinds are left out, each because no one ever reads the label:
-#   - a PLATFORM setting is the operators' own screen, not a company's, and not the page these labels belong to;
+# The label key of each declaration. Two kinds are left out here, each because no one ever reads the label:
+#   - a PLATFORM setting is the operators' own screen, not a company's: its whole numbers are checked below, and
+#     the rest sit on cards that carry their own texts;
 #   - a key-PATTERN setting (`presentation.list.<id>`) is machine-written state, one row per list a person has
 #     sorted, with no single key and no field on any page. Its declaration carries `keyPattern:`, which is the
 #     property that makes it one, so that is what is matched rather than the names of today's two.
@@ -66,6 +71,19 @@ mapfile -t keys < <(
 if ((${#keys[@]} < floor)); then
   printf 'setting-labels: FAIL — found only %d setting labels, below the floor of %d; the discovery pattern is broken\n' \
     "${#keys[@]}" "$floor"
+  exit 1
+fi
+
+# The operators' page draws every whole-number platform setting as a field labelled by its declaration (the delays,
+# the demo's count), so a new one has a raw key for a label unless it is written here too.
+mapfile -t platform_keys < <(
+  cd "$root" && grep -hE "SettingType::Int" "${files[@]}" |
+    grep -oE "'settings\.platform\.[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*'" | tr -d "'" | sort -u
+)
+
+if ((${#platform_keys[@]} < platform_floor)); then
+  printf 'setting-labels: FAIL — found only %d platform numbers, below the floor of %d; the discovery pattern is broken\n' \
+    "${#platform_keys[@]}" "$platform_floor"
   exit 1
 fi
 
@@ -129,7 +147,7 @@ fi
 missing=()
 for language in fr en; do
   file="$root/web/public/i18n/$language.json"
-  for key in "${keys[@]}"; do
+  for key in "${keys[@]}" "${platform_keys[@]}"; do
     labelled "$key" "$file" || missing+=("$language: $key")
   done
   for chain in "${chains[@]}"; do
@@ -146,5 +164,5 @@ if ((${#missing[@]})); then
   exit 1
 fi
 
-printf 'setting-labels: OK — %d settings, %d choices and %d chain headings are labelled in fr and en\n' \
-  "${#keys[@]}" "${#choices[@]}" "${#chains[@]}"
+printf 'setting-labels: OK — %d settings, %d platform numbers, %d choices and %d chain headings are labelled in fr and en\n' \
+  "${#keys[@]}" "${#platform_keys[@]}" "${#choices[@]}" "${#chains[@]}"

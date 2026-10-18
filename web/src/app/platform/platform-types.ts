@@ -55,7 +55,17 @@ export interface PlatformSignup {
   readonly approvalRequired: boolean;
 }
 
-export type SignupSwitch = 'signup.enabled' | 'signup.approval_required';
+/** A switch the operators turn, the last word being theirs: it is set without a version. */
+export type PlatformSwitch = 'signup.enabled' | 'signup.approval_required' | 'demo.enabled';
+
+/**
+ * The demo as the operators set it: whether visitors may try it (on unless switched off), and how many sandboxes may
+ * exist at once, which bounds what visitors cost the machine; null where the API declares no such count.
+ */
+export interface PlatformDemo {
+  readonly enabled: boolean;
+  readonly most: PlatformNumber | null;
+}
 
 /** A way companies reach the platform's operators, which the help panel offers (`SupportSettings` in the API). */
 export type SupportChannel = 'phone' | 'whatsapp' | 'email' | 'status_url';
@@ -67,16 +77,17 @@ export type PlatformSupport = Readonly<Record<SupportChannel, string>>;
 export interface PlatformSettings {
   readonly signup: PlatformSignup;
   readonly support: PlatformSupport;
-  readonly delays: readonly PlatformDelay[];
+  readonly delays: readonly PlatformNumber[];
+  readonly demo: PlatformDemo;
   readonly versions: Readonly<Record<string, number>>;
 }
 
 /**
- * A number of days the platform sets for every company: each whole-number platform setting, drawn from its declaration
- * (label, bounds), so a new one has its field without a line written here. `value` is what is in effect, the default
- * where nothing was set.
+ * A whole number the platform sets, drawn from its declaration (label, bounds), so a new one has its field without a
+ * line written here: every such setting but the demo's count is a number of days, shown as the delays. `value` is what
+ * is in effect, the default where nothing was set.
  */
-export interface PlatformDelay {
+export interface PlatformNumber {
   readonly key: string;
   readonly labelKey: string;
   readonly value: number;

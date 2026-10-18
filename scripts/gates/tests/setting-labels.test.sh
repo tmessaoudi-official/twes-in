@@ -46,6 +46,7 @@ final readonly class ShopSettings implements DeclaresSettings
         yield new SettingDefinition('shop.colour', SettingType::Text, '', $c, $l, 'settings.shop.colour', 'shop');
         yield new SettingDefinition('shop.side-door', SettingType::Enum, 'open', $c, $l, 'settings.shop.side_door', 'shop', choices: ['open', 'shut']);
         yield new SettingDefinition('platform.seats', SettingType::Int, 1, $c, $l, 'settings.platform.seats', 'core');
+        yield new SettingDefinition('platform.phone', SettingType::Text, '', $c, $l, 'settings.platform.phone', 'core');
         yield new SettingDefinition('shop.list.<id>', SettingType::Json, null, $c, $l, 'settings.shop.list', 'shop', keyPattern: self::LIST);
     }
 }
@@ -61,7 +62,7 @@ translations() {
   for language in fr en; do
     DROP="$drop" python3 -c '
 import json, os, sys
-doc = {"settings": {"chains": {"parties": "Clients", "venue": "Plan"},
+doc = {"settings": {"chains": {"parties": "Clients", "venue": "Plan"}, "platform": {"seats": "Places"},
                     "shop": {"hours": "Horaires", "colour": "Couleur", "side_door": "Porte"},
                     "choices": {"shop": {"side-door": {"open": "Ouverte", "shut": "Fermée"}}}}}
 drop = os.environ["DROP"]
@@ -71,6 +72,8 @@ if drop == "chain":
     del doc["settings"]["chains"]["venue"]
 if drop == "choice":
     del doc["settings"]["choices"]["shop"]["side-door"]["shut"]
+if drop == "platform":
+    del doc["settings"]["platform"]["seats"]
 if drop == "blank":
     doc["settings"]["shop"]["colour"] = "   "
 json.dump(doc, open(sys.argv[1], "w", encoding="utf-8"), ensure_ascii=False)
@@ -80,15 +83,26 @@ json.dump(doc, open(sys.argv[1], "w", encoding="utf-8"), ensure_ascii=False)
 
 # The fixture tree declares two settings and two chains; the gate's real floors are sized for the real tree, so
 # every case but the floor cases themselves passes floors this fixture can meet.
-gate() { SETTING_LABELS_FLOOR=2 SETTING_CHAINS_FLOOR=2 SETTING_CHOICES_FLOOR=2 bash "$GATE" "$@"; }
+gate() { SETTING_LABELS_FLOOR=2 SETTING_CHAINS_FLOOR=2 SETTING_CHOICES_FLOOR=2 SETTING_PLATFORM_FLOOR=1 bash "$GATE" "$@"; }
 
 echo "setting-labels gate"
 
 d=$(repo) && translations "$d"
 out=$(gate --root "$d" 2>&1)
 code=$?
-# Two labels, because the platform setting and the key-pattern one are both deliberately left out.
-check "a fully labelled tree passes" "$code" 0 "$out" "3 settings, 2 choices and 2 chain headings"
+# The platform's text setting and the key-pattern one are deliberately left out: no page draws their labels.
+check "a fully labelled tree passes" "$code" 0 "$out" "3 settings, 1 platform numbers, 2 choices and 2 chain headings"
+
+# The operators' page draws every whole-number platform setting by its declared label, as its delays.
+d=$(repo) && translations "$d" platform
+out=$(gate --root "$d" 2>&1)
+code=$?
+check "an unlabelled platform number fails" "$code" 1 "$out" "settings.platform.seats"
+
+d=$(repo) && translations "$d"
+out=$(SETTING_LABELS_FLOOR=2 SETTING_CHAINS_FLOOR=2 SETTING_CHOICES_FLOOR=2 SETTING_PLATFORM_FLOOR=99 bash "$GATE" --root "$d" 2>&1)
+code=$?
+check "too few platform numbers found is a broken pattern, not a pass" "$code" 1 "$out" "below the floor"
 
 d=$(repo) && translations "$d" label
 out=$(gate --root "$d" 2>&1)

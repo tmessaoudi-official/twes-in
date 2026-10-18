@@ -15,13 +15,14 @@ import {
   type PlatformAccountSearch,
   type PlatformCompanySearch,
   type PlatformCompanyRow,
-  type PlatformDelay,
+  type PlatformDemo,
   type PlatformError,
+  type PlatformNumber,
   type PlatformSettings,
   type PlatformSignup,
   type PlatformSubscriptionRow,
   type SubscriptionTerms,
-  type SignupSwitch,
+  type PlatformSwitch,
   type PlatformSupport,
 } from './platform-types';
 
@@ -34,7 +35,8 @@ export class PlatformFacade {
   private readonly waitingSignal = signal<readonly PlatformCompanyRow[]>([]);
   private readonly signupSignal = signal<PlatformSignup | null>(null);
   private readonly supportSignal = signal<PlatformSupport | null>(null);
-  private readonly delaysSignal = signal<readonly PlatformDelay[] | null>(null);
+  private readonly delaysSignal = signal<readonly PlatformNumber[] | null>(null);
+  private readonly demoSignal = signal<PlatformDemo | null>(null);
   /** The version of each platform key's row when read, which a form's save sends back. */
   private versions: Readonly<Record<string, number>> = {};
   private readonly busySignal = signal(false);
@@ -78,6 +80,8 @@ export class PlatformFacade {
   readonly support = this.supportSignal.asReadonly();
   /** The numbers of days the platform sets, null until read. */
   readonly delays = this.delaysSignal.asReadonly();
+  /** Whether visitors may try the demo and how many sandboxes may exist at once, null until read. */
+  readonly demo = this.demoSignal.asReadonly();
   private readonly subscriptionSignal = signal<PlatformSubscriptionRow | null>(null);
   private readonly openedSignal = signal<string | null>(null);
   /** The subscription of the company whose panel is open, null while it is being read or where there is none. */
@@ -295,16 +299,19 @@ export class PlatformFacade {
   }
 
   /** The switch shows the new value only once the platform holds it. */
-  async setSignup(key: SignupSwitch, value: boolean): Promise<void> {
+  async setSwitch(key: PlatformSwitch, value: boolean): Promise<void> {
     this.errorSignal.set(null);
     try {
-      await this.proven(() => this.api.setSignup(key, value));
-      const current = this.signupSignal();
-      if (current !== null) {
+      await this.proven(() => this.api.setSwitch(key, value));
+      const signup = this.signupSignal();
+      const demo = this.demoSignal();
+      if (key === 'demo.enabled') {
+        if (demo !== null) this.demoSignal.set({ ...demo, enabled: value });
+      } else if (signup !== null) {
         this.signupSignal.set(
           key === 'signup.enabled'
-            ? { ...current, enabled: value }
-            : { ...current, approvalRequired: value },
+            ? { ...signup, enabled: value }
+            : { ...signup, approvalRequired: value },
         );
       }
     } catch (error) {
@@ -327,6 +334,13 @@ export class PlatformFacade {
   /** Saves the delays changed, together or not at all, and shows what the platform then holds. */
   async saveDelays(changes: Readonly<Record<string, number>>): Promise<boolean> {
     return this.saveSettings(Object.entries(changes).map(([key, value]) => ({ key, value })));
+  }
+
+  /** Saves how many demo sandboxes may exist at once, with the version read, and shows what the platform then holds. */
+  async saveDemoMost(most: number): Promise<boolean> {
+    const key = this.demoSignal()?.most?.key;
+    if (key === undefined) return false;
+    return this.saveSettings([{ key, value: most }]);
   }
 
   clearError(): void {
@@ -367,6 +381,7 @@ export class PlatformFacade {
     this.signupSignal.set(settings.signup);
     this.supportSignal.set(settings.support);
     this.delaysSignal.set(settings.delays);
+    this.demoSignal.set(settings.demo);
     this.versions = settings.versions;
   }
 

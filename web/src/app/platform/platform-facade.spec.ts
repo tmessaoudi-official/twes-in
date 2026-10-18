@@ -60,6 +60,10 @@ const SETTINGS = {
     { key: 'account.deletion_days', labelKey: 'l.a', value: 7, min: 1, max: 90 },
     { key: 'company.reopen_days', labelKey: 'l.c', value: 7, min: 1, max: 90 },
   ],
+  demo: {
+    enabled: true,
+    most: { key: 'demo.sandboxes_max', labelKey: 'l.d', value: 10, min: 3, max: 100 },
+  },
   versions: {
     'support.phone': 4,
     'support.whatsapp': 0,
@@ -67,6 +71,8 @@ const SETTINGS = {
     'support.status_url': 0,
     'account.deletion_days': 0,
     'company.reopen_days': 1,
+    'demo.enabled': 0,
+    'demo.sandboxes_max': 2,
   },
 };
 
@@ -75,7 +81,7 @@ describe('PlatformFacade', () => {
     approve: vi.fn(),
     reject: vi.fn(),
     settings: vi.fn(),
-    setSignup: vi.fn(),
+    setSwitch: vi.fn(),
     saveSettings: vi.fn(),
     accounts: vi.fn(),
     actOnAccount: vi.fn(),
@@ -258,12 +264,40 @@ describe('PlatformFacade', () => {
 
   it('turns a signup switch and shows the value the platform now holds', async () => {
     await facade.load();
-    api.setSignup.mockResolvedValue(undefined);
+    api.setSwitch.mockResolvedValue(undefined);
 
-    await facade.setSignup('signup.enabled', true);
+    await facade.setSwitch('signup.enabled', true);
 
-    expect(api.setSignup).toHaveBeenCalledWith('signup.enabled', true);
+    expect(api.setSwitch).toHaveBeenCalledWith('signup.enabled', true);
     expect(facade.signup()).toEqual({ enabled: true, approvalRequired: true });
+    expect(facade.demo()?.enabled).toBe(true);
+  });
+
+  it('turns the demo off and shows it off, its count kept', async () => {
+    await facade.load();
+    api.setSwitch.mockResolvedValue(undefined);
+
+    await facade.setSwitch('demo.enabled', false);
+
+    expect(api.setSwitch).toHaveBeenCalledWith('demo.enabled', false);
+    expect(facade.demo()).toEqual({ ...SETTINGS.demo, enabled: false });
+    expect(facade.signup()).toEqual(SETTINGS.signup);
+  });
+
+  it('saves how many demos may exist at once with the version read, and shows what the platform then holds', async () => {
+    await facade.load();
+    api.saveSettings.mockResolvedValue(undefined);
+    api.settings.mockResolvedValueOnce({
+      ...SETTINGS,
+      demo: { ...SETTINGS.demo, most: { ...SETTINGS.demo.most, value: 20 } },
+    });
+
+    expect(await facade.saveDemoMost(20)).toBe(true);
+
+    expect(api.saveSettings.mock.calls).toEqual([
+      [[{ key: 'demo.sandboxes_max', value: 20, version: 2 }]],
+    ]);
+    expect(facade.demo()?.most?.value).toBe(20);
   });
 
   it('saves the support channels changed, and only those, together, then shows what the platform holds', async () => {
@@ -348,9 +382,9 @@ describe('PlatformFacade', () => {
 
   it('leaves a switch as it was when the platform refuses it', async () => {
     await facade.load();
-    api.setSignup.mockRejectedValue(new PlatformRefused('network'));
+    api.setSwitch.mockRejectedValue(new PlatformRefused('network'));
 
-    await facade.setSignup('signup.enabled', true);
+    await facade.setSwitch('signup.enabled', true);
 
     expect(facade.signup()).toEqual({ enabled: false, approvalRequired: true });
     expect(facade.error()).toBe('network');

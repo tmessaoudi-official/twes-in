@@ -940,7 +940,8 @@
       "demo_enabled": "Démo ouverte aux visiteurs (« Essayer la démo »)",
       "demo_sandboxes_max": "Démos au plus en même temps",
       "company_reopen_days": "Jours pendant lesquels une entreprise fermée peut être rouverte",
-      "licensing_grace_days": "Jours de grâce après la fin d’un abonnement"
+      "licensing_grace_days": "Jours de grâce après la fin d’un abonnement",
+      "licensing_hold_days": "Jours d’accès gardé après un paiement déclaré, le temps de le confirmer"
     },
     "intro": "Les valeurs par défaut de la société. Un client, un produit ou un document peut encore en décider autrement.",
     "no_company": "Choisissez d’abord une société.",
@@ -3159,6 +3160,13 @@
       "title": "Inscriptions",
       "enabled": "Tout le monde peut s’inscrire",
       "approval_required": "Une entreprise inscrite attend l’approbation"
+    },
+    "demo": {
+      "title": "Démo",
+      "intro": "Un visiteur essaie l’application dans une entreprise de démonstration à lui seul, sans compte, effacée quand il se déconnecte ou cesse de s’en servir. Aucun courrier ne part et aucun document n’a de valeur fiscale.",
+      "bounds": "De {{min}} à {{max}} démos",
+      "save": "Enregistrer",
+      "saved": "Nombre de démos enregistré."
     },
     "waiting": {
       "title": "En attente d’approbation",
