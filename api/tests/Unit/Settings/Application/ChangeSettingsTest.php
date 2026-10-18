@@ -14,14 +14,17 @@ use App\Settings\Application\InvalidSettingValue;
 use App\Settings\Application\PresentationSettings;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
+use App\Settings\Application\SettingChange;
 use App\Settings\Application\SettingContext;
 use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
+use App\Settings\Domain\Event\PersonalSettingChanged;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemorySettings;
+use App\Tests\Support\RecordingDomainEvents;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -34,6 +37,7 @@ final class ChangeSettingsTest extends TestCase
     private Company $company;
     private SettingContext $context;
     private Uuid $userId;
+    private RecordingDomainEvents $events;
 
     protected function setUp(): void
     {
@@ -41,7 +45,7 @@ final class ChangeSettingsTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $catalog = new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
-        $this->change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
+        $this->change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, $this->events = new RecordingDomainEvents($transactions));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->userId = Uuid::v7();
         $this->context = new SettingContext($this->company, Uuid::v7(), $this->userId);
@@ -55,6 +59,23 @@ final class ChangeSettingsTest extends TestCase
         self::assertSame(SettingLevel::User, $density->source);
         self::assertCount(1, $this->settings->settings);
         self::assertSame([], $this->audit->entries);
+    }
+
+    /** What a person chooses for themselves can matter outside the settings (their language, which their mails read). */
+    public function testAPersonsOwnChoiceIsToldOnceCommittedAndASharedOneIsNot(): void
+    {
+        $this->change->change($this->context, 'presentation.language', SettingLevel::User, 'en', $this->userId);
+        $this->change->change($this->context, 'presentation.language', SettingLevel::User, 'en', $this->userId);
+        $this->change->change($this->context, 'presentation.density', SettingLevel::Company, 'compact', $this->userId);
+        $this->change->changeAll($this->context, SettingLevel::User, [new SettingChange('presentation.density', 'compact', 0)], $this->userId);
+        $this->change->reset($this->context, 'presentation.language', SettingLevel::User, $this->userId);
+
+        self::assertEquals([
+            new PersonalSettingChanged($this->userId, 'presentation.language', 'en'),
+            new PersonalSettingChanged($this->userId, 'presentation.density', 'compact'),
+            new PersonalSettingChanged($this->userId, 'presentation.language', null),
+        ], $this->events->published, 'the same value again changes nothing, and a company default is no person\'s');
+        self::assertSame([false, false, false], $this->events->whileInTransaction);
     }
 
     public function testChangingAgainRevisesTheSameRow(): void

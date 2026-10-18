@@ -48,7 +48,7 @@ final class SupportAccessTest extends TestCase
         $this->users = new InMemoryUsers();
         $this->grants = new InMemorySupportGrants();
         $this->clock = new MockClock('2026-10-12 09:00:00');
-        $this->owner = new User(Email::fromString('owner@example.test'), 'Owner');
+        $this->owner = new User(Email::fromString('owner@example.test'), 'Owner', 'fr');
         $this->memberships->save(new Membership($this->owner, $this->company, new Role(Role::OWNER, ['*'])));
     }
 
@@ -120,7 +120,7 @@ final class SupportAccessTest extends TestCase
 
     private function user(string $email, bool $operator, bool $secondFactor): User
     {
-        $user = new User(Email::fromString($email), 'Someone');
+        $user = new User(Email::fromString($email), 'Someone', 'fr');
         $user->setPlatformOperator($operator);
         if ($secondFactor) {
             $user->beginTotpEnrolment('sealed-secret');

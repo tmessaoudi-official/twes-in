@@ -78,6 +78,42 @@ final class PasswordResetTest extends ApiTestCase
 
         self::assertSame(1, $this->resetsOf($user->getId()->toRfc4122()));
         self::assertEmailCount(1);
+        // The worker writes the mail with no request to read a language from: it says the one it is written in.
+        $message = self::getMailerMessage();
+        self::assertInstanceOf(Email::class, $message);
+        self::assertStringContainsString('<html lang="en">', (string) $message->getHtmlBody());
+    }
+
+    /** A mail is written by the worker, where there is no request: its language is the mail's own, never the request's. */
+    public function testNoMailTemplateReadsTheRequest(): void
+    {
+        $templates = glob(\dirname(__DIR__, 2).'/templates/email/*.twig') ?: [];
+        self::assertNotEmpty($templates);
+        foreach ($templates as $template) {
+            self::assertStringNotContainsString('app.request', (string) file_get_contents($template), basename($template));
+        }
+    }
+
+    /** The page asking for a link may be in any language; the account's own is the one its person chose for the screens. */
+    public function testAPersonWhoChoseEnglishIsMailedInEnglishAndGoingBackToTheCompanysChoiceKeepsIt(): void
+    {
+        $company = $this->createCompany('Acme');
+        $user = $this->createUser('someone@twes.local', self::PASSWORD, $company);
+        $this->login('someone@twes.local', self::PASSWORD);
+        $settings = '/api/companies/'.$company->getId()->toRfc4122().'/settings/presentation.language';
+
+        $this->sendJson('PUT', $settings, ['level' => 'user', 'value' => 'en']);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('DELETE', $settings.'?level=user');
+        self::assertResponseIsSuccessful();
+        self::assertSame('en', $this->localeOf($user->getId()->toRfc4122()), 'no choice names no language to follow');
+
+        $this->postJson(self::FORGOT, ['email' => 'someone@twes.local']);
+        $this->deliverQueued();
+
+        $message = self::getMailerMessage();
+        self::assertInstanceOf(Email::class, $message);
+        self::assertStringContainsString('<html lang="en">', (string) $message->getHtmlBody());
     }
 
     public function testAMalformedAddressIsRefusedAndASecondAskInTheQuarterHourSendsNothing(): void
@@ -112,6 +148,14 @@ final class PasswordResetTest extends ApiTestCase
 
         $this->postJson(self::RESET, ['token' => $token, 'newPassword' => self::NEXT]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'a refused password leaves the link usable');
+    }
+
+    private function localeOf(string $userId): string
+    {
+        $locale = $this->em()->getConnection()->fetchOne('SELECT locale FROM "user" WHERE id = ?', [$userId]);
+        self::assertIsString($locale);
+
+        return $locale;
     }
 
     private function resetsOf(string $userId): int

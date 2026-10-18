@@ -16,6 +16,7 @@ use App\Files\Application\Attachments;
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
+use App\Identity\Application\Account\KeepAccountLanguage;
 use App\Identity\Application\Login\PasswordAttempts;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\Mfa\ResealSecondFactors;
@@ -79,6 +80,7 @@ final class CommandsAndQueriesTest extends TestCase
     /** Commands whose change is on record otherwise than by an audit entry of their own, and how. */
     private const array RECORDED_OTHERWISE = [
         PasswordAttempts::class => 'a count of wrong guesses toward the lockout, not a change to the account',
+        KeepAccountLanguage::class => "a copy of the person's own choice of screen language, which their settings keep unaudited as every personal preference",
         RunImport::class => "every row goes through the subject's own use case, which records it",
         DrawStockMap::class => 'it composes the venue and the stock locations, each recording its own entry',
         KeepStock::class => 'the movements are the record, each staged as a live change',

@@ -27,7 +27,7 @@ final class UserMfaTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->user = new User(Email::fromString('someone@twes.local'), 'Someone');
+        $this->user = new User(Email::fromString('someone@twes.local'), 'Someone', 'fr');
     }
 
     public function testAFreshUserHasNoSecondFactor(): void

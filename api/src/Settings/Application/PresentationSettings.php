@@ -25,6 +25,9 @@ final readonly class PresentationSettings implements DeclaresSettings
 {
     public const string MODULE = 'core';
 
+    /** The screens' language, which a person's account keeps a copy of for the mails sent while nobody is signed in. */
+    public const string LANGUAGE = 'presentation.language';
+
     public function __construct(private Languages $languages)
     {
     }

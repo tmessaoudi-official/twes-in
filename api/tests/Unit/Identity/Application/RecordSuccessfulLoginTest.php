@@ -29,7 +29,7 @@ final class RecordSuccessfulLoginTest extends TestCase
         $audit = new InMemoryAuditTrail();
         $clock = new MockClock('2026-09-09 12:00:00');
         $companyId = Uuid::v7();
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $user->recordFailedLogin($clock->now(), 5, new \DateInterval('PT15M'));
         $users->save($user);
 

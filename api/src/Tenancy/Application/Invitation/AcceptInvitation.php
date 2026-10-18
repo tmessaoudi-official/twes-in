@@ -15,6 +15,7 @@ use App\Identity\Application\BreachedPasswordCheck;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
+use App\Shared\Application\Languages;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;
@@ -54,6 +55,7 @@ final readonly class AcceptInvitation
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private Languages $languages,
     ) {
     }
 
@@ -79,7 +81,7 @@ final readonly class AcceptInvitation
                     throw new AccountDetailsRequired('A new account needs a name and a password.');
                 }
                 $this->refuseABreachedPassword($request->plainPassword, $invitation);
-                $user = new User($invitation->getEmail(), $request->displayName, $company->getLocale(), $now);
+                $user = new User($invitation->getEmail(), $request->displayName, $this->languages->interfaceOr($company->getLocale()), $now);
                 $user->setPasswordHash($this->hasher->hash($request->plainPassword), $now);
                 $this->users->save($user);
             }

@@ -90,7 +90,7 @@ abstract class ApiTestCase extends WebTestCase
     protected function createUser(string $email, string $password, ?Company $company = null, array $permissions = ['*'], string $roleName = Role::OWNER, bool $operator = false, bool $active = true, ?bool $authenticator = null): User
     {
         $em = $this->em();
-        $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'));
+        $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'), 'fr');
         $user->setPasswordHash(static::getContainer()->get(PasswordHasher::class)->hash($password), new \DateTimeImmutable());
         $user->setPlatformOperator($operator);
         $user->setActive($active);

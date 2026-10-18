@@ -158,7 +158,7 @@ final class RemoveMemberTest extends TestCase
 
     private function join(string $email, Role $role): Membership
     {
-        $membership = new Membership(new User(Email::fromString($email), 'Someone'), $this->company, $role);
+        $membership = new Membership(new User(Email::fromString($email), 'Someone', 'fr'), $this->company, $role);
         $this->memberships->save($membership);
 
         return $membership;

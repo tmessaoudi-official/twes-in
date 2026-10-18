@@ -140,7 +140,7 @@ final class MoveStockOnDeliveryNotesTest extends TestCase
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), new InMemoryModuleStates());
         $move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $transactions, $clock, new InMemoryProductHomeLocations());
         $memberships = new InMemoryMemberships();
-        $memberships->save(new Membership(new User(Email::fromString('keeper@acme.test'), 'Keeper'), $this->company, new Role(Role::MEMBER, ['stock.write'], $this->company)));
+        $memberships->save(new Membership(new User(Email::fromString('keeper@acme.test'), 'Keeper', 'fr'), $this->company, new Role(Role::MEMBER, ['stock.write'], $this->company)));
         $logger = new class extends AbstractLogger {
             /** @var list<array{string, string}> */
             public array $logged = [];

@@ -38,7 +38,7 @@ final class SwitchWorkingCompanyTest extends TestCase
         $this->memberships = new InMemoryMemberships();
         $this->currentCompany = new InMemoryCurrentCompany();
         $this->switch = new SwitchWorkingCompany($this->memberships, $this->currentCompany, new MockClock('2026-09-25 09:00:00'), SupportDoubles::access($this->memberships), SupportDoubles::visits());
-        $this->user = new User(Email::fromString('user@twes.local'), 'Someone');
+        $this->user = new User(Email::fromString('user@twes.local'), 'Someone', 'fr');
     }
 
     public function testWorkingCompanyBecomesTheOneChosen(): void
@@ -74,7 +74,7 @@ final class SwitchWorkingCompanyTest extends TestCase
     public function testAnotherUsersMembershipDoesNotOpenTheCompany(): void
     {
         $theirs = new Company('Theirs', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $other = new User(Email::fromString('other@twes.local'), 'Other');
+        $other = new User(Email::fromString('other@twes.local'), 'Other', 'fr');
         $this->memberships->save(new Membership($other, $theirs, new Role(Role::OWNER, [Permission::WILDCARD])));
 
         $this->expectException(NotAMember::class);

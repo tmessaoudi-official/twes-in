@@ -237,7 +237,7 @@ final class InboxNotificationsTest extends TestCase
 
     private function user(string $email): User
     {
-        $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'));
+        $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'), 'fr');
         $this->users->save($user);
 
         return $user;

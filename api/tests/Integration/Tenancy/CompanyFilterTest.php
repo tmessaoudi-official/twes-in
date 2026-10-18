@@ -48,7 +48,7 @@ final class CompanyFilterTest extends KernelTestCase
         $theirs = new Company('Theirs', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $ours = ProductCategory::create($mine, 'Ours', null, $now);
         $their = ProductCategory::create($theirs, 'Theirs only', null, $now);
-        $user = new User(Email::fromString('member@twes.local'), 'Member');
+        $user = new User(Email::fromString('member@twes.local'), 'Member', 'fr');
         $role = new Role('tester', ['*'], $mine);
         foreach ([$mine, $theirs, $ours, $their, $user, $role, new Membership($user, $mine, $role)] as $entity) {
             $this->em->persist($entity);

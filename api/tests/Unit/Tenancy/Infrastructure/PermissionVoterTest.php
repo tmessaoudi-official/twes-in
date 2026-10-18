@@ -103,7 +103,7 @@ final class PermissionVoterTest extends TestCase
 
     public function testAUserWithoutAMembershipInTheCurrentCompanyIsDenied(): void
     {
-        $user = new User(Email::fromString('x@example.test'), 'X');
+        $user = new User(Email::fromString('x@example.test'), 'X', 'fr');
 
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), null, ['invoice.read']));
     }
@@ -118,7 +118,7 @@ final class PermissionVoterTest extends TestCase
 
     public function testAnExplicitCompanySubjectOverridesTheSessionCompany(): void
     {
-        $user = new User(Email::fromString('m@example.test'), 'M');
+        $user = new User(Email::fromString('m@example.test'), 'M', 'fr');
         $other = new Company('Other', 'FR', 'EUR', 'fr', 'Europe/Paris');
         $this->memberships->save(new Membership($user, $other, new Role(Role::MEMBER, ['invoice.read'])));
 
@@ -131,7 +131,7 @@ final class PermissionVoterTest extends TestCase
         $owner = $this->member(new Role(Role::OWNER, ['*']));
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($owner), null, ['platform.company.create']));
 
-        $operator = new User(Email::fromString('op@example.test'), 'Op');
+        $operator = new User(Email::fromString('op@example.test'), 'Op', 'fr');
         $operator->setPlatformOperator(true);
         self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($operator), null, ['platform.company.create']));
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($operator), null, ['invoice.read']), 'operator scope is outside memberships: no company permission comes with it');
@@ -146,7 +146,7 @@ final class PermissionVoterTest extends TestCase
 
     private function member(Role $role): User
     {
-        $user = new User(Email::fromString('m@example.test'), 'M');
+        $user = new User(Email::fromString('m@example.test'), 'M', 'fr');
         $this->memberships->save(new Membership($user, $this->company, $role));
 
         return $user;

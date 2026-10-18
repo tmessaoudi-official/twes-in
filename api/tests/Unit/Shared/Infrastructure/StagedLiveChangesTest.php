@@ -42,7 +42,7 @@ final class StagedLiveChangesTest extends TestCase
         $this->users = new InMemoryUsers();
         $this->requests = new RequestStack();
         $this->changes = new StagedLiveChanges($this->publisher, $this->users, $this->requests);
-        $this->nadia = new User(Email::fromString('nadia@example.test'), 'Nadia Belkacem');
+        $this->nadia = new User(Email::fromString('nadia@example.test'), 'Nadia Belkacem', 'fr');
         $this->users->save($this->nadia);
         $this->company = Uuid::v7();
     }

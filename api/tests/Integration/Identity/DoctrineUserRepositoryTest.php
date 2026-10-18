@@ -22,7 +22,7 @@ final class DoctrineUserRepositoryTest extends KernelTestCase
     {
         self::bootKernel();
         $users = static::getContainer()->get(UserRepository::class);
-        $user = new User(Email::fromString('Round@Trip.test'), 'Round');
+        $user = new User(Email::fromString('Round@Trip.test'), 'Round', 'fr');
         $users->save($user);
         static::getContainer()->get('doctrine.orm.entity_manager')->clear();
 

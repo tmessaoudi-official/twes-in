@@ -18,7 +18,7 @@ final class SecurityUserTest extends TestCase
 {
     public function testItCarriesTheIdentifierTheHashAndTheRoles(): void
     {
-        $user = new User(Email::fromString('Owner@Example.test'), 'Owner');
+        $user = new User(Email::fromString('Owner@Example.test'), 'Owner', 'fr');
         $user->setPasswordHash('argon-hash', new \DateTimeImmutable());
 
         $account = SecurityUser::of($user);
@@ -34,30 +34,30 @@ final class SecurityUserTest extends TestCase
 
     public function testTheSessionCopyIsStaleOnceTheStampRotatesOrTheAccountChangesScope(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $stored = SecurityUser::of($user);
         self::assertTrue($stored->isEqualTo(SecurityUser::of($user)));
 
         $user->rotateSecurityStamp();
         self::assertFalse($stored->isEqualTo(SecurityUser::of($user)), 'forced logout: a rotated stamp invalidates every session');
 
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $stored = SecurityUser::of($user);
         $user->setActive(false);
         self::assertFalse($stored->isEqualTo(SecurityUser::of($user)));
 
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $stored = SecurityUser::of($user);
         $user->setPlatformOperator(true);
         self::assertFalse($stored->isEqualTo(SecurityUser::of($user)), 'a scope change must re-authenticate rather than ride on the old token');
 
-        self::assertFalse($stored->isEqualTo(SecurityUser::of(new User(Email::fromString('u@example.test'), 'U'))), 'same email, different id: not the same user');
+        self::assertFalse($stored->isEqualTo(SecurityUser::of(new User(Email::fromString('u@example.test'), 'U', 'fr'))), 'same email, different id: not the same user');
     }
 
     public function testTheLockAndTheActiveFlagTravelWithIt(): void
     {
         $now = new \DateTimeImmutable('2026-09-09 12:00:00');
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         for ($i = 0; $i < 5; ++$i) {
             $user->recordFailedLogin($now, 5, new \DateInterval('PT15M'));
         }
@@ -70,7 +70,7 @@ final class SecurityUserTest extends TestCase
 
     public function testThePasswordHashNeverReachesTheSessionStore(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $user->setPasswordHash('argon-hash', new \DateTimeImmutable());
         $account = SecurityUser::of($user);
 

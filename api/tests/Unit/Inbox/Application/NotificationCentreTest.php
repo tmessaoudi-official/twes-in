@@ -33,8 +33,8 @@ final class NotificationCentreTest extends TestCase
     {
         $this->inbox = new InMemoryInbox();
         $this->clock = new MockClock('2026-09-13 10:00:00');
-        $this->amel = new User(Email::fromString('amel@twes.local'), 'Amel');
-        $this->sami = new User(Email::fromString('sami@twes.local'), 'Sami');
+        $this->amel = new User(Email::fromString('amel@twes.local'), 'Amel', 'fr');
+        $this->sami = new User(Email::fromString('sami@twes.local'), 'Sami', 'fr');
     }
 
     public function testTheLatestPageIsTheRecipientsOwnNewestFirstCappedAtThePageSizeWithTheUnreadCount(): void

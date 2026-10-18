@@ -53,7 +53,7 @@ final class CompanyDirectoryTest extends TestCase
 
     public function testTheSwitcherSeesEveryCompanyTheUserBelongsTo(): void
     {
-        $user = new User(Email::fromString('user@twes.local'), 'Someone');
+        $user = new User(Email::fromString('user@twes.local'), 'Someone', 'fr');
         $first = $this->join($user, 'Acme');
         $second = $this->join($user, 'Globex');
 
@@ -73,8 +73,8 @@ final class CompanyDirectoryTest extends TestCase
 
     public function testAnotherUsersCompaniesAreNotListed(): void
     {
-        $mine = new User(Email::fromString('mine@twes.local'), 'Mine');
-        $theirs = new User(Email::fromString('theirs@twes.local'), 'Theirs');
+        $mine = new User(Email::fromString('mine@twes.local'), 'Mine', 'fr');
+        $theirs = new User(Email::fromString('theirs@twes.local'), 'Theirs', 'fr');
         $this->join($mine, 'Acme');
         $this->join($theirs, 'Globex');
 
@@ -87,8 +87,8 @@ final class CompanyDirectoryTest extends TestCase
     public function testTheMemberListNamesEveryoneInTheCompany(): void
     {
         $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership(new User(Email::fromString('one@twes.local'), 'One'), $company, $this->owner));
-        $this->memberships->save(new Membership(new User(Email::fromString('two@twes.local'), 'Two'), $company, $this->owner));
+        $this->memberships->save(new Membership(new User(Email::fromString('one@twes.local'), 'One', 'fr'), $company, $this->owner));
+        $this->memberships->save(new Membership(new User(Email::fromString('two@twes.local'), 'Two', 'fr'), $company, $this->owner));
 
         $members = $this->listMembers()->for($company->getId());
 
@@ -101,8 +101,8 @@ final class CompanyDirectoryTest extends TestCase
     {
         $mine = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $theirs = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership(new User(Email::fromString('mine@twes.local'), 'Mine'), $mine, $this->owner));
-        $this->memberships->save(new Membership(new User(Email::fromString('theirs@twes.local'), 'Theirs'), $theirs, $this->owner));
+        $this->memberships->save(new Membership(new User(Email::fromString('mine@twes.local'), 'Mine', 'fr'), $mine, $this->owner));
+        $this->memberships->save(new Membership(new User(Email::fromString('theirs@twes.local'), 'Theirs', 'fr'), $theirs, $this->owner));
 
         $members = $this->listMembers()->for($mine->getId());
 
@@ -113,7 +113,7 @@ final class CompanyDirectoryTest extends TestCase
     public function testAnOpenInvitationIsListedWithoutANameUntilItIsAccepted(): void
     {
         $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership(new User(Email::fromString('one@twes.local'), 'One'), $company, $this->owner));
+        $this->memberships->save(new Membership(new User(Email::fromString('one@twes.local'), 'One', 'fr'), $company, $this->owner));
         $this->invite($company, 'open@twes.local', '2026-09-09 09:00:00');
         $this->invite($company, 'expired@twes.local', '2026-08-01 09:00:00');
         $this->invite($company, 'used@twes.local', '2026-09-09 09:00:00')->accept(new \DateTimeImmutable('2026-09-09 09:30:00'));

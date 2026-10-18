@@ -23,7 +23,7 @@ final class InboxItemTest extends TestCase
 {
     public function testANewItemIsUnreadAndKeepsWhatItWasGiven(): void
     {
-        $recipient = new User(Email::fromString('amel@twes.local'), 'Amel');
+        $recipient = new User(Email::fromString('amel@twes.local'), 'Amel', 'fr');
         $company = new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $at = new \DateTimeImmutable('2026-09-13T10:00:00+00:00');
 
@@ -40,14 +40,14 @@ final class InboxItemTest extends TestCase
 
     public function testAPersonalItemBelongsToNoCompany(): void
     {
-        $item = new InboxItem(new User(Email::fromString('amel@twes.local'), 'Amel'), null, 'account.notice', [], new \DateTimeImmutable());
+        $item = new InboxItem(new User(Email::fromString('amel@twes.local'), 'Amel', 'fr'), null, 'account.notice', [], new \DateTimeImmutable());
 
         self::assertNull($item->getCompany());
     }
 
     public function testMarkingReadRecordsTheFirstTimeOnly(): void
     {
-        $item = new InboxItem(new User(Email::fromString('amel@twes.local'), 'Amel'), null, 'account.notice', [], new \DateTimeImmutable('2026-09-13T10:00:00+00:00'));
+        $item = new InboxItem(new User(Email::fromString('amel@twes.local'), 'Amel', 'fr'), null, 'account.notice', [], new \DateTimeImmutable('2026-09-13T10:00:00+00:00'));
 
         $item->markRead(new \DateTimeImmutable('2026-09-13T10:05:00+00:00'));
         $item->markRead(new \DateTimeImmutable('2026-09-13T11:00:00+00:00'));
@@ -71,6 +71,6 @@ final class InboxItemTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        new InboxItem(new User(Email::fromString('amel@twes.local'), 'Amel'), null, $type, [], new \DateTimeImmutable());
+        new InboxItem(new User(Email::fromString('amel@twes.local'), 'Amel', 'fr'), null, $type, [], new \DateTimeImmutable());
     }
 }

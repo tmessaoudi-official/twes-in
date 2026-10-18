@@ -31,6 +31,7 @@ use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryNotifications;
 use App\Tests\Support\InMemoryRoles;
 use App\Tests\Support\InMemoryUsers;
+use App\Tests\Support\ShippedLanguages;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -177,7 +178,7 @@ final class AcceptInvitationTest extends TestCase
     public function testAnAddressThatGainedAnAccountMeanwhileJoinsWithoutItsPasswordBeingTouched(): void
     {
         $token = $this->openInvitation(Role::MEMBER);
-        $existing = new User(Email::fromString('stranger@twes.local'), 'Already Here');
+        $existing = new User(Email::fromString('stranger@twes.local'), 'Already Here', 'fr');
         $existing->setPasswordHash('their-own-hash', new \DateTimeImmutable(self::NOW));
         $this->users->save($existing);
 
@@ -193,7 +194,7 @@ final class AcceptInvitationTest extends TestCase
     public function testAnExistingAccountAcceptsWithNothingFilledIn(): void
     {
         $token = $this->openInvitation(Role::MEMBER);
-        $existing = new User(Email::fromString('stranger@twes.local'), 'Already Here');
+        $existing = new User(Email::fromString('stranger@twes.local'), 'Already Here', 'fr');
         $existing->setPasswordHash('their-own-hash', new \DateTimeImmutable(self::NOW));
         $this->users->save($existing);
 
@@ -240,6 +241,18 @@ final class AcceptInvitationTest extends TestCase
         self::assertSame('company:'.$this->company->getId()->toRfc4122(), $this->notifications->published[0]->channel);
     }
 
+    /** The account's language is what its mails are written in, so only one the screens speak, whatever the company prints in. */
+    public function testANewAccountTakesTheCompanysLanguageOnlyWhenTheScreensSpeakIt(): void
+    {
+        $this->company = Company::pending('Souk', 'TN', 'TND', 'ar', 'Africa/Tunis');
+        $this->companies->save($this->company);
+        $token = $this->openInvitation(Role::MEMBER);
+
+        $this->accept()->handle(new AcceptRequest($token->raw, 'New Person', self::PASSWORD));
+
+        self::assertSame(ShippedLanguages::catalogue()->default(), $this->users->ofEmail(Email::fromString('stranger@twes.local'))?->getLocale());
+    }
+
     private function openInvitation(string $roleName): InvitationToken
     {
         $token = InvitationToken::generate();
@@ -281,6 +294,7 @@ final class AcceptInvitationTest extends TestCase
             $this->audit,
             new MockClock($now),
             $this->transactions,
+            ShippedLanguages::catalogue(),
         );
     }
 }
