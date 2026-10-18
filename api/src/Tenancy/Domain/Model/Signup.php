@@ -33,7 +33,7 @@ class Signup
     private Email $email;
 
     /** The language the person asked in: their account's, and their company's when its country documents in it. */
-    #[ORM\Column(length: 5)]
+    #[ORM\Column(length: 35)]
     private string $locale;
 
     /** SHA-256 of the raw token, hex; the raw value is in the mail and nowhere else. */

@@ -54,7 +54,7 @@ class Company
     #[ORM\Column(length: 3)]
     private string $currency;
 
-    #[ORM\Column(length: 5)]
+    #[ORM\Column(length: 35)]
     private string $locale;
 
     #[ORM\Column(length: 64)]
