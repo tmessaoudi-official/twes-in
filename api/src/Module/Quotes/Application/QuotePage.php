@@ -29,7 +29,7 @@ final readonly class QuotePage
 
     /**
      * @param self::DRAFT|self::CANCELLED|null $watermark
-     * @param string                           $language   fr or en
+     * @param string                           $language   a language the catalogue prints documents in
      * @param list<QuantityTotal>              $quantities what the lines come to in each unit, empty for a single line
      */
     public function __construct(

@@ -1,0 +1,283 @@
+{
+  "inventory": {
+    "plan": {
+      "title": "Plan du stock",
+      "floors": "Étages",
+      "no_floor": "Le plan montre où chaque article est rangé, étage par étage. Il se dessine en trois temps :",
+      "drawn": "Dessiné sur cet étage",
+      "chosen": "{{count}} {count, plural, one {rectangle choisi} other {rectangles choisis}}",
+      "let_go": "Tout désélectionner",
+      "group_hint": "Glissez l’un d’eux pour déplacer tout le groupe, ou utilisez les flèches et R au clavier.",
+      "group_turn_left": "Tourner de {{degrees}}° à gauche",
+      "group_turn_right": "Tourner de {{degrees}}° à droite",
+      "group_saved": "{{count}} {count, plural, one {rectangle déplacé} other {rectangles déplacés}}",
+      "group_erased": "{{count}} {count, plural, one {rectangle effacé} other {rectangles effacés}}",
+      "group_changed": "Un rectangle du groupe a été modifié entre-temps : rien n’a été changé. Le plan est relu, refaites le geste.",
+      "nothing_drawn": "Aucun emplacement n’est encore dessiné sur cet étage.",
+      "plan_of": "Plan de {{floor}} : {{count}} {count, plural, one {rectangle dessiné} other {rectangles dessinés}}",
+      "trace": "Tracer un rectangle",
+      "trace_hint": "Faites glisser sur le plan pour tracer l’emprise au sol, puis choisissez l’emplacement.",
+      "pose": "Poser sur le plan",
+      "pose_rule": "Choisissez une forme : elle se pose au centre du plan, sélectionnée. Glissez-la ou tapez ses mesures, puis Enregistrer.",
+      "free_rect": "Rectangle libre",
+      "free_rect_note": "à tracer sur le plan",
+      "trace_type": "ou tapez ses mesures",
+      "erase": "Effacer le rectangle",
+      "add_floor": "Ajouter un étage",
+      "edit_floor": "Modifier l’étage",
+      "remove_floor": "Supprimer l’étage",
+      "floor_saved": "Étage enregistré",
+      "floor_removed": "Étage supprimé",
+      "drawing_saved": "Rectangle enregistré",
+      "drawing_erased": "Rectangle effacé",
+      "undo": "Annuler",
+      "undone": "Modification du plan annulée.",
+      "floor_section": "L’étage",
+      "level_hint": "Le rez-de-chaussée est 0 ; un étage plus haut est un nombre plus grand, jusqu’à 200.",
+      "drawing_section": "L’emplacement dessiné",
+      "location_hint": "Un emplacement est à un seul endroit, donc il n’est dessiné qu’une fois. Les bacs ne sont pas proposés.",
+      "footprint_section": "L’emprise au sol",
+      "footprint_hint": "En mètres depuis le coin haut-gauche de l’étage, alignée sur le quart de mètre.",
+      "rotation_hint": "Par pas de 15°, pour un rayonnage posé de biais contre un mur.",
+      "floor_fields": {
+        "establishmentId": "Établissement",
+        "name": "Nom de l’étage",
+        "level": "Niveau",
+        "widthMetres": "Largeur de l’étage (m)",
+        "depthMetres": "Profondeur de l’étage (m)"
+      },
+      "drawing_fields": {
+        "locationId": "Emplacement",
+        "x": "x (m)",
+        "y": "y (m)",
+        "width": "Largeur (m)",
+        "depth": "Profondeur (m)",
+        "height": "Hauteur (m)",
+        "rotation": "Rotation (°)",
+        "origin": "Emplacement",
+        "newLocationKind": "Nature",
+        "newLocationCode": "Code",
+        "newLocationName": "Nom"
+      },
+      "shapes": "Formes prêtes à poser",
+      "shape_names": {
+        "rack": "Rayonnage",
+        "zone": "Zone",
+        "aisle": "Allée",
+        "dock": "Quai"
+      },
+      "structure": "Murs et portes",
+      "structure_note": "Rien ici n’est un emplacement de stock : un mur ne contient pas de marchandise et n’apparaît sur aucune liste.",
+      "structure_section": "Élément de structure",
+      "structure_hint": "Ce que dessine cet élément. Une porte et un quai se découpent dans un mur : leur épaisseur est celle du mur.",
+      "structure_fields": {
+        "kind": "Type d’élément",
+        "width": "Longueur (m)",
+        "depth": "Épaisseur (m)",
+        "name": "Nom"
+      },
+      "structure_name_hint": "Le nom que le magasin utilise déjà, s’il en a un.",
+      "structure_kinds": {
+        "wall": "Mur",
+        "door": "Porte",
+        "post": "Poteau",
+        "dock": "Porte de quai"
+      },
+      "structure_saved": "Élément de structure enregistré.",
+      "structure_erased": "Élément de structure supprimé.",
+      "labels": "Étiquettes",
+      "label_modes": {
+        "code": "Code",
+        "name": "Nom",
+        "both": "Les deux"
+      },
+      "layers": "Calques",
+      "layer_names": {
+        "structure": "Structure",
+        "racks": "Rayonnages",
+        "zones": "Zones"
+      },
+      "layer_shown": "Afficher ou masquer ce calque",
+      "layer_locked": "Verrouiller ce calque pour ne plus l’attraper au pointeur",
+      "shown": "Visible",
+      "hidden": "Masqué",
+      "locked": "Verrouillé",
+      "unlocked": "Libre",
+      "repeat": "Répéter",
+      "repeat_of": "Répéter {{code}}",
+      "repeat_count": "Combien de plus",
+      "repeat_spacing": "Espacement (m)",
+      "repeat_spacing_hint": "L’espace libre entre deux rectangles. Zéro les met dos à dos.",
+      "repeat_way": "Direction",
+      "repeat_first_code": "Code de la première copie",
+      "repeat_will_create": "{{count}} emplacements de stock et leurs rectangles :",
+      "repeat_off_floor": "Une copie sortirait du sol. Changez la direction, l’espacement ou le nombre.",
+      "repeat_incomplete": "Indiquez un nombre, un espacement et un code se terminant par un numéro.",
+      "repeat_create": "Créer les {{count}}",
+      "repeated": "Rayonnages créés",
+      "ways": {
+        "up": "vers le haut",
+        "down": "vers le bas",
+        "left": "vers la gauche",
+        "right": "vers la droite"
+      },
+      "way_glyphs": {
+        "up": "↑",
+        "down": "↓",
+        "left": "←",
+        "right": "→"
+      },
+      "view": "Vue",
+      "zoom_in": "Voir de plus près",
+      "zoom_out": "Voir de plus loin",
+      "fit": "Ajuster",
+      "not_saved": "Pas encore enregistré : Enregistrer, ci-contre",
+      "views": "Façon de regarder l’étage",
+      "view_names": {
+        "plan": "Plan",
+        "facade": "Façade",
+        "volume": "Volume 3D"
+      },
+      "view_coming": {
+        "facade": "La façade d’un rayonnage, ses colonnes et ses niveaux, arrive bientôt."
+      },
+      "mode": "Mode",
+      "modes": {
+        "read": "Consulter",
+        "arrange": "Aménager"
+      },
+      "reading": "Lecture",
+      "floor_meta": "Niveau {{level}} · {{count}} {count, plural, one {emplacement dessiné} other {emplacements dessinés}}",
+      "legend": "Légende",
+      "legend_items": {
+        "rack": "Rayonnage",
+        "zone": "Zone, allée",
+        "wall": "Mur, poteau",
+        "door": "Porte",
+        "dock": "Quai de chargement"
+      },
+      "building": "Le bâtiment",
+      "arranging": "Aménagement : {{floor}}",
+      "arrange_hint": "Glissez une forme pour la déplacer, ses poignées pour la redimensionner ; rien n’est enregistré avant Enregistrer.",
+      "read_note": "Lecture : rien ne bouge en touchant le plan",
+      "press_hint": "Appuyez sur un emplacement pour voir ce qu’il contient.",
+      "holds": "{{count}} {count, plural, one {article} other {articles}}",
+      "keys_hint": "Molette ou + / − pour approcher, flèches pour se déplacer",
+      "board": "Plan de l’étage. + et − pour approcher, flèches pour se déplacer.",
+      "pan": {
+        "up": "Vers le haut",
+        "down": "Vers le bas",
+        "left": "Vers la gauche",
+        "right": "Vers la droite"
+      },
+      "panel_hint_read": "Touchez un rectangle du plan, ou choisissez-le dans la liste, pour voir ce qu’il contient.",
+      "panel_hint_arrange": "Choisissez une forme à poser : elle se pose au centre, sélectionnée. Glissez-la ou tapez ses mesures, puis Enregistrer.",
+      "here": {
+        "title": "Ce qu’il y a ici",
+        "lot": "lot {{lot}}",
+        "nothing": "Rien n’est rangé ici, d’après les mouvements enregistrés.",
+        "more": "{{count}} {count, plural, one {ligne de plus} other {lignes de plus}} : tout voir dans Stock",
+        "empty_home": "{{product}} a sa place ici ({{place}}) et il n’y en a plus : vide, à réassortir.",
+        "movements": "Mouvements",
+        "open_stock": "Ouvrir dans Stock",
+        "truth": "Ce qui est dit ici vient des mouvements enregistrés : une marchandise reçue dans un emplacement en dessous compte ici.",
+        "reading": "Lecture de ce qu’il contient…",
+        "search": "Chercher ici",
+        "no_match": "Rien ici ne correspond à « {{words}} ».",
+        "close": "Fermer"
+      },
+      "search": {
+        "label": "Chercher un article",
+        "hint": "Référence, nom ou code-barres, ou scannez",
+        "none_found": "Aucun article suivi en stock",
+        "nowhere": "Aucun stock n’est enregistré pour cet article.",
+        "places_here": "{{count}} {count, plural, one {endroit} other {endroits}} sur cet étage",
+        "places_elsewhere": "{{count}} {count, plural, one {autre} other {autres}} sur d’autres étages",
+        "undrawn": "{{quantity}} {{unit}} dans des emplacements non dessinés : {{codes}}",
+        "floor_hits": "{{count}} {count, plural, one {endroit} other {endroits}}",
+        "where": "Où elle se trouve",
+        "line": "{{code}} : {{quantity}}",
+        "floor_total": "Total sur cet étage : {{quantity}} {{unit}}",
+        "open_product": "Fiche article",
+        "clear": "Effacer la recherche",
+        "scanned": "Cherché sur le plan : {{name}}",
+        "note_title": "Bon de livraison {{note}}",
+        "lines_title": "{{count}} {count, plural, one {article} other {articles}} à trouver",
+        "note_lines": "{{count}} {count, plural, one {ligne} other {lignes}}",
+        "note_nowhere": "{{count}} {count, plural, one {ligne introuvable} other {lignes introuvables}} sur le plan",
+        "where_lines": "Où prendre chaque ligne",
+        "line_nowhere": "Aucun stock n’est enregistré pour cet article.",
+        "lines_badge": "{{count}} {count, plural, one {ligne} other {lignes}}",
+        "unknown_product": "Article introuvable",
+        "nowhere_drawn": "Cet article n’est sur aucun emplacement dessiné.",
+        "open_stock": "Voir son stock"
+      },
+      "volume": {
+        "note": "La 3D ne sert qu’à regarder. Pour modifier quoi que ce soit, revenez au plan 2D.",
+        "keys_hint": "Glisser pour tourner, molette pour approcher, Maj et glisser pour déplacer",
+        "shown": "Ce que montre la 3D",
+        "toggles": {
+          "building": "Murs, portes, poteaux",
+          "ground": "Surface au sol",
+          "heights": "Hauteur des rayonnages"
+        },
+        "summary": "{{floor}} : {{racks}} {racks, plural, one {rayonnage} other {rayonnages}}, {{zones}} {zones, plural, one {zone} other {zones}}",
+        "lit": "{{count}} {count, plural, one {endroit allumé} other {endroits allumés}}",
+        "missing": "Ce navigateur ne sait pas afficher la 3D (WebGL 2 n’y est pas disponible). Le plan 2D montre le même étage.",
+        "loading": "Chargement de la vue 3D…",
+        "failed": "La vue 3D n’a pas pu être chargée. Le plan 2D montre le même étage.",
+        "view": "Regarder l’étage",
+        "turn_left": "Tourner vers la gauche",
+        "turn_right": "Tourner vers la droite",
+        "closer": "Approcher",
+        "further": "Reculer",
+        "overview": "Vue d’ensemble",
+        "top": "Vue de dessus",
+        "read_only": "La 3D se regarde en Consulter ; en Aménager, le plan est en 2D."
+      },
+      "first": {
+        "title": "Dessinez votre dépôt",
+        "create": "Créer le premier étage",
+        "wider": "Le plan se dessine sur un écran plus large. Ici, on le lit, on cherche et on scanne.",
+        "ask": "Le premier étage est dessiné par une personne qui peut aménager le stock.",
+        "arrange": "Aménager cet étage",
+        "done": "fait",
+        "steps": {
+          "measure": "Mesurez l’étage, sa largeur et sa profondeur",
+          "build": "Posez les murs, les portes et les poteaux (facultatif)",
+          "place": "Posez vos rayonnages et vos zones, chacun sur son emplacement de stock"
+        }
+      },
+      "origin": {
+        "new": "Nouveau, créé avec ce rectangle",
+        "existing": "Un emplacement existant"
+      },
+      "new_location_hint": "Proposé après le dernier de cette nature ; il est placé dans la zone où il est dessiné.",
+      "line": {
+        "actions": "Actions pour {{name}}",
+        "open": "Ouvrir l’article",
+        "move": "Déplacer vers…",
+        "count": "Compter ici…",
+        "receive": "Recevoir ici…"
+      },
+      "move": {
+        "pick_hint": "Touchez l’emplacement de destination sur le plan, ou choisissez-le dans « Emplacement de destination ».",
+        "moved": "Déplacé : {{quantity}} {{product}} de {{from}} vers {{to}}.",
+        "undo": "Annuler",
+        "undone": "Déplacement annulé : {{product}} est de retour en {{from}}.",
+        "undo_failed": "Le déplacement de {{product}} n’a pas pu être annulé : ce qui a été déplacé n’est plus là où il a été posé."
+      },
+      "full": {
+        "enter": "Plein écran",
+        "leave": "Quitter · Échap",
+        "leave_short": "Quitter le plein écran",
+        "lists": "Listes",
+        "lists_hide": "Masquer les listes",
+        "floor": "Changer d’étage",
+        "menu": "Listes, étages et vues",
+        "bar": "Commandes du plan",
+        "close_panel": "Fermer le panneau"
+      }
+    }
+  }
+}

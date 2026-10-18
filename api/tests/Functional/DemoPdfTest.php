@@ -15,6 +15,7 @@ use App\Demo\Domain\Repository\DemoSandboxRepository;
 use App\Demo\Infrastructure\Http\DemoAccountGuard;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tests\Support\FakePdfRenderer;
+use App\Tests\Support\ShippedLanguages;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -115,7 +116,7 @@ final class DemoPdfTest extends ApiTestCase
     {
         $translator = static::getContainer()->get(TranslatorInterface::class);
         self::assertSame(self::BAND, $translator->trans('demo.band', [], 'pdf', 'fr'));
-        $words = implode('|', array_map(static fn (string $locale): string => preg_quote($translator->trans('demo.band', [], 'pdf', $locale), '#'), ['fr', 'en']));
+        $words = implode('|', array_map(static fn (string $locale): string => preg_quote($translator->trans('demo.band', [], 'pdf', $locale), '#'), ShippedLanguages::catalogue()->documents()));
 
         return 1 === preg_match('#<template data-pdf="header">.*?('.$words.').*?</template>#s', $page)
             && 1 === preg_match('#<template data-pdf="footer">.*?('.$words.').*?</template>#s', $page);

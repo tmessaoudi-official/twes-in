@@ -537,6 +537,13 @@ describe('DataList', () => {
     expect(q('list-header-balance')!.style.width).toBe('136px');
   });
 
+  // A value holding no letter of its own (a phone, « 1000 Tunis », a code) takes the direction of the line it sits in,
+  // and in Arabic its parts change places: each plain cell isolates its value, which reads in its own direction.
+  it('isolates each plain value in its cell, so a number or a code keeps its order in either direction', () => {
+    const cell = q('customer-1')!.querySelector('td[data-column="city"]')!;
+    expect(cell.querySelector('bdi')?.textContent?.trim()).toBe(cell.textContent?.trim());
+  });
+
   describe('right to left', () => {
     beforeEach(async () => {
       document.documentElement.dir = 'rtl';

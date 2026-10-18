@@ -51,7 +51,7 @@ final class KeepAccountLanguageTest extends TestCase
 
     public function testALanguageTheScreensDoNotSpeakOrAnAccountGoneChangesNothing(): void
     {
-        $this->keep->chosen($this->user->getId(), 'ar');
+        $this->keep->chosen($this->user->getId(), 'de');
         $this->keep->chosen(Uuid::v7(), 'en');
 
         self::assertSame('fr', $this->user->getLocale());

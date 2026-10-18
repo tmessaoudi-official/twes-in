@@ -17,6 +17,13 @@ check() {
 }
 
 # A tree holding one settings declaration, the chain enum and the two translation files.
+# The language catalogue the gate reads its languages from: each tag given, spoken by the interface.
+speaks() {
+  local d=$1 tag sep=''; shift
+  mkdir -p "$d/web/src/app/shared/i18n"
+  { printf '{"default": "fr", "languages": ['; for tag in "$@"; do printf '%s{"tag": "%s", "interface": true}' "$sep" "$tag"; sep=', '; done; printf ']}\n'; } \
+    > "$d/web/src/app/shared/i18n/languages.json"
+}
 repo() {
   local d
   d=$(mktemp -d)
@@ -52,6 +59,7 @@ final readonly class ShopSettings implements DeclaresSettings
 }
 PHP
   git -C "$d" add -A >/dev/null 2>&1
+  speaks "$d" fr en
   echo "$d"
 }
 
@@ -225,6 +233,15 @@ d=$(mktemp -d) && git -C "$d" init -q && mkdir -p "$d/web/public/i18n"
 out=$(bash "$GATE" --root "$d" 2>&1)
 code=$?
 check "a tree with no declaration at all fails" "$code" 1 "$out" "discovery pattern is broken"
+
+
+# The languages labelled are the catalogue's, so switching one on asks for its labels.
+d=$(repo) && translations "$d" && speaks "$d" fr en ar
+out=$(gate --root "$d" 2>&1)
+check "a language the catalogue switches on without its labels reds" $? 1 "$out" "ar: settings."
+d=$(repo) && translations "$d" && rm "$d/web/src/app/shared/i18n/languages.json"
+out=$(gate --root "$d" 2>&1)
+check "a tree without the language catalogue reds rather than checking no language" $? 1 "$out" "no language catalogue"
 
 echo
 echo "$pass passed, $fail failed"

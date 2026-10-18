@@ -1,22 +1,41 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import arAccount from '../../public/i18n/account/ar.json';
 import enAccount from '../../public/i18n/account/en.json';
 import frAccount from '../../public/i18n/account/fr.json';
+import ar from '../../public/i18n/ar.json';
+import arDataErasure from '../../public/i18n/data-erasure/ar.json';
+import enDataErasure from '../../public/i18n/data-erasure/en.json';
+import frDataErasure from '../../public/i18n/data-erasure/fr.json';
+import arDemoMails from '../../public/i18n/demo-mails/ar.json';
 import enDemoMails from '../../public/i18n/demo-mails/en.json';
 import frDemoMails from '../../public/i18n/demo-mails/fr.json';
+import arPurchases from '../../public/i18n/purchases/ar.json';
 import enPurchases from '../../public/i18n/purchases/en.json';
 import frPurchases from '../../public/i18n/purchases/fr.json';
+import arReports from '../../public/i18n/reports/ar.json';
 import enReports from '../../public/i18n/reports/en.json';
 import frReports from '../../public/i18n/reports/fr.json';
 import en from '../../public/i18n/en.json';
+import arExpense from '../../public/i18n/expense/ar.json';
 import enExpense from '../../public/i18n/expense/en.json';
 import frExpense from '../../public/i18n/expense/fr.json';
+import arImport from '../../public/i18n/import/ar.json';
 import enImport from '../../public/i18n/import/en.json';
 import frImport from '../../public/i18n/import/fr.json';
 import fr from '../../public/i18n/fr.json';
+import arPlatform from '../../public/i18n/platform/ar.json';
+import enPlatform from '../../public/i18n/platform/en.json';
+import frPlatform from '../../public/i18n/platform/fr.json';
+import arSchedule from '../../public/i18n/schedule/ar.json';
 import enSchedule from '../../public/i18n/schedule/en.json';
 import frSchedule from '../../public/i18n/schedule/fr.json';
+import arStockPlan from '../../public/i18n/stock-plan/ar.json';
+import enStockPlan from '../../public/i18n/stock-plan/en.json';
+import frStockPlan from '../../public/i18n/stock-plan/fr.json';
+import arTwoFactor from '../../public/i18n/two-factor/ar.json';
 import enTwoFactor from '../../public/i18n/two-factor/en.json';
 import frTwoFactor from '../../public/i18n/two-factor/fr.json';
+import { INTERFACE_LANGUAGES } from './shared/i18n/languages';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { SETTING_HINTS } from './shared/settings/setting-forms';
 
@@ -35,14 +54,17 @@ function keysOf(value: unknown, prefix = ''): string[] {
 
 /** The texts a page loads with itself (`textsPart`), beside the language's own file: checked as one with it. */
 const parts: Record<string, Record<string, unknown>> = {
-  account: { fr: frAccount, en: enAccount },
-  'demo-mails': { fr: frDemoMails, en: enDemoMails },
-  expense: { fr: frExpense, en: enExpense },
-  import: { fr: frImport, en: enImport },
-  purchases: { fr: frPurchases, en: enPurchases },
-  reports: { fr: frReports, en: enReports },
-  schedule: { fr: frSchedule, en: enSchedule },
-  'two-factor': { fr: frTwoFactor, en: enTwoFactor },
+  account: { fr: frAccount, en: enAccount, ar: arAccount },
+  'data-erasure': { fr: frDataErasure, en: enDataErasure, ar: arDataErasure },
+  'demo-mails': { fr: frDemoMails, en: enDemoMails, ar: arDemoMails },
+  expense: { fr: frExpense, en: enExpense, ar: arExpense },
+  import: { fr: frImport, en: enImport, ar: arImport },
+  platform: { fr: frPlatform, en: enPlatform, ar: arPlatform },
+  purchases: { fr: frPurchases, en: enPurchases, ar: arPurchases },
+  reports: { fr: frReports, en: enReports, ar: arReports },
+  schedule: { fr: frSchedule, en: enSchedule, ar: arSchedule },
+  'stock-plan': { fr: frStockPlan, en: enStockPlan, ar: arStockPlan },
+  'two-factor': { fr: frTwoFactor, en: enTwoFactor, ar: arTwoFactor },
 };
 
 /** Two files' texts as one, refusing a key both hold: the part would silently win where the page reads it. */
@@ -58,7 +80,7 @@ function merged(main: unknown, part: unknown, where: string): unknown {
 }
 
 const files: Record<string, unknown> = Object.fromEntries(
-  Object.entries({ fr, en } as Record<string, unknown>).map(([lang, main]) => [
+  Object.entries({ fr, en, ar } as Record<string, unknown>).map(([lang, main]) => [
     lang,
     Object.entries(parts).reduce(
       (all, [name, part]) => merged(all, part[lang], `${name}/${lang}`),
@@ -70,15 +92,64 @@ const files: Record<string, unknown> = Object.fromEntries(
 const paidStatus = [
   fr.invoices.statuses.paid,
   en.invoices.statuses.paid,
+  ar.invoices.statuses.paid,
   fr.auth.scene.paid,
   en.auth.scene.paid,
+  ar.auth.scene.paid,
 ];
 
-// A quote voided, in both languages: the word its status says.
-const quoteVoided = { fr: fr.quotes.statuses.cancelled, en: en.quotes.statuses.cancelled };
+// A quote voided, in every language: the word its status says.
+const quoteVoided = {
+  fr: fr.quotes.statuses.cancelled,
+  en: en.quotes.statuses.cancelled,
+  ar: ar.quotes.statuses.cancelled,
+};
 
-// The home's VAT tile, in both languages.
-const homeVat = [fr.invoices.home.vat, en.invoices.home.vat];
+// The home's VAT tile, in every language.
+const homeVat = [fr.invoices.home.vat, en.invoices.home.vat, ar.invoices.home.vat];
+
+/** Every language a texts file is written for: each one is checked against French, the source. */
+const WRITTEN = ['fr', 'en', 'ar'];
+
+/** The parameters a text fills, `{{name}}`. */
+function parametersOf(text: string): string[] {
+  return [
+    ...new Set([...text.matchAll(/\{\{\s?(\w+)\s?\}\}/g)].map((match) => match[1] ?? '')),
+  ].sort();
+}
+
+/** The variables a text chooses a plural form over, `{name, plural, …}`. */
+function choicesOf(text: string): string[] {
+  return [
+    ...new Set([...text.matchAll(/\{(\w+),\s*plural,/g)].map((match) => match[1] ?? '')),
+  ].sort();
+}
+
+/** The forms each plural choice of a text writes, by its variable. */
+function formsOf(text: string): Map<string, Set<string>> {
+  const forms = new Map<string, Set<string>>();
+  for (const match of text.matchAll(/\{(\w+),\s*plural,/g)) {
+    const written = forms.get(match[1] ?? '') ?? new Set<string>();
+    let index = (match.index ?? 0) + match[0].length;
+    for (;;) {
+      const name = /^\s*(=\d+|zero|one|two|few|many|other)\s*\{/.exec(text.slice(index));
+      if (name === null) break;
+      written.add(name[1] ?? '');
+      let depth = 1;
+      index += name[0].length;
+      for (; index < text.length && depth > 0; index++) {
+        if (text[index] === '{') depth++;
+        else if (text[index] === '}') depth--;
+      }
+    }
+    forms.set(match[1] ?? '', written);
+  }
+  return forms;
+}
+
+/** What may stay in Latin letters in an Arabic text: codes, formats and names (docs/i18n/ar-glossary.md). */
+const KEPT_LATIN =
+  /\b(PDF|CSV|XLSX|XLS|Excel|Factur-X|UBL|CII|IBAN|RIB|BIC|SWIFT|SIRET|SIREN|NIC|TEIF|TEJ|twes-in|twes|Peppol|QR|EAN|GTIN|UPC|URL|HTTPS?|API|ID|Ctrl|Cmd|Alt|Shift|Esc|Enter|Tab|K|Wi-Fi|Bluetooth|USB|Android|iOS|Windows|Linux|macOS|Chrome|Safari|Firefox|Google|Microsoft|Apple|GitHub|WCAG|RGAA|AGPL|FODEC|TVA|HT|TTC|SMS|OTP|TOTP|WebAuthn|JSON|XML|ZIP|PNG|JPEG|JPG|SVG|WebP|MB|KB|Mo|Ko|px|cm|mm|kg|g|m|L|ml|TND|EUR|USD|DT|UTC|GMT|ISO|EN|ar|fr|en|N°|No)\b/g;
 
 function load(lang: string): unknown {
   return files[lang];
@@ -113,6 +184,86 @@ describe('translation files', () => {
     expect(en).toEqual(fr);
   });
 
+  it('every language the interface speaks has its texts written here', () => {
+    expect(INTERFACE_LANGUAGES.filter((lang) => !WRITTEN.includes(lang))).toEqual([]);
+  });
+
+  describe('Arabic', () => {
+    const french = new Map(entriesOf(load('fr')));
+    const arabic = entriesOf(load('ar'));
+
+    it('declares exactly the French keys', () => {
+      expect(keysOf(load('ar')).sort()).toEqual(fr);
+    });
+
+    it('fills the same parameters as the French, the count of a plural moved into its forms or not', () => {
+      const differ = arabic.filter(([key, text]) => {
+        const source = french.get(key) ?? '';
+        const counted = choicesOf(source);
+        const outside = (said: string): string[] =>
+          parametersOf(said).filter((name) => !counted.includes(name));
+        return outside(text).join() !== outside(source).join();
+      });
+      expect(differ.map(([key]) => key)).toEqual([]);
+    });
+
+    it('chooses over the French plurals, each with the six forms Arabic counts in', () => {
+      const forms = new Intl.PluralRules('ar').resolvedOptions().pluralCategories;
+      const short = arabic.filter(([key, text]) => {
+        const source = french.get(key) ?? '';
+        if (choicesOf(text).join() !== choicesOf(source).join()) return true;
+        return [...formsOf(text).values()].some((written) =>
+          forms.some((form) => !written.has(form)),
+        );
+      });
+      expect(short.map(([key]) => key)).toEqual([]);
+    });
+
+    it('writes every text in Arabic letters, but the codes and names kept in Latin', () => {
+      const latin = arabic.filter(([, text]) => {
+        if (/[ء-ي]/.test(text)) return false;
+        const bare = text
+          .replace(/\{\{\s?\w+\s?\}\}/g, '')
+          .replace(/\{\w+,\s*plural,/g, '')
+          .replace(KEPT_LATIN, '');
+        return /[A-Za-zÀ-ÿ]{2,}/.test(bare);
+      });
+      expect(latin.map(([key]) => key)).toEqual([]);
+    });
+
+    it('leaves no French word behind, and punctuates an Arabic word the Arabic way', () => {
+      const loose = arabic.filter(
+        ([, text]) => /[àâçéèêëîïôûùüÿœ]/i.test(text) || /\p{Script=Arabic}\s?[,?;]/u.test(text),
+      );
+      expect(loose.map(([key]) => key)).toEqual([]);
+    });
+
+    // The rulings the French words carry hold in Arabic too (docs/i18n/ar-glossary.md).
+    it('says « تراجع » only to take back what was just done', () => {
+      const elsewhere = arabic.filter(([key, text]) => text === 'تراجع' && !key.endsWith('undo'));
+      expect(elsewhere.map(([key]) => key)).toEqual([]);
+    });
+
+    it('abandons an invoice draft and leaves a quote unpursued, never cancels either', () => {
+      const voided = arabic.filter(
+        ([key, text]) =>
+          /^(invoices|quotes|recurring|activity\.actions\.(invoice|quote))\./.test(key) &&
+          !key.endsWith('undo') &&
+          /إلغاء|ملغا|ملغى|ألغ/.test(text),
+      );
+      expect(voided.map(([key]) => key)).toEqual([]);
+      expect(quoteVoided.ar).toBe('دون متابعة');
+    });
+
+    it('calls VAT collected, never due for declaring', () => {
+      expect(homeVat[2]).toContain('{{month}}');
+      expect(homeVat[2]).toContain('المُحصَّل');
+      expect(JSON.stringify(load('ar'))).not.toMatch(
+        /(القيمة المضافة|أ\.ق\.م)[^.،"]{0,20}للتصريح|التصريح بالأداء على القيمة المضافة/,
+      );
+    });
+  });
+
   it('says every setting hint in both languages', () => {
     // A hint is named by key in code (shared/settings/setting-forms.ts), where no label gate looks.
     const keys = new Set(fr);
@@ -129,7 +280,7 @@ describe('translation files', () => {
   });
 
   it('no key has an empty value', () => {
-    for (const lang of ['fr', 'en']) {
+    for (const lang of WRITTEN) {
       const json = JSON.stringify(load(lang));
       expect(json, `${lang}.json`).not.toMatch(/:""/);
     }
@@ -162,12 +313,13 @@ describe('translation files', () => {
 
   it('every plural choice is read whole, whatever the count', () => {
     const compiler = new PluralCompiler();
-    for (const lang of ['fr', 'en']) {
+    for (const lang of WRITTEN) {
       const choices = textsOf(load(lang)).filter((text) => /\{\w+,\s*plural,/.test(text));
       for (const text of choices) {
         const said = compiler.compile(text, lang);
         expect(typeof said, text).toBe('function');
-        for (const count of [0, 1, 2]) {
+        // Arabic's six forms fall on 0, 1, 2, 3–10, 11–99 and 100.
+        for (const count of [0, 1, 2, 3, 11, 100]) {
           const params = Object.fromEntries(
             [...text.matchAll(/\{\{?(\w+)/g)].map((match) => [match[1], count]),
           );
@@ -207,12 +359,12 @@ describe('translation files', () => {
   });
 
   it('an invoice with nothing left due reads settled, not paid', () => {
-    expect(paidStatus).toEqual(['Soldée', 'Settled', 'Soldée', 'Settled']);
+    expect(paidStatus).toEqual(['Soldée', 'Settled', 'مُسوّاة', 'Soldée', 'Settled', 'مُسوّاة']);
   });
 
   // docs/SPEC.md § 7, 2026-09-24 11:40: the home's VAT is what the month's invoices charged, never a declaration.
   it('the VAT on the home reads collected, and no message calls VAT due for declaring', () => {
-    expect(homeVat).toEqual(['TVA collectée · {{month}}', 'VAT collected · {{month}}']);
+    expect(homeVat.slice(0, 2)).toEqual(['TVA collectée · {{month}}', 'VAT collected · {{month}}']);
     expect(JSON.stringify(load('fr'))).not.toMatch(/TVA à déclarer|déclaration de TVA/i);
     expect(JSON.stringify(load('en'))).not.toMatch(/VAT to declare|VAT return/i);
   });

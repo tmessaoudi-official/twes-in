@@ -1,0 +1,42 @@
+{
+  "data_erasure": {
+    "title": "Erase data",
+    "locked": "This page erases data of {{company}} for all its members. Only an owner opens it, after confirming it is really them.",
+    "confirm": "Confirm it is me",
+    "confirmed": "Identity confirmed at {{time}}. The page closes after 10 minutes without action; confirming again reopens it.",
+    "some": "Erase a part",
+    "kept_title": "Always kept",
+    "kept": "Issued invoices, credit notes and delivery notes, their numbers and their PDFs · recorded payments and expenses · closings · the activity journal · members, their roles and the subscription. Keep a copy first: every list has « Export ».",
+    "waiting": "An erasure is still waiting for its end: undo it from the banner, or wait until it is final, before making another.",
+    "review": "See what will be erased ({{count}})",
+    "erased": "Erased: {{parts}}",
+    "preview": {
+      "title": "What will be erased",
+      "counted": "Counted just now, without touching anything. It disappears from every member’s screens on « Erase »; the erasure is written to the activity journal.",
+      "undoable": "for 24 hours, from the « Undo the erasure » banner; after that nothing comes back.",
+      "proof": "If your identity confirmation is more than 5 minutes old, it is asked again when erasing.",
+      "back": "Back",
+      "erase": "Erase"
+    },
+    "tables": {
+      "venue_area": "a floor",
+      "venue_spot": "a rectangle of the map",
+      "venue_structure": "a building element",
+      "invoice": "an invoice",
+      "delivery_note": "a delivery note",
+      "quote": "a quote"
+    },
+    "errors": {
+      "network": "The server did not answer; try again.",
+      "not_found": "This erasure no longer exists.",
+      "owner_only": "Only an owner erases the company’s data.",
+      "step_up_required": "Confirm again that it is really you.",
+      "erasure_pending": "An erasure is still waiting for its end: undo it or wait until it is final.",
+      "erasure_final": "This erasure is final: nothing comes back.",
+      "erasure_conflict": "Nothing came back: {{table}} made since stands where what was erased would go. Clear it, then undo again.",
+      "erasure_conflict_any": "Nothing came back: something made since stands where what was erased would go.",
+      "no_part": "Choose at least one part to erase.",
+      "unknown_part": "This part does not exist."
+    }
+  }
+}

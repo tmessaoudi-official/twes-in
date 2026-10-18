@@ -16,6 +16,7 @@ use App\Identity\Infrastructure\Security\SecurityUser;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportHeading;
 use App\Tenancy\Domain\Model\Company;
+use App\Tests\Support\ShippedLanguages;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
@@ -155,7 +156,7 @@ final class ImportColumnsTest extends ApiTestCase
      */
     private function assertScreenKeyTranslated(string $key): void
     {
-        foreach (['fr', 'en'] as $language) {
+        foreach (ShippedLanguages::catalogue()->interface() as $language) {
             $words = self::translations($language);
             foreach (explode('.', $key) as $step) {
                 self::assertIsArray($words, \sprintf('"%s" is a leaf before "%s" in %s', $key, $step, $language));

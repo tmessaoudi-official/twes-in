@@ -244,7 +244,7 @@ final class AcceptInvitationTest extends TestCase
     /** The account's language is what its mails are written in, so only one the screens speak, whatever the company prints in. */
     public function testANewAccountTakesTheCompanysLanguageOnlyWhenTheScreensSpeakIt(): void
     {
-        $this->company = Company::pending('Souk', 'TN', 'TND', 'ar', 'Africa/Tunis');
+        $this->company = Company::pending('Souk', 'TN', 'TND', 'de', 'Africa/Tunis');
         $this->companies->save($this->company);
         $token = $this->openInvitation(Role::MEMBER);
 

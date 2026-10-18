@@ -19,6 +19,7 @@ use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
+use App\Tests\Support\ShippedLanguages;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mime\Email as MimeEmail;
 use Symfony\Component\Uid\Uuid;
@@ -347,7 +348,7 @@ final class SubscriptionPaymentsTest extends ApiTestCase
     {
         $translator = static::getContainer()->get(TranslatorInterface::class);
         foreach (PaymentMethod::cases() as $method) {
-            foreach (['fr', 'en'] as $language) {
+            foreach (ShippedLanguages::catalogue()->interface() as $language) {
                 $key = 'payment_declared.methods.'.$method->value;
                 self::assertNotSame($key, $translator->trans($key, [], 'emails', $language), "$method->value in $language");
             }

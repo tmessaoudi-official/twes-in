@@ -153,8 +153,14 @@ if ((${#choices[@]} < choices_floor)); then
   exit 1
 fi
 
+# The labels are wanted in every language the interface speaks, which the catalogue names.
+catalogue="$root/web/src/app/shared/i18n/languages.json"
+[[ -f "$catalogue" ]] || { printf '%s: FAIL — no language catalogue at %s\n' "$(basename "$0" .sh)" "${catalogue#"$root/"}"; exit 1; }
+mapfile -t languages < <(jq -r '.languages[]? | select(.interface == true) | .tag' "$catalogue")
+((${#languages[@]})) || { printf '%s: FAIL — the catalogue names no language the interface speaks\n' "$(basename "$0" .sh)"; exit 1; }
+
 missing=()
-for language in fr en; do
+for language in "${languages[@]}"; do
   file="$root/web/public/i18n/$language.json"
   for key in "${keys[@]}" "${platform_keys[@]}"; do
     labelled "$key" "$file" || missing+=("$language: $key")
@@ -173,5 +179,5 @@ if ((${#missing[@]})); then
   exit 1
 fi
 
-printf 'setting-labels: OK — %d settings, %d platform numbers, %d choices and %d chain headings are labelled in fr and en\n' \
-  "${#keys[@]}" "${#platform_keys[@]}" "${#choices[@]}" "${#chains[@]}"
+printf 'setting-labels: OK — %d settings, %d platform numbers, %d choices and %d chain headings are labelled in %s\n' \
+  "${#keys[@]}" "${#platform_keys[@]}" "${#choices[@]}" "${#chains[@]}" "$(printf '%s, ' "${languages[@]}" | sed 's/, $//')"

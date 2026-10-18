@@ -78,7 +78,14 @@ for key in sorted(set(places) - set(planned)):
 entries = {key: places.get(key) for key in planned}
 entries.update(settings)
 
-for language in ("fr", "en"):
+# The texts are wanted in every language the interface speaks, which the catalogue names.
+try:
+    languages = [entry["tag"] for entry in json.loads(read("web/src/app/shared/i18n/languages.json") or "")["languages"] if entry.get("interface") is True]
+except (ValueError, KeyError, TypeError):
+    languages = []
+if not languages:
+    problems.append("no language the interface speaks read from web/src/app/shared/i18n/languages.json")
+for language in languages:
     try:
         coming = json.loads(read(f"web/public/i18n/{language}.json") or "").get("coming", {})
     except ValueError:
@@ -120,5 +127,5 @@ if problems:
         print(f"  {problem}")
     sys.exit(1)
 
-print(f"coming-texts: OK — {len(entries)} coming entries have their texts in fr and en, none is left behind, and the {len(named)} roadmap rows they name are still open")
+print(f"coming-texts: OK — {len(entries)} coming entries have their texts in {", ".join(languages)}, none is left behind, and the {len(named)} roadmap rows they name are still open")
 PY

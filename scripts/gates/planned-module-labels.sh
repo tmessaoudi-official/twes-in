@@ -49,8 +49,14 @@ if ((${#keys[@]} < floor)); then
   exit 1
 fi
 
+# The labels are wanted in every language the interface speaks, which the catalogue names.
+catalogue="$root/web/src/app/shared/i18n/languages.json"
+[[ -f "$catalogue" ]] || { printf '%s: FAIL — no language catalogue at %s\n' "$(basename "$0" .sh)" "${catalogue#"$root/"}"; exit 1; }
+mapfile -t languages < <(jq -r '.languages[]? | select(.interface == true) | .tag' "$catalogue")
+((${#languages[@]})) || { printf '%s: FAIL — the catalogue names no language the interface speaks\n' "$(basename "$0" .sh)"; exit 1; }
+
 missing=()
-for language in fr en; do
+for language in "${languages[@]}"; do
   mapfile -t absent < <(
     for key in "${keys[@]}"; do printf '%s\n' "modules.$key" "coming.$key.heading" "coming.$key.does"; done |
       unlabelled "$root/web/public/i18n/$language.json"
@@ -108,7 +114,7 @@ if ((${#unplanned[@]})); then
   exit 1
 fi
 missing=()
-for language in fr en; do
+for language in "${languages[@]}"; do
   mapfile -t absent < <(
     for declaration in "${declarations[@]}"; do printf '%s\n' "${declaration#* }"; done | sort -u |
       unlabelled "$root/web/public/i18n/$language.json"
@@ -123,5 +129,5 @@ if ((${#missing[@]})); then
   exit 1
 fi
 
-printf 'planned-module-labels: OK — %d planned modules are named, described and placed in the menu, and %d declarations name one, in fr and en\n' \
-  "${#keys[@]}" "${#declarations[@]}"
+printf 'planned-module-labels: OK — %d planned modules are named, described and placed in the menu, and %d declarations name one, in %s\n' \
+  "${#keys[@]}" "${#declarations[@]}" "$(printf '%s, ' "${languages[@]}" | sed 's/, $//')"

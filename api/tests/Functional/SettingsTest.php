@@ -56,7 +56,7 @@ final class SettingsTest extends ApiTestCase
         self::assertNotContains('presentation.customer-view.cost', $keys);
         // The interface language is remembered like any presentation choice, French until one is made.
         self::assertSame('fr', $row('presentation.language')['value']);
-        self::assertSame(['fr', 'en'], $row('presentation.language')['choices']);
+        self::assertSame(['fr', 'en', 'ar'], $row('presentation.language')['choices']);
         $accent = $rows[0];
         self::assertSame('#1f6feb', $accent['value']);
         self::assertSame('#1f6feb', $accent['default']);

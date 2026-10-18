@@ -1,0 +1,42 @@
+{
+  "data_erasure": {
+    "title": "Effacer des données",
+    "locked": "Cette page efface des données de {{company}} pour tous ses membres. Seul un propriétaire l’ouvre, après avoir confirmé que c’est bien lui.",
+    "confirm": "Confirmer que c’est moi",
+    "confirmed": "Identité confirmée à {{time}}. La page se referme après 10 minutes sans action ; la confirmer de nouveau la rouvre.",
+    "some": "Effacer une partie",
+    "kept_title": "Toujours gardé",
+    "kept": "Factures, avoirs et bons de livraison émis, leurs numéros et leurs PDF · paiements et dépenses enregistrés · clôtures · le journal d’activité · les membres, leurs rôles et l’abonnement. Gardez une copie avant : chaque liste a « Exporter ».",
+    "waiting": "Un effacement attend encore sa fin : annulez-le depuis le bandeau, ou attendez qu’il soit définitif, avant d’en faire un autre.",
+    "review": "Voir ce qui sera effacé ({{count}})",
+    "erased": "Effacé : {{parts}}",
+    "preview": {
+      "title": "Ce qui sera effacé",
+      "counted": "Calculé à l’instant, sans rien toucher. Cela disparaît des écrans de tous les membres dès « Effacer » ; l’effacement est inscrit au journal d’activité.",
+      "undoable": "pendant 24 h, depuis le bandeau « Annuler l’effacement » ; ensuite rien ne revient.",
+      "proof": "Si votre confirmation d’identité a plus de 5 minutes, elle est redemandée au moment d’effacer.",
+      "back": "Retour",
+      "erase": "Effacer"
+    },
+    "tables": {
+      "venue_area": "un étage",
+      "venue_spot": "un rectangle du plan",
+      "venue_structure": "un élément du bâtiment",
+      "invoice": "une facture",
+      "delivery_note": "un bon de livraison",
+      "quote": "un devis"
+    },
+    "errors": {
+      "network": "Le serveur n’a pas répondu ; réessayez.",
+      "not_found": "Cet effacement n’existe plus.",
+      "owner_only": "Seul un propriétaire efface les données de l’entreprise.",
+      "step_up_required": "Confirmez de nouveau que c’est bien vous.",
+      "erasure_pending": "Un effacement attend encore sa fin : annulez-le ou attendez qu’il soit définitif.",
+      "erasure_final": "Cet effacement est définitif : rien ne revient.",
+      "erasure_conflict": "Rien n’est revenu : {{table}} créé depuis prend la place de ce qui était effacé. Libérez-la, puis annulez de nouveau.",
+      "erasure_conflict_any": "Rien n’est revenu : quelque chose créé depuis prend la place de ce qui était effacé.",
+      "no_part": "Choisissez au moins une partie à effacer.",
+      "unknown_part": "Cette partie n’existe pas."
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {# The signup link mail. Plain, inline-styled HTML: mail clients strip stylesheets, and this has one job. #}
 <!DOCTYPE html>
-<html lang="{{ app.locale }}">
+<html lang="{{ app.locale }}" dir="{{ text_direction(app.locale) }}">
   <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
     <h1 style="font-size: 20px;">{{ 'signup.heading'|trans({}, 'emails') }}</h1>
     <p>{{ 'signup.intro'|trans({'%product%': productName}, 'emails') }}</p>

@@ -44,8 +44,8 @@ final class LegalLanguagesTest extends TestCase
         $readIn = fn (string $tag): array => array_map(static fn (LegalLanguage $language) => $language->value, $this->languages->readIn(LegalLanguage::of($tag)));
 
         self::assertSame(['ar', 'fr', 'en'], $readIn('ar'));
-        self::assertSame(['en', 'fr'], $readIn('en'));
-        self::assertSame(['fr', 'en'], $readIn('fr'));
+        self::assertSame(['en', 'fr', 'ar'], $readIn('en'));
+        self::assertSame(['fr', 'en', 'ar'], $readIn('fr'));
     }
 
     public function testALanguageIsATagAndTwoOfTheSameTagAreEqual(): void

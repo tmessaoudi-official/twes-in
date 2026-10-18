@@ -1,0 +1,251 @@
+{
+  "platform": {
+    "signup": {
+      "title": "Inscriptions",
+      "enabled": "Tout le monde peut s’inscrire",
+      "approval_required": "Une entreprise inscrite attend l’approbation"
+    },
+    "demo": {
+      "title": "Démo",
+      "intro": "Un visiteur essaie l’application dans une entreprise de démonstration à lui seul, sans compte, effacée quand il se déconnecte ou cesse de s’en servir. Aucun courrier ne part et aucun document n’a de valeur fiscale.",
+      "bounds": "De {{min}} à {{max}} démos",
+      "save": "Enregistrer",
+      "saved": "Nombre de démos enregistré."
+    },
+    "waiting": {
+      "title": "En attente d’approbation",
+      "none": "Aucune entreprise n’attend d’approbation.",
+      "owners": "Propriétaires : {{owners}}",
+      "approve": "Approuver",
+      "reject": "Refuser",
+      "all": "Voir les {{count}} en attente"
+    },
+    "companies": {
+      "title": "Entreprises",
+      "name": "Nom de l’entreprise",
+      "country": "Pays",
+      "owner": "Adresse du propriétaire",
+      "create": "Ouvrir l’entreprise",
+      "invite": "Inviter un propriétaire",
+      "invited": "Invitation envoyée à {{email}}.",
+      "none": "Aucune entreprise.",
+      "countries": {
+        "TN": "Tunisie",
+        "FR": "France"
+      },
+      "statuses": {
+        "pending": "En attente",
+        "active": "Active",
+        "suspended": "Suspendue"
+      },
+      "new": "Nouvelle entreprise",
+      "close": "Fermer",
+      "no_owner": "Aucun propriétaire."
+    },
+    "accounts": {
+      "title": "Comptes",
+      "search": "Adresse ou nom",
+      "find": "Rechercher",
+      "none": "Aucun compte trouvé.",
+      "active": "Actif",
+      "inactive": "Désactivé",
+      "operator": "Opérateur",
+      "end_sessions": "Terminer les sessions",
+      "deactivate": "Désactiver",
+      "reactivate": "Réactiver",
+      "states": {
+        "active": "Actifs",
+        "inactive": "Désactivés",
+        "operator": "Opérateurs"
+      }
+    },
+    "errors": {
+      "not_found": "Cette entreprise n’existe plus.",
+      "refused": "La plateforme a refusé.",
+      "own_account": "Vous ne pouvez pas désactiver votre propre compte.",
+      "network": "Le serveur est injoignable.",
+      "name_taken": "Une entreprise porte déjà ce nom.",
+      "already_member": "Cette adresse appartient déjà à cette entreprise.",
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
+    },
+    "subscription": {
+      "open": "Abonnement",
+      "trial_ends_on": "Fin de l’essai",
+      "paid_through": "Payé jusqu’au",
+      "period_count": "Durée",
+      "period_unit": "Unité",
+      "price": "Prix par période",
+      "currency": "Devise",
+      "grace_days": "Jours de tolérance",
+      "unpaid_mode": "En cas d’impayé",
+      "save": "Enregistrer l’abonnement",
+      "stop": "Ne plus gérer",
+      "saved": "L’abonnement a été enregistré.",
+      "stopped": "L’abonnement n’est plus géré.",
+      "days_left": "{{days}} {days, plural, one {jour restant} other {jours restants}}",
+      "units": {
+        "day": "jours",
+        "month": "mois",
+        "year": "ans"
+      },
+      "modes": {
+        "default": "Valeur de la plateforme",
+        "read_only": "Lecture seule",
+        "locked": "Fermée"
+      },
+      "stages": {
+        "trial": "Essai",
+        "paid": "À jour",
+        "grace": "Tolérance",
+        "unpaid": "Impayé",
+        "held": "Règlement en attente"
+      },
+      "accesses": {
+        "full": "Accès complet",
+        "read_only": "Lecture seule",
+        "locked": "Fermée"
+      },
+      "hold_days": "Jours d’attente de confirmation"
+    },
+    "payments": {
+      "title": "Règlements à confirmer",
+      "none": "Aucun règlement en attente.",
+      "periods": "Périodes couvertes",
+      "confirm": "Confirmer",
+      "reject": "Refuser",
+      "confirmed": "Le règlement a été confirmé.",
+      "rejected": "Le règlement a été refusé."
+    },
+    "demand": {
+      "title": "Modules attendus",
+      "intro": "Combien de sociétés ont demandé à être prévenues de l’arrivée de chaque module.",
+      "companies": "Sociétés : {{count}}",
+      "empty": "Aucune société n’attend encore de module."
+    },
+    "legal": {
+      "title": "Pages légales",
+      "intro": "Chaque page, dans chaque langue, telle que tout le monde la lit. Une nouvelle version est publiée tout de suite et marquée brouillon jusqu’à ce qu’elle soit validée.",
+      "link": "Gérer les pages légales",
+      "page": "Page",
+      "none": "Pas écrite",
+      "draft": "Brouillon du {{date}}",
+      "validated": "Validée, du {{date}}",
+      "body": "Texte (Markdown)",
+      "preview": "Aperçu",
+      "edit": "Modifier",
+      "publish": "Publier une nouvelle version",
+      "validate": "Valider la dernière version",
+      "published": "Nouvelle version publiée, marquée brouillon.",
+      "validated_toast": "Dernière version validée.",
+      "history": "Versions",
+      "shipped": "Livrée avec la plateforme",
+      "by": "par {{who}}",
+      "validated_by": "validée par {{who}}",
+      "reuse": "Reprendre ce texte",
+      "failed": "Les pages légales ne peuvent pas être lues pour le moment.",
+      "identity": {
+        "title": "Éditeur et hébergeur",
+        "intro": "Ce que les pages légales nomment, là où un texte écrit sa marque entre doubles accolades. Ce qui n’est pas rempli s’affiche « [à compléter] ».",
+        "save": "Enregistrer",
+        "saved": "Identité enregistrée.",
+        "publisher": {
+          "name": "Nom ou raison sociale de l’éditeur",
+          "address": "Adresse du siège",
+          "registration": "Immatriculation (RNE, RCS, matricule fiscal…)",
+          "email": "Adresse de contact",
+          "phone": "Téléphone",
+          "director": "Directeur ou directrice de la publication"
+        },
+        "host": {
+          "name": "Hébergeur",
+          "address": "Adresse de l’hébergeur",
+          "phone": "Téléphone de l’hébergeur",
+          "country": "Pays où les données sont hébergées"
+        },
+        "privacy": {
+          "email": "Contact pour les données personnelles"
+        },
+        "security": {
+          "email": "Contact pour signaler une faille"
+        },
+        "commercial": {
+          "email": "Contact pour la licence commerciale"
+        },
+        "mail": {
+          "provider": "Prestataire d’envoi des e-mails"
+        },
+        "backup": {
+          "provider": "Prestataire et pays des sauvegardes"
+        },
+        "monitor": {
+          "provider": "Prestataire et pays de la surveillance"
+        },
+        "source": {
+          "url": "Adresse du code source"
+        },
+        "jurisdiction": "Tribunaux compétents"
+      }
+    },
+    "tabs": {
+      "overview": "Vue d’ensemble",
+      "companies": "Entreprises",
+      "accounts": "Comptes",
+      "payments": "Paiements",
+      "demand": "Demande"
+    },
+    "list": {
+      "company": {
+        "name": "Entreprise",
+        "country": "Pays",
+        "status": "Statut",
+        "owners": "Propriétaires",
+        "subscription": "Abonnement",
+        "created": "Créée le"
+      },
+      "account": {
+        "name": "Compte",
+        "companies": "Entreprises",
+        "state": "État",
+        "created": "Créé le",
+        "actions": "Actions"
+      }
+    },
+    "tab_counts": {
+      "overview": "À traiter : {{count}}",
+      "companies": "Entreprises : {{count}}",
+      "accounts": "Comptes : {{count}}",
+      "payments": "Paiements à confirmer : {{count}}"
+    },
+    "failed": {
+      "title": "Messages non partis",
+      "total": "{{count}} {count, plural, one {message n’est pas parti après ses essais} other {messages ne sont pas partis après leurs essais}}.",
+      "retry": "Ils attendent sur le serveur. Une fois la cause réglée, relancez-les depuis le service worker :",
+      "kinds": {
+        "invitation": "Invitations",
+        "password_reset": "Mots de passe oubliés",
+        "signup": "Inscriptions"
+      }
+    },
+    "delays": {
+      "title": "Délais",
+      "intro": "Les jours que la plateforme laisse à chaque entreprise et à chaque compte avant qu’un changement prenne effet.",
+      "bounds": "De {{min}} à {{max}} jours",
+      "save": "Enregistrer les délais",
+      "saved": "Délais enregistrés."
+    },
+    "support": {
+      "title": "Contact du support",
+      "intro": "Ce que l’aide de chaque écran propose sous « Nous contacter » à toutes les personnes connectées. Un moyen laissé vide n’y figure pas.",
+      "phone": "Téléphone",
+      "phone_hint": "Par exemple +216 71 000 000",
+      "whatsapp": "WhatsApp",
+      "whatsapp_hint": "Le numéro au format international, indicatif du pays en tête : +216 20 123 456",
+      "email": "Adresse e-mail",
+      "email_hint": "Par exemple support@exemple.tn",
+      "status_url": "Page d’état du service",
+      "status_url_hint": "Lien en pied de chaque page, par exemple https://status.exemple.tn",
+      "save": "Enregistrer",
+      "saved": "Contact du support enregistré."
+    }
+  }
+}

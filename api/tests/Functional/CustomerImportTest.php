@@ -487,7 +487,7 @@ final class CustomerImportTest extends ApiTestCase
         yield 'terms that are no whole number' => ['payment_terms_days', '30 jours', 'invalid_payment_terms', ['max' => 365]];
         yield 'a credit limit below zero' => ['credit_limit', '-100', 'invalid_credit_limit', ['min' => '0']];
         yield 'a credit limit that is no amount' => ['credit_limit', 'beaucoup', 'invalid_credit_limit', ['min' => '0']];
-        yield 'a language documents are not printed in' => ['document_language', 'arabe', 'not_one_of', ['choices' => 'fr, en']];
+        yield 'a language documents are not printed in' => ['document_language', 'allemand', 'not_one_of', ['choices' => 'fr, en, ar']];
         yield 'an exemption provision past its length' => ['exemption_reference', str_repeat('a', 201), 'invalid_text', ['max' => 200]];
     }
 

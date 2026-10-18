@@ -1,6 +1,6 @@
 {# A notification told by mail: the sentence the bell says, a link to the app, and the link that stops this kind's mail. #}
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ locale }}" dir="{{ text_direction(locale) }}">
   <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
     <h1 style="font-size: 20px;">{{ kind }}</h1>
     {% if companyName %}

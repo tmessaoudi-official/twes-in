@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Inbox\Application\NotificationKinds;
+use App\Tests\Support\ShippedLanguages;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Translation\TranslatorBagInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -33,7 +34,7 @@ final class NotificationFieldsTest extends KernelTestCase
         foreach ($kinds->all() as $kind) {
             $declared = [...$kind->amounts, ...$kind->days, ...$kind->moments, ...$kind->quantities];
             self::assertSame([], array_values(array_intersect($declared, self::PLAIN)), "$kind->type declares as a figure what is plain words");
-            foreach (['fr', 'en'] as $language) {
+            foreach (ShippedLanguages::catalogue()->interface() as $language) {
                 $sentence = $translator->getCatalogue($language)->get('notification.types.'.str_replace('.', '_', $kind->type), 'emails');
                 preg_match_all('/%(\w+)%/', $sentence, $names);
                 foreach ($names[1] as $name) {

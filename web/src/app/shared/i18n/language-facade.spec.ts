@@ -47,12 +47,12 @@ describe('LanguageFacade', () => {
     });
   });
 
-  it('ships French first and English second', () => {
-    expect(SUPPORTED_LANGUAGES).toEqual(['fr', 'en']);
+  it('ships French first, then English and Arabic', () => {
+    expect(SUPPORTED_LANGUAGES).toEqual(['fr', 'en', 'ar']);
   });
 
   it('names each language in itself, never with a flag', () => {
-    expect(LANGUAGE_NAMES).toEqual({ fr: 'Français', en: 'English' });
+    expect(LANGUAGE_NAMES).toEqual({ fr: 'Français', en: 'English', ar: 'العربية' });
   });
 
   it('starts in French', () => {

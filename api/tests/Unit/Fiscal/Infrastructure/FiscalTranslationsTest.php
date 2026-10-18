@@ -12,6 +12,7 @@ namespace App\Tests\Unit\Fiscal\Infrastructure;
 use App\Fiscal\Application\Preset\FiscalPreset;
 use App\Fiscal\Infrastructure\Preset\YamlFiscalPresets;
 use App\Module\Invoices\Application\Print\InvoiceMentions;
+use App\Tests\Support\ShippedLanguages;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
@@ -31,14 +32,14 @@ final class FiscalTranslationsTest extends TestCase
 
     public function testEveryKeyAPresetUsesIsTranslated(): void
     {
-        $presets = new YamlFiscalPresets(self::PRESETS, \App\Tests\Support\ShippedLanguages::catalogue());
+        $presets = new YamlFiscalPresets(self::PRESETS, ShippedLanguages::catalogue());
         $used = [];
         foreach ($presets->keys() as $key) {
             $used = [...$used, ...$this->keysOf($presets->get($key))];
         }
         self::assertNotEmpty($used);
 
-        foreach (['fr', 'en'] as $locale) {
+        foreach (ShippedLanguages::catalogue()->documents() as $locale) {
             $missing = array_values(array_diff(array_unique($used), array_keys($this->messages($locale))));
             self::assertSame([], $missing, "fiscal.$locale.yaml lacks a key a preset uses");
         }
@@ -55,8 +56,10 @@ final class FiscalTranslationsTest extends TestCase
             if (!str_starts_with($key, 'fiscal.mention.')) {
                 continue;
             }
-            $placeholders = array_map(fn (string $locale): array => $this->placeholders($this->messages($locale)[$key]), ['fr', 'en']);
-            self::assertSame($placeholders[0], $placeholders[1], "$key waits for the same in both languages");
+            $placeholders = array_map(fn (string $locale): array => $this->placeholders($this->messages($locale)[$key]), ShippedLanguages::catalogue()->documents());
+            foreach ($placeholders as $inOne) {
+                self::assertSame($placeholders[0], $inOne, "$key waits for the same in every language");
+            }
             self::assertSame([], array_values(array_diff($placeholders[0], array_keys(InvoiceMentions::DATA))), "$key waits for something no setting fills");
             $holding += [] === $placeholders[0] ? 0 : 1;
         }

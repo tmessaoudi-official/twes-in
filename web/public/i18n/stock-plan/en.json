@@ -1,0 +1,283 @@
+{
+  "inventory": {
+    "plan": {
+      "title": "Stock plan",
+      "floors": "Floors",
+      "no_floor": "The plan shows where every item is kept, floor by floor. It is drawn in three steps:",
+      "drawn": "Drawn on this floor",
+      "chosen": "{{count}} {count, plural, one {rectangle chosen} other {rectangles chosen}}",
+      "let_go": "Deselect all",
+      "group_hint": "Drag any of them to move the whole group, or use the arrows and R on the keyboard.",
+      "group_turn_left": "Turn {{degrees}}° left",
+      "group_turn_right": "Turn {{degrees}}° right",
+      "group_saved": "{{count}} {count, plural, one {rectangle moved} other {rectangles moved}}",
+      "group_erased": "{{count}} {count, plural, one {rectangle erased} other {rectangles erased}}",
+      "group_changed": "A rectangle of the group was changed in the meantime: nothing was changed. The plan has been read again; make the move again.",
+      "nothing_drawn": "No location is drawn on this floor yet.",
+      "plan_of": "Plan of {{floor}}: {{count}} {count, plural, one {rectangle} other {rectangles}} drawn",
+      "trace": "Trace a rectangle",
+      "trace_hint": "Drag on the plan to trace the footprint, then choose the location.",
+      "pose": "Place on the plan",
+      "pose_rule": "Choose a shape: it is placed in the middle of the plan, selected. Drag it or type its measurements, then Save.",
+      "free_rect": "Free rectangle",
+      "free_rect_note": "to trace on the plan",
+      "trace_type": "or type its measurements",
+      "erase": "Erase the rectangle",
+      "add_floor": "Add a floor",
+      "edit_floor": "Edit the floor",
+      "remove_floor": "Remove the floor",
+      "floor_saved": "Floor saved",
+      "floor_removed": "Floor removed",
+      "drawing_saved": "Rectangle saved",
+      "drawing_erased": "Rectangle erased",
+      "undo": "Undo",
+      "undone": "Plan change undone.",
+      "floor_section": "The floor",
+      "level_hint": "The ground floor is 0; a storey above it is a larger number, up to 200.",
+      "drawing_section": "The location drawn",
+      "location_hint": "A location is in one place, so it is drawn once. Bins are not offered.",
+      "footprint_section": "The footprint",
+      "footprint_hint": "In metres from the floor’s top-left corner, snapped to the quarter-metre.",
+      "rotation_hint": "In steps of 15°, for a rack set against a wall at an angle.",
+      "floor_fields": {
+        "establishmentId": "Establishment",
+        "name": "Floor name",
+        "level": "Level",
+        "widthMetres": "Floor width (m)",
+        "depthMetres": "Floor depth (m)"
+      },
+      "drawing_fields": {
+        "locationId": "Location",
+        "x": "x (m)",
+        "y": "y (m)",
+        "width": "Width (m)",
+        "depth": "Depth (m)",
+        "height": "Height (m)",
+        "rotation": "Rotation (°)",
+        "origin": "Location",
+        "newLocationKind": "Kind",
+        "newLocationCode": "Code",
+        "newLocationName": "Name"
+      },
+      "shapes": "Ready-made shapes",
+      "shape_names": {
+        "rack": "Rack",
+        "zone": "Zone",
+        "aisle": "Aisle",
+        "dock": "Dock"
+      },
+      "structure": "Walls and doors",
+      "structure_note": "Nothing here is a stock location: a wall holds no goods and appears on no list.",
+      "structure_section": "Piece of structure",
+      "structure_hint": "What this piece draws. A door and a dock are cut into a wall: their thickness is the wall's.",
+      "structure_fields": {
+        "kind": "Kind of piece",
+        "width": "Length (m)",
+        "depth": "Thickness (m)",
+        "name": "Name"
+      },
+      "structure_name_hint": "The name the store already uses, if it has one.",
+      "structure_kinds": {
+        "wall": "Wall",
+        "door": "Door",
+        "post": "Post",
+        "dock": "Dock door"
+      },
+      "structure_saved": "Piece of structure saved.",
+      "structure_erased": "Piece of structure removed.",
+      "labels": "Labels",
+      "label_modes": {
+        "code": "Code",
+        "name": "Name",
+        "both": "Both"
+      },
+      "layers": "Layers",
+      "layer_names": {
+        "structure": "Structure",
+        "racks": "Racks",
+        "zones": "Zones"
+      },
+      "layer_shown": "Show or hide this layer",
+      "layer_locked": "Lock this layer so the pointer no longer catches it",
+      "shown": "Shown",
+      "hidden": "Hidden",
+      "locked": "Locked",
+      "unlocked": "Unlocked",
+      "repeat": "Repeat",
+      "repeat_of": "Repeat {{code}}",
+      "repeat_count": "How many more",
+      "repeat_spacing": "Spacing (m)",
+      "repeat_spacing_hint": "The free floor between two rectangles. Zero puts them back to back.",
+      "repeat_way": "Direction",
+      "repeat_first_code": "Code of the first copy",
+      "repeat_will_create": "{{count}} stock locations and their rectangles:",
+      "repeat_off_floor": "A copy would leave the floor. Change the direction, the spacing or the count.",
+      "repeat_incomplete": "Give a count, a spacing and a code ending in a number.",
+      "repeat_create": "Create the {{count}}",
+      "repeated": "Racks created",
+      "ways": {
+        "up": "up",
+        "down": "down",
+        "left": "left",
+        "right": "right"
+      },
+      "way_glyphs": {
+        "up": "↑",
+        "down": "↓",
+        "left": "←",
+        "right": "→"
+      },
+      "view": "View",
+      "zoom_in": "Come nearer",
+      "zoom_out": "Step back",
+      "fit": "Fit",
+      "not_saved": "Not saved yet: Save, alongside",
+      "views": "Ways to look at the floor",
+      "view_names": {
+        "plan": "Plan",
+        "facade": "Front",
+        "volume": "3D volume"
+      },
+      "view_coming": {
+        "facade": "A rack’s front, its columns and levels, is coming soon."
+      },
+      "mode": "Mode",
+      "modes": {
+        "read": "Look",
+        "arrange": "Arrange"
+      },
+      "reading": "Read only",
+      "floor_meta": "Level {{level}} · {{count}} {count, plural, one {location drawn} other {locations drawn}}",
+      "legend": "Key",
+      "legend_items": {
+        "rack": "Rack",
+        "zone": "Zone, aisle",
+        "wall": "Wall, post",
+        "door": "Door",
+        "dock": "Loading dock"
+      },
+      "building": "The building",
+      "arranging": "Arranging: {{floor}}",
+      "arrange_hint": "Drag a shape to move it, its handles to resize it; nothing is saved until Save.",
+      "read_note": "Reading: touching the plan moves nothing",
+      "press_hint": "Press a place to see what it holds.",
+      "holds": "{{count}} {count, plural, one {product} other {products}}",
+      "keys_hint": "Wheel or + / − to come nearer, arrows to move around",
+      "board": "Floor plan. + and − to come nearer, arrows to move around.",
+      "pan": {
+        "up": "Move up",
+        "down": "Move down",
+        "left": "Move left",
+        "right": "Move right"
+      },
+      "panel_hint_read": "Touch a rectangle on the plan, or pick it in the list, to see what it holds.",
+      "panel_hint_arrange": "Pick a shape to place: it lands in the middle, selected. Drag it or type its measurements, then Save.",
+      "here": {
+        "title": "What is here",
+        "lot": "lot {{lot}}",
+        "nothing": "Nothing is stored here, according to the recorded movements.",
+        "more": "{{count}} more {count, plural, one {line} other {lines}}: see them all in Stock",
+        "empty_home": "{{product}} has its place here ({{place}}) and none is left: empty, to be refilled.",
+        "movements": "Movements",
+        "open_stock": "Open in Stock",
+        "truth": "What this says comes from the recorded movements: goods received into a place under this one count here.",
+        "reading": "Reading what it holds…",
+        "search": "Search here",
+        "no_match": "Nothing here matches “{{words}}”.",
+        "close": "Close"
+      },
+      "search": {
+        "label": "Find a product",
+        "hint": "Reference, name or barcode, or scan",
+        "none_found": "No stocked product",
+        "nowhere": "No stock is recorded for this product.",
+        "places_here": "{{count}} {count, plural, one {place} other {places}} on this floor",
+        "places_elsewhere": "{{count}} more on other floors",
+        "undrawn": "{{quantity}} {{unit}} in places not drawn: {{codes}}",
+        "floor_hits": "{{count}} {count, plural, one {place} other {places}}",
+        "where": "Where it is",
+        "line": "{{code}}: {{quantity}}",
+        "floor_total": "Total on this floor: {{quantity}} {{unit}}",
+        "open_product": "Product file",
+        "clear": "Clear the search",
+        "scanned": "Looked up on the plan: {{name}}",
+        "note_title": "Delivery note {{note}}",
+        "lines_title": "{{count}} {count, plural, one {product} other {products}} to find",
+        "note_lines": "{{count}} {count, plural, one {line} other {lines}}",
+        "note_nowhere": "{{count}} {count, plural, one {line} other {lines}} not found on the plan",
+        "where_lines": "Where to pick each line",
+        "line_nowhere": "No stock is recorded for this product.",
+        "lines_badge": "{{count}} {count, plural, one {line} other {lines}}",
+        "unknown_product": "Product not found",
+        "nowhere_drawn": "This item is in no drawn place.",
+        "open_stock": "See its stock"
+      },
+      "volume": {
+        "note": "The 3D is for looking only. To change anything, go back to the 2D plan.",
+        "keys_hint": "Drag to turn, wheel to come nearer, Shift and drag to move",
+        "shown": "What the 3D shows",
+        "toggles": {
+          "building": "Walls, doors, posts",
+          "ground": "Floor surface",
+          "heights": "Rack heights"
+        },
+        "summary": "{{floor}}: {{racks}} {racks, plural, one {rack} other {racks}}, {{zones}} {zones, plural, one {zone} other {zones}}",
+        "lit": "{{count}} {count, plural, one {place lit} other {places lit}}",
+        "missing": "This browser cannot show the 3D (WebGL 2 is not available here). The 2D plan shows the same floor.",
+        "loading": "Loading the 3D view…",
+        "failed": "The 3D view could not be loaded. The 2D plan shows the same floor.",
+        "view": "Look at the floor",
+        "turn_left": "Turn left",
+        "turn_right": "Turn right",
+        "closer": "Come nearer",
+        "further": "Move back",
+        "overview": "Overview",
+        "top": "Top view",
+        "read_only": "The 3D is looked at in View; in Arrange, the plan is 2D."
+      },
+      "first": {
+        "title": "Draw your depot",
+        "create": "Create the first floor",
+        "wider": "The plan is drawn on a wider screen. Here it is read, searched and scanned.",
+        "ask": "The first floor is drawn by someone who may arrange the stock.",
+        "arrange": "Arrange this floor",
+        "done": "done",
+        "steps": {
+          "measure": "Measure the floor, its width and its depth",
+          "build": "Put up the walls, doors and posts (optional)",
+          "place": "Place your racks and zones, each on its stock location"
+        }
+      },
+      "origin": {
+        "new": "New, created with this rectangle",
+        "existing": "An existing location"
+      },
+      "new_location_hint": "Proposed after the last of this kind; it is placed in the zone it is drawn in.",
+      "line": {
+        "actions": "Actions for {{name}}",
+        "open": "Open the article",
+        "move": "Move to…",
+        "count": "Count here…",
+        "receive": "Receive here…"
+      },
+      "move": {
+        "pick_hint": "Touch the destination place on the plan, or choose it in « To location ».",
+        "moved": "Moved: {{quantity}} {{product}} from {{from}} to {{to}}.",
+        "undo": "Undo",
+        "undone": "Move undone: {{product}} is back in {{from}}.",
+        "undo_failed": "The move of {{product}} could not be undone: what was moved is no longer where it was put."
+      },
+      "full": {
+        "enter": "Full screen",
+        "leave": "Leave · Esc",
+        "leave_short": "Leave full screen",
+        "lists": "Lists",
+        "lists_hide": "Hide the lists",
+        "floor": "Change floor",
+        "menu": "Lists, floors and views",
+        "bar": "Plan controls",
+        "close_panel": "Close the panel"
+      }
+    }
+  }
+}
