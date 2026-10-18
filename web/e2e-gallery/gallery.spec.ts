@@ -29,6 +29,8 @@ const SIGNED_OUT: Screen[] = [
   { key: 'forgot-password', group: 'Connexion', path: '/forgot-password' },
   { key: 'invitation-invalid', group: 'Connexion', path: '/invitations/not-a-token' },
   { key: 'legal-mentions', group: 'Connexion', path: '/legal/mentions' },
+  // The phone's own page, opened without a pairing's key: what a phone shows when the code it read is not one.
+  { key: 'pair', group: 'Connexion', path: '/pair' },
 ];
 
 const SIGNED_IN: Screen[] = [
@@ -84,6 +86,7 @@ const SIGNED_IN: Screen[] = [
   { key: 'stock-valuation', group: 'Stock', path: '/stock/valuation' },
   { key: 'stock-plan', group: 'Stock', path: '/stock/plan' },
   { key: 'location-labels', group: 'Stock', path: '/print/location-labels' },
+  { key: 'product-labels', group: 'Produits', path: '/print/product-labels' },
   { key: 'instruments', group: 'Factures', path: '/instruments' },
   { key: 'price-lists', group: 'Produits', path: '/price-lists' },
   { key: 'watch', group: 'À surveiller', path: '/watch' },
@@ -107,6 +110,9 @@ const SIGNED_IN: Screen[] = [
   },
   { key: 'expense-new', group: 'Dépenses', path: '/expenses/new' },
   { key: 'expense-categories', group: 'Dépenses', path: '/expenses/categories' },
+  { key: 'expenses-recurring', group: 'Dépenses', path: '/expenses/recurring' },
+  // The window turned to the customer, outside the shell: what it shows before a sale scans anything.
+  { key: 'customer-display', group: 'Factures', path: '/customer-display' },
   { key: 'accounting-export', group: 'Dépenses', path: '/accounting-export' },
   { key: 'platform', group: 'Plateforme', path: '/platform' },
   { key: 'platform-legal', group: 'Plateforme', path: '/platform/legal' },
@@ -130,7 +136,6 @@ const SIGNED_IN: Screen[] = [
   { key: 'products-import', group: 'Produits', path: '/imports/products' },
   { key: 'vendors-import', group: 'Fournisseurs', path: '/imports/vendors' },
   { key: 'opening-stock-import', group: 'Stock', path: '/imports/opening-stock' },
-  { key: 'stock-location', group: 'Stock', path: '', firstRowOf: '/stock/locations' },
   { key: 'subscription-locked', group: 'Abonnement', path: '/subscription' },
   { key: 'awaiting-approval', group: 'Abonnement', path: '/awaiting-approval' },
   { key: 'fiscal-taxes', group: 'Paramètres', path: '/fiscal/taxes' },
@@ -242,6 +247,8 @@ async function captureAll(page: Page, screens: Screen[]): Promise<void> {
           missed.push(`${screen.key} ${viewport.name} ${scheme}: ${String(error).split('\n')[0]}`);
           continue;
         }
+        // A right-to-left run whose page came out left to right pictures nothing it was asked for: it stops there.
+        if (LANGUAGE === 'rtl') await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
         const file = `${screen.key}--${viewport.name}--${scheme}.jpg`;
         // Measured at the window's own size: the picture below stretches the window to the page's height.
         const findings = await auditScreen(page);
@@ -401,15 +408,24 @@ async function signInAs(page: Page, who: string): Promise<void> {
 }
 
 /**
- * Every page of this tab served as `<html dir="rtl">`, as an Arabic page will be, so the app starts right to left. An
- * init script setting the attribute ran before the parser made the element, and the page stayed left to right.
+ * The French texts drawn right to left. The language facade sets the document's direction from the language as the
+ * app starts, and the CDK follows the document's, so the document is held at `rtl` whenever anything sets it back. An
+ * init script runs before the parser has made the `<html>` element, so the document itself is watched, which also sees
+ * the element arrive.
  */
 async function rightToLeft(page: Page): Promise<void> {
-  await page.route('**/*', async (route) => {
-    if (route.request().resourceType() !== 'document') return route.fallback();
-    const response = await route.fetch();
-    const body = (await response.text()).replace(/<html\b/, '<html dir="rtl"');
-    return route.fulfill({ response, body });
+  await page.addInitScript(() => {
+    const hold = (): void => {
+      const root = document.documentElement;
+      if (root !== null && root.dir !== 'rtl') root.dir = 'rtl';
+    };
+    new MutationObserver(hold).observe(document, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['dir'],
+    });
+    hold();
   });
 }
 

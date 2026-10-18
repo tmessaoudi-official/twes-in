@@ -190,7 +190,7 @@ function fold(text: string): string {
           #listbox
           role="listbox"
           tabindex="-1"
-          class="overflow-y-auto py-1 outline-none"
+          class="relative overflow-y-auto py-1 outline-none"
           [id]="listId"
           [attr.aria-multiselectable]="multiple() ? 'true' : null"
           [attr.aria-labelledby]="ownLabel() || null"

@@ -139,6 +139,7 @@
 .twes-map-full .twes-map-panel {
   min-height: 0;
   max-height: none;
+  position: relative;
   overflow-y: auto;
   border-radius: 1rem;
   background: var(--mat-sys-surface-container-lowest);
@@ -225,7 +226,7 @@
 
 /* A phone: the bar, the board as tall as its floor, and the panel below it, the layer scrolling as a page does. */
 .twes-map-full.twes-map-compact {
-  overflow-y: auto;
+  overflow-y: auto; /* scroller-positioned: .twes-map-full is fixed */
   padding: 0.5rem;
   gap: 0.5rem;
 }

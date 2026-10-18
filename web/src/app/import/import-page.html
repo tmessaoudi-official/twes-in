@@ -233,7 +233,7 @@
             </li>
           }
         </ul>
-        <div class="overflow-x-auto">
+        <div class="relative overflow-x-auto">
           <table class="w-full text-sm" data-testid="import-changes">
             <thead class="text-start text-on-surface-variant">
               <tr>
@@ -267,7 +267,7 @@
 
       @if (report.notes.length > 0) {
         <h3 class="text-lg font-semibold">{{ 'import.notes_title' | translate }}</h3>
-        <div class="overflow-x-auto">
+        <div class="relative overflow-x-auto">
           <table class="w-full text-sm" data-testid="import-notes">
             <thead class="text-start text-on-surface-variant">
               <tr>
@@ -293,7 +293,7 @@
         <p role="alert" class="text-error" data-testid="import-nothing-stored">
           {{ 'import.nothing_stored' | translate }}
         </p>
-        <div class="overflow-x-auto">
+        <div class="relative overflow-x-auto">
           <table class="w-full text-sm" data-testid="import-rejections">
             <thead class="text-start text-on-surface-variant">
               <tr>
@@ -369,7 +369,7 @@
           }
         </ul>
       } @else {
-        <div class="overflow-x-auto">
+        <div class="relative overflow-x-auto">
           <table class="w-full text-sm" data-testid="import-columns">
             <thead class="text-start text-on-surface-variant">
               <tr>

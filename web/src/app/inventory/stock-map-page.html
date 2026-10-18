@@ -1530,7 +1530,7 @@
           }
           @if (floorFormGroup()) {
             <div
-              class="twes-form-stacked flex flex-col gap-4 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4"
+              class="relative twes-form-stacked flex flex-col gap-4 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4"
             >
               <ng-container [ngTemplateOutlet]="floorFormTemplate" />
             </div>
@@ -1540,7 +1540,7 @@
               while the piece is dragged. It scrolls inside itself with Enregistrer pinned at its foot.
             -->
             <div
-              class="twes-form-stacked flex flex-col gap-4 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4"
+              class="relative twes-form-stacked flex flex-col gap-4 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4"
               data-testid="stock-map-inspector"
             >
               @if (drawingFormGroup(); as group) {
@@ -1730,7 +1730,7 @@
             </div>
           } @else if (selected(); as drawing) {
             <div
-              class="flex flex-col gap-3 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4"
+              class="relative flex flex-col gap-3 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4"
               data-testid="stock-map-selection"
             >
               <div class="flex flex-col gap-1">
