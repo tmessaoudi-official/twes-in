@@ -112,7 +112,7 @@ was and was not certified by execution.
 |---|------|------|-------|----------|-------|
 | 0 | Sign-in restored: the development database migrated | S | done | 976d6c04 | CLAUDE.md |
 | 1 | Release core: install on Windows, Linux, macOS; safe updates with backup and rollback; security; LAN HTTPS | L | doing | - | infra/** scripts/** compose*.yaml docs/** |
-| 2 | Demo sandbox per sign-in, stamped, deleted at sign-out or after 2 h idle | L | doing | - | api/** web/** |
+| 2 | Demo sandbox per sign-in, stamped, deleted at sign-out or after 2 h idle | L | done | ec91e167 | api/** web/** |
 | 3 | Language foundations and RTL | L | todo | - | api/** web/** |
 | 4 | Proof pass of every built module in fr, en, ar; the client's Excel mapped | L | todo | - | web/e2e/** api/** web/** |
 | 5 | Reports | L | todo | - | api/** web/** |
