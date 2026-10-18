@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\AccountingExport\Infrastructure\Export;
 
-use App\ImportExport\Application\DeclaresExport;
+use App\ImportExport\Application\ExportForTheBooks;
 use App\ImportExport\Application\ExportQuery;
 use App\Module\AccountingExport\Application\SalesDocuments;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportModule;
@@ -21,7 +21,7 @@ use App\Tenancy\Domain\Model\Company;
  * the document's net and total repeated on each, a credit note negative. A document with no tax is one row with none.
  * Days go out as 2026-09-15 and amounts as decimals, so an accountant's software reads them without guessing a locale.
  */
-final readonly class SalesJournalExport implements DeclaresExport
+final readonly class SalesJournalExport implements ExportForTheBooks
 {
     public function __construct(private SalesDocuments $documents)
     {

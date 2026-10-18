@@ -154,7 +154,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `demo` transport, which the `demo-worker` container alone consumes, so no mail waits behind one; `DemoAccountGuard`
   refuses what would make the account a real one (403 `demo_refused`); a mail to a sandbox's owner is kept by
   `CaptureDemoMailListener` for « Courriers de la démo », never sent, and `DemoMailReachTest` names every mail writer;
-  every PDF carries the « DÉMO » band and Factur-X is refused; a sandbox goes at sign-out or after `app.demo.idle_ttl`
+  every PDF carries the « DÉMO » band, and Factur-X and every export declared `ExportForTheBooks` (the accountant's
+  journals and tax summary) are refused; a sandbox goes at sign-out or after `app.demo.idle_ttl`
   away, taken by `TendDemoSandboxesEveryFiveMinutes`; operators' lists and the data checks leave sandboxes out through
   the `DemoCompanies` and `DemoAccounts` ports; `demo.enabled` and `demo.sandboxes_max` are the platform's « Démo » card),
   and the modules one level down in `api/src/Module/<Name>/`, the scanner among them (`Module/Scanning`: a phone lent

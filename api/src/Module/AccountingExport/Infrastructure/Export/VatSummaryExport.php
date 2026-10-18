@@ -11,7 +11,7 @@ namespace App\Module\AccountingExport\Infrastructure\Export;
 
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\ImportExport\Application\DeclaresExport;
+use App\ImportExport\Application\ExportForTheBooks;
 use App\ImportExport\Application\ExportQuery;
 use App\Module\AccountingExport\Application\PurchaseEntries;
 use App\Module\AccountingExport\Application\SalesDocuments;
@@ -24,7 +24,7 @@ use App\Tenancy\Domain\Model\Company;
  * journal, added up. It adds what the journals hold and says nothing of what is due, which is the accountant's to
  * declare: fixed charges, which have no base, are left to the sales journal.
  */
-final readonly class VatSummaryExport implements DeclaresExport
+final readonly class VatSummaryExport implements ExportForTheBooks
 {
     public function __construct(private SalesDocuments $sales, private PurchaseEntries $purchases, private CurrencyScales $scales)
     {
