@@ -11,7 +11,6 @@ namespace App\Tests\Unit\Legal\Infrastructure;
 
 use App\Legal\Application\LegalDraft;
 use App\Legal\Application\LegalSettings;
-use App\Legal\Domain\ValueObject\LegalLanguage;
 use App\Legal\Domain\ValueObject\LegalPage;
 use App\Legal\Infrastructure\Drafts\LegalDraftFiles;
 use PHPUnit\Framework\TestCase;
@@ -20,13 +19,13 @@ final class LegalDraftFilesTest extends TestCase
 {
     public function testEveryShippedDraftNamesAPageAndALanguageAndCookiesShipsInAllThree(): void
     {
-        $drafts = (new LegalDraftFiles(__DIR__.'/../../../../resources/legal'))->all();
+        $drafts = (new LegalDraftFiles(__DIR__.'/../../../../resources/legal', \App\Tests\Support\ShippedLanguages::legal()))->all();
 
         $cookies = array_map(
             static fn (LegalDraft $draft) => $draft->language,
             array_values(array_filter($drafts, static fn (LegalDraft $draft) => LegalPage::Cookies === $draft->page)),
         );
-        self::assertEqualsCanonicalizing(LegalLanguage::cases(), $cookies);
+        self::assertEqualsCanonicalizing(\App\Tests\Support\ShippedLanguages::legal()->all(), $cookies);
         foreach ($drafts as $draft) {
             self::assertNotSame('', trim($draft->body), $draft->page->value.'.'.$draft->language->value.' is empty');
         }
@@ -40,7 +39,7 @@ final class LegalDraftFilesTest extends TestCase
         );
         $expected = [];
         foreach (LegalPage::cases() as $page) {
-            foreach (LegalLanguage::cases() as $language) {
+            foreach (\App\Tests\Support\ShippedLanguages::legal()->all() as $language) {
                 $expected[] = $page->value.'.'.$language->value;
             }
         }
@@ -99,7 +98,7 @@ final class LegalDraftFilesTest extends TestCase
     /** @return list<LegalDraft> */
     private static function drafts(): array
     {
-        return (new LegalDraftFiles(__DIR__.'/../../../../resources/legal'))->all();
+        return (new LegalDraftFiles(__DIR__.'/../../../../resources/legal', \App\Tests\Support\ShippedLanguages::legal()))->all();
     }
 
     /** @return array{headings: list<string>, items: int, facts: list<string>} */
@@ -122,7 +121,7 @@ final class LegalDraftFilesTest extends TestCase
         try {
             $this->expectException(\UnexpectedValueException::class);
             $this->expectExceptionMessage('cookie.fr.md');
-            (new LegalDraftFiles($directory))->all();
+            (new LegalDraftFiles($directory, \App\Tests\Support\ShippedLanguages::legal()))->all();
         } finally {
             unlink($directory.'/cookie.fr.md');
             rmdir($directory);

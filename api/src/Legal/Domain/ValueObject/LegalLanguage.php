@@ -9,16 +9,31 @@ declare(strict_types=1);
 
 namespace App\Legal\Domain\ValueObject;
 
-/** The languages a legal page is written in; a page missing in one is read in French, then in English. */
-enum LegalLanguage: string
+/**
+ * A language a legal page is written in: a canonical BCP 47 tag. Which tags the pages are written in, and what a page
+ * missing in one is read in instead, is the language catalogue's to say (`Application\LegalLanguages`), never this
+ * type's. Compare two with `equals`: two of the same tag are not the same object.
+ */
+final readonly class LegalLanguage
 {
-    case Fr = 'fr';
-    case En = 'en';
-    case Ar = 'ar';
+    /** Language in lower case, then a script in title case, then a region in capitals or digits; a route's requirement too. */
+    public const string PATTERN = '[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?';
 
-    /** @return list<self> the languages a page missing in this one is read in instead, in order */
-    public function fallbacks(): array
+    private function __construct(public string $value)
     {
-        return array_values(array_filter([self::Fr, self::En], fn (self $other) => $other !== $this));
+    }
+
+    public static function of(string $tag): self
+    {
+        if (1 !== preg_match('/^'.self::PATTERN.'$/D', $tag)) {
+            throw new \InvalidArgumentException(\sprintf('"%s" is not a canonical BCP 47 language tag.', $tag));
+        }
+
+        return new self($tag);
+    }
+
+    public function equals(self $other): bool
+    {
+        return $this->value === $other->value;
     }
 }

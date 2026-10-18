@@ -36,19 +36,19 @@ final class ManageLegalTextsTest extends TestCase
         $this->texts = new InMemoryLegalTexts();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->clock = new MockClock('2026-09-27 10:00');
-        $this->manage = new ManageLegalTexts($this->texts, $this->audit, $transactions, $this->clock);
+        $this->manage = new ManageLegalTexts($this->texts, $this->audit, $transactions, $this->clock, \App\Tests\Support\ShippedLanguages::legal());
         $this->operator = Uuid::v7();
     }
 
     public function testWritingAddsAnUnvalidatedVersionByItsAuthorAndKeepsTheOlderOnes(): void
     {
-        $first = $this->manage->write(LegalPage::Mentions, LegalLanguage::Fr, "Éditeur : à compléter\n", $this->operator, 'operator@twes.local');
+        $first = $this->manage->write(LegalPage::Mentions, LegalLanguage::of('fr'), "Éditeur : à compléter\n", $this->operator, 'operator@twes.local');
         $this->clock->sleep(3600);
-        $second = $this->manage->write(LegalPage::Mentions, LegalLanguage::Fr, 'Éditeur : twes', $this->operator, 'operator@twes.local');
+        $second = $this->manage->write(LegalPage::Mentions, LegalLanguage::of('fr'), 'Éditeur : twes', $this->operator, 'operator@twes.local');
 
         self::assertFalse($second->isValidated());
         self::assertSame('operator@twes.local', $second->getCreatedBy());
-        self::assertSame([$second, $first], $this->manage->versions(LegalPage::Mentions, LegalLanguage::Fr));
+        self::assertSame([$second, $first], $this->manage->versions(LegalPage::Mentions, LegalLanguage::of('fr')));
         self::assertSame(['legal_text.written', 'legal_text.written'], array_map(static fn ($entry) => $entry->action, $this->audit->entries));
         self::assertSame(['page' => 'mentions', 'language' => 'fr'], $this->audit->entries[0]->changes);
         self::assertSame($this->operator, $this->audit->entries[0]->actorUserId);
@@ -57,17 +57,17 @@ final class ManageLegalTextsTest extends TestCase
     public function testATextWithNothingInItIsRefused(): void
     {
         $this->expectException(EmptyLegalText::class);
-        $this->manage->write(LegalPage::Mentions, LegalLanguage::Fr, "  \n ", $this->operator, 'operator@twes.local');
+        $this->manage->write(LegalPage::Mentions, LegalLanguage::of('fr'), "  \n ", $this->operator, 'operator@twes.local');
     }
 
     public function testValidatingMarksTheLatestVersionOnceAndRecordsIt(): void
     {
-        $this->manage->write(LegalPage::Cookies, LegalLanguage::En, 'older', $this->operator, 'operator@twes.local');
+        $this->manage->write(LegalPage::Cookies, LegalLanguage::of('en'), 'older', $this->operator, 'operator@twes.local');
         $this->clock->sleep(60);
-        $latest = $this->manage->write(LegalPage::Cookies, LegalLanguage::En, 'latest', $this->operator, 'operator@twes.local');
+        $latest = $this->manage->write(LegalPage::Cookies, LegalLanguage::of('en'), 'latest', $this->operator, 'operator@twes.local');
 
-        $validated = $this->manage->validate(LegalPage::Cookies, LegalLanguage::En, $this->operator, 'reviewer@twes.local');
-        $again = $this->manage->validate(LegalPage::Cookies, LegalLanguage::En, $this->operator, 'someone@twes.local');
+        $validated = $this->manage->validate(LegalPage::Cookies, LegalLanguage::of('en'), $this->operator, 'reviewer@twes.local');
+        $again = $this->manage->validate(LegalPage::Cookies, LegalLanguage::of('en'), $this->operator, 'someone@twes.local');
 
         self::assertSame($latest, $validated);
         self::assertSame($latest, $again);
@@ -78,20 +78,20 @@ final class ManageLegalTextsTest extends TestCase
     public function testValidatingAPageNeverWrittenIsRefused(): void
     {
         $this->expectException(LegalTextNotWritten::class);
-        $this->manage->validate(LegalPage::Security, LegalLanguage::Ar, $this->operator, 'operator@twes.local');
+        $this->manage->validate(LegalPage::Security, LegalLanguage::of('ar'), $this->operator, 'operator@twes.local');
     }
 
     public function testTheOverviewNamesEveryPageInEveryLanguageWithItsLatestVersionOrNone(): void
     {
-        $this->texts->add(LegalText::draft(LegalPage::Cookies, LegalLanguage::Fr, 'old', null, new \DateTimeImmutable('2026-09-01')));
-        $latest = LegalText::draft(LegalPage::Cookies, LegalLanguage::Fr, 'new', null, new \DateTimeImmutable('2026-09-20'));
+        $this->texts->add(LegalText::draft(LegalPage::Cookies, LegalLanguage::of('fr'), 'old', null, new \DateTimeImmutable('2026-09-01')));
+        $latest = LegalText::draft(LegalPage::Cookies, LegalLanguage::of('fr'), 'new', null, new \DateTimeImmutable('2026-09-20'));
         $this->texts->add($latest);
 
         $overview = $this->manage->overview();
 
-        self::assertCount(\count(LegalPage::cases()) * \count(LegalLanguage::cases()), $overview);
-        self::assertSame([LegalPage::Mentions, LegalLanguage::Fr, null], [$overview[0]->page, $overview[0]->language, $overview[0]->latest]);
-        $cookies = array_values(array_filter($overview, static fn ($row) => LegalPage::Cookies === $row->page && LegalLanguage::Fr === $row->language));
+        self::assertCount(\count(LegalPage::cases()) * \count(\App\Tests\Support\ShippedLanguages::legal()->all()), $overview);
+        self::assertEquals([LegalPage::Mentions, LegalLanguage::of('fr'), null], [$overview[0]->page, $overview[0]->language, $overview[0]->latest]);
+        $cookies = array_values(array_filter($overview, static fn ($row) => LegalPage::Cookies === $row->page && $row->language->equals(LegalLanguage::of('fr'))));
         self::assertSame($latest, $cookies[0]->latest);
     }
 }

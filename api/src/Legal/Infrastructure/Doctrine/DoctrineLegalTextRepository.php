@@ -30,7 +30,7 @@ final readonly class DoctrineLegalTextRepository implements LegalTextRepository
             ->where('t.page = :page')
             ->andWhere('t.language = :language')
             ->setParameter('page', $page)
-            ->setParameter('language', $language)
+            ->setParameter('language', $language->value)
             // A uuid v7 orders by time within the same instant, so two versions written in one second keep their order.
             ->orderBy('t.createdAt', \SortDirection::Descending)
             ->addOrderBy('t.id', \SortDirection::Descending)

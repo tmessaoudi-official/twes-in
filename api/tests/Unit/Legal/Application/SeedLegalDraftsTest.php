@@ -24,14 +24,14 @@ final class SeedLegalDraftsTest extends TestCase
     public function testADraftIsWrittenWhereNoVersionExistsAndNeverOverAnOperatorsText(): void
     {
         $texts = new InMemoryLegalTexts();
-        $operators = LegalText::draft(LegalPage::Cookies, LegalLanguage::Fr, 'écrit par l’opérateur', 'operator@twes.local', new \DateTimeImmutable('2026-09-01'));
+        $operators = LegalText::draft(LegalPage::Cookies, LegalLanguage::of('fr'), 'écrit par l’opérateur', 'operator@twes.local', new \DateTimeImmutable('2026-09-01'));
         $texts->add($operators);
         $drafts = new class implements LegalDrafts {
             public function all(): array
             {
                 return [
-                    new LegalDraft(LegalPage::Cookies, LegalLanguage::Fr, 'brouillon'),
-                    new LegalDraft(LegalPage::Cookies, LegalLanguage::En, 'draft'),
+                    new LegalDraft(LegalPage::Cookies, LegalLanguage::of('fr'), 'brouillon'),
+                    new LegalDraft(LegalPage::Cookies, LegalLanguage::of('en'), 'draft'),
                 ];
             }
         };
@@ -40,8 +40,8 @@ final class SeedLegalDraftsTest extends TestCase
         self::assertSame(1, $seed->seed());
         self::assertSame(0, $seed->seed(), 'a second run writes nothing');
 
-        self::assertSame($operators, $texts->latest(LegalPage::Cookies, LegalLanguage::Fr));
-        $english = $texts->latest(LegalPage::Cookies, LegalLanguage::En);
+        self::assertSame($operators, $texts->latest(LegalPage::Cookies, LegalLanguage::of('fr')));
+        $english = $texts->latest(LegalPage::Cookies, LegalLanguage::of('en'));
         self::assertSame('draft', $english?->getBody());
         self::assertNull($english->getCreatedBy(), 'a seeded draft was written by no one');
         self::assertFalse($english->isValidated());

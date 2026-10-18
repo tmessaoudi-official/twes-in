@@ -22,6 +22,7 @@ use App\Settings\Domain\Repository\SettingRepository;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Infrastructure\Intl\LanguageNames;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
@@ -46,17 +47,12 @@ final readonly class CustomerSettingCells
         self::EXEMPTION => 'document.exemption_reference',
     ];
 
-    /** A language by its code or as a person names it, in French and in English. */
-    private const array LANGUAGES = [
-        'français' => 'fr', 'francais' => 'fr', 'french' => 'fr',
-        'anglais' => 'en', 'english' => 'en',
-    ];
-
     public function __construct(
         private SettingCatalog $catalog,
         private ChangeSettings $settings,
         private CurrencyScales $scales,
         private SettingRepository $stored,
+        private LanguageNames $languageNames,
     ) {
     }
 
@@ -109,7 +105,8 @@ final readonly class CustomerSettingCells
         $value = match ($column) {
             self::TERMS => 1 === preg_match('/^\d+$/D', trim($cell)) ? (int) trim($cell) : null,
             self::CREDIT => ImportCells::decimal($record, $column, $this->scales->of($company->getCurrency())),
-            self::LANGUAGE => self::LANGUAGES[mb_strtolower(trim($cell))] ?? mb_strtolower(trim($cell)),
+            // A language by its tag or as a person names it; anything else is left as written, for the setting to refuse.
+            self::LANGUAGE => $this->languageNames->documentLanguageOf($cell) ?? trim($cell),
             default => $cell,
         };
         if (null === $value || null !== $definition->refusal($value)) {

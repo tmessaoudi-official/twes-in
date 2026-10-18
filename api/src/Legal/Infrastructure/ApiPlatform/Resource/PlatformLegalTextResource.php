@@ -14,6 +14,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use App\Legal\Domain\Model\LegalText;
+use App\Legal\Domain\ValueObject\LegalLanguage;
 use App\Legal\Infrastructure\ApiPlatform\State\Processor\ValidateLegalTextProcessor;
 use App\Legal\Infrastructure\ApiPlatform\State\Processor\WriteLegalTextProcessor;
 use App\Legal\Infrastructure\ApiPlatform\State\Provider\LegalTextVersionsProvider;
@@ -60,7 +61,7 @@ final class PlatformLegalTextResource
     public const string READ = 'platform_legal_text:read';
     public const string WRITE = 'platform_legal_text:write';
     public const string PERMISSION = 'platform.legal.manage';
-    public const array REQUIREMENTS = ['page' => '[a-z]+', 'language' => '[a-z]{2}'];
+    public const array REQUIREMENTS = ['page' => '[a-z]+', 'language' => LegalLanguage::PATTERN];
 
     // No identifier: reached only through the uriTemplates above (see PlatformCompanyResource).
     #[ApiProperty(identifier: false, writable: false, required: true)]

@@ -12,13 +12,14 @@ namespace App\Legal\Infrastructure\ApiPlatform\State\Provider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Legal\Application\LegalIdentity;
+use App\Legal\Application\LegalLanguages;
 use App\Legal\Application\ReadLegalText;
 use App\Legal\Infrastructure\ApiPlatform\Resource\LegalTextResource;
 
 /** @implements ProviderInterface<LegalTextResource> */
 final readonly class LegalTextProvider implements ProviderInterface
 {
-    public function __construct(private ReadLegalText $read, private LegalIdentity $identity)
+    public function __construct(private ReadLegalText $read, private LegalIdentity $identity, private LegalLanguages $languages)
     {
     }
 
@@ -26,7 +27,7 @@ final readonly class LegalTextProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): ?LegalTextResource
     {
         $page = LegalTextResource::pageOf($uriVariables['page'] ?? null);
-        $language = LegalTextResource::languageOf($uriVariables['language'] ?? null);
+        $language = $this->languages->known($uriVariables['language'] ?? null);
         if (null === $page || null === $language) {
             return null;
         }

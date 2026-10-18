@@ -27,7 +27,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
     operations: [
         new Get(
             uriTemplate: '/legal/{page}/{language}',
-            requirements: ['page' => '[a-z]+', 'language' => '[a-z]{2}'],
+            requirements: ['page' => '[a-z]+', 'language' => LegalLanguage::PATTERN],
             provider: LegalTextProvider::class,
             normalizationContext: ['groups' => [self::READ], 'preserve_empty_objects' => true],
         ),
@@ -94,10 +94,5 @@ final class LegalTextResource
     public static function pageOf(mixed $slug): ?LegalPage
     {
         return \is_string($slug) ? LegalPage::tryFrom($slug) : null;
-    }
-
-    public static function languageOf(mixed $code): ?LegalLanguage
-    {
-        return \is_string($code) ? LegalLanguage::tryFrom($code) : null;
     }
 }

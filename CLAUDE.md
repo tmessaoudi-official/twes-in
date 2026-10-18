@@ -110,6 +110,12 @@ tables, essay gotchas) was retired with the reset. What applies here:
   real). A service picks its channel with `#[WithMonologChannel]`; list them with `bin/console debug:autowiring logger`.
 - `docs/fiscal/<CC>.md` — sourced fiscal rules per country; `api/config/fiscal/<CC>.yaml` — the preset.
 - `docs/spec/pricing-vectors.json` — the calculator's fixture set.
+- `api/config/languages.json` and its identical copy `web/src/app/shared/i18n/languages.json` — the language catalogue:
+  each language's BCP 47 tag, name in itself, direction, script, CLDR plural forms, and whether the interface, the documents
+  and the legal pages speak it. The API reads it through the `Languages` port (`Shared/Infrastructure/Intl/CatalogueLanguages`;
+  `LanguageNames` reads a language as a person writes it), the web through `shared/i18n/languages.ts`; `CatalogueLanguagesTest`
+  holds the two copies equal and `translation.yaml`'s locales to it, and `setting-labels.sh` reads a language setting's choices
+  from it. Adding a language is an entry there and its texts, never code.
 - `api/src/Demo/Infrastructure/Dataset/` — the demo dataset, production code (the demo sandbox writes it too):
   `DemoCatalogue` is the data, `DemoDataset` writes one company through the use cases only, under a moved clock
   (`Timeline` runs dated steps in order), for whoever the caller makes its owner. A new workflow or state belongs in it;
@@ -596,3 +602,9 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - `make up`'s api and worker run the `api-vendor` volume, which only the one-shot `migrate` service's `composer install`
   fills: after a Composer change the live api dies at boot until `make up` runs again (2026-10-16: « Rate limiter
   "mfa_verify" requires the Lock component », five hours unhealthy while CI, on fresh images, was green).
+- A file list with newlines in `make check FILES="…"` splits the recipe: make ran each later file as a shell command (the
+  tree's files are 775 on disk), and a TypeScript file's `import {` started ImageMagick's screen grab, which hung the run.
+  Join the list on one line (`… | tr '\n' ' '`) and check it holds no newline before calling make (2026-10-18).
+- A test placing a row on a clock the database reads with `now()` must use that clock: inside the test's transaction it
+  stands at the transaction's start, which DAMA opened at the previous test's teardown, before PHP's clock. A TIMESTAMP(0)
+  column rounds half a second up: cut with `date_trunc('second', now())`. DeepHealthTest failed 4 runs in 10 on both (2026-10-18).

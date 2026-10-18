@@ -37,6 +37,7 @@ final readonly class ManageLegalTexts
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private LegalLanguages $languages,
     ) {
     }
 
@@ -79,7 +80,7 @@ final readonly class ManageLegalTexts
     {
         return array_values(array_filter(
             $this->texts->all(),
-            static fn (LegalText $text) => $text->getPage() === $page && $text->getLanguage() === $language,
+            static fn (LegalText $text) => $text->getPage() === $page && $text->getLanguage()->equals($language),
         ));
     }
 
@@ -92,7 +93,7 @@ final readonly class ManageLegalTexts
         }
         $overview = [];
         foreach (LegalPage::cases() as $page) {
-            foreach (LegalLanguage::cases() as $language) {
+            foreach ($this->languages->all() as $language) {
                 $overview[] = new LegalTextStatus($page, $language, $latest[$page->value.'.'.$language->value] ?? null);
             }
         }

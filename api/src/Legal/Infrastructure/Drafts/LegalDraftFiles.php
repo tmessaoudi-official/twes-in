@@ -11,7 +11,7 @@ namespace App\Legal\Infrastructure\Drafts;
 
 use App\Legal\Application\LegalDraft;
 use App\Legal\Application\LegalDrafts;
-use App\Legal\Domain\ValueObject\LegalLanguage;
+use App\Legal\Application\LegalLanguages;
 use App\Legal\Domain\ValueObject\LegalPage;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -21,7 +21,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  */
 final readonly class LegalDraftFiles implements LegalDrafts
 {
-    public function __construct(#[Autowire('%kernel.project_dir%/resources/legal')] private string $directory)
+    public function __construct(#[Autowire('%kernel.project_dir%/resources/legal')] private string $directory, private LegalLanguages $languages)
     {
     }
 
@@ -32,7 +32,7 @@ final readonly class LegalDraftFiles implements LegalDrafts
             $name = basename($path, '.md');
             [$slug, $code] = array_pad(explode('.', $name, 2), 2, '');
             $page = LegalPage::tryFrom($slug);
-            $language = LegalLanguage::tryFrom($code);
+            $language = $this->languages->known($code);
             if (null === $page || null === $language) {
                 throw new \UnexpectedValueException(\sprintf('%s names no legal page and language (<page>.<language>.md)', $path));
             }

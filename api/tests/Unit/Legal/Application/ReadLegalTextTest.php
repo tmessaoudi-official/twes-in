@@ -24,51 +24,51 @@ final class ReadLegalTextTest extends TestCase
     protected function setUp(): void
     {
         $this->texts = new InMemoryLegalTexts();
-        $this->read = new ReadLegalText($this->texts);
+        $this->read = new ReadLegalText($this->texts, \App\Tests\Support\ShippedLanguages::legal());
     }
 
     public function testTheLatestVersionOfThePageInTheLanguageAskedForIsRead(): void
     {
-        $this->add(LegalPage::Cookies, LegalLanguage::En, 'first', '2026-09-01 10:00');
-        $this->add(LegalPage::Cookies, LegalLanguage::En, 'second', '2026-09-20 10:00');
-        $this->add(LegalPage::Privacy, LegalLanguage::En, 'another page', '2026-09-25 10:00');
-        $this->add(LegalPage::Cookies, LegalLanguage::Fr, 'autre langue', '2026-09-26 10:00');
+        $this->add(LegalPage::Cookies, LegalLanguage::of('en'), 'first', '2026-09-01 10:00');
+        $this->add(LegalPage::Cookies, LegalLanguage::of('en'), 'second', '2026-09-20 10:00');
+        $this->add(LegalPage::Privacy, LegalLanguage::of('en'), 'another page', '2026-09-25 10:00');
+        $this->add(LegalPage::Cookies, LegalLanguage::of('fr'), 'autre langue', '2026-09-26 10:00');
 
-        $text = $this->read->read(LegalPage::Cookies, LegalLanguage::En);
+        $text = $this->read->read(LegalPage::Cookies, LegalLanguage::of('en'));
 
         self::assertNotNull($text);
         self::assertSame('second', $text->getBody());
-        self::assertSame(LegalLanguage::En, $text->getLanguage());
+        self::assertEquals(LegalLanguage::of('en'), $text->getLanguage());
     }
 
     public function testAPageNotWrittenInTheLanguageAskedForFallsBackToFrenchFirst(): void
     {
-        $this->add(LegalPage::Cookies, LegalLanguage::En, 'english', '2026-09-01 10:00');
-        $this->add(LegalPage::Cookies, LegalLanguage::Fr, 'français', '2026-09-01 10:00');
+        $this->add(LegalPage::Cookies, LegalLanguage::of('en'), 'english', '2026-09-01 10:00');
+        $this->add(LegalPage::Cookies, LegalLanguage::of('fr'), 'français', '2026-09-01 10:00');
 
-        $text = $this->read->read(LegalPage::Cookies, LegalLanguage::Ar);
+        $text = $this->read->read(LegalPage::Cookies, LegalLanguage::of('ar'));
 
-        self::assertSame(LegalLanguage::Fr, $text?->getLanguage());
+        self::assertEquals(LegalLanguage::of('fr'), $text?->getLanguage());
     }
 
     public function testThenEnglish(): void
     {
-        $this->add(LegalPage::Cookies, LegalLanguage::En, 'english', '2026-09-01 10:00');
+        $this->add(LegalPage::Cookies, LegalLanguage::of('en'), 'english', '2026-09-01 10:00');
 
-        self::assertSame(LegalLanguage::En, $this->read->read(LegalPage::Cookies, LegalLanguage::Ar)?->getLanguage());
-        self::assertSame(LegalLanguage::En, $this->read->read(LegalPage::Cookies, LegalLanguage::Fr)?->getLanguage());
+        self::assertEquals(LegalLanguage::of('en'), $this->read->read(LegalPage::Cookies, LegalLanguage::of('ar'))?->getLanguage());
+        self::assertEquals(LegalLanguage::of('en'), $this->read->read(LegalPage::Cookies, LegalLanguage::of('fr'))?->getLanguage());
     }
 
     public function testAPageWrittenInNoLanguageIsNothing(): void
     {
-        $this->add(LegalPage::Privacy, LegalLanguage::Fr, 'autre page', '2026-09-01 10:00');
+        $this->add(LegalPage::Privacy, LegalLanguage::of('fr'), 'autre page', '2026-09-01 10:00');
 
-        self::assertNull($this->read->read(LegalPage::Cookies, LegalLanguage::Fr));
+        self::assertNull($this->read->read(LegalPage::Cookies, LegalLanguage::of('fr')));
     }
 
     public function testANewVersionStartsUnvalidatedAndValidatingItStampsWhoAndWhen(): void
     {
-        $text = $this->add(LegalPage::Cookies, LegalLanguage::Fr, 'texte', '2026-09-01 10:00');
+        $text = $this->add(LegalPage::Cookies, LegalLanguage::of('fr'), 'texte', '2026-09-01 10:00');
         self::assertFalse($text->isValidated());
 
         $text->validate('operator@twes.local', new \DateTimeImmutable('2026-09-02 09:00'));

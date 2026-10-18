@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Legal\Application\EmptyLegalText;
+use App\Legal\Application\LegalLanguages;
 use App\Legal\Application\LegalTextTooLong;
 use App\Legal\Application\ManageLegalTexts;
 use App\Legal\Infrastructure\ApiPlatform\Payload\LegalTextPath;
@@ -24,13 +25,13 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 /** @implements ProcessorInterface<PlatformLegalTextResource, PlatformLegalTextResource> */
 final readonly class WriteLegalTextProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageLegalTexts $manage, private Security $security)
+    public function __construct(private ManageLegalTexts $manage, private Security $security, private LegalLanguages $languages)
     {
     }
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): PlatformLegalTextResource
     {
-        $path = LegalTextPath::of($uriVariables);
+        $path = LegalTextPath::of($uriVariables, $this->languages);
         $account = $this->security->getUser();
         if (!$account instanceof SecurityUser) {
             // The operation security expression runs first; this is the type guard, not the access check.

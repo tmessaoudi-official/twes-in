@@ -32,8 +32,9 @@ class LegalText
     #[ORM\Column(length: 20, enumType: LegalPage::class)]
     private LegalPage $page;
 
-    #[ORM\Column(length: 35, enumType: LegalLanguage::class)]
-    private LegalLanguage $language;
+    /** A BCP 47 tag, kept as written so a language the catalogue adds needs no change here. */
+    #[ORM\Column(length: 35)]
+    private string $language;
 
     #[ORM\Column(type: Types::TEXT)]
     private string $body;
@@ -58,7 +59,7 @@ class LegalText
     {
         $this->id = Uuid::v7();
         $this->page = $page;
-        $this->language = $language;
+        $this->language = $language->value;
         $this->body = $body;
         $this->publishedOn = $now->setTime(0, 0);
         $this->createdAt = $now;
@@ -89,7 +90,7 @@ class LegalText
 
     public function getLanguage(): LegalLanguage
     {
-        return $this->language;
+        return LegalLanguage::of($this->language);
     }
 
     public function getBody(): string

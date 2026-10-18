@@ -18,7 +18,7 @@ final class SecurityTxtTest extends TestCase
 
     public function testTheFileNamesTheSecurityContactAndExpiresThirtyDaysAheadAtMidnightUtc(): void
     {
-        $text = new SecurityTxt(self::ORIGIN)->render(
+        $text = new SecurityTxt(self::ORIGIN, \App\Tests\Support\ShippedLanguages::catalogue())->render(
             ['security.email' => 'security@twes.example', 'publisher.name' => 'twes SAS'],
             new \DateTimeImmutable('2026-09-27 17:40', new \DateTimeZone('Europe/Paris')),
         );
@@ -36,12 +36,12 @@ final class SecurityTxtTest extends TestCase
     /** RFC 9116 makes Contact mandatory, so a file without one would be invalid: none is served until it is filled in. */
     public function testWithoutASecurityContactThereIsNoFile(): void
     {
-        self::assertNull(new SecurityTxt(self::ORIGIN)->render(['publisher.email' => 'hello@twes.example'], new \DateTimeImmutable()));
+        self::assertNull(new SecurityTxt(self::ORIGIN, \App\Tests\Support\ShippedLanguages::catalogue())->render(['publisher.email' => 'hello@twes.example'], new \DateTimeImmutable()));
     }
 
     public function testATrailingSlashOnTheOriginIsNotDoubled(): void
     {
-        $text = new SecurityTxt(self::ORIGIN.'/')->render(['security.email' => 's@twes.example'], new \DateTimeImmutable('2026-09-27'));
+        $text = new SecurityTxt(self::ORIGIN.'/', \App\Tests\Support\ShippedLanguages::catalogue())->render(['security.email' => 's@twes.example'], new \DateTimeImmutable('2026-09-27'));
 
         self::assertStringContainsString("Canonical: https://app.twes.example/.well-known/security.txt\n", (string) $text);
     }
@@ -49,7 +49,7 @@ final class SecurityTxtTest extends TestCase
     /** A value is one line: a line break typed into the setting must not add a field of its own to the file. */
     public function testALineBreakInTheContactCannotAddAField(): void
     {
-        $text = new SecurityTxt(self::ORIGIN)->render(
+        $text = new SecurityTxt(self::ORIGIN, \App\Tests\Support\ShippedLanguages::catalogue())->render(
             ['security.email' => "s@twes.example\nExpires: 2099-01-01T00:00:00Z"],
             new \DateTimeImmutable('2026-09-27'),
         );
