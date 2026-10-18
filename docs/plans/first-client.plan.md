@@ -138,6 +138,11 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-18 20:43] ASSUMED (review): Every value standing alone between two tags sits in a <bdi>, so its neutral signs stay at its own ends; a text in the screen's language computed in code (a refusal reason, a month, a relative time) stays out of it and says value-direction: on its line, since dir=auto would lay an Arabic sentence opening on « IBAN » left to right; value-direction.sh's third rule holds it, floor 220. Basis: the gate's own rule and the Arabic gallery. Alternatives: dir=auto on the parent elements (changes their alignment), nothing (Latin codes reorder on Arabic screens).
 - [2026-10-18 20:43] ASSUMED (review): A mail says its direction and language again on a block inside its body, since webmail clients drop what <html> says; a typed name in it (company, product) reads its own way through dir=auto, a sentence keeps the mail's; MailDirectionTest. Not certified in a real mail client.
 - [2026-10-18 20:43] ASSUMED (review): The import guide's note on a customer's document language gives one example instead of the list « fr ou en », which went stale when Arabic came; the numbering page names the order to a vendor « Commande fournisseur » / « Purchase order » / « طلبية لدى مزوّد », the purchases screens' own words, and a test holds every type a preset numbers to a label in each interface language.
+- [2026-10-18 21:20] AGREED: Wednesday's scope is kept whole, nothing cut: the order PDF, vendor codes and « Ajouter à… », the fr/en proof pass and the Excel mapping, Arabic with its amount in words, guides and help; progress reported at each milestone and a slip said early.
+- [2026-10-18 21:20] AGREED: A list never cuts a value: each column declares a priority and the list hides the lowest that do not fit, named in the column chooser as hidden for width (option a).
+- [2026-10-18 21:20] AGREED: Units, tax components and the fiscal labels a company copied keep a name per printed language, filled from the preset and editable; a document prints the one of its language, else the company's (option a).
+- [2026-10-18 21:20] AGREED: An Arabic screen keeps ar-TN's own number and currency layout by default; the company's number format still overrides it.
+- [2026-10-18 21:20] ASSUMED (review): The printed order to a vendor is downloaded only with product.cost.read beside purchase.read (else the same 404 as a missing order), always with its prices, rendered on request and never stored, in the company's document language, each price at its own precision never below the currency's — because a price on it is a cost, an order is not a fiscal document, and no vendor has a language setting. Alternatives: a priceless print for non cost readers; storing it at sending.
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -176,7 +181,7 @@ was and was not certified by execution.
 | 4 | Proof pass of every built module in fr, en, ar; the client's Excel mapped | L | doing | - | web/e2e/** api/** web/** |
 | 5 | Reports: thirteen reports over the ruled ten, each with period, comparison, establishment, export and its figures opening their list | L | done | fc09f101 | api/** web/** |
 | 6 | Supplier orders and goods receipts | L | doing | d66ab297 | api/** web/** |
-| 7 | Arabic texts and printed documents | L | doing | 8ca442ab | web/public/i18n/** api/translations/** api/templates/** |
+| 7 | Arabic texts and printed documents | L | doing | ffb36182 | web/public/i18n/** api/translations/** api/templates/** |
 | 8 | Guides, help and README on the final screens | M | todo | - | docs/** web/** |
 | 9 | Document links before the tag: the module port (335f778b), a delivery note names its invoices (93004285), an invoice its delivery notes (5f73574b), a quote onto an open draft (row 259, 08ad6709) and its toast | M | done | b6c8d52e | api/src/Module/** web/src/app/** web/e2e/** |
 <!-- /progress-block -->
