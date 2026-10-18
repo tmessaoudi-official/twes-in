@@ -936,12 +936,12 @@
   },
   "settings": {
     "platform": {
-      "account_deletion_days": "Jours avant qu’un compte supprimé le soit définitivement",
+      "account_deletion_days": "Jours avant d’effacer un compte supprimé",
       "demo_enabled": "Démo ouverte aux visiteurs (« Essayer la démo »)",
       "demo_sandboxes_max": "Démos au plus en même temps",
-      "company_reopen_days": "Jours pendant lesquels une entreprise fermée peut être rouverte",
+      "company_reopen_days": "Jours pour rouvrir une entreprise fermée",
       "licensing_grace_days": "Jours de grâce après la fin d’un abonnement",
-      "licensing_hold_days": "Jours d’accès gardé après un paiement déclaré, le temps de le confirmer"
+      "licensing_hold_days": "Jours d’accès pour un paiement à confirmer"
     },
     "intro": "Les valeurs par défaut de la société. Un client, un produit ou un document peut encore en décider autrement.",
     "no_company": "Choisissez d’abord une société.",

@@ -1,18 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {
-  afterNextRender,
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  ElementRef,
-  inject,
-  Injector,
-  input,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { type IsActiveMatchOptions, RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { SelectedTabInView } from './selected-tab-in-view';
 
 export interface PageTab {
   readonly labelKey: string;
@@ -26,12 +18,13 @@ export interface PageTab {
  */
 @Component({
   selector: 'app-page-tabs',
-  imports: [MatTabsModule, RouterLink, RouterLinkActive, TranslatePipe],
+  imports: [MatTabsModule, RouterLink, RouterLinkActive, SelectedTabInView, TranslatePipe],
   template: `
     <!-- A native sideways scroll rather than Material's chevrons: it swipes on a phone, and the open tab is kept in
          view whenever the labels change size (translated after the first layout, they pushed it off). -->
     <nav
       mat-tab-nav-bar
+      appSelectedTabInView
       class="twes-page-tabs"
       [disablePagination]="true"
       [tabPanel]="panel"
@@ -46,7 +39,6 @@ export interface PageTab {
           [routerLinkActiveOptions]="matching"
           [active]="selected() === null ? active.isActive : selected() === tab.route"
           [attr.data-testid]="tab.testId"
-          (isActiveChange)="revealLater()"
         >
           {{ tab.labelKey | translate }}
         </a>
@@ -59,8 +51,6 @@ export interface PageTab {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PageTabs {
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  private readonly injector = inject(Injector);
   readonly tabs = input.required<readonly PageTab[]>();
   /** The translation key naming the tabs' navigation. */
   readonly label = input.required<string>();
@@ -80,27 +70,4 @@ export class PageTabs {
     fragment: 'ignored',
     matrixParams: 'ignored',
   };
-
-  constructor() {
-    const destroyRef = inject(DestroyRef);
-    afterNextRender(() => {
-      this.reveal();
-      if (typeof ResizeObserver === 'undefined') return;
-      const observer = new ResizeObserver(() => this.reveal());
-      for (const link of this.host.querySelectorAll('nav a')) observer.observe(link);
-      destroyRef.onDestroy(() => observer.disconnect());
-    });
-  }
-
-  /** After the tab just chosen is drawn as selected. */
-  protected revealLater(): void {
-    afterNextRender(() => this.reveal(), { injector: this.injector });
-  }
-
-  /** `scrollIntoView` is optional because jsdom has none, as in the menu's scroller. */
-  private reveal(): void {
-    this.host
-      .querySelector<HTMLElement>('nav a[aria-selected="true"]')
-      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
-  }
 }

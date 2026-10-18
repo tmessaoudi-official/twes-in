@@ -936,12 +936,12 @@
   },
   "settings": {
     "platform": {
-      "account_deletion_days": "Days before a deleted account is deleted for good",
+      "account_deletion_days": "Days before a deleted account is erased",
       "demo_enabled": "Demo open to visitors, through Try the demo",
       "demo_sandboxes_max": "Most demos at the same time",
-      "company_reopen_days": "Days during which a closed company can be reopened",
+      "company_reopen_days": "Days a closed company can be reopened",
       "licensing_grace_days": "Days of grace after a subscription ends",
-      "licensing_hold_days": "Days access is kept after a declared payment, while it is confirmed"
+      "licensing_hold_days": "Days of access while a payment is confirmed"
     },
     "intro": "The company's defaults. A customer, a product or a document may still say otherwise.",
     "no_company": "Choose a company first.",

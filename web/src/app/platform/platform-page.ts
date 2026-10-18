@@ -28,6 +28,7 @@ import { Select, type SelectOption } from '../shared/form/select';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListQuery } from '../shared/list/list-types';
 import { CountBadge } from '../shared/ui/count-badge';
+import { SelectedTabInView } from '../shared/ui/selected-tab-in-view';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { membershipRoleLabel } from './membership-role';
@@ -81,6 +82,7 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
     MatInputModule,
     MatSlideToggleModule,
     MatTabsModule,
+    SelectedTabInView,
     RouterLink,
     TranslatePipe,
     DataList,

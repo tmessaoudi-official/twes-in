@@ -42,16 +42,19 @@ export async function auditScreen(page: Page): Promise<Finding[]> {
     }
     // Seen by a sighted person: drawn, not visually hidden for a screen reader (a skip link, a column header named
     // « Actions »), and not clipped away by a scrolling ancestor (a menu entry scrolled out of its panel).
-    const visible = (element: Element): boolean => {
+    // The part of it a person sees, or null: an entry scrolled under its list's head is not over the head.
+    const shown = (
+      element: Element,
+    ): { left: number; right: number; top: number; bottom: number } | null => {
       const rect = element.getBoundingClientRect();
-      if (rect.width <= 1 || rect.height <= 1) return false;
+      if (rect.width <= 1 || rect.height <= 1) return null;
       const style = getComputedStyle(element);
       if (
         style.visibility === 'hidden' ||
         style.display === 'none' ||
         Number(style.opacity) === 0
       ) {
-        return false;
+        return null;
       }
       let left = rect.left;
       let right = rect.right;
@@ -60,17 +63,19 @@ export async function auditScreen(page: Page): Promise<Finding[]> {
       for (let at = element.parentElement; at !== null; at = at.parentElement) {
         const outer = getComputedStyle(at);
         if (outer.clip === 'rect(0px, 0px, 0px, 0px)' || outer.clipPath === 'inset(50%)')
-          return false;
+          return null;
         if (outer.overflowX === 'visible' && outer.overflowY === 'visible') continue;
         const box = at.getBoundingClientRect();
         left = Math.max(left, box.left);
         right = Math.min(right, box.right);
         top = Math.max(top, box.top);
         bottom = Math.min(bottom, box.bottom);
-        if (right - left < 1 || bottom - top < 1) return false;
+        if (right - left < 1 || bottom - top < 1) return null;
       }
-      return style.clip !== 'rect(0px, 0px, 0px, 0px)' && style.clipPath !== 'inset(50%)';
+      if (style.clip === 'rect(0px, 0px, 0px, 0px)' || style.clipPath === 'inset(50%)') return null;
+      return { left, right, top, bottom };
     };
+    const visible = (element: Element): boolean => shown(element) !== null;
     // Inside a scroller or a closed overlay, a control past the window is reached by scrolling, not lost.
     const scrolls = (element: Element): boolean => {
       for (
@@ -138,9 +143,10 @@ export async function auditScreen(page: Page): Promise<Finding[]> {
       .filter((control) => !control.closest('.cdk-overlay-container'))
       .map((control) => ({
         control,
-        rect: control.getBoundingClientRect(),
+        rect: shown(control),
         layer: pinnedLayer(control),
-      }));
+      }))
+      .flatMap(({ control, rect, layer }) => (rect === null ? [] : [{ control, layer, rect }]));
     for (let one = 0; one < boxes.length; one++) {
       for (let other = one + 1; other < boxes.length; other++) {
         const a = boxes[one]!;
@@ -149,7 +155,8 @@ export async function auditScreen(page: Page): Promise<Finding[]> {
         if (a.layer !== b.layer) continue;
         const across = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left);
         const down = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top);
-        const smaller = Math.min(a.rect.width * a.rect.height, b.rect.width * b.rect.height);
+        const area = (r: typeof a.rect): number => (r.right - r.left) * (r.bottom - r.top);
+        const smaller = Math.min(area(a.rect), area(b.rect));
         if (across > 2 && down > 2 && (across * down) / smaller > 0.3) {
           add('overlap', a.control, `over ${name(b.control)}`);
         }

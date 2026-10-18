@@ -319,6 +319,18 @@ test('the Paramètres list stays put while a page scrolls, and folds to a rail w
     expect(after?.height).toBe(before?.height);
     // Full height under the top bar: the list ends where the panel does, its foot on screen.
     await expect(page.getByTestId('settings-list-fold')).toBeInViewport();
+    // Nothing inside the page reaches past it to stretch the panel: a hidden text or a check mark placed against the
+    // panel made it as long as the page, and the wheel at the page's end then carried the list off screen.
+    const panel = page.locator('.twes-shell-content');
+    expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+    const area = await content.boundingBox();
+    await page.mouse.move(
+      (area?.x ?? 0) + (area?.width ?? 0) / 2,
+      (area?.y ?? 0) + (area?.height ?? 0) / 2,
+    );
+    for (let turn = 0; turn < 10; turn += 1) await page.mouse.wheel(0, 600);
+    await expect.poll(() => panel.evaluate((el) => el.scrollTop)).toBe(0);
+    await expect(page.getByTestId('settings-list-fold')).toBeInViewport();
 
     // Out of any field, where a bare key is the shell's.
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());

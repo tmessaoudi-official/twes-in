@@ -9,7 +9,15 @@
     </p>
   }
 
-  <nav mat-tab-nav-bar [tabPanel]="panel" [attr.aria-label]="'platform.title' | translate">
+  <!-- Swiped sideways like every feature's tabs (PageTabs), the open one kept in view. -->
+  <nav
+    mat-tab-nav-bar
+    appSelectedTabInView
+    class="twes-page-tabs"
+    [disablePagination]="true"
+    [tabPanel]="panel"
+    [attr.aria-label]="'platform.title' | translate"
+  >
     @for (name of tabs; track name) {
       <a
         mat-tab-link

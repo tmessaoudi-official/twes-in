@@ -41,7 +41,7 @@
             <h2 class="m-0 text-lg font-medium">{{ mail.subject }}</h2>
             <p class="m-0 text-sm text-on-surface-variant">{{ mail.capturedAt | moment }}</p>
             <div
-              class="min-w-0 overflow-x-auto"
+              class="relative min-w-0 overflow-x-auto"
               data-testid="demo-mail-body"
               [innerHTML]="mail.html"
             ></div>

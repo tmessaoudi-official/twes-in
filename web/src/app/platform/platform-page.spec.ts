@@ -43,7 +43,7 @@ class StaticLoader implements TranslateLoader {
       roles: { owner: 'propriétaire', member: 'membre', clerk: 'caissier / vendeur' },
       settings: {
         platform: {
-          account_deletion_days: 'Jours avant qu’un compte supprimé le soit définitivement',
+          account_deletion_days: 'Jours avant d’effacer un compte supprimé',
           company_reopen_days: 'Jours pour rouvrir une entreprise fermée',
           demo_enabled: 'Démo ouverte aux visiteurs (« Essayer la démo »)',
           demo_sandboxes_max: 'Démos au plus en même temps',
@@ -591,7 +591,7 @@ describe('PlatformPage', () => {
     expect(deletion.min).toBe('1');
     expect(deletion.max).toBe('90');
     expect(query('platform-delays')?.textContent).toContain(
-      'Jours avant qu’un compte supprimé le soit définitivement',
+      'Jours avant d’effacer un compte supprimé',
     );
     expect(query('platform-delay-company.reopen_days')).not.toBeNull();
   });
