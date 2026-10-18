@@ -38,7 +38,7 @@ class User
     #[ORM\Column(length: 120)]
     private string $displayName;
 
-    #[ORM\Column(length: 5)]
+    #[ORM\Column(length: 35)]
     private string $locale;
 
     #[ORM\Column]

@@ -32,7 +32,7 @@ class LegalText
     #[ORM\Column(length: 20, enumType: LegalPage::class)]
     private LegalPage $page;
 
-    #[ORM\Column(length: 2, enumType: LegalLanguage::class)]
+    #[ORM\Column(length: 35, enumType: LegalLanguage::class)]
     private LegalLanguage $language;
 
     #[ORM\Column(type: Types::TEXT)]

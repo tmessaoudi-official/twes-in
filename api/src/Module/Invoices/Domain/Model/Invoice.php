@@ -140,7 +140,7 @@ class Invoice implements CompanyOwned
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $dueDate = null;
 
-    #[ORM\Column(length: 8, nullable: true)]
+    #[ORM\Column(length: 35, nullable: true)]
     private ?string $language = null;
 
     /** @var array<string, mixed>|null CustomerSnapshot::toArray(), written by issuing */
