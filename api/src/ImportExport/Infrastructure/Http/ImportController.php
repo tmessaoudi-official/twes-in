@@ -33,8 +33,9 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Previews or imports one file (docs/SPEC.md § 7, 2026-09-17 and 2026-09-19): `file` a .csv or .xlsx, `mode` create or
- * upsert, `dryRun` 1 for the preview, `switches[]` each switch of the subject ticked. A plain controller rather than a
- * resource, because the body is a file.
+ * upsert, `dryRun` 1 for the preview, `switches[]` each switch of the subject ticked, `pairing` a JSON object pairing
+ * the file's own headings with column keys ('' for a column ignored), sent whole because a heading may hold any
+ * character a form field's name would lose. A plain controller rather than a resource, because the body is a file.
  *
  * Stateless on purpose: the preview keeps nothing, and the import is the same file sent again without `dryRun`, so it is
  * checked against the data as it is when it runs, never against a preview another member's changes have overtaken.
@@ -93,6 +94,10 @@ final readonly class ImportController
             }
             $switches[] = $switch;
         }
+        $pairing = $this->pairing($request->request->getString('pairing'));
+        if (null === $pairing) {
+            return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
         // The file's bytes, so the same file sent again is known whatever it is named.
         $contentHash = hash_file('sha256', $file->getPathname());
         if (false === $contentHash) {
@@ -109,6 +114,7 @@ final readonly class ImportController
                 $this->guard->account()->getId(),
                 $contentHash,
                 $switches,
+                $pairing,
             );
         } catch (UnreadableSpreadsheet) {
             return new JsonResponse(['error' => UnreadableImport::UNREADABLE, 'columns' => [], 'encoding' => $encoding?->value], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -123,5 +129,35 @@ final readonly class ImportController
             // A preview that finds rejected rows has done its job; an import that stopped on them has not.
             $dryRun || $report->committed ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY,
         );
+    }
+
+    /**
+     * A JSON object of headings to column keys, every value a string; none sent is no pairing.
+     *
+     * @return array<string, string>|null null when it is anything else
+     */
+    private function pairing(string $sent): ?array
+    {
+        if ('' === $sent) {
+            return [];
+        }
+        try {
+            $decoded = json_decode($sent, true, 2, \JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+        // An object decodes to an array with string keys; a list, or an empty one, is told apart by its opening brace.
+        if (!\is_array($decoded) || !str_starts_with(ltrim($sent), '{')) {
+            return null;
+        }
+        $pairing = [];
+        foreach ($decoded as $heading => $column) {
+            if (!\is_string($column)) {
+                return null;
+            }
+            $pairing[(string) $heading] = $column;
+        }
+
+        return $pairing;
     }
 }

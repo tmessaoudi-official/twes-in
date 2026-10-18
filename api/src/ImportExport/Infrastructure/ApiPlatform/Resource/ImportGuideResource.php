@@ -95,4 +95,24 @@ final class ImportGuideResource
     ])]
     #[Groups([self::READ])]
     public array $switches = [];
+
+    /**
+     * How a person last paired a file's own headings with these columns, on the latest import that needed it: the
+     * screen sends it again with the next file, whose preview shows what it does before anything is kept.
+     *
+     * @var list<array{heading: string, column: string}>
+     */
+    #[ApiProperty(required: true, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['heading', 'column'],
+            'properties' => [
+                'heading' => ['type' => 'string', 'description' => 'The heading as the file wrote it.'],
+                'column' => ['type' => 'string', 'description' => 'The column key it was read as, or an empty string for a column ignored.'],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $lastPairing = [];
 }

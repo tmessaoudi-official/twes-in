@@ -188,11 +188,12 @@
       "invalid_request": "La demande n’a pas été comprise.",
       "unreadable": "Le fichier n’est ni un .csv ni un .xlsx lisible.",
       "empty": "Le fichier ne contient aucune ligne.",
-      "unknown_columns": "Colonnes inconnues : {{columns}}. Repartez du modèle.",
+      "unknown_columns": "Ces en-têtes ne nomment aucune colonne : {{columns}}. Choisissez où va chacun dans « Vos en-têtes », ou repartez du modèle.",
       "duplicate_columns": "Colonnes en double : {{columns}}.",
       "missing_columns": "Colonnes manquantes : {{columns}}.",
       "too_many_rows": "Le fichier dépasse {{limit}} lignes. Coupez-le en plusieurs fichiers.",
-      "unreadable_encoding": "L’en-tête du fichier ne se lit pas dans cet encodage : choisissez celui du fichier."
+      "unreadable_encoding": "L’en-tête du fichier ne se lit pas dans cet encodage : choisissez celui du fichier.",
+      "invalid_pairing": "Ces en-têtes étaient associés à une colonne qui n’existe plus : {{columns}}. Associez-les de nouveau dans « Vos en-têtes »."
     },
     "notes_title": "À savoir",
     "notes": {
@@ -213,6 +214,13 @@
       "ignore_quantities_note": "Pour reprendre un catalogue pour ses prix seuls : aucun stock n’est touché."
     },
     "switches": "Options de ce fichier",
-    "already_imported": "Ce fichier a déjà été importé le {{date}}. L’importer à nouveau refait ce qu’il fait : vérifiez les quantités à ajouter avant de confirmer."
+    "already_imported": "Ce fichier a déjà été importé le {{date}}. L’importer à nouveau refait ce qu’il fait : vérifiez les quantités à ajouter avant de confirmer.",
+    "pairing": {
+      "title": "Vos en-têtes",
+      "intro": "Chaque en-tête de votre fichier est lu comme la colonne choisie. Ces choix sont gardés avec l’import, pour le prochain fichier écrit de la même façon.",
+      "from_last": "Repris de votre dernier import : vérifiez-les avant de prévisualiser.",
+      "ignored": "Ne pas importer",
+      "forget": "Oublier l’association de {{heading}}"
+    }
   }
 }

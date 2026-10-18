@@ -8,6 +8,7 @@ import type {
   ImportError,
   ImportGuide,
   ImportMode,
+  ImportPairing,
   ImportRefusal,
   ImportReport,
   TextEncoding,
@@ -60,6 +61,7 @@ export class ImportFacade {
     dryRun: boolean,
     switches: readonly string[] = [],
     encoding: TextEncoding | null = null,
+    pairing: readonly ImportPairing[] = [],
   ): Promise<void> {
     this.forget();
     this.busySignal.set(true);
@@ -67,7 +69,7 @@ export class ImportFacade {
       // A file changing a vendor's bank details waits for the person to prove who they are, then is sent again whole;
       // a preview never asks (docs/SPEC.md § 7).
       const report = await this.stepUp.retrying(
-        () => this.api.run(companyId, subject, file, mode, dryRun, switches, encoding),
+        () => this.api.run(companyId, subject, file, mode, dryRun, switches, encoding, pairing),
         (error) => error instanceof ImportRefused && error.code === 'step_up_required',
         'step_up.intro_sensitive',
       );

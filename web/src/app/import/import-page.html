@@ -94,6 +94,56 @@
         </div>
       }
 
+      @if (pairingRows().length > 0) {
+        <div class="flex flex-col gap-2" role="group" aria-labelledby="import-pairing-title">
+          <h3 id="import-pairing-title" class="text-lg font-semibold">
+            {{ 'import.pairing.title' | translate }}
+          </h3>
+          <p class="text-sm text-on-surface-variant">{{ 'import.pairing.intro' | translate }}</p>
+          @if (pairingFromLast()) {
+            <p class="text-sm text-on-surface-variant" data-testid="import-pairing-from-last">
+              {{ 'import.pairing.from_last' | translate }}
+            </p>
+          }
+          <ul class="flex flex-col gap-2" data-testid="import-pairing">
+            @for (row of pairingRows(); track row.heading; let index = $index) {
+              <!-- A grid, so every heading's choice starts at the same place whatever the heading's length. -->
+              <li
+                class="grid grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-x-2 gap-y-1 sm:grid-cols-[minmax(8rem,14rem)_minmax(0,1fr)_2.5rem]"
+              >
+                <span
+                  class="col-span-2 break-words sm:col-span-1"
+                  data-heading
+                  [id]="'import-pairing-heading-' + index"
+                  >{{ row.heading }}</span
+                >
+                <app-select
+                  class="min-w-0"
+                  [labelledBy]="'import-pairing-heading-' + index"
+                  [options]="row.options"
+                  [ngModel]="row.value"
+                  (ngModelChange)="choosePairing(row.heading, $event)"
+                  [ngModelOptions]="{ standalone: true }"
+                  [testId]="'import-pairing-' + index"
+                />
+                @if (row.kept) {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    [disabled]="busy()"
+                    [appLabel]="'import.pairing.forget' | translate: { heading: row.heading }"
+                    (click)="forgetPairing(row.heading)"
+                    [attr.data-testid]="'import-pairing-forget-' + index"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
       <div class="flex flex-wrap items-center gap-3">
         <button
           mat-stroked-button

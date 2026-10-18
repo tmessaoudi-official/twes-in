@@ -41,6 +41,26 @@ final readonly class DoctrineImportRunRepository implements ImportRunRepository
         return $run;
     }
 
+    public function lastPairingOf(Uuid $companyId, string $subject): array
+    {
+        /** @var ImportRun|null $run */
+        $run = $this->entityManager->createQueryBuilder()
+            ->select('r')
+            ->from(ImportRun::class, 'r')
+            ->where('r.company = :company')
+            ->andWhere('r.subject = :subject')
+            ->andWhere('r.pairing IS NOT NULL')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('subject', $subject)
+            ->orderBy('r.at', 'DESC')
+            ->addOrderBy('r.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $run?->getPairing() ?? [];
+    }
+
     public function save(ImportRun $run): void
     {
         $this->entityManager->persist($run);

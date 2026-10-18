@@ -21,9 +21,10 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Imports a file's rows into one subject, all or nothing (docs/SPEC.md § 7, 2026-09-17 and 2026-09-19).
  *
- * The file's first non-empty row is its header, read on the subject's column keys and nothing else: a header cell that
- * is not one of them refuses the file, because an importer that guesses where a column goes puts data in the wrong
- * field. Every row then goes through the subject, which uses the same use case a person's form does, inside ONE unit
+ * The file's first non-empty row is its header, read on the subject's column keys, or on the pairing a person made of
+ * the file's own headings with those columns (a heading paired with nothing is a column ignored). A header cell neither
+ * names refuses the file, because an importer that guesses where a column goes puts data in the wrong field; a pairing
+ * is a person's choice, kept with the committed import and offered again for the next file. Every row then goes through the subject, which uses the same use case a person's form does, inside ONE unit
  * of work. A preview and a file with any rejected row both roll that unit back, so the preview is exactly what the
  * import would do, rejections included, and an import is never half applied.
  *
@@ -45,25 +46,27 @@ final readonly class RunImport
      * @param iterable<int, list<string>> $rows        the file's rows by their own line numbers
      * @param string                      $contentHash the SHA-256 of the file's bytes, lowercase hexadecimal
      * @param list<string>                $ticked      the switches the request ticks; those the subject does not offer are ignored
+     * @param array<string, string>       $pairing     a file's own headings, as a person paired them, by the column key each is
+     *                                                 read as, or '' for a column ignored; a heading the file lacks is left aside
      *
      * @throws UnreadableImport
      * @throws StepUpRequired   when a row changes what asks who is at the screen again, without a recent proof: the
      *                          whole file is rolled back, and kept once the proof is given
      */
-    public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId, string $contentHash, array $ticked = []): ImportReport
+    public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId, string $contentHash, array $ticked = [], array $pairing = []): ImportReport
     {
-        $records = $this->records($subject, $rows);
+        [$records, $paired] = $this->records($subject, $rows, $pairing);
         $already = $this->runs->lastOf($company->getId(), $declaration->key(), $contentHash)?->getAt();
         $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun, $subject->keys());
 
         try {
-            return $this->transactions->run(function () use ($declaration, $subject, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $already): ImportReport {
+            return $this->transactions->run(function () use ($declaration, $subject, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $already, $paired): ImportReport {
                 $report = $this->apply($declaration, $subject, $company, $records, $mode, $actorUserId, $context);
                 if ($dryRun || [] !== $report->rejected) {
                     throw new ImportRolledBack(new ImportReport(false, $report->created, $report->updated, $report->rejected, $report->notes, $already, $report->changes, $report->unchanged));
                 }
                 $declaration->finished($company, $context, $actorUserId);
-                $this->runs->save(new ImportRun($context->runId, $company, $declaration->key(), $contentHash, $mode->value, $actorUserId, \count($report->created), \count($report->updated), $this->clock->now()));
+                $this->runs->save(new ImportRun($context->runId, $company, $declaration->key(), $contentHash, $mode->value, $actorUserId, \count($report->created), \count($report->updated), $this->clock->now(), $paired));
 
                 return new ImportReport(true, $report->created, $report->updated, [], $report->notes, $already, $report->changes, $report->unchanged);
             });
@@ -129,16 +132,19 @@ final readonly class RunImport
     }
 
     /**
-     * The header, matched on the subject's keys whatever its case and surrounding spaces, then every non-empty row.
+     * The header, matched on the subject's keys or the pairing whatever its case and surrounding spaces, then every
+     * non-empty row.
      *
      * @param iterable<int, list<string>> $rows
+     * @param array<string, string>       $pairing
      *
-     * @return list<ImportRecord>
+     * @return array{list<ImportRecord>, array<string, string>} the rows, and the pairing the header needed
      *
      * @throws UnreadableImport
      */
-    private function records(ImportSubject $subject, iterable $rows): array
+    private function records(ImportSubject $subject, iterable $rows, array $pairing): array
     {
+        $paired = [];
         $header = null;
         $width = 0;
         $records = [];
@@ -158,7 +164,7 @@ final readonly class RunImport
                 if (!$readable) {
                     throw new UnreadableImport(UnreadableImport::UNREADABLE_ENCODING);
                 }
-                $header = $this->header($subject, $cells);
+                [$header, $paired] = $this->header($subject, $cells, $pairing);
                 $width = \count($cells);
                 continue;
             }
@@ -182,32 +188,53 @@ final readonly class RunImport
             throw new UnreadableImport(UnreadableImport::EMPTY);
         }
 
-        return $records;
+        return [$records, $paired];
     }
 
     /**
-     * @param list<string> $cells
+     * @param list<string>          $cells
+     * @param array<string, string> $pairing
      *
-     * @return array<int, string> the column key read at each position; a blank header cell is a column ignored
+     * @return array{array<int, string>, array<string, string>} the column key read at each position (a blank header
+     *                                                          cell is a column ignored), and the pairing of the file's
+     *                                                          headings it used, as the file writes them
      *
      * @throws UnreadableImport
      */
-    private function header(ImportSubject $subject, array $cells): array
+    private function header(ImportSubject $subject, array $cells, array $pairing): array
     {
         $known = [];
         foreach ($subject->keys() as $key) {
             $known[mb_strtolower($key)] = $key;
         }
+        // A person's pairing comes first: it may set aside a heading that happens to be a column's own key.
+        $choices = [];
+        foreach ($pairing as $heading => $choice) {
+            $choices[mb_strtolower(trim((string) $heading))] = trim($choice);
+        }
 
-        $header = $unknown = $twice = [];
+        $header = $paired = $unknown = $invalid = $twice = [];
         foreach ($cells as $position => $cell) {
             if ('' === $cell) {
                 continue;
             }
-            $key = $known[mb_strtolower($cell)] ?? null;
+            $choice = $choices[mb_strtolower($cell)] ?? null;
+            if ('' === $choice) {
+                $paired[$cell] = '';
+                continue;
+            }
+            $key = null === $choice ? $known[mb_strtolower($cell)] ?? null : $known[mb_strtolower($choice)] ?? null;
+            // The heading is named, not the choice: it is the heading the person pairs again.
+            if (null !== $choice && null === $key) {
+                $invalid[] = $cell;
+                continue;
+            }
             if (null === $key) {
                 $unknown[] = $cell;
                 continue;
+            }
+            if (null !== $choice) {
+                $paired[$cell] = $key;
             }
             if (\in_array($key, $header, true)) {
                 $twice[] = $key;
@@ -216,6 +243,9 @@ final readonly class RunImport
             $header[$position] = $key;
         }
 
+        if ([] !== $invalid) {
+            throw new UnreadableImport(UnreadableImport::INVALID_PAIRING, array_values(array_unique($invalid)));
+        }
         if ([] !== $unknown) {
             throw new UnreadableImport(UnreadableImport::UNKNOWN_COLUMNS, $unknown);
         }
@@ -232,6 +262,6 @@ final readonly class RunImport
             throw new UnreadableImport(UnreadableImport::MISSING_COLUMNS, $missing);
         }
 
-        return $header;
+        return [$header, $paired];
     }
 }

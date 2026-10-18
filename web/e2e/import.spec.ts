@@ -94,6 +94,61 @@ test('a file is previewed before it is imported, and a refused row says why', as
   await retire(page, NUMBER);
 });
 
+// A shop's own file, written in its own words: each heading the subject does not know is paired once, the pairing is
+// kept with the import, and the next file written the same way is read without asking. The headings carry the run's
+// mark, so a pairing another run left in the shared company never answers for this one.
+test('a file with its own headings is paired once, and the next one is read the same way', async ({
+  page,
+}) => {
+  const reference = `Réf ${RUN}`;
+  const name = `Raison sociale ${RUN}`;
+  const remark = `Remarque ${RUN}`;
+  const header = `${reference},${name},kind,${remark}`;
+  const rows = page.getByTestId('import-pairing').locator('li');
+
+  /** Opens a heading's Select and takes the column, as a person does; the panel hangs off the page. */
+  async function pair(heading: string, column: string): Promise<void> {
+    await rows.filter({ hasText: heading }).getByRole('combobox').click();
+    await page.locator(`[role="option"][data-testid$="-option-${column}"]`).click();
+  }
+
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/imports/customers');
+  await expect(page.getByTestId('import-columns')).toBeVisible();
+
+  await choose(
+    page,
+    'clients-maison.csv',
+    `${header}\n${NUMBER}-P,Atelier du Port,individual,à rappeler\n`,
+  );
+  await page.getByTestId('import-preview').click();
+  await expect(page.getByTestId('import-refusal')).toContainText(reference);
+  await expect(rows).toHaveCount(3);
+
+  await pair(reference, 'number');
+  await pair(name, 'name');
+  await pair(remark, 'ignored');
+  await page.getByTestId('import-preview').click();
+  await expect(page.getByTestId('import-created')).toContainText('1');
+  await page.getByTestId('import-store').click();
+  await expect(toast(page)).toContainText('1');
+
+  // Back on the screen, the pairing is there before any file, said to come from the last import.
+  await page.reload();
+  await expect(page.getByTestId('import-pairing-from-last')).toBeVisible();
+  await expect(rows).toHaveCount(3);
+  await expect(rows.filter({ hasText: remark })).toContainText('Ne pas importer');
+
+  // The next file written the same way is read as it is, with nothing asked. Previewed only.
+  await choose(page, 'clients-maison.csv', `${header}\n${NUMBER}-Q,Atelier du Phare,individual,\n`);
+  await page.getByTestId('import-preview').click();
+  await expect(page.getByTestId('import-created')).toContainText('1');
+  await expect(page.getByTestId('import-refusal')).toHaveCount(0);
+
+  await retire(page, `${NUMBER}-P`);
+});
+
 // docs/SPEC.md § 7, 2026-10-09 10:40, ruling 5: an upsert's preview says what it changes in each record, old → new,
 // and what it leaves alone; storing it asks first, naming how many records and which columns.
 test('an upsert says what it changes before it changes anything', async ({ page }) => {

@@ -138,7 +138,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   imported may carry notes, `RowNotes`, such as the reference its new product was given; a subject offers switches,
   `ImportSwitch`, says what a row names for duplicates, `identityOf`, and what is said once per file, `finished`; a
   committed file is kept as an `ImportRun` under its SHA-256, so the same file is flagged, and the stock it moved
-  carries its id: `Inventory/Application/ImportStock` is every file's quantities),
+  carries its id: `Inventory/Application/ImportStock` is every file's quantities; a file in the shop's own headings
+  is read through `pairing`, a JSON object of heading to column (`''` sets a column aside), which the committed run
+  keeps and the guide offers again as `lastPairing`),
   `Watch` (« À surveiller »: a module declares its live conditions with `DeclaresWatch` in its own
   `Infrastructure/Watch/`, one statement per kind, gated by its module and permission; a core context's subject has no module and is always on, as `Tenancy`'s unsent invitations, marked by `InvitationMailFailed` when the worker gives up),
   `Legal` (the legal pages' versions, read by anyone at `GET /api/legal/{page}/{language}`; the shipped drafts are
