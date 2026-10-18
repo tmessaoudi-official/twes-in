@@ -16,7 +16,6 @@ use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
-use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
@@ -33,7 +32,7 @@ final readonly class DeliveryNoteCredit
         private DeliveryNoteTotals $totals,
         private CustomerAccount $credit,
         private CurrencyScales $scales,
-        private InvoiceRepository $invoices,
+        private InvoicedLines $invoiced,
     ) {
     }
 
@@ -50,7 +49,7 @@ final readonly class DeliveryNoteCredit
         $limit = $this->credit->limit($company, $customer);
         $owed = $this->credit->owed($company, $customer);
         $lineIds = array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), $note->getLines());
-        $taken = $this->invoices->invoicedQuantities($company->getId(), $lineIds, true);
+        $taken = $this->invoiced->taken($company->getId(), $lineIds, true);
         try {
             $total = Decimal::of($this->totals->of($note, $taken)->total);
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {

@@ -49,13 +49,13 @@ final readonly class DraftInvoiceFromDeliveryNotesProcessor implements Processor
         }
 
         try {
-            $invoice = $this->invoicing->draftInvoice($company, array_map(static fn (string $id): Uuid => Uuid::fromString($id), $data->deliveryNoteIds), $this->guard->account()->getId(), $data->quantities);
+            $invoiceId = $this->invoicing->draftInvoice($company, array_map(static fn (string $id): Uuid => Uuid::fromString($id), $data->deliveryNoteIds), $this->guard->account()->getId(), $data->quantities);
         } catch (InvalidDeliveryNote|InvalidInvoice $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         } catch (DeliveryNoteTransitionRefused $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         }
 
-        return $this->answer->of($company, $invoice);
+        return $this->answer->of($company, $invoiceId);
     }
 }

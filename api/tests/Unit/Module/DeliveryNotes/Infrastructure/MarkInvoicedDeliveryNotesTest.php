@@ -29,6 +29,7 @@ use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Infrastructure\DeliveryNotes\ManagedInvoiceDrafts;
+use App\Module\Invoices\Infrastructure\DeliveryNotes\RepositoryInvoicedLines;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
@@ -91,9 +92,9 @@ final class MarkInvoicedDeliveryNotesTest extends TestCase
                 $this->records[] = [$level, $message, $context];
             }
         };
-        $invoicing = new InvoiceDeliveryNotes($notes, $invoices, new ManagedInvoiceDrafts($manage), $transactions, $audit, $clock);
+        $invoicing = new InvoiceDeliveryNotes($notes, new RepositoryInvoicedLines($invoices), new ManagedInvoiceDrafts($manage, $invoices), $transactions, $audit, $clock);
         // The invoice the event tells of, issued, as the repository holds it by then.
-        new \ReflectionProperty(Invoice::class, 'status')->setValue($invoicing->draftInvoice($company, [$invoiced->getId()], null), InvoiceStatus::Issued);
+        new \ReflectionProperty(Invoice::class, 'status')->setValue($invoices->ofIdInCompany($invoicing->draftInvoice($company, [$invoiced->getId()], null), $company->getId()), InvoiceStatus::Issued);
         $transactions->committed = 0;
         $listener = new MarkInvoicedDeliveryNotes($invoicing, $logger);
 

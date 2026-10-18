@@ -509,8 +509,8 @@ final readonly class DemoDataset
             }
             if (isset($note['invoice'])) {
                 $timeline->at($note['invoice'], function () use (&$ids, $n, $company, $actor): void {
-                    $invoice = $this->invoiceDeliveryNotes->draftInvoice($company(), [$ids[$n]], $actor);
-                    $this->invoiceWorkflow->issue($company(), $invoice->getId(), $actor);
+                    $invoiceId = $this->invoiceDeliveryNotes->draftInvoice($company(), [$ids[$n]], $actor);
+                    $this->invoiceWorkflow->issue($company(), $invoiceId, $actor);
                 });
             }
         }

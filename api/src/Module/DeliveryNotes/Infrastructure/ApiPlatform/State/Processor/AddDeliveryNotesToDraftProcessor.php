@@ -50,7 +50,8 @@ final readonly class AddDeliveryNotesToDraftProcessor implements ProcessorInterf
         }
 
         try {
-            $invoice = $this->invoicing->addToDraft($company, CompanyPath::identifier($uriVariables, 'invoiceId'), array_map(static fn (string $id): Uuid => Uuid::fromString($id), $data->deliveryNoteIds), $this->guard->account()->getId(), $data->quantities);
+            $invoiceId = CompanyPath::identifier($uriVariables, 'invoiceId');
+            $this->invoicing->addToDraft($company, $invoiceId, array_map(static fn (string $id): Uuid => Uuid::fromString($id), $data->deliveryNoteIds), $this->guard->account()->getId(), $data->quantities);
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvalidDeliveryNote|InvalidInvoice $refused) {
@@ -59,6 +60,6 @@ final readonly class AddDeliveryNotesToDraftProcessor implements ProcessorInterf
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         }
 
-        return $this->answer->of($company, $invoice);
+        return $this->answer->of($company, $invoiceId);
     }
 }

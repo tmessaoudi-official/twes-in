@@ -17,7 +17,6 @@ use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
-use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Settings\Application\ReadSetting;
 use App\Shared\Application\DomainEvents;
 use App\Shared\Application\Transactions;
@@ -42,7 +41,7 @@ final readonly class DeliveryNoteWorkflow
 
     public function __construct(
         private DeliveryNoteRepository $notes,
-        private InvoiceRepository $invoices,
+        private InvoicedLines $invoiced,
         private AllocateNumber $numbers,
         private Transactions $transactions,
         private DeliveryNoteTotals $totals,
@@ -120,9 +119,9 @@ final readonly class DeliveryNoteWorkflow
         $note = $this->transactions->run(function () use ($company, $id, $actorUserId): DeliveryNote {
             $note = $this->locked($company, $id);
             $lines = array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), $note->getLines());
-            $invoice = [] === $lines ? null : ($this->invoices->carryingDeliveryNoteLines($company->getId(), $lines)[0] ?? null);
+            $invoice = [] === $lines ? null : ($this->invoiced->carrying($company->getId(), $lines)[0] ?? null);
             if (null !== $invoice) {
-                throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is on the invoice %s: cancel that draft first.', $note->getNumber() ?? $note->getId()->toRfc4122(), $invoice->getNumber() ?? $invoice->getId()->toRfc4122()));
+                throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is on the invoice %s: cancel that draft first.', $note->getNumber() ?? $note->getId()->toRfc4122(), $invoice->number ?? $invoice->id->toRfc4122()));
             }
             $note->cancel($this->clock->now());
             $this->notes->save($note);
