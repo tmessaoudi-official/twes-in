@@ -32,10 +32,28 @@ final readonly class GotenbergPdfRenderer implements PdfRenderer
     {
     }
 
+    /**
+     * A page may carry its own header and footer, each as a `<template data-pdf="header">` or `"footer"`: they leave the
+     * page and go up as `header.html` and `footer.html`, documents of their own that Chromium prints in the top and
+     * bottom margins of every sheet, beside the content and never over it.
+     */
     public function render(string $html): string
     {
-        $pdf = $this->post('convert', [
-            'files' => new DataPart($html, 'index.html', 'text/html', '8bit'),
+        $margins = [];
+        $page = preg_replace_callback('#<template data-pdf="(header|footer)">(.*?)</template>\s*#s', static function (array $match) use (&$margins): string {
+            if (isset($margins[$match[1]])) {
+                throw new \LogicException(\sprintf('A page carries one %s at most.', $match[1]));
+            }
+            $margins[$match[1]] = '<!doctype html><html><head><meta charset="utf-8"></head><body>'.$match[2].'</body></html>';
+
+            return '';
+        }, $html) ?? throw new PdfRenderingFailed('The page could not be read for its header and footer.');
+        $files = [['files' => new DataPart($page, 'index.html', 'text/html', '8bit')]];
+        foreach ($margins as $place => $document) {
+            $files[] = ['files' => new DataPart($document, $place.'.html', 'text/html', '8bit')];
+        }
+        $pdf = $this->send('chromium/convert/html', [
+            ...$files,
             'paperWidth' => '8.27',
             'paperHeight' => '11.7',
             'marginTop' => self::MARGIN,
@@ -96,7 +114,7 @@ final readonly class GotenbergPdfRenderer implements PdfRenderer
     }
 
     /**
-     * @param 'convert'|'screenshot'         $route
+     * @param 'screenshot'                   $route
      * @param array<string, string|DataPart> $fields
      */
     private function post(string $route, array $fields): string

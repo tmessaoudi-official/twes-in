@@ -22,6 +22,7 @@
   </style>
 </head>
 <body class="{{ 'layout-' ~ page.design.layout.value }}">
+  {%- include 'pdf/_demo_band.html.twig' with {demo: demo, t: t, locale: locale} only %}
   {%- if page.watermark %}
     <div class="watermark">{{ ('watermark.' ~ page.watermark)|trans({}, t, locale) }}</div>
   {%- endif %}

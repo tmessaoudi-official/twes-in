@@ -91,6 +91,8 @@ watermark:
     duplicate: 'DUPLICATE'
     copy: 'COPY'
     preview: 'PREVIEW'
+demo:
+    band: 'DEMO — no fiscal value'
 copy:
     duplicate: 'DUPLICATE — reprinted on %date%'
     current: 'COPY — status on %date%'

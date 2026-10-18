@@ -29,6 +29,30 @@ final class ApiTranslationParityTest extends TestCase
     }
 
     /**
+     * Every key a printed document names exists in its domain, or the document prints the key itself: a statement once
+     * printed « company.currency » beside its period. The templates name their domain through `t`, which Symfony's own
+     * `debug:translation` cannot follow, so this reads `t` as the `pdf` domain each template sets it to.
+     */
+    public function testEveryKeyAPrintedDocumentNamesExistsInItsDomain(): void
+    {
+        $missing = [];
+        $found = 0;
+        foreach (glob(__DIR__.'/../../../templates/pdf/*.twig') ?: [] as $template) {
+            preg_match_all("/'([\\w.]+)'\\|trans\\(.*?,\\s*(t|'\\w+'),\\s*locale\\)/", (string) file_get_contents($template), $calls, \PREG_SET_ORDER);
+            foreach ($calls as [, $key, $domain]) {
+                ++$found;
+                $domain = 't' === $domain ? 'pdf' : trim($domain, "'");
+                if (!\in_array($key, self::keys("$domain.fr.yaml"), true)) {
+                    $missing[] = basename($template).": $domain $key";
+                }
+            }
+        }
+
+        self::assertGreaterThan(100, $found, 'the keys the templates name are found, so an empty set cannot pass');
+        self::assertSame([], $missing);
+    }
+
+    /**
      * French holds « : » to its word with a no-break space and « ; ? ! » with a narrow one, and « » hold what they
      * quote the same way, so a printed line or a mail never starts with a mark (audit 2026-10-06, N-b).
      */

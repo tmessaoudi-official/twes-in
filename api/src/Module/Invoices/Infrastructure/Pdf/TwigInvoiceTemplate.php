@@ -16,12 +16,13 @@ use App\Module\Invoices\Application\InvoicePage;
 use App\Module\Invoices\Application\Print\InvoiceTemplate;
 use App\Module\Invoices\Domain\Model\InvoiceLine;
 use App\Tenancy\Application\Company\CompanyLogo;
+use App\Tenancy\Application\Company\DemoCompanies;
 use Twig\Environment;
 
 /** `templates/pdf/invoice.html.twig`, worded from `translations/pdf.<language>.yaml`. */
 final readonly class TwigInvoiceTemplate implements InvoiceTemplate
 {
-    public function __construct(private Environment $twig, private CurrencyScales $scales, private CompanyLogo $logo)
+    public function __construct(private Environment $twig, private CurrencyScales $scales, private CompanyLogo $logo, private DemoCompanies $demos)
     {
     }
 
@@ -43,6 +44,7 @@ final readonly class TwigInvoiceTemplate implements InvoiceTemplate
             'scale' => $this->scales->of($page->seller->currency),
             'locale' => $page->language,
             'logo' => $this->logo->dataUri($company),
+            'demo' => $this->demos->isDemo($company->getId()),
             'sectionStarts' => array_column(array_map(static fn (SectionSubtotal $section): array => ['at' => $section->firstLine, 'section' => $section], $sections), 'section', 'at'),
             'sectionEnds' => array_column(array_map(static fn (SectionSubtotal $section): array => ['at' => $section->lastLine(), 'section' => $section], $sections), 'section', 'at'),
         ]);
