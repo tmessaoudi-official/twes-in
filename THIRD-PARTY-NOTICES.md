@@ -788,7 +788,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | zod | 4.6.6 | MIT | runtime |
 | zxing-wasm | 3.1.5 | MIT | runtime |
 
-## Vendored fonts — 2
+## Vendored fonts — 3
 
 Shipped unmodified, each with its licence text in the same directory.
 
@@ -796,6 +796,7 @@ Shipped unmodified, each with its licence text in the same directory.
 |---|---|---|
 | web/public/fonts/inter | OFL-1.1 | inter-latin-ext-wght-normal.woff2, inter-latin-wght-normal.woff2 |
 | web/public/fonts/manrope | OFL-1.1 | manrope-latin-ext-wght-normal.woff2, manrope-latin-wght-normal.woff2 |
+| web/public/fonts/noto-sans-arabic | OFL-1.1 | noto-sans-arabic-arabic-wght-normal.woff2 |
 
 ## Compiled into zxing-wasm 3.1.5 — dist/reader/zxing_reader.wasm
 
