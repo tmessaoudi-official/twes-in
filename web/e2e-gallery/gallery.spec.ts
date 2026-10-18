@@ -162,9 +162,9 @@ const AS = process.env['GALLERY_AS'] ?? 'operator';
 const TESTERS = ['owner', 'admin', 'member', 'clerk', 'accountant'];
 // DemoCompanies::TESTER_PASSWORD in the API's fixtures: e2e imports nothing from the app.
 const TESTER_PASSWORD = 'twes-role-test-2026';
-// `fr` or `en`; `rtl` draws the French texts right to left, to see how far the layout is from Arabic, which twes-in
-// does not ship yet.
+// `fr`, `en` or `ar`; `rtl` draws the French texts right to left, to tell a layout fault from a wording one.
 const LANGUAGE = process.env['GALLERY_LANG'] ?? 'fr';
+const RIGHT_TO_LEFT = LANGUAGE === 'rtl' || LANGUAGE === 'ar';
 // `GALLERY_SCHEMES=light` pictures the light scheme alone, where a pass is about who sees what rather than colour.
 const SCHEMES = (process.env['GALLERY_SCHEMES'] ?? 'light,dark').split(',');
 // `GALLERY_AXE=1` adds the WCAG 2.1 A and AA scan of every screen at rest to the manifest.
@@ -248,7 +248,7 @@ async function captureAll(page: Page, screens: Screen[]): Promise<void> {
           continue;
         }
         // A right-to-left run whose page came out left to right pictures nothing it was asked for: it stops there.
-        if (LANGUAGE === 'rtl') await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+        if (RIGHT_TO_LEFT) await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
         const file = `${screen.key}--${viewport.name}--${scheme}.jpg`;
         // Measured at the window's own size: the picture below stretches the window to the page's height.
         const findings = await auditScreen(page);
@@ -429,22 +429,33 @@ async function rightToLeft(page: Page): Promise<void> {
   });
 }
 
+/**
+ * The signed-out pages in a language, as the browser keeps the choice someone made before signing in: the language
+ * setting under the anonymous key, read as the app starts.
+ */
+async function signedOutIn(page: Page, language: string): Promise<void> {
+  await page.addInitScript((tag) => {
+    localStorage.setItem('twes.settings.anonymous.presentation.language', JSON.stringify(tag));
+  }, language);
+}
+
 test('every screen, desktop and phone, light and dark', async ({ browser, page }) => {
   test.skip(FOCUS, 'the focus pass runs instead');
   const unknown = [
     ...WIDTHS.filter((name) => !ALL_VIEWPORTS.some((viewport) => viewport.name === name)),
     ...(AS === 'operator' || TESTERS.includes(AS) ? [] : [AS]),
-    ...(['fr', 'en', 'rtl'].includes(LANGUAGE) ? [] : [LANGUAGE]),
+    ...(['fr', 'en', 'ar', 'rtl'].includes(LANGUAGE) ? [] : [LANGUAGE]),
   ];
   if (unknown.length > 0) throw new Error(`unknown gallery choices: ${unknown.join(', ')}`);
   mkdirSync(OUT, { recursive: true });
   page.setDefaultNavigationTimeout(20_000);
-  const locale = LANGUAGE === 'en' ? 'en-GB' : 'fr-FR';
+  const locale = LANGUAGE === 'en' ? 'en-GB' : LANGUAGE === 'ar' ? 'ar-TN' : 'fr-FR';
 
   // A context of its own rather than `browser.newPage()`, which the WCAG scan refuses to read.
   const signedOutContext = await browser.newContext({ locale, timezoneId: 'Africa/Tunis' });
   const signedOut = await signedOutContext.newPage();
   if (LANGUAGE === 'rtl') await rightToLeft(signedOut);
+  if (LANGUAGE === 'ar') await signedOutIn(signedOut, LANGUAGE);
   await captureAll(signedOut, SIGNED_OUT);
   await signedOutContext.close();
 
@@ -452,13 +463,13 @@ test('every screen, desktop and phone, light and dark', async ({ browser, page }
   await signInAs(page, AS);
   await workIn(page, COMPANY);
   await forgetPresentationChoices(page);
-  if (LANGUAGE === 'en') {
+  if (LANGUAGE === 'en' || LANGUAGE === 'ar') {
     // Chosen as a person does, on « Mon compte »; the next run's forgetting puts it back.
     await page.goto('/account?tab=preferences');
-    // The page's own Select; `account-language-en` is the shell's account menu, closed here.
+    // The page's own Select; `account-language-<tag>` is the shell's account menu, closed here.
     await page.getByTestId('account-language').click();
-    await page.getByTestId('account-language-option-en').click();
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await page.getByTestId(`account-language-option-${LANGUAGE}`).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', LANGUAGE);
   }
   await captureAll(page, SIGNED_IN);
 
