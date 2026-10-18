@@ -30,7 +30,12 @@ describe('SupportAccessApi', () => {
 
   // docs/SPEC.md § 7, the step-up list: opening the company to support waits for the owner's recent proof.
   it('names each refusal the page translates, the proof the API waits for among them', async () => {
-    for (const code of ['owner_only', 'support_window', 'step_up_required'] as const) {
+    for (const code of [
+      'owner_only',
+      'support_window',
+      'step_up_required',
+      'demo_refused',
+    ] as const) {
       const refused = api.grant('c1', 24);
       http
         .expectOne('/api/companies/c1/support-access')

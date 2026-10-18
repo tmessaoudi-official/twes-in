@@ -142,4 +142,11 @@ describe('MembersFacade', () => {
     expect(facade.error()).toBe('step_up_required');
     expect(api.removeMember).toHaveBeenCalledTimes(1);
   });
+
+  it("adds nothing of its own to the demo's refusal of an invitation, which the toast has said", async () => {
+    api.addMember.mockRejectedValue(new CompanyRefused('demo_refused'));
+
+    expect(await facade.add('c1', 'someone@example.test', 'staff')).toBeNull();
+    expect(facade.error()).toBeNull();
+  });
 });

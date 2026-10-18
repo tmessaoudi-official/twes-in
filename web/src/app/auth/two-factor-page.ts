@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from './auth-facade';
+import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import type { LoginError, PasskeySummary, TotpEnrolment } from './auth-types';
 import { PasskeyClient } from './passkey-client';
 import type { ActionConfirm } from '../shared/actions/screen-action';
@@ -100,7 +101,7 @@ export class TwoFactorPage {
     if (outcome.ok) {
       this.recoveryCodes.set(outcome.recoveryCodes);
     } else {
-      this.error.set(outcome.error);
+      this.error.set(unlessDemoRefused(outcome.error));
     }
   }
 
@@ -119,7 +120,7 @@ export class TwoFactorPage {
     if (outcome.ok) {
       this.recoveryCodes.set(outcome.recoveryCodes);
     } else {
-      this.error.set(outcome.error);
+      this.error.set(unlessDemoRefused(outcome.error));
     }
   }
 
@@ -135,7 +136,7 @@ export class TwoFactorPage {
     if (outcome.ok) {
       this.recoveryCodes.set(outcome.recoveryCodes);
     } else {
-      this.passkeyError.set(outcome.error);
+      this.passkeyError.set(unlessDemoRefused(outcome.error));
     }
   }
 
@@ -156,7 +157,9 @@ export class TwoFactorPage {
     this.submitting.set(false);
     if (!outcome.ok) {
       // The name stays, so trying again after a cancelled prompt is one click; a declined proof changed nothing to say.
-      this.passkeyError.set(outcome.error === 'step_up_required' ? null : outcome.error);
+      this.passkeyError.set(
+        outcome.error === 'step_up_required' ? null : unlessDemoRefused(outcome.error),
+      );
       return;
     }
     this.passkeys.update((list) => [...list, outcome.passkey]);
@@ -191,7 +194,7 @@ export class TwoFactorPage {
         await this.begin();
       }
     } else if (outcome.error !== 'step_up_required') {
-      this.removeError.set(outcome.error);
+      this.removeError.set(unlessDemoRefused(outcome.error));
     }
   }
 
@@ -221,7 +224,7 @@ export class TwoFactorPage {
         await this.begin();
       }
     } else if (outcome.error !== 'step_up_required') {
-      this.passkeyError.set(outcome.error);
+      this.passkeyError.set(unlessDemoRefused(outcome.error));
     }
   }
 
@@ -238,7 +241,7 @@ export class TwoFactorPage {
     if (outcome.ok) {
       this.enrolment.set(outcome.enrolment);
     } else {
-      this.error.set(outcome.error);
+      this.error.set(unlessDemoRefused(outcome.error));
     }
   }
 

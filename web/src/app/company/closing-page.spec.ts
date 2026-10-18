@@ -141,6 +141,15 @@ describe('ClosingPage', () => {
     expect(q('closing-error')?.textContent).toContain('company.closing.errors.invalid');
   });
 
+  it("adds nothing of its own to the demo's refusal, which the toast has said", async () => {
+    await open({ closedThrough: '2026-09-30', writable: true });
+    api.closeThrough.mockRejectedValue(new ClosingRefused('demo_refused'));
+
+    await closeThrough('2026-10-15');
+
+    expect(q('closing-error')).toBeNull();
+  });
+
   it('shows the closed day to whoever may not close further, without the form', async () => {
     await open({ closedThrough: '2026-09-30', writable: false });
 

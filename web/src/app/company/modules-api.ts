@@ -8,6 +8,7 @@ import type {
   ModuleModuleRead,
   ModuleModuleWriteValidationModuleWrite as ModuleModuleWrite,
 } from '../api/types.gen';
+import { DEMO_REFUSED, isDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import type { ModuleRow } from './modules-types';
 
 /**
@@ -15,7 +16,14 @@ import type { ModuleRow } from './modules-types';
  * an enabled module still needs it (both a 409, told apart by the direction of the switch).
  */
 export type ModulesError =
-  'network' | 'not_found' | 'needs_modules' | 'still_needed' | 'already_available' | 'invalid';
+  | 'network'
+  | 'not_found'
+  | 'needs_modules'
+  | 'still_needed'
+  | 'already_available'
+  | 'invalid'
+  /** Something a demo account may not do, which the interceptor has said in words already. */
+  | 'demo_refused';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ModulesRefused extends Error {
@@ -76,6 +84,7 @@ function codeOf(error: unknown, attempt: Attempt): ModulesError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
   }
+  if (isDemoRefused(error)) return DEMO_REFUSED;
   switch (error.status) {
     case 404:
       return 'not_found';

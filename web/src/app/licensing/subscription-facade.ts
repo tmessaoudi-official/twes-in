@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { StepUp } from '../shared/step-up/step-up';
 import { SubscriptionApi, SubscriptionRefused } from './subscription-api';
 import type {
@@ -57,7 +58,7 @@ export class SubscriptionFacade {
       await this.reread(companyId);
       return true;
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.errorSignal.set(unlessDemoRefused(codeOf(error)));
       return false;
     } finally {
       this.busySignal.set(false);

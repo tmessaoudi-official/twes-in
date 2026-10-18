@@ -3,6 +3,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { DEMO_REFUSED, isDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import type {
   CompanyClosingCompanyClosingRead,
   CompanyClosingCompanyClosingWriteValidationCompanyClosingWrite as CompanyClosingWrite,
@@ -16,7 +17,12 @@ export interface CompanyClosing {
 }
 
 /** Why the API refused, as the page translates it: `invalid` is a day not before today or before the one closed. */
-export type ClosingError = 'network' | 'not_found' | 'invalid';
+export type ClosingError =
+  | 'network'
+  | 'not_found'
+  | 'invalid'
+  /** Something a demo account may not do, which the interceptor has said in words already. */
+  | 'demo_refused';
 
 /** Thrown when the API refuses; carries the code the page translates. */
 export class ClosingRefused extends Error {
@@ -66,5 +72,6 @@ function codeOf(error: unknown): ClosingError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
   }
+  if (isDemoRefused(error)) return DEMO_REFUSED;
   return error.status === 404 ? 'not_found' : 'invalid';
 }

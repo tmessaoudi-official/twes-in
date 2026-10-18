@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { ModulesApi, ModulesRefused, type ModulesError } from './modules-api';
 import type { ModuleRow } from './modules-types';
 
@@ -64,7 +65,7 @@ export class ModulesFacade {
       this.modulesSignal.update((rows) => rows.map((each) => (each.key === row.key ? row : each)));
       return true;
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.errorSignal.set(unlessDemoRefused(codeOf(error)));
       return false;
     } finally {
       this.busySignal.set(false);

@@ -29,6 +29,7 @@ import {
   type NumberingSeriesRow,
 } from './company-types';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import { DEMO_REFUSED, isDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
 
@@ -429,6 +430,7 @@ function codeOf(error: unknown): CompanyError {
   }
   switch (error.status) {
     case 403:
+      if (isDemoRefused(error)) return DEMO_REFUSED;
       return stepUpAsked(error) ? 'step_up_required' : 'forbidden';
     case 404:
       return 'not_found';

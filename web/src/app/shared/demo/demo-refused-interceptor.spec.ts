@@ -1,11 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse,
+  provideHttpClient,
+  withInterceptors,
+} from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Feedback } from '../feedback/feedback';
-import { demoRefusedInterceptor } from './demo-refused-interceptor';
+import {
+  demoRefusedInterceptor,
+  isDemoRefused,
+  unlessDemoRefused,
+} from './demo-refused-interceptor';
 
 describe('demoRefusedInterceptor', () => {
   const feedback = { failure: vi.fn() };
@@ -51,5 +60,62 @@ describe('demoRefusedInterceptor', () => {
       .flush({ error: 'demo_refused' }, { status: 400, statusText: 'Bad Request' });
 
     expect(feedback.failure).not.toHaveBeenCalled();
+  });
+
+  it("reads a file download's refusal too, and hands it on as one a screen recognises", async () => {
+    const failed = vi.fn();
+    http()
+      .get('/api/companies/c1/exports/sales-journal.csv', { responseType: 'blob' })
+      .subscribe({ error: failed });
+
+    backend()
+      .expectOne('/api/companies/c1/exports/sales-journal.csv')
+      .flush(new Blob([JSON.stringify({ error: 'demo_refused' })], { type: 'application/json' }), {
+        status: 403,
+        statusText: 'Forbidden',
+      });
+    await vi.waitFor(() => expect(failed).toHaveBeenCalledOnce());
+
+    expect(feedback.failure).toHaveBeenCalledExactlyOnceWith('auth.errors.demo_refused');
+    expect(isDemoRefused(failed.mock.calls[0]?.[0])).toBe(true);
+  });
+
+  it("leaves a file download's other refusal as it came, its body still to read", async () => {
+    const failed = vi.fn();
+    http()
+      .get('/api/companies/c1/exports/customers.csv', { responseType: 'blob' })
+      .subscribe({ error: failed });
+
+    backend()
+      .expectOne('/api/companies/c1/exports/customers.csv')
+      .flush(new Blob([JSON.stringify({ error: 'step_up_required' })]), {
+        status: 403,
+        statusText: 'Forbidden',
+      });
+    await vi.waitFor(() => expect(failed).toHaveBeenCalledOnce());
+
+    const error: unknown = failed.mock.calls[0]?.[0];
+    expect(feedback.failure).not.toHaveBeenCalled();
+    expect(isDemoRefused(error)).toBe(false);
+    expect(error instanceof HttpErrorResponse && error.error instanceof Blob).toBe(true);
+    expect(JSON.parse(await (error as HttpErrorResponse & { error: Blob }).error.text())).toEqual({
+      error: 'step_up_required',
+    });
+  });
+
+  it('recognises the refusal only as the API answers it', () => {
+    const answer = (status: number, body: unknown) =>
+      new HttpErrorResponse({ status, error: body, url: '/api/x' });
+
+    expect(isDemoRefused(answer(403, { error: 'demo_refused' }))).toBe(true);
+    expect(isDemoRefused(answer(400, { error: 'demo_refused' }))).toBe(false);
+    expect(isDemoRefused(answer(403, { error: 'support_read_only' }))).toBe(false);
+    expect(isDemoRefused(answer(403, 'demo_refused'))).toBe(false);
+    expect(isDemoRefused(new Error('demo_refused'))).toBe(false);
+  });
+
+  it("leaves a screen nothing of its own to say for the demo's refusal, and every other failure as it is", () => {
+    expect(unlessDemoRefused<'demo_refused' | 'invalid'>('demo_refused')).toBeNull();
+    expect(unlessDemoRefused<'demo_refused' | 'invalid'>('invalid')).toBe('invalid');
   });
 });

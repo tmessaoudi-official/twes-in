@@ -99,6 +99,10 @@ describe('ModulesFacade', () => {
     expect(await facade.setInterest('c1', 'quotes', false)).toBe(false);
     expect(facade.error()).toBe('already_available');
     expect(facade.modules()).toEqual([customers, { ...quotes, interested: true }]);
+
+    api.setInterest.mockRejectedValue(new ModulesRefused('demo_refused'));
+    expect(await facade.setInterest('c1', 'quotes', false)).toBe(false);
+    expect(facade.error()).toBeNull();
   });
 
   it('says the server could not be reached when the modules cannot be read', async () => {
