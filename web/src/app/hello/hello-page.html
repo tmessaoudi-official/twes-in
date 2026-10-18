@@ -2,6 +2,7 @@
   <section class="flex flex-col gap-6">
     <header class="flex flex-col gap-1">
       @if (today(); as today) {
+        <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
         <p class="text-sm first-letter:uppercase text-on-surface-variant" data-testid="home-today">
           {{ today }}
         </p>

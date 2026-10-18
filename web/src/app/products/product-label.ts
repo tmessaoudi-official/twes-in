@@ -33,10 +33,16 @@ export function labelCode<Code extends { role: BarcodeRole }>(codes: readonly Co
     'data-testid': 'product-label',
   },
   template: `
-    <span class="text-lg leading-tight font-semibold">{{ name() }}</span>
-    <span class="text-sm">{{ reference() }}</span>
+    <span class="text-lg leading-tight font-semibold"
+      ><bdi>{{ name() }}</bdi></span
+    >
+    <span class="text-sm"
+      ><bdi>{{ reference() }}</bdi></span
+    >
     @if (price(); as price) {
-      <span class="text-2xl font-bold">{{ price }}</span>
+      <span class="text-2xl font-bold"
+        ><bdi>{{ price }}</bdi></span
+      >
     }
     @if (quantity() > 1) {
       <span class="text-sm">{{
@@ -44,7 +50,9 @@ export function labelCode<Code extends { role: BarcodeRole }>(codes: readonly Co
       }}</span>
     }
     <app-barcode-svg class="block h-16" [value]="code()" />
-    <span class="text-center font-mono text-sm tracking-widest">{{ code() }}</span>
+    <span class="text-center font-mono text-sm tracking-widest"
+      ><bdi>{{ code() }}</bdi></span
+    >
   `,
 })
 export class ProductLabel {

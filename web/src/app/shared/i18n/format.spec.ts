@@ -97,6 +97,15 @@ describe('formatAmount', () => {
     expect(spaced(formatAmount('-1250.5', 3, 'fr-TN'))).toBe('-1 250,500');
   });
 
+  // A sign before a figure is a neutral character, which a line read right to left sends to the figure's right: the
+  // locale writes a left-to-right mark before it, and an amount keeps that mark whatever separators were chosen.
+  it('keeps a negative amount’s sign on the left in a language read right to left', () => {
+    expect(formatAmount('-1234.5', 1, 'ar-TN')).toBe('‎-1.234,5');
+    expect(formatAmount('-1234.5', 1, 'ar-TN', 'comma-dot')).toBe('‎-1,234.5');
+    expect(formatAmount('1234.5', 1, 'ar-TN')).toBe('1.234,5');
+    expect(formatAmount('-1234.5', 1, 'fr-TN', 'comma-dot')).toBe('-1,234.5');
+  });
+
   it('shows what is not a decimal as it came', () => {
     expect(formatAmount('abc', 3, 'fr')).toBe('abc');
     expect(formatAmount('', 3, 'fr')).toBe('');

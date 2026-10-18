@@ -346,7 +346,8 @@
         "invoice": "Facture",
         "credit_note": "Avoir",
         "delivery_note": "Bon de livraison",
-        "quote": "Devis"
+        "quote": "Devis",
+        "purchase_order": "Commande fournisseur"
       },
       "reset": {
         "yearly": "Chaque année",

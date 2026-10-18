@@ -54,7 +54,9 @@
             (change)="tick(barcode, $event.checked)"
             [attr.data-testid]="'product-labels-code-' + barcode.code"
           >
-            <span class="font-mono">{{ barcode.code }}</span>
+            <span class="font-mono"
+              ><bdi>{{ barcode.code }}</bdi></span
+            >
             · {{ 'products.barcodes.roles.' + barcode.role | translate }}
             @if (barcode.quantity > 1) {
               · {{ 'products.labels.pack_of' | translate: { quantity: barcode.quantity } }}

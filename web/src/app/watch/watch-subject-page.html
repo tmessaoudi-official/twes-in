@@ -24,7 +24,9 @@
           [attr.data-testid]="'watch-switch-' + subject.kind"
         >
           {{ 'watch.subjects.' + subject.kind + '.title' | translate }}
-          <span class="twes-chip-count">{{ subject.count }}</span>
+          <span class="twes-chip-count"
+            ><bdi>{{ subject.count }}</bdi></span
+          >
         </a>
       }
     </nav>
@@ -37,7 +39,8 @@
         {{ 'watch.subjects.' + kind() + '.title' | translate }}
         @if (count() !== null) {
           <span class="text-on-surface-variant" data-testid="watch-subject-total"
-            >({{ count() }})</span
+            >(<bdi>{{ count() }}</bdi
+            >)</span
           >
         }
       </h1>

@@ -1241,8 +1241,10 @@ app-cookie-notice {
       font-weight: 600;
     }
 
-    /* A value the row does not have (a cost known, nothing unvalued) leaves no labelled blank in the card. */
-    td:empty {
+    /* A value the row does not have (a cost known, nothing unvalued) leaves no labelled blank in the card, the value
+       written straight in the cell or in the bdi that keeps its own direction. */
+    td:empty,
+    td:has(> bdi:only-child:empty) {
       display: none;
     }
   }

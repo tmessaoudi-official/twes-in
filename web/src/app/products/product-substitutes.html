@@ -22,8 +22,12 @@
           [attr.data-testid]="'product-substitute-' + row.reference"
         >
           <a class="flex min-w-40 flex-col underline" [routerLink]="['/products', row.id]">
-            <span class="font-medium">{{ row.name }}</span>
-            <span class="text-sm opacity-80">{{ row.reference }}</span>
+            <span class="font-medium"
+              ><bdi>{{ row.name }}</bdi></span
+            >
+            <span class="text-sm opacity-80"
+              ><bdi>{{ row.reference }}</bdi></span
+            >
           </a>
           @if (stockOf(row); as stock) {
             <span [attr.data-testid]="'product-substitute-stock-' + row.reference">

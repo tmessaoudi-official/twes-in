@@ -37,7 +37,9 @@ const KINDS: Record<CountKind, { icon: IconName; tone: StatusTone }> = {
         [matTooltip]="label()"
       >
         <mat-icon aria-hidden="true" class="count-icon">{{ icon() }}</mat-icon>
-        <span data-count aria-hidden="true">{{ text() }}</span>
+        <span data-count aria-hidden="true"
+          ><bdi>{{ text() }}</bdi></span
+        >
       </span>
     }
   `,

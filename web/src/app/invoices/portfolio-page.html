@@ -33,7 +33,7 @@
       {{ 'invoices.instruments.kinds.' + row.kind | translate }}
     </ng-template>
     <ng-template appDataListCell="amount" let-row>
-      {{ row.amount | amount: null }} {{ row.currency }}
+      {{ row.amount | amount: null }} <bdi>{{ row.currency }}</bdi>
     </ng-template>
     <ng-template appDataListCell="status" let-row>
       <app-status-badge [tone]="toneOf(row.status)">

@@ -15,8 +15,12 @@
         [attr.data-testid]="'product-reorder-' + row.establishmentCode"
       >
         <span class="flex min-w-40 flex-col">
-          <span class="font-medium">{{ row.establishmentName }}</span>
-          <span class="text-sm opacity-80">{{ row.establishmentCode }}</span>
+          <span class="font-medium"
+            ><bdi>{{ row.establishmentName }}</bdi></span
+          >
+          <span class="text-sm opacity-80"
+            ><bdi>{{ row.establishmentCode }}</bdi></span
+          >
         </span>
         @if (readOnly()) {
           <span [attr.data-testid]="'product-reorder-value-' + row.establishmentCode">

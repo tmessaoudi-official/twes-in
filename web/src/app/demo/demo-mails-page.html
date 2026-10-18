@@ -27,7 +27,9 @@
                 [attr.data-testid]="'demo-mail-' + mail.id"
                 (click)="open(mail)"
               >
-                <span class="font-medium">{{ mail.subject }}</span>
+                <span class="font-medium"
+                  ><bdi>{{ mail.subject }}</bdi></span
+                >
                 <span class="text-sm text-on-surface-variant">{{ mail.capturedAt | moment }}</span>
               </button>
             </li>
@@ -38,7 +40,9 @@
             class="flex min-w-0 flex-col gap-3 rounded-lg border border-outline-variant p-4"
             data-testid="demo-mail-opened"
           >
-            <h2 class="m-0 text-lg font-medium">{{ mail.subject }}</h2>
+            <h2 class="m-0 text-lg font-medium">
+              <bdi>{{ mail.subject }}</bdi>
+            </h2>
             <p class="m-0 text-sm text-on-surface-variant">{{ mail.capturedAt | moment }}</p>
             <div
               class="relative min-w-0 overflow-x-auto"

@@ -55,7 +55,9 @@
       <div class="flex flex-col gap-4" data-testid="stock-count-lines">
         @for (group of groups(); track group.locationId; let g = $index) {
           <section class="flex flex-col gap-2" [attr.data-testid]="'stock-count-group-' + g">
-            <h2 class="m-0 text-lg font-medium">{{ group.name }}</h2>
+            <h2 class="m-0 text-lg font-medium">
+              <bdi>{{ group.name }}</bdi>
+            </h2>
             <ol class="m-0 flex list-none flex-col gap-2 p-0">
               @for (entry of group.entries; track entry.index) {
                 @let line = entry.line;
@@ -65,8 +67,12 @@
                   [attr.data-testid]="'stock-count-' + i"
                 >
                   <div class="flex min-w-48 flex-1 flex-col pt-3">
-                    <span class="font-medium">{{ line.name }}</span>
-                    <span class="text-sm opacity-80">{{ line.reference }}</span>
+                    <span class="font-medium"
+                      ><bdi>{{ line.name }}</bdi></span
+                    >
+                    <span class="text-sm opacity-80"
+                      ><bdi>{{ line.reference }}</bdi></span
+                    >
                   </div>
                   @if (line.tracking !== 'none') {
                     <mat-form-field>

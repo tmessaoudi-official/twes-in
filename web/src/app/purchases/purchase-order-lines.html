@@ -67,9 +67,9 @@
               required
               [attr.data-testid]="'purchase-line-' + i + '-quantity'"
             />
-            <span matTextSuffix [attr.data-testid]="'purchase-line-' + i + '-unit'">{{
-              unitOf(line)
-            }}</span>
+            <span matTextSuffix [attr.data-testid]="'purchase-line-' + i + '-unit'"
+              ><bdi>{{ unitOf(line) }}</bdi></span
+            >
           </mat-form-field>
           @if (errorKey(line, 'quantity'); as key) {
             <span

@@ -45,7 +45,7 @@
               <div class="flex justify-between gap-4 sm:flex-col sm:justify-start">
                 <dt class="text-sm">{{ 'licensing.price' | translate }}</dt>
                 <dd class="font-medium" data-testid="subscription-price">
-                  {{ current.price | amount: null }} {{ current.currency }} /
+                  {{ current.price | amount: null }} <bdi>{{ current.currency }}</bdi> /
                   {{
                     'licensing.periods.' + current.periodUnit
                       | translate: { count: current.periodCount }
@@ -114,7 +114,7 @@
           @for (payment of current.payments; track payment.id) {
             <li class="flex flex-wrap items-baseline justify-between gap-2 border-b py-2">
               <span class="font-medium"
-                >{{ payment.amount | amount: null }} {{ payment.currency }}</span
+                >{{ payment.amount | amount: null }} <bdi>{{ payment.currency }}</bdi></span
               >
               <span class="text-sm">
                 {{ 'licensing.payment.methods.' + payment.method | translate }} ·

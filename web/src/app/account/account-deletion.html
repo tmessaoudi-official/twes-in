@@ -19,7 +19,9 @@
             class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant p-3"
             [attr.data-testid]="'account-delete-company-' + i"
           >
-            <span class="font-medium">{{ company.name }}</span>
+            <span class="font-medium"
+              ><bdi>{{ company.name }}</bdi></span
+            >
             <span class="flex flex-wrap gap-2">
               <button
                 mat-stroked-button

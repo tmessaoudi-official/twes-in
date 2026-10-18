@@ -39,9 +39,9 @@
     emptyTestId="activity-empty"
   >
     <ng-template appDataListCell="at" let-row>{{ row.at | moment }}</ng-template>
-    <ng-template appDataListCell="fields" let-row>{{
-      row.fields | activityFields: row.entityType
-    }}</ng-template>
+    <ng-template appDataListCell="fields" let-row
+      ><bdi>{{ row.fields | activityFields: row.entityType }}</bdi></ng-template
+    >
     <ng-template appDataListCell="actor" let-row>
       {{ row.actorName ?? (unnamedActorKey(row) | translate) }}
     </ng-template>

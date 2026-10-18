@@ -48,13 +48,16 @@ const TYPE_NAMES: Record<string, string> = {
       data-testid="file-drop-zone"
     >
       <mat-icon aria-hidden="true" class="text-primary">upload_file</mat-icon>
+      <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
       <span class="font-medium">{{ label() }}</span>
       <span class="text-on-surface-variant">{{ 'form.file.drop' | translate }}</span>
-      <span class="text-xs text-on-surface-variant" data-testid="file-drop-limits">{{
-        limits()
-      }}</span>
+      <span class="text-xs text-on-surface-variant" data-testid="file-drop-limits"
+        ><bdi>{{ limits() }}</bdi></span
+      >
       @if (chosenName(); as name) {
-        <span class="break-all text-xs font-medium" data-testid="file-drop-chosen">{{ name }}</span>
+        <span class="break-all text-xs font-medium" data-testid="file-drop-chosen"
+          ><bdi>{{ name }}</bdi></span
+        >
       }
       <input
         type="file"
@@ -66,9 +69,9 @@ const TYPE_NAMES: Record<string, string> = {
       />
     </label>
     @if (refusal(); as message) {
-      <span role="alert" class="px-2 text-xs text-error" data-testid="file-drop-refused">{{
-        message
-      }}</span>
+      <span role="alert" class="px-2 text-xs text-error" data-testid="file-drop-refused"
+        ><bdi>{{ message }}</bdi></span
+      >
     }
   `,
 })

@@ -110,7 +110,9 @@
             >
               <mat-option [value]="null">{{ 'reports.establishment.all' | translate }}</mat-option>
               @for (each of establishments(); track each.id) {
-                <mat-option [value]="each.id">{{ each.code }} · {{ each.name }}</mat-option>
+                <mat-option [value]="each.id"
+                  ><bdi>{{ each.code }}</bdi> · <bdi>{{ each.name }}</bdi></mat-option
+                >
               }
             </mat-select>
           </mat-form-field>

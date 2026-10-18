@@ -20,7 +20,7 @@
           {{ 'customers.account.balance' | translate }}
         </dt>
         <dd class="text-lg font-semibold tabular-nums">
-          {{ a.balance | amount: a.currencyScale }} {{ a.currency }}
+          {{ a.balance | amount: a.currencyScale }} <bdi>{{ a.currency }}</bdi>
         </dd>
       </div>
       <div data-testid="account-overdue">
@@ -28,7 +28,7 @@
           {{ 'customers.account.overdue' | translate }}
         </dt>
         <dd class="text-lg font-semibold tabular-nums" [class.text-error]="a.overdueCount > 0">
-          {{ a.overdue | amount: a.currencyScale }} {{ a.currency }}
+          {{ a.overdue | amount: a.currencyScale }} <bdi>{{ a.currency }}</bdi>
         </dd>
         @if (a.overdueCount > 0) {
           <dd class="text-sm" data-testid="account-overdue-detail">
@@ -45,7 +45,7 @@
             {{ 'customers.account.on_account' | translate }}
           </dt>
           <dd class="text-lg font-semibold tabular-nums">
-            {{ a.onAccount | amount: a.currencyScale }} {{ a.currency }}
+            {{ a.onAccount | amount: a.currencyScale }} <bdi>{{ a.currency }}</bdi>
           </dd>
         </div>
       }
@@ -54,7 +54,7 @@
           {{ 'customers.account.owed' | translate }}
         </dt>
         <dd class="text-lg font-semibold tabular-nums" [class.text-error]="a.overCreditLimit">
-          {{ a.owed | amount: a.currencyScale }} {{ a.currency }}
+          {{ a.owed | amount: a.currencyScale }} <bdi>{{ a.currency }}</bdi>
         </dd>
         @if (hasLimit()) {
           <dd

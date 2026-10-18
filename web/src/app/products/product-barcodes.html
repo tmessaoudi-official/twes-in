@@ -8,12 +8,16 @@
       <ul class="flex flex-col gap-2" data-testid="product-barcodes-readonly">
         @for (row of saved(); track row.code) {
           <li class="flex flex-wrap items-center gap-3 rounded border border-outline-variant p-3">
-            <span class="font-mono">{{ row.code }}</span>
+            <span class="font-mono"
+              ><bdi>{{ row.code }}</bdi></span
+            >
             <span class="text-sm opacity-80">{{
               'products.barcodes.roles.' + row.role | translate
             }}</span>
             @if (row.role !== 'unit') {
-              <span class="text-sm">× {{ row.quantity }}</span>
+              <span class="text-sm"
+                >× <bdi>{{ row.quantity }}</bdi></span
+              >
             }
           </li>
         }

@@ -22,7 +22,7 @@
             [attr.data-testid]="'customer-screen-place-' + option.code"
             (click)="choose(option.id)"
           >
-            {{ option.name }}
+            <bdi>{{ option.name }}</bdi>
           </button>
         }
       </div>
@@ -31,7 +31,10 @@
     @if (placeName(); as name) {
       <p class="m-0 flex flex-wrap items-center gap-3">
         <span data-testid="customer-screen-place"
-          >{{ 'customer_screen.place' | translate }} <strong>{{ name }}</strong></span
+          >{{ 'customer_screen.place' | translate }}
+          <strong
+            ><bdi>{{ name }}</bdi></strong
+          ></span
         >
         <button
           mat-button
@@ -98,10 +101,10 @@
                       }
                       <div class="flex flex-col gap-3">
                         <h2 class="m-0 text-2xl font-medium" data-testid="customer-screen-name">
-                          {{ product.name }}
+                          <bdi>{{ product.name }}</bdi>
                         </h2>
                         <p class="m-0 text-5xl font-semibold" data-testid="customer-screen-price">
-                          {{ product.finalPrice | amount: null }} {{ currency() }}
+                          {{ product.finalPrice | amount: null }} <bdi>{{ currency() }}</bdi>
                         </p>
                         <p class="m-0 text-sm opacity-80">
                           {{ 'customer_screen.taxes_included' | translate }}
@@ -134,7 +137,7 @@
                             data-testid="customer-screen-promotion"
                           >
                             <span class="font-semibold text-primary">
-                              {{ offer.price | amount: null }} {{ currency() }}
+                              {{ offer.price | amount: null }} <bdi>{{ currency() }}</bdi>
                             </span>
                             <span class="text-base opacity-80">
                               {{ 'customer_screen.offer' | translate }}

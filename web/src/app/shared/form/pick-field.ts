@@ -59,6 +59,7 @@ export const PICK_PAUSE_MS = 300;
   template: `
     <mat-form-field class="w-full">
       @if (labelInside()) {
+        <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
         <mat-label>{{ label() }}</mat-label>
       }
       <!-- The id below is matInput's own input, as every other field of a descriptor form binds it: an
@@ -78,6 +79,7 @@ export const PICK_PAUSE_MS = 300;
         (blur)="left()"
       />
       @if (hint() !== '') {
+        <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
         <mat-hint [id]="testId() + '-hint'">{{ hint() }}</mat-hint>
       }
       <!--
@@ -118,14 +120,14 @@ export const PICK_PAUSE_MS = 300;
           </mat-option>
         }
         @if (clearable() && !scanning()) {
-          <mat-option [value]="null" [attr.data-testid]="testId() + '-none'">{{
-            noneLabel()
-          }}</mat-option>
+          <mat-option [value]="null" [attr.data-testid]="testId() + '-none'"
+            ><bdi>{{ noneLabel() }}</bdi></mat-option
+          >
         }
         @if (asked() && offered().length === 0) {
-          <mat-option disabled [attr.data-testid]="testId() + '-none-found'">{{
-            noneFoundLabel()
-          }}</mat-option>
+          <mat-option disabled [attr.data-testid]="testId() + '-none-found'"
+            ><bdi>{{ noneFoundLabel() }}</bdi></mat-option
+          >
         }
       </mat-autocomplete>
     </mat-form-field>

@@ -10,7 +10,9 @@
           | translate: { company: offer.companyName, role: 'roles.' + offer.roleName | translate }
       }}
     </p>
-    <p class="twes-auth-intro" data-testid="invitation-email">{{ offer.email }}</p>
+    <p class="twes-auth-intro" data-testid="invitation-email">
+      <bdi>{{ offer.email }}</bdi>
+    </p>
     <!-- Members are told before they join that what they do is kept in the journal (docs/SPEC.md § 7, 2026-09-26 23:04). -->
     <p class="text-sm text-on-surface-variant" data-testid="invitation-journal">
       {{ 'invitation.journal' | translate: { company: offer.companyName } }}

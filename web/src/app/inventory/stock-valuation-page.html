@@ -69,14 +69,18 @@
                 [attr.data-testid]="'stock-valuation-' + line.productReference"
               >
                 <td class="p-2">
-                  <span class="font-medium">{{ line.productName }}</span>
-                  <span class="opacity-80"> · {{ line.productReference }}</span>
+                  <span class="font-medium"
+                    ><bdi>{{ line.productName }}</bdi></span
+                  >
+                  <span class="opacity-80">
+                    · <bdi>{{ line.productReference }}</bdi></span
+                  >
                 </td>
                 <td
                   class="p-2 text-end tabular-nums"
                   [attr.data-label]="'inventory.stock.fields.quantity' | translate"
                 >
-                  {{ line.quantity | amount: null }} {{ line.unitName }}
+                  {{ line.quantity | amount: null }} <bdi>{{ line.unitName }}</bdi>
                 </td>
                 <td
                   class="p-2 text-end tabular-nums"

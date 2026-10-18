@@ -16,14 +16,18 @@
           class="flex flex-col gap-2"
           [attr.data-testid]="'product-homes-group-' + group.establishmentId"
         >
-          <h3 class="text-sm opacity-80">{{ group.establishmentName }}</h3>
+          <h3 class="text-sm opacity-80">
+            <bdi>{{ group.establishmentName }}</bdi>
+          </h3>
           <ul class="flex flex-col gap-2" data-testid="product-homes-list">
             @for (home of group.homes; track home.id; let first = $first; let last = $last) {
               <li
                 class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
               >
                 <span class="flex flex-wrap items-center gap-2">
-                  <span class="font-medium">{{ home.locationCode }} — {{ home.locationName }}</span>
+                  <span class="font-medium"
+                    ><bdi>{{ home.locationCode }}</bdi> — <bdi>{{ home.locationName }}</bdi></span
+                  >
                   @if (home.main) {
                     <app-status-badge
                       tone="success"

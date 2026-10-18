@@ -38,7 +38,10 @@ import { BuildInfo } from './build-info';
         >
         @if (api.deployment && api.deployment !== 'prod') {
           <span aria-hidden="true"> · </span><span class="sr-only">, </span>
-          <span data-testid="build-deployment">[{{ api.deployment }}]</span>
+          <span data-testid="build-deployment"
+            >[<bdi>{{ api.deployment }}</bdi
+            >]</span
+          >
         }
       }
     </button>

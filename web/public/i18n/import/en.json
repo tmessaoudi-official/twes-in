@@ -37,7 +37,7 @@
       "credit_limit": "Credit limit",
       "credit_limit_note": "What this customer may owe: beyond it, a notification says so after the invoice that passes it. 0 sets none.",
       "document_language": "Document language",
-      "document_language_note": "fr or en (French or English): the language its documents are printed in.",
+      "document_language_note": "The language its documents are printed in, by its code (“en”) or its name (“English”).",
       "exemption_reference": "VAT exemption provision",
       "exemption_reference_note": "Printed for this customer when it is exempt, e.g. « article 261-4-4° du CGI ».",
       "notes": "Notes",

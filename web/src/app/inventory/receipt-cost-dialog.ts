@@ -38,7 +38,9 @@ export interface ReceiptCostDialogData {
       {{ 'inventory.receipt_cost.title' | translate }}
     </h2>
     <mat-dialog-content>
-      <p class="font-semibold" data-testid="receipt-cost-product">{{ receipt.productLabel }}</p>
+      <p class="font-semibold" data-testid="receipt-cost-product">
+        <bdi>{{ receipt.productLabel }}</bdi>
+      </p>
       <dl class="mb-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
         <dt>{{ 'inventory.stock.fields.quantity' | translate }}</dt>
         <dd data-testid="receipt-cost-quantity">
@@ -47,7 +49,9 @@ export interface ReceiptCostDialogData {
         <dt>{{ 'inventory.stock.fields.at' | translate }}</dt>
         <dd data-testid="receipt-cost-at">{{ receipt.at | moment }}</dd>
         <dt>{{ 'inventory.stock.fields.location' | translate }}</dt>
-        <dd data-testid="receipt-cost-location">{{ receipt.locationLabel }}</dd>
+        <dd data-testid="receipt-cost-location">
+          <bdi>{{ receipt.locationLabel }}</bdi>
+        </dd>
         @if (receipt.vendorName; as vendor) {
           <dt>{{ 'inventory.stock.fields.vendor' | translate }}</dt>
           <dd data-testid="receipt-cost-vendor">

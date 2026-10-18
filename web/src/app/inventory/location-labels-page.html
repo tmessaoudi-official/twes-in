@@ -34,11 +34,13 @@
           class="leading-none font-bold"
           [class]="codeSize(label.code)"
           data-testid="location-label-code"
-          >{{ label.code }}</span
+          ><bdi>{{ label.code }}</bdi></span
         >
         <div class="flex items-center gap-4">
           <app-qr-code class="w-28 shrink-0" [value]="address(label.id)" [label]="label.path" />
-          <span class="min-w-0 text-sm break-words">{{ label.path }}</span>
+          <span class="min-w-0 text-sm break-words"
+            ><bdi>{{ label.path }}</bdi></span
+          >
         </div>
       </li>
     }

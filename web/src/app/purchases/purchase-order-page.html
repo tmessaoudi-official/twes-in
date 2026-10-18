@@ -145,13 +145,15 @@
                   @for (line of order.lines; track line.id; let i = $index) {
                     <tr [attr.data-testid]="'purchase-order-line-' + i">
                       <td class="p-2">
-                        <span class="font-medium">{{ line.productReference }}</span>
-                        <span class="block text-sm text-on-surface-variant">{{
-                          line.description
-                        }}</span>
+                        <span class="font-medium"
+                          ><bdi>{{ line.productReference }}</bdi></span
+                        >
+                        <span class="block text-sm text-on-surface-variant"
+                          ><bdi>{{ line.description }}</bdi></span
+                        >
                       </td>
                       <td class="p-2 text-end tabular-nums">
-                        {{ plain(line.quantity) | amount: null }} {{ line.unitName }}
+                        {{ plain(line.quantity) | amount: null }} <bdi>{{ line.unitName }}</bdi>
                       </td>
                       <td
                         class="p-2 text-end tabular-nums"
@@ -188,7 +190,8 @@
         <mat-card-content class="flex flex-col gap-2">
           <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
             <dt class="font-semibold">
-              {{ 'purchases.fields.totalNet' | translate }} ({{ company()?.currency }})
+              {{ 'purchases.fields.totalNet' | translate }} (<bdi>{{ company()?.currency }}</bdi
+              >)
             </dt>
             <dd class="text-end font-semibold" data-testid="purchase-order-total">
               {{ order.totalNet | amount: null }}
@@ -213,16 +216,25 @@
                     'purchases.receipts.on' | translate: { day: (receipt.receivedOn | day) }
                   }}</span>
                   @if (receipt.supplierReference) {
-                    <span>{{ receipt.supplierReference }}</span>
+                    <span
+                      ><bdi>{{ receipt.supplierReference }}</bdi></span
+                    >
                   }
                 </p>
                 <ul class="flex flex-col gap-0.5 text-sm text-on-surface-variant">
                   @for (line of receipt.lines; track $index) {
                     <li class="twes-dot-list">
-                      <span>{{ line.of?.productReference }}</span>
-                      <span>{{ plain(line.quantity) | amount: null }} {{ line.of?.unitName }}</span>
+                      <span
+                        ><bdi>{{ line.of?.productReference }}</bdi></span
+                      >
+                      <span
+                        >{{ plain(line.quantity) | amount: null }}
+                        <bdi>{{ line.of?.unitName }}</bdi></span
+                      >
                       @if (line.lotCode) {
-                        <span>{{ line.lotCode }}</span>
+                        <span
+                          ><bdi>{{ line.lotCode }}</bdi></span
+                        >
                       }
                     </li>
                   }

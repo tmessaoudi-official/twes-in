@@ -122,7 +122,9 @@
               }}</span>
               <span class="text-3xl font-semibold tabular-nums" data-testid="invoice-amount-due">
                 {{ invoice.amountDue | amount: scale() }}
-                <span class="text-base font-normal">{{ options()?.currency }}</span>
+                <span class="text-base font-normal"
+                  ><bdi>{{ options()?.currency }}</bdi></span
+                >
               </span>
             </div>
             <p class="text-sm tabular-nums text-on-surface-variant">
@@ -337,7 +339,9 @@
               <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
             }
             @for (tax of invoice.fixedTaxes; track tax.code) {
-              <dt>{{ taxName()(tax.code, null) ?? tax.code }}</dt>
+              <dt>
+                <bdi>{{ taxName()(tax.code, null) ?? tax.code }}</bdi>
+              </dt>
               <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
             }
             <dt class="font-semibold">{{ 'invoices.totals.total' | translate }}</dt>
@@ -415,7 +419,9 @@
                         {{ payment.date | day }}</span
                       >
                       @if (payment.reference) {
-                        <span class="text-sm text-on-surface-variant">{{ payment.reference }}</span>
+                        <span class="text-sm text-on-surface-variant"
+                          ><bdi>{{ payment.reference }}</bdi></span
+                        >
                       }
                     </span>
                     <span class="flex items-center gap-2">

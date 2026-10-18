@@ -12,7 +12,9 @@
         </div>
         <span class="text-3xl font-semibold tabular-nums">
           {{ s.month | amount: s.currencyScale }}
-          <span class="text-base font-normal text-on-surface-variant">{{ s.currency }}</span>
+          <span class="text-base font-normal text-on-surface-variant"
+            ><bdi>{{ s.currency }}</bdi></span
+          >
         </span>
         @if (versus(); as v) {
           <span class="text-sm tabular-nums text-on-surface-variant">{{

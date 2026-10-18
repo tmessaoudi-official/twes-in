@@ -20,7 +20,7 @@
           class="text-2xl font-semibold tabular-nums outline-none"
           data-testid="invoice-sheet-title"
         >
-          {{ invoice.number }}
+          <bdi>{{ invoice.number }}</bdi>
         </h2>
         @if (customerLinked()) {
           <a
@@ -66,7 +66,9 @@
         <span class="text-sm text-on-surface-variant">{{ 'invoices.due.left' | translate }}</span>
         <span class="text-3xl font-semibold tabular-nums">
           {{ invoice.amountDue | amount: scale() }}
-          <span class="text-base font-normal">{{ options()?.currency }}</span>
+          <span class="text-base font-normal"
+            ><bdi>{{ options()?.currency }}</bdi></span
+          >
         </span>
         <div
           class="h-2 overflow-hidden rounded-full bg-surface-container-highest"
@@ -134,7 +136,9 @@
       }
       @if (establishment(); as establishment) {
         <dt class="text-on-surface-variant">{{ 'invoices.fields.establishmentId' | translate }}</dt>
-        <dd>{{ establishment }}</dd>
+        <dd>
+          <bdi>{{ establishment }}</bdi>
+        </dd>
       }
     </dl>
 

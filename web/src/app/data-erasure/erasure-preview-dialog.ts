@@ -26,7 +26,9 @@ export interface ErasurePreviewLine {
       <ul class="m-0 flex list-none flex-col gap-2 p-0" data-testid="erasure-preview-lines">
         @for (line of lines; track line.label) {
           <li class="flex justify-between gap-4">
+            <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
             <span>{{ line.label }}</span>
+            <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
             <span class="font-medium">{{ line.summary }}</span>
           </li>
         }

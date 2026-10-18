@@ -26,7 +26,7 @@
       <mat-card>
         <mat-card-content>
           <h2 class="mb-4 text-xl font-medium" data-testid="series-editing">
-            {{ row.establishmentCode }} ·
+            <bdi>{{ row.establishmentCode }}</bdi> ·
             {{ 'company.numbering.document_types.' + row.documentType | translate }}
           </h2>
           <app-descriptor-form
@@ -76,7 +76,9 @@
       {{ 'company.numbering.reset.' + row.resetPeriod | translate }}
     </ng-template>
     <ng-template appDataListCell="preview" let-row>
-      <span class="font-mono">{{ row.preview }}</span>
+      <span class="font-mono"
+        ><bdi>{{ row.preview }}</bdi></span
+      >
     </ng-template>
   </app-data-list>
 </section>

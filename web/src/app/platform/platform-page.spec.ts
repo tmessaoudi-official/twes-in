@@ -772,7 +772,9 @@ describe('PlatformPage', () => {
 
     const waiting = query('payment-p1')!;
     expect(waiting.textContent).toContain('Nouvelle Société');
-    expect(waiting.textContent).toContain('600.000');
+    // The amount and the day as the operator's screen writes them, never the API's own strings.
+    expect(waiting.textContent).toContain('600,000 TND');
+    expect(waiting.textContent).toContain('16/09/2026');
     expect(waiting.textContent).toContain('Espèces');
 
     // The operator says how many periods it covers before confirming; one unless they change it.

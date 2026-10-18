@@ -65,6 +65,7 @@ const FAILED_KINDS: Readonly<Record<string, string>> = {
 };
 import { Feedback } from '../shared/feedback/feedback';
 import { SubscriptionFacade } from '../licensing/subscription-facade';
+import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 
 /**
  * The operators' page: whether anyone may sign up, whether a company that signs up waits for approval, the
@@ -85,6 +86,8 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
     SelectedTabInView,
     RouterLink,
     TranslatePipe,
+    AmountPipe,
+    DayPipe,
     DataList,
     DataListCell,
     StatusBadge,

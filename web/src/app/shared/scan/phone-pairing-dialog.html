@@ -9,7 +9,7 @@
         <app-qr-code [value]="state.url" [label]="'scan.phone.qr' | translate" />
       </div>
       <p class="m-0 font-mono text-xs break-all select-all" data-testid="phone-pair-url">
-        {{ state.url }}
+        <bdi>{{ state.url }}</bdi>
       </p>
       <p class="m-0 flex items-center gap-2" role="status" data-testid="phone-pair-status">
         <mat-icon aria-hidden="true">{{

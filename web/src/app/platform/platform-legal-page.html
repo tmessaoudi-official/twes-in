@@ -54,7 +54,9 @@
         <tr>
           <th scope="col">{{ 'platform.legal.page' | translate }}</th>
           @for (language of languages; track language) {
-            <th scope="col" [attr.lang]="language">{{ names[language] }}</th>
+            <th scope="col" [attr.lang]="language">
+              <bdi>{{ names[language] }}</bdi>
+            </th>
           }
         </tr>
       </thead>
@@ -91,7 +93,7 @@
   @if (opened(); as current) {
     <section class="flex flex-col gap-3" aria-labelledby="legal-editor-title">
       <h2 id="legal-editor-title" class="text-xl font-semibold" data-testid="legal-editor-title">
-        {{ 'legal.pages.' + current.page | translate }} — {{ names[current.language] }}
+        {{ 'legal.pages.' + current.page | translate }} — <bdi>{{ names[current.language] }}</bdi>
       </h2>
       <div class="flex flex-wrap gap-2">
         <button

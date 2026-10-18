@@ -77,7 +77,7 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
           <div>
             <dt class="text-sm opacity-80">{{ 'products.calculator.profit' | translate }}</dt>
             <dd class="m-0 text-xl font-semibold" data-testid="price-calculator-profit">
-              {{ shown(profit()) | amount: scale() }} {{ currency() }}
+              {{ shown(profit()) | amount: scale() }} <bdi>{{ currency() }}</bdi>
             </dd>
           </div>
           <div>
@@ -181,7 +181,7 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
                 'products.calculator.price_to_ask' | translate
               }}</span>
               <span class="text-xl font-semibold" data-testid="price-calculator-target">
-                {{ target | amount: scale() }} {{ currency() }}
+                {{ target | amount: scale() }} <bdi>{{ currency() }}</bdi>
               </span>
               <span
                 class="max-w-prose text-sm opacity-80"

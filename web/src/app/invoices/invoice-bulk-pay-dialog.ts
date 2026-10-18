@@ -123,8 +123,12 @@ function fromThousandths(value: bigint): string {
               @for (row of included(); track row.id) {
                 <li class="flex items-baseline justify-between gap-4">
                   <span class="flex flex-col">
-                    <span class="font-medium">{{ row.number }}</span>
-                    <span class="text-sm text-on-surface-variant">{{ row.customerName }}</span>
+                    <span class="font-medium"
+                      ><bdi>{{ row.number }}</bdi></span
+                    >
+                    <span class="text-sm text-on-surface-variant"
+                      ><bdi>{{ row.customerName }}</bdi></span
+                    >
                   </span>
                   <span class="tabular-nums">{{ row.amount | amount: data.scale }}</span>
                 </li>

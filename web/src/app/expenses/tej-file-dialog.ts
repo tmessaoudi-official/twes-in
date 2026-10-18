@@ -68,7 +68,7 @@ export interface TejFileDialogData {
                 @for (expense of refused.expenses; track expense.id) {
                   <li class="text-sm" [attr.data-testid]="'tej-refused-' + expense.id">
                     <a [routerLink]="['/expenses', expense.id]" (click)="ref.close(false)">
-                      {{ expense.description }}
+                      <bdi>{{ expense.description }}</bdi>
                     </a>
                     · {{ expense.paidOn | day }}
                     @if (expense.vendorName) {

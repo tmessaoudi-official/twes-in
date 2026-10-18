@@ -26,10 +26,12 @@
             >
           </p>
           <p [attr.data-testid]="'line-' + i + '-description'">
-            {{ line.controls.description.value }}
+            <bdi>{{ line.controls.description.value }}</bdi>
           </p>
           <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-            <p class="text-sm text-on-surface-variant">{{ taxNamesOf(line) }}</p>
+            <p class="text-sm text-on-surface-variant">
+              <bdi>{{ taxNamesOf(line) }}</bdi>
+            </p>
             @if (figuresOf(i); as figures) {
               <app-line-figures
                 [figures]="figures"
@@ -252,7 +254,7 @@
                     [attr.data-testid]="'line-' + i + '-discount-kind'"
                     (click)="switchDiscount(line, i)"
                   >
-                    {{ options().currency }}
+                    <bdi>{{ options().currency }}</bdi>
                   </button>
                   @if (givesBackDiscount(line)) {
                     <mat-hint [attr.data-testid]="'line-' + i + '-discount-share'">{{

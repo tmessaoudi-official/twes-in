@@ -95,7 +95,9 @@
                             {{ row.kind }}
                           }
                         </span>
-                        <span class="font-semibold">{{ row.count }}</span>
+                        <span class="font-semibold"
+                          ><bdi>{{ row.count }}</bdi></span
+                        >
                       </li>
                     }
                   </ul>
@@ -276,9 +278,11 @@
                 <mat-card-content>
                   <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
                     <div class="flex flex-col">
-                      <span class="font-medium">{{ company.name }}</span>
+                      <span class="font-medium"
+                        ><bdi>{{ company.name }}</bdi></span
+                      >
                       <span class="text-sm text-on-surface-variant">
-                        {{ company.countryCode }} ·
+                        <bdi>{{ company.countryCode }}</bdi> ·
                         {{
                           'platform.waiting.owners'
                             | translate: { owners: company.owners.join(', ') }
@@ -396,7 +400,9 @@
               <mat-card-content>
                 <div class="flex flex-wrap items-start justify-between gap-4">
                   <div class="flex min-w-0 flex-col gap-1">
-                    <h3 class="text-lg font-semibold">{{ company.name }}</h3>
+                    <h3 class="text-lg font-semibold">
+                      <bdi>{{ company.name }}</bdi>
+                    </h3>
                     <span class="text-sm text-on-surface-variant">
                       {{ 'platform.companies.countries.' + company.countryCode | translate }} ·
                       {{ 'platform.companies.statuses.' + company.status | translate }}
@@ -572,8 +578,12 @@
           >
             <ng-template appDataListCell="name" let-row>
               <span class="flex min-w-0 flex-col">
-                <span class="font-medium">{{ row.displayName }}</span>
-                <span class="text-sm break-all text-on-surface-variant">{{ row.email }}</span>
+                <span class="font-medium"
+                  ><bdi>{{ row.displayName }}</bdi></span
+                >
+                <span class="text-sm break-all text-on-surface-variant"
+                  ><bdi>{{ row.email }}</bdi></span
+                >
                 @if (row.platformOperator) {
                   <span class="text-sm">{{ 'platform.accounts.operator' | translate }}</span>
                 }
@@ -582,7 +592,7 @@
             <ng-template appDataListCell="companies" let-row>
               @for (membership of row.companies; track membership.id) {
                 <span class="block text-sm">
-                  {{ membership.name }}
+                  <bdi>{{ membership.name }}</bdi>
                   ({{ roleLabel(membership.role) | translate }})
                 </span>
               }
@@ -641,18 +651,24 @@
               <mat-card-content>
                 <div class="flex flex-col gap-3">
                   <div class="flex flex-wrap items-baseline justify-between gap-2">
-                    <span class="text-lg font-medium">{{ payment.companyName }}</span>
-                    <span>{{ payment.amount }} {{ payment.currency }}</span>
+                    <span class="text-lg font-medium"
+                      ><bdi>{{ payment.companyName }}</bdi></span
+                    >
+                    <span
+                      >{{ payment.amount | amount: null }} <bdi>{{ payment.currency }}</bdi></span
+                    >
                   </div>
                   <p class="text-sm">
                     {{ 'licensing.payment.methods.' + payment.method | translate }} ·
-                    {{ payment.paidOn }}
+                    {{ payment.paidOn | day }}
                     @if (payment.reference) {
-                      · {{ payment.reference }}
+                      · <bdi>{{ payment.reference }}</bdi>
                     }
                   </p>
                   @if (payment.note) {
-                    <p class="text-sm">{{ payment.note }}</p>
+                    <p class="text-sm">
+                      <bdi>{{ payment.note }}</bdi>
+                    </p>
                   }
                   <div class="flex flex-wrap items-center gap-2">
                     <mat-form-field subscriptSizing="dynamic">

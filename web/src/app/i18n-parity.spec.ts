@@ -35,7 +35,7 @@ import frStockPlan from '../../public/i18n/stock-plan/fr.json';
 import arTwoFactor from '../../public/i18n/two-factor/ar.json';
 import enTwoFactor from '../../public/i18n/two-factor/en.json';
 import frTwoFactor from '../../public/i18n/two-factor/fr.json';
-import { INTERFACE_LANGUAGES } from './shared/i18n/languages';
+import { directionOf, INTERFACE_LANGUAGES } from './shared/i18n/languages';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { SETTING_HINTS } from './shared/settings/setting-forms';
 
@@ -186,6 +186,22 @@ describe('translation files', () => {
 
   it('every language the interface speaks has its texts written here', () => {
     expect(INTERFACE_LANGUAGES.filter((lang) => !WRITTEN.includes(lang))).toEqual([]);
+  });
+
+  // In a line read right to left a sign before a figure is a neutral character, sent to the figure's right
+  // (« 850,050+ ») unless a left-to-right mark stands before it, as the language's own number format writes it; and a
+  // plain space between digits splits a figure in two, whose halves then swap places, where a narrow no-break space
+  // keeps it whole.
+  it('keeps a figure whole and its sign on its left in a language read right to left', () => {
+    const loose = WRITTEN.filter((lang) => directionOf(lang) === 'rtl').flatMap((lang) =>
+      entriesOf(load(lang))
+        .filter(
+          ([, text]) =>
+            /(?:^|\s)[+−-](?=\d|\{\{)/.test(text.replace(/\S[+−-]/g, '')) || /\d \d/.test(text),
+        )
+        .map(([key]) => `${lang}:${key}`),
+    );
+    expect(loose).toEqual([]);
   });
 
   describe('Arabic', () => {
