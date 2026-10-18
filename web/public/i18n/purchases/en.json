@@ -1,0 +1,135 @@
+{
+  "purchases": {
+    "none": "No purchase order matches.",
+    "no_company": "Choose a company to see its purchase orders.",
+    "read_only": "You may read purchase orders, not change them.",
+    "back": "Back to orders",
+    "draft": "Draft",
+    "draft_title": "Draft order",
+    "saved": "The draft was saved.",
+    "sent": "Order {{number}} is sent.",
+    "received_part": "The receipt is recorded; the rest is still expected.",
+    "received_all": "The receipt is recorded; the whole order is received.",
+    "closed": "The order is closed.",
+    "cancelled": "The order is cancelled.",
+    "totals_as_saved": "As saved, before taxes.",
+    "suggest": {
+      "receive": "Receive"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "partly_received": "Partly received",
+      "received": "Received",
+      "closed": "Closed",
+      "cancelled": "Cancelled"
+    },
+    "fixed_notes": {
+      "sent": "Sent to the vendor: it no longer changes. Receive the goods when they arrive, or cancel it while nothing is received.",
+      "partly_received": "Part of it is received: receive the rest when it arrives, or close the order if the rest will not come.",
+      "received": "Every ordered item is received.",
+      "closed": "Closed: the rest is no longer expected.",
+      "cancelled": "Cancelled: nothing is expected from it."
+    },
+    "errors": {
+      "network": "The server cannot be reached.",
+      "not_found": "This order does not exist, or no longer does.",
+      "conflict": "The order changed state meanwhile: reload the page to see where it stands.",
+      "record_changed": "Someone saved the order meanwhile.",
+      "invalid": "The order was not accepted: check what is marked.",
+      "vendor_unavailable": "This vendor is retired: choose another."
+    },
+    "fields": {
+      "number": "Number",
+      "status": "Status",
+      "vendorId": "Vendor",
+      "issueDate": "Sent on",
+      "expectedOn": "Expected on",
+      "totalNet": "Total excl. tax",
+      "remarksPrinted": "Remarks for the vendor",
+      "notesInternal": "Internal notes"
+    },
+    "sections": {
+      "order": "Order",
+      "notes": "Remarks and notes"
+    },
+    "form": {
+      "no_vendor_found": "No active vendor matches.",
+      "expected_hint": "The day the vendor is to deliver.",
+      "remarks_hint": "For the vendor, with the order.",
+      "notes_hint": "For the company only: never shown to the vendor."
+    },
+    "lines": {
+      "title": "Lines",
+      "position": "Line {{position}}",
+      "line": "The line",
+      "productId": "Product",
+      "description": "Description",
+      "description_hint": "The product's name to start with; write it as the vendor should read it.",
+      "quantity": "Quantity",
+      "unitPriceNet": "Unit price excl. tax",
+      "net": "Amount excl. tax",
+      "received": "Received",
+      "outstanding": "Still expected",
+      "no_product_found": "No goods match.",
+      "refused": "“{{field}}” is refused on this line.",
+      "remove": "Remove line {{position}}",
+      "remove_short": "Remove",
+      "add": "Add a line",
+      "errors": {
+        "productId": "Choose the goods ordered.",
+        "description": "5,000 characters at most.",
+        "quantity": "A positive quantity, three decimals at most.",
+        "unitPriceNet": "A price, four decimals at most."
+      }
+    },
+    "actions": {
+      "save": "Save",
+      "send": "Send the order",
+      "send_title": "Send the order?",
+      "send_message": "It gets its number and no longer changes. While nothing is received, it can still be cancelled.",
+      "receive": "Receive",
+      "close": "Close",
+      "close_title": "Close the order?",
+      "close_message": "The rest is no longer expected: the order is closed with what was received.",
+      "cancel": "Cancel the order",
+      "cancel_title": "Cancel the order?",
+      "cancel_message": "Nothing more will be expected or received from it.",
+      "confirm_cancel": "Cancel the order",
+      "keep": "Keep the order"
+    },
+    "receipts": {
+      "title": "Receipts",
+      "on": "Received on {{day}}"
+    },
+    "receive": {
+      "title": "Receive the goods",
+      "received_on": "Received on",
+      "reference_hint": "The number of the vendor's delivery note.",
+      "expected": "Expected: {{quantity}} {{unit}}",
+      "quantity": "Quantity received",
+      "expires": "Use-by date",
+      "serials": "Serial numbers, one per line",
+      "serials_hint": "{{count}} of {{expected}} expected",
+      "the_line": "The line",
+      "refused": "“{{field}}” is refused: check the value.",
+      "confirm": "{count, plural, =0 {Receive} one {Receive # line} other {Receive # lines}}",
+      "day_problems": {
+        "day": "Write the day the goods arrived.",
+        "before": "Goods arrive on the day the order was sent at the earliest.",
+        "after": "Goods are received once they arrived: today at the latest."
+      },
+      "problems": {
+        "quantity": "A positive quantity, three decimals at most.",
+        "over": "At most {{expected}} {{unit}}: that is what is still expected.",
+        "place": "Choose where the goods go.",
+        "lot": "This product is tracked by lot: write the lot.",
+        "lot_length": "A lot is 40 characters at most.",
+        "serials_over": "More numbers than pieces expected ({{expected}}).",
+        "serials_repeated": "The same serial number is written twice.",
+        "serial_length": "A serial number is 40 characters at most.",
+        "unit_cost": "A cost, four decimals at most."
+      }
+    }
+  }
+}

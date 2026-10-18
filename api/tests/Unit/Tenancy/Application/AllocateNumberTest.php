@@ -72,7 +72,7 @@ final class AllocateNumberTest extends TestCase
     {
         $this->expectException(NoNumberingSeries::class);
 
-        $this->transactions->run(fn () => $this->allocate->allocate($this->company, $this->head, 'purchase_order'));
+        $this->transactions->run(fn () => $this->allocate->allocate($this->company, $this->head, 'goods_receipt'));
     }
 
     private function deliveryNotes(): NumberingSeries

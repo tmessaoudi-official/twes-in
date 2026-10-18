@@ -188,10 +188,15 @@ class StockMovement implements CompanyOwned
         $this->at = $now;
     }
 
-    /** @throws InvalidStockMovement */
-    public static function receipt(Product $product, StockLocation $location, string $quantity, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null, ?string $unitCost = null, ?ReceiptDocument $document = null, bool $costToComplete = false): self
+    /**
+     * Goods arriving; `$sourceId` is the receipt line of an order to a vendor they arrived against, none for goods
+     * received at the stock itself.
+     *
+     * @throws InvalidStockMovement
+     */
+    public static function receipt(Product $product, StockLocation $location, string $quantity, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null, ?string $unitCost = null, ?ReceiptDocument $document = null, bool $costToComplete = false, ?Uuid $sourceId = null): self
     {
-        $receipt = new self($product, $location, $lot, StockMovementKind::In, self::onePieceOfASerial($product, self::quantity($quantity, $product, false)), self::SOURCE_RECEIPT, null, $recordedBy, $now);
+        $receipt = new self($product, $location, $lot, StockMovementKind::In, self::onePieceOfASerial($product, self::quantity($quantity, $product, false)), self::SOURCE_RECEIPT, $sourceId, $recordedBy, $now);
         if (null !== $unitCost) {
             $receipt->unitCost = self::cost($unitCost);
             $receipt->costTyped = true;

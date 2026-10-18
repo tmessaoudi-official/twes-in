@@ -77,14 +77,18 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     await expect(toast(page)).toContainText('Le fournisseur a été enregistré.');
     expect(await wcagViolations(page)).toEqual([]);
 
-    // What a vendor will offer once supplier orders ship, marked and opening the module's page: on Playwright's
-    // 1280 px window the vendor's bar, on its own row under the long title, has room for it, dashed
-    // (planned-in-bar.spec.ts covers « ⋮ » too).
-    const planned = page.getByTestId('planned-action-purchases');
-    await expect(planned.getByTestId('soon')).toBeVisible();
+    // An order to this vendor starts from its page, the vendor already named in the order's header.
+    const vendorAddress = page.url();
+    const order = page.getByTestId('record-new-purchase');
+    if (await order.isVisible()) await order.click();
+    else {
+      await page.getByTestId('record-more').click();
+      await page.getByTestId('record-menu-new-purchase').click();
+    }
+    await expect(page).toHaveURL(/\/purchases\/new\?vendorId=[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('field-vendorId')).toHaveValue(new RegExp(name));
     expect(await wcagViolations(page)).toEqual([]);
-    await planned.click();
-    await expect(page).toHaveURL(/\/coming\/purchases$/);
+    await page.goto(vendorAddress);
 
     await page.goto('/vendors');
     // Filtered: the shared company holds more vendors than a page, and the API searches the words.

@@ -1,0 +1,237 @@
+<section class="flex max-w-5xl flex-col gap-6">
+  <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-col gap-1">
+      <h1
+        class="text-3xl font-semibold"
+        data-testid="purchase-order-title"
+        [attr.aria-hidden]="!current() && id() !== null ? true : null"
+      >
+        @if (current(); as order) {
+          {{ order.number ?? ('purchases.draft_title' | translate) }}
+        } @else if (id() === null) {
+          {{ 'nav.new_purchase' | translate }}
+        }
+      </h1>
+      @if (current(); as order) {
+        <p
+          class="twes-dot-list text-sm text-on-surface-variant"
+          data-testid="purchase-order-status"
+        >
+          <app-status-badge
+            [tone]="tones[order.status]"
+            [struck]="stages[order.status] === 'withdrawn'"
+          >
+            {{ 'purchases.statuses.' + order.status | translate }}
+          </app-status-badge>
+          @if (order.issueDate) {
+            <span>{{ 'purchases.fields.issueDate' | translate }} {{ order.issueDate | day }}</span>
+          }
+          @if (order.expectedOn) {
+            <span
+              >{{ 'purchases.fields.expectedOn' | translate }} {{ order.expectedOn | day }}</span
+            >
+          }
+        </p>
+      }
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <app-document-actions [actions]="actions()" [planned]="planned()" />
+      <a mat-button routerLink="/purchases">{{ 'purchases.back' | translate }}</a>
+    </div>
+  </div>
+
+  @if (!company()) {
+    <p data-testid="purchase-order-no-company">{{ 'purchases.no_company' | translate }}</p>
+  }
+  @if (!mayWrite()) {
+    <p data-testid="purchase-order-read-only">{{ 'purchases.read_only' | translate }}</p>
+  } @else if (current(); as order) {
+    @if (order.status !== 'draft') {
+      <p data-testid="purchase-order-fixed">
+        {{ 'purchases.fixed_notes.' + order.status | translate }}
+      </p>
+    }
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="purchase-order-error" class="text-error">
+      {{ 'purchases.errors.' + code | translate }}
+    </p>
+  }
+
+  @if (form(); as form) {
+    @if (sync.changedBy(); as changedBy) {
+      <app-record-changed
+        [changedBy]="changedBy"
+        [conflictCount]="sync.conflicts().length"
+        (reload)="sync.reloadSaved(form)"
+      />
+    }
+    <mat-card>
+      <mat-card-content class="flex flex-col">
+        @if (asView()) {
+          <app-record-view
+            [descriptor]="descriptor"
+            [values]="form.getRawValue()"
+            [picked]="viewPicked()"
+            testId="purchase-order-view"
+          />
+        } @else {
+          <app-descriptor-form
+            [descriptor]="descriptor"
+            [form]="form"
+            [pickers]="{ vendorId: { search: searchVendors, value: vendorShown() } }"
+            testId="purchase-order-form"
+            [readOnly]="!editable()"
+            [updated]="sync.updated()"
+            [conflicts]="sync.conflicts()"
+            (resolved)="sync.resolve(form, $event)"
+            (submitted)="save()"
+          />
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (lines(); as lines) {
+    <mat-card>
+      <mat-card-content [class.twes-field-updated]="sync.updated().has('lines')">
+        @if (form(); as form) {
+          @if (sync.conflicts().some(isLinesConflict)) {
+            <app-part-conflict
+              field="lines"
+              message="live.lines_conflict"
+              (resolved)="sync.resolve(form, $event)"
+            />
+          }
+        }
+        @if (editable()) {
+          <app-purchase-order-lines
+            [lines]="lines"
+            [companyId]="company()?.id ?? ''"
+            [seesCost]="seesCost()"
+            [named]="named()"
+            [refused]="refusedLine()"
+          />
+        } @else if (current(); as order) {
+          <div class="flex flex-col gap-4">
+            <h2 class="text-xl font-semibold">{{ 'purchases.lines.title' | translate }}</h2>
+            <div class="relative overflow-x-auto">
+              <table class="w-full" data-testid="purchase-order-lines-read">
+                <thead>
+                  <tr>
+                    <th scope="col" class="p-2 text-start">
+                      {{ 'purchases.lines.productId' | translate }}
+                    </th>
+                    <th scope="col" class="p-2 text-end">
+                      {{ 'purchases.lines.quantity' | translate }}
+                    </th>
+                    <th scope="col" class="p-2 text-end">
+                      {{ 'purchases.lines.received' | translate }}
+                    </th>
+                    <th scope="col" class="p-2 text-end">
+                      {{ 'purchases.lines.outstanding' | translate }}
+                    </th>
+                    @if (seesCost()) {
+                      <th scope="col" class="p-2 text-end">
+                        {{ 'purchases.lines.unitPriceNet' | translate }}
+                      </th>
+                      <th scope="col" class="p-2 text-end">
+                        {{ 'purchases.lines.net' | translate }}
+                      </th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (line of order.lines; track line.id; let i = $index) {
+                    <tr [attr.data-testid]="'purchase-order-line-' + i">
+                      <td class="p-2">
+                        <span class="font-medium">{{ line.productReference }}</span>
+                        <span class="block text-sm text-on-surface-variant">{{
+                          line.description
+                        }}</span>
+                      </td>
+                      <td class="p-2 text-end tabular-nums">
+                        {{ plain(line.quantity) | amount: null }} {{ line.unitName }}
+                      </td>
+                      <td
+                        class="p-2 text-end tabular-nums"
+                        [attr.data-testid]="'purchase-order-line-' + i + '-received'"
+                      >
+                        {{ plain(line.received) | amount: null }}
+                      </td>
+                      <td
+                        class="p-2 text-end tabular-nums"
+                        [attr.data-testid]="'purchase-order-line-' + i + '-outstanding'"
+                      >
+                        {{ plain(line.outstanding) | amount: null }}
+                      </td>
+                      @if (seesCost()) {
+                        <td class="p-2 text-end tabular-nums">
+                          {{ line.unitPriceNet | amount: null }}
+                        </td>
+                        <td class="p-2 text-end tabular-nums">{{ line.net | amount: null }}</td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (current(); as order) {
+    @if (order.totalNet !== null) {
+      <mat-card data-testid="purchase-order-totals">
+        <mat-card-content class="flex flex-col gap-2">
+          <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
+            <dt class="font-semibold">
+              {{ 'purchases.fields.totalNet' | translate }} ({{ company()?.currency }})
+            </dt>
+            <dd class="text-end font-semibold" data-testid="purchase-order-total">
+              {{ order.totalNet | amount: null }}
+            </dd>
+          </dl>
+          <p class="text-xs opacity-70">{{ 'purchases.totals_as_saved' | translate }}</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @if (receipts().length > 0) {
+      <mat-card data-testid="purchase-order-receipts">
+        <mat-card-content class="flex flex-col gap-3">
+          <h2 class="text-xl font-semibold">{{ 'purchases.receipts.title' | translate }}</h2>
+          <ul class="flex flex-col gap-3">
+            @for (receipt of receipts(); track receipt.id) {
+              <li
+                class="flex flex-col gap-1"
+                [attr.data-testid]="'purchase-order-receipt-' + receipt.id"
+              >
+                <p class="twes-dot-list font-medium">
+                  <span>{{
+                    'purchases.receipts.on' | translate: { day: (receipt.receivedOn | day) }
+                  }}</span>
+                  @if (receipt.supplierReference) {
+                    <span>{{ receipt.supplierReference }}</span>
+                  }
+                </p>
+                <ul class="flex flex-col gap-0.5 text-sm text-on-surface-variant">
+                  @for (line of receipt.lines; track $index) {
+                    <li class="twes-dot-list">
+                      <span>{{ line.of?.productReference }}</span>
+                      <span>{{ plain(line.quantity) | amount: null }} {{ line.of?.unitName }}</span>
+                      @if (line.lotCode) {
+                        <span>{{ line.lotCode }}</span>
+                      }
+                    </li>
+                  }
+                </ul>
+              </li>
+            }
+          </ul>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+</section>

@@ -7,6 +7,7 @@ import { INVOICES_COMMANDS } from '../invoices/invoices-nav';
 import { PRODUCTS_COMMANDS } from '../products/products-nav';
 import { QUOTES_COMMANDS } from '../quotes/quotes-nav';
 import { VENDORS_COMMANDS } from '../vendors/vendors-nav';
+import { PURCHASES_COMMANDS } from '../purchases/purchases-nav';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import type { Gated, NavEntry } from './nav-manifest';
 import type { IconName } from '../shared/icons/icons';
@@ -95,6 +96,7 @@ export const MODULE_COMMANDS: readonly NavigateCommand[] = [
   ...PRODUCTS_COMMANDS,
   ...DELIVERY_NOTES_COMMANDS,
   ...VENDORS_COMMANDS,
+  ...PURCHASES_COMMANDS,
   ...EXPENSES_COMMANDS,
 ];
 

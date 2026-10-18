@@ -30,7 +30,6 @@ final readonly class PlannedModules
             new ModuleManifest('whatsapp', 'modules.whatsapp', ['invoices'], planned: 'v1'),
             new ModuleManifest('portal', 'modules.portal', ['customers', 'invoices'], planned: 'later'),
             // Buying and stock.
-            new ModuleManifest('purchases', 'modules.purchases', ['inventory', 'products', 'vendors'], planned: 'v1'),
             new ModuleManifest('composites', 'modules.composites', ['products'], planned: 'later'),
             // Money and compliance.
             new ModuleManifest('declarations', 'modules.declarations', ['invoices'], planned: 'v1'),

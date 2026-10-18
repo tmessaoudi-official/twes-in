@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Application\ReceiptCost;
 
 use App\Module\Inventory\Domain\Repository\StockMovementRepository;
-use App\Module\Inventory\Domain\ValueObject\CostOnReceive;
 use App\Module\Inventory\Domain\ValueObject\RunningValue;
 use App\Module\Products\Domain\Model\Product;
 use App\Settings\Application\ReadSetting;
@@ -33,8 +32,7 @@ final readonly class ReadReceiptCost
     public function read(Company $company, Product $product, ?string $quantity, ?string $unitCost): ReceiptCost
     {
         $context = new SettingContext($company, productCategoryId: $product->getCategory()?->getId(), productId: $product->getId());
-        $chosen = $this->settings->value($context, StockCostSettings::COST_ON_RECEIVE);
-        $mode = (\is_string($chosen) ? CostOnReceive::tryFrom($chosen) : null) ?? CostOnReceive::Suggest;
+        $mode = StockCostSettings::modeOf($this->settings->value($context, StockCostSettings::COST_ON_RECEIVE));
         $own = $product->getDetails()->costPrice;
         $costNow = null !== $own && is_numeric($own) ? new Number($own)->round(4)->value : null;
 

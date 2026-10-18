@@ -108,14 +108,15 @@ final class SeedPlatformTest extends TestCase
 
     /** An admin reads what a product costs; a member, who may be at the till in front of a customer, does not. */
     /**
-     * The clerk sells and nothing else (docs/SPEC.md § 7, 2026-10-03 08:09 and audit 2026-10-06 B-12): invoices issued and
-     * paid, delivery notes and quotes drafted, customers, products and stock read; no credit note, no validation, no cost, no
-     * settings, users or roles. The member keeps what it held before the clerk was folded into it, and both draft quotes as they draft delivery notes.
+     * The clerk sells and takes the goods delivered: invoices issued and paid, delivery notes and quotes drafted, customers,
+     * products and stock read, goods received against an order; no credit note, no validation, no cost, no settings, users
+     * or roles. The member keeps what it held before the clerk was folded into it, and both draft quotes as they draft
+     * delivery notes; the member also drafts and sends the orders to vendors.
      */
     public function testTheClerkHoldsExactlyWhatSellingTakesAndTheMemberWhatItHeldBefore(): void
     {
-        self::assertSame(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'customer.read', 'product.read', 'delivery_note.read', 'delivery_note.write', 'quote.read', 'quote.write', 'stock.read'], SeedPlatform::BUILT_IN_ROLES[Role::CLERK]);
-        self::assertSame(['company.read', 'invoice.read', 'invoice.write', 'customer.read', 'customer.write', 'product.read', 'delivery_note.read', 'delivery_note.write', 'quote.read', 'quote.write', 'stock.read', 'vendor.read', 'expense.read', 'fiscal.read'], SeedPlatform::BUILT_IN_ROLES[Role::MEMBER]);
+        self::assertSame(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'customer.read', 'product.read', 'delivery_note.read', 'delivery_note.write', 'quote.read', 'quote.write', 'stock.read', 'purchase.read', 'purchase.receive'], SeedPlatform::BUILT_IN_ROLES[Role::CLERK]);
+        self::assertSame(['company.read', 'invoice.read', 'invoice.write', 'customer.read', 'customer.write', 'product.read', 'delivery_note.read', 'delivery_note.write', 'quote.read', 'quote.write', 'stock.read', 'vendor.read', 'expense.read', 'purchase.read', 'purchase.write', 'fiscal.read'], SeedPlatform::BUILT_IN_ROLES[Role::MEMBER]);
     }
 
     /**
@@ -126,7 +127,7 @@ final class SeedPlatformTest extends TestCase
     {
         $accountant = SeedPlatform::BUILT_IN_ROLES[Role::ACCOUNTANT];
 
-        self::assertSame(['company.read', 'invoice.read', 'delivery_note.read', 'quote.read', 'customer.read', 'vendor.read', 'expense.read', 'fiscal.read', 'accounting.export'], $accountant);
+        self::assertSame(['company.read', 'invoice.read', 'delivery_note.read', 'quote.read', 'customer.read', 'vendor.read', 'expense.read', 'purchase.read', 'fiscal.read', 'accounting.export'], $accountant);
         self::assertSame([], array_values(array_filter($accountant, static fn (string $permission): bool => !str_ends_with($permission, '.read') && 'accounting.export' !== $permission)), 'nothing it holds writes');
     }
 

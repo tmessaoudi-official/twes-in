@@ -37,8 +37,8 @@ use Symfony\Component\Uid\Uuid;
  *  - numbers are assigned last, in one pass over the company in issue-date order through the real
  *    `NumberingSeries::allocate`, so they follow the dates and the series stands where the next real issue continues.
  *
- * Left out of this slice and named in LEFT_OUT: expenses, stock movements, audit rows, delivery notes, contacts, credit
- * balances and files. They keep their base rows and do not grow.
+ * Left out of this slice and named in LEFT_OUT: expenses, stock movements, orders to vendors, audit rows, delivery notes,
+ * contacts, credit balances and files. They keep their base rows and do not grow.
  */
 #[When('dev')]
 #[When('test')]
@@ -73,6 +73,8 @@ final class ScaleGenerator
         'expense_line_tax' => 'expenses: a follow-up slice',
         'expense_tax' => 'expenses: a follow-up slice',
         'file' => 'stored files, PDFs included: a clone has none and renders on first request',
+        'goods_receipt' => 'orders to vendors: a follow-up slice, with the stock they moved',
+        'goods_receipt_line' => 'orders to vendors: a follow-up slice, with the stock they moved',
         'import_run' => 'the files a company imported: a clone imported none',
         'invoice_chain_head' => 'where each series\' chain ends: written again when the company is chained after renumbering',
         'invoice_reminder' => 'the reminder stages late invoices reached: a clone has reached none',
@@ -80,6 +82,8 @@ final class ScaleGenerator
         'payment_instrument' => 'cheques and traites received: a clone starts with none, as with a customer\'s credit',
         'product_cost_change' => 'the cost history of a product: a clone starts with none',
         'product_photo' => 'the photos of a product, stored files: a clone has none, as with every file',
+        'purchase_order' => 'orders to vendors: a follow-up slice, with the stock they moved',
+        'purchase_order_line' => 'orders to vendors: a follow-up slice, with the stock they moved',
         'scan_photo' => 'a photo a paired phone took, waiting a quarter of an hour for its tab: nothing a clone carries',
         'quote' => 'quotes: a follow-up slice',
         'quote_line' => 'quotes: a follow-up slice',

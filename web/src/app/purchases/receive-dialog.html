@@ -1,0 +1,224 @@
+<h2 mat-dialog-title data-testid="receive-dialog-title">
+  {{ 'purchases.receive.title' | translate }}
+</h2>
+<mat-dialog-content>
+  <div class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-wrap gap-3">
+      <div class="flex min-w-48 flex-1 flex-col">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>{{ 'purchases.receive.received_on' | translate }}</mat-label>
+          <input
+            matInput
+            appDay
+            #dayField="appDay"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            required
+            [ngModel]="receivedOn()"
+            (ngModelChange)="receivedOn.set($event)"
+            data-testid="receive-day"
+          />
+          <app-day-calendar-button matSuffix [field]="dayField" />
+        </mat-form-field>
+        @if (dayProblem(); as problem) {
+          <span role="alert" class="px-4 pt-1 text-xs text-error" data-testid="receive-day-error">
+            {{ 'purchases.receive.day_problems.' + problem | translate }}
+          </span>
+        }
+      </div>
+      <mat-form-field subscriptSizing="dynamic" class="min-w-48 flex-1">
+        <mat-label>{{ 'inventory.stock.fields.supplierReference' | translate }}</mat-label>
+        <input
+          matInput
+          autocomplete="off"
+          [maxlength]="referenceMax"
+          [ngModel]="supplierReference()"
+          (ngModelChange)="supplierReference.set($event)"
+          data-testid="receive-reference"
+        />
+        <mat-hint>{{ 'purchases.receive.reference_hint' | translate }}</mat-hint>
+      </mat-form-field>
+    </div>
+
+    @for (row of rows(); track row.line.id; let i = $index) {
+      <fieldset
+        class="flex min-w-0 flex-col gap-3 rounded-xl border border-outline-variant p-3"
+        [attr.data-testid]="'receive-row-' + i"
+      >
+        <legend class="px-1 font-semibold">
+          {{ row.line.productReference }} · {{ row.line.description }}
+        </legend>
+        <p
+          class="text-sm text-on-surface-variant"
+          [attr.data-testid]="'receive-row-' + i + '-expected'"
+        >
+          {{
+            'purchases.receive.expected'
+              | translate
+                : {
+                    quantity: (plain(row.line.outstanding) | amount: null),
+                    unit: row.line.unitName,
+                  }
+          }}
+        </p>
+        <div class="grid items-start gap-3 sm:grid-cols-2">
+          @if (row.line.productTracking === 'serial') {
+            <mat-form-field subscriptSizing="dynamic" class="sm:col-span-2">
+              <mat-label>{{ 'purchases.receive.serials' | translate }}</mat-label>
+              <textarea
+                matInput
+                rows="3"
+                autocomplete="off"
+                [ngModel]="row.serials"
+                (ngModelChange)="update(i, { serials: $event })"
+                [attr.data-testid]="'receive-row-' + i + '-serials'"
+              ></textarea>
+              <mat-hint>{{
+                'purchases.receive.serials_hint'
+                  | translate
+                    : {
+                        count: serialCount(row),
+                        expected: (plain(row.line.outstanding) | amount: null),
+                      }
+              }}</mat-hint>
+            </mat-form-field>
+          } @else {
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ 'purchases.receive.quantity' | translate }}</mat-label>
+              <input
+                matInput
+                appDecimal
+                [ngModel]="row.quantity"
+                (ngModelChange)="update(i, { quantity: $event })"
+                [attr.data-testid]="'receive-row-' + i + '-quantity'"
+              />
+              <span matTextSuffix>{{ row.line.unitName }}</span>
+            </mat-form-field>
+          }
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ 'inventory.stock.fields.location' | translate }}</mat-label>
+            <mat-select
+              [ngModel]="row.locationId"
+              (ngModelChange)="update(i, { locationId: $event })"
+              [attr.data-testid]="'receive-row-' + i + '-place'"
+            >
+              @for (place of places; track place.id) {
+                <mat-option [value]="place.id">{{ place.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          @if (row.line.productTracking === 'lot') {
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ 'inventory.stock.fields.lot' | translate }}</mat-label>
+              <input
+                matInput
+                autocomplete="off"
+                [maxlength]="lotMax"
+                [ngModel]="row.lotCode"
+                (ngModelChange)="update(i, { lotCode: $event })"
+                [attr.data-testid]="'receive-row-' + i + '-lot'"
+              />
+            </mat-form-field>
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ 'purchases.receive.expires' | translate }}</mat-label>
+              <input
+                matInput
+                appDay
+                #expiresField="appDay"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                [ngModel]="row.lotExpiresOn"
+                (ngModelChange)="update(i, { lotExpiresOn: $event })"
+                [attr.data-testid]="'receive-row-' + i + '-expires'"
+              />
+              <app-day-calendar-button matSuffix [field]="expiresField" />
+            </mat-form-field>
+          }
+          @if (data.seesCost) {
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ 'inventory.stock.fields.unitCost' | translate }}</mat-label>
+              <input
+                matInput
+                appDecimal
+                [ngModel]="row.unitCost"
+                (ngModelChange)="update(i, { unitCost: $event })"
+                [attr.data-testid]="'receive-row-' + i + '-cost'"
+              />
+            </mat-form-field>
+          }
+        </div>
+        @if (problems()[i]; as problem) {
+          <p
+            role="alert"
+            class="text-xs text-error"
+            [attr.data-testid]="'receive-row-' + i + '-problem'"
+          >
+            {{
+              'purchases.receive.problems.' + problem
+                | translate
+                  : {
+                      expected: (plain(row.line.outstanding) | amount: null),
+                      unit: row.line.unitName,
+                    }
+            }}
+          </p>
+        }
+        @if (refusedLabel(i); as label) {
+          <p
+            role="alert"
+            class="text-xs text-error"
+            [attr.data-testid]="'receive-row-' + i + '-refused'"
+          >
+            {{ 'purchases.receive.refused' | translate: { field: (label | translate) } }}
+          </p>
+        }
+      </fieldset>
+    }
+
+    @if (asksCostBasis) {
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>{{ 'inventory.stock.fields.applyCost' | translate }}</mat-label>
+        <mat-select
+          [ngModel]="apply()"
+          (ngModelChange)="apply.set($event)"
+          data-testid="receive-apply"
+        >
+          <mat-option value="">{{ 'inventory.movement.apply_cost.none' | translate }}</mat-option>
+          <mat-option value="last">{{
+            'inventory.movement.apply_cost.last' | translate
+          }}</mat-option>
+          <mat-option value="average">{{
+            'inventory.movement.apply_cost.average' | translate
+          }}</mat-option>
+        </mat-select>
+        <mat-hint>{{ 'inventory.movement.apply_cost_hint' | translate }}</mat-hint>
+      </mat-form-field>
+    }
+
+    @if (receiptRefused(); as refused) {
+      <p role="alert" class="text-sm text-error" data-testid="receive-refused">
+        @if (refused.label; as label) {
+          {{ 'purchases.receive.refused' | translate: { field: (label | translate) } }}
+        } @else {
+          {{ 'purchases.errors.' + refused.code | translate }}
+        }
+      </p>
+    }
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="ref.close(false)" data-testid="receive-cancel">
+    {{ 'purchases.actions.keep' | translate }}
+  </button>
+  <button
+    mat-flat-button
+    type="button"
+    [disabled]="!valid() || busy()"
+    (click)="submit()"
+    data-testid="receive-confirm"
+  >
+    {{ 'purchases.receive.confirm' | translate: { count: bringing() } }}
+  </button>
+</mat-dialog-actions>

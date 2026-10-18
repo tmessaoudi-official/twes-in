@@ -174,6 +174,11 @@
     },
     "accounting": {
       "export": "Exporter les journaux comptables"
+    },
+    "purchase": {
+      "read": "Voir les commandes fournisseurs",
+      "write": "Préparer, envoyer et clore les commandes fournisseurs",
+      "receive": "Réceptionner la marchandise commandée"
     }
   },
   "members": {
@@ -578,7 +583,8 @@
     "quotes": "Devis",
     "activity": "Journal d’activité",
     "accounting_export": "Export comptable",
-    "data_erasure": "Effacer des données"
+    "data_erasure": "Effacer des données",
+    "new_purchase": "Nouvelle commande fournisseur"
   },
   "shell": {
     "scan_tools": "Scanner",
@@ -3924,12 +3930,6 @@
       "does": "Vos clients consultent leurs factures, téléchargent leurs documents et passent commande depuis un espace qui leur est réservé.",
       "settings": "Ce qu’un client voit dans son espace : ses factures, ses devis, ses relevés, et s’il peut payer en ligne."
     },
-    "purchases": {
-      "heading": "Les commandes fournisseurs sont en construction",
-      "does": "Commander aux fournisseurs, recevoir la marchandise en stock et rapprocher la commande, la réception et la facture.",
-      "create": "Nouvelle commande fournisseur",
-      "settings": "La numérotation des commandes fournisseur et ce que confirme une réception."
-    },
     "ratings": {
       "heading": "Les avis sont en construction",
       "does": "Recueillir l’avis des clients après leur passage et suivre la note de l’établissement."
@@ -3999,8 +3999,7 @@
   },
   "planned_actions": {
     "send_email": "Envoyer par e-mail",
-    "send_whatsapp": "Envoyer par WhatsApp",
-    "new_purchase": "Nouvelle commande fournisseur"
+    "send_whatsapp": "Envoyer par WhatsApp"
   },
   "legal": {
     "navigation": "Informations légales",
@@ -4424,7 +4423,12 @@
       "paymentMethod": "Réglée par",
       "withholdingRate": "Taux de retenue",
       "status": "Statut",
-      "name": "Nom"
+      "name": "Nom",
+      "vendorId": "Fournisseur",
+      "expectedOn": "Livraison attendue",
+      "remarksPrinted": "Remarques imprimées",
+      "notesInternal": "Notes internes",
+      "establishmentId": "Établissement"
     },
     "kinds": {
       "customer": "Client",
@@ -4453,7 +4457,8 @@
       "setting": "Paramètre",
       "module": "Module",
       "export": "Export",
-      "support_grant": "Accès du support"
+      "support_grant": "Accès du support",
+      "purchase_order": "Commande fournisseur"
     },
     "actions": {
       "auth": {
@@ -4608,6 +4613,14 @@
       "support": {
         "entered": "est entré pour le support",
         "read": "a lu une page pour le support"
+      },
+      "purchase_order": {
+        "created": "a créé la commande fournisseur",
+        "revised": "a modifié la commande fournisseur",
+        "sent": "a envoyé la commande fournisseur",
+        "received": "a réceptionné de la marchandise de la commande fournisseur",
+        "closed": "a clos la commande fournisseur",
+        "cancelled": "a annulé la commande fournisseur"
       }
     },
     "history": {

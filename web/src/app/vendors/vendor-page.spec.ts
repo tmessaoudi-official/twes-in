@@ -98,10 +98,10 @@ describe('VendorPage', () => {
         { key: 'mailing', planned: 'v1' },
         { key: 'whatsapp', planned: 'v1' },
         { key: 'quotes', planned: 'v1' },
-        { key: 'purchases', planned: 'v1' },
       ],
     }),
     hasPermission: vi.fn(),
+    hasModule: vi.fn(),
   };
   let fixture: ComponentFixture<VendorPage>;
 
@@ -137,6 +137,7 @@ describe('VendorPage', () => {
     facade.createVendor.mockReset().mockResolvedValue({ ...sotumag, id: 'v9' });
     facade.reviseVendor.mockReset().mockResolvedValue(sotumag);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    auth.hasModule.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [VendorPage],
       providers: [
@@ -180,11 +181,43 @@ describe('VendorPage', () => {
     expect(await plannedInMenu()).toEqual([]);
   });
 
-  it('shows what a vendor will offer once its planned modules ship', async () => {
+  it('offers a new order to an active vendor, where orders are written, and nothing planned', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     vendor.set(sotumag);
     await open('v1');
-    expect(await plannedInMenu()).toEqual(['record-planned-purchases']);
+    expect(await plannedInMenu()).toEqual([]);
+
+    const offered =
+      q('record-new-purchase') ??
+      document.body.querySelector<HTMLElement>('[data-testid="record-menu-new-purchase"]');
+    offered!.click();
+    await settle();
+
+    expect(auth.hasModule).toHaveBeenCalledWith('purchases');
+    expect(auth.hasPermission).toHaveBeenCalledWith('purchase.write');
+    expect(navigate).toHaveBeenCalledWith(['/purchases/new'], { queryParams: { vendorId: 'v1' } });
   });
+
+  it('offers no order to a retired vendor, nor where the company does not buy through orders', async () => {
+    vendor.set({ ...sotumag, isActive: false });
+    await open('v1');
+    expect(await newPurchaseOffered()).toBe(false);
+
+    fixture.destroy();
+    vendor.set(sotumag);
+    auth.hasModule.mockReturnValue(false);
+    await open('v1');
+    expect(await newPurchaseOffered()).toBe(false);
+  });
+
+  /** Whether the bar offers a new order, drawn or folded into « ⋮ ». */
+  async function newPurchaseOffered(): Promise<boolean> {
+    await plannedInMenu();
+    return (
+      q('record-new-purchase') !== null ||
+      document.body.querySelector('[data-testid="record-menu-new-purchase"]') !== null
+    );
+  }
 
   it('titles a vendor still loading as nothing, never as a new one', async () => {
     await open('v1');

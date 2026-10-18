@@ -9,6 +9,7 @@ import { QUOTES_NAV } from '../quotes/quotes-nav';
 import { INVOICES_NAV } from '../invoices/invoices-nav';
 import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
+import { PURCHASES_NAV } from '../purchases/purchases-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
 import { REPORTS_NAV } from '../reports/reports-nav';
@@ -195,7 +196,10 @@ describe('the navigation manifest', () => {
           'sell',
           ['home', 'invoices', 'quotes', 'delivery-notes', 'customers', 'products', 'price_lists'],
         ],
-        ['manage', ['stock', 'vendors', 'expenses', 'reports', 'accounting_export', 'watch']],
+        [
+          'manage',
+          ['stock', 'vendors', 'purchases', 'expenses', 'reports', 'accounting_export', 'watch'],
+        ],
       ],
     );
   });
@@ -292,6 +296,9 @@ describe('the navigation manifest', () => {
     expect(
       VENDORS_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['vendors', 'vendors', 'vendor.read', '/vendors']]);
+    expect(
+      PURCHASES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
+    ).toEqual([['purchases', 'purchases', 'purchase.read', '/purchases']]);
     // Categories are a tab of the expenses screen.
     expect(
       EXPENSES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
@@ -322,6 +329,7 @@ describe('the navigation manifest', () => {
       ...PRICE_LISTS_NAV,
       ...INVENTORY_NAV,
       ...VENDORS_NAV,
+      ...PURCHASES_NAV,
       ...EXPENSES_NAV,
       ...REPORTS_NAV,
       ...ACCOUNTING_EXPORT_NAV,
