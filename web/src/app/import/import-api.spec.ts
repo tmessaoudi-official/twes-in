@@ -36,6 +36,7 @@ describe('ImportApi', () => {
         },
       ],
       switches: [{ key: 'recount', labelKey: 'import.stock.recount', noteKey: null }],
+      lastPairing: [],
     });
 
     const guide = await pending;
@@ -181,6 +182,52 @@ describe('ImportApi', () => {
       limit: null,
       encoding: 'utf-8',
     });
+  });
+
+  it('reads the pairing the last import kept, a heading set aside included', async () => {
+    const pending = api.guide('c1', 'customers');
+    http.expectOne('/api/companies/c1/imports/customers').flush({
+      subject: 'customers',
+      identity: ['number'],
+      maxRows: 2000,
+      columns: [],
+      switches: [],
+      lastPairing: [
+        { heading: 'Réf. client', column: 'number' },
+        { heading: 'Remarque', column: '' },
+      ],
+    });
+
+    expect((await pending).lastPairing).toEqual([
+      { heading: 'Réf. client', column: 'number' },
+      { heading: 'Remarque', column: '' },
+    ]);
+  });
+
+  it('sends the pairing as one object of headings to columns, and nothing when there is none', async () => {
+    const file = new File(['x'], 'clients.csv', { type: 'text/csv' });
+    const paired = api.run('c1', 'customers', file, 'create', true, [], null, [
+      { heading: 'Réf. client', column: 'number' },
+      { heading: 'Remarque', column: '' },
+    ]);
+    const sent = http.expectOne('/api/companies/c1/imports/customers');
+    expect(JSON.parse((sent.request.body as FormData).get('pairing') as string)).toEqual({
+      'Réf. client': 'number',
+      Remarque: '',
+    });
+    sent.flush({ committed: false, created: [2], updated: [], rejected: [], notes: [] });
+    await paired;
+
+    const plain = api.run('c1', 'customers', file, 'create', true, [], null, []);
+    const asked = http.expectOne('/api/companies/c1/imports/customers');
+    expect((asked.request.body as FormData).has('pairing')).toBe(false);
+    asked.flush(
+      { error: 'invalid_pairing', columns: ['Réf. client'], limit: null, encoding: 'utf-8' },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    const refused = (await plain.catch((error: unknown) => error)) as ImportNotKept;
+    expect(refused.refusal?.reason).toBe('invalid_pairing');
+    expect(refused.refusal?.columns).toEqual(['Réf. client']);
   });
 
   it('turns a 404 into not_found and an unreachable API into network', async () => {

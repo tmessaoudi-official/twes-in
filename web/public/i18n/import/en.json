@@ -188,11 +188,12 @@
       "invalid_request": "The request was not understood.",
       "unreadable": "The file is neither a readable .csv nor a readable .xlsx.",
       "empty": "The file holds no row.",
-      "unknown_columns": "Unknown columns: {{columns}}. Start again from the template.",
+      "unknown_columns": "These headings name no column: {{columns}}. Choose where each one goes under “Your headings”, or start again from the template.",
       "duplicate_columns": "Columns given twice: {{columns}}.",
       "missing_columns": "Missing columns: {{columns}}.",
       "too_many_rows": "The file is longer than {{limit}} rows. Split it into several files.",
-      "unreadable_encoding": "The file’s header cannot be read in this encoding: choose the file’s own."
+      "unreadable_encoding": "The file’s header cannot be read in this encoding: choose the file’s own.",
+      "invalid_pairing": "These headings were paired with a column that no longer exists: {{columns}}. Pair them again under “Your headings”."
     },
     "notes_title": "Good to know",
     "notes": {
@@ -213,6 +214,13 @@
       "ignore_quantities_note": "To reuse a catalogue for its prices alone: no stock is touched."
     },
     "switches": "Options for this file",
-    "already_imported": "This file was already imported on {{date}}. Importing it again does what it does again: check the quantities to add before you confirm."
+    "already_imported": "This file was already imported on {{date}}. Importing it again does what it does again: check the quantities to add before you confirm.",
+    "pairing": {
+      "title": "Your headings",
+      "intro": "Each heading of your file is read as the column chosen. These choices are kept with the import, for the next file written the same way.",
+      "from_last": "Taken from your last import: check them before you preview.",
+      "ignored": "Do not import",
+      "forget": "Forget how {{heading}} is paired"
+    }
   }
 }

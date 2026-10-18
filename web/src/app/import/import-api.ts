@@ -10,6 +10,7 @@ import {
   type ImportError,
   type ImportGuide,
   type ImportMode,
+  type ImportPairing,
   type ImportRefusal,
   type ImportReport,
   type TextEncoding,
@@ -66,6 +67,7 @@ export class ImportApi {
     dryRun: boolean,
     switches: readonly string[] = [],
     encoding: TextEncoding | null = null,
+    pairing: readonly ImportPairing[] = [],
   ): Promise<ImportReport> {
     const body = new FormData();
     body.append('file', file, file.name);
@@ -74,6 +76,13 @@ export class ImportApi {
     for (const key of switches) body.append('switches[]', key);
     // None chosen: the API finds it on the file.
     if (encoding !== null) body.append('encoding', encoding);
+    // One object of headings to columns, which the API reads whole; none sent, each heading names its column itself.
+    if (pairing.length > 0) {
+      body.append(
+        'pairing',
+        JSON.stringify(Object.fromEntries(pairing.map((pair) => [pair.heading, pair.column]))),
+      );
+    }
 
     return this.guard(async () =>
       toReport(
@@ -156,6 +165,7 @@ function toGuide(answer: ImportGuideImportGuideRead): ImportGuide {
       labelKey: choice.labelKey,
       noteKey: choice.noteKey,
     })),
+    lastPairing: answer.lastPairing.map((pair) => ({ heading: pair.heading, column: pair.column })),
   };
 }
 

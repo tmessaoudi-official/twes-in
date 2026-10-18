@@ -91,6 +91,7 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-18 11:33] ASSUMED (review): Step 3 S5: the screen-texts budget gate reads the interface languages from the catalogue and requires each one's texts file, in place of globbing with a floor of two; a texts file for a language the interface does not speak yet (Arabic while step 7 writes it) is measured too. Variant files (fr-TN.json holding only differences) are not built: nothing loads one and none exists, so the gate learns them with the loader. Basis: the inventory's S5 row assumed variant files; KISS, no code for a file no screen reads. Alternatives: measure hypothetical variant files merged with their base now.
 - [2026-10-18 11:40] ASSUMED (review): Live mode's OPcache gets 130,987 keys and 512 MB (30-app.live.ini), the next of PHP's table sizes, four times every mode's 32,531, because a fresh live api held 24,401 keys and the api died the day the table filled (log reason: hash, then a segfault); what filled the last quarter was not traced. The development api keeps no restart policy: a crash shows as an unhealthy, stopped container rather than a silent restart. Alternatives: a restart policy on the live api; tracing the files compiled between two resets.
 - [2026-10-18 11:44] ASSUMED (review): Step 3: Arabic's face is Noto Sans Arabic (OFL-1.1, variable 100-900 like Inter, from @fontsource-variable/noto-sans-arabic 5.3.0, integrity checked against the registry), vendored like Inter and placed behind Inter in every font stack with Arabic's unicode-range, so the browser fetches it only for a page showing an Arabic letter; the catalogue carries no font per language, as a French screen showing an Arabic customer's name needs the face too. Alternatives: IBM Plex Sans Arabic (static weights only), Readex Pro; a font field per language switched with the document's lang.
+- [2026-10-18 12:07] ASSUMED (review): 4a: the pairing of a subject's last committed import is applied to the next file of that subject without asking, and the import screen lists every entry from the moment it opens (a heading set aside marked as such), each one changeable or forgotten before the first preview. Basis: nothing is imported without a preview first (ruling 2026-10-04 08:26, points 2 and 3), and the list is shown before the preview because a create preview shows no cell values: a stale « set aside » on an optional column would drop that column without anything else showing it. advisor() agreed on that condition. The invalid_pairing refusal names the file's heading, not the stale column, so the screen asks about that heading again. Alternatives: offer the last pairing behind a button (one more step on every file from the same Excel); never keep it (the shop re-pairs the same headings each time).
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -125,8 +126,8 @@ was and was not certified by execution.
 | 0 | Sign-in restored: the development database migrated | S | done | 976d6c04 | CLAUDE.md |
 | 1 | Release core: install on Windows, Linux, macOS; safe updates with backup and rollback; security; LAN HTTPS | L | doing | - | infra/** scripts/** compose*.yaml docs/** |
 | 2 | Demo sandbox per sign-in, stamped, deleted at sign-out or after 2 h idle | L | done | ec91e167 | api/** web/** |
-| 3 | Language foundations and RTL | L | doing | - | api/** web/** |
-| 4 | Proof pass of every built module in fr, en, ar; the client's Excel mapped | L | todo | - | web/e2e/** api/** web/** |
+| 3 | Language foundations and RTL | L | done | 48659c89 | api/** web/** scripts/gates/** |
+| 4 | Proof pass of every built module in fr, en, ar; the client's Excel mapped | L | doing | - | web/e2e/** api/** web/** |
 | 5 | Reports | L | todo | - | api/** web/** |
 | 6 | Supplier orders and goods receipts | L | todo | - | api/** web/** |
 | 7 | Arabic texts and printed documents | L | todo | - | web/public/i18n/** api/translations/** api/templates/** |
@@ -138,7 +139,7 @@ was and was not certified by execution.
   (irreversible); the first release tagged with `scripts/release/tag-release.sh` (signed) and pushed; a `v*` tag ruleset;
   the Windows install tried Monday or Tuesday by docs/START.md § 16 « The first Windows install ».
 ### Needs input
-- Their Excel file, to map its columns into the importer (expected tonight or tomorrow).
+- Their Excel file, to map its columns into the importer (expected tonight or tomorrow). When it arrives, check first which row holds the headings and how many sheets it has: the importer reads the first sheet, headings on its first row.
 - After Wednesday, in an order to set: declarations (fiscal rules await an accountant), composite products, jobs, the till (the Tunisian homologated-register question), zakat (its research pass, row 120).
 ### Needs research
 - Protecting the data at rest on a shop's PC without asking anything of the client (disk encryption is neither checked nor required for Wednesday).

@@ -9,6 +9,8 @@ import {
   input,
   signal,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
@@ -21,11 +23,16 @@ import { ImportApi } from './import-api';
 import { ImportFacade } from './import-facade';
 import {
   TEXT_ENCODINGS,
+  type ImportColumn,
   type ImportMode,
   type ImportNote,
+  type ImportPairing,
+  type ImportRefusal,
   type ImportRejection,
   type TextEncoding,
 } from './import-types';
+import { Label } from '../shared/a11y/label';
+import { Select, type SelectOption } from '../shared/form/select';
 import { FileDrop } from '../shared/form/file-drop';
 import { IMPORT_MAX_BYTES } from '../shared/form/file-limits';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
@@ -42,6 +49,24 @@ export const CHANGES_SHOWN = 200;
 const QUANTITY_PARAMS = new Set(['before', 'after']);
 /** The prices a refusal names: a price taxes included no net price comes to, and the nearest two. */
 const PRICE_PARAMS = new Set(['gross', 'below', 'above']);
+/**
+ * What a heading's Select holds for a column set aside, which the API reads as `''`: a Select holding `''` shows
+ * nothing chosen, and no column key starts with an asterisk.
+ */
+const SET_ASIDE = '*set-aside';
+
+/** A heading as the file writes it, compared as the API compares it: trimmed, whatever its case. */
+const sameHeading = (one: string, other: string): boolean =>
+  one.trim().toLowerCase() === other.trim().toLowerCase();
+
+/** One of the file's headings on the screen: where it goes, what it may go to, and whether a pairing holds it. */
+interface PairingRow {
+  heading: string;
+  /** The Select's value: a column key, `SET_ASIDE`, or `''` while nothing is chosen. */
+  value: string;
+  options: readonly SelectOption[];
+  kept: boolean;
+}
 
 /**
  * One screen for every subject a module declares as importable (docs/SPEC.md § 8 row 59). It is driven entirely by
@@ -56,6 +81,9 @@ const PRICE_PARAMS = new Set(['gross', 'below', 'above']);
   selector: 'app-import-page',
   imports: [
     FileDrop,
+    FormsModule,
+    Label,
+    Select,
     TranslatePipe,
     MatButtonModule,
     MatCheckboxModule,
@@ -101,6 +129,43 @@ export class ImportPage {
   protected readonly ticked = signal<readonly string[]>([]);
   /** A preview that came back with nothing rejected: only then is importing more than a guess. */
   protected readonly previewed = signal(false);
+  /**
+   * Where the file's own headings go, sent with every run. It starts as the last import kept it, so a file written
+   * the same way reads the same way; the list is shown from the start, before any preview, because a preview of new
+   * rows shows no cell, and a heading set aside by an old choice would leave its column out unseen.
+   */
+  protected readonly pairing = signal<readonly ImportPairing[]>([]);
+  /** The pairing is still the one the last import kept, untouched. */
+  protected readonly pairingFromLast = signal(false);
+  /**
+   * The headings a refusal asked about. Kept apart from the refusal, which a choice clears: the person pairs one
+   * heading, and the others the refusal named stay on the screen to pair.
+   */
+  private readonly asked = signal<readonly string[]>([]);
+  /** Re-reads the columns' headings when the language changes. */
+  private readonly language = toSignal(this.translate.onLangChange, { initialValue: null });
+  /** The headings asked about first, in the file's order, then the ones a pairing holds. */
+  protected readonly pairingRows = computed<readonly PairingRow[]>(() => {
+    this.language();
+    const guide = this.guide();
+    if (guide === null) return [];
+    const pairing = this.pairing();
+    const headings = [...this.asked()];
+    for (const pair of pairing) {
+      if (!headings.some((heading) => sameHeading(heading, pair.heading))) {
+        headings.push(pair.heading);
+      }
+    }
+    return headings.map((heading, index) => {
+      const pair = pairing.find((candidate) => sameHeading(candidate.heading, heading));
+      return {
+        heading,
+        value: pair === undefined ? '' : pair.column === '' ? SET_ASIDE : pair.column,
+        options: this.pairingOptions(guide.columns, `import-pairing-${index}`),
+        kept: pair !== undefined,
+      };
+    });
+  });
 
   /**
    * The subject's words. The URL says `opening-stock` and the catalogue says `opening_stock`, because one is a path
@@ -133,17 +198,40 @@ export class ImportPage {
     const guide = this.guide();
     if (guide === null) return '';
     return guide.identity
-      .map((key) => {
-        const column = guide.columns.find((candidate) => candidate.key === key);
-        const heading =
-          column === undefined
-            ? null
-            : column.headingKey !== null
-              ? (this.translate.instant(column.headingKey) as string)
-              : column.label;
-        return heading === null || heading === '' || heading === key ? key : `${heading} (${key})`;
-      })
+      .map((key) =>
+        this.named(
+          key,
+          guide.columns.find((candidate) => candidate.key === key),
+        ),
+      )
       .join(', ');
+  }
+
+  /** A column as its heading reads, its key beside it as the file writes it. */
+  private named(key: string, column: ImportColumn | undefined): string {
+    const heading =
+      column === undefined
+        ? null
+        : column.headingKey !== null
+          ? (this.translate.instant(column.headingKey) as string)
+          : column.label;
+    return heading === null || heading === '' || heading === key ? key : `${heading} (${key})`;
+  }
+
+  /** What a heading may go to: every column of the subject, then nowhere. */
+  private pairingOptions(columns: readonly ImportColumn[], testId: string): SelectOption[] {
+    return [
+      ...columns.map((column) => ({
+        value: column.key,
+        label: this.named(column.key, column),
+        testId: `${testId}-option-${column.key}`,
+      })),
+      {
+        value: SET_ASIDE,
+        label: this.translate.instant('import.pairing.ignored') as string,
+        testId: `${testId}-option-ignored`,
+      },
+    ];
   }
 
   constructor() {
@@ -155,6 +243,13 @@ export class ImportPage {
       this.previewed.set(false);
       this.ticked.set([]);
       void this.facade.load(companyId, subject);
+    });
+    // Each subject's guide brings the pairing its last import kept.
+    effect(() => {
+      const kept = this.guide()?.lastPairing ?? [];
+      this.pairing.set(kept);
+      this.pairingFromLast.set(kept.length > 0);
+      this.asked.set([]);
     });
   }
 
@@ -201,6 +296,8 @@ export class ImportPage {
 
   protected chooseFile(file: File): void {
     this.file.set(file);
+    // The pairing is how the shop writes its files, so it stays; the headings asked about were this file's.
+    this.asked.set([]);
     // Another file may be written in another encoding: it is found on that file until chosen again.
     this.encoding.set(null);
     this.previewed.set(false);
@@ -227,6 +324,48 @@ export class ImportPage {
     );
     this.previewed.set(false);
     this.facade.forget();
+  }
+
+  /** A heading paired anew: the preview before it no longer says what an import would do. */
+  protected choosePairing(heading: string, value: string | string[] | null): void {
+    if (typeof value !== 'string' || value === '') return;
+    const column = value === SET_ASIDE ? '' : value;
+    this.pairing.update((pairs) => {
+      const at = pairs.findIndex((pair) => sameHeading(pair.heading, heading));
+      return at === -1
+        ? [...pairs, { heading, column }]
+        : pairs.map((pair, index) => (index === at ? { heading: pair.heading, column } : pair));
+    });
+    this.pairingFromLast.set(false);
+    this.previewed.set(false);
+    this.facade.forget();
+  }
+
+  /** The heading is read as the file writes it again, as a column's own key or not at all. */
+  protected forgetPairing(heading: string): void {
+    this.pairing.update((pairs) => pairs.filter((pair) => !sameHeading(pair.heading, heading)));
+    this.asked.update((headings) => headings.filter((other) => !sameHeading(other, heading)));
+    this.pairingFromLast.set(false);
+    this.previewed.set(false);
+    this.facade.forget();
+  }
+
+  /**
+   * The headings a refusal names are asked about. A heading whose pairing names a column the subject no longer has
+   * loses that pairing, so it is asked about as though it were new.
+   */
+  private askAbout(refusal: ImportRefusal | null): void {
+    if (refusal?.reason !== 'unknown_columns' && refusal?.reason !== 'invalid_pairing') return;
+    const named = refusal.columns;
+    if (refusal.reason === 'invalid_pairing') {
+      this.pairing.update((pairs) =>
+        pairs.filter((pair) => !named.some((heading) => sameHeading(heading, pair.heading))),
+      );
+    }
+    this.asked.update((headings) => [
+      ...headings,
+      ...named.filter((heading) => !headings.some((other) => sameHeading(other, heading))),
+    ]);
   }
 
   protected async preview(): Promise<void> {
@@ -290,6 +429,8 @@ export class ImportPage {
       dryRun,
       this.ticked(),
       this.encoding(),
+      this.pairing(),
     );
+    this.askAbout(this.refusal());
   }
 }

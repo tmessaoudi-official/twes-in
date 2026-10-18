@@ -55,7 +55,17 @@ class ImportRun implements CompanyOwned
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $at;
 
-    public function __construct(Uuid $id, Company $company, string $subject, string $contentHash, string $mode, ?Uuid $importedBy, int $created, int $updated, \DateTimeImmutable $at)
+    /**
+     * The file's own headings a person paired with the subject's columns, by the column key each was read as ('' for a
+     * column ignored); null when the file needed none, so the next file is offered the last pairing a person made.
+     *
+     * @var array<string, string>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $pairing;
+
+    /** @param array<string, string> $pairing */
+    public function __construct(Uuid $id, Company $company, string $subject, string $contentHash, string $mode, ?Uuid $importedBy, int $created, int $updated, \DateTimeImmutable $at, array $pairing = [])
     {
         if (1 !== preg_match('/^[0-9a-f]{64}$/', $contentHash)) {
             throw new \InvalidArgumentException('A content hash is a SHA-256 in lowercase hexadecimal.');
@@ -69,6 +79,7 @@ class ImportRun implements CompanyOwned
         $this->created = $created;
         $this->updated = $updated;
         $this->at = $at;
+        $this->pairing = [] === $pairing ? null : $pairing;
     }
 
     public function getId(): Uuid
@@ -109,6 +120,12 @@ class ImportRun implements CompanyOwned
     public function getUpdated(): int
     {
         return $this->updated;
+    }
+
+    /** @return array<string, string> */
+    public function getPairing(): array
+    {
+        return $this->pairing ?? [];
     }
 
     public function getAt(): \DateTimeImmutable

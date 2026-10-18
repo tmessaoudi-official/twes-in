@@ -17,6 +17,7 @@ use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportHeading;
 use App\ImportExport\Application\ImportSwitch;
 use App\ImportExport\Application\UnknownImportSubject;
+use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\ImportExport\Infrastructure\ApiPlatform\Output\ImportGuideColumn;
 use App\ImportExport\Infrastructure\ApiPlatform\Output\ImportGuideSwitch;
 use App\ImportExport\Infrastructure\ApiPlatform\Resource\ImportGuideResource;
@@ -39,6 +40,7 @@ final readonly class ImportGuideProvider implements ProviderInterface
         private CompanyGuard $guard,
         private UserRepository $users,
         private TranslatorInterface $translator,
+        private ImportRunRepository $runs,
         #[Autowire(param: 'app.import.max_rows')]
         private int $maxRows,
     ) {
@@ -74,6 +76,10 @@ final readonly class ImportGuideProvider implements ProviderInterface
             $column->note,
         ), $subject->columns);
         $guide->switches = array_map(static fn (ImportSwitch $switch): ImportGuideSwitch => new ImportGuideSwitch($switch->key, $switch->label, $switch->note), $subject->switches);
+        $guide->lastPairing = [];
+        foreach ($this->runs->lastPairingOf($company->getId(), $declaration->key()) as $heading => $column) {
+            $guide->lastPairing[] = ['heading' => (string) $heading, 'column' => $column];
+        }
 
         return $guide;
     }

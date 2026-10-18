@@ -116,6 +116,7 @@ describe('ImportFacade', () => {
       true,
       ['recount'],
       null,
+      [],
     );
   });
 
@@ -133,6 +134,26 @@ describe('ImportFacade', () => {
       true,
       [],
       'windows-1256',
+      [],
+    );
+  });
+
+  it('hands the pairing of the file’s headings to the API with the run', async () => {
+    api.run.mockResolvedValueOnce(report([]));
+    const file = new File(['x'], 'f.csv');
+    const pairing = [{ heading: 'Réf. client', column: 'number' }];
+
+    await facade.run('c1', 'customers', file, 'create', true, [], null, pairing);
+
+    expect(api.run).toHaveBeenCalledWith(
+      'c1',
+      'customers',
+      file,
+      'create',
+      true,
+      [],
+      null,
+      pairing,
     );
   });
 
@@ -161,7 +182,7 @@ describe('ImportFacade', () => {
 
     expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
     expect(api.run).toHaveBeenCalledTimes(2);
-    expect(api.run).toHaveBeenLastCalledWith('c1', 'vendors', file, 'upsert', false, [], null);
+    expect(api.run).toHaveBeenLastCalledWith('c1', 'vendors', file, 'upsert', false, [], null, []);
     expect(facade.report()).toEqual(kept);
   });
 

@@ -327,6 +327,65 @@ final class CustomerImportTest extends ApiTestCase
         self::assertSame(['error' => 'unknown_columns', 'columns' => ['colour'], 'limit' => null, 'encoding' => 'utf-8'], $this->json());
     }
 
+    /** A file in the shop's own words is read through the pairing a person made, which the next file is offered. */
+    public function testAFileInItsOwnWordsIsReadThroughAPairingThatIsOfferedAgain(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $pairing = ['Réf. client' => 'number', 'Raison sociale [FR]' => 'name', 'Remarque' => ''];
+
+        $this->import("Réf. client,Raison sociale [FR],Remarque\nCLI-0001,Carthage Conseil,à rappeler\n", pairing: $pairing);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['created'] ?? null);
+        self::assertSame(1, $this->customers());
+        $this->getJson($this->companyPath().'/imports/customers');
+        self::assertSame(
+            [['heading' => 'Réf. client', 'column' => 'number'], ['heading' => 'Raison sociale [FR]', 'column' => 'name'], ['heading' => 'Remarque', 'column' => '']],
+            $this->json()['lastPairing'] ?? null,
+            'as the file wrote its headings, the one set aside included',
+        );
+
+        // A file in the subject's own words pairs nothing, and the shop's own way of writing is still the one offered.
+        $this->import("number,name\nCLI-0002,Sousse Bois\n");
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->companyPath().'/imports/customers');
+        self::assertSame(
+            [['heading' => 'Réf. client', 'column' => 'number'], ['heading' => 'Raison sociale [FR]', 'column' => 'name'], ['heading' => 'Remarque', 'column' => '']],
+            $this->json()['lastPairing'] ?? null,
+            'a file needing no pairing leaves the last one offered',
+        );
+    }
+
+    public function testAPairingNamingNoColumnIsRefusedSayingWhich(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import("Réf. client,name\nCLI-0001,Carthage Conseil\n", pairing: ['Réf. client' => 'reference']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['error' => 'invalid_pairing', 'columns' => ['Réf. client'], 'limit' => null, 'encoding' => 'utf-8'], $this->json());
+    }
+
+    public function testAPairingThatIsNotHeadingsToColumnsIsRefused(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        foreach (['not json', '["number"]', '{"Réf": 1}', '"number"'] as $pairing) {
+            $this->uploadFile($this->companyPath().'/imports/customers', 'customers.csv', "number,name\nCLI-0001,Carthage Conseil\n", 'file', ['mode' => 'create', 'dryRun' => '1', 'pairing' => $pairing]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $pairing);
+            self::assertSame(['error' => 'invalid_request'], $this->json(), $pairing);
+        }
+    }
+
+    public function testNoImportYetOffersNoPairing(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->getJson($this->companyPath().'/imports/customers');
+
+        self::assertSame([], $this->json()['lastPairing'] ?? null);
+    }
+
     public function testAnXlsxFileIsReadTheSameWay(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);
@@ -526,9 +585,14 @@ final class CustomerImportTest extends ApiTestCase
             ."\nCLI-0002,Sonia Ben Ali,individual,,,,,,,\n";
     }
 
-    private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'customers.csv'): void
+    /** @param array<string, string>|null $pairing */
+    private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'customers.csv', ?array $pairing = null): void
     {
-        $this->uploadFile($this->companyPath().'/imports/customers', $name, $contents, 'file', ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0']);
+        $parameters = ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0'];
+        if (null !== $pairing) {
+            $parameters['pairing'] = json_encode($pairing, \JSON_THROW_ON_ERROR);
+        }
+        $this->uploadFile($this->companyPath().'/imports/customers', $name, $contents, 'file', $parameters);
     }
 
     /** @param list<string> $permissions */

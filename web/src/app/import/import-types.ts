@@ -28,6 +28,7 @@ export interface ImportRefusal {
     | 'duplicate_columns'
     | 'missing_columns'
     | 'too_many_rows'
+    | 'invalid_pairing'
     | 'unreadable_encoding';
   /** The columns the reason names, empty when it names none. */
   columns: readonly string[];
@@ -35,6 +36,17 @@ export interface ImportRefusal {
   limit: number | null;
   /** What a CSV was read as; null for a workbook. */
   encoding: TextEncoding | null;
+}
+
+/**
+ * Where one of the file's own headings goes: a column of the subject, or nowhere (`''`), the column set aside. A file
+ * written in the shop's own words is read once it is paired, and the pairing is kept with the import that used it.
+ */
+export interface ImportPairing {
+  /** The heading as the file writes it. */
+  heading: string;
+  /** The column it is read as, or `''` for a column not imported. */
+  column: string;
 }
 
 /** One column of the file, described as the person filling it in reads it. */
@@ -66,6 +78,8 @@ export interface ImportGuide {
   maxRows: number;
   columns: readonly ImportColumn[];
   switches: readonly ImportSwitch[];
+  /** How the last file imported here had its headings paired, offered again for the next one. */
+  lastPairing: readonly ImportPairing[];
 }
 
 /** One row the file asked for and the rules refused. */

@@ -196,6 +196,65 @@ final class RunImportTest extends TestCase
         self::assertSame(['number' => 'A-1', 'name' => 'Alpha'], $this->declaration->seen[2]);
     }
 
+    /** A file's own headings, paired by a person with the subject's columns, are read as those columns. */
+    public function testAHeadingAPersonPairedIsReadAsItsColumn(): void
+    {
+        $report = $this->importRows([1 => ['Réf. article', 'Désignation [FR]'], 2 => ['A-1', 'Alpha']], pairing: [' réf. ARTICLE ' => 'number', 'Désignation [FR]' => 'Name']);
+
+        self::assertSame([2], $report->created);
+        self::assertSame(['number' => 'A-1', 'name' => 'Alpha'], $this->declaration->seen[2]);
+    }
+
+    public function testAHeadingPairedWithNothingIsAColumnIgnored(): void
+    {
+        $report = $this->importRows([1 => ['number', 'Remarque', 'name'], 2 => ['A-1', 'à voir', 'Alpha']], pairing: ['Remarque' => '']);
+
+        self::assertSame([2], $report->created);
+        self::assertSame(['number' => 'A-1', 'name' => 'Alpha'], $this->declaration->seen[2]);
+    }
+
+    public function testAPairingNamingNoColumnOfTheSubjectRefusesTheFile(): void
+    {
+        try {
+            $this->importRows([1 => ['Réf', 'name'], 2 => ['A-1', 'Alpha']], pairing: ['Réf' => 'reference']);
+            self::fail('The file was read.');
+        } catch (UnreadableImport $refused) {
+            self::assertSame([UnreadableImport::INVALID_PAIRING, ['Réf']], [$refused->reason, $refused->columns], 'the heading to pair again, as the file wrote it');
+        }
+    }
+
+    /** Pairing names where a heading goes, it does not lift the header's other rules. */
+    public function testAPairedHeadingStillCountsTwiceAndARequiredColumnLeftOutIsStillNamed(): void
+    {
+        foreach ([
+            [[1 => ['number', 'Réf', 'name'], 2 => ['A-1', 'A-1', 'Alpha']], ['Réf' => 'number'], UnreadableImport::DUPLICATE_COLUMNS, ['number']],
+            [[1 => ['Réf', 'Courriel'], 2 => ['A-1', 'a@x.tn']], ['Réf' => 'number', 'Courriel' => 'email'], UnreadableImport::MISSING_COLUMNS, ['name']],
+            [[1 => ['Réf', 'Nom', 'Ville'], 2 => ['A-1', 'Alpha', 'Tunis']], ['Réf' => 'number', 'Nom' => 'name'], UnreadableImport::UNKNOWN_COLUMNS, ['Ville']],
+        ] as [$rows, $pairing, $reason, $columns]) {
+            try {
+                $this->importRows($rows, pairing: $pairing);
+                self::fail('The file was read.');
+            } catch (UnreadableImport $refused) {
+                self::assertSame([$reason, $columns], [$refused->reason, $refused->columns]);
+            }
+        }
+    }
+
+    /** The pairing a committed file needed is kept with it, and offered for the next file into the same subject. */
+    public function testACommittedImportKeepsThePairingItsHeaderNeededForTheNextFile(): void
+    {
+        $this->importRows([1 => ['Réf', 'Nom'], 2 => ['A-1', 'Alpha']], dryRun: true, pairing: ['Réf' => 'number', 'Nom' => 'name']);
+        self::assertCount(0, $this->runs->saved, 'a preview keeps nothing');
+
+        $this->importRows([1 => ['Réf', 'Nom', 'Remarque'], 2 => ['A-1', 'Alpha', '']], pairing: ['Réf' => 'number', 'Nom' => 'name', 'Remarque' => '', 'Ville' => 'city']);
+        self::assertSame(['Réf' => 'number', 'Nom' => 'name', 'Remarque' => ''], $this->runs->saved[0]->getPairing(), 'only the headings the file had, as it wrote them');
+
+        $this->importRows([1 => ['number', 'name'], 2 => ['A-2', 'Beta']], hash: self::hashOf('ours'));
+        self::assertSame([], $this->runs->saved[1]->getPairing(), 'a file in the columns\' own words needed none');
+        self::assertSame(['Réf' => 'number', 'Nom' => 'name', 'Remarque' => ''], $this->runs->lastPairingOf($this->company->getId(), 'things'), 'the last pairing a person made is still the one offered');
+        self::assertSame([], $this->runs->lastPairingOf($this->company->getId(), 'others'));
+    }
+
     /** A value past the header's last column has no column to go to: the row is refused, never read without it. */
     public function testARowWithValuesPastTheHeaderIsRefusedNamingHowMany(): void
     {
@@ -209,12 +268,13 @@ final class RunImportTest extends TestCase
     /**
      * @param array<int, list<string>> $rows
      * @param list<string>             $ticked
+     * @param array<string, string>    $pairing
      */
-    private function importRows(array $rows, ImportMode $mode = ImportMode::Create, bool $dryRun = false, ?string $hash = null, array $ticked = []): ImportReport
+    private function importRows(array $rows, ImportMode $mode = ImportMode::Create, bool $dryRun = false, ?string $hash = null, array $ticked = [], array $pairing = []): ImportReport
     {
         $subject = $this->declaration->subjectFor($this->company);
 
-        return (new RunImport($this->transactions, 3, $this->runs, $this->clock))->run($this->declaration, $subject, $this->company, $rows, $mode, $dryRun, Uuid::v7(), $hash ?? self::hashOf('file'), $ticked);
+        return (new RunImport($this->transactions, 3, $this->runs, $this->clock))->run($this->declaration, $subject, $this->company, $rows, $mode, $dryRun, Uuid::v7(), $hash ?? self::hashOf('file'), $ticked, $pairing);
     }
 
     private static function hashOf(string $contents): string
@@ -235,6 +295,18 @@ final class InMemoryImportRuns implements ImportRunRepository
         foreach ($this->saved as $run) {
             if ($run->getCompany()->getId()->equals($companyId) && $run->getSubject() === $subject && $run->getContentHash() === $contentHash) {
                 $found = $run;
+            }
+        }
+
+        return $found;
+    }
+
+    public function lastPairingOf(Uuid $companyId, string $subject): array
+    {
+        $found = [];
+        foreach ($this->saved as $run) {
+            if ($run->getCompany()->getId()->equals($companyId) && $run->getSubject() === $subject && [] !== $run->getPairing()) {
+                $found = $run->getPairing();
             }
         }
 

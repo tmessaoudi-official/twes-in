@@ -53,7 +53,18 @@ class StaticLoader implements TranslateLoader {
         },
         stock: { recount: 'Recompter', recount_note: 'Compte à nouveau.' },
         already_imported: 'Ce fichier a déjà été importé le {{date}}.',
-        refusals: { unknown_columns: 'Colonnes inconnues : {{columns}}.' },
+        refusals: {
+          unknown_columns: 'Colonnes inconnues : {{columns}}.',
+          invalid_pairing: 'À associer de nouveau : {{columns}}.',
+        },
+        pairing: {
+          title: 'Vos en-têtes',
+          heading: 'En-tête du fichier',
+          column: 'Colonne',
+          ignored: 'Ne pas importer',
+          from_last: 'Repris de votre dernier import.',
+          forget: 'Oublier l’association de {{heading}}',
+        },
         encoding: {
           label: 'Encodage du fichier',
           auto: 'Automatique',
@@ -94,6 +105,7 @@ const GUIDE: ImportGuide = {
   switches: [
     { key: 'recount', labelKey: 'import.stock.recount', noteKey: 'import.stock.recount_note' },
   ],
+  lastPairing: [],
 };
 
 const CLEAN: ImportReport = {
@@ -300,6 +312,7 @@ describe('ImportPage', () => {
       true,
       [],
       null,
+      [],
     );
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
   });
@@ -326,6 +339,7 @@ describe('ImportPage', () => {
       true,
       ['recount'],
       null,
+      [],
     );
   });
 
@@ -347,6 +361,7 @@ describe('ImportPage', () => {
       true,
       [],
       null,
+      [],
     );
   });
 
@@ -370,6 +385,7 @@ describe('ImportPage', () => {
       true,
       [],
       'windows-1256',
+      [],
     );
 
     chooseFile('other.csv');
@@ -383,6 +399,7 @@ describe('ImportPage', () => {
       true,
       [],
       null,
+      [],
     );
   });
 
@@ -582,6 +599,7 @@ describe('ImportPage', () => {
       false,
       [],
       null,
+      [],
     );
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
       expect.objectContaining({ key: 'import.stored' }),
@@ -672,6 +690,7 @@ describe('ImportPage', () => {
       false,
       [],
       null,
+      [],
     );
   });
 
@@ -696,6 +715,156 @@ describe('ImportPage', () => {
     await settle();
 
     expect(q('import-refusal')?.textContent).toContain('nom, prenom');
+  });
+
+  describe('the file’s own headings', () => {
+    /** The pairing offered by the last import: a heading read as a column, and one set aside. */
+    const KEPT = [
+      { heading: 'Réf', column: 'reference' },
+      { heading: 'Remarque', column: '' },
+    ];
+
+    /** A Select as a person uses it: opened, then the option taken. Its panel hangs off the body, not the page. */
+    async function choose(testId: string, value: string): Promise<void> {
+      q(testId)!.click();
+      await settle();
+      const option = Array.from(
+        document.body.querySelectorAll<HTMLElement>('[role="option"]'),
+      ).find((each) => each.getAttribute('data-testid') === `${testId}-option-${value}`);
+      expect(option, `${testId} offers ${value}`).toBeDefined();
+      option!.click();
+      await settle();
+    }
+
+    const rows = (): HTMLElement[] =>
+      Array.from(fixture.nativeElement.querySelectorAll('[data-testid="import-pairing"] li'));
+    /** What a row's Select shows as chosen. */
+    const shown = (index: number): string =>
+      (q(`import-pairing-${index}`)?.textContent ?? '').replace(/expand_more/, '').trim();
+    const lastPairing = (): unknown => facade.run.mock.lastCall?.[7];
+
+    beforeEach(() => {
+      // As the real facade does: a new answer is asked for, the last one is gone.
+      facade.forget.mockImplementation(() => {
+        refusal.set(null);
+        report.set(null);
+      });
+    });
+
+    it('lists the pairing the last import kept before any preview, a heading set aside saying so', async () => {
+      guide.set({ ...GUIDE, lastPairing: KEPT });
+      await settle();
+
+      expect(q('import-pairing-from-last')?.textContent).toContain(
+        'Repris de votre dernier import.',
+      );
+      expect(rows().map((row) => row.querySelector('[data-heading]')?.textContent?.trim())).toEqual(
+        ['Réf', 'Remarque'],
+      );
+      expect(shown(0)).toBe('Référence (reference)');
+      expect(shown(1)).toBe('Ne pas importer');
+
+      chooseFile();
+      await settle();
+      await click('import-preview');
+      expect(lastPairing()).toEqual(KEPT);
+    });
+
+    it('shows no pairing at all while there is none to show', () => {
+      expect(q('import-pairing')).toBeNull();
+    });
+
+    it('asks where each unknown heading goes, keeps asking while one is chosen, and sends the choice', async () => {
+      chooseFile();
+      await settle();
+      facade.run.mockImplementation(async () =>
+        refusal.set({
+          reason: 'unknown_columns',
+          columns: ['Qté', 'Note'],
+          limit: null,
+          encoding: null,
+        }),
+      );
+      await click('import-preview');
+      expect(rows().length).toBe(2);
+      expect(shown(0)).not.toContain('Quantité');
+
+      await choose('import-pairing-0', 'quantity');
+
+      // The refusal is gone with the choice, the headings it named are not: the other one is still to pair.
+      expect(refusal()).toBeNull();
+      expect(rows().length).toBe(2);
+      expect(shown(0)).toBe('Quantité comptée (quantity)');
+      expect((q('import-store') as HTMLButtonElement).disabled).toBe(true);
+
+      await choose('import-pairing-1', 'ignored');
+      facade.run.mockImplementation(async () => report.set(CLEAN));
+      await click('import-preview');
+      expect(lastPairing()).toEqual([
+        { heading: 'Qté', column: 'quantity' },
+        { heading: 'Note', column: '' },
+      ]);
+      expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it('forgets a pairing, so the heading is read as the file writes it again', async () => {
+      guide.set({ ...GUIDE, lastPairing: KEPT });
+      await settle();
+
+      await click('import-pairing-forget-1');
+
+      expect(rows().length).toBe(1);
+      chooseFile();
+      await settle();
+      await click('import-preview');
+      expect(lastPairing()).toEqual([{ heading: 'Réf', column: 'reference' }]);
+    });
+
+    it('asks again about a heading whose kept pairing names a column no longer there', async () => {
+      guide.set({ ...GUIDE, lastPairing: [{ heading: 'Réf', column: 'reference_old' }] });
+      await settle();
+      chooseFile();
+      await settle();
+      facade.run.mockImplementation(async () =>
+        refusal.set({ reason: 'invalid_pairing', columns: ['Réf'], limit: null, encoding: null }),
+      );
+      await click('import-preview');
+
+      expect(q('import-refusal')?.textContent).toContain('À associer de nouveau : Réf.');
+      expect(rows().length).toBe(1);
+      expect(shown(0)).not.toContain('reference_old');
+
+      facade.run.mockImplementation(async () => report.set(CLEAN));
+      await click('import-preview');
+      expect(lastPairing()).toEqual([]);
+    });
+
+    it('keeps the pairing for a new file, and forgets the headings the file before asked about', async () => {
+      guide.set({ ...GUIDE, lastPairing: [KEPT[0]] });
+      await settle();
+      chooseFile();
+      await settle();
+      facade.run.mockImplementation(async () =>
+        refusal.set({ reason: 'unknown_columns', columns: ['Qté'], limit: null, encoding: null }),
+      );
+      await click('import-preview');
+      expect(rows().length).toBe(2);
+
+      chooseFile('autre.csv');
+      await settle();
+
+      expect(rows().length).toBe(1);
+      expect(shown(0)).toBe('Référence (reference)');
+    });
+
+    it('names each forget button after its heading', async () => {
+      guide.set({ ...GUIDE, lastPairing: KEPT });
+      await settle();
+
+      expect(q('import-pairing-forget-0')?.getAttribute('aria-label')).toBe(
+        'Oublier l’association de Réf',
+      );
+    });
   });
 
   it('says so plainly when the subject cannot be imported here', async () => {
