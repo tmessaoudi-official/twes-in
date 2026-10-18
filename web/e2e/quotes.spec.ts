@@ -240,7 +240,8 @@ test('a quote is drafted, sent, accepted and invoiced into a draft invoice', asy
     // Another accepted quote of the same customer goes onto that draft rather than a new invoice: « Facturer » asks.
     const invoiceUrl = page.url();
     const invoiceId = invoiceUrl.slice(invoiceUrl.lastIndexOf('/') + 1);
-    await page.goto(await acceptedQuote(page, customerNumber, `Fraisage ${run}`));
+    const secondUrl = await acceptedQuote(page, customerNumber, `Fraisage ${run}`);
+    await page.goto(secondUrl);
     await expect(page.getByTestId('quote-status')).toContainText(/Accepté|Accepted/);
     await page.getByTestId('document-action-invoice').click();
     await expect(page.getByTestId(`add-to-draft-${invoiceId}`)).toBeVisible();
@@ -249,6 +250,12 @@ test('a quote is drafted, sent, accepted and invoiced into a draft invoice', asy
     await expect(page).toHaveURL(invoiceUrl);
     await expect(page.getByTestId('line-0-description')).toHaveValue(`Tournage ${run}`);
     await expect(page.getByTestId('line-1-description')).toHaveValue(`Fraisage ${run}`);
+    // The second quote now opens the invoice it went onto.
+    await page.goto(secondUrl);
+    await expect(page.getByTestId('quote-invoice')).toHaveAttribute(
+      'href',
+      new URL(invoiceUrl).pathname,
+    );
 
     // The API pages this list and the shared company outgrows one page, so the row is searched for.
     await page.goto('/quotes');
