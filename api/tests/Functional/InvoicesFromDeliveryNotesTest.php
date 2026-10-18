@@ -234,6 +234,16 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is corrected by a credit note, never added to');
         $this->getJson($this->invoicePath($id));
         self::assertCount(2, $this->arrayAt($this->json(), 'lines'), 'nothing was added');
+
+        $this->postJson($this->invoicePath($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $creditNote = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->fromNotesPath().'/check', ['deliveryNoteIds' => [$third], 'invoiceId' => $creditNote]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note draft is no invoice to add to, as the check says before');
+        self::assertStringContainsString('invoiceId', (string) $this->client->getResponse()->getContent());
+        $this->postJson($this->invoicePath($creditNote).'/delivery-notes', ['deliveryNoteIds' => [$third]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('invoiceId', (string) $this->client->getResponse()->getContent());
     }
 
     public function testAddingNotesToADraftNeedsInvoiceWriteTheCompanysOwnInvoiceAndNotesOfItsCustomer(): void

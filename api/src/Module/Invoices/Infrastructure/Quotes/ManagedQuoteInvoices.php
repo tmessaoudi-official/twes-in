@@ -26,11 +26,14 @@ use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Domain\ValueObject\OperationCategory;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Quotes\Application\QuoteDeposit;
 use App\Module\Quotes\Application\QuoteInvoices;
 use App\Module\Quotes\Application\QuoteInvoicingRefused;
+use App\Module\Quotes\Application\QuoteTargetInvoiceNotDraft;
+use App\Module\Quotes\Application\QuoteTargetInvoiceNotFound;
 use App\Module\Quotes\Domain\Model\Quote;
 use App\Module\Quotes\Domain\Model\QuoteLine;
 use App\Module\Quotes\Domain\Model\QuoteLineTax;
@@ -68,24 +71,12 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
         $company = $quote->getCompany();
         $header = $quote->getHeader();
         try {
-            $lines = $this->linesOf($quote);
-            $language = $this->deductions->language($company, $quote->getCustomer());
-            foreach ($this->invoices->depositsOfQuotes($company->getId(), [$quote->getId()]) as $deposit) {
-                if (InvoiceStatus::Draft === $deposit->getStatus()) {
-                    throw new QuoteInvoicingRefused('deposits', \sprintf('The deposit invoice drafted %s is still a draft: issue or cancel it before invoicing the quote.', $deposit->getCreatedAt()->format('Y-m-d')));
-                }
-                // A cancelled draft, a credited deposit or one another invoice already gives back is not given back here.
-                if (!$deposit->isDeductible() || [] !== $this->invoices->givingBack($company->getId(), $deposit->getId())) {
-                    continue;
-                }
-                $lines = [...$lines, ...$this->deductions->linesGivingBack($company, $deposit->getId(), null, $language)];
-            }
             $invoice = $this->manage->createFromLines(
                 $company,
                 $quote->getEstablishment(),
                 $quote->getCustomer(),
                 new InvoiceHeader(customerReference: $header->customerReference, notesPrinted: $header->notesPrinted, discountAmount: $header->discountAmount),
-                $lines,
+                $this->withDepositsGivenBack($quote, $this->linesOf($quote)),
                 ['quoteId' => $quote->getId()->toRfc4122()],
                 $actorUserId,
                 $quote->getId(),
@@ -95,6 +86,31 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
         }
 
         return $invoice->getId();
+    }
+
+    public function addTo(Quote $quote, Uuid $invoiceId, ?Uuid $actorUserId): void
+    {
+        $company = $quote->getCompany();
+        // Held until the transaction ends, so the draft checked is the draft the lines go on.
+        $invoice = $this->invoices->lockedOfIdInCompany($invoiceId, $company->getId()) ?? throw new QuoteTargetInvoiceNotFound();
+        if (InvoiceStatus::Draft !== $invoice->getStatus()) {
+            throw new QuoteTargetInvoiceNotDraft($invoice->getNumber() ?? $invoice->getId()->toRfc4122());
+        }
+        if (InvoiceType::Invoice !== $invoice->getType() || $invoice->isDeposit()) {
+            throw new QuoteInvoicingRefused('invoiceId', 'A quote is added to an invoice, never to a deposit invoice or a credit note.');
+        }
+        if (!$invoice->getCustomer()->getId()->equals($quote->getCustomer()->getId()) || !$invoice->getEstablishment()->getId()->equals($quote->getEstablishment()->getId())) {
+            throw new QuoteInvoicingRefused('invoiceId', 'A quote is added to an invoice of its customer and its establishment.');
+        }
+        $discount = $quote->getHeader()->discountAmount;
+        if (null !== $discount && 0 !== Decimal::of($discount)->compare(0)) {
+            throw new QuoteInvoicingRefused('discountAmount', 'A quote with a discount on the whole is invoiced on a draft of its own: spread over the other lines of an invoice, it would move tax from one rate to another.');
+        }
+        try {
+            $this->manage->appendLines($company, $invoiceId, $this->withDepositsGivenBack($quote, $this->linesOf($quote)), ['quoteId' => $quote->getId()->toRfc4122()], $actorUserId);
+        } catch (InvalidInvoice $refused) {
+            throw new QuoteInvoicingRefused($refused->field, $refused->getMessage(), $refused);
+        }
     }
 
     public function depositFrom(Quote $quote, ?string $percentage, ?string $amount, ?Uuid $actorUserId): Uuid
@@ -196,6 +212,34 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
         }
 
         return OperationCategory::ofProducts(array_map(static fn (QuoteLine $line): ?Product => $line->getProduct(), $quote->getLines()));
+    }
+
+    /**
+     * The lines, followed by those giving back each of the quote's issued deposits no other invoice gives back.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<InvoiceLineDetails>
+     *
+     * @throws QuoteInvoicingRefused on `deposits` while one is still a draft: issued or cancelled first, it is not left out unseen
+     * @throws InvalidInvoice
+     */
+    private function withDepositsGivenBack(Quote $quote, array $lines): array
+    {
+        $company = $quote->getCompany();
+        $language = $this->deductions->language($company, $quote->getCustomer());
+        foreach ($this->invoices->depositsOfQuotes($company->getId(), [$quote->getId()]) as $deposit) {
+            if (InvoiceStatus::Draft === $deposit->getStatus()) {
+                throw new QuoteInvoicingRefused('deposits', \sprintf('The deposit invoice drafted %s is still a draft: issue or cancel it before invoicing the quote.', $deposit->getCreatedAt()->format('Y-m-d')));
+            }
+            // A cancelled draft, a credited deposit or one another invoice already gives back is not given back here.
+            if (!$deposit->isDeductible() || [] !== $this->invoices->givingBack($company->getId(), $deposit->getId())) {
+                continue;
+            }
+            $lines = [...$lines, ...$this->deductions->linesGivingBack($company, $deposit->getId(), null, $language)];
+        }
+
+        return $lines;
     }
 
     /**

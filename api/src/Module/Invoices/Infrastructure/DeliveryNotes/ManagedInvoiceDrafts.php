@@ -20,6 +20,7 @@ use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use Symfony\Component\Uid\Uuid;
@@ -55,7 +56,7 @@ final readonly class ManagedInvoiceDrafts implements InvoiceDrafts
 
     private static function toAddTo(Invoice $invoice): InvoiceToAddTo
     {
-        return new InvoiceToAddTo($invoice->getId(), $invoice->getCustomer()->getId(), $invoice->getEstablishment()->getId(), InvoiceStatus::Draft === $invoice->getStatus());
+        return new InvoiceToAddTo($invoice->getId(), $invoice->getCustomer()->getId(), $invoice->getEstablishment()->getId(), InvoiceStatus::Draft === $invoice->getStatus(), InvoiceType::Invoice === $invoice->getType() && !$invoice->isDeposit());
     }
 
     /**

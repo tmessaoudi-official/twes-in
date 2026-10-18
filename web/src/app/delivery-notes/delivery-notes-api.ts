@@ -331,35 +331,13 @@ export class DeliveryNotesApi {
     });
   }
 
-  /**
-   * The drafts of this customer and establishment the note could be added to, newest work first as the API lists
-   * them; a draft of another establishment is left out, because its series numbers it. At most the first page.
-   */
+  /** The drafts of this customer and establishment the note could be added to (`InvoicesApi.openDraftsOf`). */
   async draftsOf(
     companyId: string,
     customerId: string,
     establishmentId: string | null,
   ): Promise<InvoiceDraftOption[]> {
-    return this.guard(async () => {
-      const page = await this.invoices.invoices(companyId, {
-        page: 1,
-        itemsPerPage: 20,
-        q: '',
-        status: ['draft'],
-        documentType: ['invoice'],
-        customerIds: [customerId],
-        intervals: {},
-        order: null,
-      });
-      return page.rows
-        .filter((row) => row.establishmentId === establishmentId)
-        .map((row) => ({
-          id: row.id,
-          total: row.total,
-          lineCount: row.lines.length,
-          customerReference: row.customerReference,
-        }));
-    });
+    return this.guard(() => this.invoices.openDraftsOf(companyId, customerId, establishmentId));
   }
 
   /** Where a note's PDF is downloaded from, with the session the browser already has. */

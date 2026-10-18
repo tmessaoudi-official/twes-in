@@ -3,6 +3,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import type {
   CustomerOption,
+  InvoiceDraftOption,
   InvoiceOptions,
   ProductOption,
   ResolvedPrice,
@@ -184,6 +185,28 @@ export class QuotesFacade implements LineCatalogue {
   /** The accepted quote drafted into a new invoice; the answer names it. */
   async invoice(companyId: string, id: string): Promise<QuoteRow | null> {
     return this.step(() => this.api.invoice(companyId, id));
+  }
+
+  /** The accepted quote's lines added to an open draft of its customer; the answer names it. */
+  async addToInvoice(companyId: string, id: string, invoiceId: string): Promise<QuoteRow | null> {
+    return this.step(() => this.api.addToInvoice(companyId, id, invoiceId));
+  }
+
+  /**
+   * The drafts a quote could be added to, null when they could not be read (the reason is in `error`: what could not be
+   * asked is not the same as there being nothing to add to).
+   */
+  async draftsOf(
+    companyId: string,
+    customerId: string,
+    establishmentId: string | null,
+  ): Promise<InvoiceDraftOption[] | null> {
+    try {
+      return await this.api.draftsOf(companyId, customerId, establishmentId);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return null;
+    }
   }
 
   /** The quote with its new deposit listed last, or null with the reason in `error`. */

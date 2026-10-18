@@ -31,6 +31,18 @@ interface QuoteInvoices
     public function draftFrom(Quote $quote, ?Uuid $actorUserId): Uuid;
 
     /**
+     * The quote's lines added after those an open draft invoice of its customer and establishment already has, and its
+     * issued deposits given back there; what the draft says otherwise is kept. Refused for a quote with a discount on
+     * the whole: spread over every line of the invoice, it would move tax from one rate to another.
+     *
+     * @throws QuoteTargetInvoiceNotFound when the invoice is not the company's
+     * @throws QuoteTargetInvoiceNotDraft when it is issued or cancelled
+     * @throws QuoteInvoicingRefused      on `invoiceId` when it is a deposit, a credit note, or another customer's or
+     *                                    establishment's; on `discountAmount`, `deposits`, or what the invoice refuses
+     */
+    public function addTo(Quote $quote, Uuid $invoiceId, ?Uuid $actorUserId): void;
+
+    /**
      * A new draft deposit invoice (facture d'acompte) for a share of the quote, a percentage or an amount tax included:
      * one line per set of taxes the quote's lines carry, each that share of what those lines come to after the quote's
      * discount, so the quote's deposits never go beyond it.

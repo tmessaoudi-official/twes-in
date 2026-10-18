@@ -4232,6 +4232,10 @@
     "cancelled": "Le devis a été classé sans suite.",
     "invoiced": "Le devis est devenu une facture en brouillon.",
     "invoiced_link": "Voir la facture tirée de ce devis",
+    "invoice_target": {
+      "title": "Sur quelle facture ce devis est-il facturé ?",
+      "help": "Une nouvelle facture, ou à la suite des lignes d’un brouillon de ce client. Une facture émise n’est jamais modifiée : un avoir la corrige."
+    },
     "refusal_shown": "Motif du refus : {{reason}}",
     "fixed": {
       "sent": "Ce devis est envoyé et ne change plus ; il attend la réponse du client.",

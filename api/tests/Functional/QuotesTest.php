@@ -24,6 +24,7 @@ use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\FakePdfRenderer;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
@@ -240,6 +241,82 @@ final class QuotesTest extends ApiTestCase
         self::assertNotSame($invoiceId, $this->json()['invoiceId'], 'again once that draft is cancelled');
     }
 
+    public function testAnAcceptedQuoteIsAddedToAnOpenDraftOfItsCustomerAndInvoicedOnce(): void
+    {
+        $this->signedIn(self::WRITER);
+        $first = $this->accepted(['customerReference' => 'RFQ-12']);
+        $this->postJson($this->path($first).'/invoice', null);
+        $draftId = $this->stringAt($this->json(), 'invoiceId');
+        $second = $this->accepted(['customerReference' => 'RFQ-13', 'notesPrinted' => 'Pose comprise.']);
+
+        $this->postJson($this->path($second).'/invoices/'.$draftId, null);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([$second, $draftId], [$this->json()['id'], $this->json()['invoiceId']]);
+        $invoice = $this->invoiceBody($draftId);
+        self::assertSame(['Tour CNC', 'Pose', 'Tour CNC', 'Pose'], array_column($this->arrayAt($invoice, 'lines'), 'description'));
+        self::assertSame([$first, 'RFQ-12', null], [$invoice['quoteId'], $invoice['customerReference'], $invoice['notesPrinted']], 'the draft keeps what it says, and the quote it was drafted from');
+        self::assertStringContainsString($second, $this->text("SELECT changes::text FROM audit_log WHERE action = 'invoice.revised'"));
+        self::assertStringContainsString($draftId, $this->text("SELECT changes::text FROM audit_log WHERE action = 'quote.invoiced' AND entity_id = '$second'"));
+
+        $this->postJson($this->path($second).'/invoices/'.$draftId, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a quote goes on one invoice');
+        $this->postJson($this->path($second).'/invoice', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'and is not drafted again while it stands');
+        self::assertCount(4, $this->arrayAt($this->invoiceBody($draftId), 'lines'));
+
+        $this->postJson($this->companyPath().'/invoices/'.$draftId.'/cancel', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path($second).'/invoice', null);
+        self::assertResponseIsSuccessful('free again once that draft is cancelled');
+    }
+
+    public function testAQuoteGoesOnlyOnAnOpenDraftOfItsCustomerAndEstablishmentAndNotWithADiscountOfItsOwn(): void
+    {
+        $other = $this->customer('CLI-0002');
+        $lyon = Establishment::create($this->company, 'LYON', 'Lyon', false, new \DateTimeImmutable());
+        $this->em()->persist($lyon);
+        $this->em()->flush();
+        $this->signedIn(self::WRITER);
+        $first = $this->accepted();
+        $this->postJson($this->path($first).'/invoice', null);
+        $draftId = $this->stringAt($this->json(), 'invoiceId');
+
+        $this->postJson($this->path($this->sent()).'/invoices/'.$draftId, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'only an accepted quote is invoiced');
+        $this->postJson($this->path($this->accepted()).'/invoices/'.self::ABSENT, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        // Allocated over every line of the invoice, the quote's discount would move tax from one rate to another.
+        $this->postJson($this->path($this->accepted(['discountAmount' => '10'])).'/invoices/'.$draftId, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringStartsWith('discountAmount:', $this->stringAt($this->json(), 'detail'));
+
+        $this->postJson($this->path($this->accepted(['customerId' => $other->getId()->toRfc4122()])).'/invoices/'.$draftId, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'another customer');
+        self::assertStringStartsWith('invoiceId:', $this->stringAt($this->json(), 'detail'));
+
+        $this->postJson($this->companyPath().'/invoices', [
+            'customerId' => $this->customer->getId()->toRfc4122(),
+            'establishmentId' => $lyon->getId()->toRfc4122(),
+            'lines' => [['description' => 'Pose', 'quantity' => '1', 'unitId' => $this->unitId('HUR'), 'unitPriceNet' => '40', 'taxComponentIds' => [$this->taxId('TVA19')]]],
+        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $lyonDraftId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($this->accepted()).'/invoices/'.$lyonDraftId, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a draft another establishment numbers');
+        self::assertStringStartsWith('invoiceId:', $this->stringAt($this->json(), 'detail'));
+
+        self::assertCount(2, $this->arrayAt($this->invoiceBody($draftId), 'lines'), 'no refusal added anything');
+        $this->postJson($this->companyPath().'/invoices/'.$draftId.'/cancel', null);
+        self::assertResponseIsSuccessful();
+        $last = $this->accepted();
+        $this->postJson($this->path($last).'/invoices/'.$draftId, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft only, never a cancelled or an issued invoice');
+        $this->getJson($this->path($last));
+        self::assertNull($this->json()['invoiceId']);
+    }
+
     public function testInvoicingAQuoteAsksForWritingInvoicesAsWell(): void
     {
         $this->signedIn(['quote.read', 'quote.write']);
@@ -250,6 +327,8 @@ final class QuotesTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
         self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM invoice'));
+        $this->postJson($this->path($id).'/invoices/'.self::ABSENT, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'nor added to a draft');
     }
 
     public function testQuotingNeedsOnlyCustomersWhileInvoicingAQuoteNeedsInvoicesOn(): void
@@ -266,6 +345,8 @@ final class QuotesTest extends ApiTestCase
         self::assertResponseIsSuccessful('the quote is still read');
         $this->postJson($this->path($id).'/invoice', null);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nowhere to draft the invoice');
+        $this->postJson($this->path($id).'/invoices/'.self::ABSENT, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor one to add it to');
         self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM invoice'));
 
         $this->sendJson('PUT', $this->companyPath().'/modules/invoices', ['enabled' => true]);
@@ -403,6 +484,25 @@ final class QuotesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
 
         return $id;
+    }
+
+    /** @param array<string, mixed> $changes */
+    private function accepted(array $changes = []): string
+    {
+        $id = $this->sent($changes);
+        $this->postJson($this->path($id).'/accept', ['answeredOn' => null]);
+        self::assertResponseIsSuccessful();
+
+        return $id;
+    }
+
+    /** @return array<string, mixed> */
+    private function invoiceBody(string $id): array
+    {
+        $this->getJson($this->companyPath().'/invoices/'.$id);
+        self::assertResponseIsSuccessful();
+
+        return $this->json();
     }
 
     /** @param array<string, mixed> $changes */

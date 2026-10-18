@@ -22,6 +22,7 @@ use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\Model\InvoiceTax;
+use App\Module\Invoices\Domain\ValueObject\Deduction;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
@@ -568,6 +569,23 @@ final class InvoiceTest extends TestCase
             [$event->correctsInvoiceId, array_map(static fn (\App\Module\Invoices\Domain\ValueObject\InvoicedQuantity $each): array => [$each->productId, $each->quantity, $each->lotCode], $event->returnedLines)],
         );
         self::assertSame([], $event->directLines);
+    }
+
+    public function testLinesAddedToADraftNeverLandOnADepositAndGiveBackOnlyItsCustomersDeposits(): void
+    {
+        $customer = $this->customer($this->company);
+        $deposit = Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(), [$this->pieceLine()], [], $this->now, deposit: true);
+        $this->assertRefused('lines', fn () => $deposit->addLines([$this->pieceLine()], $this->now), 'a deposit invoice is a share of its quote alone');
+        self::assertCount(1, $deposit->getLines());
+
+        $theirs = Invoice::create($this->company, $this->establishment(), $this->customer($this->company, 'CLI-0002'), new InvoiceHeader(), [$this->pieceLine()], [], $this->now, deposit: true);
+        $draft = Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
+        $givingBack = fn (Invoice $of): InvoiceLineDetails => new InvoiceLineDetails(null, 'Acompte', '1', $this->unit('C62'), '10', null, [], deduction: new Deduction($of, []));
+        $this->assertRefused('lines[0].deductsInvoiceId', fn () => $draft->addLines([$givingBack($theirs)], $this->now), "another customer's deposit, as a new draft refuses it");
+        self::assertCount(1, $draft->getLines(), 'and nothing is added');
+
+        $draft->addLines([$givingBack($deposit)], $this->now);
+        self::assertSame([null, $deposit], array_map(static fn ($line): ?Invoice => $line->getDeduction()?->deposit, $draft->getLines()));
     }
 
     private function issuedCreditNote(Invoice $invoice, string $due): Invoice

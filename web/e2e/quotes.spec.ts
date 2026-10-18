@@ -6,7 +6,7 @@ import { choose, expectFacetCount } from './select';
 
 // Quotes through the real stack: in the seeded Tunisian company, the owner drafts a quote for a customer made for the
 // run, previews its PDF, marks it sent and finds it numbered from its own series, records the customer's yes, then
-// invoices it and lands on the draft invoice it became. Numbered documents are never deleted, so the customer is
+// invoices it and lands on the draft invoice it became, onto which a second accepted quote is added. Numbered documents are never deleted, so the customer is
 // unique to the run and deactivated afterwards.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
@@ -107,7 +107,74 @@ async function retire(page: Page, number: string): Promise<void> {
   );
 }
 
+/**
+ * A quote of one line for the run’s customer, sent and accepted through the API, at the company’s default line taxes:
+ * the screens that make one are played by the scenario above. Answers the quote's address on screen.
+ */
+async function acceptedQuote(
+  page: Page,
+  customerNumber: string,
+  description: string,
+): Promise<string> {
+  const id = await page.evaluate(
+    async ([csrf, wanted, line]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}`;
+      const listed = (await (
+        await fetch(`${base}/customers?q=${encodeURIComponent(wanted)}`)
+      ).json()) as { member: { id: string; number: string }[] };
+      const customer = listed.member.find((row) => row.number === wanted);
+      if (customer === undefined) throw new Error(`no customer ${wanted}`);
+      const options = (await (await fetch(`${base}/quote-options`)).json()) as {
+        units: { id: string }[];
+        taxes: { id: string; kind: string; isDefault: boolean }[];
+      };
+      const post = async (path: string, body: unknown) => {
+        const answer = await fetch(`${base}/quotes${path}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify(body),
+        });
+        if (!answer.ok) {
+          throw new Error(`POST quotes${path} answered ${answer.status}: ${await answer.text()}`);
+        }
+        return (await answer.json()) as { id: string };
+      };
+      const quote = await post('', {
+        customerId: customer.id,
+        establishmentId: null,
+        customerReference: null,
+        notesPrinted: null,
+        notesInternal: null,
+        discountAmount: null,
+        lines: [
+          {
+            productId: null,
+            description: line,
+            quantity: '1',
+            unitId: options.units[0]!.id,
+            unitPriceNet: '400',
+            discountRate: null,
+            discountAmount: null,
+            // The stamp is a default too, but charged on the document, never on a line.
+            taxComponentIds: options.taxes
+              .filter((tax) => tax.isDefault && tax.kind === 'percentage_line')
+              .map((tax) => tax.id),
+          },
+        ],
+      });
+      await post(`/${quote.id}/send`, null);
+      await post(`/${quote.id}/accept`, { answeredOn: null });
+      return quote.id;
+    },
+    [CSRF, customerNumber, description] as const,
+  );
+  return `/quotes/${id}`;
+}
+
 test('a quote is drafted, sent, accepted and invoiced into a draft invoice', async ({ page }) => {
+  // The quote through every screen, then a second one added to the invoice the first became.
+  test.setTimeout(90_000);
   const run = Date.now().toString(36).toUpperCase();
   const customerNumber = `E2E-DV-${run}`;
   await signIn(page);
@@ -169,6 +236,19 @@ test('a quote is drafted, sent, accepted and invoiced into a draft invoice', asy
     await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId('line-0-description')).toHaveValue(`Tournage ${run}`);
     await expect(page.getByTestId('field-customerReference')).toHaveValue(`RFQ-${run}`);
+
+    // Another accepted quote of the same customer goes onto that draft rather than a new invoice: « Facturer » asks.
+    const invoiceUrl = page.url();
+    const invoiceId = invoiceUrl.slice(invoiceUrl.lastIndexOf('/') + 1);
+    await page.goto(await acceptedQuote(page, customerNumber, `Fraisage ${run}`));
+    await expect(page.getByTestId('quote-status')).toContainText(/Accepté|Accepted/);
+    await page.getByTestId('document-action-invoice').click();
+    await expect(page.getByTestId(`add-to-draft-${invoiceId}`)).toBeVisible();
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId(`add-to-draft-${invoiceId}`).click();
+    await expect(page).toHaveURL(invoiceUrl);
+    await expect(page.getByTestId('line-0-description')).toHaveValue(`Tournage ${run}`);
+    await expect(page.getByTestId('line-1-description')).toHaveValue(`Fraisage ${run}`);
 
     // The API pages this list and the shared company outgrows one page, so the row is searched for.
     await page.goto('/quotes');

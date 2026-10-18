@@ -28,7 +28,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A quote past its draft: sent (numbered from its own series in the transaction that stores it, nothing being mailed
  * yet, so it is a mark the company makes), accepted or refused on the customer's word, cancelled while a draft, and
- * an accepted one invoiced wholly into a new draft invoice (docs/SPEC.md § 7, 2026-10-07 10:21). Every move is audited.
+ * an accepted one invoiced wholly into a new draft invoice (docs/SPEC.md § 7, 2026-10-07 10:21) or added to an open one.
+ * Every move is audited.
  */
 final readonly class QuoteWorkflow
 {
@@ -161,6 +162,34 @@ final readonly class QuoteWorkflow
             $quote->markInvoiced($invoiceId, $this->clock->now());
             $this->quotes->save($quote);
             $this->record($company, $quote, self::INVOICED, ['invoiceId' => $invoiceId->toRfc4122()], $actorUserId);
+
+            return $quote;
+        });
+    }
+
+    /**
+     * An accepted quote added to an open draft invoice of its customer instead of a new one, once, as `invoice` drafts
+     * one: the quote then names that draft.
+     *
+     * @throws QuoteNotFound
+     * @throws QuoteTransitionRefused
+     * @throws QuoteTargetInvoiceNotFound
+     * @throws QuoteTargetInvoiceNotDraft
+     * @throws QuoteInvoicingRefused
+     */
+    public function addToInvoice(Company $company, Uuid $id, Uuid $invoiceId, ?Uuid $actorUserId): Quote
+    {
+        return $this->transactions->run(function () use ($company, $id, $invoiceId, $actorUserId): Quote {
+            $quote = $this->locked($company, $id);
+            $earlier = $quote->getInvoiceId();
+            if (null !== $earlier && $this->invoices->stands($company, $earlier)) {
+                throw new QuoteTransitionRefused(\sprintf('The quote %s is already on an invoice: cancel that draft first to invoice it again.', $quote->getNumber() ?? $quote->getId()->toRfc4122()));
+            }
+            $quote->assertInvoiceable();
+            $this->invoices->addTo($quote, $invoiceId, $actorUserId);
+            $quote->markInvoiced($invoiceId, $this->clock->now());
+            $this->quotes->save($quote);
+            $this->record($company, $quote, self::INVOICED, ['invoiceId' => $invoiceId->toRfc4122(), 'added' => true], $actorUserId);
 
             return $quote;
         });

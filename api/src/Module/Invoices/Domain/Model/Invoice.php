@@ -593,15 +593,20 @@ class Invoice implements CompanyOwned
      * @param list<InvoiceLineDetails> $lines
      *
      * @throws InvoiceNotDraft
-     * @throws InvalidInvoice  when the document is not an invoice, or a line names something of another company
+     * @throws InvalidInvoice  when the document is not an invoice or is a deposit, a line names something of another
+     *                         company, or gives back a deposit a new draft could not
      */
     public function addLines(array $lines, \DateTimeImmutable $now): void
     {
         $this->assertDraft('changes');
         if (InvoiceType::Invoice !== $this->documentType) {
-            throw new InvalidInvoice('lines', 'Only an invoice takes the lines of delivery notes.');
+            throw new InvalidInvoice('lines', 'Only an invoice takes the lines of other documents.');
         }
-        $added = $this->linesOfThisCompany($lines);
+        // A deposit is a share of its own quote, worked out from it: goods added to it would be charged twice.
+        if ($this->deposit) {
+            throw new InvalidInvoice('lines', 'A deposit invoice takes no other document\'s lines.');
+        }
+        $added = $this->deductionsFor($this->linesOfThisCompany($lines), $this->customer);
         if ([] === $added) {
             return;
         }

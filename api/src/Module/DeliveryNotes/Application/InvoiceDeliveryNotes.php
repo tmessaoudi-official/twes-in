@@ -39,6 +39,7 @@ final readonly class InvoiceDeliveryNotes
     public const string INVOICED = 'delivery_note.invoiced';
     /** A selection is one list page at most, and the largest page holds this many rows. */
     public const int MOST = 100;
+    private const string NOT_AN_INVOICE = 'Delivery notes are added to an invoice, never to a credit note or a deposit invoice.';
 
     public function __construct(
         private DeliveryNoteRepository $notes,
@@ -96,7 +97,8 @@ final readonly class InvoiceDeliveryNotes
      *
      * @throws InvoiceNotFound               when the invoice is not the company's
      * @throws InvoiceNotDraft               when it is not a draft any more
-     * @throws InvalidDeliveryNote           as `draftInvoice`, and on `invoiceId` when the notes are not of the draft's customer and establishment
+     * @throws InvalidDeliveryNote           as `draftInvoice`, and on `invoiceId` when the notes are not of the draft's customer and
+     *                                       establishment, or the draft is a credit note or a deposit invoice
      * @throws DeliveryNoteTransitionRefused as `draftInvoice`
      * @throws InvalidInvoice                when what a note says no longer makes an invoice line
      */
@@ -112,6 +114,9 @@ final readonly class InvoiceDeliveryNotes
 
         $this->transactions->run(function () use ($company, $invoiceId, $noteIds, $named, $actorUserId, $quantities): void {
             $invoice = $this->invoicing->ofId($company, $invoiceId, true) ?? throw new InvoiceNotFound();
+            if (!$invoice->takesLines) {
+                throw new InvalidDeliveryNote('invoiceId', self::NOT_AN_INVOICE);
+            }
             [$notes, $lines] = $this->plan($company, $noteIds, $named, $quantities);
             if (!$notes[0]->getCustomer()->getId()->equals($invoice->customerId) || !$notes[0]->getEstablishment()->getId()->equals($invoice->establishmentId)) {
                 throw new InvalidDeliveryNote('invoiceId', 'Delivery notes are added to an invoice of their customer and their establishment.');
@@ -131,7 +136,7 @@ final readonly class InvoiceDeliveryNotes
      *
      * @return list<InvoicingCheckRow>
      *
-     * @throws \InvalidArgumentException on no id, or more than a list page of them
+     * @throws \InvalidArgumentException on no id, more than a list page of them, or a credit note or deposit invoice named
      * @throws InvoiceNotFound           when the invoice named is not the company's
      * @throws InvoiceNotDraft           when it is not a draft any more
      */
@@ -149,6 +154,9 @@ final readonly class InvoiceDeliveryNotes
             $target = $this->invoicing->ofId($company, $invoiceId, false) ?? throw new InvoiceNotFound();
             if (!$target->draft) {
                 throw new InvoiceNotDraft();
+            }
+            if (!$target->takesLines) {
+                throw new \InvalidArgumentException('invoiceId: '.self::NOT_AN_INVOICE);
             }
         }
         $found = [];
