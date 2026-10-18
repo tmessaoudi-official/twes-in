@@ -4231,6 +4231,7 @@
     "refused": "Le devis est marqué refusé.",
     "cancelled": "Le devis a été classé sans suite.",
     "invoiced": "Le devis est devenu une facture en brouillon.",
+    "added_to_invoice": "Le devis a été ajouté à la facture en brouillon.",
     "invoiced_link": "Voir la facture tirée de ce devis",
     "invoice_target": {
       "title": "Sur quelle facture ce devis est-il facturé ?",

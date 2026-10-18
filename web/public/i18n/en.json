@@ -4231,6 +4231,7 @@
     "refused": "The quote is marked refused.",
     "cancelled": "The quote was closed as not pursued.",
     "invoiced": "The quote became a draft invoice.",
+    "added_to_invoice": "The quote was added to the draft invoice.",
     "invoiced_link": "See the invoice drawn from this quote",
     "invoice_target": {
       "title": "Where is this quote invoiced?",

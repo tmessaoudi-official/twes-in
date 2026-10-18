@@ -652,7 +652,9 @@ export class QuotePage {
         ? await this.facade.invoice(companyId, id)
         : await this.facade.addToInvoice(companyId, id, target.draftId);
     if (invoiced?.invoiceId) {
-      this.feedback.success('quotes.invoiced');
+      this.feedback.success(
+        target.draftId === null ? 'quotes.invoiced' : 'quotes.added_to_invoice',
+      );
       await this.router.navigate(['/invoices', invoiced.invoiceId]);
     }
   }
