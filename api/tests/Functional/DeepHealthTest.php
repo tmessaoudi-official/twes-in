@@ -154,11 +154,12 @@ final class DeepHealthTest extends WebTestCase
         self::assertInstanceOf(Connection::class, $connection);
         // Placed on the database's clock, which the reading measures with: inside the test's transaction that clock
         // stands at the transaction's start, before this line runs, so a time taken from PHP's clock reads younger.
+        // Cut to the second, as Messenger writes it: the column keeps whole seconds and would round half of them up.
         $connection->executeStatement(
             <<<'SQL'
                 INSERT INTO messenger_messages (body, headers, queue_name, created_at, available_at, delivered_at)
                 SELECT '{}', '[]', :queue, at, at, CASE WHEN :delivered THEN at END
-                FROM (SELECT (now() AT TIME ZONE 'UTC') + CAST(:availableIn AS interval) AS at) placed
+                FROM (SELECT date_trunc('second', now() AT TIME ZONE 'UTC') + CAST(:availableIn AS interval) AS at) placed
                 SQL,
             ['queue' => $queue, 'availableIn' => $availableIn, 'delivered' => $delivered],
             ['delivered' => ParameterType::BOOLEAN],
