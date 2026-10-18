@@ -98,7 +98,7 @@ services:
   # renewed rather than trusted to free everything. It also runs the schedule
   # (api/src/Shared/Infrastructure/Scheduler/Schedule.php), read as the `scheduler_default` transport: one worker, so
   # each task runs once.
-  worker:
+  worker: &worker
     logging: *logging
     build: *api-build
     command: ["php", "bin/console", "messenger:consume", "async", "scheduler_default", "--time-limit=3600", "--memory-limit=96M"]
@@ -118,6 +118,17 @@ services:
     depends_on:
       api:
         condition: service_healthy
+
+  # The demo sandboxes' builds, on their own transport (api/config/packages/messenger.yaml, `demo`): a consumer handles
+  # one message at a time and a build takes a quarter of a minute or more, so read beside the mails, every mail queued
+  # behind a build waited for all of it. The same container as the worker otherwise. It starts once the api is up,
+  # which has brought the rows up to date, so it leaves those steps to it rather than run them beside the worker's.
+  demo-worker:
+    <<: *worker
+    command: ["php", "bin/console", "messenger:consume", "demo", "--time-limit=3600", "--memory-limit=96M"]
+    environment:
+      <<: *api-environment
+      TWES_RELEASE_STEPS: "api"
 
   # Realtime notifications (docs/SPEC.md § 7, 2026-09-13). Browsers reach it only through nginx on the web origin
   # (/connection/websocket) and only the api container calls its HTTP API, so no port is published. Connections

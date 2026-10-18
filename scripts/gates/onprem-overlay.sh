@@ -6,7 +6,7 @@
 #   ports      only the edge publishes, on 80 and 443: the shop's network reaches nothing else, the database least of all
 #   addresses  passkeys are bound to localhost, the one name the shop's computer has; mailed links, the phone's pairing
 #              and the realtime origins name the network address LAN_HOST, which may change between two starts
-#   database   api and worker connect as the application's role; the owner's password reaches postgres and migrate only
+#   database   api and both workers connect as the application's role; the owner's password reaches postgres and migrate only
 #   required   LAN_HOST, the two database passwords, the mail account, the deep health's token and both backup
 #              passphrases have no default; the off-site copy, once on, requires every bucket value
 #   monitor    optional: SENTRY_DSN and MONITOR_URL may be left empty, and the installation still starts
@@ -83,7 +83,7 @@ while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(jq -r 
 edge_ports=$(jq -r '[.services.edge.ports // [] | .[] | "\(.published):\(.target)/\(.protocol // "tcp")"] | sort | join(" ")' <<<"$config")
 [[ "$edge_ports" == "443:443/tcp 80:80/tcp" ]] || problem "the edge publishes [$edge_ports], wanted 80 and 443"
 
-for service in api worker migrate; do
+for service in api worker demo-worker migrate; do
   for pair in "DEFAULT_URI=https://$LAN" "APP_WEBAUTHN_RP_ID=localhost" "APP_WEBAUTHN_ORIGINS=https://localhost" \
     "PAIRING_ORIGIN=https://$LAN" "MAILER_DSN=smtp://shop%40gmail.invalid:app@smtp.gmail.invalid:587" \
     "MAILER_SENDER=shop@gmail.invalid" "MONITOR_TOKEN=gate-monitor" "APP_ENV=prod"; do
@@ -92,7 +92,7 @@ for service in api worker migrate; do
     [[ "$got" == "$want" ]] || problem "$service $key is $got, wanted $want"
   done
 done
-for service in api worker; do
+for service in api worker demo-worker; do
   got=$(jq -r --arg s "$service" '.services[$s].environment.DATABASE_URL // ""' <<<"$config")
   [[ "$got" == "postgresql://twes_app:gate-app@"* ]] || problem "$service DATABASE_URL is not the application's role with POSTGRES_APP_PASSWORD: $got"
 done

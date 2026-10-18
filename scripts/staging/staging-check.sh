@@ -124,7 +124,7 @@ step "staging-follow deployed :master"
 # Every container that runs a twes-in image runs the one its digest names; none was built under this project.
 by_digest() {
   local service image cid
-  for service in api:$TWES_API_IMAGE worker:$TWES_API_IMAGE web:$TWES_WEB_IMAGE postgres:$TWES_DATABASE_IMAGE backup:$TWES_DATABASE_IMAGE; do
+  for service in api:$TWES_API_IMAGE worker:$TWES_API_IMAGE demo-worker:$TWES_API_IMAGE web:$TWES_WEB_IMAGE postgres:$TWES_DATABASE_IMAGE backup:$TWES_DATABASE_IMAGE; do
     image=${service#*:}; service=${service%%:*}
     cid=$(dc ps -q "$service"); [[ -n "$cid" ]] || fail "$service is not running"
     [[ "$(docker inspect --format '{{.Image}}' "$cid")" == "$(docker image inspect --format '{{.Id}}' "$image")" ]] \
@@ -160,7 +160,7 @@ step "a second follow finds nothing to do"
 
 # A rollback: the services running the published images removed, the images gone from this machine, the release written
 # down started again. The stand-in bucket stays: its data lives in its container.
-dc rm -sf api worker web postgres backup >/dev/null 2>&1
+dc rm -sf api worker demo-worker web postgres backup >/dev/null 2>&1
 forget_images "$snapshot"
 for ref in $(images_of "$WORK/release.env"); do ! docker image inspect "$ref" >/dev/null 2>&1 || fail "$ref is still on this machine"; done
 bash "$staging/scripts/deploy/deploy.sh" --staging "$values" "$WORK/etc/releases/$snapshot.env" > "$WORK/redeploy.log" 2>&1 \

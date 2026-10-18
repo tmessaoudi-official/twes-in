@@ -510,33 +510,51 @@ abstract class ApiTestCase extends WebTestCase
      */
     protected function queued(): array
     {
-        // get() hands over one message unless asked for more: the queue is read whole.
-        return array_map(static fn (Envelope $envelope): object => $envelope->getMessage(), array_values([...self::queue()->get(\PHP_INT_MAX)]));
+        // get() hands over one message unless asked for more: each queue is read whole.
+        $queued = [];
+        foreach (self::queues() as $queue) {
+            $queued = [...$queued, ...array_map(static fn (Envelope $envelope): object => $envelope->getMessage(), array_values([...$queue->get(\PHP_INT_MAX)]))];
+        }
+
+        return $queued;
     }
 
     /** Hands what is queued to the bus as the worker would, until nothing is left; how many it handed. */
     protected function deliverQueued(): int
     {
-        $queue = self::queue();
         $bus = static::getContainer()->get(MessageBusInterface::class);
         $handed = 0;
-        while ([] !== $envelopes = array_values([...$queue->get()])) {
-            foreach ($envelopes as $envelope) {
-                $bus->dispatch($envelope->with(new ReceivedStamp('async')));
-                $queue->ack($envelope);
-                ++$handed;
+        do {
+            $before = $handed;
+            foreach (self::queues() as $transport => $queue) {
+                while ([] !== $envelopes = array_values([...$queue->get()])) {
+                    foreach ($envelopes as $envelope) {
+                        $bus->dispatch($envelope->with(new ReceivedStamp($transport)));
+                        $queue->ack($envelope);
+                        ++$handed;
+                    }
+                }
             }
-        }
+        } while ($handed > $before);
 
         return $handed;
     }
 
-    private static function queue(): InMemoryTransport
+    /**
+     * Every transport a message leaves the request on, by name.
+     *
+     * @return array<string, InMemoryTransport>
+     */
+    private static function queues(): array
     {
-        $queue = static::getContainer()->get('messenger.transport.async');
-        self::assertInstanceOf(InMemoryTransport::class, $queue);
+        $queues = [];
+        foreach (['async', 'demo'] as $transport) {
+            $queue = static::getContainer()->get('messenger.transport.'.$transport);
+            self::assertInstanceOf(InMemoryTransport::class, $queue);
+            $queues[$transport] = $queue;
+        }
 
-        return $queue;
+        return $queues;
     }
 
     /** The kernel reboots between requests, so an entity from before a request must be re-read, not refreshed. */

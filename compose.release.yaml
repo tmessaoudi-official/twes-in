@@ -11,6 +11,9 @@ services:
   worker:
     image: "${TWES_API_IMAGE:?set TWES_API_IMAGE, the api image by its digest}"
     build: !reset null
+  demo-worker:
+    image: "${TWES_API_IMAGE:?set TWES_API_IMAGE, the api image by its digest}"
+    build: !reset null
   migrate:
     image: "${TWES_API_IMAGE:?set TWES_API_IMAGE, the api image by its digest}"
     build: !reset null

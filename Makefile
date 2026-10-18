@@ -224,6 +224,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/forwarded-proto.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/live-proxy.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/api/tests/migrate.test.sh
+	bash scripts/gates/tests/no-leftovers.sh infra/api/tests/entrypoint.test.sh
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
 	bash scripts/gates/executable-bits.sh

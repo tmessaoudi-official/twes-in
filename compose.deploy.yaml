@@ -66,6 +66,8 @@ services:
     environment: *deploy-environment
   worker:
     environment: *deploy-environment
+  demo-worker:
+    environment: *deploy-environment
   migrate:
     environment:
       <<: *deploy-environment

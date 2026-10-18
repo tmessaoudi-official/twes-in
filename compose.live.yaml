@@ -74,6 +74,19 @@ services:
       - api-vendor:/app/vendor
       - api-var:/app/var
       - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
+  # The demo builds' consumer, the same way.
+  demo-worker:
+    command:
+      - sh
+      - -c
+      - >-
+        trap 'kill -TERM $$consumer; wait $$consumer; exit 0' TERM INT;
+        while :; do php bin/console messenger:consume demo --time-limit=60 --memory-limit=96M & consumer=$$!; wait $$consumer; done
+    volumes:
+      - ./api:/app
+      - api-vendor:/app/vendor
+      - api-var:/app/var
+      - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
 
   web:
     build:

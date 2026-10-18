@@ -4,15 +4,15 @@
 # compose.yaml, compose.prod.yaml, compose.backup.yaml, compose.backup-bucket.yaml and compose.deploy.yaml.
 #   ports      only the edge publishes, on 80, 443 and 443/udp; Docker's published ports pass by the host's firewall, so
 #              the database, the api or a mail catcher left published would face the internet
-#   addresses  api and worker both take every address from TWES_HOST (the worker sends the mails, so its links must be
+#   addresses  api and both workers take every address from TWES_HOST (the workers send the mails, so their links must be
 #              the api's), and centrifugo accepts that origin alone
-#   database   api and worker connect as the application's role with POSTGRES_APP_PASSWORD; the owner's password reaches
+#   database   api and both workers connect as the application's role with POSTGRES_APP_PASSWORD; the owner's password reaches
 #              only postgres and the one-shot migrate service, so a statement the application is tricked into running
 #              never holds the schema
 #   required   TWES_HOST, EDGE_TLS, POSTGRES_PASSWORD, POSTGRES_APP_PASSWORD, the mail settings and the monitor's (its token, its address,
 #              the heartbeats' token, the error tracker's DSN) have no default: a server missing one stops before
 #              starting anything, rather than run unwatched
-#   monitor    api and worker report their errors to SENTRY_DSN and answer MONITOR_TOKEN; the backup service sends its
+#   monitor    api and both workers report their errors to SENTRY_DSN and answer MONITOR_TOKEN; the backup service sends its
 #              heartbeats to MONITOR_URL with MONITOR_HEARTBEAT_TOKEN
 #   mailpit    behind a profile, so it never starts
 #   HSTS       infra/edge/Caddyfile sends max-age=31536000 to the app host only: no includeSubDomains, no preload
@@ -68,7 +68,7 @@ while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(jq -r 
 edge_ports=$(jq -r '[.services.edge.ports // [] | .[] | "\(.published):\(.target)/\(.protocol // "tcp")"] | sort | join(" ")' <<<"$config")
 [[ "$edge_ports" == "443:443/tcp 443:443/udp 80:80/tcp" ]] || problem "the edge publishes [$edge_ports], wanted 80, 443 and 443/udp"
 
-for service in api worker; do
+for service in api worker demo-worker; do
   for pair in "DEFAULT_URI=https://$HOST" "APP_WEBAUTHN_RP_ID=$HOST" "APP_WEBAUTHN_ORIGINS=https://$HOST" \
     "PAIRING_ORIGIN=https://$HOST" "MAILER_DSN=smtp://relay.invalid:587" "MAILER_SENDER=no-reply@$HOST" \
     "MONITOR_TOKEN=gate-monitor" "SENTRY_DSN=https://gate@errors.$HOST/1"; do
