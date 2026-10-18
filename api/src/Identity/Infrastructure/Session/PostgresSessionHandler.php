@@ -26,8 +26,9 @@ use Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler;
  * queues everything else the same person asks for, and a read is not a write.
  *
  * The row's expiry is the idle limit: every write sets it to now plus the idle time, a read pushes it forward at most
- * once a minute, and PdoSessionHandler reads a row past its expiry as no session at all. The absolute limit is the
- * session's creation time, checked by SessionTimeoutListener.
+ * once a minute, and PdoSessionHandler reads a row past its expiry as no session at all. A session may carry an idle
+ * limit of its own under IDLE_LIMIT, set by whoever signs it in: a demo's visitor may step away longer than a real
+ * account stays signed in. The absolute limit is the session's creation time, checked by SessionTimeoutListener.
  *
  * In FrankenPHP's worker mode this handler, and the connection it opens, outlive the request. A connection idle as long as
  * Doctrine lets its own be (DoctrineBundle's idle_connection_ttl) is dropped at the next session's start, so one the
@@ -36,6 +37,9 @@ use Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler;
  */
 final class PostgresSessionHandler implements \SessionHandlerInterface, \SessionUpdateTimestampHandlerInterface
 {
+    /** The session attribute holding the session's own idle limit, in seconds, where it is not the application's. */
+    public const string IDLE_LIMIT = '_twes_idle_limit';
+
     /** How long a read may leave the expiry behind before it pushes it forward: the idle limit's precision. */
     private const int REFRESH_AFTER = 60;
 
@@ -112,10 +116,24 @@ final class PostgresSessionHandler implements \SessionHandlerInterface, \Session
     private function refresh(string $id): bool
     {
         $now = time();
+        $limit = $this->idleLimit();
         $this->pdo()->prepare('UPDATE sessions SET sess_lifetime = :expiry, sess_time = :now WHERE sess_id = :id AND sess_lifetime < :stale')
-            ->execute(['expiry' => $now + $this->idleTtl, 'now' => $now, 'id' => $id, 'stale' => $now + $this->idleTtl - self::REFRESH_AFTER]);
+            ->execute(['expiry' => $now + $limit, 'now' => $now, 'id' => $id, 'stale' => $now + $limit - self::REFRESH_AFTER]);
 
         return true;
+    }
+
+    /**
+     * The idle limit of the session being written: its own, or the application's. Asked only while the session is
+     * written, when it is started; asked before, the session would start itself again from inside its own handler.
+     */
+    private function idleLimit(): int
+    {
+        $request = $this->requests->getMainRequest();
+        $session = null !== $request && $request->hasSession() ? $request->getSession() : null;
+        $limit = null !== $session && $session->isStarted() ? $session->get(self::IDLE_LIMIT) : null;
+
+        return \is_int($limit) && $limit > 0 ? $limit : $this->idleTtl;
     }
 
     private function dropIdleConnection(): void
@@ -149,12 +167,12 @@ final class PostgresSessionHandler implements \SessionHandlerInterface, \Session
 
     private function locking(): PdoSessionHandler
     {
-        return $this->locking ??= new PdoSessionHandler($this->pdo(), ['lock_mode' => PdoSessionHandler::LOCK_ADVISORY, 'ttl' => $this->idleTtl]);
+        return $this->locking ??= new PdoSessionHandler($this->pdo(), ['lock_mode' => PdoSessionHandler::LOCK_ADVISORY, 'ttl' => $this->idleLimit(...)]);
     }
 
     private function reading(): PdoSessionHandler
     {
-        return $this->reading ??= new PdoSessionHandler($this->pdo(), ['lock_mode' => PdoSessionHandler::LOCK_NONE, 'ttl' => $this->idleTtl]);
+        return $this->reading ??= new PdoSessionHandler($this->pdo(), ['lock_mode' => PdoSessionHandler::LOCK_NONE, 'ttl' => $this->idleLimit(...)]);
     }
 
     /** One connection for both handlers, opened by the first session a process meets. */

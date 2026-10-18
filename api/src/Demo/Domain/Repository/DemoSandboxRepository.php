@@ -41,6 +41,14 @@ interface DemoSandboxRepository
     /** @return list<Uuid> the sandboxes being built since before that moment */
     public function buildingSince(\DateTimeImmutable $before): array;
 
+    /**
+     * The claimed sandboxes whose visitor is gone: none of the owner's sessions is still in use since that moment, and
+     * either one of them was signed out or the claim itself is older. A claim no request has followed yet waits.
+     *
+     * @return list<Uuid>
+     */
+    public function doneWith(\DateTimeImmutable $lastUsedBefore): array;
+
     /** Whether the account is the owner of a sandbox, whatever its state. */
     public function ownsOne(Uuid $userId): bool;
 
@@ -49,6 +57,12 @@ interface DemoSandboxRepository
 
     /** The sandbox the company is, whatever its state; null for any company that is no sandbox. */
     public function ofCompany(Uuid $companyId): ?DemoSandbox;
+
+    /** @return list<Uuid> every sandbox's company, whatever its state */
+    public function companies(): array;
+
+    /** @return list<Uuid> every sandbox's owner, whatever its state */
+    public function owners(): array;
 
     /** How many sandboxes there are, whatever their state. */
     public function count(): int;

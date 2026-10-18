@@ -15,6 +15,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
 /**
  * The session table against the real PostgreSQL (the other tests run on a mock session storage). A request that only
@@ -24,6 +26,9 @@ use Symfony\Component\HttpFoundation\RequestStack;
 final class PostgresSessionHandlerTest extends KernelTestCase
 {
     private const int IDLE = 1800;
+
+    /** A demo's own idle limit, longer than the application's. */
+    private const int DEMO = 7200;
 
     /** @var list<string> */
     private array $ids = [];
@@ -96,6 +101,24 @@ final class PostgresSessionHandlerTest extends KernelTestCase
 
             $version = $this->version($id);
             $this->save($id, 'company|s:1:"A";', 'GET', $how);
+            self::assertSame($version, $this->version($id), $how.' writes nothing a minute after the last push');
+        }
+    }
+
+    public function testASessionCarryingAnIdleLimitOfItsOwnIsKeptThatLong(): void
+    {
+        $id = $this->id();
+
+        $this->save($id, 'company|s:1:"A";', 'POST', limit: self::DEMO);
+        self::assertEqualsWithDelta(time() + self::DEMO, $this->row($id)[1], 5, 'a change writes the session\'s own limit');
+
+        foreach (['write', 'updateTimestamp'] as $how) {
+            $this->connection()->prepare('UPDATE sessions SET sess_lifetime = ? WHERE sess_id = ?')->execute([time() + self::DEMO - 120, $id]);
+            $this->save($id, 'company|s:1:"A";', 'GET', $how, self::DEMO);
+            self::assertEqualsWithDelta(time() + self::DEMO, $this->row($id)[1], 5, $how.' pushes the expiry forward by the session\'s own limit');
+
+            $version = $this->version($id);
+            $this->save($id, 'company|s:1:"A";', 'GET', $how, self::DEMO);
             self::assertSame($version, $this->version($id), $how.' writes nothing a minute after the last push');
         }
     }
@@ -212,26 +235,33 @@ final class PostgresSessionHandlerTest extends KernelTestCase
         ));
     }
 
-    private function requests(string $method): RequestStack
+    /** A request whose started session carries `$limit` as its own idle limit, when one is given. */
+    private function requests(string $method, ?int $limit = null): RequestStack
     {
+        $request = Request::create('/api/anything', $method);
+        if (null !== $limit) {
+            $session = new Session(new MockArraySessionStorage());
+            $session->set(PostgresSessionHandler::IDLE_LIMIT, $limit);
+            $request->setSession($session);
+        }
         $requests = new RequestStack();
-        $requests->push(Request::create('/api/anything', $method));
+        $requests->push($request);
 
         return $requests;
     }
 
-    private function save(string $id, string $data, string $method, string $how = 'write'): void
+    private function save(string $id, string $data, string $method, string $how = 'write', ?int $limit = null): void
     {
-        $handler = $this->handler($method, $this->connection());
+        $handler = $this->handler($method, $this->connection(), $limit);
         $handler->open('', 'twes_session');
         $handler->read($id);
         'write' === $how ? $handler->write($id, $data) : $handler->updateTimestamp($id, $data);
         $handler->close();
     }
 
-    private function handler(string $method, \PDO $pdo): PostgresSessionHandler
+    private function handler(string $method, \PDO $pdo, ?int $limit = null): PostgresSessionHandler
     {
-        return new PostgresSessionHandler($pdo, $this->requests($method), self::IDLE, new MockClock());
+        return new PostgresSessionHandler($pdo, $this->requests($method, $limit), self::IDLE, new MockClock());
     }
 
     /** A connection of its own to the test database, as the handler keeps its own beside Doctrine's. */

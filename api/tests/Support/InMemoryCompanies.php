@@ -14,13 +14,14 @@ use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\CompanyRepository;
 use App\Tenancy\Domain\ValueObject\CompanySearch;
+use Symfony\Component\Uid\Uuid;
 
 final class InMemoryCompanies implements CompanyRepository
 {
     /** @var list<Company> */
     public array $companies = [];
 
-    public function ofId(\Symfony\Component\Uid\Uuid $id): ?Company
+    public function ofId(Uuid $id): ?Company
     {
         foreach ($this->companies as $company) {
             if ($company->getId()->equals($id)) {
@@ -31,7 +32,7 @@ final class InMemoryCompanies implements CompanyRepository
         return null;
     }
 
-    public function lockedOfId(\Symfony\Component\Uid\Uuid $id): ?Company
+    public function lockedOfId(Uuid $id): ?Company
     {
         return $this->ofId($id);
     }
@@ -57,7 +58,8 @@ final class InMemoryCompanies implements CompanyRepository
     {
         $found = array_values(array_filter($this->companies, static fn (Company $company): bool => ([] === $search->statuses || \in_array($company->getStatus(), $search->statuses, true))
             && ([] === $search->countryCodes || \in_array($company->getCountryCode(), $search->countryCodes, true))
-            && (null === $search->text || '' === trim($search->text) || str_contains(mb_strtolower($company->getName()), mb_strtolower(trim($search->text))))));
+            && (null === $search->text || '' === trim($search->text) || str_contains(mb_strtolower($company->getName()), mb_strtolower(trim($search->text))))
+            && !\in_array($company->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->leftOut), true)));
         usort($found, static fn (Company $a, Company $b): int => $a->getName() <=> $b->getName());
 
         return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);

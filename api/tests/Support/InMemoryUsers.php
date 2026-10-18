@@ -82,7 +82,8 @@ final class InMemoryUsers implements UserRepository
             $this->users,
             static fn (User $u): bool => ('' === $needle || str_contains($u->getEmail()->value, $needle) || str_contains(mb_strtolower($u->getDisplayName()), $needle))
                 && (null === $search->active || $u->isActive() === $search->active)
-                && (null === $search->platformOperator || $u->isPlatformOperator() === $search->platformOperator),
+                && (null === $search->platformOperator || $u->isPlatformOperator() === $search->platformOperator)
+                && !\in_array($u->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->leftOut), true),
         ));
         usort($found, static fn (User $a, User $b) => strcmp($a->getEmail()->value, $b->getEmail()->value));
 

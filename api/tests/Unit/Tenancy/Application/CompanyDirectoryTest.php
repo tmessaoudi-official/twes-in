@@ -144,6 +144,11 @@ final class CompanyDirectoryTest extends TestCase
             {
                 return false;
             }
+
+            public function all(): array
+            {
+                return [];
+            }
         };
 
         return new ListMembers($this->memberships, $this->invitations, $nobodyIsADemo, new MockClock('2026-09-09 10:00:00'));

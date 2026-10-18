@@ -24,4 +24,9 @@ final readonly class SandboxOwners implements DemoAccounts
     {
         return $this->sandboxes->ownsOne($userId);
     }
+
+    public function all(): array
+    {
+        return $this->sandboxes->owners();
+    }
 }

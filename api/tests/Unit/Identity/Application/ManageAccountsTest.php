@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Identity\Application;
 
 use App\Identity\Application\Account\AccountNotFound;
+use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\Account\ManageAccounts;
 use App\Identity\Application\Account\OwnAccount;
 use App\Identity\Domain\Model\User;
@@ -30,13 +31,31 @@ final class ManageAccountsTest extends TestCase
     private InMemoryAuditTrail $audit;
     private ManageAccounts $accounts;
     private User $operator;
+    /** @var list<Uuid> */
+    private array $demos = [];
 
     protected function setUp(): void
     {
         $this->users = new InMemoryUsers();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->accounts = new ManageAccounts($this->users, $this->audit, $transactions);
+        $demos = new class(fn (): array => $this->demos) implements DemoAccounts {
+            /** @param \Closure(): list<Uuid> $demos */
+            public function __construct(private \Closure $demos)
+            {
+            }
+
+            public function isDemo(Uuid $userId): bool
+            {
+                return array_any($this->all(), static fn (Uuid $id): bool => $id->equals($userId));
+            }
+
+            public function all(): array
+            {
+                return ($this->demos)();
+            }
+        };
+        $this->accounts = new ManageAccounts($this->users, $this->audit, $transactions, $demos);
         $this->operator = $this->account('op@twes.local', 'Operator');
     }
 
@@ -56,6 +75,17 @@ final class ManageAccountsTest extends TestCase
         $page = $this->accounts->search(new AccountSearch(), new PageRequest(1, 2));
         self::assertCount(2, $page->items);
         self::assertSame(4, $page->total, 'a page says how many rows the whole list holds');
+    }
+
+    public function testADemosThrowawayOwnerIsNeverFoundNorCounted(): void
+    {
+        $this->account('nadia@acme.test', 'Nadia');
+        $this->demos[] = $this->account('demo-1@demo.twes.invalid', 'Visiteur ACME')->getId();
+
+        $found = $this->accounts->search(new AccountSearch('acme'), new PageRequest(1, 50));
+
+        self::assertSame(['nadia@acme.test'], array_map(static fn ($a) => $a->email, $found->items));
+        self::assertSame(1, $found->total);
     }
 
     public function testEndingAnAccountsSessionsRotatesItsStampAndIsAudited(): void

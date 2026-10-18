@@ -18,4 +18,12 @@ use Symfony\Component\Uid\Uuid;
 interface DemoCompanies
 {
     public function isDemo(Uuid $companyId): bool;
+
+    /**
+     * Every sandbox's company, whatever its state: what the platform's operators never see. A few dozen at most, the
+     * pool's size.
+     *
+     * @return list<Uuid>
+     */
+    public function all(): array;
 }

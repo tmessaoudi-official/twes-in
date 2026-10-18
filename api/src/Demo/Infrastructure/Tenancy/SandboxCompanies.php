@@ -24,4 +24,9 @@ final readonly class SandboxCompanies implements DemoCompanies
     {
         return null !== $this->sandboxes->ofCompany($companyId);
     }
+
+    public function all(): array
+    {
+        return $this->sandboxes->companies();
+    }
 }
