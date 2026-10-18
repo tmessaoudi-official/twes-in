@@ -23,6 +23,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import {
+  noticeToasts,
   provideQuietFeedback,
   type RecordedFeedback,
   successToasts,
@@ -57,6 +58,7 @@ const screws: ProductOption = {
   unitId: 'u1',
   unitName: 'pièce',
   tracking: 'none',
+  goods: true,
   active: true,
   costPrice: '0.1200',
 };
@@ -496,5 +498,107 @@ describe('PurchaseOrderPage', () => {
     expect(q('purchase-line-0-refused')?.textContent?.trim()).toBe(
       'Refusé par le serveur : Quantité',
     );
+  });
+
+  describe('the products « Ajouter à… » sends', () => {
+    const paint: ProductOption = {
+      ...screws,
+      id: 'p2',
+      reference: 'PEINT-1',
+      name: 'Peinture blanche',
+      unitId: 'u2',
+      unitName: 'litre',
+      costPrice: '3.5000',
+    };
+    const fitting: ProductOption = { ...screws, id: 'p3', name: 'Pose', goods: false };
+    const retired: ProductOption = { ...screws, id: 'p4', name: 'Vis 4 mm', active: false };
+    const value = (testId: string) => (q(testId) as HTMLInputElement | null)?.value ?? null;
+    /** The products read by id outside the saved order's own, which is how what was sent here is read. */
+    const readSent = () =>
+      facade.pickProducts.mock.calls
+        .map(([, asked]) => asked as { ids?: string[] })
+        .filter((asked) => asked.ids !== undefined && asked.ids.some((id) => id !== 'p1'));
+    let navigate: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.pickProducts.mockImplementation(
+        async (_companyId: string, asked: { ids?: string[] }) =>
+          [screws, paint, fitting, retired].filter((each) => asked.ids?.includes(each.id)),
+      );
+    });
+
+    async function openWith(id: string | undefined, add: string | string[]): Promise<void> {
+      fixture = TestBed.createComponent(PurchaseOrderPage);
+      if (id !== undefined) fixture.componentRef.setInput('purchaseOrderId', id);
+      fixture.componentRef.setInput('add', add);
+      await settle();
+      await vi.waitFor(() => expect(noticeToasts()).not.toEqual([]));
+      await settle();
+    }
+
+    it('puts them on an open draft as a scan would, unsaved, and the address forgets them', async () => {
+      order.set(orderIn('draft'));
+      await openWith('o1', ['p1', 'p2']);
+
+      // The product already on a line counts one more; another starts its own line, named and priced at its cost.
+      expect(value('purchase-line-0-quantity')).toBe('101');
+      expect(value('purchase-line-1-description')).toBe('Peinture blanche');
+      expect(value('purchase-line-1-quantity')).toBe('1');
+      expect(value('purchase-line-1-price')).toBe('3,5');
+      expect(q('purchase-line-1-unit')?.textContent).toContain('litre');
+      expect(q('purchase-line-2')).toBeNull();
+      expect(facade.revise).not.toHaveBeenCalled();
+      expect(noticeToasts()).toEqual([{ key: 'documents.add_to.taken_in', params: { count: 2 } }]);
+      expect(navigate).toHaveBeenCalledWith(
+        [],
+        expect.objectContaining({ queryParams: { add: null }, replaceUrl: true }),
+      );
+      await settle();
+      expect(readSent()).toHaveLength(1);
+    });
+
+    it('starts a new order with them in place of its empty line', async () => {
+      await openWith(undefined, 'p2');
+
+      expect(value('purchase-line-0-description')).toBe('Peinture blanche');
+      expect(q('purchase-line-1')).toBeNull();
+    });
+
+    it('leaves a price for a cost reader to set', async () => {
+      granted.delete('product.cost.read');
+      await openWith(undefined, 'p2');
+
+      expect(value('purchase-line-0-description')).toBe('Peinture blanche');
+      expect(q('purchase-line-0-price')).toBeNull();
+      const lines = (
+        fixture.componentInstance as unknown as { lines: () => { getRawValue(): unknown } }
+      )
+        .lines()
+        .getRawValue();
+      expect(lines).toEqual([expect.objectContaining({ productId: 'p2', unitPriceNet: '' })]);
+    });
+
+    it('orders no service and no retired product, and says why apart from the ones not found', async () => {
+      order.set(orderIn('draft'));
+      await openWith('o1', ['p3', 'gone', 'p2', 'p4']);
+
+      expect(value('purchase-line-1-description')).toBe('Peinture blanche');
+      expect(q('purchase-line-2')).toBeNull();
+      expect(value('purchase-line-0-quantity')).toBe('100');
+      expect(noticeToasts()).toEqual([
+        { key: 'documents.add_to.taken_in', params: { count: 1 } },
+        { key: 'documents.add_to.left_out', params: { count: 1 } },
+        { key: 'documents.add_to.left_out_goods', params: { count: 2 } },
+      ]);
+    });
+
+    it('adds nothing to an order that is no longer a draft, and says why', async () => {
+      order.set(orderIn('sent'));
+      await openWith('o1', ['p2']);
+
+      expect(noticeToasts()).toEqual([{ key: 'documents.add_to.not_draft' }]);
+      expect(readSent()).toEqual([]);
+    });
   });
 });

@@ -34,6 +34,7 @@ class StubReader implements AddToReader {
 
 const source = (kind: AddToSource['kind'], module: string, path: string): AddToSource => ({
   kind,
+  party: kind === 'purchase_order' ? 'vendor' : 'customer',
   module,
   permission: `${kind}.write`,
   path,
@@ -64,6 +65,7 @@ describe('AddToDocuments', () => {
             source('invoice', 'invoices', '/invoices'),
             source('quote', 'quotes', '/quotes'),
             source('delivery_note', 'delivery_notes', '/delivery-notes'),
+            source('purchase_order', 'purchases', '/purchases'),
           ],
         },
         { provide: MatDialog, useValue: dialog },
@@ -85,6 +87,8 @@ describe('AddToDocuments', () => {
     modules.clear();
     for (const each of ['invoice.write', 'quote.write', 'delivery_note.write']) granted.add(each);
     for (const each of ['invoices', 'quotes', 'delivery_notes']) modules.add(each);
+    granted.add('purchase_order.write');
+    modules.add('purchases');
     read.drafts.mockReset().mockResolvedValue([draft]);
     read.customers.mockReset().mockResolvedValue([{ id: 'k1', code: 'C-7', name: 'Carthage' }]);
     dialog.open.mockReset();
@@ -95,6 +99,8 @@ describe('AddToDocuments', () => {
   it('offers each kind the person may write, in a module switched on', () => {
     granted.delete('quote.write');
     modules.delete('delivery_notes');
+    expect(service().kinds()).toEqual(['invoice', 'purchase_order']);
+    modules.delete('purchases');
     expect(service().kinds()).toEqual(['invoice']);
   });
 
@@ -117,10 +123,11 @@ describe('AddToDocuments', () => {
     expect(data().count).toBe(2);
     expect(data().title).toBe('documents.add_to.title');
     expect(data().help).toBeNull();
-    expect(data().targets.map((target) => target.kind)).toEqual([
-      'invoice',
-      'quote',
-      'delivery_note',
+    expect(data().targets.map((target) => [target.kind, target.party])).toEqual([
+      ['invoice', 'customer'],
+      ['quote', 'customer'],
+      ['delivery_note', 'customer'],
+      ['purchase_order', 'vendor'],
     ]);
     expect(navigate).toHaveBeenCalledExactlyOnceWith(['/quotes', 'new'], {
       queryParams: { add: ['p1', 'p2'] },
@@ -131,6 +138,14 @@ describe('AddToDocuments', () => {
     chooses({ kind: 'delivery_note', draftId: 'n7' });
     await service().open(['p1']);
     expect(navigate).toHaveBeenCalledExactlyOnceWith(['/delivery-notes', 'n7'], {
+      queryParams: { add: ['p1'] },
+    });
+
+    dialog.open.mockReset();
+    navigate.mockReset();
+    chooses({ kind: 'purchase_order', draftId: 'o3' });
+    await service().open(['p1']);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(['/purchases', 'o3'], {
       queryParams: { add: ['p1'] },
     });
   });

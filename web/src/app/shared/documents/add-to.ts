@@ -19,6 +19,8 @@ export function productsAsked(add: string | readonly string[] | undefined): read
 export interface TakenIn {
   readonly added: number;
   readonly leftOut: number;
+  /** The products found that the document refuses by a rule of its own, and the notice that names the rule. */
+  readonly refused?: { readonly count: number; readonly key: string };
 }
 
 /** A document editor as « Ajouter à… » needs it: its lines ready to take products, and whether it still may. */
@@ -70,6 +72,9 @@ export function takeInAdded(into: AddedInto): void {
         if (done === null) return;
         if (done.added > 0) feedback.notice('documents.add_to.taken_in', { count: done.added });
         if (done.leftOut > 0) feedback.notice('documents.add_to.left_out', { count: done.leftOut });
+        if (done.refused !== undefined && done.refused.count > 0) {
+          feedback.notice(done.refused.key, { count: done.refused.count });
+        }
       });
     });
   });

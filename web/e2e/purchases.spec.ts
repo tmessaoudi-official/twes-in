@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
-import { aProduct, forget, stockKept } from './catalogue';
+import { aProduct, aVendor, forget, retireVendor, stockKept } from './catalogue';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
 
@@ -9,42 +9,6 @@ import { toast } from './toast';
 // and the stock list showing what came. One database is shared by the whole suite, so every name is unique to the run;
 // the order stays (an order received is a record), the product and the vendor are retired at the end.
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-/** Creates the run's vendor through the API; its id. */
-async function aVendor(page: Page, number: string): Promise<string> {
-  return page.evaluate(
-    async ([csrf, vendorNumber]) => {
-      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const created = await fetch(`/api/companies/${me.company.id}/vendors`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-        body: JSON.stringify({ number: vendorNumber, name: `Quincaillerie ${vendorNumber}` }),
-      });
-      if (!created.ok) throw new Error(`creating ${vendorNumber} answered ${created.status}`);
-      return ((await created.json()) as { id: string }).id;
-    },
-    [CSRF, number] as const,
-  );
-}
-
-/** Retires the run's vendor; a vendor is never deleted. */
-async function retire(page: Page, id: string): Promise<void> {
-  await page.evaluate(
-    async ([csrf, vendorId]) => {
-      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const address = `/api/companies/${me.company.id}/vendors/${vendorId}`;
-      // The write shape has no id: a body naming one is refused.
-      const { id: _, ...fields } = (await (await fetch(address)).json()) as Record<string, unknown>;
-      const revised = await fetch(address, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-        body: JSON.stringify({ ...fields, isActive: false }),
-      });
-      if (!revised.ok) throw new Error(`retiring ${vendorId} answered ${revised.status}`);
-    },
-    [CSRF, id] as const,
-  );
-}
 
 test('an order is started from its vendor, sent, received in two parts, and its goods are in stock', async ({
   page,
@@ -160,6 +124,6 @@ test('an order is started from its vendor, sent, received in two parts, and its 
   } finally {
     if (products.length > 0) await stockKept(page, products[0], false);
     await forget(page, products);
-    if (vendorId !== null) await retire(page, vendorId);
+    if (vendorId !== null) await retireVendor(page, vendorId);
   }
 });

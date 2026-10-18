@@ -36,6 +36,7 @@ export class AddToDocuments {
         const reader = this.injector.get(await source.reader());
         return {
           kind: source.kind,
+          party: source.party,
           drafts: (customer) => reader.drafts(companyId, customer),
           customers: (words) => reader.customers(companyId, words),
         };

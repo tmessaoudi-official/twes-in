@@ -14,6 +14,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { FormControl } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -22,6 +23,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import type { PlannedAction } from '../shared/actions/planned-actions';
 import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { productsIntoLines, takeInAdded, type TakenIn } from '../shared/documents/add-to';
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { unsavedChanges } from '../shared/form/dirty-count';
@@ -36,6 +38,8 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { DocumentActions } from '../shared/ui/document-actions';
 import {
+  type LineGroup,
+  lineGroup,
   linesArray,
   plainDecimal,
   purchaseOrderForm,
@@ -98,6 +102,8 @@ export class PurchaseOrderPage {
   readonly purchaseOrderId = input<string | undefined>(undefined);
   /** `?vendorId=` on a new order: the vendor it was started from, named in the header until changed. */
   readonly vendorId = input<string | undefined>(undefined);
+  /** `?add=` from « Ajouter à… »: the products to put on the order's lines, once, unsaved. */
+  readonly add = input<string | readonly string[] | undefined>(undefined);
 
   protected readonly id = computed(() => this.purchaseOrderId() ?? null);
   protected readonly tones = PURCHASE_ORDER_STATUS_TONES;
@@ -363,6 +369,15 @@ export class PurchaseOrderPage {
   constructor() {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet.
     inject(ScreenActions).declare(this.actions);
+    takeInAdded({
+      add: this.add,
+      ready: () => {
+        const current = this.current();
+        if (current === undefined || this.lines() === null) return null;
+        return { id: current?.id ?? null, editable: this.editable() };
+      },
+      take: (asked) => this.takeIn(asked),
+    });
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();
@@ -536,6 +551,51 @@ export class PurchaseOrderPage {
     if (cancelled !== null && kind !== undefined) {
       this.feedback.effect('purchases.cancelled', {}, kind);
     }
+  }
+
+  /**
+   * The products « Ajouter à… » sent here, put on the lines as scans would be, each filled in as a product chosen on a
+   * line is. Only active goods are ordered from a vendor: a service or a retired product is left out, and said.
+   */
+  private async takeIn(asked: readonly string[]): Promise<TakenIn | null> {
+    const lines = this.lines();
+    const companyId = this.company()?.id;
+    if (lines === null || !companyId) return null;
+    const found = await this.facade.pickProducts(companyId, { ids: [...asked] });
+    const orderable = found.filter((product) => product.goods && product.active);
+    this.named.update(
+      (named) => new Map([...named, ...orderable.map((product) => [product.id, product] as const)]),
+    );
+    // An order line counts in its product's unit, so a line naming a product sent here counts in the unit it was read with.
+    const units = new Map(orderable.map((product) => [product.id, product.unitId]));
+    const seesCost = this.seesCost();
+    const taken = productsIntoLines<LineGroup, ProductOption>(
+      lines,
+      (line) => ({
+        ...line.controls,
+        unitId: new FormControl(units.get(line.controls.productId.value) ?? '', {
+          nonNullable: true,
+        }),
+      }),
+      asked,
+      orderable,
+      (product) => {
+        const line = lineGroup(null);
+        line.controls.productId.setValue(product.id);
+        line.controls.description.setValue(product.name);
+        if (seesCost && product.costPrice !== null) {
+          line.controls.unitPriceNet.setValue(plainDecimal(product.costPrice));
+        }
+        return line;
+      },
+      () => undefined,
+    );
+    const refused = found.length - orderable.length;
+    return {
+      added: taken.added,
+      leftOut: taken.leftOut - refused,
+      refused: { count: refused, key: 'documents.add_to.left_out_goods' },
+    };
   }
 
   /** The header and the lines as the API takes them, or null after showing what is wrong with them. */

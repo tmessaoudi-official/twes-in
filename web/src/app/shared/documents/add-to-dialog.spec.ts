@@ -31,6 +31,7 @@ describe('AddToDialog', () => {
   function target(kind: AddToTarget['kind'], drafts: readonly AddToDraft[]): AddToTarget {
     return {
       kind,
+      party: kind === 'purchase_order' ? 'vendor' : 'customer',
       drafts: vi.fn(async () => drafts),
       customers: vi.fn(async () => [{ id: 'k2', code: 'C-9', name: 'Sousse' }]),
     };
@@ -49,7 +50,15 @@ describe('AddToDialog', () => {
     });
     const texts = TestBed.inject(TranslateService);
     texts.setTranslation('fr', {
-      documents: { add_to: { draft: '{{total}}', draft_of: '{{customer}} · {{total}}' } },
+      documents: {
+        add_to: {
+          draft: '{{total}}',
+          draft_of: '{{customer}} · {{total}}',
+          draft_bare: '{{lines}}',
+          draft_of_bare: '{{customer}} · {{lines}}',
+          lines: '{{count}} lignes',
+        },
+      },
       delivery_notes: { invoice_target: { help: 'Une facture émise n’est jamais modifiée' } },
     });
     texts.use('fr');
@@ -171,6 +180,40 @@ describe('AddToDialog', () => {
     expect(q('add-to-draft-i1')?.textContent).toContain('~119.000');
     expect(q('add-to-title')?.textContent).toContain('delivery_notes.invoice_target.title');
     expect(fixture.nativeElement.textContent).toContain('Une facture émise n’est jamais modifiée');
+  });
+
+  it('finds an order to a vendor by its vendor, never by the customer the screen knows', async () => {
+    const invoices = target('invoice', [carthage]);
+    const orders = target('purchase_order', [
+      { id: 'o1', customerName: 'Sotumag', customerReference: null, total: null, lineCount: 3 },
+    ]);
+    await open({ ...asked, targets: [invoices, orders], count: 1, scale: 3, customerId: 'k1' });
+    expect(invoices.drafts).toHaveBeenCalledExactlyOnceWith('k1');
+    expect(q('add-to-customer')).toBeNull();
+
+    q('add-to-kind-purchase_order')!.querySelector('input')!.click();
+    await settled();
+    expect(orders.drafts).toHaveBeenCalledExactlyOnceWith(null);
+    expect(q('add-to-customer')).toBeNull();
+    expect(
+      q('add-to-vendor')
+        ?.closest('mat-form-field')
+        ?.querySelector('mat-label')
+        ?.textContent?.trim(),
+    ).toBe('documents.add_to.vendor');
+    // A draft priced by nobody yet comes to no total: its row says its vendor and its lines alone.
+    expect(q('add-to-draft-o1')?.textContent?.trim()).toBe('Sotumag · 3 lignes');
+
+    const pick = fixture.debugElement.query(By.directive(PickField)).componentInstance as PickField;
+    pick.picked.emit({ id: 'v2', code: 'FRN-2', name: 'Sotumag' });
+    await settled();
+    expect(orders.drafts).toHaveBeenLastCalledWith('v2');
+
+    // Back on the invoices, the vendor picked names no customer: the screen's customer binds them again.
+    q('add-to-kind-invoice')!.querySelector('input')!.click();
+    await settled();
+    expect(invoices.drafts).toHaveBeenLastCalledWith('k1');
+    expect(q('add-to-customer')).toBeNull();
   });
 
   it('says when there is no open draft, and when the drafts could not be read', async () => {

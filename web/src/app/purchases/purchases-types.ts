@@ -173,6 +173,8 @@ export interface ProductOption {
   /** That unit as the company names it, which a line not yet saved shows beside its quantity. */
   unitName: string;
   tracking: ProductTracking;
+  /** Whether it is goods: a product an order names may since have become a service, which no new line takes. */
+  goods: boolean;
   active: boolean;
   /** What it costs today, the line's price unless the person types another; null for whoever may not read costs. */
   costPrice: string | null;

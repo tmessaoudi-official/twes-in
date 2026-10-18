@@ -75,6 +75,11 @@ final class PurchaseOrderProductPickResource
     #[Groups([self::READ])]
     public string $tracking = 'none';
 
+    /** Whether it is goods: a product an order already names may since have become a service, which no new line takes. */
+    #[ApiProperty(required: true)]
+    #[Groups([self::READ])]
+    public bool $goods = true;
+
     #[ApiProperty(required: true)]
     #[Groups([self::READ])]
     public bool $active = true;
@@ -93,6 +98,7 @@ final class PurchaseOrderProductPickResource
         $resource->unitId = $product->unitId->toRfc4122();
         $resource->unitName = $product->unitName;
         $resource->tracking = $product->tracking;
+        $resource->goods = $product->goods;
         $resource->active = $product->active;
         $resource->costPrice = $seesCost ? $product->costPrice : null;
 

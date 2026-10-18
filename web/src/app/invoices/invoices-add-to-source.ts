@@ -6,6 +6,7 @@ import { INVOICES_MODULE } from './invoices-nav';
 /** « Ajouter à… »: the goods chosen go on a new or open invoice draft, for whoever may write one. */
 export const INVOICE_ADD_TO: AddToSource = {
   kind: 'invoice',
+  party: 'customer',
   module: INVOICES_MODULE,
   permission: 'invoice.write',
   path: '/invoices',

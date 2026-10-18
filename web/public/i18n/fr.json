@@ -3669,24 +3669,32 @@
       "kinds": {
         "invoice": "Facture",
         "quote": "Devis",
-        "delivery_note": "Bon de livraison"
+        "delivery_note": "Bon de livraison",
+        "purchase_order": "Bon de commande"
       },
       "new": {
         "invoice": "Nouvelle facture",
         "quote": "Nouveau devis",
-        "delivery_note": "Nouveau bon de livraison"
+        "delivery_note": "Nouveau bon de livraison",
+        "purchase_order": "Nouveau bon de commande"
       },
       "customer": "Client",
       "every_customer": "Tous les clients",
       "no_customer": "Aucun client trouvé",
+      "vendor": "Fournisseur",
+      "every_vendor": "Tous les fournisseurs",
+      "no_vendor": "Aucun fournisseur trouvé",
       "draft": "{{lines}} · {{total}}",
       "draft_of": "{{customer}} · {{lines}} · {{total}}",
+      "draft_bare": "{{lines}}",
+      "draft_of_bare": "{{customer}} · {{lines}}",
       "lines": "{count, plural, =0 {aucune ligne} one {une ligne} other {{{count}} lignes}}",
       "none": "Aucun brouillon ouvert",
       "unreadable": "Les brouillons n’ont pas pu être lus. Un nouveau brouillon reste possible.",
       "close": "Fermer",
       "taken_in": "{count, plural, one {Un produit ajouté aux lignes, à enregistrer} other {{{count}} produits ajoutés aux lignes, à enregistrer}}",
       "left_out": "{count, plural, one {Un produit introuvable n’a pas été ajouté} other {{{count}} produits introuvables n’ont pas été ajoutés}}",
+      "left_out_goods": "{count, plural, one {Un produit n’a pas été ajouté : seuls les biens actifs se commandent} other {{{count}} produits n’ont pas été ajoutés : seuls les biens actifs se commandent}}",
       "not_draft": "Ce document n’est plus un brouillon : rien n’y a été ajouté."
     }
   },

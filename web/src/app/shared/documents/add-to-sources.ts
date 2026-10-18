@@ -2,7 +2,7 @@
 
 import { InjectionToken, type Type } from '@angular/core';
 import type { PickOption } from '../form/pick-field';
-import type { AddToDraft, AddToKind } from './add-to-dialog';
+import type { AddToDraft, AddToKind, AddToParty } from './add-to-dialog';
 
 /** How one kind of document reads its open drafts and the customers it may be written for. */
 export interface AddToReader {
@@ -17,6 +17,8 @@ export interface AddToReader {
  */
 export interface AddToSource {
   readonly kind: AddToKind;
+  /** Whom it is written for, by whom its drafts are found. */
+  readonly party: AddToParty;
   /** The module the kind belongs to, and the right writing it takes: a kind the person may not write is not offered. */
   readonly module: string;
   readonly permission: string;

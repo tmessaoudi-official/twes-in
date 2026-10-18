@@ -62,6 +62,42 @@ export async function aCustomer(page: Page, number: string): Promise<string> {
   );
 }
 
+/** Creates the run's vendor through the API; its id. */
+export async function aVendor(page: Page, number: string): Promise<string> {
+  return page.evaluate(
+    async ([csrf, vendorNumber]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const created = await fetch(`/api/companies/${me.company.id}/vendors`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ number: vendorNumber, name: `Quincaillerie ${vendorNumber}` }),
+      });
+      if (!created.ok) throw new Error(`creating ${vendorNumber} answered ${created.status}`);
+      return ((await created.json()) as { id: string }).id;
+    },
+    [CSRF, number] as const,
+  );
+}
+
+/** Retires the run's vendor; a vendor is never deleted. */
+export async function retireVendor(page: Page, id: string): Promise<void> {
+  await page.evaluate(
+    async ([csrf, vendorId]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const address = `/api/companies/${me.company.id}/vendors/${vendorId}`;
+      // The write shape has no id: a body naming one is refused.
+      const { id: _, ...fields } = (await (await fetch(address)).json()) as Record<string, unknown>;
+      const revised = await fetch(address, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ ...fields, isActive: false }),
+      });
+      if (!revised.ok) throw new Error(`retiring ${vendorId} answered ${revised.status}`);
+    },
+    [CSRF, id] as const,
+  );
+}
+
 /** Frees the run's codes and retires its products, so the next run can scan the same shelf. */
 export async function forget(page: Page, ids: string[]): Promise<void> {
   await page.evaluate(

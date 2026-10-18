@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -10,24 +10,30 @@ import { PickField, type PickOption } from '../form/pick-field';
 import { AmountPipe } from '../i18n/format-pipes';
 
 /** A document goods can be added to while it is a draft. */
-export type AddToKind = 'invoice' | 'quote' | 'delivery_note';
+export type AddToKind = 'invoice' | 'quote' | 'delivery_note' | 'purchase_order';
+
+/** Whom a kind of document is written for, by whom its drafts are found. */
+export type AddToParty = 'customer' | 'vendor';
 
 /** An open draft as the picker names it. */
 export interface AddToDraft {
   readonly id: string;
+  /** Whom the draft is written for: its customer, or its vendor on an order to a vendor. */
   readonly customerName: string | null;
   readonly customerReference: string | null;
-  readonly total: string;
+  /** Null on a draft that comes to no total yet, such as an order a line of which has no price. */
+  readonly total: string | null;
   readonly lineCount: number;
 }
 
 /**
- * A kind of document the person may add to: how its open drafts are read, one customer's or every customer's, and how
- * the customers it may be written for are found.
+ * A kind of document the person may add to: whom it is written for, how its open drafts are read, one party's or every
+ * party's, and how the parties it may be written for are found.
  */
 export interface AddToTarget {
   readonly kind: AddToKind;
-  readonly drafts: (customerId: string | null) => Promise<readonly AddToDraft[]>;
+  readonly party: AddToParty;
+  readonly drafts: (partyId: string | null) => Promise<readonly AddToDraft[]>;
   readonly customers: (words: string) => Promise<readonly PickOption[]>;
 }
 
@@ -40,7 +46,10 @@ export interface AddToData {
   readonly targets: readonly AddToTarget[];
   /** How many things are being added. */
   readonly count: number;
-  /** The customer the screen already knows, whose drafts alone are offered; null lets the person pick one. */
+  /**
+   * The customer the screen already knows, whose drafts alone are offered of a kind written for customers; null lets
+   * the person pick one. It never binds an order to a vendor.
+   */
   readonly customerId: string | null;
   /** The decimals of the company's currency. */
   readonly scale: number | null;
@@ -98,16 +107,16 @@ export interface AddToChoice {
         <button mat-flat-button type="button" (click)="close(null)" data-testid="add-to-new">
           {{ 'documents.add_to.new.' + kind() | translate }}
         </button>
-        @if (data.customerId === null) {
-          <!-- A draft is found by its customer: a draft's number is given at issue, so its customer is all it has. -->
+        @if (!bound()) {
+          <!-- A draft is found by its party: a draft's number is given at issue, so its party is all it has. -->
           <app-pick-field
-            [label]="'documents.add_to.customer' | translate"
-            testId="add-to-customer"
+            [label]="'documents.add_to.' + party() | translate"
+            [testId]="'add-to-' + party()"
             [search]="customers"
             [value]="chosen()"
             [clearable]="true"
-            [noneLabel]="'documents.add_to.every_customer' | translate"
-            [noneFoundLabel]="'documents.add_to.no_customer' | translate"
+            [noneLabel]="'documents.add_to.every_' + party() | translate"
+            [noneFoundLabel]="'documents.add_to.no_' + party() | translate"
             (picked)="pick($event)"
           />
         }
@@ -131,12 +140,11 @@ export interface AddToChoice {
                     (click)="close(draft.id)"
                     [attr.data-testid]="'add-to-draft-' + draft.id"
                   >
-                    <!-- One customer's drafts need not name it on every row. -->
+                    <!-- One party's drafts need not name it on every row. -->
                     {{
                       (customerId() === null
                         ? 'documents.add_to.draft_of'
-                        : 'documents.add_to.draft'
-                      )
+                        : 'documents.add_to.draft') + (draft.total === null ? '_bare' : '')
                         | translate
                           : {
                               customer: draft.customerName ?? '',
@@ -168,8 +176,14 @@ export class AddToDialog {
   protected readonly data = inject<AddToData>(MAT_DIALOG_DATA);
 
   protected readonly kind = signal<AddToKind>(this.data.targets[0]!.kind);
-  protected readonly customerId = signal<string | null>(this.data.customerId);
-  /** The customer picked in the field, which it shows. */
+  protected readonly party = computed<AddToParty>(() => this.target()?.party ?? 'customer');
+  /** The screen's customer binds a kind written for customers: there is nobody to pick then. */
+  protected readonly bound = computed(
+    () => this.data.customerId !== null && this.party() === 'customer',
+  );
+  /** Whose drafts are read: the screen's customer, the one picked, or null for everybody's. */
+  protected readonly customerId = signal<string | null>(this.boundId(this.data.targets[0]!.party));
+  /** The party picked in the field, which it shows. */
   protected readonly chosen = signal<PickOption | null>(null);
   /** The open drafts read for the kind and customer shown; null while they are read. */
   protected readonly drafts = signal<readonly AddToDraft[] | null>(null);
@@ -182,7 +196,13 @@ export class AddToDialog {
   }
 
   protected choose(kind: AddToKind): void {
+    const before = this.party();
     this.kind.set(kind);
+    // A customer picked names no vendor, nor the reverse: another party starts from everybody's drafts again.
+    if (this.party() !== before) {
+      this.chosen.set(null);
+      this.customerId.set(this.boundId(this.party()));
+    }
     void this.read();
   }
 
@@ -215,5 +235,9 @@ export class AddToDialog {
 
   private target(): AddToTarget | undefined {
     return this.data.targets.find((each) => each.kind === this.kind());
+  }
+
+  private boundId(party: AddToParty): string | null {
+    return party === 'customer' ? this.data.customerId : null;
   }
 }
