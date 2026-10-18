@@ -13,6 +13,7 @@ use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Domain\ValueObject\SettingType;
+use App\Shared\Application\Languages;
 
 /**
  * The presentation chain (docs/SPEC.md § 3 Settings): the look of the application, which a company or a role may
@@ -23,6 +24,10 @@ use App\Settings\Domain\ValueObject\SettingType;
 final readonly class PresentationSettings implements DeclaresSettings
 {
     public const string MODULE = 'core';
+
+    public function __construct(private Languages $languages)
+    {
+    }
     private const string LIST = '/^presentation\.list\.[a-z][a-z0-9-]*$/';
     private const string LIST_VIEWS = '/^presentation\.list\.[a-z][a-z0-9-]*\.views$/';
 
@@ -43,7 +48,7 @@ final readonly class PresentationSettings implements DeclaresSettings
         // How many rows a list shows per page, one choice for every list: `auto` is each list's own first size, and a list
         // that does not offer the size chosen shows its own first too.
         yield new SettingDefinition('presentation.page-size', SettingType::Enum, 'auto', $chain, $shared, 'settings.presentation.page_size', self::MODULE, choices: ['auto', '10', '25', '50', '100', '200']);
-        yield new SettingDefinition('presentation.language', SettingType::Enum, 'fr', $chain, $shared, 'settings.presentation.language', self::MODULE, choices: ['fr', 'en']);
+        yield new SettingDefinition('presentation.language', SettingType::Enum, $this->languages->default(), $chain, $shared, 'settings.presentation.language', self::MODULE, choices: $this->languages->interface());
         // « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. The
         // company may hide them for everyone; a member for themself.
         yield new SettingDefinition('presentation.show-coming', SettingType::Bool, true, $chain, $shared, 'settings.presentation.show_coming', self::MODULE);

@@ -55,7 +55,7 @@ final class InvoiceMentionsTest extends TestCase
     {
         $this->clock = new MockClock('2026-10-07 09:00:00', 'UTC');
         $settings = new InMemorySettings();
-        $catalog = new SettingCatalog([new BusinessDefaultSettings()]);
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), $this->clock, $transactions);
         $presets = ShippedFiscalPresets::presets();

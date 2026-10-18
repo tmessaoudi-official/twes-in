@@ -4,17 +4,16 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { catchError, Observable, of, throwError } from 'rxjs';
 import type { LegalTextLegalTextRead } from '../../api/types.gen';
+import { type Language, LEGAL_LANGUAGES, nameOf } from '../i18n/languages';
 
-/** The languages a legal page is written in: the interface's two, and Arabic (docs/SPEC.md § 8 row 148). */
-export const LEGAL_LANGUAGES = ['fr', 'en', 'ar'] as const;
-export type LegalLanguage = (typeof LEGAL_LANGUAGES)[number];
+/** The languages a legal page is written in, which the catalogue marks `legal`. */
+export { LEGAL_LANGUAGES };
+export type LegalLanguage = Language;
 
 /** Each language named in itself, as LANGUAGE_NAMES does for the interface's. */
-export const LEGAL_LANGUAGE_NAMES: Readonly<Record<LegalLanguage, string>> = {
-  fr: 'Français',
-  en: 'English',
-  ar: 'العربية',
-};
+export const LEGAL_LANGUAGE_NAMES: Readonly<Record<LegalLanguage, string>> = Object.fromEntries(
+  LEGAL_LANGUAGES.map((language) => [language, nameOf(language)]),
+);
 
 export type LegalDocument = LegalTextLegalTextRead;
 

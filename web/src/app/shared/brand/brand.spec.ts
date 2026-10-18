@@ -23,7 +23,7 @@ describe('DefaultBrand', () => {
 
     expect(brand.name()).toBe('twes-in');
     expect(brand.tagline()).toBe('Tout en lieu sûr. Tout tracé. Rien ne se perd.');
-    expect(DEFAULT_BRAND_KIT.tagline.en).toBe('All kept safe. All on record. Nothing lost.');
+    expect(DEFAULT_BRAND_KIT.tagline['en']).toBe('All kept safe. All on record. Nothing lost.');
   });
 
   it('says the tagline in the interface language, following a switch', () => {

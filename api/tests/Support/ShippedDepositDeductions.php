@@ -31,6 +31,6 @@ final class ShippedDepositDeductions
             $translator->addResource('yaml', __DIR__.'/../../translations/pdf.'.$language.'.yaml', $language, 'pdf');
         }
 
-        return new DepositDeductions($invoices, $totals, new TranslatorDepositWording($translator), new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings()]), new InMemorySettings())));
+        return new DepositDeductions($invoices, $totals, new TranslatorDepositWording($translator), new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(ShippedLanguages::catalogue())]), new InMemorySettings())));
     }
 }

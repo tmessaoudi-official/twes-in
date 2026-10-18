@@ -18,7 +18,7 @@ final class ShippedFiscalPresets
 {
     public static function presets(): YamlFiscalPresets
     {
-        return new YamlFiscalPresets(\dirname(__DIR__, 2).'/config/fiscal');
+        return new YamlFiscalPresets(\dirname(__DIR__, 2).'/config/fiscal', ShippedLanguages::catalogue());
     }
 
     public static function scales(): CurrencyScales

@@ -99,7 +99,7 @@ final class KeepStockTest extends TestCase
         foreach ([$this->laptop, $this->cable, $this->support] as $product) {
             $this->products->save($product);
         }
-        $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings()]), $this->settings));
+        $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), $this->settings));
         $this->liveChanges = new RecordingLiveChanges($this->transactions);
         $this->keep = new KeepStock($this->movements, $this->lots, $locations, $this->products, $read, $this->transactions, $this->clock, $this->liveChanges);
     }

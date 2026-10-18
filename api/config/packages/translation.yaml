@@ -1,6 +1,6 @@
 framework:
-    # French is the product's default (docs/SPEC.md); English is the second language, with parity checked on
-    # the SPA side by web/src/app/i18n-parity.spec.ts. These files carry only what the API itself sends: mail.
+    # The interface languages of config/languages.json, the default first; configuration cannot read that file, so
+    # CatalogueLanguagesTest holds these two lines to it. These files carry only what the API itself sends: mail and print.
     default_locale: fr
     enabled_locales: ['fr', 'en']
     translator:

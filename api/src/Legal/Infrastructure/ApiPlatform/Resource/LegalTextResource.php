@@ -41,8 +41,12 @@ final class LegalTextResource
     #[Groups([self::READ])]
     public string $page = '';
 
-    /** The language this version is written in, which is not the one asked for when the page is missing in it. */
-    #[ApiProperty(identifier: false, required: true, schema: ['type' => 'string', 'enum' => ['fr', 'en', 'ar']])]
+    /**
+     * The language this version is written in, which is not the one asked for when the page is missing in it: a BCP 47
+     * tag, one the language catalogue marks for legal pages (`config/languages.json`), left out of the contract as an
+     * enum so a language added there needs no new client.
+     */
+    #[ApiProperty(identifier: false, required: true, schema: ['type' => 'string'])]
     #[Groups([self::READ])]
     public string $language = '';
 

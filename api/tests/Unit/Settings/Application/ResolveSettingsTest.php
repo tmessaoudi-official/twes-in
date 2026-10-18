@@ -35,7 +35,7 @@ final class ResolveSettingsTest extends TestCase
     protected function setUp(): void
     {
         $this->settings = new InMemorySettings();
-        $this->resolve = new ResolveSettings(new SettingCatalog([new PresentationSettings()]), $this->settings);
+        $this->resolve = new ResolveSettings(new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), $this->settings);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->roleId = Uuid::v7();
         $this->userId = Uuid::v7();

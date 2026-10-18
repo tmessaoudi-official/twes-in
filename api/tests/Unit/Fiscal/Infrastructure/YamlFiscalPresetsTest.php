@@ -50,7 +50,7 @@ final class YamlFiscalPresetsTest extends TestCase
 
     public function testTheShippedPresetsLoad(): void
     {
-        $presets = new YamlFiscalPresets(self::SHIPPED);
+        $presets = new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue());
 
         self::assertSame(['FR', 'TN'], $presets->keys());
         $tn = $presets->get('TN');
@@ -121,7 +121,7 @@ final class YamlFiscalPresetsTest extends TestCase
 
         $this->expectException(InvalidFiscalPreset::class);
         $this->expectExceptionMessage('vat_exemption_code');
-        (new YamlFiscalPresets($this->dir))->get('TN');
+        (new YamlFiscalPresets($this->dir, \App\Tests\Support\ShippedLanguages::catalogue()))->get('TN');
     }
 
     public function testARegimeDeclaringItsVatCategoryAndCodeLoads(): void
@@ -131,13 +131,13 @@ final class YamlFiscalPresetsTest extends TestCase
         $preset = self::edit($preset, 'customer_tax_regimes.3.vat_category', 'G');
         $this->writeTunisia(self::edit($preset, 'customer_tax_regimes.3.vat_exemption_code', 'VATEX-EU-G'));
 
-        $export = (new YamlFiscalPresets($this->dir))->get('TN')->customerTaxRegimes[3];
+        $export = (new YamlFiscalPresets($this->dir, \App\Tests\Support\ShippedLanguages::catalogue()))->get('TN')->customerTaxRegimes[3];
         self::assertSame(['export', 'G', 'VATEX-EU-G'], [$export->code, $export->vatCategory, $export->vatExemptionCode]);
     }
 
     public function testAPresetNobodyWroteIsUnknown(): void
     {
-        $presets = new YamlFiscalPresets(self::SHIPPED);
+        $presets = new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue());
 
         self::assertFalse($presets->has('DE'));
         self::assertTrue($presets->has('TN'));
@@ -150,7 +150,7 @@ final class YamlFiscalPresetsTest extends TestCase
         // The control for the refusals below: dumping and re-reading a valid preset is not itself what breaks it.
         $this->writeTunisia(Yaml::parseFile(self::SHIPPED.'/TN.yaml'));
 
-        self::assertSame('TND', (new YamlFiscalPresets($this->dir))->get('TN')->currency);
+        self::assertSame('TND', (new YamlFiscalPresets($this->dir, \App\Tests\Support\ShippedLanguages::catalogue()))->get('TN')->currency);
     }
 
     /** @return iterable<string, array{string, mixed, string}> */
@@ -210,7 +210,7 @@ final class YamlFiscalPresetsTest extends TestCase
         $this->writeTunisia(self::edit(Yaml::parseFile(self::SHIPPED.'/TN.yaml'), $path, $value));
 
         try {
-            (new YamlFiscalPresets($this->dir))->get('TN');
+            (new YamlFiscalPresets($this->dir, \App\Tests\Support\ShippedLanguages::catalogue()))->get('TN');
             self::fail("A preset with $path broken was accepted.");
         } catch (InvalidFiscalPreset $refused) {
             self::assertStringContainsString('TN.yaml', $refused->getMessage());

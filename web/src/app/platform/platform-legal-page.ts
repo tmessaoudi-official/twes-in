@@ -15,6 +15,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Feedback } from '../shared/feedback/feedback';
 import { DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
+import { directionOf } from '../shared/i18n/languages';
 import {
   LEGAL_LANGUAGE_NAMES,
   LEGAL_LANGUAGES,
@@ -56,6 +57,7 @@ export class PlatformLegalPage implements OnInit {
   protected readonly pages = LEGAL_PAGES;
   protected readonly languages = LEGAL_LANGUAGES;
   protected readonly names = LEGAL_LANGUAGE_NAMES;
+  protected readonly directionOf = directionOf;
 
   protected readonly opened = signal<Opened | null>(null);
   protected readonly text = signal('');

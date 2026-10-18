@@ -5,6 +5,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { SettingsFacade } from '../settings/settings-facade';
 import { type Language, PRESENTATION, SUPPORTED_LANGUAGES } from '../settings/settings-registry';
+import { DEFAULT_LANGUAGE, nameOf } from './languages';
 import { TextsParts } from './texts-part';
 
 export { type Language, SUPPORTED_LANGUAGES } from '../settings/settings-registry';
@@ -13,10 +14,9 @@ export { type Language, SUPPORTED_LANGUAGES } from '../settings/settings-registr
  * Each language named in itself, as a person looks for their own: never a flag, which is a country, and never
  * translated into the current language (docs/SPEC.md § 7, 2026-09-16 review).
  */
-export const LANGUAGE_NAMES: Readonly<Record<Language, string>> = {
-  fr: 'Français',
-  en: 'English',
-};
+export const LANGUAGE_NAMES: Readonly<Record<Language, string>> = Object.fromEntries(
+  SUPPORTED_LANGUAGES.map((language) => [language, nameOf(language)]),
+);
 
 export class UnsupportedLanguage extends Error {
   constructor(readonly value: string) {
@@ -26,7 +26,7 @@ export class UnsupportedLanguage extends Error {
 }
 
 export function isSupportedLanguage(value: string): value is Language {
-  return (SUPPORTED_LANGUAGES as readonly string[]).includes(value);
+  return SUPPORTED_LANGUAGES.includes(value);
 }
 
 /**
@@ -76,6 +76,6 @@ export class LanguageFacade {
 
   private initial(): Language {
     const configured = this.translate.getCurrentLang() ?? '';
-    return isSupportedLanguage(configured) ? configured : SUPPORTED_LANGUAGES[0];
+    return isSupportedLanguage(configured) ? configured : DEFAULT_LANGUAGE;
   }
 }

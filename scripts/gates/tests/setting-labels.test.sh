@@ -133,6 +133,56 @@ out=$(gate --root "$d" 2>&1)
 code=$?
 check "a choice list that is not written out fails" "$code" 1 "$out" "not a literal list"
 
+# A language setting offers the languages the catalogue names, read from config/languages.json: each needs its label
+# like any choice, and a language added to the catalogue without one reds.
+language_tree() {
+  local d=$1
+  python3 - "$d" <<'PY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+(root / 'api/config').mkdir(parents=True, exist_ok=True)
+entry = lambda tag, documents: {"tag": tag, "name": tag, "direction": "ltr", "script": "Latn", "plurals": ["one", "other"],
+                                "interface": True, "documents": documents, "legal": True}
+(root / 'api/config/languages.json').write_text(json.dumps({"default": "fr", "languages": [entry("fr", True), entry("de", True), entry("it", False)]}))
+p = root / 'api/src/Shop/Application/ShopSettings.php'
+p.write_text(p.read_text().replace("keyPattern: self::LIST);", "keyPattern: self::LIST);\n        yield new SettingDefinition('shop.letters', SettingType::Enum, 'fr', $c, $l, 'settings.shop.letters', 'shop', choices: $this->languages->documents());"))
+for language in ('fr', 'en'):
+    t = root / f'web/public/i18n/{language}.json'
+    doc = json.loads(t.read_text())
+    doc["settings"]["shop"]["letters"] = "Lettres"
+    doc["settings"]["choices"]["shop"]["letters"] = {"fr": "Français", "de": "Allemand"}
+    t.write_text(json.dumps(doc, ensure_ascii=False))
+PY
+  git -C "$d" add -A >/dev/null 2>&1
+}
+
+d=$(repo) && translations "$d" && language_tree "$d"
+out=$(gate --root "$d" 2>&1)
+code=$?
+check "a language setting's choices are the catalogue's, each labelled" "$code" 0 "$out" "4 settings, 1 platform numbers, 4 choices"
+
+d=$(repo) && translations "$d" && language_tree "$d"
+python3 - "$d" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1], 'api/config/languages.json')
+doc = json.loads(p.read_text())
+doc["languages"][2]["documents"] = True
+p.write_text(json.dumps(doc))
+PY
+out=$(gate --root "$d" 2>&1)
+code=$?
+check "a language the catalogue adds without its label fails" "$code" 1 "$out" "settings.choices.shop.letters.it"
+
+d=$(repo) && translations "$d" && language_tree "$d"
+python3 - "$d" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1], 'api/src/Shop/Application/ShopSettings.php')
+p.write_text(p.read_text().replace('$this->languages->documents()', '$this->languages->spoken()'))
+PY
+out=$(gate --root "$d" 2>&1)
+code=$?
+check "a call the gate does not know is still not a literal list" "$code" 1 "$out" "not a literal list"
+
 d=$(repo) && translations "$d"
 out=$(SETTING_LABELS_FLOOR=2 SETTING_CHAINS_FLOOR=2 SETTING_CHOICES_FLOOR=99 bash "$GATE" --root "$d" 2>&1)
 code=$?

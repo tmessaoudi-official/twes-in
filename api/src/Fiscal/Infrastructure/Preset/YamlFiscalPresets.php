@@ -12,6 +12,7 @@ namespace App\Fiscal\Infrastructure\Preset;
 use App\Fiscal\Application\Preset\FiscalPreset;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\UnknownFiscalPreset;
+use App\Shared\Application\Languages;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -26,8 +27,10 @@ final class YamlFiscalPresets implements FiscalPresets
     /** @var array<string, FiscalPreset> */
     private array $read = [];
 
-    public function __construct(#[Autowire('%kernel.project_dir%/config/fiscal')] private readonly string $directory)
-    {
+    public function __construct(
+        #[Autowire('%kernel.project_dir%/config/fiscal')] private readonly string $directory,
+        private readonly Languages $languages,
+    ) {
     }
 
     public function keys(): array
@@ -67,7 +70,7 @@ final class YamlFiscalPresets implements FiscalPresets
             throw new InvalidFiscalPreset(basename($file).': '.$invalid->getMessage(), 0, $invalid);
         }
 
-        return (new PresetReader(basename($file), $key))->read($config);
+        return (new PresetReader(basename($file), $key, $this->languages->documents()))->read($config);
     }
 
     private function fileOf(string $key): string

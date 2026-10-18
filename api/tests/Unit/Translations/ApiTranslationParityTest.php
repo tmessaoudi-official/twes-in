@@ -9,22 +9,28 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Translations;
 
+use App\Tests\Support\ShippedLanguages;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
-/** What the API prints or mails exists in both product languages, key for key (the SPA's own parity test covers its files). */
+/** What the API prints or mails exists in every language it speaks, key for key (the SPA's own parity test covers its files). */
 final class ApiTranslationParityTest extends TestCase
 {
     private const string DIRECTORY = __DIR__.'/../../../translations';
 
-    public function testEveryDomainHasTheSameKeysInFrenchAndEnglish(): void
+    /** The interface's languages mail, the documents' print: the catalogue says which, and each needs every key. */
+    public function testEveryDomainHasTheSameKeysInEveryLanguageTheCatalogueShips(): void
     {
+        $languages = ShippedLanguages::catalogue();
         $domains = array_map(static fn (string $path): string => basename($path, '.fr.yaml'), glob(self::DIRECTORY.'/*.fr.yaml') ?: []);
         self::assertContains('pdf', $domains);
+        self::assertSame('fr', $languages->default());
 
         foreach ($domains as $domain) {
-            self::assertFileExists(self::DIRECTORY."/$domain.en.yaml");
-            self::assertSame(self::keys("$domain.fr.yaml"), self::keys("$domain.en.yaml"), $domain);
+            foreach (array_unique([...$languages->interface(), ...$languages->documents()]) as $language) {
+                self::assertFileExists(self::DIRECTORY."/$domain.$language.yaml");
+                self::assertSame(self::keys("$domain.fr.yaml"), self::keys("$domain.$language.yaml"), "$domain.$language");
+            }
         }
     }
 

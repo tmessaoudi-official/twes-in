@@ -21,7 +21,7 @@ final class IdentifierRulesTest extends TestCase
 
     public function testAFrenchCompanyCarriesItsSirenAndSiretWithTheirCheckDigits(): void
     {
-        $fr = (new YamlFiscalPresets(self::SHIPPED))->get('FR');
+        $fr = (new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue()))->get('FR');
 
         self::assertNull(IdentifierRules::refusal($fr, ['siren' => '732829320', 'siret' => '73282932000074', 'vat_number' => 'FR44732829320'], IdentifierRules::COMPANY));
         self::assertSame('identifiers.siret', IdentifierRules::refusal($fr, ['siren' => '732829320'], IdentifierRules::COMPANY)?->field);
@@ -34,7 +34,7 @@ final class IdentifierRulesTest extends TestCase
 
     public function testABusinessCustomerNeedsItsSirenButNotASiret(): void
     {
-        $fr = (new YamlFiscalPresets(self::SHIPPED))->get('FR');
+        $fr = (new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue()))->get('FR');
 
         self::assertNull(IdentifierRules::refusal($fr, ['siren' => '732829320'], IdentifierRules::BUSINESS_CUSTOMER));
         self::assertEquals(
@@ -45,7 +45,7 @@ final class IdentifierRulesTest extends TestCase
 
     public function testACustomerHoldsAnotherMemberStatesVatNumberCheckedAgainstThatStatesPattern(): void
     {
-        $fr = (new YamlFiscalPresets(self::SHIPPED))->get('FR');
+        $fr = (new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue()))->get('FR');
 
         foreach (['DE123456789', 'BE0123456789', 'ATU12345678', 'EL123456789', 'ESX1234567A', 'ES12345678Z', 'NL123456789B01', 'IE1234567WA', 'XI123456789'] as $number) {
             self::assertNull(IdentifierRules::refusal($fr, ['vat_number' => $number], ''), $number);
@@ -61,7 +61,7 @@ final class IdentifierRulesTest extends TestCase
 
     public function testTheCompanysOwnVatNumberKeepsItsPresetsPattern(): void
     {
-        $fr = (new YamlFiscalPresets(self::SHIPPED))->get('FR');
+        $fr = (new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue()))->get('FR');
 
         $refusal = IdentifierRules::refusal($fr, ['siren' => '732829320', 'siret' => '73282932000074', 'vat_number' => 'DE123456789'], IdentifierRules::COMPANY);
         self::assertSame(['identifiers.vat_number', 'identifier_shape'], [$refusal?->field, $refusal?->reason]);
@@ -69,7 +69,7 @@ final class IdentifierRulesTest extends TestCase
 
     public function testTheFormIsGivenOnePatternTheHolderMayMatch(): void
     {
-        $vat = array_values(array_filter((new YamlFiscalPresets(self::SHIPPED))->get('FR')->identifiers, static fn ($identifier) => 'vat_number' === $identifier->key))[0];
+        $vat = array_values(array_filter((new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue()))->get('FR')->identifiers, static fn ($identifier) => 'vat_number' === $identifier->key))[0];
 
         self::assertSame('^FR[0-9A-Z]{2}[0-9]{9}$', $vat->patternFor(IdentifierRules::COMPANY));
         $any = '#'.$vat->patternFor(IdentifierRules::BUSINESS_CUSTOMER).'#';
@@ -78,7 +78,7 @@ final class IdentifierRulesTest extends TestCase
 
     public function testSomeoneThePresetRequiresNothingOfMayCarryNothingButOnlyWhatItKnows(): void
     {
-        $tn = (new YamlFiscalPresets(self::SHIPPED))->get('TN');
+        $tn = (new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue()))->get('TN');
 
         self::assertNull(IdentifierRules::refusal($tn, [], ''));
         $unknown = IdentifierRules::refusal($tn, ['siren' => '732829320'], '');
