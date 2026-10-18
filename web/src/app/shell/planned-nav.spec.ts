@@ -102,10 +102,10 @@ describe('the planned modules in the menu', () => {
           'stock',
           'vendors',
           'expenses',
+          'reports',
           'accounting_export',
           'watch',
           'purchases',
-          'reports',
           'declarations',
           'einvoicing',
           'currencies',
@@ -123,7 +123,7 @@ describe('the planned modules in the menu', () => {
   });
 
   it('names each, says what it will do, and what to use meanwhile where it has that, in both languages', () => {
-    expect(PLANNED_NAV.length).toBe(17);
+    expect(PLANNED_NAV.length).toBe(16);
     for (const entry of plannedNav(catalogue)) {
       for (const json of [fr, en]) {
         for (const key of [

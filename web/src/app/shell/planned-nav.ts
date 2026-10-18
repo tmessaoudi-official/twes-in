@@ -68,14 +68,6 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     create: true,
   },
   // Money and compliance.
-  {
-    key: 'reports',
-    icon: 'bar_chart',
-    section: 'manage',
-    after: 'expenses',
-    row: 89,
-    meanwhile: '/',
-  },
   { key: 'declarations', icon: 'event_note', section: 'manage', after: 'reports', row: 91 },
   {
     key: 'einvoicing',

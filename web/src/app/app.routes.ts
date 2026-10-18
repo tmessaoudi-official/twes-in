@@ -19,6 +19,7 @@ import { RECURRING_MODULE } from './recurring/recurring-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
 import { PRICE_LISTS_MODULE } from './price-lists/price-lists-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
+import { REPORTS_MODULE } from './reports/reports-nav';
 import { VENDORS_MODULE } from './vendors/vendors-nav';
 import { guardUnsaved } from './shared/form/unsaved-changes';
 import { customerScreenLock } from './customer-screen/customer-screen-lock';
@@ -437,6 +438,19 @@ export const routes: Routes = [
         // The bill's texts are read on this page only: they load with it (the screen texts budget).
         ...textsPart('expense', moduleGuard(EXPENSES_MODULE)),
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
+      },
+      {
+        path: 'reports',
+        title: 'modules.reports',
+        // The reports' texts are read on these two pages only: they load with them (the screen texts budget).
+        ...textsPart('reports', moduleGuard(REPORTS_MODULE)),
+        loadComponent: () => import('./reports/reports-page').then((m) => m.ReportsPage),
+      },
+      {
+        path: 'reports/:key',
+        title: 'modules.reports',
+        ...textsPart('reports', moduleGuard(REPORTS_MODULE)),
+        loadComponent: () => import('./reports/report-page').then((m) => m.ReportPage),
       },
       {
         path: 'accounting-export',

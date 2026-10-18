@@ -3,6 +3,8 @@ import enAccount from '../../public/i18n/account/en.json';
 import frAccount from '../../public/i18n/account/fr.json';
 import enDemoMails from '../../public/i18n/demo-mails/en.json';
 import frDemoMails from '../../public/i18n/demo-mails/fr.json';
+import enReports from '../../public/i18n/reports/en.json';
+import frReports from '../../public/i18n/reports/fr.json';
 import en from '../../public/i18n/en.json';
 import enExpense from '../../public/i18n/expense/en.json';
 import frExpense from '../../public/i18n/expense/fr.json';
@@ -35,6 +37,7 @@ const parts: Record<string, Record<string, unknown>> = {
   'demo-mails': { fr: frDemoMails, en: enDemoMails },
   expense: { fr: frExpense, en: enExpense },
   import: { fr: frImport, en: enImport },
+  reports: { fr: frReports, en: enReports },
   schedule: { fr: frSchedule, en: enSchedule },
   'two-factor': { fr: frTwoFactor, en: enTwoFactor },
 };

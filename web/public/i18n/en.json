@@ -996,6 +996,11 @@
       "late_after_days_hint": "In “To watch”, a customer is flagged when an invoice is this many days late.",
       "unsold_after_days_hint": "In “To watch”, a product is flagged when it has not sold for this many days."
     },
+    "aged_balance": {
+      "first_days": "Aged balance: end of the 1st bracket (days)",
+      "second_days": "Aged balance: end of the 2nd bracket (days)",
+      "third_days": "Aged balance: end of the 3rd bracket (days)"
+    },
     "delivery_note": {
       "show_prices": "Show prices on delivery notes",
       "reception_block": "Print the receipt block (date and time, name, signature and stamp, reservations)"
@@ -3865,12 +3870,6 @@
       "heading": "Works are being built",
       "does": "Follow a job or an intervention end to end: what is planned, the time and supplies spent, what is left to invoice.",
       "create": "New job"
-    },
-    "reports": {
-      "heading": "Reports are being built",
-      "does": "Revenue, payments received, margins and stock over the chosen period, by customer, by item or by establishment, to read or to export.",
-      "meanwhile": "Meanwhile, the home page shows today's figures:",
-      "meanwhile_link": "Open home"
     },
     "declarations": {
       "heading": "Declarations are being built",

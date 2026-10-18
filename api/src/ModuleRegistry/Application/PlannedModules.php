@@ -33,7 +33,6 @@ final readonly class PlannedModules
             new ModuleManifest('purchases', 'modules.purchases', ['inventory', 'products', 'vendors'], planned: 'v1'),
             new ModuleManifest('composites', 'modules.composites', ['products'], planned: 'later'),
             // Money and compliance.
-            new ModuleManifest('reports', 'modules.reports', [], planned: 'v1'),
             new ModuleManifest('declarations', 'modules.declarations', ['invoices'], planned: 'v1'),
             new ModuleManifest('einvoicing', 'modules.einvoicing', ['invoices'], planned: 'v1'),
             new ModuleManifest('currencies', 'modules.currencies', ['invoices'], planned: 'later'),

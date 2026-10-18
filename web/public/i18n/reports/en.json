@@ -1,0 +1,171 @@
+{
+  "reports": {
+    "intro": "The company's figures over the period chosen, compared with another. Each row opens the documents it is made of.",
+    "none": "No report is open to your role in this company.",
+    "back": "All reports",
+    "open": "Open the report",
+    "period": {
+      "label": "Period",
+      "this_month": "This month",
+      "last_month": "Last month",
+      "this_year": "This year",
+      "last_year": "Last year",
+      "custom": "Other dates",
+      "from": "From",
+      "to": "To",
+      "shown": "From {{from}} to {{to}}",
+      "today": "As of {{day}}"
+    },
+    "compare": {
+      "label": "Compare with",
+      "none": "Nothing",
+      "previous": "The period before",
+      "year": "The same period last year",
+      "shown": "Compared with {{from}} – {{to}}"
+    },
+    "establishment": {
+      "label": "Establishment",
+      "all": "The whole company"
+    },
+    "total": "Total",
+    "previous": "Period compared",
+    "unnamed": "Not given",
+    "empty": "Nothing in this period.",
+    "empty_today": "Nothing to show today.",
+    "documents_open": "See the documents",
+    "list_open": "Open the list",
+    "errors": {
+      "catalogue": "The reports could not be read. Try again.",
+      "gone": "This report is not open to your role, or its module is switched off.",
+      "refused": "This report cannot be read like that: a period runs from one day to another, over a year at most.",
+      "unavailable": "The report could not be read. Try again."
+    },
+    "documents": {
+      "title": "Documents: {{row}}",
+      "none": "No documents.",
+      "more": "Only the first documents are shown; the export holds them all.",
+      "failed": "The documents could not be read. Try again.",
+      "close": "Close",
+      "number": "Number",
+      "party": "Party",
+      "day": "Date",
+      "amount": "Amount",
+      "kinds": {
+        "invoice": "Invoice",
+        "expense": "Expense"
+      }
+    },
+    "items": {
+      "takings": {
+        "title": "Takings",
+        "description": "What was taken each day, by means of payment, and what was refunded."
+      },
+      "sales-by-customer": {
+        "title": "Sales by customer",
+        "description": "The period's revenue, customer by customer, credit notes taken off."
+      },
+      "sales-by-product": {
+        "title": "Sales by item",
+        "description": "The quantities sold and the revenue of each item."
+      },
+      "sales-by-family": {
+        "title": "Sales by family",
+        "description": "The revenue of each family of items, credit notes taken off."
+      },
+      "vat-by-rate": {
+        "title": "VAT collected by rate",
+        "description": "The base and the VAT collected on the documents issued, rate by rate: a figure to check a return against."
+      },
+      "aged-balance": {
+        "title": "Aged balance",
+        "description": "What each customer owes today, by how late their invoices are."
+      },
+      "credit-notes-and-discounts": {
+        "title": "Credit notes and discounts",
+        "description": "What credit notes gave back and what discounts took off, customer by customer."
+      },
+      "withholding-suffered": {
+        "title": "Withholding suffered",
+        "description": "What each customer withheld at source on your documents: the certificates to ask for."
+      },
+      "stock-movements": {
+        "title": "Stock movements",
+        "description": "For each item, the stock at the start, what came in and went out, and the stock at the end."
+      },
+      "dead-stock": {
+        "title": "Dead stock",
+        "description": "The items in stock that no longer sell, the quietest first."
+      },
+      "expenses-by-category": {
+        "title": "Expenses by category",
+        "description": "The expenses booked in the period, category by category."
+      },
+      "expenses-by-supplier": {
+        "title": "Expenses by supplier",
+        "description": "The expenses booked in the period, supplier by supplier."
+      },
+      "activity-by-member": {
+        "title": "Activity by member",
+        "description": "What each person did in the company over the period."
+      }
+    },
+    "columns": {
+      "actions": "Actions",
+      "base": "Base",
+      "card": "Card",
+      "cash": "Cash",
+      "category": "Category",
+      "check": "Cheque",
+      "closing": "Closing stock",
+      "cost": "Cost",
+      "costed_net": "Net with a known cost",
+      "counted": "Count adjustments",
+      "credit_notes": "Credit notes",
+      "credited": "Given back by credit note",
+      "customer": "Customer",
+      "day": "Day",
+      "days_active": "Days active",
+      "discounted": "Discounts",
+      "discounted_invoices": "Discounted invoices",
+      "documents": "Documents",
+      "expenses": "Expenses",
+      "family": "Family",
+      "gross": "Gross",
+      "invoices": "Invoices",
+      "issued": "Documents issued",
+      "last_active": "Last action",
+      "last_sold": "Last sale",
+      "late": "{{from}} to {{to}} days late",
+      "late_last": "Over {{after}} days late",
+      "lost": "Losses",
+      "margin": "Margin",
+      "member": "Member",
+      "net": "Net",
+      "not_due": "Not due yet",
+      "on_hand": "On hand",
+      "opening": "Opening stock",
+      "other": "Other",
+      "overpaid": "Overpaid",
+      "payments": "Payments",
+      "product": "Item",
+      "quantity": "Quantity",
+      "quiet_days": "Days without a sale",
+      "rate": "Rate",
+      "received": "In",
+      "reference": "Reference",
+      "refunded": "Refunded",
+      "returned": "Returns",
+      "sign_ins": "Sign-ins",
+      "sold": "Sales",
+      "supplier": "Supplier",
+      "tax": "Tax",
+      "taxes": "Taxes",
+      "total": "Total",
+      "transfer": "Transfer",
+      "unit": "Unit",
+      "value": "Value",
+      "vat": "VAT collected",
+      "withheld": "Withheld"
+    }
+  }
+}

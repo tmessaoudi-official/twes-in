@@ -1,0 +1,352 @@
+<section class="flex flex-col gap-4" data-testid="report-page">
+  <a
+    mat-button
+    class="self-start"
+    routerLink="/reports"
+    queryParamsHandling="preserve"
+    data-testid="report-back"
+  >
+    <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">arrow_back</mat-icon>
+    {{ 'reports.back' | translate }}
+  </a>
+
+  <div class="twes-page-head flex flex-wrap items-start justify-between gap-3">
+    <div class="flex min-w-0 flex-col gap-1">
+      <h1 class="text-2xl font-semibold" data-testid="report-title">
+        {{ 'reports.items.' + key() + '.title' | translate }}
+      </h1>
+      <p class="text-sm text-on-surface-variant">
+        {{ 'reports.items.' + key() + '.description' | translate }}
+      </p>
+    </div>
+    <app-list-export [address]="exportAddress()" [fileName]="fileName()" testId="report-export" />
+  </div>
+
+  @if (entry() === undefined) {
+    <p role="alert" class="text-error" data-testid="report-gone">
+      {{ 'reports.errors.gone' | translate }}
+    </p>
+  } @else if (catalogueFailed() && entry() === null) {
+    <p role="alert" class="text-error" data-testid="report-catalogue-failed">
+      {{ 'reports.errors.catalogue' | translate }}
+    </p>
+  }
+
+  @if (entry(); as report) {
+    @if (query(); as asked) {
+      <div class="flex flex-wrap items-start gap-3" data-testid="report-question">
+        @if (report.periodic) {
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ 'reports.period.label' | translate }}</mat-label>
+            <mat-select
+              [value]="preset()"
+              (valueChange)="pickPreset($event)"
+              data-testid="report-preset"
+            >
+              @for (each of presets; track each) {
+                <mat-option [value]="each" [attr.data-testid]="'report-preset-' + each">
+                  {{ 'reports.period.' + each | translate }}
+                </mat-option>
+              }
+              <mat-option value="custom" data-testid="report-preset-custom">
+                {{ 'reports.period.custom' | translate }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+          @if (preset() === 'custom') {
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ 'reports.period.from' | translate }}</mat-label>
+              <input
+                matInput
+                appDay
+                #fromField="appDay"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                [ngModel]="asked.from"
+                (ngModelChange)="pickDay('from', $event)"
+                data-testid="report-from"
+              />
+              <app-day-calendar-button matSuffix [field]="fromField" />
+            </mat-form-field>
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ 'reports.period.to' | translate }}</mat-label>
+              <input
+                matInput
+                appDay
+                #toField="appDay"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                [ngModel]="asked.to"
+                (ngModelChange)="pickDay('to', $event)"
+                data-testid="report-to"
+              />
+              <app-day-calendar-button matSuffix [field]="toField" />
+            </mat-form-field>
+          }
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ 'reports.compare.label' | translate }}</mat-label>
+            <mat-select
+              [value]="asked.compare"
+              (valueChange)="pickComparison($event)"
+              data-testid="report-compare"
+            >
+              @for (each of comparisons; track each) {
+                <mat-option [value]="each" [attr.data-testid]="'report-compare-' + each">
+                  {{ 'reports.compare.' + each | translate }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+        @if (establishments().length > 0) {
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ 'reports.establishment.label' | translate }}</mat-label>
+            <mat-select
+              [value]="asked.establishment"
+              (valueChange)="pickEstablishment($event)"
+              data-testid="report-establishment"
+            >
+              <mat-option [value]="null">{{ 'reports.establishment.all' | translate }}</mat-option>
+              @for (each of establishments(); track each.id) {
+                <mat-option [value]="each.id">{{ each.code }} · {{ each.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+      </div>
+    }
+
+    @switch (state().status) {
+      @case ('gone') {
+        <p role="alert" class="text-error" data-testid="report-gone">
+          {{ 'reports.errors.gone' | translate }}
+        </p>
+      }
+      @case ('refused') {
+        <p role="alert" class="text-error" data-testid="report-refused">
+          {{ 'reports.errors.refused' | translate }}
+        </p>
+      }
+      @case ('unavailable') {
+        <p role="alert" class="text-error" data-testid="report-unavailable">
+          {{ 'reports.errors.unavailable' | translate }}
+        </p>
+      }
+    }
+
+    @if (result(); as shown) {
+      <p class="text-sm text-on-surface-variant" data-testid="report-period">
+        @if (report.periodic) {
+          {{ 'reports.period.shown' | translate: { from: shown.from | day, to: shown.to | day } }}
+          @if (shown.comparisonFrom && shown.comparisonTo) {
+            ·
+            {{
+              'reports.compare.shown'
+                | translate: { from: shown.comparisonFrom | day, to: shown.comparisonTo | day }
+            }}
+          }
+        } @else {
+          {{ 'reports.period.today' | translate: { day: shown.from | day } }}
+        }
+      </p>
+
+      <div class="relative overflow-x-auto">
+        <table
+          class="twes-stack-table w-full border-collapse text-sm sm:min-w-[40rem]"
+          data-testid="report-table"
+        >
+          <thead>
+            <tr>
+              @for (heading of headings(); track heading.column.key; let first = $first) {
+                <th
+                  scope="col"
+                  class="p-2 align-bottom"
+                  [class.text-start]="first || heading.column.kind === 'label'"
+                  [class.text-end]="!first && heading.column.kind !== 'label'"
+                  [attr.data-column]="heading.column.key"
+                >
+                  {{ heading.label.key | translate: heading.label.params }}
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of shown.rows; track row.key) {
+              <tr class="border-t border-outline-variant" [attr.data-row]="row.key">
+                @for (heading of headings(); track heading.column.key; let first = $first) {
+                  @if (first) {
+                    <th scope="row" class="p-2 text-start font-medium">
+                      @if (link(row); as opens) {
+                        <a
+                          [routerLink]="opens.commands"
+                          [queryParams]="opens.queryParams"
+                          [attr.data-testid]="'report-drill-' + row.key"
+                        >
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cell;
+                              context: {
+                                $implicit: heading.column,
+                                value: row.cells[heading.column.key],
+                                named: true,
+                              }
+                            "
+                          />
+                        </a>
+                      } @else if (hasDocuments(row)) {
+                        <button
+                          type="button"
+                          class="cursor-pointer border-0 bg-transparent p-0 text-start font-medium text-primary underline underline-offset-2"
+                          (click)="openDocuments(row)"
+                          [attr.data-testid]="'report-documents-' + row.key"
+                        >
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cell;
+                              context: {
+                                $implicit: heading.column,
+                                value: row.cells[heading.column.key],
+                                named: true,
+                              }
+                            "
+                          />
+                        </button>
+                      } @else {
+                        <ng-container
+                          *ngTemplateOutlet="
+                            cell;
+                            context: {
+                              $implicit: heading.column,
+                              value: row.cells[heading.column.key],
+                              named: true,
+                            }
+                          "
+                        />
+                      }
+                    </th>
+                  } @else {
+                    <td
+                      class="p-2"
+                      [class.text-end]="heading.column.kind !== 'label'"
+                      [class.tabular-nums]="heading.column.kind !== 'label'"
+                      [attr.data-label]="heading.label.key | translate: heading.label.params"
+                      [attr.data-column]="heading.column.key"
+                    >
+                      <ng-container
+                        *ngTemplateOutlet="
+                          cell;
+                          context: {
+                            $implicit: heading.column,
+                            value: row.cells[heading.column.key],
+                          }
+                        "
+                      />
+                      @if (compared() && countedKinds.has(heading.column.kind)) {
+                        <span class="block text-xs text-on-surface-variant" data-previous>
+                          <span class="sr-only">{{ 'reports.previous' | translate }} </span>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cell;
+                              context: {
+                                $implicit: heading.column,
+                                value: row.previous?.[heading.column.key] ?? null,
+                              }
+                            "
+                          />
+                        </span>
+                      }
+                    </td>
+                  }
+                }
+              </tr>
+            } @empty {
+              <tr data-testid="report-empty">
+                <td class="p-2 text-on-surface-variant" [attr.colspan]="headings().length">
+                  {{ (report.periodic ? 'reports.empty' : 'reports.empty_today') | translate }}
+                </td>
+              </tr>
+            }
+          </tbody>
+          @if (shown.rows.length > 0) {
+            <tfoot>
+              <tr class="border-t-2 border-outline font-semibold" data-testid="report-totals">
+                @for (heading of headings(); track heading.column.key; let first = $first) {
+                  @if (first) {
+                    <th scope="row" class="p-2 text-start">{{ 'reports.total' | translate }}</th>
+                  } @else {
+                    <td
+                      class="p-2 text-end tabular-nums"
+                      [attr.data-label]="heading.label.key | translate: heading.label.params"
+                      [attr.data-column]="heading.column.key"
+                    >
+                      <ng-container
+                        *ngTemplateOutlet="
+                          cell;
+                          context: {
+                            $implicit: heading.column,
+                            value: shown.totals[heading.column.key] ?? null,
+                          }
+                        "
+                      />
+                      @if (shown.previousTotals !== null && countedKinds.has(heading.column.kind)) {
+                        <span
+                          class="block text-xs font-normal text-on-surface-variant"
+                          data-previous
+                        >
+                          <span class="sr-only">{{ 'reports.previous' | translate }} </span>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cell;
+                              context: {
+                                $implicit: heading.column,
+                                value: shown.previousTotals[heading.column.key] ?? null,
+                              }
+                            "
+                          />
+                        </span>
+                      }
+                    </td>
+                  }
+                }
+              </tr>
+            </tfoot>
+          }
+        </table>
+      </div>
+    }
+  }
+</section>
+
+<ng-template #cell let-column let-value="value" let-named="named">
+  @if (value === null || value === undefined) {
+    @if (named) {
+      <span class="text-on-surface-variant">{{ 'reports.unnamed' | translate }}</span>
+    }
+  } @else {
+    @switch (column.kind) {
+      @case ('day') {
+        {{ text(value) | day }}
+      }
+      @case ('amount') {
+        {{ text(value) | amount: null }}
+      }
+      @case ('quantity') {
+        {{ text(value) | amount: null }}
+      }
+      @case ('count') {
+        {{ text(value) | amount: 0 }}
+      }
+      @case ('days') {
+        {{ text(value) | amount: 0 }}
+      }
+      @case ('choice') {
+        {{ 'reports.choices.' + column.key + '.' + value | translate }}
+      }
+      @default {
+        {{ value }}
+      }
+    }
+  }
+</ng-template>

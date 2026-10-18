@@ -996,6 +996,11 @@
       "late_after_days_hint": "Dans « À surveiller », un client est signalé quand une facture a ce nombre de jours de retard.",
       "unsold_after_days_hint": "Dans « À surveiller », un produit est signalé quand il n’a pas été vendu depuis ce nombre de jours."
     },
+    "aged_balance": {
+      "first_days": "Balance âgée : fin de la 1ʳᵉ tranche (jours)",
+      "second_days": "Balance âgée : fin de la 2ᵉ tranche (jours)",
+      "third_days": "Balance âgée : fin de la 3ᵉ tranche (jours)"
+    },
     "delivery_note": {
       "show_prices": "Afficher les prix sur les bons de livraison",
       "reception_block": "Imprimer le bloc de réception (date et heure, nom, signature et cachet, réserves)"
@@ -3865,12 +3870,6 @@
       "heading": "Les travaux sont en construction",
       "does": "Suivre un chantier ou une intervention de bout en bout : ce qui est prévu, le temps et les fournitures passés, ce qui reste à facturer.",
       "create": "Nouveau chantier"
-    },
-    "reports": {
-      "heading": "Les rapports sont en construction",
-      "does": "Le chiffre d’affaires, les encaissements, les marges et le stock sur la période choisie, par client, par article ou par établissement, à regarder ou à exporter.",
-      "meanwhile": "En attendant, l’accueil montre les chiffres du jour :",
-      "meanwhile_link": "Ouvrir l’accueil"
     },
     "declarations": {
       "heading": "Les déclarations sont en construction",

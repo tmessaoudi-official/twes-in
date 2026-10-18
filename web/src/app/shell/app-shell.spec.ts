@@ -58,7 +58,7 @@ class StaticLoader implements TranslateLoader {
       roles: { owner: 'Propriétaire' },
       customers: { new_title: 'Nouveau client' },
       invoices: { new_title: 'Nouvelle facture' },
-      modules: { register: 'Caisse', reports: 'Rapports' },
+      modules: { register: 'Caisse', declarations: 'Déclarations' },
       coming: { register: { create: 'Nouvelle vente au comptoir' } },
       nav: {
         count: '{{count}} à traiter',
@@ -129,7 +129,7 @@ const owner: SignedInState = {
   // The API's catalogue (row 150): the menu's planned modules come from here, never from a list of the web's own.
   plannedModules: [
     { key: 'register', planned: 'v1' },
-    { key: 'reports', planned: 'v1' },
+    { key: 'declarations', planned: 'v1' },
   ],
 };
 
@@ -599,7 +599,7 @@ describe('AppShell', () => {
     const { fixture, byTestId } = await render();
     expect(byTestId('nav-register')).not.toBeNull();
 
-    me.set({ ...owner, plannedModules: [{ key: 'reports', planned: 'v1' }] });
+    me.set({ ...owner, plannedModules: [{ key: 'declarations', planned: 'v1' }] });
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -1177,7 +1177,7 @@ describe('AppShell', () => {
       'goto-customers',
       'new-register',
       'goto-register',
-      'goto-reports',
+      'goto-declarations',
     ]);
     expect(
       config.data.commands.filter(
@@ -1598,7 +1598,7 @@ describe('AppShell', () => {
       'goto-customers',
       'new-register',
       'goto-register',
-      'goto-reports',
+      'goto-declarations',
     ]);
   });
 

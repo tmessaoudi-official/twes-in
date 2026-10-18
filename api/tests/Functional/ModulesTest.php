@@ -60,11 +60,12 @@ final class ModulesTest extends ApiTestCase
             ['key' => 'quotes', 'labelKey' => 'modules.quotes', 'dependencies' => ['customers'], 'permissions' => ['quote.read', 'quote.write'], 'enabled' => true],
             ['key' => 'recurring', 'labelKey' => 'modules.recurring', 'dependencies' => ['invoices'], 'permissions' => [], 'enabled' => true],
             ['key' => 'recurring_expenses', 'labelKey' => 'modules.recurring_expenses', 'dependencies' => ['expenses'], 'permissions' => [], 'enabled' => true],
+            ['key' => 'reports', 'labelKey' => 'modules.reports', 'dependencies' => [], 'permissions' => [], 'enabled' => true],
             ['key' => 'scanning', 'labelKey' => 'modules.scanning', 'dependencies' => ['products'], 'permissions' => [], 'enabled' => true],
             ['key' => 'vendors', 'labelKey' => 'modules.vendors', 'dependencies' => [], 'permissions' => ['vendor.read', 'vendor.write'], 'enabled' => true],
         ], array_values(array_filter($this->jsonList(), static fn (array $row) => !isset($row['planned']))));
         $this->getJson('/api/auth/me');
-        self::assertSame(['accounting_export', 'customers', 'delivery_notes', 'expenses', 'fixture_ledger', 'inventory', 'invoices', 'price_lists', 'products', 'quotes', 'recurring', 'recurring_expenses', 'scanning', 'vendors'], $this->arrayAt($this->json(), 'modules'));
+        self::assertSame(['accounting_export', 'customers', 'delivery_notes', 'expenses', 'fixture_ledger', 'inventory', 'invoices', 'price_lists', 'products', 'quotes', 'recurring', 'recurring_expenses', 'reports', 'scanning', 'vendors'], $this->arrayAt($this->json(), 'modules'));
     }
 
     // docs/SPEC.md § 7, 2026-09-26 10:08 (row 150): the complete product shows, each module not built yet as planned,
@@ -89,7 +90,6 @@ final class ModulesTest extends ApiTestCase
             ['purchases', 'v1', ['inventory', 'products', 'vendors']],
             ['ratings', 'later', ['venue']],
             ['register', 'v1', ['invoices', 'products']],
-            ['reports', 'v1', []],
             ['service', 'later', ['menu', 'register', 'venue']],
             ['venue', 'later', ['register']],
             ['whatsapp', 'v1', ['invoices']],
@@ -159,7 +159,7 @@ final class ModulesTest extends ApiTestCase
         $this->postJson($this->companyPath().'/customer-groups', ['name' => 'Export', 'description' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/auth/me');
-        self::assertSame(['expenses', 'inventory', 'products', 'recurring_expenses', 'scanning', 'vendors'], $this->arrayAt($this->json(), 'modules'), 'products, inventory, the scanner, vendors and expenses, recurring ones too, need no customers and stay on');
+        self::assertSame(['expenses', 'inventory', 'products', 'recurring_expenses', 'reports', 'scanning', 'vendors'], $this->arrayAt($this->json(), 'modules'), 'products, inventory, the scanner, vendors, the reports and expenses, recurring ones too, need no customers and stay on');
         self::assertSame(['module.disabled', 'module.disabled', 'module.disabled', 'module.disabled', 'module.disabled', 'module.disabled', 'module.disabled', 'module.disabled'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'module'"));
 
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => true]);
@@ -301,7 +301,7 @@ final class ModulesTest extends ApiTestCase
         $this->postJson($this->companyPath().'/product-categories', ['name' => 'Logiciel']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/auth/me');
-        self::assertSame(['customers', 'expenses', 'fixture_ledger', 'quotes', 'recurring_expenses', 'vendors'], $this->arrayAt($this->json(), 'modules'), 'quotes need no products: a line may be written by hand');
+        self::assertSame(['customers', 'expenses', 'fixture_ledger', 'quotes', 'recurring_expenses', 'reports', 'vendors'], $this->arrayAt($this->json(), 'modules'), 'quotes need no products: a line may be written by hand');
 
         $this->sendJson('PUT', $this->path('products'), ['enabled' => true]);
         $this->getJson($this->companyPath().'/product-categories');
