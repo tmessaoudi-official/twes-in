@@ -103,6 +103,7 @@ export class RecurringPage implements OnInit {
       },
       {
         id: 'schedule',
+        priority: 'high',
         label: 'recurring.columns.schedule',
         value: (row) => SCHEDULE_UNITS.indexOf(row.schedule.unit) * 100 + row.schedule.every,
         sortable: true,
@@ -111,6 +112,7 @@ export class RecurringPage implements OnInit {
       },
       {
         id: 'nextOn',
+        priority: 'high',
         label: 'recurring.columns.next_on',
         value: (row) => row.nextOn,
         sortable: true,
@@ -118,11 +120,14 @@ export class RecurringPage implements OnInit {
       },
       {
         id: 'drafted',
+        priority: 'low',
         label: 'recurring.columns.drafted',
         value: (row) => row.drafted,
         sortable: true,
         align: 'end',
         width: 120,
+        // History, not what the list is read for, as on the recurring expenses: shown on request.
+        defaultHidden: true,
       },
       {
         id: 'state',

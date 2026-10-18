@@ -307,8 +307,8 @@ test('on a laptop the stock list shows each row’s quantity clear of the row ac
 });
 
 // A list with no row actions pinned its LAST header to the table's right edge while that column's cells scrolled on,
-// so « Statut » covered « Reste à payer » on « Factures » (2026-09-26). The columns narrow to fit their card down to
-// 70 % of their widths; at 640 px that is still wider than the card, so the table scrolls with or without rows.
+// so « Statut » covered « Reste à payer » on « Factures ». The columns that may give way are hidden to fit the card;
+// those that cannot stay, so a name widened past the card makes the table scroll with or without rows.
 // Invoices carry row actions now, whose header is pinned on purpose: customers is a wide list that carries none.
 test('a list wider than its page keeps each header over its own column', async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 700 });
@@ -318,6 +318,11 @@ test('a list wider than its page keeps each header over its own column', async (
   const headers = page.locator('tr.mat-mdc-header-row th');
   await expect(headers.first()).toBeVisible();
   await expect(page.locator('th.twes-row-actions'), 'a list without row actions').toHaveCount(0);
+  // The name cannot be hidden: widened from the keyboard past the card, it is what makes the table scroll.
+  const resize = page.getByTestId('list-resize-name');
+  await resize.focus();
+  for (let step = 0; step < 30; step++) await resize.press('ArrowRight');
+  await expect(page.getByTestId('list-header-name')).toHaveCSS('width', '640px');
   const boxes = await headers.evaluateAll((cells) =>
     cells.map((cell) => {
       const box = cell.getBoundingClientRect();
@@ -334,6 +339,10 @@ test('a list wider than its page keeps each header over its own column', async (
       boxes[index - 1]!.right,
     );
   }
+  // The width is the operator's own choice, kept for every later scenario: give it back.
+  await page.getByTestId('list-columns').click();
+  await page.getByTestId('list-columns-reset').click();
+  await expect(page.getByTestId('list-header-name')).not.toHaveCSS('width', '640px');
 });
 
 test('a list says it is loading while its answer is on its way, and that it could not load when the read fails', async ({

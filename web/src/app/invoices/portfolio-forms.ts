@@ -2,6 +2,7 @@
 
 import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import { INSTRUMENT_KINDS, INSTRUMENT_STATUS_TONES } from './instruments-types';
 import {
   PORTFOLIO_SCOPES,
@@ -65,18 +66,20 @@ export const PORTFOLIO_LIST: ListDescriptor<PortfolioRow> = {
     },
     {
       id: 'amount',
+      priority: 'high',
       label: `${FIELDS}.amount`,
       value: (row) => Number(row.amount),
       sortable: true,
       align: 'end',
-      width: 160,
+      width: AMOUNT_WIDTH,
     },
     {
       id: 'status',
+      priority: 'high',
       label: `${FIELDS}.status`,
       value: (row) => row.status,
       sortable: true,
-      width: 150,
+      width: 200,
     },
   ],
   ranges: PORTFOLIO_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),

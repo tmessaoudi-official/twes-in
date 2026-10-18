@@ -759,6 +759,7 @@
     "columns_reset": "Réinitialiser les colonnes",
     "move_column": "Glisser pour déplacer {{column}}",
     "resize_column": "Redimensionner {{column}}",
+    "hidden_for_width": "masquée faute de place",
     "no_match": "Aucun résultat pour « {{query}} ».",
     "actions": "Actions",
     "paginator": {

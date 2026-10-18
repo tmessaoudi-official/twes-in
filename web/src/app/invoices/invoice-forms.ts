@@ -5,6 +5,7 @@ import type { FieldValue, FormDescriptor, FormField, FormValues } from '../share
 import { atScale } from '../shared/i18n/format';
 import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import type { PickOption } from '../shared/form/pick-field';
 import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
 import { type LineStock, type OnHand, stockOfLines } from '../shared/documents/line-stock';
@@ -195,35 +196,42 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
     },
     {
       id: 'dueDate',
+      priority: 'low',
       label: `${FIELDS}.dueDate`,
       value: (row) => row.dueDate ?? '',
       // A credit note is the company's to pay back, never due by a day.
       shown: (row) => row.type === 'invoice' && row.dueDate !== null,
       sortable: true,
       width: 126,
+      // The status says « En retard » once it passes: the day itself is shown on request.
+      defaultHidden: true,
     },
     {
       id: 'total',
       label: `${FIELDS}.total`,
       value: (row) => row.total,
       align: 'end',
-      width: 130,
+      width: AMOUNT_WIDTH,
+      // Six columns fill the widest page, and what is left to pay is the one read: the total is shown on request.
+      defaultHidden: true,
     },
     {
       id: 'amountDue',
+      priority: 'high',
       label: `${FIELDS}.amountDue`,
       value: (row) => row.amountDue,
       shown: (row) =>
         row.type === 'invoice' && row.status !== 'draft' && row.status !== 'cancelled',
       align: 'end',
-      width: 120,
+      width: AMOUNT_WIDTH,
     },
     {
       id: 'status',
+      priority: 'high',
       label: `${FIELDS}.status`,
       value: (row) => row.shown,
       sortable: true,
-      width: 170,
+      width: 180,
     },
   ],
   ranges: INVOICE_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),

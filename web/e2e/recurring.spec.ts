@@ -121,6 +121,8 @@ async function tidy(page: Page, made: { customer: string; invoice: string }): Pr
 test('an invoice made recurring is listed under « Récurrentes », paused there and deleted', async ({
   page,
 }) => {
+  // On a laptop the state gives way to the schedule and the next date, which matter more: a wide window shows it.
+  await page.setViewportSize({ width: 1600, height: 900 });
   await signIn(page);
   await inACompany(page, CSRF);
   const number = `REC-${Date.now()}`;

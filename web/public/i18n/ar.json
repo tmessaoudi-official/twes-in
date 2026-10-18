@@ -759,6 +759,7 @@
     "columns_reset": "إعادة ضبط الأعمدة",
     "move_column": "سحب لنقل {{column}}",
     "resize_column": "تغيير حجم {{column}}",
+    "hidden_for_width": "مخفيّ لضيق المساحة",
     "no_match": "لا توجد نتائج لـ« {{query}} ».",
     "actions": "الإجراءات",
     "paginator": {

@@ -53,6 +53,7 @@ export const COMPANIES_LIST: ListDescriptor<PlatformCompanyRow> = {
     },
     {
       id: 'status',
+      priority: 'high',
       label: `${COMPANY_FIELDS}.status`,
       value: (row) => row.status,
       sortable: true,

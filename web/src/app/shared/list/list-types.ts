@@ -29,6 +29,12 @@ export interface ListColumn<Row> {
   hideable?: boolean;
   /** Hidden until a person places it. */
   defaultHidden?: boolean;
+  /**
+   * How long the column stays where the card is too narrow for every column whole: the lowest go first, and the
+   * chooser names them hidden for width. `high` for what the list exists for (a quantity, an amount due), `low` for
+   * what a person seldom reads across rows; `normal` when not given.
+   */
+  priority?: 'high' | 'normal' | 'low';
   width?: number;
   align?: 'start' | 'end';
 }

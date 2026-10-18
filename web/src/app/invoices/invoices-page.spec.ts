@@ -195,12 +195,12 @@ describe('InvoicesPage', () => {
     await settle();
   });
 
-  it('lists each invoice with its number, customer, total, amount still due and status', () => {
+  it('lists each invoice with its number, customer, amount still due and status, its total on request', () => {
     expect(facade.loadListContext).toHaveBeenCalledWith('c1');
     const row = text('invoice-i1');
     expect(row).toContain('FAC-2026-00045');
     expect(row).toContain('Groupe Carthage Médias');
-    expect(row).toContain('11 900,000');
+    expect(row).not.toContain('11 900,000');
     expect(row).toContain('5 950,000');
     expect(row).toContain('Partiellement payée');
     expect(tone('invoice-i1')).toBe('warning');

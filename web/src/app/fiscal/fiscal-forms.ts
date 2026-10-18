@@ -244,6 +244,7 @@ export const TAX_LIST: ListDescriptor<TaxComponentRow> = {
     },
     {
       id: 'value',
+      priority: 'high',
       width: 110,
       label: 'fiscal.taxes.value',
       value: (row) => row.rate ?? row.amount,

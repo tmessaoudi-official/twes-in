@@ -207,35 +207,49 @@ export function removeView(views: readonly ListView[], id: string): ListView[] {
   return views.filter((view) => view.id !== id);
 }
 
-/** How far a list's columns may narrow to fit their card before the card scrolls instead: past it, text is unreadable. */
-export const MIN_FIT = 0.7;
-
-/**
- * What a list's data columns are scaled by so the table fits the card it is drawn in: 1 where the declared widths fit,
- * else alike for every data column (the actions keep theirs), never below `MIN_FIT`. Null or 0 is a card not measured
- * yet, as in a test without layout.
- */
-export function fitScale(columns: number, actions: number, card: number | null): number {
-  if (card === null || card <= 0 || columns <= 0 || columns + actions <= card) return 1;
-  return Math.max(MIN_FIT, (card - actions) / columns);
+/** What `fitColumns` weighs of one column shown: its width, how long it stays (0 first kept), whether it may go. */
+export interface FitColumn {
+  id: string;
+  width: number;
+  priority: number;
+  hideable: boolean;
 }
 
 /**
- * The same in two shares: a column that declared its width declared what its content needs, one that did not holds
- * free text an ellipsis can end. The free ones narrow first, down to `MIN_FIT`; only then the declared ones, alike.
- * `reserved` is what never narrows: the actions, and the column a row opens on.
+ * Every amount column's width: an amount up to ten million with three decimals, « 9 999 999,999 », takes 138 px in
+ * the screen's own font, padding included, so no realistic figure is cut.
  */
-export function fitShares(
-  declared: number,
-  free: number,
+export const AMOUNT_WIDTH = 140;
+
+/** How long each priority a column declares stays on a narrow card: the highest goes last. */
+export const FIT_PRIORITY: Readonly<Record<NonNullable<ListColumn<unknown>['priority']>, number>> =
+  {
+    high: 0,
+    normal: 1,
+    low: 2,
+  };
+
+/**
+ * The columns hidden so the rest fit the card whole: a cut value reads as another value (« 23/09/20… »), so a column
+ * either shows its width or gives way entirely. The lowest priority goes first, and among equals the last declared;
+ * a column that cannot give way stays, and past it the card scrolls. Null or 0 is a card not measured yet.
+ */
+export function fitColumns(
+  columns: readonly FitColumn[],
   reserved: number,
   card: number | null,
-): { declared: number; free: number } {
-  if (free <= 0) return { declared: fitScale(declared, reserved, card), free: 1 };
-  if (card === null || card <= 0 || declared + free + reserved <= card) {
-    return { declared: 1, free: 1 };
+): ReadonlySet<string> {
+  const hidden = new Set<string>();
+  if (card === null || card <= 0) return hidden;
+  let total = reserved + columns.reduce((sum, column) => sum + column.width, 0);
+  const candidates = columns
+    .map((column, index) => ({ column, index }))
+    .filter(({ column }) => column.hideable)
+    .sort((a, b) => b.column.priority - a.column.priority || b.index - a.index);
+  for (const { column } of candidates) {
+    if (total <= card) break;
+    hidden.add(column.id);
+    total -= column.width;
   }
-  const room = card - reserved;
-  if (declared + free * MIN_FIT <= room) return { declared: 1, free: (room - declared) / free };
-  return { declared: fitScale(declared, reserved + free * MIN_FIT, card), free: MIN_FIT };
+  return hidden;
 }

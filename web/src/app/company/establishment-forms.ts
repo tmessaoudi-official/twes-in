@@ -42,6 +42,7 @@ export const ESTABLISHMENT_LIST: ListDescriptor<EstablishmentRow> = {
     },
     {
       id: 'isDefault',
+      priority: 'high',
       label: `${FIELDS}.isDefault`,
       value: (row) => (row.isDefault ? 1 : 0),
       sortable: true,
@@ -178,10 +179,17 @@ export const SERIES_LIST: ListDescriptor<NumberingSeriesRow> = {
       hideable: false,
     },
     // The number a series gives first, its format after: « {SEQ:5} » alone tells a shopkeeper nothing.
-    { id: 'preview', width: 150, label: `${COLUMNS}.preview`, value: (row) => row.preview },
+    {
+      id: 'preview',
+      priority: 'high',
+      width: 150,
+      label: `${COLUMNS}.preview`,
+      value: (row) => row.preview,
+    },
     { id: 'format', width: 190, label: `${COLUMNS}.format`, value: (row) => row.format },
     {
       id: 'nextNumber',
+      priority: 'high',
       width: 120,
       label: `${COLUMNS}.nextNumber`,
       value: (row) => row.nextNumber,

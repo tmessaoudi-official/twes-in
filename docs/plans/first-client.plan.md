@@ -144,6 +144,15 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-18 21:20] AGREED: An Arabic screen keeps ar-TN's own number and currency layout by default; the company's number format still overrides it.
 - [2026-10-18 21:20] ASSUMED (review): The printed order to a vendor is downloaded only with product.cost.read beside purchase.read (else the same 404 as a missing order), always with its prices, rendered on request and never stored, in the company's document language, each price at its own precision never below the currency's — because a price on it is a cost, an order is not a fiscal document, and no vendor has a language setting. Alternatives: a priceless print for non cost readers; storing it at sending.
 - [2026-10-18 21:42] ASSUMED (review): An order line keeps the vendor's own code for its product: the product's supplier code naming the order's vendor that enters ONE piece (the first in the product's code order when there are several), copied on every draft save from the vendor the save names and again when the order is sent, never typed; shown and printed only to a cost reader, in a « Réf. fournisseur » column the PDF draws only when a line has one — because a code entering N pieces names a carton and printed beside a quantity in the product's unit would read as N cartons (advisor agreed). Alternatives: print a pack code with ×N; read the code live at print time (a reprint of a sent order would then differ from what was sent).
+- [2026-10-18 23:55] AGREED: Until the Excel files arrive: every agreed first-release item is finished first; then the audit rounds begin, each round's findings and their classes the next round's input, its lenses widening each round (the shop's path, then one canon across screens, then architecture, then security, performance, accessibility and the three languages), every finding fixed at its root test-first and CI green.
+- [2026-10-18 23:55] AGREED: The tree freezes Tuesday 2026-10-20 at 20:00 Tunis time: after it only fixes of real defects land, and a named release-candidate commit, CI green, is handed over with what was and was not certified; refactors and harmonization resume after the install.
+- [2026-10-18 23:56] AGREED: In the audit rounds a finding is one of four kinds: A a defect (the app does not do what is ruled or documented), B canon alignment (two screens differ where a written canon exists), C an improvement inside a ruling (unspecified, plainly serving a ruling, small and reversible), D a product change (a new or removed capability, a changed rule, a fiscal or legal impact, data a shop relies on, or choosing or changing a canon itself). A and B are fixed directly and logged; C only when advisor() agrees, logged ASSUMED (review); D is parked on one marking page with options and a pick, and work moves on.
+- [2026-10-19 00:41] AGREED: Protection of the shop's install: the threats are all four (a thief of the PC or disk, the shop's own staff, a leaked dump or backup, someone copying the code); the ionCube refusal of 2026-09-17 stands; Symfony 8.2's #[Encrypted] columns are adopted only from 8.2.0 stable, for columns never searched or summed, the key's place decided then; nothing is done for Wednesday's install, the subject is reopened later.
+- [2026-10-19 00:42] AGREED: No tech stack guarantees the code and the data on a machine the client controls: the stack stays, and protection is reopened later with BitLocker, the developer holding the administrator account, encrypted columns from 8.2.0 and the contract.
+- [2026-10-19 01:08] ASSUMED (review): List column priorities (#60): what a list is read for is high (quantity, unit, amounts, status, schedule, next date, a movement's source), optional detail low (lot, use-by, a product's kind, a company's own fields, the journal's fields, drafts made); the journal's record column cannot be hidden because it carries the link that opens the record (canon B: a hidden link is a record nobody can open). Basis: the 2026-10-18 21:20 ruling. Alternatives: one priority for all (hides by position only).
+- [2026-10-19 01:08] ASSUMED (review): Column widths come from measurement in the self-hosted font, padding included: every amount column is AMOUNT_WIDTH 140 (9 999 999,999 takes 138), status columns fit their longest label in fr/en/ar (invoices 180 for « Partiellement payée » 179, expenses 150 for « Comptabilisée » 145, orders 160 for « Reçue en partie » 153, the portfolio 200 for « Remis à l'encaissement » 198, all four were cut before), stock quantity 120 in both stock lists (content 51 plus its heading). Basis: measured on the live stack 2026-10-19. Alternatives: keep the declared widths (cut labels).
+- [2026-10-19 01:08] ASSUMED (review): Canon: every column a list shows at first fits the widest page (1086 px, the page stops widening at max-w-6xl), so « masquée faute de place » only ever appears on a narrower window; a column that cannot fit is shown on request (defaultHidden). Applied to the invoices' due date (its status says « En retard », advisor's condition), the movements' lot and kind (empty for most goods, implied by the sign and source), the recurring invoices' drafts (as on the recurring expenses, canon B). Guarded by web/e2e/list-fit.spec.ts, sabotage-checked. Basis: advisor() 2026-10-19.
+- [2026-10-19 01:08] ASSUMED (review): D parked: which six columns an invoice list shows on the widest page (seven need 1128 px of 1086). Pick for now: what is left to pay stays, the total is shown on request. Alternatives: issue date on request and the total shown; widen list pages past max-w-6xl so all fit on a wide screen; the developer decides on the marking page.
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -181,7 +190,7 @@ was and was not certified by execution.
 | 3 | Language foundations and RTL | L | done | 48659c89 | api/** web/** scripts/gates/** |
 | 4 | Proof pass of every built module in fr, en, ar; the client's Excel mapped | L | doing | - | web/e2e/** api/** web/** |
 | 5 | Reports: thirteen reports over the ruled ten, each with period, comparison, establishment, export and its figures opening their list | L | done | fc09f101 | api/** web/** |
-| 6 | Supplier orders and goods receipts | L | doing | d66ab297 | api/** web/** |
+| 6 | Supplier orders and goods receipts | L | done | bec39bd1 | api/** web/** |
 | 7 | Arabic texts and printed documents | L | doing | ffb36182 | web/public/i18n/** api/translations/** api/templates/** |
 | 8 | Guides, help and README on the final screens | M | todo | - | docs/** web/** |
 | 9 | Document links before the tag: the module port (335f778b), a delivery note names its invoices (93004285), an invoice its delivery notes (5f73574b), a quote onto an open draft (row 259, 08ad6709) and its toast | M | done | b6c8d52e | api/src/Module/** web/src/app/** web/e2e/** |
@@ -196,25 +205,10 @@ was and was not certified by execution.
   only once that review is done, before the release is tagged. The amount in words prints nothing in Arabic yet.
 ### Needs input
 - Their Excel file, to map its columns into the importer (expected tonight or tomorrow). When it arrives, check first which row holds the headings and how many sheets it has: the importer reads the first sheet, headings on its first row.
-- A list wider than its card cuts its dates and amounts (gallery 2026-10-18, every language): at 1440 px with the menu
-  labelled, the invoices list declares 1162 px for a 1088 px card, so the customer narrows to 70 % and every declared
-  column to 88 %, and « 23/09/2026 » reads « 23/09/20… » (`fitShares`, `shared/list/list-view.ts`; folded to the rail it
-  fits). About 180 cut cells per language across the lists. Options: (a, recommended) each column declares a priority
-  and the list hides the lowest ones that do not fit, named in the column chooser as hidden for width, so a value is
-  never cut; (b) declared columns never narrow and the card scrolls sideways; (c) keep narrowing, as today. Waiting on
-  the developer: what a person sees on every list.
-- A unit prints in the language the company was created in, whatever the document's: an Arabic invoice of a company
-  created in French says « Unité » (Gotenberg, 2026-10-18). A unit holds one name, its company's, which the company may
-  rename; the preset's names in every language are read once, at creation. Options: (a, recommended) a unit keeps a
-  name per language the catalogue prints in, filled from the preset and editable, and a document prints the one of its
-  language, else the company's; (b) keep one name, the company's own word for it. Waiting on the developer: whether a
-  shop's units are its own words or the document's language.
-  The same holds for a tax component's name and the fiscal labels a company copied at creation (« TVA 19 % » on an
-  Arabic invoice): one answer for units, taxes and fiscal labels.
-- On an Arabic screen, `ar-TN` groups a figure with a point and puts « TND » before it (« TND 1.234,500 »), where the
-  French screen writes « 1 234,500 TND ». Both are what Unicode's data says for each locale, and a company may choose
-  its number format (`presentation.number-format`). Waiting on the developer: whether the shop's Arabic screen keeps
-  the locale's way or the French grouping by default.
+- Which six columns an invoice list shows on the widest page (D, parked 2026-10-19): seven need 1128 px of the 1086 the
+  page gives, so one waits in the chooser. Shown now: number, customer, issue date, left to pay, status; the total on
+  request. Options: (a, picked for now) the total on request; (b) the issue date on request and the total shown;
+  (c) list pages widen past `max-w-6xl` on a wide screen, so all seven fit there. Waiting on the developer.
 - The sign-in page's tagline stays French on an Arabic screen: it is the brand's own words (`brand.tagline`), typed
   once by the operator. Options: (a, recommended) a tagline per interface language on the brand card; (b) leave it.
 - After Wednesday, in an order to set: declarations (fiscal rules await an accountant), composite products, jobs, the till (the Tunisian homologated-register question), zakat (its research pass, row 120).
@@ -222,7 +216,8 @@ was and was not certified by execution.
 - On an Arabic screen, a telephone number in a field (`kind: 'tel'`) and the contacts list's phone column are not
   measured: the printed documents laid « +216 74 000 000 » out as « 000 000 74 216+ » (a number holds no letter to set
   its direction) and now write it left to right (`PdfTypedTextDirectionTest`); the screens are checked in the Arabic pass.
-- Protecting the data at rest on a shop's PC without asking anything of the client (disk encryption is neither checked nor required for Wednesday).
+- Protecting the code and the data on a shop's PC: reopened later by the developer (ruled 2026-10-19 00:41), with
+  BitLocker, the developer holding the administrator account, Symfony 8.2's encrypted columns from 8.2.0 and the contract.
 - Step 7, with a reader of Arabic: whether `logout`, `undo`, `help` and `open_in_new` turn over in Arabic as well (the five that point along the line, back, forward, the chevrons and send, already do, as Material's guidance asks).
 ### Fragile
 - The local restore drill once read « relation restore_drill does not exist » at its point-in-time read; cause not found.

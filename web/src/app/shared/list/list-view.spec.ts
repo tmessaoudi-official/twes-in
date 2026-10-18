@@ -6,8 +6,7 @@ import {
   applyFilters,
   DuplicateListColumn,
   filterRows,
-  fitScale,
-  fitShares,
+  fitColumns,
   InvalidViewName,
   paginate,
   removeView,
@@ -307,49 +306,51 @@ describe('saved views', () => {
   });
 });
 
-/** The sweep found lists whose last columns, the quantity among them, sat past their card even at 1440 px. */
-describe('fitShares', () => {
-  it('keeps every width where they fit', () => {
-    expect(fitShares(600, 300, 100, 1000)).toEqual({ declared: 1, free: 1 });
+/**
+ * The gallery found « 23/09/2026 » drawn « 23/09/20… » at 1440 px, about 180 cut cells a language: a list never cuts a
+ * value, it hides the columns that do not fit, the lowest first.
+ */
+describe('fitColumns', () => {
+  const column = (id: string, width: number, priority: 0 | 1 | 2 = 1, hideable = true) => ({
+    id,
+    width,
+    priority,
+    hideable,
   });
 
-  it('narrows the columns that declare no width first, those that declared one keeping it', () => {
-    // 1000 - 100 reserved leaves 900: the declared 600 whole, the free 400 down to 300.
-    expect(fitShares(600, 400, 100, 1000)).toEqual({ declared: 1, free: 0.75 });
+  it('hides nothing where every column fits beside what is reserved', () => {
+    expect(fitColumns([column('a', 300), column('b', 300)], 100, 700)).toEqual(new Set());
   });
 
-  it('narrows the declared ones only once the free ones reach the readable floor', () => {
-    // The free 400 at 0.7 take 280, which leaves 520 of 900 for the declared 650.
-    const shares = fitShares(650, 400, 100, 900);
-    expect(shares.free).toBe(0.7);
-    expect(shares.declared).toBeCloseTo(0.8, 5);
+  it('hides the lowest priority first, then the last declared, until the rest fit', () => {
+    const columns = [
+      column('name', 200),
+      column('city', 160, 2),
+      column('phone', 160),
+      column('email', 160),
+      column('balance', 120, 0),
+    ];
+    // 800 of columns and 100 reserved on a 700 card: 200 must go, the low city first, then the last normal one.
+    expect(fitColumns(columns, 100, 700)).toEqual(new Set(['city', 'email']));
   });
 
-  it('narrows the declared ones alike where none is free, as fitScale does', () => {
-    expect(fitShares(1100, 0, 96, 976)).toEqual({ declared: fitScale(1100, 96, 976), free: 1 });
+  it('hides only what it must: a column that would fit back is kept', () => {
+    const columns = [column('a', 200), column('b', 100), column('c', 300)];
+    // 600 on a 550 card: c goes and the rest fit.
+    expect(fitColumns(columns, 0, 550)).toEqual(new Set(['c']));
   });
 
-  it('keeps every width until the card has been measured', () => {
-    expect(fitShares(2000, 400, 96, null)).toEqual({ declared: 1, free: 1 });
-  });
-});
-
-describe('fitScale', () => {
-  it('keeps the declared widths where they fit', () => {
-    expect(fitScale(800, 96, 1000)).toBe(1);
-    expect(fitScale(904, 96, 1000)).toBe(1);
+  it('never hides a column that cannot give way, and leaves the card to scroll when only those remain', () => {
+    const columns = [
+      column('name', 300, 1, false),
+      column('total', 300, 0, false),
+      column('note', 200),
+    ];
+    expect(fitColumns(columns, 0, 400)).toEqual(new Set(['note']));
   });
 
-  it('narrows every data column alike to fit the card, the actions keeping theirs', () => {
-    expect(fitScale(1100, 96, 976)).toBeCloseTo(0.8, 5);
-  });
-
-  it('narrows no further than a readable floor, past which the card scrolls', () => {
-    expect(fitScale(2000, 96, 600)).toBe(0.7);
-  });
-
-  it('keeps the declared widths until the card has been measured', () => {
-    expect(fitScale(2000, 96, null)).toBe(1);
-    expect(fitScale(2000, 96, 0)).toBe(1);
+  it('hides nothing until the card has been measured', () => {
+    expect(fitColumns([column('a', 2000)], 0, null)).toEqual(new Set());
+    expect(fitColumns([column('a', 2000)], 0, 0)).toEqual(new Set());
   });
 });

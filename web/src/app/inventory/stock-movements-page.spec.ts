@@ -241,7 +241,8 @@ describe('StockMovementsPage', () => {
     const row = q('stock-movement-m1')?.textContent ?? '';
     expect(row).toContain('ART-1 — Portable');
     expect(row).toContain('000 — Siège');
-    expect(row).toContain('Sortie');
+    // The kind is said by the quantity's sign and the source: it is shown on request.
+    expect(row).not.toContain('Sortie');
     expect(row).toContain('Bon de livraison');
     expect(row).toMatch(/[-−]3(?![,.\d])/);
     expect(q('stock-movements-all')?.getAttribute('href')).toBe('/stock/movements');
@@ -464,7 +465,15 @@ describe('StockMovementsPage', () => {
     expect(document.body.querySelector('[data-testid="loss-file-remove-carton.jpg"]')).toBeNull();
   });
 
-  it('names the lot a row moved', async () => {
+  it('names the lot a row moved once its column is asked for', async () => {
+    await settle();
+    expect(q('stock-movement-m1')?.textContent).not.toContain('L-2408');
+
+    q('list-columns')!.click();
+    await settle();
+    document.body
+      .querySelector<HTMLInputElement>('[data-testid="list-column-toggle-lot"]')!
+      .click();
     await settle();
 
     expect(q('stock-movement-m1')?.textContent).toContain('L-2408');
