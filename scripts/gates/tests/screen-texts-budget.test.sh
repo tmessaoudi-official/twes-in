@@ -6,9 +6,12 @@ GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/screen-texts-budget.sh
 pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 # A project with an nginx.conf holding $1 and one small text file per language named after it.
+# The catalogue says the interface speaks French and English, and Arabic not yet (CATALOGUE replaces it).
 project() {
-  local d; d=$(mktemp -d); mkdir -p "$d/web/public/i18n" "$d/infra/web"
+  local d; d=$(mktemp -d); mkdir -p "$d/web/public/i18n" "$d/infra/web" "$d/web/src/app/shared/i18n"
   printf 'server {\n    gzip on;\n%s\n}\n' "$1" > "$d/infra/web/nginx.conf"
+  local spoken='{"languages": [{"tag": "fr", "interface": true}, {"tag": "en", "interface": true}, {"tag": "ar", "interface": false}]}'
+  printf '%s\n' "${CATALOGUE:-$spoken}" > "$d/web/src/app/shared/i18n/languages.json"
   shift
   for language in "$@"; do printf '{"hello": "%s"}\n' "$language" > "$d/web/public/i18n/$language.json"; done
   echo "$d"
@@ -28,7 +31,13 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "a level written only in a comment d
 d=$(project '    gzip_comp_level 1;' fr en)
 out=$(bash "$GATE" --root "$d" 2>&1); check "another level is refused" $? 1 "$out" "gzip_comp_level 6"
 d=$(project '    gzip_comp_level 6;' fr)
-out=$(bash "$GATE" --root "$d" 2>&1); check "fewer than two languages means the gate stopped reading them" $? 1 "$out" "languages"
+out=$(bash "$GATE" --root "$d" 2>&1); check "a language the interface speaks without its texts is refused" $? 1 "$out" "en.json"
+d=$(CATALOGUE='{"languages": [{"tag": "fr", "interface": false}]}' project '    gzip_comp_level 6;' fr en)
+out=$(bash "$GATE" --root "$d" 2>&1); check "a catalogue whose interface speaks nothing is refused, not read as nothing to measure" $? 1 "$out" "no language"
+d=$(project '    gzip_comp_level 6;' fr en); rm "$d/web/src/app/shared/i18n/languages.json"
+out=$(bash "$GATE" --root "$d" 2>&1); check "a missing catalogue is refused" $? 1 "$out" "no language"
+d=$(project '    gzip_comp_level 6;' fr en ar)
+out=$(bash "$GATE" --root "$d" 2>&1); check "texts the interface does not speak yet are measured too" $? 0 "$out" "ar.json"
 d=$(project '    gzip_comp_level 6;' fr en)
 mkdir -p "$d/web/public/i18n/account"; printf '{"a": 1}\n' > "$d/web/public/i18n/account/fr.json"; printf '{"a": 1}\n' > "$d/web/public/i18n/account/en.json"
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page's own texts within the budget with their language's pass, and are named" $? 0 "$out" "account/fr.json"
