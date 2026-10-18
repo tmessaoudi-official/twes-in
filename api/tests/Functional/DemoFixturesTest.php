@@ -104,6 +104,18 @@ final class DemoFixturesTest extends ApiTestCase
             self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM recurring_expense WHERE company_id = ? AND variable_amount AND NOT paused AND drafted > 0 AND next_on > CURRENT_DATE', [$id]), "$name has a monthly bill that recurs and has drafted");
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM expense WHERE company_id = ? AND status = 'draft' AND amount_to_check", [$id]), "$name has a draft whose amount is to be checked");
             self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM stock_movement WHERE company_id = ? AND quantity < 0', [$id]), "$name's deliveries took goods out of stock");
+            // An invoice issued without a delivery note takes its goods out itself; one selling what the shelves no
+            // longer hold moves nothing and says so, which the demo would show as its own mistake on every visit.
+            self::assertSame([], $this->column(
+                "SELECT i.number || ' ' || p.reference || ' sold ' || sold.quantity || ', moved ' || sold.moved FROM (
+                    SELECT l.invoice_id, l.product_id, SUM(l.quantity) AS quantity,
+                        COALESCE((SELECT -SUM(m.quantity) FROM stock_movement m WHERE m.source_type = 'invoice' AND m.source_id = l.invoice_id AND m.product_id = l.product_id), 0) AS moved
+                    FROM invoice_line l JOIN invoice i ON i.id = l.invoice_id JOIN product p ON p.id = l.product_id
+                    WHERE i.company_id = ? AND i.document_type = 'invoice' AND i.status NOT IN ('draft', 'cancelled') AND p.kind = 'goods' AND l.source_delivery_note_line_id IS NULL
+                    GROUP BY l.invoice_id, l.product_id
+                ) sold JOIN invoice i ON i.id = sold.invoice_id JOIN product p ON p.id = sold.product_id WHERE sold.quantity <> sold.moved ORDER BY 1",
+                [$id],
+            ), "every invoice $name issued without a delivery note took its goods out of stock");
             // The stock map opens on a drawn depot: a measured floor, its racks and zones drawn, the building around
             // them, and the goods sitting in the racks that are their homes, so a search on the map has places to light.
             self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM venue_area WHERE company_id = ? AND width_metres > 0 AND depth_metres > 0', [$id]), "$name has a measured floor");
