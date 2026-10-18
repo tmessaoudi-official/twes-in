@@ -84,6 +84,8 @@ test('an expense made recurring is listed under « Récurrentes » in words, rev
 }) => {
   // Two dialogs, three accessibility scans and a list read again after each step: more than the default 30 s.
   test.setTimeout(60_000);
+  // The state gives way first on a laptop, where the schedule and the next date matter more: a wide window shows it.
+  await page.setViewportSize({ width: 1600, height: 900 });
   await signIn(page);
   await inACompany(page, CSRF);
   const description = `Internet ${Date.now().toString(36).toUpperCase()}`;

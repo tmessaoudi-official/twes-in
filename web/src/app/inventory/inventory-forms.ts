@@ -231,16 +231,24 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
     // The quantity is what the list is for, so it comes before the optional columns a narrow window cuts first.
     {
       id: 'quantity',
+      priority: 'high',
       label: `${STOCK_FIELDS}.quantity`,
       value: (row) => Number(row.quantity),
       sortable: true,
       align: 'end',
-      width: 160,
+      width: 120,
     },
-    { id: 'unit', label: `${STOCK_FIELDS}.unit`, value: (row) => row.unitName, width: 100 },
+    {
+      id: 'unit',
+      priority: 'high',
+      label: `${STOCK_FIELDS}.unit`,
+      value: (row) => row.unitName,
+      width: 100,
+    },
     // A tracked product's stock is a number per lot (docs/SPEC.md § 7, 2026-09-22 11:10); an untracked one shows none.
     {
       id: 'lot',
+      priority: 'low',
       label: `${STOCK_FIELDS}.lot`,
       value: (row) => row.lotCode ?? '',
       filterable: true,
@@ -248,6 +256,7 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
     },
     {
       id: 'useBy',
+      priority: 'low',
       label: `${STOCK_FIELDS}.useBy`,
       value: (row) => row.lotExpiresOn ?? '',
       // Its cell is drawn through the day pipe, which alone would keep an empty row on every undated card.
@@ -342,27 +351,35 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
     },
     {
       id: 'lot',
+      priority: 'low',
       label: `${STOCK_FIELDS}.lot`,
       value: (row) => row.lotCode ?? '',
       width: 140,
+      // Most goods carry no lot, and a recall names its lot above the list: shown on request.
+      defaultHidden: true,
     },
     {
       id: 'kind',
+      priority: 'low',
       label: `${STOCK_FIELDS}.kind`,
       value: (row) => row.kind,
       sortable: true,
       width: 140,
+      // The quantity's sign and the source already say it: shown on request.
+      defaultHidden: true,
     },
     {
       id: 'quantity',
+      priority: 'high',
       label: `${STOCK_FIELDS}.quantity`,
       value: (row) => Number(row.quantity),
       sortable: true,
       align: 'end',
-      width: 140,
+      width: 120,
     },
     {
       id: 'source',
+      priority: 'high',
       label: `${STOCK_FIELDS}.source`,
       value: (row) => row.sourceType,
       sortable: true,

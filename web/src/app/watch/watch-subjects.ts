@@ -20,7 +20,7 @@ const COLUMNS = 'watch.columns';
 
 function cell(
   id: string,
-  options: Pick<ListColumn<WatchRowView>, 'align' | 'width' | 'hideable'> = {},
+  options: Pick<ListColumn<WatchRowView>, 'align' | 'width' | 'hideable' | 'priority'> = {},
 ): ListColumn<WatchRowView> {
   return { id, label: `${COLUMNS}.${id}`, value: (view) => view.cells[id] ?? '', ...options };
 }
@@ -132,7 +132,7 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
         cell('kind', { width: 110 }),
         cell('number', { width: 150 }),
         cell('bank', { width: 150 }),
-        cell('amount', { align: 'end', width: 170 }),
+        cell('amount', { align: 'end', width: 170, priority: 'high' }),
         daysColumn('due_days', 'due_days', (days) => -days),
       ],
       actions: [OPEN_INVOICE],
@@ -151,7 +151,7 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       columns: [
         cell('customer', { hideable: false }),
         cell('invoices', { align: 'end', width: 110 }),
-        cell('amount', { align: 'end', width: 170 }),
+        cell('amount', { align: 'end', width: 170, priority: 'high' }),
         daysColumn('late_days', 'late_days', (days) => days),
       ],
       actions: [INVOICES_OF_CUSTOMER],
@@ -167,14 +167,14 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
     icon: 'inventory_2',
     list: productList('reorder-point', [
       cell('establishment'),
-      cell('onHand', { align: 'end', width: 130 }),
+      cell('onHand', { align: 'end', width: 130, priority: 'high' }),
       cell('point', { align: 'end', width: 130 }),
     ]),
   },
   'stock.running_out': {
     icon: 'hourglass_top',
     list: productList('running-out', [
-      cell('onHand', { align: 'end', width: 130 }),
+      cell('onHand', { align: 'end', width: 130, priority: 'high' }),
       daysColumn('days_left', 'days_left', (days) => days),
     ]),
   },
@@ -182,7 +182,7 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
     icon: 'error',
     list: productList('lot-expired', [
       cell('lot', { width: 140 }),
-      cell('quantity', { align: 'end', width: 120 }),
+      cell('quantity', { align: 'end', width: 120, priority: 'high' }),
       cell('expiresOn', { width: 140 }),
       daysColumn('expired_days', 'expired_days', (days) => -days),
     ]),
@@ -216,7 +216,7 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       columns: [
         cell('product', { hideable: false }),
         cell('reference', { width: 140 }),
-        cell('quantity', { align: 'end', width: 120 }),
+        cell('quantity', { align: 'end', width: 120, priority: 'high' }),
         cell('location'),
         cell('receivedOn', { width: 140 }),
       ],
@@ -227,7 +227,7 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
     icon: 'event_note',
     list: productList('lot-expiring', [
       cell('lot', { width: 140 }),
-      cell('quantity', { align: 'end', width: 120 }),
+      cell('quantity', { align: 'end', width: 120, priority: 'high' }),
       cell('expiresOn', { width: 140 }),
       daysColumn('in_days', 'in_days', (days) => days),
     ]),
@@ -244,7 +244,7 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       columns: [
         cell('description', { hideable: false }),
         cell('payee'),
-        cell('amount', { align: 'end', width: 170 }),
+        cell('amount', { align: 'end', width: 170, priority: 'high' }),
         cell('date', { width: 140 }),
       ],
       actions: [OPEN_EXPENSE],

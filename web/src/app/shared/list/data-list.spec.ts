@@ -278,6 +278,7 @@ class StaticLoader implements TranslateLoader {
         columns_reset: 'Reset columns',
         move_column: 'Move {{column}}',
         resize_column: 'Resize {{column}}',
+        hidden_for_width: 'hidden: not enough room',
         no_match: 'Nothing matches {{query}}',
         no_match_filters: 'Nothing matches these filters',
         filter_any: 'All',
@@ -1237,9 +1238,21 @@ describe('DataList', () => {
       host.detectChanges();
     }
 
-    const header = (id: string): string =>
-      (host.nativeElement.querySelector(`[data-testid="list-header-${id}"]`) as HTMLElement).style
-        .width;
+    const header = (id: string): string | null =>
+      (host.nativeElement.querySelector(`[data-testid="list-header-${id}"]`) as HTMLElement | null)
+        ?.style.width ?? null;
+    const chooserEntry = (id: string): string => {
+      const toggle = host.nativeElement.querySelector(
+        `[data-testid="list-column-toggle-${id}"]`,
+      ) as HTMLInputElement;
+      return toggle.closest('li')?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    };
+    async function openChooser(): Promise<void> {
+      (host.nativeElement.querySelector('[data-testid="list-columns"]') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+      host.detectChanges();
+    }
     const call = (): HTMLElement =>
       host.nativeElement.querySelector('[data-testid="row-action-call-1"]') as HTMLElement;
 
@@ -1297,15 +1310,42 @@ describe('DataList', () => {
       expect(header('balance')).toBe('120px');
     });
 
-    it('draws the next step as an icon where its word would narrow the columns, and never narrows the column the row opens on', async () => {
+    it('draws the next step as an icon before a column gives way, then hides the last column rather than cut one', async () => {
       await measured(700);
       expect(call().classList).toContain('mat-mdc-icon-button');
       expect(call().getAttribute('aria-label')).toBe('Call');
-      // The name stays whole; what the 152 px of icons leave is taken first from the columns that declare no width,
-      // free text a cut can end, before a column that declared what its content needs.
+      // 600 px of columns and 152 px of icons on 700: the status goes whole, and every column left keeps its width.
+      expect(header('status')).toBeNull();
+      expect(header('name')).toBe('160px');
+      expect(header('city')).toBe('160px');
+      expect(header('balance')).toBe('120px');
+      // The chooser keeps it ticked, the person's choice, and says why it is not drawn.
+      await openChooser();
+      const toggle = host.nativeElement.querySelector(
+        '[data-testid="list-column-toggle-status"]',
+      ) as HTMLInputElement;
+      expect(toggle.checked).toBe(true);
+      expect(chooserEntry('status')).toContain('hidden: not enough room');
+      expect(chooserEntry('city')).not.toContain('hidden: not enough room');
+    });
+
+    it('hides the lowest priority first, and never the column the row opens on', async () => {
+      card = 500;
+      host = TestBed.createComponent(DeclaredHost);
+      host.componentInstance.descriptor.set({
+        ...declared,
+        columns: declared.columns.map((column) =>
+          column.id === 'city' ? { ...column, priority: 'low' as const } : column,
+        ),
+      });
+      host.detectChanges();
+      await host.whenStable();
+      host.detectChanges();
+      // 600 px of columns and 152 px of icons on 500: the low city goes first, then the status, the last declared.
+      expect(header('city')).toBeNull();
+      expect(header('status')).toBeNull();
       expect(header('name')).toBe('160px');
       expect(header('balance')).toBe('120px');
-      expect(header('city')).toBe('134px');
     });
   });
 

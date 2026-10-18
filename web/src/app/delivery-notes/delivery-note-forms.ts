@@ -5,6 +5,7 @@ import { FormArray, FormControl, FormGroup, type ValidatorFn, Validators } from 
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import type { PickOption } from '../shared/form/pick-field';
 import {
   type CustomerOption,
@@ -106,6 +107,7 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
     },
     {
       id: 'status',
+      priority: 'high',
       label: `${FIELDS}.status`,
       value: (row) => row.status,
       sortable: true,
@@ -139,7 +141,7 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
       label: `${FIELDS}.total`,
       value: (row) => row.total,
       align: 'end',
-      width: 160,
+      width: AMOUNT_WIDTH,
     },
   ],
   ranges: DELIVERY_NOTE_INTERVALS.map(({ id, label }) => ({ id, label, kind: 'day' as const })),

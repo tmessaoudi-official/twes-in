@@ -73,8 +73,9 @@ import type {
 import { labelOn, rareOn } from './list-types';
 import {
   applyFilters,
+  FIT_PRIORITY,
   filterRows,
-  fitShares,
+  fitColumns,
   isColumnVisible,
   orderColumns,
   paginate,
@@ -279,9 +280,34 @@ export class DataList<Row> implements OnInit {
   /** Whether columns sit past the card's end edge, under the pinned actions: a shadow then says so. */
   protected readonly scrollsOn = signal(false);
 
+  /** The columns a person shows: what the chooser ticks and a phone's cards list. */
   protected readonly columns = computed(() =>
     resolveColumns(this.descriptor(), this.preferences()),
   );
+  /**
+   * The columns shown that the card is too narrow for (`fitColumns`): each gives way whole rather than be cut, the
+   * lowest priority first, and the chooser says so. Never the column a row opens on, nor one that cannot be hidden;
+   * a phone's cards hide nothing. Weighed against the actions as icons, since their word gives way first.
+   */
+  private readonly squeezed = computed<ReadonlySet<string>>(() => {
+    if (this.asCards()) return new Set();
+    const link = this.linkColumnId();
+    return fitColumns(
+      this.columns().map((column) => ({
+        id: column.id,
+        width: this.declaredWidth(column),
+        priority: FIT_PRIORITY[column.priority ?? 'normal'],
+        hideable: column.hideable !== false && column.id !== link,
+      })),
+      (this.hasRowControls() ? this.iconActionsWidth() : 0) + this.selectWidth(),
+      this.boxWidth(),
+    );
+  });
+  /** What the table draws: the columns shown that fit, each at its own width. */
+  protected readonly shownColumns = computed(() => {
+    const squeezed = this.squeezed();
+    return this.columns().filter((column) => !squeezed.has(column.id));
+  });
   /**
    * The row's own buttons: what this row can take that is not rare, its next step first, at most two; the rest waits
    * in « ⋮ ». Destructive is never a button, whatever its frequency: a button under the pointer is the wrong place
@@ -323,8 +349,8 @@ export class DataList<Row> implements OnInit {
     };
   }
   /**
-   * A row's next step shows its word beside its icon on a wide window, and only where every column keeps its own width
-   * beside it: the word gives way before the columns do. Unmeasured, as before the first layout, it shows.
+   * A row's next step shows its word beside its icon on a wide window, and only where every column shown keeps its
+   * place beside it: the word gives way before any column does. Unmeasured, as before the first layout, it shows.
    */
   protected readonly rowWords = computed(() => {
     const actions = this.descriptor().actions ?? [];
@@ -334,7 +360,8 @@ export class DataList<Row> implements OnInit {
     const card = this.boxWidth();
     return (
       card === null ||
-      this.selectWidth() + this.declaredColumns() + this.iconActionsWidth() + ACTION_WORD <= card
+      (this.squeezed().size === 0 &&
+        this.selectWidth() + this.declaredColumns() + this.iconActionsWidth() + ACTION_WORD <= card)
     );
   });
   protected readonly labelOn = labelOn;
@@ -438,7 +465,7 @@ export class DataList<Row> implements OnInit {
 
   protected readonly columnIds = computed(() => [
     ...(this.selectWidth() > 0 ? [SELECT_COLUMN] : []),
-    ...this.columns().map((column) => column.id),
+    ...this.shownColumns().map((column) => column.id),
     ...(this.hasRowControls() ? [ACTIONS_COLUMN] : []),
   ]);
 
@@ -467,10 +494,12 @@ export class DataList<Row> implements OnInit {
           .afterClosed(),
     );
   }
+  /** Every column with the person's choice, and whether the card is too narrow to draw it now. */
   protected readonly chooser = computed(() =>
     orderColumns(this.descriptor(), this.preferences()).map((column) => ({
       column,
       visible: isColumnVisible(column, this.preferences()),
+      squeezed: this.squeezed().has(column.id),
     })),
   );
   /** A sort the address named: it wins over the one a person saved until they pick another. */
@@ -585,34 +614,13 @@ export class DataList<Row> implements OnInit {
   protected readonly minWidth = MIN_WIDTH;
   protected readonly maxWidth = MAX_WIDTH;
   private readonly declaredColumns = computed(() =>
-    this.columns().reduce((sum, column) => sum + this.declaredWidth(column), 0),
+    this.shownColumns().reduce((sum, column) => sum + this.declaredWidth(column), 0),
   );
-  /**
-   * What each data column is narrowed by to fit the card (`fitShares`); a drag reads against it, never moves it. The
-   * column a row opens on names the row and keeps its width; the free-text ones give way before the declared ones.
-   */
-  private readonly shares = computed(() => {
-    const link = this.linkColumnId();
-    let kept = 0;
-    let declared = 0;
-    let free = 0;
-    for (const column of this.columns()) {
-      if (column.id === link) kept += this.declaredWidth(column);
-      else if (column.width === undefined) free += FALLBACK_WIDTH;
-      else declared += column.width;
-    }
-    return fitShares(
-      declared,
-      free,
-      (this.hasRowControls() ? this.actionsWidth() : 0) + this.selectWidth() + kept,
-      this.boxWidth(),
-    );
-  });
   /** At least the sum of the columns, so a narrow screen scrolls the list's own container and never the page. */
   protected readonly tableWidth = computed(
     () =>
       this.selectWidth() +
-      this.columns().reduce((sum, column) => sum + this.widthOf(column), 0) +
+      this.shownColumns().reduce((sum, column) => sum + this.widthOf(column), 0) +
       (this.hasRowControls() ? this.actionsWidth() : 0),
   );
 
@@ -1004,18 +1012,11 @@ export class DataList<Row> implements OnInit {
 
   protected trackRow = (_index: number, row: Row): string => this.descriptor().rowId(row);
 
-  /** The width a column occupies: a live drag, then the chosen or declared width, narrowed to fit the card. */
+  /** The width a column occupies: a live drag, then the chosen or declared width, never narrowed. */
   protected widthOf(column: ListColumn<Row>): number {
     const live = this.liveWidth();
     if (live?.id === column.id) return live.width;
-    return Math.floor(this.declaredWidth(column) * this.scaleOf(column.id));
-  }
-
-  /** The share a column is drawn at: whole for the one a row opens on. */
-  private scaleOf(id: string): number {
-    if (id === this.linkColumnId()) return 1;
-    const column = this.columns().find((each) => each.id === id);
-    return column?.width === undefined ? this.shares().free : this.shares().declared;
+    return this.declaredWidth(column);
   }
 
   /**
@@ -1247,12 +1248,8 @@ export class DataList<Row> implements OnInit {
     const up = () => {
       const live = this.liveWidth();
       this.stopResize?.();
-      // What was drawn is saved as declared, so the column stays where it was let go once fitted again: a chosen width
-      // makes a free column a declared one, drawn at the declared share.
-      if (live) {
-        const scale = live.id === this.linkColumnId() ? 1 : this.shares().declared;
-        this.saveWidth(live.id, Math.round(live.width / scale));
-      }
+      // What was drawn is saved as the column's width: a chosen width makes a free column a declared one.
+      if (live) this.saveWidth(live.id, live.width);
     };
     view.addEventListener('pointermove', move);
     view.addEventListener('pointerup', up);

@@ -35,6 +35,8 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await page.getByTestId('record-save').click();
     await expect(toast(page)).toBeVisible();
 
+    // The lot and use-by columns give way first on a laptop, where most products carry neither: a wide window shows them.
+    await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto('/stock');
     await page.getByTestId('stock-receive').click();
     await expect(page.getByTestId('field-lotCode')).toHaveCount(0);
@@ -66,6 +68,8 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await scan(page, `]C1010${code}1727053110${scannedLot}`);
     await expect(page.getByTestId('field-quantity')).toHaveValue('2');
     await page.getByTestId('stock-movement-save').click();
+    // Closed, the form gives the list back the width its use-by column needs.
+    await page.getByTestId('stock-movement-cancel').click();
     await expect(page.getByRole('row').filter({ hasText: scannedLot })).toContainText('31/05/2027');
 
     // Row 63 slice 10: a recall starts from the code, typed or read from the label, and finds what moved it.
@@ -74,17 +78,14 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await page.getByTestId('stock-movements-lot-search').press('Enter');
     await expect(page).toHaveURL(new RegExp(`lot=${lot.toLowerCase()}`));
     await expect(page.getByTestId('stock-movements-of-lot')).toContainText(lot.toLowerCase());
-    await expect(page.locator('[data-column="lot"]').filter({ hasText: lot })).toHaveCount(1);
-    await expect(page.locator('[data-column="lot"]').filter({ hasText: scannedLot })).toHaveCount(
-      0,
-    );
+    // Every row is the lot the banner names, whose column gives way on a laptop: each lot moved its own quantity.
+    await expect(page.locator('td[data-column="quantity"]')).toHaveText(['3']);
     expect(await wcagViolations(page)).toEqual([]);
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await scan(page, `]C1010${code}1727053110${scannedLot}`);
     await expect(page).toHaveURL(new RegExp(`lot=${scannedLot}`));
-    await expect(page.locator('[data-column="lot"]').filter({ hasText: scannedLot })).toHaveCount(
-      1,
-    );
+    await expect(page.getByTestId('stock-movements-of-lot')).toContainText(scannedLot);
+    await expect(page.locator('td[data-column="quantity"]')).toHaveText(['2']);
 
     // Row 108: a delivery note's line names the lot it hands over, and the label fills it.
     await page.goto('/delivery-notes/new');

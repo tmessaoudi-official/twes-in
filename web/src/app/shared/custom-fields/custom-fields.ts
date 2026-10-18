@@ -104,7 +104,10 @@ export function customFieldInput(
   return input;
 }
 
-/** One list column per active custom field, hidden until a person places it. */
+/**
+ * One list column per active custom field, hidden until a person places it, and the first to give way on a narrow
+ * card: a company with five fields would otherwise lose its own columns to them.
+ */
 export function customListColumns<Row extends { customFields: Record<string, CustomFieldValue> }>(
   definitions: readonly CustomFieldDefinition[],
 ): ListColumn<Row>[] {
@@ -115,6 +118,7 @@ export function customListColumns<Row extends { customFields: Record<string, Cus
     sortable: true,
     filterable: true,
     defaultHidden: true,
+    priority: 'low' as const,
   }));
 }
 

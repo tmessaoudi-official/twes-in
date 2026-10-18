@@ -82,6 +82,7 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
     { id: 'kind', label: `${FIELDS}.kind`, value: (row) => row.kind, sortable: true, width: 140 },
     {
       id: 'group',
+      priority: 'low',
       label: `${FIELDS}.customerGroupId`,
       value: (row) => row.groupName ?? '',
       sortable: true,

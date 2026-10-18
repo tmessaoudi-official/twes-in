@@ -23,6 +23,7 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
+import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { scheduleSentence, SCHEDULE_UNITS } from '../shared/schedule/schedule';
 import type { StatusTone } from '../shared/theme/accent-theme';
@@ -129,6 +130,7 @@ export class RecurringExpensesPage implements OnInit {
       },
       {
         id: 'schedule',
+        priority: 'high',
         label: `${TEXTS}.columns.schedule`,
         value: (row) => SCHEDULE_UNITS.indexOf(row.schedule.unit) * 100 + row.schedule.every,
         sortable: true,
@@ -137,14 +139,16 @@ export class RecurringExpensesPage implements OnInit {
       },
       {
         id: 'amount',
+        priority: 'high',
         label: `${TEXTS}.columns.amount`,
         value: (row) => Number(row.amountGross ?? 0),
         sortable: true,
         align: 'end',
-        width: 150,
+        width: AMOUNT_WIDTH,
       },
       {
         id: 'nextOn',
+        priority: 'high',
         label: `${TEXTS}.columns.next_on`,
         value: (row) => row.nextOn,
         sortable: true,

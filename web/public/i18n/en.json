@@ -759,6 +759,7 @@
     "columns_reset": "Reset columns",
     "move_column": "Drag to reorder {{column}}",
     "resize_column": "Resize {{column}}",
+    "hidden_for_width": "hidden: not enough room",
     "no_match": "Nothing matches “{{query}}”.",
     "actions": "Actions",
     "paginator": {

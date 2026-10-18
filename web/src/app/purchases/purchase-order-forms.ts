@@ -4,6 +4,7 @@ import { FormArray, FormControl, FormGroup, Validators } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormValues } from '../shared/form/form-types';
 import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import {
   PURCHASE_ORDER_STATUSES,
   PURCHASE_ORDER_STATUS_TONES,
@@ -81,10 +82,11 @@ export const PURCHASES_LIST: ListDescriptor<PurchaseOrderRow> = {
     },
     {
       id: 'status',
+      priority: 'high',
       label: `${FIELDS}.status`,
       value: (row) => row.status,
       sortable: true,
-      width: 150,
+      width: 160,
     },
     {
       id: 'vendor',
@@ -111,10 +113,11 @@ export const PURCHASES_LIST: ListDescriptor<PurchaseOrderRow> = {
     },
     {
       id: 'totalNet',
+      priority: 'high',
       label: `${FIELDS}.totalNet`,
       value: (row) => row.totalNet ?? '',
       align: 'end',
-      width: 160,
+      width: AMOUNT_WIDTH,
     },
   ],
   ranges: INTERVALS.map(({ id, label }) => ({ id, label, kind: 'day' as const })),

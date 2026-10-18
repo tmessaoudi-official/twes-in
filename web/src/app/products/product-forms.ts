@@ -18,7 +18,7 @@ import type {
 } from '../shared/form/form-types';
 import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
-import { withCustomColumns } from '../shared/list/list-view';
+import { AMOUNT_WIDTH, withCustomColumns } from '../shared/list/list-view';
 import {
   PRODUCT_KINDS,
   PRODUCT_TRACKINGS,
@@ -112,7 +112,14 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
       filterable: true,
       hideable: false,
     },
-    { id: 'kind', label: `${FIELDS}.kind`, value: (row) => row.kind, sortable: true, width: 120 },
+    {
+      id: 'kind',
+      priority: 'low',
+      label: `${FIELDS}.kind`,
+      value: (row) => row.kind,
+      sortable: true,
+      width: 120,
+    },
     {
       id: 'category',
       label: `${FIELDS}.categoryId`,
@@ -123,10 +130,11 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
     { id: 'unit', label: `${FIELDS}.unit`, value: (row) => row.unitName, width: 100 },
     {
       id: 'price',
+      priority: 'high',
       label: `${FIELDS}.price`,
       value: (row) => row.unitPriceNet,
       align: 'end',
-      width: 160,
+      width: AMOUNT_WIDTH,
     },
     {
       id: 'status',

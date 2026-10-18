@@ -5,6 +5,7 @@ import { lineDiscount, type LinesArray } from '../invoices/invoice-forms';
 import type { FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import {
   QUOTE_STATUS_TONES,
   QUOTE_STATUSES,
@@ -105,13 +106,15 @@ export const QUOTES_LIST: ListDescriptor<QuoteListRow> = {
     },
     {
       id: 'total',
+      priority: 'high',
       label: `${FIELDS}.total`,
       value: (row) => row.total,
       align: 'end',
-      width: 150,
+      width: AMOUNT_WIDTH,
     },
     {
       id: 'status',
+      priority: 'high',
       label: `${FIELDS}.status`,
       value: (row) => row.shown,
       sortable: true,

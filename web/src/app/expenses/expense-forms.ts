@@ -10,6 +10,7 @@ import type {
 } from '../shared/form/form-types';
 import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import {
   EXPENSE_STATUSES,
   PAYMENT_METHODS,
@@ -87,11 +88,12 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
     },
     {
       id: 'amountGross',
+      priority: 'high',
       label: `${FIELDS}.amountGross`,
       value: (row) => Number(row.amountGross),
       sortable: true,
       align: 'end',
-      width: 150,
+      width: AMOUNT_WIDTH,
     },
     {
       id: 'dueDate',
@@ -105,10 +107,11 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
     },
     {
       id: 'status',
+      priority: 'high',
       label: `${FIELDS}.status`,
       value: (row) => row.status,
       sortable: true,
-      width: 130,
+      width: 150,
     },
   ],
   ranges: EXPENSE_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),

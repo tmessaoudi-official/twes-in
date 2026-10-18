@@ -234,9 +234,16 @@ export const ACTIVITY_LIST: ListDescriptor<ActivityRow> = {
       width: 180,
     },
     { id: 'action', label: 'activity.fields.action', value: (row) => row.action, hideable: false },
-    { id: 'record', label: 'activity.fields.record', value: (row) => row.entityType },
+    {
+      id: 'record',
+      label: 'activity.fields.record',
+      value: (row) => row.entityType,
+      // It carries the link that opens the record, and a hidden link is a record nobody can open.
+      hideable: false,
+    },
     {
       id: 'fields',
+      priority: 'low',
       label: 'activity.fields.fields',
       value: (row) => row.fields.join(', '),
       // Drawn through its template, which alone would keep an empty line on a card that changed no field.

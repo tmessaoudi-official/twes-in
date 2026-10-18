@@ -50,6 +50,7 @@ export const VENDORS_LIST: ListDescriptor<VendorRow> = {
     },
     {
       id: 'city',
+      priority: 'low',
       label: `${FIELDS}.city`,
       value: (row) => row.address.city ?? '',
       sortable: true,

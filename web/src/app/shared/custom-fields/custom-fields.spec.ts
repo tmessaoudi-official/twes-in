@@ -107,6 +107,8 @@ describe('custom fields', () => {
       ['custom__vip', 'VIP', true],
       ['custom__sector', 'Secteur', true],
     ]);
+    // A company's own fields give way before the list's columns on a narrow card.
+    expect(columns.every((column) => column.priority === 'low')).toBe(true);
     const row = { customFields: { sector: 'retail', credit_limit: 20, vip: true } };
     expect(columns.map((column) => column.value(row))).toEqual(['', 20, '', '✓', 'retail']);
   });
