@@ -26,15 +26,11 @@ import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { ScreenActions } from '../shared/actions/screen-actions';
-import type { PlannedAction } from '../shared/actions/planned-actions';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
+import { PURCHASES_MODULE } from '../purchases/purchases-nav';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
-/** What a vendor will offer once its planned modules ship (docs/SPEC.md § 7, 2026-09-26 18:17, row 150), shown « Bientôt » beside what it offers today. */
-export const VENDOR_PLANNED: readonly PlannedAction[] = [
-  { module: 'purchases', label: 'planned_actions.new_purchase', icon: 'shopping_cart' },
-];
 
 @Component({
   selector: 'app-vendor-page',
@@ -142,8 +138,6 @@ export class VendorPage {
     });
   }
 
-  /** What the record will offer once its planned modules ship, from the moment it exists. */
-  protected readonly planned = computed(() => (this.current() ? VENDOR_PLANNED : []));
   /**
    * What this page offers, declared once (row 45): the bar beside the title draws it, and the keyboard, the Ctrl K
    * palette and the "?" sheet read the same list — so "s" saves here as it does on a document.
@@ -171,8 +165,25 @@ export class VendorPage {
         run: () => this.revert(),
         shown: may && changes > 0,
       },
+      {
+        id: 'new-purchase',
+        label: 'nav.new_purchase',
+        icon: 'shopping_cart',
+        run: () => void this.orderFrom(),
+        // An order names an active vendor only, for whoever may write orders while the company buys through them.
+        shown:
+          this.current()?.isActive === true &&
+          this.auth.hasModule(PURCHASES_MODULE) &&
+          this.auth.hasPermission('purchase.write'),
+      },
     ];
   });
+
+  /** A new order to this vendor, the vendor already named in its header. */
+  private async orderFrom(): Promise<void> {
+    const id = this.current()?.id;
+    if (id) await this.router.navigate(['/purchases/new'], { queryParams: { vendorId: id } });
+  }
 
   /** The record's own form, which shows what a save from the bar refused and puts the person on it. */
   private readonly mainForm = viewChild<DescriptorForm>('mainForm');

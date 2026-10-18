@@ -241,6 +241,9 @@ final class ExpensesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $fromVendor = $this->stringAt($this->json(), 'id');
 
+        // Orders to vendors need the vendors module, so they go first.
+        $this->sendJson('PUT', $this->companyPath().'/modules/purchases', ['enabled' => false]);
+        self::assertResponseIsSuccessful();
         $this->sendJson('PUT', $this->companyPath().'/modules/vendors', ['enabled' => false]);
         self::assertResponseIsSuccessful();
         $this->postJson($this->path(), $this->expense(['vendorId' => null, 'payee' => '  Parking Lafayette ']));

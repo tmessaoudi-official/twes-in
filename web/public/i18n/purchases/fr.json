@@ -1,0 +1,135 @@
+{
+  "purchases": {
+    "none": "Aucune commande fournisseur ne correspond.",
+    "no_company": "Choisissez une entreprise pour voir ses commandes fournisseurs.",
+    "read_only": "Vous pouvez consulter les commandes fournisseurs, pas les modifier.",
+    "back": "Retour aux commandes",
+    "draft": "Brouillon",
+    "draft_title": "Brouillon de commande",
+    "saved": "Le brouillon a été enregistré.",
+    "sent": "La commande {{number}} est envoyée.",
+    "received_part": "La réception est enregistrée ; le reste est toujours attendu.",
+    "received_all": "La réception est enregistrée ; toute la commande est reçue.",
+    "closed": "La commande est clôturée.",
+    "cancelled": "La commande est annulée.",
+    "totals_as_saved": "Tel qu’enregistré, hors taxes.",
+    "suggest": {
+      "receive": "Réceptionner"
+    },
+    "statuses": {
+      "draft": "Brouillon",
+      "sent": "Envoyée",
+      "partly_received": "Reçue en partie",
+      "received": "Reçue",
+      "closed": "Clôturée",
+      "cancelled": "Annulée"
+    },
+    "fixed_notes": {
+      "sent": "Envoyée au fournisseur : elle ne se modifie plus. Réceptionnez les marchandises à leur arrivée, ou annulez-la tant que rien n’est reçu.",
+      "partly_received": "Une partie est reçue : réceptionnez le reste à son arrivée, ou clôturez la commande si le reste ne viendra pas.",
+      "received": "Toutes les marchandises commandées sont reçues.",
+      "closed": "Clôturée : le reste n’est plus attendu.",
+      "cancelled": "Annulée : rien n’en est attendu."
+    },
+    "errors": {
+      "network": "Le serveur est injoignable.",
+      "not_found": "Cette commande n’existe pas, ou plus.",
+      "conflict": "La commande a changé d’état entre-temps : rechargez la page pour voir où elle en est.",
+      "record_changed": "Quelqu’un a enregistré la commande entre-temps.",
+      "invalid": "La commande n’a pas été acceptée : vérifiez ce qui est signalé.",
+      "vendor_unavailable": "Ce fournisseur est retiré : choisissez-en un autre."
+    },
+    "fields": {
+      "number": "Numéro",
+      "status": "Statut",
+      "vendorId": "Fournisseur",
+      "issueDate": "Envoyée le",
+      "expectedOn": "Attendue le",
+      "totalNet": "Total HT",
+      "remarksPrinted": "Remarques pour le fournisseur",
+      "notesInternal": "Notes internes"
+    },
+    "sections": {
+      "order": "Commande",
+      "notes": "Remarques et notes"
+    },
+    "form": {
+      "no_vendor_found": "Aucun fournisseur actif ne correspond.",
+      "expected_hint": "Le jour où le fournisseur doit livrer.",
+      "remarks_hint": "Destinées au fournisseur, avec la commande.",
+      "notes_hint": "Pour l’entreprise seulement : jamais montrées au fournisseur."
+    },
+    "lines": {
+      "title": "Lignes",
+      "position": "Ligne {{position}}",
+      "line": "La ligne",
+      "productId": "Produit",
+      "description": "Désignation",
+      "description_hint": "Le nom du produit au départ ; écrivez-la comme le fournisseur doit la lire.",
+      "quantity": "Quantité",
+      "unitPriceNet": "Prix unitaire HT",
+      "net": "Montant HT",
+      "received": "Reçu",
+      "outstanding": "Reste attendu",
+      "no_product_found": "Aucune marchandise ne correspond.",
+      "refused": "« {{field}} » est refusé sur cette ligne.",
+      "remove": "Retirer la ligne {{position}}",
+      "remove_short": "Retirer",
+      "add": "Ajouter une ligne",
+      "errors": {
+        "productId": "Choisissez la marchandise commandée.",
+        "description": "5 000 caractères au plus.",
+        "quantity": "Une quantité positive, trois décimales au plus.",
+        "unitPriceNet": "Un prix, quatre décimales au plus."
+      }
+    },
+    "actions": {
+      "save": "Enregistrer",
+      "send": "Envoyer la commande",
+      "send_title": "Envoyer la commande ?",
+      "send_message": "Elle reçoit son numéro et ne se modifie plus. Tant que rien n’est reçu, elle peut encore être annulée.",
+      "receive": "Réceptionner",
+      "close": "Clôturer",
+      "close_title": "Clôturer la commande ?",
+      "close_message": "Le reste n’est plus attendu : la commande est close avec ce qui a été reçu.",
+      "cancel": "Annuler la commande",
+      "cancel_title": "Annuler la commande ?",
+      "cancel_message": "Rien n’en sera plus attendu ni reçu.",
+      "confirm_cancel": "Annuler la commande",
+      "keep": "Garder la commande"
+    },
+    "receipts": {
+      "title": "Réceptions",
+      "on": "Reçue le {{day}}"
+    },
+    "receive": {
+      "title": "Réceptionner les marchandises",
+      "received_on": "Reçues le",
+      "reference_hint": "Le numéro du bon de livraison du fournisseur.",
+      "expected": "Attendu : {{quantity}} {{unit}}",
+      "quantity": "Quantité reçue",
+      "expires": "Date de péremption",
+      "serials": "Numéros de série, un par ligne",
+      "serials_hint": "{{count}} sur {{expected}} attendus",
+      "the_line": "La ligne",
+      "refused": "« {{field}} » est refusé : vérifiez la valeur.",
+      "confirm": "{count, plural, =0 {Réceptionner} one {Réceptionner # ligne} other {Réceptionner # lignes}}",
+      "day_problems": {
+        "day": "Écrivez le jour où les marchandises sont arrivées.",
+        "before": "Les marchandises arrivent au plus tôt le jour où la commande est envoyée.",
+        "after": "Les marchandises sont reçues une fois arrivées : aujourd’hui au plus tard."
+      },
+      "problems": {
+        "quantity": "Une quantité positive, trois décimales au plus.",
+        "over": "Au plus {{expected}} {{unit}} : c’est ce qui reste attendu.",
+        "place": "Choisissez où ranger les marchandises.",
+        "lot": "Ce produit est suivi par lot : écrivez le lot.",
+        "lot_length": "Un lot tient en 40 caractères au plus.",
+        "serials_over": "Plus de numéros que de pièces attendues ({{expected}}).",
+        "serials_repeated": "Un même numéro de série est écrit deux fois.",
+        "serial_length": "Un numéro de série tient en 40 caractères au plus.",
+        "unit_cost": "Un coût, quatre décimales au plus."
+      }
+    }
+  }
+}

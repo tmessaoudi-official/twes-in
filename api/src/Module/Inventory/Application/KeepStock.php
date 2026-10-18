@@ -96,6 +96,52 @@ final readonly class KeepStock
     }
 
     /**
+     * Goods that arrived against an order to a vendor, line by line: each line a receipt of its own naming the line it
+     * comes from as its source, all stored or none, then each product's cost moved once, from its last receipt, as one
+     * delivery moves it. A line of goods whose stock is not kept moves nothing: the order records that it came. `$apply`
+     * is the person's choice of cost, honoured only where the company's setting offers one.
+     *
+     * @param non-empty-list<OrderedGoods> $lines in the order the receipt gives them
+     *
+     * @return list<StockMovement> the receipts written, in the same order, without the lines that moved nothing
+     *
+     * @throws OrderedGoodsRefused naming the line the stock refused
+     */
+    public function receiveOrdered(Company $company, array $lines, ReceiptDocument $document, ?CostBasis $apply, ?Uuid $actorUserId): array
+    {
+        return $this->transactions->run(function () use ($company, $lines, $document, $apply, $actorUserId): array {
+            $written = [];
+            $last = [];
+            foreach ($lines as $index => $line) {
+                try {
+                    $product = $this->products->ofIdInCompany($line->productId, $company->getId())
+                        ?? throw new InvalidStockMovement('productId', 'No product of this company has this id.');
+                    if (null === $this->locations->ofIdInCompany($line->locationId, $company->getId())) {
+                        throw new InvalidStockMovement('locationId', 'No stock location of this company has this id.');
+                    }
+                    if (!$this->tracked($product)) {
+                        continue;
+                    }
+                    [$receipt, $typed] = $this->receiptAt($company, $line->productId, $line->locationId, $line->quantity, $actorUserId, $line->lot, $line->unitCost, $document, $line->costToComplete, null, $line->sourceId);
+                } catch (InvalidStockMovement $refused) {
+                    throw new OrderedGoodsRefused($index, $refused);
+                }
+                $written[] = $receipt;
+                $last[$line->productId->toRfc4122()] = [$receipt, $typed, $index];
+            }
+            foreach ($last as [$receipt, $typed, $index]) {
+                try {
+                    $this->moveCost($company, $receipt->getProduct(), $receipt, $typed, $apply, $actorUserId);
+                } catch (InvalidStockMovement $refused) {
+                    throw new OrderedGoodsRefused($index, $refused);
+                }
+            }
+
+            return $written;
+        });
+    }
+
+    /**
      * One delivery shared out over several places of a company, each place with its own quantity: one receipt per place,
      * stored whole or not at all, so the total on the shelves is always the sum of the movements and never half of
      * a delivery. Every place is checked before any is written, and a place may appear once.
@@ -168,11 +214,11 @@ final readonly class KeepStock
      *
      * @throws InvalidStockMovement
      */
-    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?ReceiptDocument $document, bool $costToComplete, ?Uuid $importRunId): array
+    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?ReceiptDocument $document, bool $costToComplete, ?Uuid $importRunId, ?Uuid $sourceId = null): array
     {
         [$product, $location] = $this->trackedAt($company, $productId, $locationId);
         $lot = $this->lotFor($product, $named, true);
-        $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost, $document, $costToComplete);
+        $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost, $document, $costToComplete, $sourceId);
         if (null !== $importRunId) {
             $movement->importedBy($importRunId);
         }
@@ -244,9 +290,7 @@ final readonly class KeepStock
             return;
         }
         $context = new SettingContext($company, productCategoryId: $product->getCategory()?->getId(), productId: $product->getId());
-        $chosen = $this->settings->value($context, StockCostSettings::COST_ON_RECEIVE);
-        $mode = (\is_string($chosen) ? CostOnReceive::tryFrom($chosen) : null) ?? CostOnReceive::Suggest;
-        $basis = match ($mode) {
+        $basis = match (StockCostSettings::modeOf($this->settings->value($context, StockCostSettings::COST_ON_RECEIVE))) {
             CostOnReceive::Suggest => $asked,
             CostOnReceive::Average => CostBasis::Average,
             CostOnReceive::Last => CostBasis::Last,

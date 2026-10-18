@@ -64,13 +64,6 @@ const BARS: readonly Bar[] = [
     module: 'mailing',
     inMenu: 'document-planned-mailing',
   },
-  {
-    page: '/vendors/',
-    bar: 'record-bar',
-    more: 'record-more',
-    module: 'purchases',
-    inMenu: 'record-planned-purchases',
-  },
 ];
 
 /**
@@ -166,56 +159,19 @@ async function retireCustomer(page: Page, id: string): Promise<void> {
   expect(status).toBe(200);
 }
 
-/** A vendor of this run's own: the shared company's earlier runs retired theirs, and a retired one is not listed. */
-async function newVendor(page: Page, number: string): Promise<void> {
-  await page.goto('/vendors/new');
-  await page.getByTestId('field-number').fill(number);
-  await page.getByTestId('field-name').fill(`Bientôt ${number}`);
-  await page.getByTestId('record-save').click();
-  await expect(page).toHaveURL(/\/vendors\/[0-9a-f-]{36}$/, { timeout: 20_000 });
-}
-
-/** Retires the run's vendor, as the vendors scenario does with its own. */
-async function retire(page: Page, number: string): Promise<void> {
-  await page.evaluate(
-    async ([csrf, vendorNumber]) => {
-      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const base = `/api/companies/${me.company.id}`;
-      const listed = (await (
-        await fetch(`${base}/vendors?q=${encodeURIComponent(vendorNumber)}`)
-      ).json()) as { member: { id: string; number: string }[] };
-      const hit = listed.member.find((row) => row.number === vendorNumber);
-      if (hit === undefined) return;
-      const { id, ...fields } = (await (await fetch(`${base}/vendors/${hit.id}`)).json()) as {
-        id: string;
-      };
-      const revised = await fetch(`${base}/vendors/${id}`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-        body: JSON.stringify({ ...fields, isActive: false }),
-      });
-      if (!revised.ok) throw new Error(`retiring ${vendorNumber} answered ${revised.status}`);
-    },
-    [CSRF, number] as const,
-  );
-}
-
 test('a page bar shows what is coming dashed only where the header keeps its rows', async ({
   page,
 }, testInfo) => {
   await signIn(page);
   await inACompany(page, CSRF);
 
-  const vendor = `E2E-SOON-${Date.now().toString(36).toUpperCase()}`;
+  const number = `E2E-SOON-${Date.now().toString(36).toUpperCase()}`;
   const found: Record<string, Rows> = {};
   let made: { customer: string; invoice: string } | null = null;
   try {
     for (const bar of BARS) {
-      if (bar.bar === 'record-bar') await newVendor(page, vendor);
-      else {
-        made = await anIssuedInvoice(page, vendor);
-        await page.goto(bar.page + made.invoice);
-      }
+      made = await anIssuedInvoice(page, number);
+      await page.goto(bar.page + made.invoice);
       await expect(page.getByTestId(bar.bar)).toBeVisible();
       for (const width of [1440, 1280, 1024, 900]) {
         await page.setViewportSize({ width, height: 900 });
@@ -239,14 +195,7 @@ test('a page bar shows what is coming dashed only where the header keeps its row
       }
     }
     testInfo.annotations.push({ type: 'rows', description: JSON.stringify(found) });
-    // A vendor's bar is short: at 1440 px its one planned action has the room, so the shown side is exercised too.
-    expect(found['record-bar 1440']!.shown).toBe(true);
-
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.getByTestId('planned-action-purchases').click();
-    await expect(page).toHaveURL(/\/coming\/purchases$/);
   } finally {
-    await retire(page, vendor);
     if (made !== null) await retireCustomer(page, made.customer);
   }
 });

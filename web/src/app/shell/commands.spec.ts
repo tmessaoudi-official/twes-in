@@ -8,6 +8,7 @@ import { QUOTES_COMMANDS } from '../quotes/quotes-nav';
 import { EXPENSES_COMMANDS } from '../expenses/expenses-nav';
 import { INVOICES_COMMANDS } from '../invoices/invoices-nav';
 import { PRODUCTS_COMMANDS } from '../products/products-nav';
+import { PURCHASES_COMMANDS } from '../purchases/purchases-nav';
 import { VENDORS_COMMANDS } from '../vendors/vendors-nav';
 import { type Command, matchCommands, MODULE_COMMANDS, navCommands } from './commands';
 import { CORE_NAV, MODULE_NAV, SETTINGS_NAV, visibleEntries } from './nav-manifest';
@@ -96,6 +97,7 @@ describe('MODULE_COMMANDS', () => {
       ...PRODUCTS_COMMANDS,
       ...DELIVERY_NOTES_COMMANDS,
       ...VENDORS_COMMANDS,
+      ...PURCHASES_COMMANDS,
       ...EXPENSES_COMMANDS,
     ]);
     expect(
@@ -107,6 +109,7 @@ describe('MODULE_COMMANDS', () => {
       ['/products/new', 'products', 'product.write'],
       ['/delivery-notes/new', 'delivery_notes', 'delivery_note.write'],
       ['/vendors/new', 'vendors', 'vendor.write'],
+      ['/purchases/new', 'purchases', 'purchase.write'],
       ['/expenses/new', 'expenses', 'expense.write'],
     ]);
     expect(MODULE_COMMANDS.every((command) => command.group === 'create')).toBe(true);

@@ -46,6 +46,13 @@ use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
+use App\Module\Purchases\Application\IntakeCost;
+use App\Module\Purchases\Application\ManagePurchaseOrders;
+use App\Module\Purchases\Application\PurchaseOrderInput;
+use App\Module\Purchases\Application\PurchaseOrderLineInput;
+use App\Module\Purchases\Application\PurchaseOrderWorkflow;
+use App\Module\Purchases\Domain\ValueObject\PurchaseOrderHeader;
+use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Module\Quotes\Application\ManageQuotes;
 use App\Module\Quotes\Application\QuoteInput;
 use App\Module\Quotes\Application\QuoteInvoices;
@@ -139,6 +146,8 @@ final readonly class DemoDataset
         private ManageQuotes $quotes,
         private QuoteWorkflow $quoteWorkflow,
         private QuoteInvoices $quoteInvoices,
+        private ManagePurchaseOrders $purchaseOrders,
+        private PurchaseOrderWorkflow $purchaseOrderWorkflow,
     ) {
     }
 
@@ -175,11 +184,12 @@ final readonly class DemoDataset
 
             $customerIds = $this->writeCustomers($demo, $company, $tax, $actor, $settle);
             $vendors = $this->writeVendors($demo, $company, $actor);
-            [$sellable, $goods, $tracked] = $this->writeProducts($demo, $company, $unit, $tax, $vendors, $actor, $settle);
+            [$sellable, $goods, $tracked, $homes] = $this->writeProducts($demo, $company, $unit, $tax, $vendors, $actor, $settle);
 
             $this->planExpenses($demo, $timeline, $company, $vendors, $tax, $actor);
             $this->planRecurringExpense($demo, $timeline, $company, $vendors[0], $tax, $actor);
             $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $tracked, $actor);
+            $this->planPurchaseOrders($timeline, $company, $vendors, $goods, $homes, $actor);
             $this->planQuotes($timeline, $company, $customerIds, $sellable, $actor);
             // A tracked article leaves through a delivery note, which names its lot or serial number as a shop hands it
             // over; an invoice naming none would sell the pieces the notes already took, and move nothing.
@@ -250,8 +260,10 @@ final readonly class DemoDataset
      * @param list<array{id: Uuid}>  $vendors
      * @param \Closure(): void       $settle
      *
-     * @return array{list<Uuid>, list<Uuid>, list<Uuid>} the active products, then the active goods among them that
-     *                                                   track nothing, then those tracked by lot or serial number
+     * @return array{list<Uuid>, list<Uuid>, list<Uuid>, array<string, Uuid>} the active products, then the active goods
+     *                                                                        among them that track nothing, then those
+     *                                                                        tracked by lot or serial number, then each
+     *                                                                        good's home by product id
      */
     private function writeProducts(DemoCompany $demo, \Closure $company, \Closure $unit, \Closure $tax, array $vendors, Uuid $actor, \Closure $settle): array
     {
@@ -277,6 +289,7 @@ final readonly class DemoDataset
         $sellable = [];
         $goods = [];
         $tracked = [];
+        $homes = [];
         foreach ($demo->products as $n => $row) {
             $service = isset($row['service']);
             $tracking = ProductTracking::from($row['tracking'] ?? 'none');
@@ -296,6 +309,7 @@ final readonly class DemoDataset
             $shelf = isset($row['inactive']) || $service ? null : $racks[$row['category']] ?? null;
             if (null !== $shelf) {
                 $this->homes->set($company(), $product->getId(), $shelf, $actor);
+                $homes[$product->getId()->toRfc4122()] = $shelf;
             }
             if (null !== $shelf && ProductTracking::None === $tracking) {
                 $goods[] = $product->getId();
@@ -307,7 +321,7 @@ final readonly class DemoDataset
             $settle();
         }
 
-        return [$sellable, $goods, $tracked];
+        return [$sellable, $goods, $tracked, $homes];
     }
 
     /**
@@ -511,6 +525,58 @@ final readonly class DemoDataset
                 $timeline->at($note['invoice'], function () use (&$ids, $n, $company, $actor): void {
                     $invoiceId = $this->invoiceDeliveryNotes->draftInvoice($company(), [$ids[$n]], $actor);
                     $this->invoiceWorkflow->issue($company(), $invoiceId, $actor);
+                });
+            }
+        }
+    }
+
+    /**
+     * Four orders to vendors, one in each state a shop meets most: received in full, partly received (half of its first
+     * line came, nothing of the second yet), sent and awaited, and a draft. Their goods arrive at each product's home,
+     * at the cost the product carries, so the stock and its valuation count them as any delivery.
+     *
+     * @param \Closure(): Company   $company
+     * @param list<array{id: Uuid}> $vendors
+     * @param list<Uuid>            $goods
+     * @param array<string, Uuid>   $homes
+     */
+    private function planPurchaseOrders(Timeline $timeline, \Closure $company, array $vendors, array $goods, array $homes, Uuid $actor): void
+    {
+        /** @var list<array{day: int, send: bool, receive?: int, partly?: true}> $plan */
+        $plan = [
+            ['day' => -50, 'send' => true, 'receive' => -44],
+            ['day' => -12, 'send' => true, 'receive' => -5, 'partly' => true],
+            ['day' => -3, 'send' => true],
+            ['day' => -1, 'send' => false],
+        ];
+        /** @var array<int, Uuid> $ids */
+        $ids = [];
+        foreach ($plan as $n => $order) {
+            $vendorId = $vendors[$n % \count($vendors)]['id'];
+            $lines = [
+                new PurchaseOrderLineInput($goods[(4 * $n + 1) % \count($goods)], (string) (20 + 10 * $n)),
+                new PurchaseOrderLineInput($goods[(4 * $n + 6) % \count($goods)], (string) (6 + 2 * $n)),
+            ];
+            $expectedOn = $timeline->day($order['day'] + 7);
+            $timeline->at($order['day'], function () use (&$ids, $n, $company, $vendorId, $lines, $expectedOn, $order, $actor): void {
+                $ids[$n] = $this->purchaseOrders->create($company(), new PurchaseOrderInput($vendorId, null, new PurchaseOrderHeader($expectedOn), $lines), true, $actor)->getId();
+                if ($order['send']) {
+                    $this->purchaseOrderWorkflow->send($company(), $ids[$n], $actor);
+                }
+            });
+            if (isset($order['receive'])) {
+                $receivedOn = $timeline->day($order['receive']);
+                $timeline->at($order['receive'], function () use (&$ids, $n, $company, $homes, $receivedOn, $order, $actor): void {
+                    $received = [];
+                    foreach ($this->purchaseOrders->get($company(), $ids[$n])->getLines() as $index => $line) {
+                        if (isset($order['partly']) && $index > 0) {
+                            break;
+                        }
+                        $home = $homes[$line->getProductId()->toRfc4122()] ?? throw new \LogicException('Every ordered good has its home.');
+                        $quantity = isset($order['partly']) ? bcdiv($line->getQuantity(), '2', 3) : $line->getQuantity();
+                        $received[] = new ReceivedGoods($line->getId(), $home, $quantity);
+                    }
+                    $this->purchaseOrderWorkflow->receive($company(), $ids[$n], $receivedOn, \sprintf('BL-%04d', 310 + 7 * $n), $received, true, IntakeCost::Average, $actor);
                 });
             }
         }

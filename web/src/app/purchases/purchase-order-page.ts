@@ -1,0 +1,525 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
+import { Router, RouterLink } from '@angular/router';
+import { TranslatePipe } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
+import { AuthFacade } from '../auth/auth-facade';
+import type { PlannedAction } from '../shared/actions/planned-actions';
+import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import { Feedback } from '../shared/feedback/feedback';
+import { DescriptorForm } from '../shared/form/descriptor-form';
+import { unsavedChanges } from '../shared/form/dirty-count';
+import { buildFormGroup } from '../shared/form/form-builder';
+import { liveRecord } from '../shared/form/live-record';
+import { PartConflict } from '../shared/form/part-conflict';
+import type { PickOption } from '../shared/form/pick-field';
+import { RecordChanged } from '../shared/form/record-changed';
+import { RecordView } from '../shared/form/record-view';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
+import { StatusBadge } from '../shared/ui/status-badge';
+import { DocumentActions } from '../shared/ui/document-actions';
+import {
+  linesArray,
+  plainDecimal,
+  purchaseOrderForm,
+  purchaseOrderInput,
+  purchaseOrderValues,
+  refusedPlace,
+} from './purchase-order-forms';
+import { PurchaseOrderLines } from './purchase-order-lines';
+import { PurchasesFacade } from './purchases-facade';
+import {
+  type ProductOption,
+  PURCHASE_ORDER_STATUS_STAGES,
+  PURCHASE_ORDER_STATUS_TONES,
+  type PurchaseOrderInput,
+  receivable,
+  type VendorOption,
+} from './purchases-types';
+import { ReceiveDialog, type ReceiveDialogData } from './receive-dialog';
+
+/** What an order will offer once its planned modules ship, shown « Bientôt » beside what it offers today. */
+export const PURCHASE_ORDER_PLANNED: readonly PlannedAction[] = [
+  { module: 'mailing', label: 'planned_actions.send_email', icon: 'forward_to_inbox' },
+];
+
+/**
+ * One order to a vendor: a new draft to fill in, a draft to revise and send, or a sent order whose goods are received,
+ * all at once or in parts, then closed when the rest will not come. Only a draft changes; the API refuses anything else
+ * whatever this screen shows.
+ */
+@Component({
+  selector: 'app-purchase-order-page',
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    RouterLink,
+    TranslatePipe,
+    AmountPipe,
+    DayPipe,
+    DescriptorForm,
+    DocumentActions,
+    PartConflict,
+    PurchaseOrderLines,
+    RecordChanged,
+    RecordView,
+    StatusBadge,
+  ],
+  templateUrl: './purchase-order-page.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class PurchaseOrderPage {
+  private readonly facade = inject(PurchasesFacade);
+  private readonly unsaved = inject(UnsavedChanges);
+  private readonly dialog = inject(MatDialog);
+  private readonly feedback = inject(Feedback);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  protected readonly auth = inject(AuthFacade);
+
+  /** Bound from the route parameter by withComponentInputBinding(); absent on `purchases/new`. */
+  readonly purchaseOrderId = input<string | undefined>(undefined);
+  /** `?vendorId=` on a new order: the vendor it was started from, named in the header until changed. */
+  readonly vendorId = input<string | undefined>(undefined);
+
+  protected readonly id = computed(() => this.purchaseOrderId() ?? null);
+  protected readonly tones = PURCHASE_ORDER_STATUS_TONES;
+  protected readonly stages = PURCHASE_ORDER_STATUS_STAGES;
+  protected readonly plain = plainDecimal;
+  protected readonly busy = this.facade.busy;
+  protected readonly error = this.facade.error;
+  protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  protected readonly mayWrite = computed(() => this.auth.hasPermission('purchase.write'));
+  protected readonly mayReceive = computed(() => this.auth.hasPermission('purchase.receive'));
+  /** A price on an order is a cost: shown, typed and sent only by whoever may read costs. */
+  protected readonly seesCost = computed(() => this.auth.hasPermission('product.cost.read'));
+  protected readonly descriptor = purchaseOrderForm();
+
+  /** Null while a new order is filled in; undefined until the order asked for has been read. */
+  protected readonly current = computed(() => {
+    const id = this.id();
+    if (id === null) return null;
+    const order = this.facade.order();
+    return order?.id === id ? order : undefined;
+  });
+  protected readonly editable = computed(() => {
+    const current = this.current();
+    return this.mayWrite() && (current === null || current?.status === 'draft');
+  });
+  /**
+   * What the form is of: the order and its state. Reading the order again yields new objects with the same content and
+   * must not rebuild the form over what is being typed; another order or another state must.
+   */
+  private readonly formKey = computed(() => {
+    const current = this.current();
+    return current === undefined ? null : `${current?.id ?? 'new'}|${current?.status ?? 'draft'}`;
+  });
+  protected readonly form = computed(() => {
+    if (this.formKey() === null) return null;
+    return untracked(() => {
+      const current = this.current();
+      if (current === undefined) return null;
+      return buildFormGroup(this.descriptor, purchaseOrderValues(current, this.vendorId() ?? null));
+    });
+  });
+  /** Bumped to show the saved lines again in place of the ones shown. */
+  private readonly linesVersion = signal(0);
+  protected readonly lines = computed(() => {
+    if (this.formKey() === null) return null;
+    this.linesVersion();
+    return untracked(() => {
+      const current = this.current();
+      return current === undefined ? null : linesArray(current?.lines ?? null);
+    });
+  });
+  protected readonly isLinesConflict = (conflict: { field: string }): boolean =>
+    conflict.field === 'lines';
+
+  /** The saved version the order stands on, and what another person's save changed in it. */
+  protected readonly sync = liveRecord({
+    kind: 'purchase_order',
+    id: this.id,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      const id = this.id();
+      if (companyId && id !== null) await this.facade.loadOrder(companyId, id);
+    },
+    saved: () => {
+      const current = this.current();
+      return current ? purchaseOrderValues(current) : null;
+    },
+    version: () => this.current()?.version ?? null,
+    // The lines are one field: a line is never merged with another person's.
+    parts: [
+      {
+        field: 'lines',
+        saved: () => {
+          const current = this.current();
+          return current ? JSON.stringify(linesArray(current.lines).getRawValue()) : null;
+        },
+        shown: () => JSON.stringify(this.lines()?.getRawValue() ?? []),
+        take: () => this.linesVersion.update((version) => version + 1),
+      },
+    ],
+  });
+
+  /** What is typed and not saved, header and lines each, so leaving the page asks first. */
+  private readonly savedHeader = computed(() => {
+    const current = this.current();
+    return current === undefined ? null : purchaseOrderValues(current, this.vendorId() ?? null);
+  });
+  protected readonly headerChanges = unsavedChanges(this.form, this.savedHeader);
+  private readonly savedLines = computed(() => {
+    const current = this.current();
+    return current === undefined ? null : linesArray(current?.lines ?? null).getRawValue();
+  });
+  protected readonly lineChanges = unsavedChanges(this.lines, this.savedLines);
+
+  /** Who the header names, as the picker answered it; the form carries the id. */
+  private readonly vendor = signal<VendorOption | null>(null);
+  private readonly knownVendors = new Map<string, VendorOption>();
+  protected readonly vendorShown = computed((): PickOption | null => {
+    const vendor = this.vendor();
+    return vendor === null ? null : { id: vendor.id, code: vendor.number, name: vendor.name };
+  });
+  protected readonly searchVendors = async (words: string): Promise<readonly PickOption[]> => {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    const found = await this.facade.pickVendors(companyId, { words });
+    for (const vendor of found) this.knownVendors.set(vendor.id, vendor);
+    return found.map((vendor) => ({ id: vendor.id, code: vendor.number, name: vendor.name }));
+  };
+  /** The products the saved order names, read by id once it is open. */
+  protected readonly named = signal<ReadonlyMap<string, ProductOption>>(new Map());
+
+  /** The order read rather than filled in, once it no longer changes. */
+  protected readonly asView = computed(() => !this.editable() && this.current() != null);
+  /** Whom a sent order went to, as it recorded them: number and name. */
+  protected readonly viewPicked = computed((): Record<string, string> => {
+    const current = this.current();
+    if (!current) return {};
+    const number = current.recordedVendorNumber ?? this.vendor()?.number ?? null;
+    return { vendorId: number === null ? current.vendorName : `${number} · ${current.vendorName}` };
+  });
+  /** Where the last save was refused on a line, by line and field. */
+  protected readonly refusedLine = computed(() => {
+    const field = this.facade.refused();
+    if (field === null) return null;
+    const place = refusedPlace(field);
+    return place.line === null ? null : place;
+  });
+  /** Each receipt's lines with what they brought of which line, for the history under the lines. */
+  protected readonly receipts = computed(() => {
+    const current = this.current();
+    if (!current) return [];
+    const byId = new Map(current.lines.map((line) => [line.id, line]));
+    return [...current.receipts].reverse().map((receipt) => ({
+      ...receipt,
+      lines: receipt.lines.map((line) => ({ ...line, of: byId.get(line.orderLineId) ?? null })),
+    }));
+  });
+
+  protected readonly planned = computed(() => (this.current() ? PURCHASE_ORDER_PLANNED : []));
+  protected readonly canSend = computed(
+    () => this.current()?.status === 'draft' && this.mayWrite(),
+  );
+  protected readonly canReceive = computed(() => {
+    const status = this.current()?.status;
+    return status !== undefined && receivable(status) && this.mayReceive();
+  });
+  protected readonly canClose = computed(
+    () => this.current()?.status === 'partly_received' && this.mayWrite(),
+  );
+  protected readonly canCancel = computed(() => {
+    const status = this.current()?.status;
+    return (status === 'draft' || status === 'sent') && this.mayWrite();
+  });
+
+  /**
+   * What the order offers, declared once for the bar beside its title. The state's next step is the primary one:
+   * sending a draft, receiving a sent order or the rest of one partly received.
+   */
+  protected readonly actions = computed<ScreenAction[]>(() => {
+    const busy = this.busy();
+    return [
+      {
+        id: 'save',
+        shortcut: 's',
+        label: 'purchases.actions.save',
+        icon: 'save',
+        // Kept in a phone's bar, or a new order there offers no way to save it.
+        keep: true,
+        disabled: busy,
+        run: () => void this.save(),
+        shown: this.editable() && this.form() !== null,
+      },
+      {
+        id: 'send',
+        next: true,
+        label: 'purchases.actions.send',
+        icon: 'send',
+        primary: true,
+        disabled: busy,
+        run: () => void this.send(),
+        shown: this.canSend(),
+        confirm: {
+          kind: 'corrigeable',
+          title: 'purchases.actions.send_title',
+          message: 'purchases.actions.send_message',
+          confirmLabel: 'purchases.actions.send',
+          keepLabel: 'purchases.actions.keep',
+        },
+      },
+      {
+        id: 'receive',
+        next: true,
+        label: 'purchases.actions.receive',
+        icon: 'move_to_inbox',
+        primary: true,
+        disabled: busy,
+        run: () => void this.openReceive(),
+        shown: this.canReceive(),
+      },
+      {
+        id: 'close',
+        label: 'purchases.actions.close',
+        icon: 'check_circle',
+        disabled: busy,
+        run: () => void this.close(),
+        shown: this.canClose(),
+        confirm: {
+          kind: 'definitif',
+          title: 'purchases.actions.close_title',
+          message: 'purchases.actions.close_message',
+          confirmLabel: 'purchases.actions.close',
+          keepLabel: 'purchases.actions.keep',
+        },
+      },
+      {
+        id: 'cancel',
+        label: 'purchases.actions.cancel',
+        icon: 'block',
+        destructive: true,
+        disabled: busy,
+        run: () => void this.cancel(),
+        shown: this.canCancel(),
+        confirm: {
+          kind: 'definitif',
+          title: 'purchases.actions.cancel_title',
+          message: 'purchases.actions.cancel_message',
+          confirmLabel: 'purchases.actions.confirm_cancel',
+          keepLabel: 'purchases.actions.keep',
+        },
+      },
+    ];
+  });
+
+  constructor() {
+    // The same list the bar draws also answers the keyboard, the palette and the "?" sheet.
+    inject(ScreenActions).declare(this.actions);
+    effect(() => {
+      const companyId = this.company()?.id;
+      const id = this.id();
+      untracked(() => {
+        if (companyId) void this.facade.loadOrder(companyId, id);
+      });
+    });
+    // The picker shows what the form names: picked here, or read by id when the form opens on one.
+    effect((onCleanup) => {
+      const form = this.form();
+      const companyId = this.company()?.id;
+      if (form === null || !companyId) return;
+      const show = (vendorId: unknown): void => {
+        if (typeof vendorId !== 'string' || vendorId === '') {
+          this.vendor.set(null);
+          return;
+        }
+        if (this.vendor()?.id === vendorId) return;
+        const known = this.knownVendors.get(vendorId);
+        if (known) {
+          this.vendor.set(known);
+          return;
+        }
+        void this.facade.pickVendors(companyId, { ids: [vendorId] }).then(([found]) => {
+          if (found) this.knownVendors.set(found.id, found);
+          if (form.controls['vendorId']?.value === vendorId) this.vendor.set(found ?? null);
+        });
+      };
+      untracked(() => show(form.controls['vendorId']?.value));
+      const subscription = form.controls['vendorId']?.valueChanges
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(show);
+      onCleanup(() => subscription?.unsubscribe());
+    });
+    // The products the order names, read once per order: a line shows its product and its unit before any search.
+    effect(() => {
+      const companyId = this.company()?.id;
+      const current = this.current();
+      if (!companyId || !current) return;
+      const ids = [...new Set(current.lines.map((line) => line.productId))].sort();
+      untracked(async () => {
+        if (ids.every((id) => this.named().has(id))) return;
+        const found = await this.facade.pickProducts(companyId, { ids });
+        this.named.update((named) => new Map([...named, ...found.map((p) => [p.id, p] as const)]));
+      });
+    });
+    effect(() => {
+      const lines = this.lines();
+      const editable = this.editable();
+      if (lines === null) return;
+      untracked(() => (editable ? lines.enable() : lines.disable()));
+    });
+  }
+
+  protected async save(): Promise<void> {
+    const companyId = this.company()?.id;
+    const input = this.collect();
+    if (!companyId || input === null) return;
+    const id = this.id();
+    if (id === null) {
+      const created = await this.facade.create(companyId, input);
+      if (created !== null) {
+        this.feedback.success('purchases.saved');
+        // It exists now: going to it is not leaving unsaved work.
+        this.unsaved.savedAndLeaving();
+        await this.router.navigate(['/purchases', created.id], { replaceUrl: true });
+      }
+    } else if ((await this.facade.revise(companyId, id, input, this.sync.version())) !== null) {
+      this.revisedHere();
+      this.feedback.success('purchases.saved');
+    } else {
+      await this.refused();
+    }
+  }
+
+  /**
+   * The form and the lines now stand on what this tab saved: the lines are drawn again from what the API kept, so a
+   * price typed « 2,50 » and kept as 2.5 reads as saved rather than as a change.
+   */
+  private readonly revisedHere = (): void => {
+    const form = this.form();
+    if (form !== null) this.sync.savedHere(form);
+    this.linesVersion.update((version) => version + 1);
+  };
+
+  /** A save made over a version saved since is merged and said; any other refusal stays as the screen shows it. */
+  private async refused(): Promise<void> {
+    if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
+    }
+  }
+
+  protected async send(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    const input = this.collect();
+    if (!companyId || id === null || input === null) return;
+    const kind = kindAmong(this.actions(), 'send');
+    const sent = await this.facade.reviseAndSend(
+      companyId,
+      id,
+      input,
+      this.sync.version(),
+      this.revisedHere,
+    );
+    if (sent === null) await this.refused();
+    if (sent === null || kind === undefined) return;
+    const next = this.mayReceive()
+      ? { key: 'purchases.suggest.receive', run: () => void this.openReceive() }
+      : undefined;
+    this.feedback.effect('purchases.sent', { number: sent.number ?? '' }, kind, next);
+  }
+
+  /** The goods that came, asked in a dialog that records them itself and stays open on a refusal. */
+  protected async openReceive(): Promise<void> {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    if (!companyId || !current || this.busy()) return;
+    const receiving = await this.facade.receiving(companyId, current.id);
+    if (receiving === null) return;
+    const data: ReceiveDialogData = {
+      lines: current.lines,
+      receiving,
+      seesCost: this.seesCost(),
+      timeZone: this.company()?.timezone ?? null,
+      issueDate: current.issueDate,
+      receive: async (input) => {
+        const order = await this.facade.receive(companyId, current.id, input);
+        return order !== null
+          ? null
+          : { code: this.facade.error() ?? 'network', field: this.facade.refused() };
+      },
+    };
+    const received = await firstValueFrom(
+      this.dialog
+        .open<ReceiveDialog, ReceiveDialogData, boolean>(ReceiveDialog, {
+          data,
+          autoFocus: 'first-tabbable',
+          width: '48rem',
+          maxWidth: '100vw',
+        })
+        .afterClosed(),
+    );
+    if (received === true) {
+      const status = this.facade.order()?.status;
+      this.feedback.success(
+        status === 'received' ? 'purchases.received_all' : 'purchases.received_part',
+      );
+    } else {
+      // The dialog said why; the page behind it keeps nothing of a receipt left unrecorded.
+      this.facade.clearError();
+    }
+  }
+
+  protected async close(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (!companyId || id === null || this.busy()) return;
+    const kind = kindAmong(this.actions(), 'close');
+    const closed = await this.facade.close(companyId, id);
+    if (closed !== null && kind !== undefined) this.feedback.effect('purchases.closed', {}, kind);
+  }
+
+  protected async cancel(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (!companyId || id === null || this.busy()) return;
+    const kind = kindAmong(this.actions(), 'cancel');
+    const cancelled = await this.facade.cancel(companyId, id);
+    if (cancelled !== null && kind !== undefined) {
+      this.feedback.effect('purchases.cancelled', {}, kind);
+    }
+  }
+
+  /** The header and the lines as the API takes them, or null after showing what is wrong with them. */
+  private collect(): PurchaseOrderInput | null {
+    const form = this.form();
+    const lines = this.lines();
+    if (form === null || lines === null || this.busy()) return null;
+    if (form.invalid || lines.invalid) {
+      form.markAllAsTouched();
+      lines.markAllAsTouched();
+      return null;
+    }
+    return purchaseOrderInput(form.getRawValue(), lines, this.seesCost());
+  }
+}

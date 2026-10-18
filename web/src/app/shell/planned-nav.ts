@@ -58,15 +58,6 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
   { key: 'service', icon: 'room_service', section: 'sell', after: 'menu' },
   { key: 'guests', icon: 'loyalty', section: 'sell', after: 'service' },
   { key: 'ratings', icon: 'reviews', section: 'sell', after: 'guests' },
-  // Buying and stock.
-  {
-    key: 'purchases',
-    icon: 'shopping_cart',
-    section: 'manage',
-    after: 'vendors',
-    row: 81,
-    create: true,
-  },
   // Money and compliance.
   { key: 'declarations', icon: 'event_note', section: 'manage', after: 'reports', row: 91 },
   {

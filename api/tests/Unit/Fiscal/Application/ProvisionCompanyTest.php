@@ -157,7 +157,7 @@ final class ProvisionCompanyTest extends TestCase
 
         $series = $this->series->ofCompany($company->getId());
         self::assertSame(
-            ['credit_note' => 'AV-{YYYY}-{MM}-{SEQ:5}', 'delivery_note' => 'BL-{YYYY}-{MM}-{SEQ:5}', 'invoice' => 'FAC-{YYYY}-{MM}-{SEQ:5}', 'quote' => 'DEV-{YYYY}-{MM}-{SEQ:5}'],
+            ['credit_note' => 'AV-{YYYY}-{MM}-{SEQ:5}', 'delivery_note' => 'BL-{YYYY}-{MM}-{SEQ:5}', 'invoice' => 'FAC-{YYYY}-{MM}-{SEQ:5}', 'purchase_order' => 'BCF-{YYYY}-{MM}-{SEQ:5}', 'quote' => 'DEV-{YYYY}-{MM}-{SEQ:5}'],
             array_combine(array_map(static fn (NumberingSeries $s) => $s->getDocumentType(), $series), array_map(static fn (NumberingSeries $s) => $s->getFormat(), $series)),
         );
         foreach ($series as $each) {
@@ -175,7 +175,7 @@ final class ProvisionCompanyTest extends TestCase
 
         self::assertSame([], $this->provision->handle($company));
         self::assertCount(1, $this->establishments->ofCompany($company->getId()));
-        self::assertCount(4, $this->series->ofCompany($company->getId()));
+        self::assertCount(5, $this->series->ofCompany($company->getId()));
     }
 
     public function testADocumentTypeThePresetNumbersSinceIsGivenItsSeriesAloneAndTheOthersAreLeftAlone(): void
@@ -191,7 +191,7 @@ final class ProvisionCompanyTest extends TestCase
 
         $types = array_map(static fn (NumberingSeries $s): string => $s->getDocumentType(), $this->series->ofCompany($company->getId()));
         sort($types);
-        self::assertSame(['credit_note', 'delivery_note', 'invoice', 'quote'], $types);
+        self::assertSame(['credit_note', 'delivery_note', 'invoice', 'purchase_order', 'quote'], $types);
         self::assertSame($invoice, array_find($this->series->series, static fn (NumberingSeries $s): bool => 'invoice' === $s->getDocumentType()));
     }
 }

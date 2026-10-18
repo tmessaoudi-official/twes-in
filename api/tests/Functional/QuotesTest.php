@@ -370,6 +370,7 @@ final class QuotesTest extends ApiTestCase
         $this->sendJson('PUT', $this->companyPath().'/modules/accounting_export', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/recurring', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/invoices', ['enabled' => false]);
+        $this->sendJson('PUT', $this->companyPath().'/modules/purchases', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/inventory', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/delivery_notes', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/price_lists', ['enabled' => false]);

@@ -30,4 +30,10 @@ final readonly class StockCostSettings implements DeclaresSettings
     {
         yield new SettingDefinition('stock.cost_on_receive', SettingType::Enum, CostOnReceive::Suggest->value, SettingChain::Articles, [SettingLevel::Company], 'settings.stock.cost_on_receive', MoveStockForDeliveryNotes::MODULE, choices: ['suggest', 'average', 'last', 'manual']);
     }
+
+    /** The mode a value of the setting says; one it does not know leaves the choice to the person, as the default does. */
+    public static function modeOf(mixed $chosen): CostOnReceive
+    {
+        return (\is_string($chosen) ? CostOnReceive::tryFrom($chosen) : null) ?? CostOnReceive::Suggest;
+    }
 }

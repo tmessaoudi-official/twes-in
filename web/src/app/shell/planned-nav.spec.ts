@@ -101,11 +101,11 @@ describe('the planned modules in the menu', () => {
         [
           'stock',
           'vendors',
+          'purchases',
           'expenses',
           'reports',
           'accounting_export',
           'watch',
-          'purchases',
           'declarations',
           'einvoicing',
           'currencies',
@@ -123,7 +123,7 @@ describe('the planned modules in the menu', () => {
   });
 
   it('names each, says what it will do, and what to use meanwhile where it has that, in both languages', () => {
-    expect(PLANNED_NAV.length).toBe(16);
+    expect(PLANNED_NAV.length).toBe(15);
     for (const entry of plannedNav(catalogue)) {
       for (const json of [fr, en]) {
         for (const key of [
@@ -172,7 +172,7 @@ describe('the planned modules in the menu', () => {
 
   it('names what each creation will make, in both languages', () => {
     const creations = plannedCommands(catalogue).filter((c) => c.group === 'create');
-    expect(creations.map((c) => c.key)).toEqual(['new-register', 'new-works', 'new-purchases']);
+    expect(creations.map((c) => c.key)).toEqual(['new-register', 'new-works']);
     for (const command of creations) {
       for (const json of [fr, en]) {
         expect(hasKey(json, command.labelKey), command.labelKey).toBe(true);

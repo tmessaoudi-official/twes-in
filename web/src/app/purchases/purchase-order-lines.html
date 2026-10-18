@@ -1,0 +1,125 @@
+<section class="flex flex-col gap-4" data-testid="purchase-order-lines">
+  <h2 class="text-xl font-semibold">{{ 'purchases.lines.title' | translate }}</h2>
+
+  @for (line of groups(); track line; let i = $index) {
+    <fieldset
+      class="flex min-w-0 flex-col gap-4 rounded-xl border border-outline-variant p-4"
+      [formGroup]="line"
+      [attr.data-testid]="'purchase-line-' + i"
+    >
+      <legend class="px-1 text-base font-semibold">
+        {{ 'purchases.lines.position' | translate: { position: i + 1 } }}
+      </legend>
+      @if (refusedHere(i); as field) {
+        <p
+          role="alert"
+          class="text-sm text-error"
+          [attr.data-testid]="'purchase-line-' + i + '-refused'"
+        >
+          {{ 'purchases.lines.refused' | translate: { field: (field | translate) } }}
+        </p>
+      }
+      <div class="grid items-start gap-x-4 gap-y-4 sm:grid-cols-4">
+        <div class="flex flex-col sm:col-span-2">
+          <app-pick-field
+            [label]="'purchases.lines.productId' | translate"
+            [testId]="'purchase-line-' + i + '-product'"
+            [search]="searchProducts"
+            [value]="productOf(line)"
+            [noneFoundLabel]="'purchases.lines.no_product_found' | translate"
+            (picked)="chooseProduct(line, $event)"
+          />
+          @if (errorKey(line, 'productId'); as key) {
+            <span
+              role="alert"
+              class="px-4 pt-1 pb-2 text-xs text-error"
+              [attr.data-testid]="'purchase-line-' + i + '-product-error'"
+              >{{ key | translate }}</span
+            >
+          }
+        </div>
+
+        <div class="flex flex-col sm:col-span-2">
+          <mat-form-field>
+            <mat-label>{{ 'purchases.lines.description' | translate }}</mat-label>
+            <input
+              matInput
+              formControlName="description"
+              maxlength="5000"
+              [attr.data-testid]="'purchase-line-' + i + '-description'"
+            />
+            <mat-hint>{{ 'purchases.lines.description_hint' | translate }}</mat-hint>
+          </mat-form-field>
+          @if (errorKey(line, 'description'); as key) {
+            <span role="alert" class="px-4 pt-1 pb-2 text-xs text-error">{{
+              key | translate
+            }}</span>
+          }
+        </div>
+
+        <div class="flex flex-col">
+          <mat-form-field>
+            <mat-label>{{ 'purchases.lines.quantity' | translate }}</mat-label>
+            <input
+              matInput
+              formControlName="quantity"
+              appDecimal
+              required
+              [attr.data-testid]="'purchase-line-' + i + '-quantity'"
+            />
+            <span matTextSuffix [attr.data-testid]="'purchase-line-' + i + '-unit'">{{
+              unitOf(line)
+            }}</span>
+          </mat-form-field>
+          @if (errorKey(line, 'quantity'); as key) {
+            <span
+              role="alert"
+              class="px-4 pt-1 pb-2 text-xs text-error"
+              [attr.data-testid]="'purchase-line-' + i + '-quantity-error'"
+              >{{ key | translate }}</span
+            >
+          }
+        </div>
+
+        @if (seesCost()) {
+          <div class="flex flex-col">
+            <mat-form-field>
+              <mat-label>{{ 'purchases.lines.unitPriceNet' | translate }}</mat-label>
+              <input
+                matInput
+                formControlName="unitPriceNet"
+                appDecimal
+                [attr.data-testid]="'purchase-line-' + i + '-price'"
+              />
+            </mat-form-field>
+            @if (errorKey(line, 'unitPriceNet'); as key) {
+              <span role="alert" class="px-4 pt-1 pb-2 text-xs text-error">{{
+                key | translate
+              }}</span>
+            }
+          </div>
+        }
+      </div>
+
+      @if (groups().length > 1) {
+        <div class="flex justify-end">
+          <button
+            mat-button
+            type="button"
+            (click)="remove(i)"
+            [attr.data-testid]="'purchase-line-' + i + '-remove'"
+            [attr.aria-label]="'purchases.lines.remove' | translate: { position: i + 1 }"
+          >
+            {{ 'purchases.lines.remove_short' | translate }}
+          </button>
+        </div>
+      }
+    </fieldset>
+  }
+
+  <div>
+    <button mat-stroked-button type="button" (click)="add()" data-testid="purchase-line-add">
+      {{ 'purchases.lines.add' | translate }}
+    </button>
+  </div>
+</section>

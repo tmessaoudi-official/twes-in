@@ -100,6 +100,20 @@ final class DemoFixturesTest extends ApiTestCase
                 "$name has a delivery note in every state",
             );
             self::assertSame(1, $this->numberOf("SELECT COUNT(*) FROM delivery_note n JOIN company c ON c.id = n.company_id WHERE n.company_id = ? AND n.status = 'delivered' AND n.issue_date = ((n.delivery_date AT TIME ZONE 'UTC') AT TIME ZONE c.timezone)::date", [$id]), "$name has a note validated and delivered in one step");
+            self::assertSame(
+                ['draft', 'partly_received', 'received', 'sent'],
+                $this->column('SELECT DISTINCT status FROM purchase_order WHERE company_id = ? ORDER BY status', [$id]),
+                "$name has an order to a vendor in each state a shop meets most",
+            );
+            self::assertSame(
+                [3, 2],
+                [
+                    $this->numberOf("SELECT COUNT(*) FROM stock_movement m JOIN goods_receipt_line l ON l.id = m.source_id WHERE m.company_id = ? AND m.source_type = 'receipt'", [$id]),
+                    $this->numberOf('SELECT COUNT(*) FROM goods_receipt r JOIN purchase_order o ON o.id = r.purchase_order_id WHERE o.company_id = ?', [$id]),
+                ],
+                "$name's two receipts put their three lines on the shelves, each movement naming its receipt line",
+            );
+            self::assertSame(0, $this->numberOf('SELECT COUNT(*) FROM purchase_order_line l JOIN purchase_order o ON o.id = l.purchase_order_id WHERE o.company_id = ? AND (l.received > l.quantity OR (o.status = \'received\' AND l.received <> l.quantity) OR (o.status IN (\'draft\', \'sent\') AND l.received <> 0))', [$id]), "$name's orders received what they say they did");
             self::assertSame(['draft', 'paid', 'recorded'], $this->column('SELECT DISTINCT status FROM expense WHERE company_id = ? ORDER BY status', [$id]));
             self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM recurring_expense WHERE company_id = ? AND variable_amount AND NOT paused AND drafted > 0 AND next_on > CURRENT_DATE', [$id]), "$name has a monthly bill that recurs and has drafted");
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM expense WHERE company_id = ? AND status = 'draft' AND amount_to_check", [$id]), "$name has a draft whose amount is to be checked");

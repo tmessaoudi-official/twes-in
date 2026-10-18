@@ -216,6 +216,8 @@ final class RecurringExpensesTest extends ApiTestCase
     public function testAModelNamingAVendorStopsOnceVendorsIsSwitchedOff(): void
     {
         $recurring = $this->recurring($this->expense(), ['unit' => 'week', 'every' => 1]);
+        // Orders to vendors need the vendors module, so they go first.
+        $this->switchModule('purchases', false);
         $this->switchModule('vendors', false);
 
         $this->passEachDay();

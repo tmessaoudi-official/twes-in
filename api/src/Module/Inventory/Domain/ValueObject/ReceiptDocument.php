@@ -15,8 +15,9 @@ use App\Module\Vendors\Domain\Model\Vendor;
 /**
  * What a goods receipt says about where the goods came from: the vendor, the number on the vendor's own delivery note or
  * invoice, and the day they arrived. Every part is optional, so a receipt typed at the counter with none of it is still
- * a receipt, and the vendor price view reads what was given. The goods receipt of the purchase module will carry the
- * same three facts; these are kept on the stock movement until then and migrated into it.
+ * a receipt, and the vendor price view reads what was given. They stay on the stock movement whether the goods came
+ * against an order to a vendor or not: the views reading them then need no second source, and a receipt typed before
+ * orders existed keeps its own.
  */
 final readonly class ReceiptDocument
 {

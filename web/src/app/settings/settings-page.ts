@@ -50,7 +50,6 @@ export const PLANNED_SETTINGS: readonly PlannedSetting[] = [
   { module: 'whatsapp', label: 'coming.whatsapp.settings' },
   { module: 'portal', label: 'coming.portal.settings' },
   { module: 'register', label: 'coming.register.settings' },
-  { module: 'purchases', label: 'coming.purchases.settings' },
   { module: 'declarations', label: 'coming.declarations.settings' },
   { module: 'einvoicing', label: 'coming.einvoicing.settings' },
   { module: 'currencies', label: 'coming.currencies.settings' },

@@ -192,7 +192,6 @@ describe('DeliveryNotePage', () => {
         { key: 'mailing', planned: 'v1' },
         { key: 'whatsapp', planned: 'v1' },
         { key: 'quotes', planned: 'v1' },
-        { key: 'purchases', planned: 'v1' },
       ],
     }),
     hasPermission: (permission: string) => granted.has(permission),

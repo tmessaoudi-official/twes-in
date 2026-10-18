@@ -174,6 +174,11 @@
     },
     "accounting": {
       "export": "Export the accounting journals"
+    },
+    "purchase": {
+      "read": "View purchase orders",
+      "write": "Draft, send and close purchase orders",
+      "receive": "Receive ordered goods"
     }
   },
   "members": {
@@ -578,7 +583,8 @@
     "quotes": "Quotes",
     "activity": "Activity journal",
     "accounting_export": "Accounting export",
-    "data_erasure": "Erase data"
+    "data_erasure": "Erase data",
+    "new_purchase": "New purchase order"
   },
   "shell": {
     "scan_tools": "Scanner",
@@ -3924,12 +3930,6 @@
       "does": "Your customers see their invoices, download their documents and place orders from a space of their own.",
       "settings": "What a customer sees in their space: invoices, quotes, statements, and whether they can pay online."
     },
-    "purchases": {
-      "heading": "Purchase orders are under construction",
-      "does": "Order from suppliers, receive the goods into stock and match the order, the receipt and the supplier's invoice.",
-      "create": "New purchase order",
-      "settings": "The numbering of supplier orders and what a reception confirms."
-    },
     "ratings": {
       "heading": "Ratings are under construction",
       "does": "Collect customers' feedback after their visit and follow the venue's rating."
@@ -3999,8 +3999,7 @@
   },
   "planned_actions": {
     "send_email": "Send by email",
-    "send_whatsapp": "Send by WhatsApp",
-    "new_purchase": "New supplier order"
+    "send_whatsapp": "Send by WhatsApp"
   },
   "legal": {
     "navigation": "Legal information",
@@ -4424,7 +4423,12 @@
       "paymentMethod": "Paid by",
       "withholdingRate": "Withholding rate",
       "status": "Status",
-      "name": "Name"
+      "name": "Name",
+      "vendorId": "Vendor",
+      "expectedOn": "Expected delivery",
+      "remarksPrinted": "Printed remarks",
+      "notesInternal": "Internal notes",
+      "establishmentId": "Establishment"
     },
     "kinds": {
       "customer": "Customer",
@@ -4453,7 +4457,8 @@
       "setting": "Setting",
       "module": "Module",
       "export": "Export",
-      "support_grant": "Support access"
+      "support_grant": "Support access",
+      "purchase_order": "Purchase order"
     },
     "actions": {
       "auth": {
@@ -4608,6 +4613,14 @@
       "support": {
         "entered": "came in for support",
         "read": "read a page for support"
+      },
+      "purchase_order": {
+        "created": "created the purchase order",
+        "revised": "changed the purchase order",
+        "sent": "sent the purchase order",
+        "received": "received goods on the purchase order",
+        "closed": "closed the purchase order",
+        "cancelled": "cancelled the purchase order"
       }
     },
     "history": {

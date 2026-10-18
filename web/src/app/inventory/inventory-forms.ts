@@ -39,9 +39,11 @@ export const COST_PATTERN = '(0|[1-9][0-9]{0,10})([.][0-9]{1,4})?';
 export const QUANTITY_PATTERN = '(0|[1-9][0-9]{0,10})([.][0-9]{1,3})?';
 
 /** Each location's path of codes from its establishment's default, then its name, ordered by that path. */
-export function locationLabels(locations: readonly StockLocationRow[]): Map<string, string> {
+export function locationLabels(
+  locations: readonly Pick<StockLocationRow, 'id' | 'parentId' | 'code' | 'name'>[],
+): Map<string, string> {
   const byId = new Map(locations.map((location) => [location.id, location]));
-  const paths = locations.map((location): [StockLocationRow, string[]] => {
+  const paths = locations.map((location): [(typeof locations)[number], string[]] => {
     const codes = [location.code];
     const seen = new Set([location.id]);
     let parentId = location.parentId;

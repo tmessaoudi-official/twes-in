@@ -937,6 +937,9 @@ Cheville 10 mm,6191234567897
     public function testACompanyWithoutStockIsNeverAskedWhereAProductLives(): void
     {
         $this->signedIn(['product.read', 'product.write', 'product.cost.read', 'company.read', 'company.settings']);
+        // Orders to vendors need the stock, so they go first.
+        $this->sendJson('PUT', $this->companyPath().'/modules/purchases', ['enabled' => false]);
+        self::assertResponseIsSuccessful();
         $this->sendJson('PUT', $this->companyPath().'/modules/inventory', ['enabled' => false]);
         self::assertResponseIsSuccessful();
 

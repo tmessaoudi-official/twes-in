@@ -19,6 +19,7 @@ import { RECURRING_MODULE } from './recurring/recurring-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
 import { PRICE_LISTS_MODULE } from './price-lists/price-lists-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
+import { PURCHASES_MODULE } from './purchases/purchases-nav';
 import { REPORTS_MODULE } from './reports/reports-nav';
 import { VENDORS_MODULE } from './vendors/vendors-nav';
 import { guardUnsaved } from './shared/form/unsaved-changes';
@@ -395,6 +396,27 @@ export const routes: Routes = [
         title: 'titles.vendor',
         canActivate: [moduleGuard(VENDORS_MODULE)],
         loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
+      },
+      {
+        path: 'purchases',
+        title: 'modules.purchases',
+        // The orders' texts are read on these pages only: they load with them (the screen texts budget).
+        ...textsPart('purchases', moduleGuard(PURCHASES_MODULE)),
+        loadComponent: () => import('./purchases/purchases-page').then((m) => m.PurchasesPage),
+      },
+      {
+        path: 'purchases/new',
+        title: 'nav.new_purchase',
+        ...textsPart('purchases', moduleGuard(PURCHASES_MODULE)),
+        loadComponent: () =>
+          import('./purchases/purchase-order-page').then((m) => m.PurchaseOrderPage),
+      },
+      {
+        path: 'purchases/:purchaseOrderId',
+        title: 'modules.purchases',
+        ...textsPart('purchases', moduleGuard(PURCHASES_MODULE)),
+        loadComponent: () =>
+          import('./purchases/purchase-order-page').then((m) => m.PurchaseOrderPage),
       },
       {
         path: 'expenses',
