@@ -225,7 +225,7 @@
             <span class="twes-avatar" aria-hidden="true" [attr.data-glyph]="initials()"></span>
             @if (!rail()) {
               <span class="twes-rail-member-text" aria-hidden="true">
-                <span class="truncate font-semibold" data-testid="user-name">{{
+                <span class="twes-value font-semibold" dir="auto" data-testid="user-name">{{
                   me.user.displayName
                 }}</span>
                 @if (me.company; as company) {

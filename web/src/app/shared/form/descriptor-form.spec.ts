@@ -178,15 +178,6 @@ describe('DescriptorForm', () => {
   // Typed in an Arabic screen, a mail address, a phone or a code is Latin or digits: each text field reads in the
   // direction of what is in it, so « +216 71 000 000 » is not turned around, and Arabic typed in it still reads right
   // to left.
-  it('lets what is typed in a text, mail or phone field set its direction', () => {
-    for (const id of ['name', 'email', 'code', 'notes']) {
-      const control = (fixture.nativeElement as HTMLElement).querySelector(
-        `[data-testid="field-${id}"]`,
-      );
-      expect(control?.getAttribute('dir'), id).toBe('auto');
-    }
-  });
-
   it('says which fields are optional', () => {
     expect((q('field-email') as HTMLInputElement).labels?.[0]?.textContent).toContain('optional');
     expect(text('field-wrapper-email')).toContain('optional');

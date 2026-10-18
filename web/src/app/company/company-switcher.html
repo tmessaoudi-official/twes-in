@@ -25,7 +25,7 @@
         <!-- What waits in the other companies goes on the line under the name, or on the mark's corner when folded:
              beside the name it left the name a hundred pixels and cut « Carthage Conseil ». -->
         <span class="twes-rail-company-text" [class.sr-only]="folded()">
-          <span class="twes-rail-company-name truncate" data-testid="company-name">{{
+          <span class="twes-rail-company-name twes-value" dir="auto" data-testid="company-name">{{
             current.name
           }}</span>
           <!-- The space Angular would drop between the lines: they name the button, and must not read as one word. -->
@@ -98,7 +98,7 @@
           }
         </span>
         <span class="twes-rail-company-text" [class.sr-only]="folded()">
-          <span class="twes-rail-company-name truncate" data-testid="company-name">{{
+          <span class="twes-rail-company-name twes-value" dir="auto" data-testid="company-name">{{
             current.name
           }}</span>
           <span class="twes-rail-company-sub">{{ where() }}</span>
@@ -119,7 +119,7 @@
     >
       <!-- Truncated rather than pushing the bar's controls off the edge, within whatever room the bar leaves it, and
            named whole in the tooltip: a long company name would otherwise cut off the account button. -->
-      <span class="block max-w-full truncate" data-testid="company-name">{{
+      <span class="twes-value" dir="auto" data-testid="company-name">{{
         current()?.name ?? ('company.choose' | translate)
       }}</span>
     </button>
@@ -148,7 +148,7 @@
       }
     </mat-menu>
   } @else if (current(); as current) {
-    <span data-testid="company-name" class="block max-w-full truncate text-sm opacity-90">{{
+    <span data-testid="company-name" class="twes-value text-sm opacity-90" dir="auto">{{
       current.name
     }}</span>
   }

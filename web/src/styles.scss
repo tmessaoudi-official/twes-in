@@ -518,6 +518,14 @@ body {
   height: 100%;
 }
 
+// What a person types reads the way it is written, whatever the screen's direction: each line of a field takes its
+// own from its first letter. In an Arabic screen a field read right to left turned a phone into « 000 000 71 216+ »,
+// a negative amount into « 250,000 1- » and moved a French note's full stop to its front (seen in Chromium).
+input,
+textarea {
+  unicode-bidi: plaintext;
+}
+
 // Material Symbols (Apache-2.0, the `material-symbols` package): outlined, regular weight, unfilled. The font is the
 // package's, cut to the icons src/app/shared/icons/icons.ts declares (scripts/subset-icons.mjs, run before a build);
 // the rules are the package's outlined.css, which is no longer loaded. `block`: a name never shows as letters while
@@ -2376,6 +2384,26 @@ app-signed-out-layout {
   &:focus-visible {
     text-decoration: underline;
   }
+}
+
+/*
+ * A value someone typed (a name, a code, a phone) in a box that cuts it short. A box cuts at the end of its OWN
+ * direction, so in an Arabic screen a Latin code lost its first letters (« …791728493868 »). This box takes its
+ * direction from the value (`dir="auto"` beside the class, which scripts/gates/value-direction.sh holds), cuts at the
+ * value's own end, and being only as wide as the value, sits at the start of the box around it as a short one would.
+ * An end column (amounts) puts it at that box's end instead.
+ */
+.twes-value {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.twes-value-end {
+  margin-inline-start: auto;
 }
 
 td.twes-row-actions {

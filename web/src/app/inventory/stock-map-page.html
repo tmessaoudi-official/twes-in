@@ -93,7 +93,9 @@
           >
             <mat-icon aria-hidden="true">layers</mat-icon>
             <!-- A long name is cut rather than wrapped; the menu it opens gives it whole. -->
-            <span class="block max-w-40 truncate">{{ floor()?.name }}</span>
+            <span class="block max-w-40"
+              ><span class="twes-value" dir="auto">{{ floor()?.name }}</span></span
+            >
           </button>
           <mat-menu #floorMenu="matMenu">
             <ng-container [ngTemplateOutlet]="floorItems" />
@@ -749,9 +751,9 @@
                 [attr.data-testid]="'stock-drawing-' + shape.drawing.locationCode"
               >
                 <span class="font-medium">{{ shape.drawing.locationCode }}</span>
-                <span class="grow truncate text-on-surface-variant">
-                  {{ shape.drawing.locationName }}
-                </span>
+                <span class="min-w-0 grow text-on-surface-variant"
+                  ><span class="twes-value" dir="auto">{{ shape.drawing.locationName }}</span></span
+                >
                 <span class="tabular-nums text-on-surface-variant">
                   {{ shape.rect.width | measure }} × {{ shape.rect.depth | measure }} m
                 </span>
@@ -779,9 +781,9 @@
                     <span class="font-medium">
                       {{ 'inventory.plan.structure_kinds.' + built.piece.kind | translate }}
                     </span>
-                    <span class="grow truncate text-on-surface-variant">{{
-                      built.piece.name
-                    }}</span>
+                    <span class="min-w-0 grow text-on-surface-variant"
+                      ><span class="twes-value" dir="auto">{{ built.piece.name }}</span></span
+                    >
                     <span class="tabular-nums text-on-surface-variant">
                       {{ built.rect.width | measure }} × {{ built.rect.depth | measure }} m
                     </span>

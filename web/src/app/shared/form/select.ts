@@ -126,7 +126,7 @@ function fold(text: string): string {
               [style.background-color]="'var(--twes-status-' + tone + '-dot)'"
             ></span>
           }
-          <span class="truncate">{{ chosen()[0].label }}</span>
+          <span class="twes-value" dir="auto">{{ chosen()[0].label }}</span>
           @if (chosen()[0].triggerCount !== false && hasCount(chosen()[0].count)) {
             <app-count-badge
               data-trigger-count

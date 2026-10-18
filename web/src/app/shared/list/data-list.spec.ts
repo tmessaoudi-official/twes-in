@@ -363,7 +363,7 @@ describe('DataList', () => {
       words(option, ['[data-option-label]', '[data-option-count] [data-count]']),
     );
     const reads = {
-      trigger: words(trigger, ['.truncate', '[data-trigger-count] [data-count]']),
+      trigger: words(trigger, ['.twes-value', '[data-trigger-count] [data-count]']),
       options,
     };
     trigger.click();
@@ -539,9 +539,16 @@ describe('DataList', () => {
 
   // A value holding no letter of its own (a phone, « 1000 Tunis », a code) takes the direction of the line it sits in,
   // and in Arabic its parts change places: each plain cell isolates its value, which reads in its own direction.
-  it('isolates each plain value in its cell, so a number or a code keeps its order in either direction', () => {
-    const cell = q('customer-1')!.querySelector('td[data-column="city"]')!;
-    expect(cell.querySelector('bdi')?.textContent?.trim()).toBe(cell.textContent?.trim());
+  it('puts each plain value in a box reading its own way, at the end of the cell in an end column', () => {
+    // A box cuts at the end of its own direction: one reading the screen's would cut a Latin code's start in Arabic.
+    const city = q('customer-1')!.querySelector('td[data-column="city"]')!;
+    const box = city.querySelector('.twes-value');
+    expect(box?.getAttribute('dir')).toBe('auto');
+    expect(box?.textContent?.trim()).toBe(city.textContent?.trim());
+    expect(box?.classList.contains('twes-value-end')).toBe(false);
+    const balance = q('customer-1')!.querySelector('td[data-column="balance"] .twes-value');
+    expect(balance?.getAttribute('dir')).toBe('auto');
+    expect(balance?.classList.contains('twes-value-end')).toBe(true);
   });
 
   describe('right to left', () => {

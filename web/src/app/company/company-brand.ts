@@ -22,9 +22,12 @@ import { companyLogoUrl } from './company-api';
             data-testid="company-brand-logo"
           />
         }
-        <span class="truncate text-2xl font-semibold" data-testid="company-brand-name">{{
-          company.name
-        }}</span>
+        <span
+          class="twes-value text-2xl font-semibold"
+          dir="auto"
+          data-testid="company-brand-name"
+          >{{ company.name }}</span
+        >
       </span>
     }
   `,
