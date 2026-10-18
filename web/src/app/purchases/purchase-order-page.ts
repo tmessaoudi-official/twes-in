@@ -299,6 +299,16 @@ export class PurchaseOrderPage {
         shown: this.canReceive(),
       },
       {
+        id: 'pdf',
+        label:
+          this.current()?.status === 'draft'
+            ? 'purchases.actions.pdf_draft'
+            : 'purchases.actions.pdf',
+        icon: 'picture_as_pdf',
+        href: this.pdfUrl() ?? undefined,
+        shown: this.pdfUrl() !== null,
+      },
+      {
         id: 'close',
         label: 'purchases.actions.close',
         icon: 'check_circle',
@@ -330,6 +340,15 @@ export class PurchaseOrderPage {
         },
       },
     ];
+  });
+
+  /** The printed order carries its prices, which are costs: only a cost reader is offered it. */
+  protected readonly pdfUrl = computed(() => {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    return companyId && current && this.seesCost()
+      ? this.facade.pdfUrl(companyId, current.id)
+      : null;
   });
 
   constructor() {

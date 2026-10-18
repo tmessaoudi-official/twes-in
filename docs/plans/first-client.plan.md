@@ -143,6 +143,7 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-18 21:20] AGREED: Units, tax components and the fiscal labels a company copied keep a name per printed language, filled from the preset and editable; a document prints the one of its language, else the company's (option a).
 - [2026-10-18 21:20] AGREED: An Arabic screen keeps ar-TN's own number and currency layout by default; the company's number format still overrides it.
 - [2026-10-18 21:20] ASSUMED (review): The printed order to a vendor is downloaded only with product.cost.read beside purchase.read (else the same 404 as a missing order), always with its prices, rendered on request and never stored, in the company's document language, each price at its own precision never below the currency's — because a price on it is a cost, an order is not a fiscal document, and no vendor has a language setting. Alternatives: a priceless print for non cost readers; storing it at sending.
+- [2026-10-18 21:42] ASSUMED (review): An order line keeps the vendor's own code for its product: the product's supplier code naming the order's vendor that enters ONE piece (the first in the product's code order when there are several), copied on every draft save from the vendor the save names and again when the order is sent, never typed; shown and printed only to a cost reader, in a « Réf. fournisseur » column the PDF draws only when a line has one — because a code entering N pieces names a carton and printed beside a quantity in the product's unit would read as N cartons (advisor agreed). Alternatives: print a pack code with ×N; read the code live at print time (a reprint of a sent order would then differ from what was sent).
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -218,6 +219,9 @@ was and was not certified by execution.
   once by the operator. Options: (a, recommended) a tagline per interface language on the brand card; (b) leave it.
 - After Wednesday, in an order to set: declarations (fiscal rules await an accountant), composite products, jobs, the till (the Tunisian homologated-register question), zakat (its research pass, row 120).
 ### Needs research
+- On an Arabic screen, a telephone number in a field (`kind: 'tel'`) and the contacts list's phone column are not
+  measured: the printed documents laid « +216 74 000 000 » out as « 000 000 74 216+ » (a number holds no letter to set
+  its direction) and now write it left to right (`PdfTypedTextDirectionTest`); the screens are checked in the Arabic pass.
 - Protecting the data at rest on a shop's PC without asking anything of the client (disk encryption is neither checked nor required for Wednesday).
 - Step 7, with a reader of Arabic: whether `logout`, `undo`, `help` and `open_in_new` turn over in Arabic as well (the five that point along the line, back, forward, the chevrons and send, already do, as Material's guidance asks).
 ### Fragile

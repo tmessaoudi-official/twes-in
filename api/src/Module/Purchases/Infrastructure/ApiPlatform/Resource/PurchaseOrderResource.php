@@ -16,9 +16,9 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
-use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Purchases\Application\PurchaseOrderInput;
 use App\Module\Purchases\Application\PurchaseOrderLineInput;
+use App\Module\Purchases\Application\PurchaseOrderTotals;
 use App\Module\Purchases\Domain\Model\GoodsReceipt;
 use App\Module\Purchases\Domain\Model\GoodsReceiptLine;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
@@ -315,11 +315,8 @@ final class PurchaseOrderResource
         $resource->remarksPrinted = $header->remarksPrinted;
         $resource->notesInternal = $header->notesInternal;
 
-        $nets = [];
-        foreach ($order->getLines() as $line) {
-            $price = $seesCost ? $line->getUnitPriceNet() : null;
-            $net = null === $price ? null : Decimal::format(Decimal::round(Decimal::of($line->getQuantity())->mul(Decimal::of($price)), $scale), $scale);
-            $nets[] = $net;
+        $totals = $seesCost ? PurchaseOrderTotals::of($order, $scale) : null;
+        foreach ($order->getLines() as $index => $line) {
             $resource->lines[] = [
                 'id' => $line->getId()->toRfc4122(),
                 'productId' => $line->getProductId()->toRfc4122(),
@@ -330,15 +327,13 @@ final class PurchaseOrderResource
                 'unitId' => $line->getUnit()->getId()->toRfc4122(),
                 'unitCode' => $line->getUnit()->getCode(),
                 'unitName' => $line->getUnit()->getName(),
-                'unitPriceNet' => $price,
-                'net' => $net,
+                'unitPriceNet' => $seesCost ? $line->getUnitPriceNet() : null,
+                'net' => $totals?->nets[$index],
                 'received' => $line->getReceived(),
                 'outstanding' => $line->outstanding(),
             ];
         }
-        $resource->totalNet = [] === $nets || \in_array(null, $nets, true)
-            ? null
-            : Decimal::format(Decimal::sum(array_map(static fn (?string $net): \BcMath\Number => Decimal::of((string) $net), $nets)), $scale);
+        $resource->totalNet = $totals?->total;
         $resource->receipts = array_map(static fn (GoodsReceipt $receipt): array => [
             'id' => $receipt->getId()->toRfc4122(),
             'receivedOn' => $receipt->getReceivedOn()->format('Y-m-d'),

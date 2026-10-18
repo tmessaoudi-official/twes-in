@@ -42,4 +42,24 @@ final class PdfTypedTextDirectionTest extends TestCase
         // Three documents print their lines, remarks and the company's notes; the invoice its late-payment text and footer.
         self::assertGreaterThanOrEqual(11, $found, 'the typed texts are found, so an empty set cannot pass');
     }
+
+    /**
+     * A telephone number holds no letter to set its direction, so on a page read right to left its groups of digits
+     * are laid out from the right (« 000 000 74 216+ »): every one a document prints reads left to right, as it is dialled.
+     */
+    public function testEveryPrintedTelephoneNumberReadsLeftToRight(): void
+    {
+        $templates = glob(\dirname(__DIR__, 4).'/templates/pdf/*.twig') ?: [];
+        $found = 0;
+        foreach ($templates as $template) {
+            $source = (string) file_get_contents($template);
+            preg_match_all('/(<[a-z]+\b[^>]*>)\{\{\s*[a-z]+\.phone\s*\}\}/', $source, $phones, \PREG_SET_ORDER);
+            foreach ($phones as [$written, $holder]) {
+                ++$found;
+                self::assertSame('<bdi dir="ltr">', $holder, basename($template).": $written");
+            }
+            self::assertSame(\count($phones), preg_match_all('/\.phone\s*\}\}/', $source), basename($template).' writes a telephone number outside an element of its own');
+        }
+        self::assertGreaterThanOrEqual(6, $found, 'the seller\'s on four documents and the buyer\'s and vendor\'s on the order to a vendor');
+    }
 }

@@ -97,6 +97,27 @@ test('an order is started from its vendor, sent, received in two parts, and its 
     await expect(page.getByTestId('purchase-order-lines-read')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);
 
+    // The sent order prints with its prices, from the link the bar offers (drawn, or folded into « ⋮ »).
+    const pdfAction = page.getByTestId('document-action-pdf');
+    await expect(pdfAction.or(page.getByTestId('document-more')).first()).toBeVisible();
+    let pdfHref: string | null;
+    if (await pdfAction.isVisible()) {
+      pdfHref = await pdfAction.getAttribute('href');
+    } else {
+      await page.getByTestId('document-more').click();
+      pdfHref = await page.getByTestId('document-menu-pdf').getAttribute('href');
+      await page.keyboard.press('Escape');
+    }
+    expect(pdfHref).toMatch(/\/purchase-orders\/[0-9a-f-]{36}\/pdf$/);
+    // Fetched from inside the page, which holds the session cookie Playwright's own requests do not send.
+    const printed = await page.evaluate(async (address) => {
+      const response = await fetch(address);
+      if (!response.ok) throw new Error(`the order's PDF answered ${response.status}`);
+      const head = new TextDecoder().decode((await response.arrayBuffer()).slice(0, 5));
+      return { type: response.headers.get('content-type'), head };
+    }, pdfHref!);
+    expect(printed).toEqual({ type: 'application/pdf', head: '%PDF-' });
+
     // The first delivery brings four of the ten.
     await page.getByTestId('document-action-receive').click();
     // Focus moves in once the dialog has opened, to its first field: typing before then types into the page behind.

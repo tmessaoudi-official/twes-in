@@ -142,6 +142,11 @@ export class PurchasesApi {
     );
   }
 
+  /** Where an order's PDF is downloaded from, with the session the browser already has. */
+  pdfUrl(companyId: string, id: string): string {
+    return `${orderPath(companyId, id)}/pdf`;
+  }
+
   /** A draft; 422 naming what the API refused. */
   async create(companyId: string, input: PurchaseOrderInput): Promise<PurchaseOrderRow> {
     const body: PurchaseOrderWrite = toBody(input);

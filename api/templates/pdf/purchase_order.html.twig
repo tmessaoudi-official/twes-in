@@ -1,0 +1,107 @@
+{# An order to a vendor on A4, rendered by Gotenberg's Chromium. Everything it says comes from translations/pdf and fiscal
+   in the company's document language; amounts go through the decimal filter, never through a float. Nothing here runs a
+   script. Its prices are costs, which only whoever may read costs downloads. #}
+{%- set t = 'pdf' -%}
+{#- The company's date and number format win over the language's. -#}
+{%- set dateFormat = date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale)) -%}
+<!DOCTYPE html>
+<html lang="{{ locale }}" dir="{{ text_direction(locale) }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ 'purchase_order.title'|trans({}, t, locale) }} {{ order.number }}</title>
+  <style>
+    @page { size: A4; }
+{% include 'pdf/_document.css.twig' with {design: page.design} only %}
+    .totals { width: 50%; }
+  </style>
+</head>
+<body class="{{ 'layout-' ~ page.design.layout.value }}">
+  {%- include 'pdf/_demo_band.html.twig' with {demo: demo, t: t, locale: locale} only %}
+  {%- if page.watermark %}
+    <div class="watermark">{{ ('watermark.' ~ page.watermark)|trans({}, t, locale) }}</div>
+  {%- endif %}
+
+  <div class="parties">
+    <div class="party">
+      {%- if logo %}<img class="logo" src="{{ logo }}" alt="">{% endif %}
+      <div class="company-name">{{ buyer.printedName }}</div>
+      {%- for key, value in buyer.identifiers %}
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : <bdi>{{ value }}</bdi></div>
+      {%- endfor %}
+      {%- if buyer.address.line1 %}
+        <div><bdi>{{ buyer.address.line1 }}</bdi></div>
+        {% if buyer.address.line2 %}<div><bdi>{{ buyer.address.line2 }}</bdi></div>{% endif %}
+        <div><bdi>{{ buyer.address.postalCode }} {{ buyer.address.city }}</bdi></div>
+      {%- endif %}
+      {% if buyer.phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} <bdi dir="ltr">{{ buyer.phone }}</bdi></div>{% endif %}
+      {% if buyer.email %}<div>{{ 'company.email'|trans({}, t, locale) }} <bdi>{{ buyer.email }}</bdi></div>{% endif %}
+    </div>
+    <div class="party">
+      <h2>{{ 'purchase_order.vendor'|trans({}, t, locale) }}</h2>
+      <div class="company-name"><bdi>{{ vendor.legalName ?? vendor.name }}</bdi></div>
+      {% if vendor.legalName %}<div><bdi>{{ vendor.name }}</bdi></div>{% endif %}
+      {% if vendor.number %}<div class="muted">{{ 'purchase_order.vendor_number'|trans({}, t, locale) }} <bdi>{{ vendor.number }}</bdi></div>{% endif %}
+      {%- for key, value in vendor.identifiers %}
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : <bdi>{{ value }}</bdi></div>
+      {%- endfor %}
+      {% if vendor.line1 %}<div><bdi>{{ vendor.line1 }}</bdi></div>{% endif %}
+      {% if vendor.line2 %}<div><bdi>{{ vendor.line2 }}</bdi></div>{% endif %}
+      {% if vendor.postalCode or vendor.city %}<div><bdi>{{ vendor.postalCode }} {{ vendor.city }}</bdi>{% if vendor.countryCode and vendor.countryCode|lower != country %} {{ vendor.countryCode }}{% endif %}</div>{% endif %}
+      {% if vendor.phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} <bdi dir="ltr">{{ vendor.phone }}</bdi></div>{% endif %}
+      {% if vendor.email %}<div>{{ 'company.email'|trans({}, t, locale) }} <bdi>{{ vendor.email }}</bdi></div>{% endif %}
+    </div>
+  </div>
+
+  <div class="title">
+    <h1>{{ 'purchase_order.title'|trans({}, t, locale) }}</h1>
+    {% if order.number %}<strong><bdi>{{ order.number }}</bdi></strong>{% endif %}
+  </div>
+
+  <dl class="facts">
+    {% if order.issueDate %}<div><dt>{{ 'purchase_order.issue_date'|trans({}, t, locale) }}</dt><dd>{{ order.issueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {% if header.expectedOn %}<div><dt>{{ 'purchase_order.expected_on'|trans({}, t, locale) }}</dt><dd>{{ header.expectedOn|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+  </dl>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{{ 'purchase_order.reference'|trans({}, t, locale) }}</th>
+        <th>{{ 'line.description'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.quantity'|trans({}, t, locale) }}</th>
+        <th>{{ 'line.unit'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.unit_price'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.net'|trans({}, t, locale) }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {%- for line in order.lines %}
+        {%- set net = page.totals.nets[loop.index0] %}
+        <tr>
+          <td><bdi>{{ line.productReference }}</bdi></td>
+          <td><bdi>{{ line.description|nl2br }}</bdi></td>
+          <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
+          <td>{{ line.unit.name }}</td>
+          <td class="number">{% if line.unitPriceNet is not null %}{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
+          <td class="number">{% if net is not null %}{{ net|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
+        </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+  {%- include 'pdf/_quantities.html.twig' with {quantities: page.quantities, t: t, locale: locale, numberFormat: page.numberFormat} only %}
+
+  {#- An order a line of which has no price yet comes to no total: a partial sum would read as the whole. #}
+  {%- if page.totals.total is not null %}
+    <table class="totals">
+      <tr class="grand"><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.total|decimal(scale, locale, page.numberFormat) }}</td></tr>
+    </table>
+    <p class="muted">{{ 'totals.currency'|trans({'%currency%': buyer.currency}, t, locale) }}</p>
+  {%- endif %}
+
+  {%- if header.remarksPrinted %}
+    <div class="remarks">
+      <h2 class="muted" style="font-size: 9pt; margin: 0 0 4px;">{{ 'purchase_order.remarks'|trans({}, t, locale) }}</h2>
+      <p dir="auto" style="margin: 0;">{{ header.remarksPrinted|nl2br }}</p>
+    </div>
+  {%- endif %}
+</body>
+</html>

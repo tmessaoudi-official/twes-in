@@ -142,6 +142,8 @@ describe('PurchaseOrderPage', () => {
     close: vi.fn(),
     cancel: vi.fn(),
     clearError: vi.fn(),
+    pdfUrl: (companyId: string, id: string) =>
+      `/api/companies/${companyId}/purchase-orders/${id}/pdf`,
   };
   const granted = new Set<string>();
   const auth = {
@@ -326,7 +328,7 @@ describe('PurchaseOrderPage', () => {
   it('sends a draft once confirmed, saving what is shown at the version it was opened at', async () => {
     order.set(orderIn('draft'));
     await open('o1');
-    expect(await offered()).toEqual(['cancel', 'save', 'send']);
+    expect(await offered()).toEqual(['cancel', 'pdf', 'save', 'send']);
 
     q('document-action-send')!.click();
     await settle();
@@ -357,16 +359,37 @@ describe('PurchaseOrderPage', () => {
     expect(q('purchase-order-form')).toBeNull();
     expect(q('purchase-order-lines-read')).not.toBeNull();
     expect(q('purchase-order-line-0-outstanding')?.textContent?.trim()).toBe('100');
-    expect(await offered()).toEqual(['cancel', 'receive']);
+    expect(await offered()).toEqual(['cancel', 'pdf', 'receive']);
   });
 
   it('offers to receive the rest or close a part-received order, and lists what came', async () => {
     order.set(orderIn('partly_received'));
     await open('o1');
 
-    expect(await offered()).toEqual(['close', 'receive']);
+    expect(await offered()).toEqual(['close', 'pdf', 'receive']);
     expect(q('purchase-order-line-0-received')?.textContent?.trim()).toBe('40');
     expect(q('purchase-order-receipt-r1')?.textContent).toContain('BL 77');
+  });
+
+  it('offers the printed order, its prices being costs, to a cost reader only', async () => {
+    order.set(orderIn('sent'));
+    await open('o1');
+
+    expect(q('document-action-pdf')?.getAttribute('href')).toBe(
+      '/api/companies/c1/purchase-orders/o1/pdf',
+    );
+    expect(q('document-action-pdf')?.textContent).not.toContain('pdf_draft');
+
+    fixture.destroy();
+    order.set(orderIn('draft'));
+    await open('o1');
+    expect(q('document-action-pdf')?.textContent).toContain('purchases.actions.pdf_draft');
+
+    fixture.destroy();
+    granted.delete('product.cost.read');
+    order.set(orderIn('sent'));
+    await open('o1');
+    expect(await offered()).toEqual(['cancel', 'receive']);
   });
 
   it('offers nothing on a sent order to whoever neither writes orders nor receives goods', async () => {

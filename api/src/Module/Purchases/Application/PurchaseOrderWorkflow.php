@@ -17,7 +17,6 @@ use App\Module\Purchases\Domain\Model\GoodsReceipt;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Domain\Repository\PurchaseOrderRepository;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
-use App\Module\Purchases\Domain\ValueObject\VendorSnapshot;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
@@ -75,7 +74,7 @@ final readonly class PurchaseOrderWorkflow
             if ($this->orders->numberTaken($company->getId(), $allocated->number)) {
                 throw new PurchaseOrderNumberTaken(\sprintf('The number %s is already on another purchase order of this company: give the purchase order series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $order->getEstablishment()->getCode()));
             }
-            $order->send($allocated->number, $allocated->issueDate, self::snapshot($vendor), $this->clock->now());
+            $order->send($allocated->number, $allocated->issueDate, VendorCard::of($vendor), $this->clock->now());
             $this->orders->save($order);
             $this->record($company, $order, self::SENT, ['number' => $allocated->number], $actorUserId);
 
@@ -161,11 +160,6 @@ final readonly class PurchaseOrderWorkflow
     private function locked(Company $company, Uuid $id): PurchaseOrder
     {
         return $this->orders->lockedOfIdInCompany($id, $company->getId()) ?? throw new PurchaseOrderNotFound();
-    }
-
-    private static function snapshot(OrderVendor $vendor): VendorSnapshot
-    {
-        return new VendorSnapshot($vendor->number, $vendor->name, $vendor->legalName, $vendor->identifiers, $vendor->line1, $vendor->line2, $vendor->postalCode, $vendor->city, $vendor->countryCode, $vendor->email, $vendor->phone);
     }
 
     /** @param array<string, mixed> $changes */
