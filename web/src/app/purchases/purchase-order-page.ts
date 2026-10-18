@@ -209,6 +209,15 @@ export class PurchaseOrderPage {
   };
   /** The products the saved order names, read by id once it is open. */
   protected readonly named = signal<ReadonlyMap<string, ProductOption>>(new Map());
+  /** The vendor's own code for each product the saved order names, read again on every save. */
+  protected readonly vendorCodes = computed(
+    () =>
+      new Map(
+        (this.current()?.lines ?? []).flatMap((line) =>
+          line.vendorCode === null ? [] : [[line.productId, line.vendorCode] as const],
+        ),
+      ),
+  );
 
   /** The order read rather than filled in, once it no longer changes. */
   protected readonly asView = computed(() => !this.editable() && this.current() != null);

@@ -84,6 +84,7 @@ final readonly class ManagePurchaseOrders
         return $this->transactions->run(function () use ($company, $input, $seesCost, $actorUserId): PurchaseOrder {
             [$establishment, $vendor, $lines] = $this->checked($company, $input, $seesCost, null);
             $order = PurchaseOrder::create($company, $establishment, $vendor->id, $vendor->name, $input->header, $lines, $this->clock->now());
+            $order->keepVendorCodes($this->vendorCodes($company, $order));
             $this->orders->save($order);
             $this->record($company, $order->getId(), self::CREATED, [], $actorUserId);
 
@@ -110,6 +111,7 @@ final readonly class ManagePurchaseOrders
             $order->assertDraft('changes');
             [$establishment, $vendor, $lines] = $this->checked($company, $input, $seesCost, $order);
             $changed = $order->revise($establishment, $vendor->id, $vendor->name, $input->header, $lines, $this->clock->now());
+            $order->keepVendorCodes($this->vendorCodes($company, $order));
             $this->orders->save($order);
             if ([] !== $changed) {
                 $this->record($company, $order->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
@@ -182,6 +184,12 @@ final readonly class ManagePurchaseOrders
         $price = $seesCost ? ($line->unitPriceNet ?? (null === $kept ? $product->costPrice : null)) : $kept?->getUnitPriceNet();
 
         return new PurchaseOrderLineDetails($product->id, $product->reference, $description, $line->quantity, $unit, $price);
+    }
+
+    /** @return array<string, string> the vendor's own code for the order's products, as the vendor it names has them */
+    private function vendorCodes(Company $company, PurchaseOrder $order): array
+    {
+        return $this->products->vendorCodes($company, $order->getVendorId(), array_map(static fn (PurchaseOrderLine $line): Uuid => $line->getProductId(), $order->getLines()));
     }
 
     /** @param array<string, mixed> $changes */

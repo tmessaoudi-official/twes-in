@@ -69,6 +69,10 @@ class PurchaseOrderLine implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, options: ['default' => '0.000'])]
     private string $received = '0.000';
 
+    /** The vendor's own code for the product as the order last read it, kept by PurchaseOrder::keepVendorCodes. */
+    #[ORM\Column(name: 'vendor_code', length: PurchaseOrderLineDetails::REFERENCE_MAX, nullable: true)]
+    private ?string $vendorCode = null;
+
     /** @internal a line is written by PurchaseOrder */
     public function __construct(PurchaseOrder $order, int $position, PurchaseOrderLineDetails $details)
     {
@@ -96,6 +100,12 @@ class PurchaseOrderLine implements CompanyOwned
         $left = Decimal::of($this->quantity)->sub(Decimal::of($this->received));
 
         return $left->compare(0) <= 0 ? '0.000' : Decimal::format($left, PurchaseOrderLineDetails::QUANTITY_DECIMALS);
+    }
+
+    /** @internal kept by PurchaseOrder while it is a draft */
+    public function keepVendorCode(?string $code): void
+    {
+        $this->vendorCode = $code;
     }
 
     /** @internal a receipt is recorded by PurchaseOrder, which checked the quantity against what is outstanding */
@@ -157,5 +167,10 @@ class PurchaseOrderLine implements CompanyOwned
     public function getReceived(): string
     {
         return $this->received;
+    }
+
+    public function getVendorCode(): ?string
+    {
+        return $this->vendorCode;
     }
 }

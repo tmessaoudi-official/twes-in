@@ -26,6 +26,7 @@ purchase_order:
     title: 'طلبية لدى مزوّد'
     vendor: 'المزوّد'
     vendor_number: 'رمز المزوّد'
+    vendor_code: 'مرجع المزوّد'
     issue_date: 'التاريخ'
     expected_on: 'تاريخ التسليم المرجو'
     reference: 'المرجع'

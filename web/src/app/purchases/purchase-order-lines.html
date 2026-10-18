@@ -29,6 +29,13 @@
             [noneFoundLabel]="'purchases.lines.no_product_found' | translate"
             (picked)="chooseProduct(line, $event)"
           />
+          @if (vendorCodeOf(line); as code) {
+            <span
+              class="px-4 pt-1 text-xs text-on-surface-variant"
+              [attr.data-testid]="'purchase-line-' + i + '-vendor-code'"
+              >{{ 'purchases.lines.vendor_code' | translate }} <bdi>{{ code }}</bdi></span
+            >
+          }
           @if (errorKey(line, 'productId'); as key) {
             <span
               role="alert"

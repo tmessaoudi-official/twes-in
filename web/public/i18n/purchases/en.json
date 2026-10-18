@@ -63,6 +63,7 @@
       "title": "Lines",
       "position": "Line {{position}}",
       "line": "The line",
+      "vendor_code": "Vendor ref.:",
       "productId": "Product",
       "description": "Description",
       "description_hint": "The product's name to start with; write it as the vendor should read it.",

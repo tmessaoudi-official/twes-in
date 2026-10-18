@@ -15,6 +15,7 @@ use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
 use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
 use App\Module\Purchases\Domain\Model\GoodsReceipt;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
+use App\Module\Purchases\Domain\Model\PurchaseOrderLine;
 use App\Module\Purchases\Domain\Repository\PurchaseOrderRepository;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Shared\Application\Transactions;
@@ -42,6 +43,7 @@ final readonly class PurchaseOrderWorkflow
     public function __construct(
         private PurchaseOrderRepository $orders,
         private OrderVendors $vendors,
+        private OrderProducts $products,
         private StockIntake $stock,
         private AllocateNumber $numbers,
         private Transactions $transactions,
@@ -74,6 +76,8 @@ final readonly class PurchaseOrderWorkflow
             if ($this->orders->numberTaken($company->getId(), $allocated->number)) {
                 throw new PurchaseOrderNumberTaken(\sprintf('The number %s is already on another purchase order of this company: give the purchase order series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $order->getEstablishment()->getCode()));
             }
+            // The vendor's codes as the order goes out, whatever was last read when the draft was saved.
+            $order->keepVendorCodes($this->products->vendorCodes($company, $order->getVendorId(), array_map(static fn (PurchaseOrderLine $line): Uuid => $line->getProductId(), $order->getLines())));
             $order->send($allocated->number, $allocated->issueDate, VendorCard::of($vendor), $this->clock->now());
             $this->orders->save($order);
             $this->record($company, $order, self::SENT, ['number' => $allocated->number], $actorUserId);

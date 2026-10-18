@@ -25,6 +25,7 @@ const line: PurchaseOrderLine = {
   unitName: 'kilogramme',
   unitPriceNet: '2.5000',
   net: '31.250',
+  vendorCode: null,
   received: '0.000',
   outstanding: '12.500',
 };

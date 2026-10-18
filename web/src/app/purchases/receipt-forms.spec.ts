@@ -23,6 +23,7 @@ function line(id: string, patch: Partial<PurchaseOrderLine> = {}): PurchaseOrder
     unitName: 'pièce',
     unitPriceNet: '2.5000',
     net: '50.000',
+    vendorCode: null,
     received: '0.000',
     outstanding: '20.000',
     ...patch,

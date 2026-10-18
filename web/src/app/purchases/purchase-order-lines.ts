@@ -52,6 +52,8 @@ export class PurchaseOrderLines {
   readonly seesCost = input(false);
   /** The products the saved order names, read by id, so a line shows its product before anything is searched. */
   readonly named = input<ReadonlyMap<string, ProductOption>>(new Map());
+  /** The vendor's own code for each product the saved order names, which the API reads again on every save. */
+  readonly vendorCodes = input<ReadonlyMap<string, string>>(new Map());
   /** Where the API refused the last save, by line from 0 and field. */
   readonly refused = input<{ line: number | null; field: string } | null>(null);
 
@@ -85,6 +87,11 @@ export class PurchaseOrderLines {
     this.revision();
     const product = this.product(line.controls.productId.value);
     return product === null ? null : option(product);
+  }
+
+  protected vendorCodeOf(line: LineGroup): string | null {
+    this.revision();
+    return this.vendorCodes().get(line.controls.productId.value) ?? null;
   }
 
   /** The unit a line's quantity counts, once its product is known. */

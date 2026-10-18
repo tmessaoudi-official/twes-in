@@ -63,6 +63,7 @@
       "title": "الأسطر",
       "position": "السطر {{position}}",
       "line": "السطر",
+      "vendor_code": "مرجع المزوّد:",
       "productId": "المنتج",
       "description": "التسمية",
       "description_hint": "اسم المنتج في البداية؛ اكتبها كما يجب أن يقرأها المزوّد.",

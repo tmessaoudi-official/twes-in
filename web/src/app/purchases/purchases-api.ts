@@ -338,6 +338,7 @@ function toOrder(
       unitName: line.unitName ?? '',
       unitPriceNet: line.unitPriceNet ?? null,
       net: line.net ?? null,
+      vendorCode: line.vendorCode ?? null,
       received: line.received ?? '0',
       outstanding: line.outstanding ?? line.quantity,
     })),

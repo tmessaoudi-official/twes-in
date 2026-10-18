@@ -25,6 +25,7 @@ purchase_order:
     title: 'Bon de commande'
     vendor: 'Fournisseur'
     vendor_number: 'Code fournisseur'
+    vendor_code: 'Réf. fournisseur'
     issue_date: 'Date'
     expected_on: 'Livraison souhaitée'
     reference: 'Réf.'
