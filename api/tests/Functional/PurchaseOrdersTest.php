@@ -478,6 +478,12 @@ final class PurchaseOrdersTest extends ApiTestCase
         self::assertSame(['PEINT-1', 'VIS-6'], array_keys($offered), 'a service is not ordered from a vendor');
         self::assertArrayHasKey('costPrice', $offered['VIS-6']);
         self::assertSame([null, 'lot'], [$offered['VIS-6']['costPrice'], $offered['PEINT-1']['tracking'] ?? null]);
+        self::assertSame([true, true], array_column($offered, 'goods'));
+        // Asked by id, a service is told for what it is, so a screen adding it to an order leaves it out.
+        $this->getJson($this->companyPath().'/purchase-order-options/products?ids[]='.$this->fitting.'&ids[]='.$this->screws);
+        $goods = array_column($this->jsonList(), 'goods', 'reference');
+        ksort($goods);
+        self::assertSame(['POSE' => false, 'VIS-6' => true], $goods);
         // A new line says what its quantity counts before it is saved.
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertSame($piece?->getName(), $offered['VIS-6']['unitName'] ?? null);

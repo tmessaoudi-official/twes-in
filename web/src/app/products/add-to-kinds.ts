@@ -3,6 +3,7 @@
 import type { Provider } from '@angular/core';
 import { DELIVERY_NOTE_ADD_TO } from '../delivery-notes/delivery-notes-add-to-source';
 import { INVOICE_ADD_TO } from '../invoices/invoices-add-to-source';
+import { PURCHASE_ORDER_ADD_TO } from '../purchases/purchases-add-to-source';
 import { QUOTE_ADD_TO } from '../quotes/quotes-add-to-source';
 import { AddToDocuments } from '../shared/documents/add-to-documents';
 import { ADD_TO_SOURCES } from '../shared/documents/add-to-sources';
@@ -13,5 +14,8 @@ import { ADD_TO_SOURCES } from '../shared/documents/add-to-sources';
  */
 export const PRODUCTS_ADD_TO: Provider[] = [
   AddToDocuments,
-  { provide: ADD_TO_SOURCES, useValue: [INVOICE_ADD_TO, QUOTE_ADD_TO, DELIVERY_NOTE_ADD_TO] },
+  {
+    provide: ADD_TO_SOURCES,
+    useValue: [INVOICE_ADD_TO, QUOTE_ADD_TO, DELIVERY_NOTE_ADD_TO, PURCHASE_ORDER_ADD_TO],
+  },
 ];

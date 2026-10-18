@@ -126,6 +126,7 @@ export class PurchasesApi {
         unitId: product.unitId,
         unitName: product.unitName,
         tracking: trackingOf(product.tracking),
+        goods: product.goods,
         active: product.active,
         costPrice: product.costPrice,
       }));

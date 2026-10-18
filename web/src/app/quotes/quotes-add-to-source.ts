@@ -6,6 +6,7 @@ import { QUOTES_MODULE } from './quotes-nav';
 /** « Ajouter à… »: the goods chosen go on a new or open quote draft, for whoever may write one. */
 export const QUOTE_ADD_TO: AddToSource = {
   kind: 'quote',
+  party: 'customer',
   module: QUOTES_MODULE,
   permission: 'quote.write',
   path: '/quotes',

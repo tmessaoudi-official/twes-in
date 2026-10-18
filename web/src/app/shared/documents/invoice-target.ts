@@ -48,6 +48,7 @@ export async function askInvoiceTarget(
           targets: [
             {
               kind: 'invoice',
+              party: 'customer',
               drafts: async () => drafts.map((draft) => ({ ...draft, customerName: null })),
               customers: async () => [],
             },

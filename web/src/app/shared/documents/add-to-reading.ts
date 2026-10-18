@@ -4,7 +4,7 @@ import type { PickOption } from '../form/pick-field';
 import type { AddToDraft } from './add-to-dialog';
 
 /** How many open drafts the picker shows at once: picking their customer finds the others. */
-const DRAFTS_SHOWN = 20;
+export const DRAFTS_SHOWN = 20;
 
 /** The list search that reads one customer's open drafts, or every customer's. */
 export function draftSearch(customerId: string | null) {
