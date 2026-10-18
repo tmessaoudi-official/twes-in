@@ -21,6 +21,14 @@ delivery_note:
         name: 'Name'
         signature: 'Signature and stamp'
         reserves: 'Reservations'
+purchase_order:
+    title: 'Purchase order'
+    vendor: 'Vendor'
+    vendor_number: 'Vendor code'
+    issue_date: 'Date'
+    expected_on: 'Expected on'
+    reference: 'Ref.'
+    remarks: 'Remarks'
 invoice:
     title: 'Invoice'
     deposit_title: 'Deposit invoice'

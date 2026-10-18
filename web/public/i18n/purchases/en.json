@@ -89,6 +89,8 @@
       "send_title": "Send the order?",
       "send_message": "It gets its number and no longer changes. While nothing is received, it can still be cancelled.",
       "receive": "Receive",
+      "pdf": "Download the PDF",
+      "pdf_draft": "Preview the PDF",
       "close": "Close",
       "close_title": "Close the order?",
       "close_message": "The rest is no longer expected: the order is closed with what was received.",

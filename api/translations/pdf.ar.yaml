@@ -22,6 +22,14 @@ delivery_note:
         name: 'الاسم'
         signature: 'الإمضاء والختم'
         reserves: 'الاحترازات'
+purchase_order:
+    title: 'طلبية لدى مزوّد'
+    vendor: 'المزوّد'
+    vendor_number: 'رمز المزوّد'
+    issue_date: 'التاريخ'
+    expected_on: 'تاريخ التسليم المرجو'
+    reference: 'المرجع'
+    remarks: 'ملاحظات'
 invoice:
     title: 'فاتورة'
     deposit_title: 'فاتورة تسبقة'

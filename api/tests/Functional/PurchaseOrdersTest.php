@@ -316,6 +316,60 @@ final class PurchaseOrdersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor is a company one does not belong to');
     }
 
+    /**
+     * The printed order carries its prices, which are costs: a cost reader downloads it, across a watermark while it is a
+     * draft and as it was sent once sent; anyone else is answered as if there were no such order.
+     */
+    public function testACostReaderPrintsTheOrderWithItsPricesAndNobodyElseFindsIt(): void
+    {
+        $this->signedIn('buyer', self::BUYER);
+        $id = $this->draft();
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+
+        self::assertResponseIsSuccessful();
+        $response = $this->client->getResponse();
+        self::assertSame('application/pdf', $response->headers->get('content-type'));
+        self::assertTrue($response->headers->hasCacheControlDirective('no-store') && $response->headers->hasCacheControlDirective('private'), 'a priced order stays in no cache');
+        self::assertStringContainsString('purchase-order-'.$id.'.pdf', (string) $response->headers->get('content-disposition'));
+        $draft = (string) $response->getContent();
+        self::assertStringStartsWith('%PDF-', $draft);
+        foreach (['Bon de commande', 'BROUILLON', 'Quincaillerie du Sud', 'FRN-0001', 'VIS-6', '0,250', '2,500'] as $expected) {
+            self::assertStringContainsString($expected, $draft);
+        }
+        self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM file'), 'an order is never stored');
+
+        $this->postJson($this->path($id).'/send', null);
+        self::assertResponseIsSuccessful();
+        $number = $this->stringAt($this->json(), 'number');
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString($number.'.pdf', (string) $this->client->getResponse()->headers->get('content-disposition'));
+        $sent = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString($number, $sent);
+        self::assertStringNotContainsString('BROUILLON', $sent);
+
+        $this->signedIn('writer', self::WRITER);
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'whoever may not read costs reads no printed price');
+        $this->signedIn('buyer', self::BUYER);
+        $this->client->request('GET', $this->path(self::ABSENT).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $globex = $this->createCompany('Globex', named: false);
+        static::getContainer()->get(ProvisionCompany::class)->handle($globex);
+        $this->createUser('globex@twes.local', self::PASSWORD, $globex, ['*'], 'owner');
+        $this->login('globex@twes.local', self::PASSWORD);
+        $this->client->request('GET', '/api/companies/'.$globex->getId()->toRfc4122().'/purchase-orders/'.$id.'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s order is not there');
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor is a company one does not belong to');
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+    }
+
     public function testASwitchedOffModuleAnswersNotFound(): void
     {
         $this->login('owner@twes.local', self::PASSWORD);
@@ -327,6 +381,8 @@ final class PurchaseOrdersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson($this->companyPath().'/purchase-order-options/vendors');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->client->request('GET', $this->path(self::ABSENT).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the printed order is the module\'s too');
     }
 
     public function testTheListSearchesTheVendorAndCountsEachStatus(): void

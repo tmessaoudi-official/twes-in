@@ -89,6 +89,8 @@
       "send_title": "Envoyer la commande ?",
       "send_message": "Elle reçoit son numéro et ne se modifie plus. Tant que rien n’est reçu, elle peut encore être annulée.",
       "receive": "Réceptionner",
+      "pdf": "Télécharger le PDF",
+      "pdf_draft": "Aperçu du PDF",
       "close": "Clôturer",
       "close_title": "Clôturer la commande ?",
       "close_message": "Le reste n’est plus attendu : la commande est close avec ce qui a été reçu.",

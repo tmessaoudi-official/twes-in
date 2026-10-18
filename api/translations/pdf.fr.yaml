@@ -21,6 +21,14 @@ delivery_note:
         name: 'Nom'
         signature: 'Signature et cachet'
         reserves: 'Réserves'
+purchase_order:
+    title: 'Bon de commande'
+    vendor: 'Fournisseur'
+    vendor_number: 'Code fournisseur'
+    issue_date: 'Date'
+    expected_on: 'Livraison souhaitée'
+    reference: 'Réf.'
+    remarks: 'Remarques'
 invoice:
     title: 'Facture'
     deposit_title: 'Facture d’acompte'

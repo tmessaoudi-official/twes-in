@@ -84,6 +84,11 @@ export class PurchasesFacade {
     );
   }
 
+  /** Where an order's PDF is downloaded from; its prices are costs, which only a cost reader is answered. */
+  pdfUrl(companyId: string, id: string): string {
+    return this.api.pdfUrl(companyId, id);
+  }
+
   /** The draft as the API kept it, or null with the reason in `error`. */
   async create(companyId: string, input: PurchaseOrderInput): Promise<PurchaseOrderRow | null> {
     return this.step(() => this.api.create(companyId, input));
