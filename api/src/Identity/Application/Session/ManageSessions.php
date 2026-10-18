@@ -31,7 +31,8 @@ final readonly class ManageSessions
     public const string ENDED = 'auth.session_ended';
     public const string OTHERS_ENDED = 'auth.sessions_ended';
 
-    private const string TOUCH_EVERY = 'PT5M';
+    /** How often a session's record notes its last use: what reads the record knows that use only this closely. */
+    public const string TOUCH_EVERY = 'PT5M';
 
     public function __construct(
         private UserSessionRepository $sessions,

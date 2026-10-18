@@ -94,6 +94,42 @@ final readonly class DoctrineDemoSandboxRepository implements DemoSandboxReposit
         return array_map(static fn (mixed $id): Uuid => Uuid::fromString(\is_string($id) ? $id : throw new \LogicException('A sandbox id reads as text.')), $ids);
     }
 
+    public function doneWith(\DateTimeImmutable $lastUsedBefore): array
+    {
+        $ids = $this->entityManager->getConnection()->fetchFirstColumn(
+            <<<'SQL'
+                SELECT s.id FROM demo_sandbox s
+                WHERE s.state = ?
+                  AND NOT EXISTS (SELECT 1 FROM user_session u WHERE u.user_id = s.owner_id AND u.revoked_at IS NULL AND u.last_seen_at >= ?)
+                  AND (s.claimed_at < ? OR EXISTS (SELECT 1 FROM user_session u WHERE u.user_id = s.owner_id AND u.revoked_at IS NOT NULL))
+                ORDER BY s.claimed_at
+                SQL,
+            [SandboxState::Claimed->value, $lastUsedBefore, $lastUsedBefore],
+            [1 => 'datetime_immutable', 2 => 'datetime_immutable'],
+        );
+
+        return array_map(static fn (mixed $id): Uuid => Uuid::fromString(\is_string($id) ? $id : throw new \LogicException('A sandbox id reads as text.')), $ids);
+    }
+
+    public function companies(): array
+    {
+        return $this->column('SELECT company_id FROM demo_sandbox WHERE company_id IS NOT NULL ORDER BY company_id');
+    }
+
+    public function owners(): array
+    {
+        return $this->column('SELECT owner_id FROM demo_sandbox WHERE owner_id IS NOT NULL ORDER BY owner_id');
+    }
+
+    /** @return list<Uuid> */
+    private function column(string $sql): array
+    {
+        return array_map(
+            static fn (mixed $id): Uuid => Uuid::fromString(\is_string($id) ? $id : throw new \LogicException('An id reads as text.')),
+            $this->entityManager->getConnection()->fetchFirstColumn($sql),
+        );
+    }
+
     public function ownsOne(Uuid $userId): bool
     {
         return false !== $this->entityManager->getConnection()->fetchOne('SELECT 1 FROM demo_sandbox WHERE owner_id = ?', [$userId->toRfc4122()]);

@@ -105,6 +105,9 @@ final readonly class DoctrineCompanyRepository implements CompanyRepository
         if ([] !== $search->countryCodes) {
             $query->andWhere('c.countryCode IN (:countries)')->setParameter('countries', $search->countryCodes, ArrayParameterType::STRING);
         }
+        if ([] !== $search->leftOut) {
+            $query->andWhere('c.id NOT IN (:leftOut)')->setParameter('leftOut', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->leftOut), ArrayParameterType::STRING);
+        }
         ListOrder::apply($query, $search->order, ['name' => 'c.name', 'countryCode' => 'c.countryCode', 'status' => 'c.status', 'createdAt' => 'c.createdAt'], [], 'c.name')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 

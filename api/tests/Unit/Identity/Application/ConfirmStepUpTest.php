@@ -204,6 +204,11 @@ final class ConfirmStepUpTest extends TestCase
             {
                 return \in_array($userId->toRfc4122(), $this->demo, true);
             }
+
+            public function all(): array
+            {
+                return array_map(Uuid::fromString(...), $this->demo);
+            }
         };
 
         return new ConfirmStepUp($this->users, $hasher, $assertions, $audit, $this->proofs, $demoAccounts, $this->clock, 'PT5M', $attempts);

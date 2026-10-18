@@ -67,6 +67,9 @@ parameters:
     # How long a demo sandbox may stay half built before it is taken away, its company and owner with it, so its country
     # is queued again: a build takes under a minute, and a stuck one would keep that country's demo closed.
     app.demo.build_gives_up_after: 'PT1H'
+    # How long a demo's visitor may step away and stay signed in, in seconds (a real account's is app.session.idle_ttl);
+    # once that session ends, at sign-out or here, the worker takes its sandbox away.
+    app.demo.idle_ttl: 7200
     # The issuer an authenticator app shows beside the account.
     app.mfa.issuer: '%app.product_name%'
     # Passkeys are bound to a relying party: the registrable domain the SPA is served under, and every exact origin

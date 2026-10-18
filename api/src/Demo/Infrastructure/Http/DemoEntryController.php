@@ -13,7 +13,9 @@ use App\Demo\Application\ClaimSandbox;
 use App\Demo\Application\DemoSwitchedOff;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Identity\Infrastructure\Session\PostgresSessionHandler;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -40,6 +42,8 @@ final readonly class DemoEntryController
         private Security $security,
         #[Target('demo_entry')]
         private RateLimiterFactoryInterface $limiter,
+        #[Autowire(param: 'app.demo.idle_ttl')]
+        private int $idleTtl,
     ) {
     }
 
@@ -64,7 +68,11 @@ final readonly class DemoEntryController
         }
         $owner = $this->users->ofId($claimed->ownerId) ?? throw new \LogicException('A claimed sandbox has its owner.');
 
-        return $this->security->login(SecurityUser::of($owner), 'json_login')
+        $signedIn = $this->security->login(SecurityUser::of($owner), 'json_login')
             ?? throw new \LogicException('The sign-in answers what a sign-in with a password does.');
+        // After the sign-in, which gives the session a new id: the visitor may step away longer than a real account.
+        $request->getSession()->set(PostgresSessionHandler::IDLE_LIMIT, $this->idleTtl);
+
+        return $signedIn;
     }
 }

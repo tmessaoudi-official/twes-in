@@ -22,4 +22,12 @@ interface DemoAccounts
     public const string SHOWN_AS = 'demo@example.com';
 
     public function isDemo(Uuid $userId): bool;
+
+    /**
+     * Every sandbox's owner, whatever its state: what the platform's operators never see. A few dozen at most, the
+     * pool's size.
+     *
+     * @return list<Uuid>
+     */
+    public function all(): array;
 }

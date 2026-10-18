@@ -23,6 +23,7 @@ use Symfony\Component\Uid\Uuid;
  * What an operator does about an account, audited against it (docs/SPEC.md § 7, 2026-09-15): ends its sessions,
  * deactivates it, which ends them too, and reactivates it. A company's owner removes someone from the company
  * instead and never reaches the account. Asking for the state an account is already in changes and audits nothing.
+ * The demo's throwaway owners are no operator's concern, so the list leaves them out.
  */
 final readonly class ManageAccounts
 {
@@ -31,7 +32,7 @@ final readonly class ManageAccounts
     public const string DEACTIVATED = 'account.deactivated';
     public const string REACTIVATED = 'account.reactivated';
 
-    public function __construct(private UserRepository $users, private AuditTrail $audit, private Transactions $transactions)
+    public function __construct(private UserRepository $users, private AuditTrail $audit, private Transactions $transactions, private DemoAccounts $demos)
     {
     }
 
@@ -42,7 +43,7 @@ final readonly class ManageAccounts
      */
     public function search(AccountSearch $search, PageRequest $page): Page
     {
-        return $this->users->search($search, $page)->map(AccountView::of(...));
+        return $this->users->search($search->leavingOut($this->demos->all()), $page)->map(AccountView::of(...));
     }
 
     /** @throws AccountNotFound */

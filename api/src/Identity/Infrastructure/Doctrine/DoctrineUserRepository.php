@@ -17,6 +17,7 @@ use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
@@ -86,6 +87,9 @@ final readonly class DoctrineUserRepository implements UserRepository
         }
         if (null !== $search->platformOperator) {
             $query->andWhere('u.isPlatformOperator = :operator')->setParameter('operator', $search->platformOperator);
+        }
+        if ([] !== $search->leftOut) {
+            $query->andWhere('u.id NOT IN (:leftOut)')->setParameter('leftOut', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->leftOut), ArrayParameterType::STRING);
         }
         ListOrder::apply($query, $search->order, ['active' => 'u.isActive', 'platformOperator' => 'u.isPlatformOperator', 'createdAt' => 'u.createdAt', 'displayName' => 'u.displayName', 'email' => 'u.email'], [], 'u.email')
             ->setFirstResult($page->offset())->setMaxResults($page->size);

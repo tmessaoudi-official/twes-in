@@ -12,6 +12,7 @@ namespace App\DataHealth\Application;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
+use App\Tenancy\Application\Company\DemoCompanies;
 use App\Tenancy\Domain\Repository\CompanyRepository;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Uid\Uuid;
@@ -20,7 +21,8 @@ use Symfony\Component\Uid\Uuid;
  * Runs every check the contexts declared (`DeclaresDataChecks`), over the whole database, and tells the platform's
  * operators of each check and company where something was found, once per run, so a run every night tells them every
  * night until it is mended. They are told the company and a count, never what the documents say: the detail stays
- * with whoever runs the check on the server.
+ * with whoever runs the check on the server. A demo sandbox is a made-up company a visitor may leave in any state, no
+ * operator's concern, so what is found in one is left out.
  */
 final readonly class RunDataChecks
 {
@@ -35,6 +37,7 @@ final readonly class RunDataChecks
         private UserRepository $users,
         private CompanyRepository $companies,
         private Notifications $notifications,
+        private DemoCompanies $demos,
     ) {
         $this->declarations = iterator_to_array($declarations, false);
     }
@@ -99,13 +102,16 @@ final readonly class RunDataChecks
     /** @return list<CheckRun> */
     private function run(): array
     {
+        $demos = array_flip(array_map(static fn (Uuid $id): string => $id->toRfc4122(), $this->demos->all()));
         $runs = [];
         foreach ($this->declarations as $declaration) {
             foreach ($declaration->dataChecks() as $check) {
                 $started = hrtime(true);
                 $findings = [];
                 foreach ($declaration->findings($check) as $finding) {
-                    $findings[] = $finding;
+                    if (!isset($demos[$finding->companyId?->toRfc4122() ?? ''])) {
+                        $findings[] = $finding;
+                    }
                 }
                 $runs[] = new CheckRun($check, $findings, (hrtime(true) - $started) / 1e9);
             }
