@@ -7,7 +7,7 @@
  * resolving it at build time.
  */
 @theme inline {
-  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-sans: 'Inter Variable', 'Noto Sans Arabic Variable', system-ui, sans-serif;
 
   /* The accent as the company picked it, and its roles (design direction § 1.1, accent-theme.ts accentTokens). */
   --color-accent: var(--twes-accent);

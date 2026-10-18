@@ -41,3 +41,27 @@ test('a screen turns over with the direction of its language', async ({ page }, 
 
   await directed(page, 'ltr');
 });
+
+// Arabic letters come from a face of their own behind the body's stack, fetched only once a page shows one: an Arabic
+// customer's name on a French screen needs it as much as an Arabic screen does.
+test('Arabic letters are drawn in the self-hosted Arabic face', async ({ page }, testInfo) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/customers');
+  await expect(page.getByTestId('customers-table')).toBeVisible();
+  const families = await page.evaluate(async () => {
+    const heading = document.createElement('p');
+    heading.textContent = 'فاتورة رقم ١٢ — شركة النور';
+    heading.style.fontSize = '2rem';
+    (document.querySelector('main') ?? document.body).prepend(heading);
+    const faces = await document.fonts.load(
+      `32px ${getComputedStyle(document.body).fontFamily}`,
+      heading.textContent,
+    );
+    return faces.filter((face) => face.status === 'loaded').map((face) => face.family);
+  });
+  expect(families.map((family) => family.replaceAll('"', ''))).toContain(
+    'Noto Sans Arabic Variable',
+  );
+  await page.screenshot({ path: testInfo.outputPath('arabic-face.png'), fullPage: false });
+});
