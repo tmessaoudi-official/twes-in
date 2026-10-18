@@ -110,6 +110,25 @@ describe('ListExport', () => {
     expect(saved).toEqual(['things.xlsx']);
   });
 
+  it('saves the file under the name a screen gives when its address ends with no name of its own', async () => {
+    const fixture = create(
+      (format) => `/api/companies/c/reports/takings/export.${format}?from=2026-09-01`,
+    );
+    fixture.componentRef.setInput(
+      'fileName',
+      (address: string) => `takings.${address.split('?')[0].split('.').at(-1)}`,
+    );
+    fixture.detectChanges();
+
+    button(fixture, 'csv').click();
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/companies/c/reports/takings/export.csv?from=2026-09-01')
+      .flush(new Blob(['the file']));
+    await settle();
+
+    expect(saved).toEqual(['takings.csv']);
+  });
+
   it('asks who is at the screen when the API wants it, then fetches the file again', async () => {
     request.mockResolvedValue(true);
     const fixture = create((format) => `/exports/things.${format}`);

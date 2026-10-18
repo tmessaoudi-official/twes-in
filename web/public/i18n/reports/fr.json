@@ -1,0 +1,171 @@
+{
+  "reports": {
+    "intro": "Les chiffres de l’entreprise sur la période choisie, comparés à une autre. Chaque ligne ouvre les documents qui la composent.",
+    "none": "Aucun rapport n’est ouvert à votre rôle dans cette entreprise.",
+    "back": "Tous les rapports",
+    "open": "Ouvrir le rapport",
+    "period": {
+      "label": "Période",
+      "this_month": "Ce mois-ci",
+      "last_month": "Le mois dernier",
+      "this_year": "Cette année",
+      "last_year": "L’année dernière",
+      "custom": "Autres dates",
+      "from": "Du",
+      "to": "Au",
+      "shown": "Du {{from}} au {{to}}",
+      "today": "Au {{day}}"
+    },
+    "compare": {
+      "label": "Comparer avec",
+      "none": "Rien",
+      "previous": "La période précédente",
+      "year": "La même période l’an dernier",
+      "shown": "Comparé au {{from}} – {{to}}"
+    },
+    "establishment": {
+      "label": "Établissement",
+      "all": "Toute l’entreprise"
+    },
+    "total": "Total",
+    "previous": "Période comparée",
+    "unnamed": "Non renseigné",
+    "empty": "Rien sur cette période.",
+    "empty_today": "Rien à montrer aujourd’hui.",
+    "documents_open": "Voir les documents",
+    "list_open": "Ouvrir la liste",
+    "errors": {
+      "catalogue": "Les rapports n’ont pas pu être lus. Réessayez.",
+      "gone": "Ce rapport n’est pas ouvert à votre rôle, ou son module est désactivé.",
+      "refused": "Ce rapport ne peut pas être lu ainsi : une période va d’un jour à un autre, sur un an au plus.",
+      "unavailable": "Le rapport n’a pas pu être lu. Réessayez."
+    },
+    "documents": {
+      "title": "Documents : {{row}}",
+      "none": "Aucun document.",
+      "more": "Seuls les premiers documents sont montrés ; l’export les donne tous.",
+      "failed": "Les documents n’ont pas pu être lus. Réessayez.",
+      "close": "Fermer",
+      "number": "Numéro",
+      "party": "Tiers",
+      "day": "Date",
+      "amount": "Montant",
+      "kinds": {
+        "invoice": "Facture",
+        "expense": "Dépense"
+      }
+    },
+    "items": {
+      "takings": {
+        "title": "Encaissements",
+        "description": "Ce qui a été encaissé chaque jour, par moyen de paiement, et ce qui a été remboursé."
+      },
+      "sales-by-customer": {
+        "title": "Ventes par client",
+        "description": "Le chiffre d’affaires de la période, client par client, avoirs déduits."
+      },
+      "sales-by-product": {
+        "title": "Ventes par article",
+        "description": "Les quantités vendues et le chiffre d’affaires de chaque article."
+      },
+      "sales-by-family": {
+        "title": "Ventes par famille",
+        "description": "Le chiffre d’affaires de chaque famille d’articles, avoirs déduits."
+      },
+      "vat-by-rate": {
+        "title": "TVA collectée par taux",
+        "description": "La base et la TVA collectée sur les documents émis, taux par taux : un chiffre pour vérifier une déclaration."
+      },
+      "aged-balance": {
+        "title": "Balance âgée",
+        "description": "Ce que chaque client doit aujourd’hui, selon le retard de ses factures."
+      },
+      "credit-notes-and-discounts": {
+        "title": "Avoirs et remises",
+        "description": "Ce que les avoirs ont rendu et ce que les remises ont retiré, client par client."
+      },
+      "withholding-suffered": {
+        "title": "Retenues à la source subies",
+        "description": "Ce que chaque client a retenu à la source sur vos documents : les certificats à réclamer."
+      },
+      "stock-movements": {
+        "title": "Mouvements de stock",
+        "description": "Pour chaque article, le stock au début, ce qui est entré et sorti, et le stock à la fin."
+      },
+      "dead-stock": {
+        "title": "Stock dormant",
+        "description": "Les articles en stock qui ne se vendent plus, les plus calmes d’abord."
+      },
+      "expenses-by-category": {
+        "title": "Dépenses par catégorie",
+        "description": "Les dépenses enregistrées de la période, catégorie par catégorie."
+      },
+      "expenses-by-supplier": {
+        "title": "Dépenses par fournisseur",
+        "description": "Les dépenses enregistrées de la période, fournisseur par fournisseur."
+      },
+      "activity-by-member": {
+        "title": "Activité par membre",
+        "description": "Ce que chaque personne a fait dans l’entreprise sur la période."
+      }
+    },
+    "columns": {
+      "actions": "Actions",
+      "base": "Base",
+      "card": "Carte",
+      "cash": "Espèces",
+      "category": "Catégorie",
+      "check": "Chèque",
+      "closing": "Stock final",
+      "cost": "Coût",
+      "costed_net": "HT avec coût connu",
+      "counted": "Écart d’inventaire",
+      "credit_notes": "Avoirs",
+      "credited": "Rendu par avoir",
+      "customer": "Client",
+      "day": "Jour",
+      "days_active": "Jours actifs",
+      "discounted": "Remises",
+      "discounted_invoices": "Factures remisées",
+      "documents": "Documents",
+      "expenses": "Dépenses",
+      "family": "Famille",
+      "gross": "TTC",
+      "invoices": "Factures",
+      "issued": "Documents émis",
+      "last_active": "Dernière action",
+      "last_sold": "Dernière vente",
+      "late": "{{from}} à {{to}} jours de retard",
+      "late_last": "Plus de {{after}} jours de retard",
+      "lost": "Pertes",
+      "margin": "Marge",
+      "member": "Membre",
+      "net": "HT",
+      "not_due": "Pas encore dû",
+      "on_hand": "En stock",
+      "opening": "Stock initial",
+      "other": "Autre",
+      "overpaid": "Trop-perçu",
+      "payments": "Paiements",
+      "product": "Article",
+      "quantity": "Quantité",
+      "quiet_days": "Jours sans vente",
+      "rate": "Taux",
+      "received": "Entrées",
+      "reference": "Référence",
+      "refunded": "Remboursé",
+      "returned": "Retours",
+      "sign_ins": "Connexions",
+      "sold": "Ventes",
+      "supplier": "Fournisseur",
+      "tax": "Taxe",
+      "taxes": "Taxes",
+      "total": "Total",
+      "transfer": "Virement",
+      "unit": "Unité",
+      "value": "Valeur",
+      "vat": "TVA collectée",
+      "withheld": "Retenu"
+    }
+  }
+}

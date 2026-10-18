@@ -1,0 +1,42 @@
+<section class="flex flex-col gap-4" data-testid="reports-page">
+  <h1 class="text-2xl font-semibold">{{ 'modules.reports' | translate }}</h1>
+  <p class="text-sm text-on-surface-variant">{{ 'reports.intro' | translate }}</p>
+
+  @if (failed()) {
+    <p role="alert" class="text-error" data-testid="reports-failed">
+      {{ 'reports.errors.catalogue' | translate }}
+    </p>
+  }
+
+  @if (empty()) {
+    <p data-testid="reports-none">{{ 'reports.none' | translate }}</p>
+  } @else {
+    <ul class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="reports-list">
+      @for (report of catalogue(); track report.key) {
+        <li>
+          <a
+            class="block h-full no-underline"
+            [routerLink]="['/reports', report.key]"
+            [attr.data-testid]="'report-' + report.key"
+          >
+            <mat-card appearance="outlined" class="h-full">
+              <mat-card-content>
+                <div class="flex items-start gap-3">
+                  <mat-icon aria-hidden="true" class="shrink-0 text-primary">bar_chart</mat-icon>
+                  <div class="flex min-w-0 flex-col gap-1">
+                    <span class="font-semibold">{{
+                      'reports.items.' + report.key + '.title' | translate
+                    }}</span>
+                    <span class="text-sm text-on-surface-variant">{{
+                      'reports.items.' + report.key + '.description' | translate
+                    }}</span>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</section>

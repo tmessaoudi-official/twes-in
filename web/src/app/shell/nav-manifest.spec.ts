@@ -11,6 +11,7 @@ import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
+import { REPORTS_NAV } from '../reports/reports-nav';
 import { ACCOUNTING_EXPORT_NAV } from '../accounting-export/accounting-export-nav';
 import {
   COMING_NAV,
@@ -194,7 +195,7 @@ describe('the navigation manifest', () => {
           'sell',
           ['home', 'invoices', 'quotes', 'delivery-notes', 'customers', 'products', 'price_lists'],
         ],
-        ['manage', ['stock', 'vendors', 'expenses', 'accounting_export', 'watch']],
+        ['manage', ['stock', 'vendors', 'expenses', 'reports', 'accounting_export', 'watch']],
       ],
     );
   });
@@ -230,7 +231,7 @@ describe('the navigation manifest', () => {
   it('keeps an entry not built yet last of its section when the one it follows is hidden, and only in a section the person has', () => {
     const shown = withComing(CORE_NAV, plannedNav([{ key: 'register', planned: 'v1' }]), true);
     expect(keys(shown)).toEqual(['home', 'register']);
-    const alone = withComing(CORE_NAV, plannedNav([{ key: 'reports', planned: 'v1' }]), true);
+    const alone = withComing(CORE_NAV, plannedNav([{ key: 'declarations', planned: 'v1' }]), true);
     expect(keys(alone)).toEqual(['home']);
   });
 
@@ -295,6 +296,10 @@ describe('the navigation manifest', () => {
     expect(
       EXPENSES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['expenses', 'expenses', 'expense.read', '/expenses']]);
+    // Each report inside answers its own subject's permission; the area itself, the catalogue, answers company.read.
+    expect(
+      REPORTS_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
+    ).toEqual([['reports', 'reports', 'company.read', '/reports']]);
     expect(
       QUOTES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['quotes', 'quotes', 'quote.read', '/quotes']]);
@@ -318,6 +323,7 @@ describe('the navigation manifest', () => {
       ...INVENTORY_NAV,
       ...VENDORS_NAV,
       ...EXPENSES_NAV,
+      ...REPORTS_NAV,
       ...ACCOUNTING_EXPORT_NAV,
     ]);
     expect(MODULE_NAV.filter((entry) => entry.module === undefined)).toEqual([]);

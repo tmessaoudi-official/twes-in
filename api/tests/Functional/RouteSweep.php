@@ -16,12 +16,15 @@ use Symfony\Component\Uid\Uuid;
 /** What the router sweeps share: a path every placeholder of a route accepts, so a request reaches past the router. */
 trait RouteSweep
 {
-    /** A value each path placeholder accepts, so a request reaches the firewall rather than a 404 from the router. */
+    /**
+     * Values a path placeholder takes, so a request reaches the firewall rather than a 404 from the router: the first
+     * the route's own requirement accepts, as one name means a setting's key on one route and a report's on another.
+     */
     private const array PLACEHOLDERS = [
         '_format' => 'json',
         'format' => 'csv',
         'index' => 'index',
-        'key' => 'signup.enabled',
+        'key' => ['signup.enabled', 'takings'],
         'kind' => 'invoices.late_customer',
         'language' => 'fr',
         'moduleKey' => 'customers',
@@ -50,10 +53,22 @@ trait RouteSweep
             $requirement = $route->getRequirement($variable);
             $values[$variable] = $given[$variable] ?? (null !== $requirement && 1 === preg_match('/^\w+(\|\w+)*$/', $requirement)
                 ? explode('|', $requirement)[0]
-                : self::PLACEHOLDERS[$variable] ?? Uuid::v5(Uuid::fromString(Uuid::NAMESPACE_OID), $variable)->toRfc4122());
+                : self::placeholder($variable, $requirement));
         }
 
         return $router->generate($name, $values);
+    }
+
+    private static function placeholder(string $variable, ?string $requirement): string
+    {
+        $candidates = (array) (self::PLACEHOLDERS[$variable] ?? Uuid::v5(Uuid::fromString(Uuid::NAMESPACE_OID), $variable)->toRfc4122());
+        foreach ($candidates as $candidate) {
+            if (null === $requirement || 1 === preg_match('#^(?:'.$requirement.')$#', $candidate)) {
+                return $candidate;
+            }
+        }
+
+        throw new \LogicException(\sprintf('No sample for {%s} matches %s: add one to PLACEHOLDERS.', $variable, $requirement));
     }
 
     /** @return list<string> the methods a route answers, HEAD left to GET */

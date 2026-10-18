@@ -13,6 +13,8 @@ namespace App\Identity\Application\Login;
 final class LoginAudit
 {
     public const string ENTITY_TYPE = 'user';
+    /** What every authentication event's action starts with: signing in and out, and the account's own security. */
+    public const string PREFIX = 'auth.';
     public const string LOGIN = 'auth.login';
     public const string LOGIN_FAILED = 'auth.login_failed';
     public const string LOGOUT = 'auth.logout';

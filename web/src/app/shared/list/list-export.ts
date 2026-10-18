@@ -69,6 +69,8 @@ export class ListExport<F extends string = ExportFormat> {
   readonly entries = input('export');
   readonly icon = input<IconName>('download');
   readonly testId = input.required<string>();
+  /** The name the file is saved under, from its address; by default the address's own last segment. */
+  readonly fileName = input<((address: string) => string) | null>(null);
   /** Runs before the file is fetched: the address to fetch instead, or null to fetch nothing. */
   readonly prepare = input<((address: string) => Promise<string | null>) | null>(null);
   /** The address of a file just saved. */
@@ -108,8 +110,12 @@ export class ListExport<F extends string = ExportFormat> {
   ): Promise<'saved' | 'step_up' | typeof DEMO_REFUSED | 'failed'> {
     const file = await this.api.file(address);
     if (typeof file === 'string') return file;
-    // The address ends with the file's name, which is also the API's own.
-    this.saver.save(file, address.split('?')[0].split('/').at(-1) ?? 'export');
+    // A list's address ends with the file's name, which is also the API's own; a screen whose address does not names it.
+    const named = this.fileName();
+    this.saver.save(
+      file,
+      named === null ? (address.split('?')[0].split('/').at(-1) ?? 'export') : named(address),
+    );
     return 'saved';
   }
 }
