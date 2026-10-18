@@ -95,6 +95,12 @@ describe('ModulesApi', () => {
       .expectOne('/api/companies/c1/modules/customers/interest')
       .flush({}, { status: 409, statusText: 'Conflict' });
     await expect(shipped).rejects.toMatchObject({ code: 'already_available' });
+
+    const demo = api.setInterest('c1', 'quotes', true);
+    http
+      .expectOne('/api/companies/c1/modules/quotes/interest')
+      .flush({ error: 'demo_refused' }, { status: 403, statusText: 'Forbidden' });
+    await expect(demo).rejects.toMatchObject({ code: 'demo_refused' });
   });
 
   it('switches a module, and says why a switch was refused', async () => {

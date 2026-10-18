@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
+import { demoRefusedInterceptor } from '../demo/demo-refused-interceptor';
 import { Feedback } from '../feedback/feedback';
 import { FileSaver } from '../files/save-file';
 import { StepUp } from '../step-up/step-up';
@@ -26,7 +27,8 @@ describe('ListExport', () => {
     TestBed.configureTestingModule({
       providers: [
         provideTranslateService({ lang: 'fr' }),
-        provideHttpClient(),
+        // The app's own refusal of the demo, which says it once, in words, before the export hears of it.
+        provideHttpClient(withInterceptors([demoRefusedInterceptor])),
         provideHttpClientTesting(),
         provideQuietFeedback(),
         { provide: StepUp, useValue: { request } },
@@ -155,6 +157,28 @@ describe('ListExport', () => {
     expect(saved).toEqual([]);
     expect((TestBed.inject(Feedback) as RecordedFeedback).said.map((toast) => toast.key)).toEqual([
       'export.failed',
+    ]);
+  });
+
+  it("leaves the demo's refusal of an accountant's file to the one toast that says it", async () => {
+    const fixture = create((format) => `/api/exports/sales-journal.${format}`);
+
+    button(fixture, 'csv').click();
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/exports/sales-journal.csv')
+      .flush(new Blob([JSON.stringify({ error: 'demo_refused' })]), {
+        status: 403,
+        statusText: 'Forbidden',
+      });
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).not.toEqual([]),
+    );
+    await settle();
+
+    expect(request).not.toHaveBeenCalled();
+    expect(saved).toEqual([]);
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said.map((toast) => toast.key)).toEqual([
+      'auth.errors.demo_refused',
     ]);
   });
 

@@ -266,4 +266,12 @@ describe('InvoicesFacade', () => {
     expect(await facade.preview('c1', null, input)).toBeNull();
     expect(facade.error()).toBeNull();
   });
+
+  it("adds nothing of its own to the demo's refusal of a Factur-X file, which the toast has said", async () => {
+    const facturX = vi.fn().mockRejectedValue(new InvoicesRefused('demo_refused'));
+    Object.assign(api, { facturX });
+
+    expect(await facade.facturX('c1', 'i1', 'xml')).toBeNull();
+    expect(facade.error()).toBeNull();
+  });
 });

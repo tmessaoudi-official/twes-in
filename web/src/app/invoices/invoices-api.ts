@@ -5,6 +5,7 @@ import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular
 import type { PreviewBody } from '../shared/documents/document-figures';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import { isPeriodClosed } from '../shared/documents/period-closed';
+import { DEMO_REFUSED, isDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -474,6 +475,7 @@ export function codeOf(error: unknown): InvoicesError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
   }
+  if (isDemoRefused(error)) return DEMO_REFUSED;
   switch (error.status) {
     case 404:
       return 'not_found';

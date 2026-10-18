@@ -164,6 +164,19 @@ describe('SubscriptionApi', () => {
       .flush({}, { status: 422, statusText: 'Unprocessable Entity' });
     await expect(refused).rejects.toEqual(new SubscriptionRefused('invalid'));
 
+    const demo = api.declare('c1', {
+      amount: '600.000',
+      currency: 'TND',
+      method: 'cash',
+      paidOn: '2026-09-16',
+      reference: null,
+      note: null,
+    });
+    http
+      .expectOne('/api/companies/c1/subscription/payments')
+      .flush({ error: 'demo_refused' }, { status: 403, statusText: 'Forbidden' });
+    await expect(demo).rejects.toEqual(new SubscriptionRefused('demo_refused'));
+
     const unreachable = api.waiting();
     http.expectOne('/api/platform/payment-declarations').error(new ProgressEvent('error'));
     await expect(unreachable).rejects.toEqual(new SubscriptionRefused('network'));

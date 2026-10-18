@@ -2,9 +2,11 @@
 import { expect, Page, test } from '@playwright/test';
 import { OPERATOR_PASSWORD, leaveWhenAsked, signIn as signInAsOperator } from './session';
 import { proveIfHeldBack } from './step-up';
+import { toast } from './toast';
 
 // « Essayer la démo » through the real bundle, nginx, FrankenPHP, PostgreSQL and the demo worker: a visitor with no
-// account takes a sandbox of their own, works in it, reads the mails it kept and signs out; the operators switch the
+// account takes a sandbox of their own, works in it, reads the mails it kept, is refused the accountant's files in one
+// toast and signs out; the operators switch the
 // demo off, and the sign-in page stops offering it, then on again, as every installation starts.
 //
 // A fresh stack has no sandbox ready until the worker's first tend or the first visitor's claim queues one, and a
@@ -46,7 +48,7 @@ async function setSwitch(page: Page, testId: string, on: boolean): Promise<void>
   await expect(toggle).toHaveAttribute('aria-checked', String(on));
 }
 
-test('a visitor tries the demo, works in a sandbox of their own, reads its mails and signs out', async ({
+test('a visitor tries the demo, works in a sandbox of their own, reads its mails, is refused the books once and signs out', async ({
   page,
 }) => {
   test.setTimeout(BUILD_WAIT + 120_000);
@@ -65,6 +67,17 @@ test('a visitor tries the demo, works in a sandbox of their own, reads its mails
   await expect(
     page.getByTestId('demo-mails-none').or(page.getByTestId('demo-mails-list')),
   ).toBeVisible();
+
+  // The accountant's files stand for real books, which a demo never hands out: asked for, the refusal is said once, in
+  // the toast, and the page adds no failure of its own.
+  await page.goto('/accounting-export');
+  await page.getByTestId('accounting-export-from').fill('2026-01-01');
+  await page.getByTestId('accounting-export-to').fill('2026-12-31');
+  await page.getByTestId('accounting-export-sales-journal').click();
+  await page.getByTestId('accounting-export-sales-journal-csv').click();
+  await expect(toast(page)).toContainText('Non disponible dans la démo.');
+  await expect(toast(page)).toHaveCount(1);
+  await expect(page.getByText('Le fichier n’a pas pu être préparé')).toHaveCount(0);
 
   await page.getByTestId('user-menu').click();
   await page.getByTestId('logout').click();

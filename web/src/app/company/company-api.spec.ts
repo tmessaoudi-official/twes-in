@@ -147,6 +147,15 @@ describe('CompanyApi, the members', () => {
     await expect(removing).rejects.toEqual(new CompanyRefused('forbidden'));
   });
 
+  it("names the demo's refusal of an invitation as the demo's, which the screen leaves to the toast", async () => {
+    const adding = api.addMember('c1', 'someone@example.test', 'staff');
+    http
+      .expectOne({ method: 'POST', url: '/api/companies/c1/members' })
+      .flush({ error: 'demo_refused' }, { status: 403, statusText: 'Forbidden' });
+
+    await expect(adding).rejects.toEqual(new CompanyRefused('demo_refused'));
+  });
+
   // docs/SPEC.md § 7, the step-up list: the refusal names its token first, for the screen to ask for the proof.
   it('tells a member change and new bank details that wait for the step-up proof, by its token', async () => {
     const detail = 'step_up_required: confirm the password or a passkey again before this change.';

@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { TranslatePipe } from '@ngx-translate/core';
+import { DEMO_REFUSED } from '../demo/demo-refused-interceptor';
 import { Feedback } from '../feedback/feedback';
 import { FileSaver } from '../files/save-file';
 import { StepUp } from '../step-up/step-up';
@@ -96,13 +97,15 @@ export class ListExport<F extends string = ExportFormat> {
         fetched = await this.fetch(address);
       }
       if (fetched === 'saved') this.saved.emit(address);
-      else this.feedback.failure('export.failed');
+      else if (fetched !== DEMO_REFUSED) this.feedback.failure('export.failed');
     } finally {
       this.busy.set(false);
     }
   }
 
-  private async fetch(address: string): Promise<'saved' | 'step_up' | 'failed'> {
+  private async fetch(
+    address: string,
+  ): Promise<'saved' | 'step_up' | typeof DEMO_REFUSED | 'failed'> {
     const file = await this.api.file(address);
     if (typeof file === 'string') return file;
     // The address ends with the file's name, which is also the API's own.

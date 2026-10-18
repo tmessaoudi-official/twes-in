@@ -120,6 +120,14 @@ describe('SubscriptionFacade', () => {
     expect(auth.refresh).not.toHaveBeenCalled();
   });
 
+  it("adds nothing of its own to the demo's refusal of a declaration, which the toast has said", async () => {
+    api.declare.mockRejectedValue(new SubscriptionRefused('demo_refused'));
+
+    expect(await facade.declare('c1', { ...declared, currency: 'TND' })).toBe(false);
+
+    expect(facade.error()).toBeNull();
+  });
+
   it("reads the operator's queue again after each decision", async () => {
     api.waiting.mockResolvedValue([]);
     api.confirm.mockResolvedValue({ ...declared, status: 'confirmed' });

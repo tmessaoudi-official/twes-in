@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, MemberRole, MemberRow } from './company-types';
@@ -62,7 +63,7 @@ export class MembersFacade {
       await this.auth.refresh();
       return result;
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.errorSignal.set(unlessDemoRefused(codeOf(error)));
       return null;
     } finally {
       this.busySignal.set(false);

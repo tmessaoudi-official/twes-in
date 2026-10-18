@@ -42,4 +42,13 @@ describe('ClosingApi', () => {
 
     await expect(closed).rejects.toEqual(new ClosingRefused('invalid'));
   });
+
+  it("names the demo's refusal as the demo's, which the page leaves to the toast", async () => {
+    const closed = api.closeThrough('c1', '2026-08-31');
+    http
+      .expectOne('/api/companies/c1/closing')
+      .flush({ error: 'demo_refused' }, { status: 403, statusText: 'Forbidden' });
+
+    await expect(closed).rejects.toEqual(new ClosingRefused('demo_refused'));
+  });
 });

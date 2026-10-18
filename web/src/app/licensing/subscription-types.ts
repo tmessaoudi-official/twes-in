@@ -64,4 +64,11 @@ export interface SubscriptionView {
  * decision, the payment was refused as written, refused otherwise, or the API could not be reached.
  */
 export type SubscriptionError =
-  'not_managed' | 'already_declared' | 'invalid' | 'step_up_required' | 'refused' | 'network';
+  | 'not_managed'
+  | 'already_declared'
+  | 'invalid'
+  | 'step_up_required'
+  | 'refused'
+  /** Something a demo account may not do, which the interceptor has said in words already. */
+  | 'demo_refused'
+  | 'network';

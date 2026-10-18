@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import type { ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable, signal } from '@angular/core';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
@@ -282,7 +283,7 @@ export class InvoicesFacade {
     try {
       return await this.api.facturX(companyId, id, format);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.errorSignal.set(unlessDemoRefused(codeOf(error)));
       return null;
     } finally {
       this.busySignal.set(false);

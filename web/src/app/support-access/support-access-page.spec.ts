@@ -177,4 +177,15 @@ describe('SupportAccessPage', () => {
       'failure:support_access.refused.step_up_required',
     ]);
   });
+
+  it("adds nothing of its own to the demo's refusal, which the toast has said", async () => {
+    api.grant.mockReset().mockRejectedValue(new SupportAccessRefused('demo_refused'));
+    await open();
+
+    q('support-access-grant')!.click();
+    await settle();
+
+    expect(q('support-access-closed')).not.toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
+  });
 });

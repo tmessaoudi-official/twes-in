@@ -3,6 +3,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { DEMO_REFUSED, isDemoRefused } from '../demo/demo-refused-interceptor';
 
 /**
  * A list's file, fetched by the page rather than followed as a link, so a refusal can be answered in the page: the API
@@ -12,11 +13,15 @@ import { firstValueFrom } from 'rxjs';
 export class ExportApi {
   private readonly http = inject(HttpClient);
 
-  /** The file, `step_up` when the API wants the proof first, or `failed` for anything else. */
-  async file(address: string): Promise<Blob | 'step_up' | 'failed'> {
+  /**
+   * The file, `step_up` when the API wants the proof first, `demo_refused` when the demo hands out no such file, which
+   * the interceptor has said already, or `failed` for anything else.
+   */
+  async file(address: string): Promise<Blob | 'step_up' | typeof DEMO_REFUSED | 'failed'> {
     try {
       return await firstValueFrom(this.http.get(address, { responseType: 'blob' }));
     } catch (error) {
+      if (isDemoRefused(error)) return DEMO_REFUSED;
       return (await stepUpAsked(error)) ? 'step_up' : 'failed';
     }
   }

@@ -101,6 +101,8 @@ export type CompanyError =
   | 'step_up_required'
   /** Saved by someone else since the profile was read; the screen merges their save rather than saying it. */
   | 'record_changed'
+  /** Something a demo account may not do, which the interceptor has said in words already. */
+  | 'demo_refused'
   | 'network';
 
 /** One place the company issues documents from, as the establishments page lists it. */
