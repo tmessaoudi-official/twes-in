@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Legal\Application;
 
+use App\Shared\Application\Languages;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -26,7 +27,7 @@ final readonly class SecurityTxt
 
     private string $origin;
 
-    public function __construct(#[Autowire(env: 'DEFAULT_URI')] string $origin)
+    public function __construct(#[Autowire(env: 'DEFAULT_URI')] string $origin, private Languages $languages)
     {
         $this->origin = rtrim($origin, '/');
     }
@@ -43,7 +44,7 @@ final readonly class SecurityTxt
 
         return 'Contact: mailto:'.$contact."\n"
             .'Expires: '.$expires->format('Y-m-d\TH:i:s\Z')."\n"
-            ."Preferred-Languages: fr, en, ar\n"
+            .'Preferred-Languages: '.implode(', ', $this->languages->legal())."\n"
             .'Canonical: '.$this->origin."/.well-known/security.txt\n"
             .'Policy: '.$this->origin."/legal/security\n";
     }

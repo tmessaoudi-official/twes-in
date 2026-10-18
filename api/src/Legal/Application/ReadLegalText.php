@@ -15,19 +15,19 @@ use App\Legal\Domain\ValueObject\LegalLanguage;
 use App\Legal\Domain\ValueObject\LegalPage;
 
 /**
- * What a legal page shows: its latest version in the language asked for, else in French, else in English (docs/SPEC.md
+ * What a legal page shows: its latest version in the language asked for, else in the interface's languages in turn (docs/SPEC.md
  * § 7, 2026-09-27). The latest, validated or not: an unvalidated one says so on the page rather than hiding behind an
  * older text.
  */
 final readonly class ReadLegalText
 {
-    public function __construct(private LegalTextRepository $texts)
+    public function __construct(private LegalTextRepository $texts, private LegalLanguages $languages)
     {
     }
 
     public function read(LegalPage $page, LegalLanguage $language): ?LegalText
     {
-        foreach ([$language, ...$language->fallbacks()] as $candidate) {
+        foreach ($this->languages->readIn($language) as $candidate) {
             $text = $this->texts->latest($page, $candidate);
             if (null !== $text) {
                 return $text;

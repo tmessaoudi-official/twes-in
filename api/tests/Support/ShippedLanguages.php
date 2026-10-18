@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
+use App\Legal\Application\LegalLanguages;
 use App\Shared\Application\Languages;
 use App\Shared\Infrastructure\Intl\CatalogueLanguages;
 
@@ -18,5 +19,10 @@ final class ShippedLanguages
     public static function catalogue(): Languages
     {
         return new CatalogueLanguages(\dirname(__DIR__, 2).'/config/languages.json');
+    }
+
+    public static function legal(): LegalLanguages
+    {
+        return new LegalLanguages(self::catalogue());
     }
 }

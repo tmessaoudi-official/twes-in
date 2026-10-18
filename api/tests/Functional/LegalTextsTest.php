@@ -18,8 +18,8 @@ final class LegalTextsTest extends ApiTestCase
 {
     public function testAnyoneReadsAPagesLatestVersionWithoutASession(): void
     {
-        $this->write(LegalPage::Cookies, LegalLanguage::En, 'old', '2026-09-01 10:00');
-        $latest = $this->write(LegalPage::Cookies, LegalLanguage::En, "# Cookies\n\nWhat is stored.", '2026-09-20 10:00');
+        $this->write(LegalPage::Cookies, LegalLanguage::of('en'), 'old', '2026-09-01 10:00');
+        $latest = $this->write(LegalPage::Cookies, LegalLanguage::of('en'), "# Cookies\n\nWhat is stored.", '2026-09-20 10:00');
         $latest->validate('operator@twes.local', new \DateTimeImmutable('2026-09-21 10:00'));
         $this->em()->flush();
 
@@ -39,7 +39,7 @@ final class LegalTextsTest extends ApiTestCase
 
     public function testAPageMissingInTheLanguageAskedForAnswersItsFrenchVersionAndSaysSo(): void
     {
-        $this->write(LegalPage::Cookies, LegalLanguage::Fr, 'Témoins', '2026-09-20 10:00');
+        $this->write(LegalPage::Cookies, LegalLanguage::of('fr'), 'Témoins', '2026-09-20 10:00');
 
         $this->client->request('GET', '/api/legal/cookies/ar', server: ['HTTP_ACCEPT' => 'application/json']);
 
@@ -50,7 +50,7 @@ final class LegalTextsTest extends ApiTestCase
 
     public function testAnUnknownPageAnUnknownLanguageAndAPageNeverWrittenAreNotFound(): void
     {
-        $this->write(LegalPage::Cookies, LegalLanguage::Fr, 'Témoins', '2026-09-20 10:00');
+        $this->write(LegalPage::Cookies, LegalLanguage::of('fr'), 'Témoins', '2026-09-20 10:00');
 
         foreach (['/api/legal/nothing/fr', '/api/legal/cookies/de', '/api/legal/privacy/fr'] as $path) {
             $this->client->request('GET', $path, server: ['HTTP_ACCEPT' => 'application/json']);
@@ -60,7 +60,7 @@ final class LegalTextsTest extends ApiTestCase
 
     public function testThePublishersIdentityTheOperatorSetFillsThePlaceholdersAndNothingElseIsSent(): void
     {
-        $this->write(LegalPage::Mentions, LegalLanguage::Fr, 'Éditeur : {{publisher.name}}', '2026-09-20 10:00');
+        $this->write(LegalPage::Mentions, LegalLanguage::of('fr'), 'Éditeur : {{publisher.name}}', '2026-09-20 10:00');
         $this->createUser('op@twes.local', 'password-1234', operator: true);
         $this->login('op@twes.local', 'password-1234');
         $this->stepUp('password-1234');

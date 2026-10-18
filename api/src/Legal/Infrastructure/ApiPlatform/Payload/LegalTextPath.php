@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Legal\Infrastructure\ApiPlatform\Payload;
 
+use App\Legal\Application\LegalLanguages;
 use App\Legal\Domain\ValueObject\LegalLanguage;
 use App\Legal\Domain\ValueObject\LegalPage;
 use App\Legal\Infrastructure\ApiPlatform\Resource\LegalTextResource;
@@ -22,10 +23,10 @@ final readonly class LegalTextPath
     }
 
     /** @param array<string, mixed> $uriVariables */
-    public static function of(array $uriVariables): self
+    public static function of(array $uriVariables, LegalLanguages $languages): self
     {
         $page = LegalTextResource::pageOf($uriVariables['page'] ?? null);
-        $language = LegalTextResource::languageOf($uriVariables['language'] ?? null);
+        $language = $languages->known($uriVariables['language'] ?? null);
         if (null === $page || null === $language) {
             throw new NotFoundHttpException('No such legal page or language.');
         }

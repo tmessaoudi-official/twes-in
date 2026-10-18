@@ -23,7 +23,7 @@ final class InMemoryLegalTexts implements LegalTextRepository
     {
         $latest = null;
         foreach ($this->rows as $row) {
-            if ($row->getPage() === $page && $row->getLanguage() === $language
+            if ($row->getPage() === $page && $row->getLanguage()->equals($language)
                 && (null === $latest || $row->getCreatedAt() >= $latest->getCreatedAt())) {
                 $latest = $row;
             }
