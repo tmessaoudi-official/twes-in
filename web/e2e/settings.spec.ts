@@ -88,5 +88,9 @@ test('the fields of one row line up, whatever the length of their labels', async
   expect(await top('field-document__logo_keep_proportions', '.mdc-checkbox__background')).toBe(
     await top('field-document__paid_stamp', '.mdc-checkbox__background'),
   );
+  // The aged balance's three bounds come last, so they move no pair above them.
+  expect(await top('field-aged_balance__first_days', self)).toBe(
+    await top('field-aged_balance__second_days', self),
+  );
   await expect(page.getByTestId('settings-title')).toHaveText('Valeurs par défaut');
 });

@@ -14,12 +14,17 @@ use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Domain\ValueObject\SettingType;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
  * Where the aged balance cuts lateness, each a company setting: the last day of each of its three brackets of days late,
  * past the last of which an invoice is in the open bracket. Read in order whatever order they were set in, so two equal
  * bounds make one bracket fewer rather than an empty one.
+ *
+ * Declared last of its chain: the defaults page lays its fields two to a row in the order declared, and three fields
+ * anywhere else would move every field after them by a cell, out of the rows they share.
  */
+#[AsTaggedItem(priority: -100)]
 final readonly class AgedBalanceSettings implements DeclaresSettings
 {
     public const string FIRST_DAYS = 'aged_balance.first_days';
