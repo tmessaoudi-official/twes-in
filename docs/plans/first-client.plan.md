@@ -78,6 +78,7 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-18 07:31] ASSUMED (review): Row 259: a quote with a discount on the whole is refused on an existing draft (409 on discountAmount), and « Facturer » then offers no picker and makes a new invoice — because spreading it pro rata over the draft's other lines would move tax between rates. Alternatives: allocate the discount per line; carry it as a negative line.
 - [2026-10-18 07:31] ASSUMED (review): Row 259: an invoice's quoteId stays the quote it was drafted from; a quote added later is recorded on the quote (invoiced, with the invoice id) and in its audit entry, not on the invoice — because the invoice holds one quote link today. Follow-up: the invoice page lists every quote it carries, as it lists its delivery notes. Alternatives: a quote-source link per line now.
 - [2026-10-18 07:31] ASSUMED (review): Row 259: deposit invoices and credit notes are refused as targets for both a quote's and a delivery note's lines, in the domain (Invoice::addLines) and at both callers; an added deposit give-back line is checked as on create (same customer, never on a deposit) — because the same hole was open for delivery notes, and goods added to a deposit would be charged twice. Alternatives: refuse at the callers only.
+- [2026-10-18 08:01] ASSUMED (review): Row 259 wording: the picker asks « Sur quelle facture ce devis est-il facturé ? » / « Where is this quote invoiced? » with the delivery notes' help text, and a quote added to a draft toasts « Le devis a été ajouté à la facture en brouillon. » / « The quote was added to the draft invoice. » (a new invoice keeps « Le devis est devenu une facture en brouillon. ») — because they mirror the delivery notes' question and say what happened. Alternatives: the developer's own words.
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -118,7 +119,7 @@ was and was not certified by execution.
 | 6 | Supplier orders and goods receipts | L | todo | - | api/** web/** |
 | 7 | Arabic texts and printed documents | L | todo | - | web/public/i18n/** api/translations/** api/templates/** |
 | 8 | Guides, help and README on the final screens | M | todo | - | docs/** web/** |
-| 9 | Document links before the tag: the module port (335f778b), a delivery note names its invoices (93004285), an invoice its delivery notes (5f73574b), a quote onto an open draft (row 259) | M | done | 08ad6709 | api/src/Module/** web/src/app/** web/e2e/** |
+| 9 | Document links before the tag: the module port (335f778b), a delivery note names its invoices (93004285), an invoice its delivery notes (5f73574b), a quote onto an open draft (row 259, 08ad6709) and its toast | M | done | b6c8d52e | api/src/Module/** web/src/app/** web/e2e/** |
 <!-- /progress-block -->
 ### Blocked
 - Step 1 waits on the developer: `PUBLISH_IMAGES=true`; the three GHCR packages made public after the first publish
