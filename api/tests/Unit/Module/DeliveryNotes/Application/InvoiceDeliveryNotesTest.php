@@ -37,6 +37,7 @@ use App\Module\Invoices\Domain\Model\InvoiceLineTax;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Infrastructure\DeliveryNotes\ManagedInvoiceDrafts;
+use App\Module\Invoices\Infrastructure\DeliveryNotes\RepositoryInvoicedLines;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
@@ -94,7 +95,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         // The notes are held while they are read, as the database holds their rows.
         $this->notes->transactions = $this->transactions;
         $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($this->invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())), ShippedFiscalPresets::presets(), new InMemoryRecordVersions());
-        $this->invoicing = new InvoiceDeliveryNotes($this->notes, $this->invoices, new ManagedInvoiceDrafts($manage), $this->transactions, $this->audit, $this->clock);
+        $this->invoicing = new InvoiceDeliveryNotes($this->notes, new RepositoryInvoicedLines($this->invoices), new ManagedInvoiceDrafts($manage, $this->invoices), $this->transactions, $this->audit, $this->clock);
         $this->customer = $this->customer($this->company);
     }
 
@@ -108,7 +109,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $second = $this->note('BL-2026-00002', header: new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-12'), customerReference: 'PO-7'));
         $actor = Uuid::v7();
 
-        $invoice = $this->invoicing->draftInvoice($this->company, [$second->getId(), $first->getId()], $actor);
+        $invoice = $this->drafted($this->invoicing->draftInvoice($this->company, [$second->getId(), $first->getId()], $actor));
 
         self::assertSame([$invoice], $this->invoices->invoices);
         self::assertSame([InvoiceStatus::Draft, $this->customer, $first->getEstablishment()], [$invoice->getStatus(), $invoice->getCustomer(), $invoice->getEstablishment()]);
@@ -128,9 +129,9 @@ final class InvoiceDeliveryNotesTest extends TestCase
         self::assertSame([DeliveryNoteStatus::Delivered, DeliveryNoteStatus::Validated], [$first->getStatus(), $second->getStatus()], 'the notes wait for the invoice to be issued');
 
         $lone = $this->note('BL-2026-00003', header: new DeliveryNoteHeader(customerReference: 'PO-8'));
-        $alone = $this->invoicing->draftInvoice($this->company, [$lone->getId()], null);
+        $alone = $this->drafted($this->invoicing->draftInvoice($this->company, [$lone->getId()], null));
         self::assertSame([null, 'PO-8'], [$alone->getHeader()->supplyDate, $alone->getHeader()->customerReference]);
-        $mixed = $this->invoicing->draftInvoice($this->company, [$this->note('BL-2026-00004', header: new DeliveryNoteHeader(customerReference: 'PO-8'))->getId(), $this->note('BL-2026-00005', header: new DeliveryNoteHeader(customerReference: 'PO-9'))->getId()], null);
+        $mixed = $this->drafted($this->invoicing->draftInvoice($this->company, [$this->note('BL-2026-00004', header: new DeliveryNoteHeader(customerReference: 'PO-8'))->getId(), $this->note('BL-2026-00005', header: new DeliveryNoteHeader(customerReference: 'PO-9'))->getId()], null));
         self::assertNull($mixed->getHeader()->customerReference, 'notes naming different references name none');
     }
 
@@ -174,7 +175,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         }
         self::assertSame([[], []], [$this->invoices->invoices, $this->audit->entries]);
 
-        $held = $this->invoicing->draftInvoice($this->company, [$mine->getId()], null);
+        $held = $this->drafted($this->invoicing->draftInvoice($this->company, [$mine->getId()], null));
         try {
             $this->invoicing->draftInvoice($this->company, [$mine->getId()], null);
             self::fail('a note on a draft invoice was invoiced again');
@@ -235,7 +236,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $rows = $this->invoicing->check($this->company, [$otherCustomers->getId(), $mine->getId()]);
         self::assertSame([null, InvoicingCheckRow::OTHER_CUSTOMER], array_map(static fn (InvoicingCheckRow $row): ?string => $row->skipped, $rows), 'the first note that goes in names the customer');
 
-        $target = $this->invoicing->draftInvoice($this->company, [$mine->getId()], null);
+        $target = $this->drafted($this->invoicing->draftInvoice($this->company, [$mine->getId()], null));
         $rows = $this->invoicing->check($this->company, [$otherCustomers->getId(), $delivered->getId(), $mine->getId()], $target->getId());
         self::assertSame([InvoicingCheckRow::OTHER_CUSTOMER, null, InvoicingCheckRow::NOTHING_LEFT], array_map(static fn (InvoicingCheckRow $row): ?string => $row->skipped, $rows), 'a draft named takes the notes of its customer and establishment, and what it holds is taken');
 
@@ -266,13 +267,12 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $second = $this->note('BL-2026-00002', [
             new DeliveryNoteLineDetails(null, 'Câble', '4', $this->unit('C62'), '3', [$this->tax('TVA19')]),
         ]);
-        $draft = $this->invoicing->draftInvoice($this->company, [$first->getId()], null);
+        $draft = $this->drafted($this->invoicing->draftInvoice($this->company, [$first->getId()], null));
         $actor = Uuid::v7();
 
-        $same = $this->invoicing->addToDraft($this->company, $draft->getId(), [$second->getId()], $actor);
+        $this->invoicing->addToDraft($this->company, $draft->getId(), [$second->getId()], $actor);
 
-        self::assertSame($draft, $same, 'the draft itself grows, no second invoice is made');
-        self::assertSame([$draft], $this->invoices->invoices);
+        self::assertSame([$draft], $this->invoices->invoices, 'the draft itself grows, no second invoice is made');
         self::assertSame(InvoiceStatus::Draft, $draft->getStatus());
         self::assertEquals(
             array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), [...$first->getLines(), ...$second->getLines()]),
@@ -292,7 +292,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
     {
         $line = $this->note('BL-2026-00001', [new DeliveryNoteLineDetails(null, 'Vis', '10', $this->unit('C62'), '1', [$this->tax('TVA19')])]);
         $lineId = $line->getLines()[0]->getId()->toRfc4122();
-        $draft = $this->invoicing->draftInvoice($this->company, [$line->getId()], null, [$lineId => '4']);
+        $draft = $this->drafted($this->invoicing->draftInvoice($this->company, [$line->getId()], null, [$lineId => '4']));
 
         $this->invoicing->addToDraft($this->company, $draft->getId(), [$line->getId()], null, [$lineId => '6']);
         // One line per note line, as a revision of the draft requires (audit 2026-10-06, E-3): the rest joins the line
@@ -315,7 +315,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
 
     public function testWhatCannotBeAddedIsRefusedAndTheDraftIsLeftAsItWas(): void
     {
-        $draft = $this->invoicing->draftInvoice($this->company, [$this->note('BL-2026-00001')->getId()], null);
+        $draft = $this->drafted($this->invoicing->draftInvoice($this->company, [$this->note('BL-2026-00001')->getId()], null));
         $otherCustomer = $this->note('BL-2026-00002', customer: $this->customer($this->company, 'CLI-0002'));
         $theirs = $this->note('BL-2026-00001', company: $this->globex);
         $fine = $this->note('BL-2026-00003');
@@ -352,7 +352,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $cancelled = $this->note('BL-2026-00003');
         $cancelled->cancel($this->clock->now());
         // The notes are invoiced once the invoices issued take all of them, so there is one, as there is when the event is told.
-        $invoice = $this->invoicing->draftInvoice($this->company, [$first->getId(), $second->getId()], null);
+        $invoice = $this->drafted($this->invoicing->draftInvoice($this->company, [$first->getId(), $second->getId()], null));
         self::asIssued($invoice);
         $invoiceId = $invoice->getId();
         $lines = array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), [...$first->getLines(), ...$second->getLines(), ...$cancelled->getLines()]);
@@ -390,6 +390,12 @@ final class InvoiceDeliveryNotesTest extends TestCase
     private static function asIssued(Invoice $invoice): void
     {
         new \ReflectionProperty(Invoice::class, 'status')->setValue($invoice, InvoiceStatus::Issued);
+    }
+
+    /** The invoice a use case answered by its id, as the invoices keep it. */
+    private function drafted(Uuid $id): Invoice
+    {
+        return $this->invoices->ofIdInCompany($id, $this->company->getId()) ?? throw new \LogicException('The draft is kept.');
     }
 
     /** @param list<DeliveryNoteLineDetails>|null $lines one line of one piece when left out */

@@ -34,6 +34,7 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
+use App\Module\Invoices\Infrastructure\DeliveryNotes\RepositoryInvoicedLines;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\PresentationSettings;
@@ -103,7 +104,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
         $this->workflow = new DeliveryNoteWorkflow(
             $this->notes,
-            $this->invoices,
+            new RepositoryInvoicedLines($this->invoices),
             new AllocateNumber($this->series, $this->transactions, $this->clock),
             $this->transactions,
             new DeliveryNoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()),

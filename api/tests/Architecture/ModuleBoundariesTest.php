@@ -12,29 +12,69 @@ namespace App\Tests\Architecture;
 use PHPUnit\Framework\TestCase;
 
 /**
- * A module reaches another only through a port it owns (docs/SPEC.md § 7, audit 2026-10-06 C-4): a file of one module
- * may name another module's Application or Infrastructure class only when it is a contract, never a class that runs.
- * A contract is an interface or an enum, an exception, a value a port carries (a readonly class with nothing public but
- * its constructor), or a class whose constants alone are read (`Permission::READ`, `Module::KEY`, `Resource::class`).
- * Domain classes are left to the layer rules. The check reads `use` statements and inline fully-qualified names alike.
+ * A module reaches another only through a port it owns (docs/SPEC.md § 7): a file of one module may name another
+ * module's Application, Domain or Infrastructure class only when it is a contract, never a class that runs. A contract
+ * is an interface or an enum, an exception, a value a port carries (a readonly class with nothing public but its
+ * constructor), or a class whose constants alone are read (`Permission::READ`, `Module::KEY`, `Resource::class`).
+ * Another module's repository is never one: it is that module's storage. The check reads `use` statements and inline
+ * fully-qualified names alike.
  */
 final class ModuleBoundariesTest extends TestCase
 {
     private const string MODULES = __DIR__.'/../../src/Module';
 
     /**
-     * Imports that predate the rule and wait for the developer's word (§ 7, audit 2026-10-06 C-4, ASSUMED 2026-10-06):
-     * the pickers read another module's records through its own read use case, which the audit counted apart from the
-     * concrete calls the ruling named. Each is either converted to a port or ruled a sanctioned read; none is added.
+     * Crossings that predate the rule and wait for the developer's word, each a module and the class of another it
+     * names. The pickers read another module's records through its own read use case, which the audit counted apart from
+     * the concrete calls the ruling named; the Domain crossings are the entities and services one module's records hold
+     * of another's. Each is either turned into a port or ruled a sanctioned read; none is added. Delivery notes reach the
+     * invoices through their own ports alone, as ruled, so no crossing of theirs into the invoices is here.
      */
     private const array AWAITING_A_RULING = [
-        'DeliveryNotes/Infrastructure/ApiPlatform/State/Provider/DeliveryNoteCustomerPickProvider.php' => 'App\Module\Customers\Application\PickCustomers',
-        'Invoices/Infrastructure/ApiPlatform/State/Provider/InvoiceCustomerPickProvider.php' => 'App\Module\Customers\Application\PickCustomers',
-        'DeliveryNotes/Infrastructure/ApiPlatform/State/Provider/DeliveryNoteProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
-        'Inventory/Infrastructure/ApiPlatform/State/Provider/StockProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
-        'Invoices/Infrastructure/ApiPlatform/State/Provider/InvoiceProductPickProvider.php' => 'App\Module\Products\Application\PickProducts',
-        'Expenses/Infrastructure/ApiPlatform/State/Provider/ExpenseVendorPickProvider.php' => 'App\Module\Vendors\Application\PickVendors',
-        'Inventory/Infrastructure/ApiPlatform/State/Provider/StockVendorPickProvider.php' => 'App\Module\Vendors\Application\PickVendors',
+        'DeliveryNotes -> App\Module\Customers\Application\PickCustomers',
+        'DeliveryNotes -> App\Module\Customers\Domain\Model\Customer',
+        'DeliveryNotes -> App\Module\Customers\Domain\Repository\CustomerRepository',
+        'DeliveryNotes -> App\Module\Customers\Domain\ValueObject\CustomerSnapshot',
+        'DeliveryNotes -> App\Module\Products\Application\PickProducts',
+        'DeliveryNotes -> App\Module\Products\Domain\Model\Product',
+        'DeliveryNotes -> App\Module\Products\Domain\Repository\ProductRepository',
+        'DeliveryNotes -> App\Module\Products\Domain\Service\LotCode',
+        'Expenses -> App\Module\Vendors\Application\PickVendors',
+        'Expenses -> App\Module\Vendors\Domain\Model\Vendor',
+        'Expenses -> App\Module\Vendors\Domain\Repository\VendorRepository',
+        'Inventory -> App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository',
+        'Inventory -> App\Module\Products\Application\PickProducts',
+        'Inventory -> App\Module\Products\Domain\Model\Product',
+        'Inventory -> App\Module\Products\Domain\Repository\ProductCategoryRepository',
+        'Inventory -> App\Module\Products\Domain\Repository\ProductPhotoRepository',
+        'Inventory -> App\Module\Products\Domain\Repository\ProductRepository',
+        'Inventory -> App\Module\Products\Domain\Service\LotCode',
+        'Inventory -> App\Module\Products\Domain\ValueObject\Barcode',
+        'Inventory -> App\Module\Vendors\Application\PickVendors',
+        'Inventory -> App\Module\Vendors\Domain\Model\Vendor',
+        'Inventory -> App\Module\Vendors\Domain\Repository\VendorRepository',
+        'Invoices -> App\Module\Customers\Application\PickCustomers',
+        'Invoices -> App\Module\Customers\Domain\Model\Customer',
+        'Invoices -> App\Module\Customers\Domain\Repository\CustomerRepository',
+        'Invoices -> App\Module\Customers\Domain\ValueObject\CustomerSnapshot',
+        'Invoices -> App\Module\Products\Application\PickProducts',
+        'Invoices -> App\Module\Products\Domain\Model\Product',
+        'Invoices -> App\Module\Products\Domain\Repository\ProductRepository',
+        'Invoices -> App\Module\Products\Domain\Service\LotCode',
+        'Invoices -> App\Module\Quotes\Domain\Model\Quote',
+        'Invoices -> App\Module\Quotes\Domain\Model\QuoteLine',
+        'Invoices -> App\Module\Quotes\Domain\Model\QuoteLineTax',
+        'PriceLists -> App\Module\Customers\Domain\Repository\CustomerGroupRepository',
+        'PriceLists -> App\Module\Customers\Domain\Repository\CustomerRepository',
+        'PriceLists -> App\Module\Products\Domain\Model\Product',
+        'PriceLists -> App\Module\Products\Domain\Repository\ProductRepository',
+        'Products -> App\Module\Vendors\Domain\Model\Vendor',
+        'Products -> App\Module\Vendors\Domain\Repository\VendorRepository',
+        'Quotes -> App\Module\Customers\Domain\Model\Customer',
+        'Quotes -> App\Module\Customers\Domain\Repository\CustomerRepository',
+        'Quotes -> App\Module\Customers\Domain\ValueObject\CustomerSnapshot',
+        'Quotes -> App\Module\Products\Domain\Model\Product',
+        'Quotes -> App\Module\Products\Domain\Repository\ProductRepository',
     ];
 
     public function testAModuleNamesNoClassOfAnotherThatRuns(): void
@@ -49,7 +89,7 @@ final class ModuleBoundariesTest extends TestCase
                 if ($this->isContract($name) || $this->onlyConstantsRead($content, $name, $short)) {
                     continue;
                 }
-                if ((self::AWAITING_A_RULING[$relative] ?? null) === $name) {
+                if (\in_array("$module -> $name", self::AWAITING_A_RULING, true)) {
                     continue;
                 }
                 $violations[] = "$relative runs $name";
@@ -59,12 +99,28 @@ final class ModuleBoundariesTest extends TestCase
         self::assertSame([], $violations, "A module reaches another through a port it owns, answered in the other's Infrastructure:\n".implode("\n", $violations));
     }
 
-    public function testEveryImportAwaitingARulingIsStillThere(): void
+    public function testEveryCrossingAwaitingARulingIsStillThere(): void
     {
-        foreach (self::AWAITING_A_RULING as $relative => $name) {
-            $content = (string) file_get_contents(self::MODULES.'/'.$relative);
-            self::assertStringContainsString("use $name;", $content, "$relative no longer imports $name: take it off the list, which only shrinks");
+        $named = [];
+        foreach ($this->files() as $relative => $path) {
+            $module = (string) strstr($relative, '/', true);
+            foreach (array_keys($this->foreignNames((string) file_get_contents($path), $module)) as $name) {
+                $named["$module -> $name"] = true;
+            }
         }
+        foreach (self::AWAITING_A_RULING as $crossing) {
+            self::assertArrayHasKey($crossing, $named, "No file names $crossing any more: take it off the list, which only shrinks");
+        }
+    }
+
+    public function testAnotherModulesRepositoryIsNeverAContractThoughItIsAnInterface(): void
+    {
+        $contract = new \ReflectionMethod($this, 'isContract');
+
+        self::assertTrue(interface_exists('App\\Module\\Invoices\\Domain\\Repository\\InvoiceRepository'));
+        self::assertFalse($contract->invoke($this, 'App\\Module\\Invoices\\Domain\\Repository\\InvoiceRepository'));
+        self::assertTrue($contract->invoke($this, 'App\\Module\\DeliveryNotes\\Application\\InvoicedLines'), 'a port is one');
+        self::assertFalse($contract->invoke($this, 'App\\Module\\Invoices\\Domain\\Model\\Invoice'), 'an entity runs');
     }
 
     /** @return array<string, string> every PHP file of every module, by its path under src/Module */
@@ -90,13 +146,13 @@ final class ModuleBoundariesTest extends TestCase
     private function foreignNames(string $content, string $module): array
     {
         $names = [];
-        preg_match_all('/^use (App\\\\Module\\\\(\w+)\\\\(?:Application|Infrastructure)\\\\[A-Za-z0-9_\\\\]+)(?: as (\w+))?;/m', $content, $uses, \PREG_SET_ORDER);
+        preg_match_all('/^use (App\\\\Module\\\\(\w+)\\\\(?:Application|Domain|Infrastructure)\\\\[A-Za-z0-9_\\\\]+)(?: as (\w+))?;/m', $content, $uses, \PREG_SET_ORDER);
         foreach ($uses as $use) {
             if ($use[2] !== $module) {
                 $names[$use[1]] = '' !== ($use[3] ?? '') ? $use[3] : substr((string) strrchr($use[1], '\\'), 1);
             }
         }
-        preg_match_all('/\\\\(App\\\\Module\\\\(\w+)\\\\(?:Application|Infrastructure)\\\\[A-Za-z0-9_\\\\]+)/', $content, $inline, \PREG_SET_ORDER);
+        preg_match_all('/\\\\(App\\\\Module\\\\(\w+)\\\\(?:Application|Domain|Infrastructure)\\\\[A-Za-z0-9_\\\\]+)/', $content, $inline, \PREG_SET_ORDER);
         foreach ($inline as $reference) {
             if ($reference[2] !== $module) {
                 $names[$reference[1]] ??= '\\'.$reference[1];
@@ -110,6 +166,10 @@ final class ModuleBoundariesTest extends TestCase
     {
         if (!class_exists($name) && !interface_exists($name) && !enum_exists($name)) {
             self::fail("$name is named but does not exist");
+        }
+        // Another module's repository is its storage, read or written past the module that keeps it: never a contract.
+        if (str_contains($name, '\\Domain\\Repository\\')) {
+            return false;
         }
         $class = new \ReflectionClass($name);
         if ($class->isInterface() || $class->isEnum() || $class->isSubclassOf(\Throwable::class)) {

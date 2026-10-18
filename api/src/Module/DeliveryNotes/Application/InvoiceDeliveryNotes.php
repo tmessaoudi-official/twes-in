@@ -22,11 +22,6 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
-use App\Module\Invoices\Domain\Model\Invoice;
-use App\Module\Invoices\Domain\Repository\InvoiceRepository;
-use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
-use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
-use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Products\Domain\Service\LotCode;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
@@ -47,7 +42,7 @@ final readonly class InvoiceDeliveryNotes
 
     public function __construct(
         private DeliveryNoteRepository $notes,
-        private InvoiceRepository $invoices,
+        private InvoicedLines $invoiced,
         private InvoiceDrafts $invoicing,
         private Transactions $transactions,
         private AuditTrail $audit,
@@ -66,13 +61,15 @@ final readonly class InvoiceDeliveryNotes
      * @param list<Uuid>                 $noteIds
      * @param array<string, string>|null $quantities by delivery note line id
      *
+     * @return Uuid the draft's id
+     *
      * @throws InvalidDeliveryNote           on `deliveryNoteIds`: none, one named twice, one that is not the company's,
      *                                       or notes of two customers or two establishments; on `quantities`: a line that
      *                                       is not one of the notes', or a quantity that is not above zero or is more than is left
      * @throws DeliveryNoteTransitionRefused when a note is not validated or delivered, or is on an invoice that is not cancelled
      * @throws InvalidInvoice                when what a note says no longer makes an invoice line
      */
-    public function draftInvoice(Company $company, array $noteIds, ?Uuid $actorUserId, ?array $quantities = null): Invoice
+    public function draftInvoice(Company $company, array $noteIds, ?Uuid $actorUserId, ?array $quantities = null): Uuid
     {
         if ([] === $noteIds) {
             throw new InvalidDeliveryNote('deliveryNoteIds', 'An invoice is drafted from at least one delivery note.');
@@ -82,7 +79,7 @@ final readonly class InvoiceDeliveryNotes
             throw new InvalidDeliveryNote('deliveryNoteIds', 'Each delivery note is named once.');
         }
 
-        return $this->transactions->run(function () use ($company, $noteIds, $named, $actorUserId, $quantities): Invoice {
+        return $this->transactions->run(function () use ($company, $noteIds, $named, $actorUserId, $quantities): Uuid {
             [$notes, $lines, $header] = $this->plan($company, $noteIds, $named, $quantities);
 
             return $this->invoicing->createFromLines($company, $notes[0]->getEstablishment(), $notes[0]->getCustomer(), $header, $lines, ['deliveryNoteIds' => array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes)], $actorUserId);
@@ -103,7 +100,7 @@ final readonly class InvoiceDeliveryNotes
      * @throws DeliveryNoteTransitionRefused as `draftInvoice`
      * @throws InvalidInvoice                when what a note says no longer makes an invoice line
      */
-    public function addToDraft(Company $company, Uuid $invoiceId, array $noteIds, ?Uuid $actorUserId, ?array $quantities = null): Invoice
+    public function addToDraft(Company $company, Uuid $invoiceId, array $noteIds, ?Uuid $actorUserId, ?array $quantities = null): void
     {
         if ([] === $noteIds) {
             throw new InvalidDeliveryNote('deliveryNoteIds', 'Delivery notes are added to an invoice at least one at a time.');
@@ -113,14 +110,14 @@ final readonly class InvoiceDeliveryNotes
             throw new InvalidDeliveryNote('deliveryNoteIds', 'Each delivery note is named once.');
         }
 
-        return $this->transactions->run(function () use ($company, $invoiceId, $noteIds, $named, $actorUserId, $quantities): Invoice {
-            $invoice = $this->invoices->lockedOfIdInCompany($invoiceId, $company->getId()) ?? throw new InvoiceNotFound();
+        $this->transactions->run(function () use ($company, $invoiceId, $noteIds, $named, $actorUserId, $quantities): void {
+            $invoice = $this->invoicing->ofId($company, $invoiceId, true) ?? throw new InvoiceNotFound();
             [$notes, $lines] = $this->plan($company, $noteIds, $named, $quantities);
-            if (!$notes[0]->getCustomer()->getId()->equals($invoice->getCustomer()->getId()) || !$notes[0]->getEstablishment()->getId()->equals($invoice->getEstablishment()->getId())) {
+            if (!$notes[0]->getCustomer()->getId()->equals($invoice->customerId) || !$notes[0]->getEstablishment()->getId()->equals($invoice->establishmentId)) {
                 throw new InvalidDeliveryNote('invoiceId', 'Delivery notes are added to an invoice of their customer and their establishment.');
             }
 
-            return $this->invoicing->appendLines($company, $invoiceId, $lines, ['deliveryNoteIds' => array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes)], $actorUserId);
+            $this->invoicing->appendLines($company, $invoiceId, $lines, ['deliveryNoteIds' => array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes)], $actorUserId);
         });
     }
 
@@ -149,8 +146,8 @@ final readonly class InvoiceDeliveryNotes
         }
         $target = null;
         if (null !== $invoiceId) {
-            $target = $this->invoices->ofIdInCompany($invoiceId, $company->getId()) ?? throw new InvoiceNotFound();
-            if (InvoiceStatus::Draft !== $target->getStatus()) {
+            $target = $this->invoicing->ofId($company, $invoiceId, false) ?? throw new InvoiceNotFound();
+            if (!$target->draft) {
                 throw new InvoiceNotDraft();
             }
         }
@@ -158,8 +155,8 @@ final readonly class InvoiceDeliveryNotes
         foreach ($this->notes->ofIdsInCompany(array_values($unique), $company->getId()) as $note) {
             $found[$note->getId()->toRfc4122()] = $note;
         }
-        $left = $this->invoices->invoicedQuantities($company->getId(), self::lineIds(array_values($found)));
-        [$customer, $establishment] = null === $target ? [null, null] : [$target->getCustomer()->getId(), $target->getEstablishment()->getId()];
+        $left = $this->invoiced->taken($company->getId(), self::lineIds(array_values($found)));
+        [$customer, $establishment] = null === $target ? [null, null] : [$target->customerId, $target->establishmentId];
         $rows = [];
         foreach ($unique as $key => $id) {
             $note = $found[$key] ?? null;
@@ -202,7 +199,7 @@ final readonly class InvoiceDeliveryNotes
      * @param list<string>               $named
      * @param array<string, string>|null $quantities
      *
-     * @return array{list<DeliveryNote>, list<InvoiceLineDetails>, InvoiceHeader}
+     * @return array{list<DeliveryNote>, list<InvoiceLineOfNote>, InvoiceHeaderOfNotes}
      */
     private function plan(Company $company, array $noteIds, array $named, ?array $quantities): array
     {
@@ -227,7 +224,7 @@ final readonly class InvoiceDeliveryNotes
                 throw new InvalidDeliveryNote('deliveryNoteIds', 'An invoice is drafted from delivery notes of one establishment, whose series numbers it.');
             }
         }
-        $taken = $this->invoices->invoicedQuantities($company->getId(), self::lineIds($notes));
+        $taken = $this->invoiced->taken($company->getId(), self::lineIds($notes));
         $left = [];
         foreach ($notes as $note) {
             foreach ($note->getLines() as $line) {
@@ -248,8 +245,8 @@ final readonly class InvoiceDeliveryNotes
                 }
             }
         } elseif ([] === array_filter($left, static fn (\BcMath\Number $each): bool => $each->compare(0) > 0)) {
-            $held = $this->invoices->carryingDeliveryNoteLines($company->getId(), self::lineIds($notes))[0] ?? null;
-            throw new DeliveryNoteTransitionRefused(\sprintf('Nothing is left to invoice on these delivery notes%s.', null === $held ? '' : \sprintf(': they are on the invoice %s, which is not cancelled', $held->getNumber() ?? $held->getId()->toRfc4122())));
+            $held = $this->invoiced->carrying($company->getId(), self::lineIds($notes))[0] ?? null;
+            throw new DeliveryNoteTransitionRefused(\sprintf('Nothing is left to invoice on these delivery notes%s.', null === $held ? '' : \sprintf(': they are on the invoice %s, which is not cancelled', $held->number ?? $held->id->toRfc4122())));
         }
 
         $lines = [];
@@ -260,13 +257,12 @@ final readonly class InvoiceDeliveryNotes
                 if (null === $quantity || (null === $quantities && $left[$key]->compare(0) <= 0)) {
                     continue;
                 }
-                $lines[] = new InvoiceLineDetails(
+                $lines[] = new InvoiceLineOfNote(
                     $line->getProduct(),
                     $line->getDescription(),
                     $quantity,
                     $line->getUnit(),
                     $line->getUnitPriceNet(),
-                    null,
                     array_map(static fn (DeliveryNoteLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
                     $line->getId(),
                     LotCode::carried($line->getProduct(), $line->getLotCode()),
@@ -274,7 +270,7 @@ final readonly class InvoiceDeliveryNotes
             }
         }
         $references = array_values(array_unique(array_map(static fn (DeliveryNote $note): string => $note->getHeader()->customerReference ?? '', $notes)));
-        $header = new InvoiceHeader(self::lastDelivery($notes), customerReference: 1 === \count($references) ? $references[0] : null);
+        $header = new InvoiceHeaderOfNotes(self::lastDelivery($notes), 1 === \count($references) ? $references[0] : null);
 
         return [$notes, $lines, $header];
     }
@@ -290,7 +286,7 @@ final readonly class InvoiceDeliveryNotes
     public function left(Company $company, Uuid $noteId): array
     {
         $note = $this->notes->ofIdInCompany($noteId, $company->getId()) ?? throw new DeliveryNoteNotFound();
-        $taken = $this->invoices->invoicedQuantities($company->getId(), self::lineIds([$note]));
+        $taken = $this->invoiced->taken($company->getId(), self::lineIds([$note]));
         $lines = [];
         foreach ($note->getLines() as $line) {
             $key = $line->getId()->toRfc4122();
@@ -329,7 +325,7 @@ final readonly class InvoiceDeliveryNotes
                 // A note is invoiced once the invoices issued take all of it; until then the rest is still to invoice. One
                 // that cannot be invoiced at all is not skipped here: marking it says why.
                 if (DeliveryNoteStatus::Validated === $note->getStatus() || DeliveryNoteStatus::Delivered === $note->getStatus()) {
-                    $issued = $this->invoices->invoicedQuantities($companyId, self::lineIds([$note]), true);
+                    $issued = $this->invoiced->taken($companyId, self::lineIds([$note]), true);
                     foreach ($note->getLines() as $line) {
                         if (Decimal::of($line->getQuantity())->compare(Decimal::of($issued[$line->getId()->toRfc4122()] ?? '0')) > 0) {
                             continue 2;
