@@ -12,14 +12,14 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
-use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
-use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Output\InvoiceView;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Payload\InvoiceSearchReader;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -34,7 +34,7 @@ final readonly class InvoiceCollectionProvider implements ProviderInterface
 {
     public function __construct(
         private ManageInvoices $manage,
-        private InvoiceTotals $totals,
+        private InvoiceView $view,
         private CompanyGuard $guard,
         private Paging $paging,
     ) {
@@ -48,9 +48,8 @@ final readonly class InvoiceCollectionProvider implements ProviderInterface
 
         $withCosts = $this->guard->may($company, ProductPermission::COST_READ);
 
-        return $this->paging->paginator(
-            $this->manage->search($company, $search, $this->paging->request($operation, $context)),
-            fn (Invoice $invoice): InvoiceResource => InvoiceResource::of($invoice, $this->totals->figures($invoice), $withCosts),
-        );
+        $page = $this->manage->search($company, $search, $this->paging->request($operation, $context));
+
+        return $this->paging->paginator(new Page($this->view->page($company, $page->items, $withCosts), $page->total, $page->request), static fn (InvoiceResource $row): InvoiceResource => $row);
     }
 }

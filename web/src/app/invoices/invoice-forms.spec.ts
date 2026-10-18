@@ -105,6 +105,7 @@ function invoice(overrides: Partial<InvoiceRow> = {}): InvoiceRow {
     creditNoteReason: null,
     deposit: false,
     quoteId: null,
+    deliveryNotes: [],
     number: 'FAC-2026-00043',
     status: 'issued',
     customerId: 'k1',

@@ -1791,6 +1791,8 @@
     },
     "deposit_draft_title": "Draft deposit invoice",
     "from_quote": "See the quote it came from",
+    "from_delivery_notes": "Original delivery notes",
+    "delivery_note_unnumbered": "delivery note",
     "tours": {
       "first_invoice": {
         "title": "Your first invoice",

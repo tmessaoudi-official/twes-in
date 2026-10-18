@@ -26,6 +26,7 @@ const base: InvoiceRow = {
   creditNoteReason: null,
   deposit: false,
   quoteId: null,
+  deliveryNotes: [],
   number: 'FAC-2026-00045',
   status: 'issued',
   customerId: 'k1',

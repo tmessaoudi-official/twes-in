@@ -21,6 +21,7 @@ use App\Fiscal\Domain\Calculation\SectionSubtotals;
 use App\Fiscal\Infrastructure\ApiPlatform\Output\DocumentPreview;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
+use App\Module\Invoices\Application\SourceDeliveryNote;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\Model\InvoiceLine;
@@ -221,6 +222,26 @@ final class InvoiceResource
     #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
     #[Groups([self::READ])]
     public ?string $quoteId = null;
+
+    /**
+     * The delivery notes its lines were taken from, each once, by number, so the invoice links back to them; none for
+     * whoever may not open delivery notes.
+     *
+     * @var list<array{deliveryNoteId: string, number: string|null}>
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['deliveryNoteId', 'number'],
+            'properties' => [
+                'deliveryNoteId' => self::ID,
+                'number' => self::TEXT_OR_NULL,
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $deliveryNotes = [];
 
     /** Why a credit note corrects its invoice, stated when it is drafted and printed on it; null for an invoice. */
     #[Assert\NotBlank(normalizer: 'trim', groups: [self::CREDIT])]
@@ -536,10 +557,11 @@ final class InvoiceResource
     public ?string $footer = null;
 
     /**
-     * @param bool                  $withCosts  whether the caller may read costs (product.cost.read), which each issued line froze
-     * @param array<string, string> $sourceRoom what a draft's lines may take of their delivery note lines, by note line id
+     * @param bool                     $withCosts     whether the caller may read costs (product.cost.read), which each issued line froze
+     * @param array<string, string>    $sourceRoom    what a draft's lines may take of their delivery note lines, by note line id
+     * @param list<SourceDeliveryNote> $deliveryNotes the delivery notes its lines were taken from, each once, by number
      */
-    public static function of(Invoice $invoice, InvoiceFigures $figures, bool $withCosts = false, array $sourceRoom = []): self
+    public static function of(Invoice $invoice, InvoiceFigures $figures, bool $withCosts = false, array $sourceRoom = [], array $deliveryNotes = []): self
     {
         $header = $invoice->getHeader();
         $resource = new self();
@@ -549,6 +571,7 @@ final class InvoiceResource
         $resource->correctsInvoiceId = $invoice->getCorrectedInvoice()?->getId()->toRfc4122();
         $resource->deposit = $invoice->isDeposit();
         $resource->quoteId = $invoice->getQuoteId()?->toRfc4122();
+        $resource->deliveryNotes = array_map(static fn (SourceDeliveryNote $note): array => ['deliveryNoteId' => $note->id->toRfc4122(), 'number' => $note->number], $deliveryNotes);
         $resource->creditNoteReason = $invoice->getCreditNoteReason();
         $resource->number = $invoice->getNumber();
         $resource->status = $invoice->getStatus()->value;

@@ -12,8 +12,8 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Invoices\Application\InvoiceNotFound;
-use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Output\InvoiceView;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
@@ -24,7 +24,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /** @implements ProviderInterface<InvoiceResource> */
 final readonly class InvoiceItemProvider implements ProviderInterface
 {
-    public function __construct(private ManageInvoices $manage, private InvoiceTotals $totals, private CompanyGuard $guard)
+    public function __construct(private ManageInvoices $manage, private InvoiceView $view, private CompanyGuard $guard)
     {
     }
 
@@ -38,6 +38,6 @@ final readonly class InvoiceItemProvider implements ProviderInterface
             throw new NotFoundHttpException('No such invoice.', $absent);
         }
 
-        return InvoiceResource::of($invoice, $this->totals->figures($invoice), $this->guard->may($company, ProductPermission::COST_READ), $this->manage->roomOnSources($company, $invoice));
+        return $this->view->of($company, $invoice, $this->guard->may($company, ProductPermission::COST_READ), $this->manage->roomOnSources($company, $invoice));
     }
 }

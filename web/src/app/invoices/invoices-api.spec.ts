@@ -43,6 +43,7 @@ const issued = {
   id: 'i1',
   type: 'invoice',
   correctsInvoiceId: null,
+  deliveryNotes: [{ deliveryNoteId: 'n1', number: 'BL-2026-00004' }],
   number: 'FAC-2026-00045',
   status: 'partially_paid',
   customerId: 'k1',
@@ -289,6 +290,7 @@ describe('InvoicesApi', () => {
     expect(invoice.status).toBe('partially_paid');
     expect(invoice.amountDue).toBe('5951.000');
     expect(invoice.fixedTaxes).toEqual([{ code: 'TIMBRE', amount: '1.000' }]);
+    expect(invoice.deliveryNotes).toEqual([{ deliveryNoteId: 'n1', number: 'BL-2026-00004' }]);
     expect(invoice.lines[0]).toMatchObject({
       discountRate: null,
       discountAmount: '500.000',

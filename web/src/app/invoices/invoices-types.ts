@@ -282,6 +282,12 @@ export interface BulkPaid {
   total: string;
 }
 
+/** A delivery note an invoice's lines were taken from, which the invoice links back to. */
+export interface SourceNote {
+  deliveryNoteId: string;
+  number: string | null;
+}
+
 export interface InvoiceRow {
   id: string;
   /** The version read, which a revision sends back; one saved since is refused as `record_changed`. */
@@ -295,6 +301,8 @@ export interface InvoiceRow {
   deposit: boolean;
   /** The quote it was drafted from, a deposit or the invoice of the whole; null otherwise. */
   quoteId: string | null;
+  /** The delivery notes its lines were taken from, by number; none for whoever may not open delivery notes. */
+  deliveryNotes: SourceNote[];
   /** Null until the document is issued. */
   number: string | null;
   status: InvoiceStatus;

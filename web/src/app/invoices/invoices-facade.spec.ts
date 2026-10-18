@@ -21,6 +21,7 @@ const draft: InvoiceRow = {
   creditNoteReason: null,
   deposit: false,
   quoteId: null,
+  deliveryNotes: [],
   number: null,
   status: 'draft',
   customerId: 'k1',

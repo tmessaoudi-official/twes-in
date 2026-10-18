@@ -14,12 +14,12 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Module\Invoices\Application\Credit\CreditExcessTo;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceNumberTaken;
-use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\InvoiceWorkflow;
 use App\Module\Invoices\Application\Print\MentionDatumMissing;
 use App\Module\Invoices\Application\Print\PartyIdentityMissing;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Output\InvoiceView;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\CreditNoteRight;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
@@ -42,7 +42,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
  */
 final readonly class IssueInvoiceProcessor implements ProcessorInterface
 {
-    public function __construct(private InvoiceWorkflow $workflow, private InvoiceTotals $totals, private CompanyGuard $guard, private CreditNoteRight $creditNotes)
+    public function __construct(private InvoiceWorkflow $workflow, private InvoiceView $view, private CompanyGuard $guard, private CreditNoteRight $creditNotes)
     {
     }
 
@@ -75,6 +75,6 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s_identity: %s', $unnamed->party, $unnamed->getMessage()), $unnamed);
         }
 
-        return InvoiceResource::of($invoice, $this->totals->figures($invoice), $this->guard->may($company, ProductPermission::COST_READ));
+        return $this->view->of($company, $invoice, $this->guard->may($company, ProductPermission::COST_READ));
     }
 }

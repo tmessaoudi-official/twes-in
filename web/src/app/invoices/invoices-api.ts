@@ -588,6 +588,10 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
     creditNoteReason: raw.creditNoteReason ?? null,
     deposit: raw.deposit ?? false,
     quoteId: raw.quoteId ?? null,
+    deliveryNotes: (raw.deliveryNotes ?? []).map((note) => ({
+      deliveryNoteId: note.deliveryNoteId,
+      number: note.number,
+    })),
     number: raw.number ?? null,
     status: INVOICE_STATUSES.find((status) => status === raw.status) ?? 'draft',
     customerId: raw.customerId ?? '',

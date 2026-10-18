@@ -172,6 +172,7 @@ const draft: InvoiceRow = {
   creditNoteReason: null,
   deposit: false,
   quoteId: null,
+  deliveryNotes: [],
   number: null,
   status: 'draft',
   customerId: 'k1',
@@ -1231,6 +1232,30 @@ describe('InvoicePage', () => {
     fixture.destroy();
     await open('i1');
     expect(q('invoice-quote')?.getAttribute('href')).toBe('/quotes/q1');
+  });
+
+  it('leads back to each delivery note its lines were taken from, and says nothing when none', async () => {
+    invoice.set({
+      ...draft,
+      deliveryNotes: [
+        { deliveryNoteId: 'n1', number: 'BL-2026-00004' },
+        { deliveryNoteId: 'n2', number: null },
+      ],
+    });
+    await open('i1');
+
+    expect(q('invoice-delivery-notes')?.textContent).toContain('invoices.from_delivery_notes');
+    expect(q('invoice-delivery-note-n1')?.textContent?.trim()).toBe('BL-2026-00004');
+    expect(q('invoice-delivery-note-n1')?.getAttribute('href')).toBe('/delivery-notes/n1');
+    expect(q('invoice-delivery-note-n2')?.textContent?.trim()).toBe(
+      'invoices.delivery_note_unnumbered',
+    );
+    expect(q('invoice-delivery-note-n2')?.getAttribute('href')).toBe('/delivery-notes/n2');
+
+    fixture.destroy();
+    invoice.set({ ...draft, deliveryNotes: [] });
+    await open('i1');
+    expect(q('invoice-delivery-notes')).toBeNull();
   });
 
   it('shows a line giving a deposit back as written, never edited, and sends it back as it came', async () => {
