@@ -12,7 +12,7 @@
     <div role="alert" data-testid="modules-error" class="text-error">
       <p>{{ 'company.modules.errors.' + code | translate }}</p>
       @if (blockers().length > 0) {
-        <ul class="list-disc pl-6">
+        <ul class="list-disc ps-6">
           @for (blocker of blockers(); track blocker.key) {
             <li>{{ blocker.labelKey | translate }}</li>
           }

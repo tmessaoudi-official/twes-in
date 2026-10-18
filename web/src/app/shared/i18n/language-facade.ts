@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { DOCUMENT, effect, inject, Injectable, signal } from '@angular/core';
+import { DOCUMENT, effect, inject, Injectable, InjectionToken, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { SettingsFacade } from '../settings/settings-facade';
 import { type Language, PRESENTATION, SUPPORTED_LANGUAGES } from '../settings/settings-registry';
-import { DEFAULT_LANGUAGE, nameOf } from './languages';
+import { DEFAULT_LANGUAGE, type Direction, directionOf, nameOf } from './languages';
 import { TextsParts } from './texts-part';
 
 export { type Language, SUPPORTED_LANGUAGES } from '../settings/settings-registry';
@@ -16,6 +16,15 @@ export { type Language, SUPPORTED_LANGUAGES } from '../settings/settings-registr
  */
 export const LANGUAGE_NAMES: Readonly<Record<Language, string>> = Object.fromEntries(
   SUPPORTED_LANGUAGES.map((language) => [language, nameOf(language)]),
+);
+
+/** The way a language is written, the catalogue's unless a spec says otherwise. */
+export const LANGUAGE_DIRECTION = new InjectionToken<(tag: string) => Direction>(
+  'LANGUAGE_DIRECTION',
+  {
+    providedIn: 'root',
+    factory: () => directionOf,
+  },
 );
 
 export class UnsupportedLanguage extends Error {
@@ -31,7 +40,8 @@ export function isSupportedLanguage(value: string): value is Language {
 
 /**
  * The interface language, remembered as a presentation setting: the browser keeps it before sign-in, the
- * presentation chain after. Switching loads the translations first, then moves the document's `lang` with them.
+ * presentation chain after. Switching loads the translations first, then moves the document's `lang` and `dir` with
+ * them; both are set from the first language as the facade starts, so a page is never without them.
  */
 @Injectable({ providedIn: 'root' })
 export class LanguageFacade {
@@ -39,6 +49,7 @@ export class LanguageFacade {
   private readonly document = inject(DOCUMENT);
   private readonly settings = inject(SettingsFacade);
   private readonly parts = inject(TextsParts);
+  private readonly directionOf = inject(LANGUAGE_DIRECTION);
   private readonly chosen = this.settings.value(PRESENTATION.language);
   private readonly currentSignal = signal<Language>(this.initial());
   /** The language being loaded, so a choice is not loaded a second time when its setting echoes back. */
@@ -47,6 +58,7 @@ export class LanguageFacade {
   readonly current = this.currentSignal.asReadonly();
 
   constructor() {
+    this.mark(this.currentSignal());
     // A language the settings answer later (the account's own, once signed in) is applied as it arrives.
     effect(() => {
       const language = this.chosen();
@@ -71,7 +83,12 @@ export class LanguageFacade {
     await firstValueFrom(this.translate.use(language));
     this.parts.share(language);
     this.currentSignal.set(language);
+    this.mark(language);
+  }
+
+  private mark(language: Language): void {
     this.document.documentElement.lang = language;
+    this.document.documentElement.dir = this.directionOf(language);
   }
 
   private initial(): Language {

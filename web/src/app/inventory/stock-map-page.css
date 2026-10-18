@@ -158,7 +158,17 @@
 /* Moved only, never faded: a scan for contrast mid-way would read a colour that is on its way. */
 @keyframes twes-map-slide {
   from {
-    transform: translateX(1.5rem);
+    transform: translateX(1.5rem); /* physical-direction: left to right; turned below */
+  }
+}
+
+.twes-map-full .twes-map-panel:dir(rtl) {
+  animation-name: twes-map-slide-rtl;
+}
+
+@keyframes twes-map-slide-rtl {
+  from {
+    transform: translateX(-1.5rem); /* physical-direction: right to left */
   }
 }
 

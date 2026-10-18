@@ -2,7 +2,7 @@
   <header class="flex items-center gap-3">
     <mat-icon aria-hidden="true">barcode_scanner</mat-icon>
     <h2 class="m-0 text-lg font-medium">{{ 'products.scan.title' | translate }}</h2>
-    <span class="ml-auto font-mono text-sm opacity-80" data-testid="product-scan-code">{{
+    <span class="ms-auto font-mono text-sm opacity-80" data-testid="product-scan-code">{{
       code
     }}</span>
   </header>
@@ -94,7 +94,7 @@
         >
           <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
           {{ 'products.scan.actions.' + action.id | translate: labelParams }}
-          <kbd class="ml-1 text-xs opacity-80" aria-hidden="true">{{
+          <kbd class="ms-1 text-xs opacity-80" aria-hidden="true">{{
             first ? '↵' : action.key.toUpperCase()
           }}</kbd>
         </button>

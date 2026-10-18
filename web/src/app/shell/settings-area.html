@@ -11,7 +11,7 @@
       class="m-4 flex items-center gap-1 self-start text-sm font-medium text-primary lg:hidden"
       data-testid="settings-back"
     >
-      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">arrow_back</mat-icon>
       {{ 'shell.settings_back' | translate }}
     </a>
   }
@@ -23,7 +23,7 @@
     [attr.aria-label]="'shell.settings_navigation' | translate"
     [attr.data-at-index]="atIndex()"
     [attr.data-list]="rail() ? 'rail' : 'expanded'"
-    class="min-h-full shrink-0 data-[at-index=false]:max-lg:hidden lg:border-r lg:border-outline-variant"
+    class="min-h-full shrink-0 data-[at-index=false]:max-lg:hidden lg:border-e lg:border-outline-variant"
     [class.lg:w-80]="!rail()"
     [class.lg:w-20]="rail()"
     data-testid="settings-nav"

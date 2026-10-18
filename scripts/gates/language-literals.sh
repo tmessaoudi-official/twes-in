@@ -20,20 +20,29 @@ if ((${#tags[@]} == 0)); then
   exit 1
 fi
 alternatives=$(IFS='|'; echo "${tags[*]}")
-literal="['\"](${alternatives})(-[A-Za-z0-9]{1,8})*['\"]"
+# Written as BCP 47 (fr-FR) or as ICU writes it for intl (fr_FR, ar_Arab_TN), whose script is capitalised and region in
+# capitals, so a key such as fr_vat_key is no tag.
+literal="['\"](${alternatives})((-[A-Za-z0-9]{1,8})*|(_[A-Z][a-z]{3})?(_([A-Z]{2}|[0-9]{3}))?)['\"]"
 
 scan() {
-  local dir=$1; shift
+  local dir=$1 found status unread; shift
   if [[ ! -d "$root/$dir" ]]; then problems+=("found no $dir"); return; fi
+  # A file nothing can read, or a pattern grep refuses (its answer 2, where 1 is only "nothing found"), is a failure:
+  # it would otherwise read as a tree with nothing to find.
+  while IFS= read -r unread; do problems+=("${unread#"$root/"}: cannot be read"); done < <(find "$root/$dir" -type f ! -readable)
+  found=$(grep -rnE "$@" --exclude='*.spec.ts' "$literal" "$root/$dir"); status=$?
+  if ((status > 1)); then problems+=("grep could not search $dir (answer $status)"); return; fi
+  [[ -z "$found" ]] && return
   # Split by hand: `IFS=: read` drops a trailing colon, the end of `language-literal:` with no reason after it.
   while IFS= read -r entry; do
     file=${entry%%:*}; rest=${entry#*:}; n=${rest%%:*}; line=${rest#*:}
+    [[ "$file" == "$root/web/src/app/api/"* ]] && continue
     code=${line#"${line%%[![:space:]]*}"}
     # A comment that names a language is not one written out.
     [[ "$code" == '*'* || "$code" == '/*'* || "$code" == '//'* || "$code" == '#'* || "$code" == '{#'* || "$code" == '<!--'* ]] && continue
     [[ "$code" =~ language-literal:[[:space:]]*[[:alnum:]] ]] && continue
     problems+=("${file#"$root/"}:$n: ${code:0:110}")
-  done < <(grep -rnE "$@" --exclude='*.spec.ts' "$literal" "$root/$dir" | grep -v "^$root/web/src/app/api/")
+  done <<<"$found"
 }
 scan api/src --include='*.php'
 scan api/templates --include='*.twig'

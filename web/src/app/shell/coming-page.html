@@ -2,7 +2,9 @@
   @if (entry(); as entry) {
     <p class="flex items-center gap-2 text-sm text-on-surface-variant" data-testid="coming-crumb">
       {{ 'nav.sections.' + entry.section | translate }}
-      <mat-icon aria-hidden="true" class="!size-4 !text-base">chevron_right</mat-icon>
+      <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror !size-4 !text-base"
+        >chevron_right</mat-icon
+      >
       {{ entry.labelKey | translate }}
       <span class="twes-soon">{{ 'shell.soon' | translate }}</span>
     </p>

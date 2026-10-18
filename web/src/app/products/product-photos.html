@@ -88,7 +88,7 @@
                   [attr.data-testid]="'product-photo-earlier-' + photo.id"
                   (click)="move(photo, -1)"
                 >
-                  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+                  <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">arrow_back</mat-icon>
                 </button>
                 <button
                   mat-icon-button
@@ -98,7 +98,7 @@
                   [attr.data-testid]="'product-photo-later-' + photo.id"
                   (click)="move(photo, 1)"
                 >
-                  <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+                  <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">arrow_forward</mat-icon>
                 </button>
                 <button
                   mat-icon-button

@@ -71,7 +71,8 @@ export class NotificationBell {
 
   protected open(): void {
     if (this.panel !== null) return;
-    // It slides over the side it was opened from: the rail's row sits at the start of the window.
+    // It slides over the side it was opened from: the rail's row sits at the start of the window. The overlay reads
+    // left and right as the start and the end of the line, so the right edge is the start in Arabic.
     const panel = this.dialog.open(NotificationPanel, {
       position: this.variant() === 'row' ? { top: '0', left: '0' } : { top: '0', right: '0' },
       height: '100dvh',

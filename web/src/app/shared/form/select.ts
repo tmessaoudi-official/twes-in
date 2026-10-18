@@ -80,7 +80,7 @@ function fold(text: string): string {
     @if (labelInside() && label() !== '') {
       <span
         [id]="labelId"
-        class="pointer-events-none absolute -top-2 left-3 z-[1] bg-surface px-1 text-xs leading-4 text-on-surface-variant"
+        class="pointer-events-none absolute -top-2 inset-s-3 z-[1] bg-surface px-1 text-xs leading-4 text-on-surface-variant"
         >{{ label() }}</span
       >
     }
@@ -88,7 +88,7 @@ function fold(text: string): string {
       #trigger
       type="button"
       role="combobox"
-      class="flex min-h-10 w-full items-center gap-1 rounded-control border border-outline bg-surface py-1.5 pr-2 pl-4 text-left text-base text-on-surface hover:border-on-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent-text disabled:opacity-60"
+      class="flex min-h-10 w-full items-center gap-1 rounded-control border border-outline bg-surface py-1.5 pe-2 ps-4 text-start text-base text-on-surface hover:border-on-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent-text disabled:opacity-60"
       aria-haspopup="listbox"
       [id]="inputId() || null"
       [attr.aria-expanded]="open()"

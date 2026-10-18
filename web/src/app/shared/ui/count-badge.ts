@@ -29,7 +29,7 @@ const KINDS: Record<CountKind, { icon: IconName; tone: StatusTone }> = {
     @if (shown()) {
       <span
         role="img"
-        class="inline-flex items-center gap-1 rounded-full py-0.5 pr-2 pl-1.5 text-xs leading-4 font-medium whitespace-nowrap"
+        class="inline-flex items-center gap-1 rounded-full py-0.5 pe-2 ps-1.5 text-xs leading-4 font-medium whitespace-nowrap"
         [attr.data-kind]="kind()"
         [style.background-color]="'var(--twes-status-' + tone() + '-bg)'"
         [style.color]="'var(--twes-status-' + tone() + '-fg)'"

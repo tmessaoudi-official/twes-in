@@ -22,7 +22,7 @@
         @switch (name) {
           @case ('overview') {
             <app-count-badge
-              class="ml-2"
+              class="ms-2"
               kind="waiting"
               data-testid="platform-tab-count-overview"
               [count]="waitingTotal()"
@@ -31,7 +31,7 @@
           }
           @case ('companies') {
             <app-count-badge
-              class="ml-2"
+              class="ms-2"
               kind="total"
               data-testid="platform-tab-count-companies"
               [count]="companyCount()"
@@ -40,7 +40,7 @@
           }
           @case ('accounts') {
             <app-count-badge
-              class="ml-2"
+              class="ms-2"
               kind="total"
               data-testid="platform-tab-count-accounts"
               [count]="accountCount()"
@@ -49,7 +49,7 @@
           }
           @case ('payments') {
             <app-count-badge
-              class="ml-2"
+              class="ms-2"
               kind="waiting"
               data-testid="platform-tab-count-payments"
               [count]="waitingPayments().length"

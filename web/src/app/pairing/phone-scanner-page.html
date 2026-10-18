@@ -110,7 +110,7 @@
     </div>
     @if (unsent()) {
       <button mat-stroked-button type="button" (click)="resend()" data-testid="phone-resend">
-        <mat-icon aria-hidden="true">send</mat-icon>
+        <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">send</mat-icon>
         {{ 'scan.phone.page.resend' | translate }}
       </button>
     }

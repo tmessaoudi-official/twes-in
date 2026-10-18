@@ -185,20 +185,20 @@
         </ul>
         <div class="overflow-x-auto">
           <table class="w-full text-sm" data-testid="import-changes">
-            <thead class="text-left text-on-surface-variant">
+            <thead class="text-start text-on-surface-variant">
               <tr>
-                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.line' | translate }}</th>
-                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.column' | translate }}</th>
-                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.before' | translate }}</th>
+                <th scope="col" class="py-2 pe-4 font-medium">{{ 'import.line' | translate }}</th>
+                <th scope="col" class="py-2 pe-4 font-medium">{{ 'import.column' | translate }}</th>
+                <th scope="col" class="py-2 pe-4 font-medium">{{ 'import.before' | translate }}</th>
                 <th scope="col" class="py-2 font-medium">{{ 'import.after' | translate }}</th>
               </tr>
             </thead>
             <tbody>
               @for (change of shownChanges(); track $index) {
                 <tr class="border-t border-outline-variant align-top">
-                  <th scope="row" class="py-2 pr-4 text-left font-normal">{{ change.line }}</th>
-                  <td class="py-2 pr-4 font-mono">{{ change.column }}</td>
-                  <td class="py-2 pr-4 break-all text-on-surface-variant">{{ change.before }}</td>
+                  <th scope="row" class="py-2 pe-4 text-start font-normal">{{ change.line }}</th>
+                  <td class="py-2 pe-4 font-mono">{{ change.column }}</td>
+                  <td class="py-2 pe-4 break-all text-on-surface-variant">{{ change.before }}</td>
                   <td class="py-2 break-all">{{ change.after }}</td>
                 </tr>
               }
@@ -219,18 +219,18 @@
         <h3 class="text-lg font-semibold">{{ 'import.notes_title' | translate }}</h3>
         <div class="overflow-x-auto">
           <table class="w-full text-sm" data-testid="import-notes">
-            <thead class="text-left text-on-surface-variant">
+            <thead class="text-start text-on-surface-variant">
               <tr>
-                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.line' | translate }}</th>
-                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.column' | translate }}</th>
+                <th scope="col" class="py-2 pe-4 font-medium">{{ 'import.line' | translate }}</th>
+                <th scope="col" class="py-2 pe-4 font-medium">{{ 'import.column' | translate }}</th>
                 <th scope="col" class="py-2 font-medium">{{ 'import.note' | translate }}</th>
               </tr>
             </thead>
             <tbody>
               @for (note of report.notes; track $index) {
                 <tr class="border-t border-outline-variant align-top">
-                  <th scope="row" class="py-2 pr-4 text-left font-normal">{{ note.line }}</th>
-                  <td class="py-2 pr-4 font-mono">{{ note.column }}</td>
+                  <th scope="row" class="py-2 pe-4 text-start font-normal">{{ note.line }}</th>
+                  <td class="py-2 pe-4 font-mono">{{ note.column }}</td>
                   <td class="py-2">{{ noteOf(note) }}</td>
                 </tr>
               }
@@ -245,18 +245,18 @@
         </p>
         <div class="overflow-x-auto">
           <table class="w-full text-sm" data-testid="import-rejections">
-            <thead class="text-left text-on-surface-variant">
+            <thead class="text-start text-on-surface-variant">
               <tr>
-                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.line' | translate }}</th>
-                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.column' | translate }}</th>
+                <th scope="col" class="py-2 pe-4 font-medium">{{ 'import.line' | translate }}</th>
+                <th scope="col" class="py-2 pe-4 font-medium">{{ 'import.column' | translate }}</th>
                 <th scope="col" class="py-2 font-medium">{{ 'import.reason' | translate }}</th>
               </tr>
             </thead>
             <tbody>
               @for (rejection of report.rejected; track $index) {
                 <tr class="border-t border-outline-variant align-top">
-                  <th scope="row" class="py-2 pr-4 text-left font-normal">{{ rejection.line }}</th>
-                  <td class="py-2 pr-4 font-mono">{{ rejection.column }}</td>
+                  <th scope="row" class="py-2 pe-4 text-start font-normal">{{ rejection.line }}</th>
+                  <td class="py-2 pe-4 font-mono">{{ rejection.column }}</td>
                   <td class="py-2">{{ reasonOf(rejection) }}</td>
                 </tr>
               }
@@ -321,13 +321,13 @@
       } @else {
         <div class="overflow-x-auto">
           <table class="w-full text-sm" data-testid="import-columns">
-            <thead class="text-left text-on-surface-variant">
+            <thead class="text-start text-on-surface-variant">
               <tr>
-                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.column' | translate }}</th>
-                <th scope="col" class="py-2 pr-4 font-medium">
+                <th scope="col" class="py-2 pe-4 font-medium">{{ 'import.column' | translate }}</th>
+                <th scope="col" class="py-2 pe-4 font-medium">
                   {{ 'import.heading' | translate }}
                 </th>
-                <th scope="col" class="py-2 pr-4 font-medium">
+                <th scope="col" class="py-2 pe-4 font-medium">
                   {{ 'import.example' | translate }}
                 </th>
                 <th scope="col" class="py-2 font-medium">{{ 'import.note' | translate }}</th>
@@ -336,16 +336,16 @@
             <tbody>
               @for (column of guide.columns; track column.key) {
                 <tr class="border-t border-outline-variant align-top">
-                  <th scope="row" class="py-2 pr-4 text-left font-mono font-normal">
+                  <th scope="row" class="py-2 pe-4 text-start font-mono font-normal">
                     {{ column.key }}
                     @if (column.required) {
                       <span class="text-error" [attr.title]="'import.required' | translate">*</span>
                     }
                   </th>
-                  <td class="py-2 pr-4">
+                  <td class="py-2 pe-4">
                     {{ column.headingKey ? (column.headingKey | translate) : column.label }}
                   </td>
-                  <td class="py-2 pr-4 font-mono text-on-surface-variant">{{ column.example }}</td>
+                  <td class="py-2 pe-4 font-mono text-on-surface-variant">{{ column.example }}</td>
                   <td class="py-2 text-on-surface-variant">
                     {{ column.noteKey ? (column.noteKey | translate) : '' }}
                   </td>
