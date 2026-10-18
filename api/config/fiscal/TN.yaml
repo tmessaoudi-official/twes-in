@@ -26,35 +26,35 @@ identifiers:
 
 tax_components:
     - code: TVA19
-      names: { fr: 'TVA 19 %', en: 'VAT 19%' }
+      names: { fr: 'TVA 19 %', en: 'VAT 19%', ar: 'أ.ق.م 19 %' }
       kind: percentage_line
       family: vat
       rate: '19'
       is_default: true
     - code: TVA13
-      names: { fr: 'TVA 13 %', en: 'VAT 13%' }
+      names: { fr: 'TVA 13 %', en: 'VAT 13%', ar: 'أ.ق.م 13 %' }
       kind: percentage_line
       family: vat
       rate: '13'
     - code: TVA7
-      names: { fr: 'TVA 7 %', en: 'VAT 7%' }
+      names: { fr: 'TVA 7 %', en: 'VAT 7%', ar: 'أ.ق.م 7 %' }
       kind: percentage_line
       family: vat
       rate: '7'
     - code: FODEC
-      names: { fr: 'FODEC 1 %', en: 'FODEC 1%' }
+      names: { fr: 'FODEC 1 %', en: 'FODEC 1%', ar: 'FODEC 1 %' }
       kind: percentage_line
       family: levy
       rate: '1'
       enters_vat_base: true
     - code: TIMBRE
-      names: { fr: 'Droit de timbre', en: 'Stamp duty' }
+      names: { fr: 'Droit de timbre', en: 'Stamp duty', ar: 'معلوم الطابع الجبائي' }
       kind: fixed_document
       family: stamp
       amount: '1.000'
       is_default: true
     - code: RS1
-      names: { fr: 'Retenue à la source 1 %', en: 'Withholding 1%' }
+      names: { fr: 'Retenue à la source 1 %', en: 'Withholding 1%', ar: 'الخصم من المورد 1 %' }
       kind: withholding_total
       family: withholding
       rate: '1'
@@ -103,11 +103,11 @@ numbering:
 
 # UN/ECE Recommendation 20 codes, which EN 16931 (BT-130) expects on every invoice line.
 units:
-    - { code: C62, names: { fr: 'Unité', en: 'Unit' }, decimals: 0 }
-    - { code: H87, names: { fr: 'Pièce', en: 'Piece' }, decimals: 0 }
-    - { code: HUR, names: { fr: 'Heure', en: 'Hour' }, decimals: 2 }
-    - { code: DAY, names: { fr: 'Jour', en: 'Day' }, decimals: 2 }
-    - { code: KGM, names: { fr: 'Kilogramme', en: 'Kilogram' }, decimals: 3 }
-    - { code: MTR, names: { fr: 'Mètre', en: 'Metre' }, decimals: 3 }
-    - { code: MTK, names: { fr: 'Mètre carré', en: 'Square metre' }, decimals: 3 }
-    - { code: LTR, names: { fr: 'Litre', en: 'Litre' }, decimals: 3 }
+    - { code: C62, names: { fr: 'Unité', en: 'Unit', ar: 'وحدة' }, decimals: 0 }
+    - { code: H87, names: { fr: 'Pièce', en: 'Piece', ar: 'قطعة' }, decimals: 0 }
+    - { code: HUR, names: { fr: 'Heure', en: 'Hour', ar: 'ساعة' }, decimals: 2 }
+    - { code: DAY, names: { fr: 'Jour', en: 'Day', ar: 'يوم' }, decimals: 2 }
+    - { code: KGM, names: { fr: 'Kilogramme', en: 'Kilogram', ar: 'كيلوغرام' }, decimals: 3 }
+    - { code: MTR, names: { fr: 'Mètre', en: 'Metre', ar: 'متر' }, decimals: 3 }
+    - { code: MTK, names: { fr: 'Mètre carré', en: 'Square metre', ar: 'متر مربع' }, decimals: 3 }
+    - { code: LTR, names: { fr: 'Litre', en: 'Litre', ar: 'لتر' }, decimals: 3 }

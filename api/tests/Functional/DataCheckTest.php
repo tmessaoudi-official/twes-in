@@ -17,6 +17,7 @@ use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Tenancy\Domain\Model\Company;
+use App\Tests\Support\ShippedLanguages;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\ApplicationTester;
@@ -154,7 +155,7 @@ final class DataCheckTest extends ApiTestCase
         self::assertGreaterThanOrEqual(4, \count($checks));
         $translator = static::getContainer()->get(TranslatorInterface::class);
         self::assertInstanceOf(TranslatorBagInterface::class, $translator);
-        foreach (['fr', 'en'] as $language) {
+        foreach (ShippedLanguages::catalogue()->interface() as $language) {
             $screens = json_decode((string) file_get_contents(\dirname(__DIR__, 3).'/web/public/i18n/'.$language.'.json'), true, flags: \JSON_THROW_ON_ERROR);
             self::assertIsArray($screens);
             foreach ($checks as $check) {

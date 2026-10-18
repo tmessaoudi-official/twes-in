@@ -114,8 +114,11 @@ tables, essay gotchas) was retired with the reset. What applies here:
   each language's BCP 47 tag, name in itself, direction, script, CLDR plural forms, and whether the interface, the documents
   and the legal pages speak it. The API reads it through the `Languages` port (`Shared/Infrastructure/Intl/CatalogueLanguages`;
   `LanguageNames` reads a language as a person writes it), the web through `shared/i18n/languages.ts`; `CatalogueLanguagesTest`
-  holds the two copies equal and `translation.yaml`'s locales to it, and `setting-labels.sh` reads a language setting's choices
-  from it. Adding a language is an entry there and its texts, never code.
+  holds the two copies equal and `translation.yaml`'s locales to it, `setting-labels.sh` reads a language setting's choices
+  from it, and the label gates and the API's text tests check every language it switches on. A mail or a printed document
+  turns over through `text_direction(locale)` (`Shared/Infrastructure/Twig/LanguageExtension`), with logical CSS and every
+  typed value in a `<bdi>`. Adding a language is an entry there and its texts, never code. Arabic's words follow
+  `docs/i18n/ar-glossary.md`.
 - `api/src/Demo/Infrastructure/Dataset/` — the demo dataset, production code (the demo sandbox writes it too):
   `DemoCatalogue` is the data, `DemoDataset` writes one company through the use cases only, under a moved clock
   (`Timeline` runs dated steps in order), for whoever the caller makes its owner. A new workflow or state belongs in it;
@@ -200,12 +203,12 @@ tables, essay gotchas) was retired with the reset. What applies here:
   functions and `DataList` (given a `total`, it shows the page the API answered and emits `queryChange`; the rows-per-page chooser
   shows on every list with rows, at the size a person chose for every list, `presentation.page-size`, unless the address names one); `form/`: `FormDescriptor`, `buildFormGroup` and `DescriptorForm`, and `DecimalInput` (`kind: 'decimal'`, or `appDecimal` on a hand-written input: the screen's decimal separator shown, a comma or a point taken, the API's point kept in the control); `liveRecord`, which merges another person's save into an open editor field by field over `mergeSavedVersion` and `RecordSync`, with the `RecordChanged` banner and `PartConflict` for what merges as one field, such as a document's lines), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
-  `public/i18n/{fr,en}.json` with a parity test; the texts only one page reads in `public/i18n/<page>/{fr,en}.json`,
-  fetched when it first opens (`textsPart('<page>')` on its route, `shared/i18n/texts-part.ts`; « Mon compte » and the
-  expense pages), added to the parity spec's `parts` and measured on their own by the budget gate; texts several screens
+  `public/i18n/{fr,en,ar}.json` with a parity test; the texts only one page reads in `public/i18n/<page>/<lang>.json`,
+  fetched when it first opens (`textsPart('<page>')` on its route, `shared/i18n/texts-part.ts`; `ls web/public/i18n` lists
+  them: « Mon compte », the expense pages, the platform's, the stock plan's, the erasure page and more), added to the parity spec's `parts` and measured on their own by the budget gate; texts several screens
   and dialogs read (the schedule's, `public/i18n/schedule/`) are opened into the root instead, by `textsOpened(name)` on
   a route or `await TextsParts.open(name)` before a dialog, and a screen that says them without opening them shows keys.
-- `api/translations/*.{fr,en}.yaml` — the only strings the API itself emits: the invitation mail (`emails`), fiscal
+- `api/translations/*.{fr,en,ar}.yaml` — the only strings the API itself emits: the invitation mail (`emails`), fiscal
   labels and mentions (`fiscal`), and printed documents (`pdf`, laid out in `api/templates/pdf/`, whose `_document.css.twig` every document shares with the
   built-in layouts and the accent, and rendered by
   Gotenberg). `ApiTranslationParityTest` keeps each pair's keys identical. Everything a person reads in the SPA lives

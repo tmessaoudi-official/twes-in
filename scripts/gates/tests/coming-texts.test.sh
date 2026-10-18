@@ -10,6 +10,13 @@ export COMING_TEXTS_PLANNED_FLOOR=2 COMING_TEXTS_SETTINGS_FLOOR=1 COMING_TEXTS_R
 
 # A tree with two planned modules (quotes, row 7; zakat, no row), one coming settings page (alerts, row 9), their
 # texts in both languages and a roadmap where rows 7 and 9 are still to do.
+# The language catalogue the gate reads its languages from: each tag given, spoken by the interface.
+speaks() {
+  local d=$1 tag sep=''; shift
+  mkdir -p "$d/web/src/app/shared/i18n"
+  { printf '{"default": "fr", "languages": ['; for tag in "$@"; do printf '%s{"tag": "%s", "interface": true}' "$sep" "$tag"; sep=', '; done; printf ']}\n'; } \
+    > "$d/web/src/app/shared/i18n/languages.json"
+}
 repo() {
   local d; d=$(mktemp -d)
   mkdir -p "$d/api/src/ModuleRegistry/Application" "$d/web/src/app/shell" "$d/web/public/i18n" "$d/docs"
@@ -38,6 +45,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
 TS
   texts "$d" "$ALL" "$ALL"
   roadmap "$d" "| 7 | Quotes | M | todo | - | |" "| 9 | Alerts | S | doing | - | |"
+  speaks "$d" fr en
   echo "$d"
 }
 planned() {
@@ -107,5 +115,14 @@ check "a translation file that is not JSON reds rather than passing" $? 1 "$out"
 d=$(mktemp -d)
 out=$(bash "$GATE" --root "$d" 2>&1)
 check "a tree without PlannedModules reds, rather than passing" $? 1 "$out" "PlannedModules.php"
+
+
+# The languages labelled are the catalogue's, so switching one on asks for its labels.
+d=$(repo); texts "$d" "$ALL" "$ALL"; speaks "$d" fr en ar
+out=$(bash "$GATE" --root "$d" 2>&1)
+check "a language the catalogue switches on without its labels reds" $? 1 "$out" "ar: coming.quotes.heading"
+d=$(repo); texts "$d" "$ALL" "$ALL"; rm "$d/web/src/app/shared/i18n/languages.json"
+out=$(bash "$GATE" --root "$d" 2>&1)
+check "a tree without the language catalogue reds rather than checking no language" $? 1 "$out" "no language the interface speaks"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

@@ -34,7 +34,7 @@ describe('the language catalogue', () => {
   });
 
   it('offers on screen the languages whose texts ship, the default first', () => {
-    expect(INTERFACE_LANGUAGES).toEqual(['fr', 'en']);
+    expect(INTERFACE_LANGUAGES).toEqual(['fr', 'en', 'ar']);
     expect(INTERFACE_LANGUAGES[0]).toBe(DEFAULT_LANGUAGE);
     expect(LEGAL_LANGUAGES).toEqual(['fr', 'en', 'ar']);
   });

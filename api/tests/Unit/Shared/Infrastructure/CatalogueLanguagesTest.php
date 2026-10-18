@@ -18,13 +18,13 @@ final class CatalogueLanguagesTest extends TestCase
 {
     private const string SHIPPED = __DIR__.'/../../../../config/languages.json';
 
-    public function testTheShippedCatalogueSpeaksFrenchAndEnglishAndWritesTheLegalPagesInArabicToo(): void
+    public function testTheShippedCatalogueSpeaksAndPrintsFrenchEnglishAndArabic(): void
     {
         $languages = new CatalogueLanguages(self::SHIPPED);
 
         self::assertSame('fr', $languages->default());
-        self::assertSame(['fr', 'en'], $languages->interface());
-        self::assertSame(['fr', 'en'], $languages->documents());
+        self::assertSame(['fr', 'en', 'ar'], $languages->interface());
+        self::assertSame(['fr', 'en', 'ar'], $languages->documents());
         self::assertSame(['fr', 'en', 'ar'], $languages->legal());
     }
 
@@ -33,9 +33,20 @@ final class CatalogueLanguagesTest extends TestCase
         $languages = new CatalogueLanguages(self::SHIPPED);
 
         self::assertSame('en', $languages->interfaceOr('en'));
-        self::assertSame('fr', $languages->interfaceOr('ar'));
+        self::assertSame('ar', $languages->interfaceOr('ar'));
+        self::assertSame('fr', $languages->interfaceOr('de'));
         self::assertSame('fr', $languages->interfaceOr('EN'));
         self::assertSame('fr', $languages->interfaceOr(null));
+    }
+
+    public function testEachLanguageReadsInTheDirectionItsEntryGivesAndAnUnknownOneInTheDefaults(): void
+    {
+        $languages = new CatalogueLanguages(self::SHIPPED);
+
+        self::assertSame('ltr', $languages->direction('fr'));
+        self::assertSame('ltr', $languages->direction('en'));
+        self::assertSame('rtl', $languages->direction('ar'));
+        self::assertSame('ltr', $languages->direction('xx'));
     }
 
     public function testTheWebCarriesTheSameCatalogue(): void
@@ -43,15 +54,18 @@ final class CatalogueLanguagesTest extends TestCase
         self::assertJsonFileEqualsJsonFile(self::SHIPPED, __DIR__.'/../../../../../web/src/app/shared/i18n/languages.json');
     }
 
-    /** Symfony's translator takes its locales from configuration, which cannot read the catalogue: it is held to it here. */
-    public function testTheTranslatorIsEnabledForExactlyTheInterfaceLanguages(): void
+    /**
+     * Symfony's translator takes its locales from configuration, which cannot read the catalogue: it is held to it here.
+     * It mails in the interface's languages and prints in the documents', so it is enabled for both.
+     */
+    public function testTheTranslatorIsEnabledForExactlyTheLanguagesItMailsAndPrintsIn(): void
     {
         $languages = new CatalogueLanguages(self::SHIPPED);
         /** @var array{framework: array{default_locale: string, enabled_locales: list<string>}} $config */
         $config = Yaml::parseFile(__DIR__.'/../../../../config/packages/translation.yaml');
 
         self::assertSame($languages->default(), $config['framework']['default_locale']);
-        self::assertSame($languages->interface(), $config['framework']['enabled_locales']);
+        self::assertSame(array_values(array_unique([...$languages->interface(), ...$languages->documents()])), $config['framework']['enabled_locales']);
     }
 
     /** @return iterable<string, array{string, string}> */

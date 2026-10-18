@@ -20,7 +20,7 @@ final class ShippedMentionWording
     {
         $translator = new Translator('fr');
         $translator->addLoader('yaml', new YamlFileLoader());
-        foreach (['fr', 'en'] as $language) {
+        foreach (ShippedLanguages::catalogue()->documents() as $language) {
             $translator->addResource('yaml', __DIR__.'/../../translations/fiscal.'.$language.'.yaml', $language, 'fiscal');
         }
 

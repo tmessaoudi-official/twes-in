@@ -1,6 +1,6 @@
 {# Mailed instead of a signup link when the address already has an account, so the answer to the request is the same. #}
 <!DOCTYPE html>
-<html lang="{{ app.locale }}">
+<html lang="{{ app.locale }}" dir="{{ text_direction(app.locale) }}">
   <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
     <h1 style="font-size: 20px;">{{ 'signup.account_exists.heading'|trans({}, 'emails') }}</h1>
     <p>{{ 'signup.account_exists.intro'|trans({'%product%': productName}, 'emails') }}</p>

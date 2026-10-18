@@ -110,6 +110,26 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         self::assertStringContainsString("<p class=\"fingerprint\" data-testid=\"chain-fingerprint\">Empreinte\u{a0}: $expected</p>", $this->html(new DocumentDesign(), [], [], watermark: null));
     }
 
+    /**
+     * An Arabic document reads right to left, and what it quotes in Latin letters or digits (a code, a number, an
+     * address) is isolated, or the bidi algorithm reorders it: « +216 71 000 000 » would print its groups backwards.
+     */
+    public function testAnArabicInvoiceTurnsOverAndIsolatesWhatItQuotes(): void
+    {
+        self::bootKernel();
+
+        $french = $this->html(new DocumentDesign(), [], []);
+        $arabic = $this->html(new DocumentDesign(), [], [], language: 'ar');
+
+        self::assertStringContainsString('<html lang="fr" dir="ltr">', $french);
+        self::assertStringContainsString('<html lang="ar" dir="rtl">', $arabic);
+        self::assertStringContainsString('<title>فاتورة </title>', $arabic);
+        self::assertStringContainsString('<bdi>CLI-0007</bdi>', $arabic);
+        self::assertStringContainsString('<bdi>Réglage du tour</bdi>', $arabic);
+        self::assertStringContainsString('"Noto Sans Arabic"', $arabic);
+        self::assertDoesNotMatchRegularExpression('/%[a-z_]+%/', $arabic);
+    }
+
     public function testTheClassicDesignByDefaultPrintsInTheInkDocumentsAlwaysPrintedIn(): void
     {
         self::bootKernel();
@@ -252,7 +272,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
      * @param list<QuantityTotal>                  $quantities
      * @param InvoicePage::DRAFT|null              $watermark
      */
-    private function html(DocumentDesign $design, array $keys, array $parameters, ?string $savings = null, array $quantities = [], ?string $watermark = InvoicePage::DRAFT): string
+    private function html(DocumentDesign $design, array $keys, array $parameters, ?string $savings = null, array $quantities = [], ?string $watermark = InvoicePage::DRAFT, string $language = 'fr'): string
     {
         $template = static::getContainer()->get(InvoiceTemplate::class);
         $company = $this->invoice->getCompany();
@@ -263,7 +283,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
             CustomerSnapshot::of($this->invoice->getCustomer()),
             SellerSnapshot::of($company, $this->invoice->getEstablishment()),
             $watermark,
-            'fr',
+            $language,
             '',
             $keys,
             null,

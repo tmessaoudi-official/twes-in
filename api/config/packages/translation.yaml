@@ -1,8 +1,8 @@
 framework:
-    # The interface languages of config/languages.json, the default first; configuration cannot read that file, so
-    # CatalogueLanguagesTest holds these two lines to it. These files carry only what the API itself sends: mail and print.
+    # The languages of config/languages.json the API mails or prints in, the default first; configuration cannot read
+    # that file, so CatalogueLanguagesTest holds these two lines to it. These files carry only what the API itself sends: mail and print.
     default_locale: fr
-    enabled_locales: ['fr', 'en']
+    enabled_locales: ['fr', 'en', 'ar']
     translator:
         default_path: '%kernel.project_dir%/translations'
         fallbacks:

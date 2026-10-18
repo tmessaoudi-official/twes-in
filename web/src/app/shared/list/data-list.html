@@ -412,7 +412,7 @@
                   @if (cellTemplates().get(column.id); as template) {
                     <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
                   } @else {
-                    {{ column.value(row) }}
+                    <bdi>{{ column.value(row) }}</bdi>
                   }
                 </dd>
               }
@@ -541,13 +541,15 @@
                   @if (cellTemplates().get(column.id); as template) {
                     <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
                   } @else {
-                    {{ column.value(row) }}
+                    <bdi>{{ column.value(row) }}</bdi>
                   }
                 </a>
               } @else if (cellTemplates().get(column.id); as template) {
                 <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
               } @else {
-                {{ column.value(row) }}
+                <!-- Every plain value is isolated, in the cards too, so one with no letter of its own (a phone, a
+                     code) keeps its order whatever the line's direction. -->
+                <bdi>{{ column.value(row) }}</bdi>
               }
             </td>
           </ng-container>
@@ -714,13 +716,13 @@
       @if (cellTemplates().get(column.id); as template) {
         <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
       } @else {
-        {{ column.value(row) }}
+        <bdi>{{ column.value(row) }}</bdi>
       }
     </a>
   } @else if (cellTemplates().get(column.id); as template) {
     <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
   } @else {
-    {{ column.value(row) }}
+    <bdi>{{ column.value(row) }}</bdi>
   }
 </ng-template>
 

@@ -1,0 +1,31 @@
+# Labels and printed mentions the fiscal presets name by key (api/config/fiscal/*.yaml). The wording of each
+# mention is unvalidated: docs/fiscal/<CC>.md cites what exists for it; the Arabic follows docs/i18n/ar-glossary.md.
+fiscal:
+    identifier:
+        tn:
+            matricule_fiscal: 'المعرّف الجبائي'
+        fr:
+            siren: 'SIREN'
+            siret: 'SIRET'
+            vat_number: 'رقم الأداء على القيمة المضافة داخل الاتحاد الأوروبي'
+    regime:
+        standard: 'النظام العادي'
+        exempt: 'معفى من الأداء على القيمة المضافة'
+        suspended: 'بتوقيف الأداء على القيمة المضافة'
+        export: 'تصدير'
+        intra_eu: 'داخل الاتحاد الأوروبي'
+        franchise: 'الإعفاء الأساسي من الأداء على القيمة المضافة'
+    mention:
+        tn:
+            exempt: 'عملية معفاة من الأداء على القيمة المضافة.'
+            suspended: 'بيع بتوقيف الأداء على القيمة المضافة.'
+            export: 'تصدير معفى من الأداء على القيمة المضافة.'
+        fr:
+            exempt: 'إعفاء من الأداء على القيمة المضافة، %reference%.'
+            intra_eu: 'التصفية الذاتية للأداء. إعفاء من الأداء على القيمة المضافة، الفصلان 262 ter I و283-2 من المجلة العامة للضرائب الفرنسية (CGI).'
+            export: 'إعفاء من الأداء على القيمة المضافة، الفصل 262 I من المجلة العامة للضرائب الفرنسية (CGI).'
+            franchise: 'الأداء على القيمة المضافة غير منطبق، الفصل 293 B من المجلة العامة للضرائب الفرنسية (CGI).'
+            late_payment: 'في حالة التأخير في الدفع، تُستوجب خطايا بنسبة %rate%.'
+            recovery_indemnity: 'تعويض جزافي عن مصاريف الاستخلاص في حالة التأخير في الدفع: 40 €.'
+            no_early_discount: 'لا تخفيض على الدفع المسبّق.'
+            vat_on_debits: 'اختيار دفع الأداء حسب الفوترة'

@@ -27,8 +27,8 @@
       "direction": "rtl",
       "script": "Arab",
       "plurals": ["zero", "one", "two", "few", "many", "other"],
-      "interface": false,
-      "documents": false,
+      "interface": true,
+      "documents": true,
       "legal": true
     }
   ]

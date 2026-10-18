@@ -37,7 +37,7 @@ final readonly class InvoicePage
 
     /**
      * @param self::DRAFT|self::CANCELLED|self::DUPLICATE|self::COPY|self::PREVIEW|null $watermark
-     * @param string                                                                    $language          fr or en
+     * @param string                                                                    $language          a language the catalogue prints documents in
      * @param list<string>                                                              $mentionKeys       translation keys
      * @param string                                                                    $dateFormat        the company's `presentation.date-format`, `auto` for the language's
      * @param string                                                                    $numberFormat      the company's `presentation.number-format`, `auto` for the language's

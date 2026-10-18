@@ -81,7 +81,19 @@ final class PasswordResetTest extends ApiTestCase
         // The worker writes the mail with no request to read a language from: it says the one it is written in.
         $message = self::getMailerMessage();
         self::assertInstanceOf(Email::class, $message);
-        self::assertStringContainsString('<html lang="en">', (string) $message->getHtmlBody());
+        self::assertStringContainsString('<html lang="en" dir="ltr">', (string) $message->getHtmlBody());
+    }
+
+    public function testAnAskInArabicIsMailedInArabicReadRightToLeft(): void
+    {
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->postJson(self::FORGOT, ['email' => 'someone@twes.local', 'locale' => 'ar']);
+        $this->deliverQueued();
+
+        $message = self::getMailerMessage();
+        self::assertInstanceOf(Email::class, $message);
+        self::assertStringContainsString('<html lang="ar" dir="rtl">', (string) $message->getHtmlBody());
+        self::assertStringContainsString('إعادة تعيين كلمة المرور', (string) $message->getSubject());
     }
 
     /** A mail is written by the worker, where there is no request: its language is the mail's own, never the request's. */
@@ -113,7 +125,7 @@ final class PasswordResetTest extends ApiTestCase
 
         $message = self::getMailerMessage();
         self::assertInstanceOf(Email::class, $message);
-        self::assertStringContainsString('<html lang="en">', (string) $message->getHtmlBody());
+        self::assertStringContainsString('<html lang="en" dir="ltr">', (string) $message->getHtmlBody());
     }
 
     public function testAMalformedAddressIsRefusedAndASecondAskInTheQuarterHourSendsNothing(): void

@@ -6,7 +6,7 @@
 {%- set dateFormat = date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale)) -%}
 {%- set title = (invoice.type.value == 'credit_note' ? 'invoice.credit_note_title' : (invoice.deposit ? 'invoice.deposit_title' : 'invoice.title'))|trans({}, t, locale) -%}
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ locale }}" dir="{{ text_direction(locale) }}">
 <head>
   <meta charset="utf-8">
   <title>{{ title }} {{ invoice.number }}</title>
@@ -44,34 +44,34 @@
       {%- if logo %}<img class="logo" src="{{ logo }}" alt="">{% endif %}
       <div class="company-name">{{ seller.printedName }}</div>
       {%- for key, value in seller.identifiers %}
-        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : <bdi>{{ value }}</bdi></div>
       {%- endfor %}
       {%- if seller.address.line1 %}
-        <div>{{ seller.address.line1 }}</div>
-        {% if seller.address.line2 %}<div>{{ seller.address.line2 }}</div>{% endif %}
-        <div>{{ seller.address.postalCode }} {{ seller.address.city }}</div>
+        <div><bdi>{{ seller.address.line1 }}</bdi></div>
+        {% if seller.address.line2 %}<div><bdi>{{ seller.address.line2 }}</bdi></div>{% endif %}
+        <div><bdi>{{ seller.address.postalCode }} {{ seller.address.city }}</bdi></div>
       {%- endif %}
-      {% if seller.phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} {{ seller.phone }}</div>{% endif %}
-      {% if seller.email %}<div>{{ 'company.email'|trans({}, t, locale) }} {{ seller.email }}</div>{% endif %}
+      {% if seller.phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} <bdi>{{ seller.phone }}</bdi></div>{% endif %}
+      {% if seller.email %}<div>{{ 'company.email'|trans({}, t, locale) }} <bdi>{{ seller.email }}</bdi></div>{% endif %}
     </div>
     <div class="party">
       <h2>{{ 'invoice.customer'|trans({}, t, locale) }}</h2>
       <div class="company-name">{{ customer.legalName ?? customer.name }}</div>
       {% if customer.legalName %}<div>{{ customer.name }}</div>{% endif %}
-      <div class="muted">{{ 'invoice.customer_number'|trans({}, t, locale) }} {{ customer.number }}</div>
+      <div class="muted">{{ 'invoice.customer_number'|trans({}, t, locale) }} <bdi>{{ customer.number }}</bdi></div>
       {%- for key, value in customer.identifiers %}
-        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : <bdi>{{ value }}</bdi></div>
       {%- endfor %}
       {%- set billing = customer.billingAddress %}
-      {% if billing.line1 %}<div>{{ billing.line1 }}</div>{% endif %}
-      {% if billing.line2 %}<div>{{ billing.line2 }}</div>{% endif %}
-      {% if billing.postalCode or billing.city %}<div>{{ billing.postalCode }} {{ billing.city }}</div>{% endif %}
+      {% if billing.line1 %}<div><bdi>{{ billing.line1 }}</bdi></div>{% endif %}
+      {% if billing.line2 %}<div><bdi>{{ billing.line2 }}</bdi></div>{% endif %}
+      {% if billing.postalCode or billing.city %}<div><bdi>{{ billing.postalCode }} {{ billing.city }}</bdi></div>{% endif %}
     </div>
   </div>
 
   <div class="title">
     <h1>{{ title }}</h1>
-    {% if invoice.number %}<strong>{{ invoice.number }}</strong>{% endif %}
+    {% if invoice.number %}<strong><bdi>{{ invoice.number }}</bdi></strong>{% endif %}
   </div>
   {%- if invoice.correctedInvoice and invoice.correctedInvoice.number %}
     {#- The number and date of the invoice it corrects, EN 16931 BG-3, and why. #}
@@ -85,7 +85,7 @@
     {% if invoice.issueDate %}<div><dt>{{ 'invoice.issue_date'|trans({}, t, locale) }}</dt><dd>{{ invoice.issueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
     {% if invoice.dueDate and invoice.type.value != 'credit_note' %}<div><dt>{{ 'invoice.due_date'|trans({}, t, locale) }}</dt><dd>{{ invoice.dueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
     {% if header.supplyDate %}<div><dt>{{ 'invoice.supply_date'|trans({}, t, locale) }}</dt><dd>{{ header.supplyDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
-    {% if header.customerReference %}<div><dt>{{ 'invoice.customer_reference'|trans({}, t, locale) }}</dt><dd>{{ header.customerReference }}</dd></div>{% endif %}
+    {% if header.customerReference %}<div><dt>{{ 'invoice.customer_reference'|trans({}, t, locale) }}</dt><dd><bdi>{{ header.customerReference }}</bdi></dd></div>{% endif %}
     {#- What its operations are, where its country's law asks (CGI ann. II art. 242 nonies A I 8° bis). #}
     {% if page.operations %}<div><dt>{{ 'invoice.operations'|trans({}, t, locale) }}</dt><dd>{{ ('invoice.operations_' ~ page.operations.value)|trans({}, t, locale) }}</dd></div>{% endif %}
     {% if header.paymentTermsDays is not null and invoice.type.value != 'credit_note' %}<div><dt>{{ 'invoice.payment'|trans({}, t, locale) }}</dt><dd>{{ 'invoice.payment_terms'|trans({'%days%': header.paymentTermsDays}, t, locale) }}</dd></div>{% endif %}
@@ -109,12 +109,12 @@
           <tr class="section"><td colspan="7"><strong>{{ sectionStarts[loop.index0].title }}</strong></td></tr>
         {%- endif %}
         <tr>
-          <td>{{ line.description|nl2br }}</td>
+          <td><bdi>{{ line.description|nl2br }}</bdi></td>
           <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
           <td>{{ line.unit.name }}</td>
           <td class="number">{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}</td>
           <td class="number">{% if line.discountRate %}{{ line.discountRate|decimal(0, locale, page.numberFormat) }} %{% elseif line.discountAmount %}{{ line.discountAmount|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
-          <td>{{ line.taxes|map(tax => tax.code)|join(', ') }}</td>
+          <td><bdi>{{ line.taxes|map(tax => tax.code)|join(', ') }}</bdi></td>
           <td class="number">{{ figures.lines[loop.index0].net|decimal(scale, locale, page.numberFormat) }}</td>
         </tr>
         {%- if sectionEnds[loop.index0] is defined %}
@@ -136,18 +136,18 @@
     {%- endif %}
     {%- for tax in figures.taxes %}
       <tr>
-        <td>{{ tax.code }} {{ tax.rate|decimal(0, locale, page.numberFormat) }} % <span class="muted">({{ tax.base|decimal(scale, locale, page.numberFormat) }})</span></td>
+        <td><bdi>{{ tax.code }}</bdi> {{ tax.rate|decimal(0, locale, page.numberFormat) }} % <span class="muted">({{ tax.base|decimal(scale, locale, page.numberFormat) }})</span></td>
         <td class="number">{{ tax.amount|decimal(scale, locale, page.numberFormat) }}</td>
       </tr>
     {%- endfor %}
     <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalTax|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- for charge in figures.fixedTaxes %}
-      <tr><td>{{ charge.code }}</td><td class="number">{{ charge.amount|decimal(scale, locale, page.numberFormat) }}</td></tr>
+      <tr><td><bdi>{{ charge.code }}</bdi></td><td class="number">{{ charge.amount|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- endfor %}
     <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ figures.total|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- for withholding in figures.withholdings %}
       <tr>
-        <td>{{ 'totals.withheld'|trans({}, t, locale) }} {{ withholding.code }} <span class="muted">({{ withholding.base|decimal(scale, locale, page.numberFormat) }})</span></td>
+        <td>{{ 'totals.withheld'|trans({}, t, locale) }} <bdi>{{ withholding.code }}</bdi> <span class="muted">({{ withholding.base|decimal(scale, locale, page.numberFormat) }})</span></td>
         <td class="number">{{ withholding.amount|deduction(scale, locale, page.numberFormat) }}</td>
       </tr>
     {%- endfor %}
@@ -162,9 +162,9 @@
   {%- if page.howToPay and invoice.type.value != 'credit_note' and seller.iban %}
     <div class="mention" data-testid="how-to-pay">
       <strong>{{ 'payment.how_to_pay'|trans({}, t, locale) }}</strong>
-      <div>{{ 'payment.iban'|trans({}, t, locale) }} {{ seller.iban }}{% if seller.bic %} · {{ 'payment.bic'|trans({}, t, locale) }} {{ seller.bic }}{% endif %}</div>
+      <div>{{ 'payment.iban'|trans({}, t, locale) }} <bdi>{{ seller.iban }}</bdi>{% if seller.bic %} · {{ 'payment.bic'|trans({}, t, locale) }} <bdi>{{ seller.bic }}</bdi>{% endif %}</div>
       {%- if invoice.number %}
-        <div>{{ 'payment.reference'|trans({}, t, locale) }} {{ invoice.number }}</div>
+        <div>{{ 'payment.reference'|trans({}, t, locale) }} <bdi>{{ invoice.number }}</bdi></div>
       {%- endif %}
     </div>
   {%- endif %}

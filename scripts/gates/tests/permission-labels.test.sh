@@ -7,6 +7,13 @@ pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 
 # A tree holding one permission class and the two translation files, with whatever labels the case wants.
+# The language catalogue the gate reads its languages from: each tag given, spoken by the interface.
+speaks() {
+  local d=$1 tag sep=''; shift
+  mkdir -p "$d/web/src/app/shared/i18n"
+  { printf '{"default": "fr", "languages": ['; for tag in "$@"; do printf '%s{"tag": "%s", "interface": true}' "$sep" "$tag"; sep=', '; done; printf ']}\n'; } \
+    > "$d/web/src/app/shared/i18n/languages.json"
+}
 repo() {
   local d; d=$(mktemp -d); git -C "$d" init -q
   mkdir -p "$d/api/src/Module/Shop/Infrastructure/Module" "$d/web/public/i18n" \
@@ -39,6 +46,7 @@ final class ShopPermission
     public const string PLATFORM = 'platform.shop.audit';
 }
 PHP
+  speaks "$d" fr en
   echo "$d"
 }
 labels() { printf '%s\n' "$2" > "$1/web/public/i18n/fr.json"; printf '%s\n' "$3" > "$1/web/public/i18n/en.json"; }
@@ -102,5 +110,14 @@ check "fewer permissions than the floor reds rather than passing over nothing" $
 d=$(mktemp -d); git -C "$d" init -q
 out=$(bash "$GATE" --root "$d" 2>&1)
 check "a tree with no permission class at all reds, rather than passing" $? 1 "$out" "found no *Permission.php"
+
+
+# The languages labelled are the catalogue's, so switching one on asks for its labels.
+d=$(repo); labels "$d" "$BOTH" "$BOTH"; speaks "$d" fr en ar; git -C "$d" add -A
+out=$(PERMISSION_LABELS_FLOOR=2 PERMISSION_GROUPS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
+check "a language the catalogue switches on without its labels reds" $? 1 "$out" "ar: permissions."
+d=$(repo); labels "$d" "$BOTH" "$BOTH"; rm "$d/web/src/app/shared/i18n/languages.json"; git -C "$d" add -A
+out=$(PERMISSION_LABELS_FLOOR=2 PERMISSION_GROUPS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
+check "a tree without the language catalogue reds rather than checking no language" $? 1 "$out" "no language catalogue"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

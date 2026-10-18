@@ -82,8 +82,14 @@ if ((${#headings[@]} < groups_floor)); then
   exit 1
 fi
 
+# The labels are wanted in every language the interface speaks, which the catalogue names.
+catalogue="$root/web/src/app/shared/i18n/languages.json"
+[[ -f "$catalogue" ]] || { printf '%s: FAIL — no language catalogue at %s\n' "$(basename "$0" .sh)" "${catalogue#"$root/"}"; exit 1; }
+mapfile -t languages < <(jq -r '.languages[]? | select(.interface == true) | .tag' "$catalogue")
+((${#languages[@]})) || { printf '%s: FAIL — the catalogue names no language the interface speaks\n' "$(basename "$0" .sh)"; exit 1; }
+
 missing=()
-for language in fr en; do
+for language in "${languages[@]}"; do
   file="$root/web/public/i18n/$language.json"
   for permission in "${permissions[@]}"; do
     if ! labelled "permissions.$permission" "$file"; then
@@ -103,5 +109,5 @@ if ((${#missing[@]})); then
   exit 1
 fi
 
-printf 'permission-labels: OK — %d permissions and %d group headings are labelled in fr and en\n' \
-  "${#permissions[@]}" "${#headings[@]}"
+printf 'permission-labels: OK — %d permissions and %d group headings are labelled in %s\n' \
+  "${#permissions[@]}" "${#headings[@]}" "$(printf '%s, ' "${languages[@]}" | sed 's/, $//')"

@@ -21,7 +21,7 @@ use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 final readonly class StatementPage
 {
     /**
-     * @param string $language     fr or en
+     * @param string $language     a language the catalogue prints documents in
      * @param string $dateFormat   the company's `presentation.date-format`, `auto` for the language's
      * @param string $numberFormat the company's `presentation.number-format`, `auto` for the language's
      */

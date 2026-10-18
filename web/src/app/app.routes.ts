@@ -354,7 +354,8 @@ export const routes: Routes = [
       {
         path: 'stock/locations',
         title: 'nav.stock_locations',
-        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        // A place's contents open over the list in the plan's own dialog, which reads the plan's texts.
+        ...textsPart('stock-plan', moduleGuard(INVENTORY_MODULE)),
         loadComponent: () =>
           import('./inventory/stock-locations-page').then((m) => m.StockLocationsPage),
       },
@@ -368,7 +369,8 @@ export const routes: Routes = [
       {
         path: 'stock/plan',
         title: 'titles.stock_plan',
-        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        // The plan's texts are read on these pages only: they load with them (the screen texts budget).
+        ...textsPart('stock-plan', moduleGuard(INVENTORY_MODULE)),
         loadComponent: () => import('./inventory/stock-map-page').then((m) => m.StockMapPage),
       },
       {
@@ -485,14 +487,15 @@ export const routes: Routes = [
         // The platform's operators run signup and decide on the companies waiting for approval here.
         path: 'platform',
         title: 'platform.title',
-        canActivate: [operatorGuard],
+        // The operators' texts are read on their two pages only: they load with them (the screen texts budget).
+        ...textsPart('platform', operatorGuard),
         loadComponent: () => import('./platform/platform-page').then((m) => m.PlatformPage),
       },
       {
         // The legal pages as the operators write them, per language (docs/SPEC.md § 8 row 148).
         path: 'platform/legal',
         title: 'titles.legal_texts',
-        canActivate: [operatorGuard],
+        ...textsPart('platform', operatorGuard),
         loadComponent: () =>
           import('./platform/platform-legal-page').then((m) => m.PlatformLegalPage),
       },
@@ -568,6 +571,8 @@ export const routes: Routes = [
           {
             path: 'company/data-erasure',
             title: 'nav.data_erasure',
+            // Only the banner's words stay with the language's file: the banner shows on every page.
+            ...textsPart('data-erasure'),
             loadComponent: () =>
               import('./data-erasure/data-erasure-page').then((m) => m.DataErasurePage),
           },

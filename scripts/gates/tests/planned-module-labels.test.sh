@@ -7,6 +7,13 @@ pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 
 # A tree holding a PlannedModules file with two planned modules and the two translation files.
+# The language catalogue the gate reads its languages from: each tag given, spoken by the interface.
+speaks() {
+  local d=$1 tag sep=''; shift
+  mkdir -p "$d/web/src/app/shared/i18n"
+  { printf '{"default": "fr", "languages": ['; for tag in "$@"; do printf '%s{"tag": "%s", "interface": true}' "$sep" "$tag"; sep=', '; done; printf ']}\n'; } \
+    > "$d/web/src/app/shared/i18n/languages.json"
+}
 repo() {
   local d; d=$(mktemp -d)
   mkdir -p "$d/api/src/ModuleRegistry/Application" "$d/web/public/i18n"
@@ -26,6 +33,7 @@ PHP
   mkdir -p "$d/web/src/app/shell" "$d/web/src/app/invoices"
   places "$d" quotes zakat
   declares "$d/web/src/app/invoices/invoice-page.ts" "quotes:coming.quotes.heading" "zakat:coming.zakat.does"
+  speaks "$d" fr en
   echo "$d"
 }
 # What a screen or the settings page declares for a planned module: `{ module: '<k>', label: '<key>' }`, one a line.
@@ -110,5 +118,14 @@ check "fewer declarations than their floor reds rather than passing over nothing
 d=$(mktemp -d)
 out=$(bash "$GATE" --root "$d" 2>&1)
 check "a tree without PlannedModules reds, rather than passing" $? 1 "$out" "PlannedModules.php is missing"
+
+
+# The languages labelled are the catalogue's, so switching one on asks for its labels.
+d=$(repo); labels "$d" "$BOTH" "$BOTH"; speaks "$d" fr en ar
+out=$(PLANNED_MODULE_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
+check "a language the catalogue switches on without its labels reds" $? 1 "$out" "ar: modules.quotes"
+d=$(repo); labels "$d" "$BOTH" "$BOTH"; rm "$d/web/src/app/shared/i18n/languages.json"
+out=$(PLANNED_MODULE_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
+check "a tree without the language catalogue reds rather than checking no language" $? 1 "$out" "no language catalogue"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

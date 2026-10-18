@@ -30,4 +30,7 @@ interface Languages
 
     /** The tag if the interface speaks it, else the default. */
     public function interfaceOr(?string $asked): string;
+
+    /** `rtl` or `ltr`: the way the language reads; a tag the catalogue does not hold reads as the default does. */
+    public function direction(string $tag): string;
 }

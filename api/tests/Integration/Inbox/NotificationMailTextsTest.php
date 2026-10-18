@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Inbox;
 
 use App\Inbox\Application\NotificationKinds;
+use App\Tests\Support\ShippedLanguages;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Translation\TranslatorBagInterface;
 
@@ -34,7 +35,7 @@ final class NotificationMailTextsTest extends KernelTestCase
         self::assertGreaterThanOrEqual(self::MAILED_AT_LEAST, \count($mailed));
 
         $missing = [];
-        foreach (['fr', 'en'] as $language) {
+        foreach (ShippedLanguages::catalogue()->interface() as $language) {
             $catalogue = $translator->getCatalogue($language);
             foreach ($mailed as $kind) {
                 $key = str_replace('.', '_', $kind->type);

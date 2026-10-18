@@ -27,7 +27,8 @@ final class LanguageNamesTest extends TestCase
         yield 'named in English' => ['french', 'fr'];
         yield 'named in itself' => ['English', 'en'];
         yield 'a language documents are not printed in' => ['allemand', null];
-        yield 'a language only the legal pages are written in' => ['arabe', null];
+        yield 'Arabic as French writes it' => ['arabe', 'ar'];
+        yield 'Arabic as Arabic writes it' => ['العربية', 'ar'];
         yield 'nothing' => ['', null];
     }
 

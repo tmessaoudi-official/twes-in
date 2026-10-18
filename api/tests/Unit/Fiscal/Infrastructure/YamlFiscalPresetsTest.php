@@ -223,7 +223,7 @@ final class YamlFiscalPresetsTest extends TestCase
         yield 'a rounding point that does not exist' => ['rounding.vat_point', 'per_document', 'vat_point'];
         yield 'a stamp rule on corrections that does not exist' => ['corrections.stamp', 'refunded', 'stamp'];
         yield 'no stamp rule on corrections' => ['corrections', self::REMOVE, 'corrections'];
-        yield 'a document language the product does not speak' => ['document_languages', ['ar'], 'document_languages'];
+        yield 'a document language the product does not speak' => ['document_languages', ['de'], 'document_languages'];
         yield 'a numbering format without its sequence' => ['numbering.invoice.format', 'FAC-{YYYY}', 'format'];
         yield 'a numbering format with a token the product does not know' => ['numbering.invoice.format', 'FAC-{DD}-{SEQ}', 'format'];
         yield 'a reset period that does not exist' => ['numbering.invoice.reset', 'weekly', 'reset'];

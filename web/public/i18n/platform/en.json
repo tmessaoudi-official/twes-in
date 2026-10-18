@@ -1,0 +1,251 @@
+{
+  "platform": {
+    "signup": {
+      "title": "Signup",
+      "enabled": "Anyone may sign up",
+      "approval_required": "A company that signs up waits for approval"
+    },
+    "demo": {
+      "title": "Demo",
+      "intro": "A visitor tries the app in a demonstration company of their own, with no account, erased when they sign out or stop using it. No mail leaves and no document has fiscal value.",
+      "bounds": "From {{min}} to {{max}} demos",
+      "save": "Save",
+      "saved": "Number of demos saved."
+    },
+    "waiting": {
+      "title": "Waiting for approval",
+      "none": "No company is waiting for approval.",
+      "owners": "Owners: {{owners}}",
+      "approve": "Approve",
+      "reject": "Reject",
+      "all": "See all {{count}} waiting"
+    },
+    "companies": {
+      "title": "Companies",
+      "name": "Company name",
+      "country": "Country",
+      "owner": "Owner's address",
+      "create": "Open the company",
+      "invite": "Invite an owner",
+      "invited": "Invitation sent to {{email}}.",
+      "none": "No company.",
+      "countries": {
+        "TN": "Tunisia",
+        "FR": "France"
+      },
+      "statuses": {
+        "pending": "Waiting",
+        "active": "Active",
+        "suspended": "Suspended"
+      },
+      "new": "New company",
+      "close": "Close",
+      "no_owner": "No owner yet."
+    },
+    "accounts": {
+      "title": "Accounts",
+      "search": "Address or name",
+      "find": "Search",
+      "none": "No account found.",
+      "active": "Active",
+      "inactive": "Deactivated",
+      "operator": "Operator",
+      "end_sessions": "End sessions",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "states": {
+        "active": "Active",
+        "inactive": "Deactivated",
+        "operator": "Operators"
+      }
+    },
+    "errors": {
+      "not_found": "That company no longer exists.",
+      "refused": "The platform refused that.",
+      "own_account": "You cannot deactivate your own account.",
+      "network": "The server could not be reached.",
+      "name_taken": "A company already has that name.",
+      "already_member": "That address already belongs to this company.",
+      "step_up_required": "Nothing changed: confirm it is you to make this change."
+    },
+    "subscription": {
+      "open": "Subscription",
+      "trial_ends_on": "Trial ends on",
+      "paid_through": "Paid through",
+      "period_count": "Length",
+      "period_unit": "Unit",
+      "price": "Price per period",
+      "currency": "Currency",
+      "grace_days": "Grace days",
+      "unpaid_mode": "When unpaid",
+      "save": "Save subscription",
+      "stop": "Stop managing",
+      "saved": "The subscription has been saved.",
+      "stopped": "The subscription is no longer managed.",
+      "days_left": "{{days}} {days, plural, one {day} other {days}} left",
+      "units": {
+        "day": "days",
+        "month": "months",
+        "year": "years"
+      },
+      "modes": {
+        "default": "The platform's own",
+        "read_only": "Read-only",
+        "locked": "Locked"
+      },
+      "stages": {
+        "trial": "Trial",
+        "paid": "Paid",
+        "grace": "Grace",
+        "unpaid": "Unpaid",
+        "held": "Payment waiting"
+      },
+      "accesses": {
+        "full": "Full access",
+        "read_only": "Read-only",
+        "locked": "Locked"
+      },
+      "hold_days": "Days a declared payment holds"
+    },
+    "payments": {
+      "title": "Payments to confirm",
+      "none": "No payment is waiting.",
+      "periods": "Periods covered",
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "confirmed": "The payment was confirmed.",
+      "rejected": "The payment was rejected."
+    },
+    "demand": {
+      "title": "Modules awaited",
+      "intro": "How many companies asked to be told when each module arrives.",
+      "companies": "Companies: {{count}}",
+      "empty": "No company is waiting for a module yet."
+    },
+    "legal": {
+      "title": "Legal pages",
+      "intro": "Every page, in every language, as anyone reads it. A new version is published at once and marked a draft until it is validated.",
+      "link": "Manage the legal pages",
+      "page": "Page",
+      "none": "Not written",
+      "draft": "Draft of {{date}}",
+      "validated": "Validated, of {{date}}",
+      "body": "Text (Markdown)",
+      "preview": "Preview",
+      "edit": "Edit",
+      "publish": "Publish a new version",
+      "validate": "Validate the latest version",
+      "published": "New version published, marked a draft.",
+      "validated_toast": "Latest version validated.",
+      "history": "Versions",
+      "shipped": "Shipped with the platform",
+      "by": "by {{who}}",
+      "validated_by": "validated by {{who}}",
+      "reuse": "Start from this text",
+      "failed": "The legal pages cannot be read right now.",
+      "identity": {
+        "title": "Publisher and host",
+        "intro": "What the legal pages name, where a text writes its mark in double braces. What is not filled in shows « [to be completed] ».",
+        "save": "Save",
+        "saved": "Identity saved.",
+        "publisher": {
+          "name": "Publisher’s name or company name",
+          "address": "Registered address",
+          "registration": "Registration (RNE, RCS, tax number…)",
+          "email": "Contact address",
+          "phone": "Phone",
+          "director": "Director of publication"
+        },
+        "host": {
+          "name": "Host",
+          "address": "Host’s address",
+          "phone": "Host’s phone",
+          "country": "Country where the data is hosted"
+        },
+        "privacy": {
+          "email": "Contact for personal data"
+        },
+        "security": {
+          "email": "Contact to report a vulnerability"
+        },
+        "commercial": {
+          "email": "Contact for the commercial licence"
+        },
+        "mail": {
+          "provider": "E-mail sending provider"
+        },
+        "backup": {
+          "provider": "Backup provider and country"
+        },
+        "monitor": {
+          "provider": "Monitoring provider and country"
+        },
+        "source": {
+          "url": "Source code address"
+        },
+        "jurisdiction": "Competent courts"
+      }
+    },
+    "tabs": {
+      "overview": "Overview",
+      "companies": "Companies",
+      "accounts": "Accounts",
+      "payments": "Payments",
+      "demand": "Demand"
+    },
+    "list": {
+      "company": {
+        "name": "Company",
+        "country": "Country",
+        "status": "Status",
+        "owners": "Owners",
+        "subscription": "Subscription",
+        "created": "Created"
+      },
+      "account": {
+        "name": "Account",
+        "companies": "Companies",
+        "state": "State",
+        "created": "Created",
+        "actions": "Actions"
+      }
+    },
+    "tab_counts": {
+      "overview": "To handle: {{count}}",
+      "companies": "Companies: {{count}}",
+      "accounts": "Accounts: {{count}}",
+      "payments": "Payments to confirm: {{count}}"
+    },
+    "failed": {
+      "title": "Messages not sent",
+      "total": "{{count}} {count, plural, one {message was not sent after its retries} other {messages were not sent after their retries}}.",
+      "retry": "They wait on the server. Once the cause is fixed, send them again from the worker service:",
+      "kinds": {
+        "invitation": "Invitations",
+        "password_reset": "Forgotten passwords",
+        "signup": "Sign-ups"
+      }
+    },
+    "delays": {
+      "title": "Delays",
+      "intro": "The days the platform leaves every company and every account before a change takes effect.",
+      "bounds": "From {{min}} to {{max}} days",
+      "save": "Save the delays",
+      "saved": "Delays saved."
+    },
+    "support": {
+      "title": "Support contact",
+      "intro": "What every screen’s help offers everyone signed in under “Contact us”. A channel left empty is not shown.",
+      "phone": "Phone",
+      "phone_hint": "For example +216 71 000 000",
+      "whatsapp": "WhatsApp",
+      "whatsapp_hint": "The number in international form, country code first: +216 20 123 456",
+      "email": "Email address",
+      "email_hint": "For example support@example.tn",
+      "status_url": "Service status page",
+      "status_url_hint": "Linked from the foot of every page, for example https://status.example.com",
+      "save": "Save",
+      "saved": "Support contact saved."
+    }
+  }
+}

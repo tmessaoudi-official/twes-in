@@ -73,7 +73,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         $html = $this->html(null, true, 'fr', 'Marchandise voyageant aux risques du client.');
 
         foreach ([
-            '<html lang="fr">', 'Bon de livraison', 'BL-2026-00001', '15/09/2026', '20/09/2026', 'PO-77',
+            '<html lang="fr" dir="ltr">', 'Bon de livraison', 'BL-2026-00001', '15/09/2026', '20/09/2026', 'PO-77',
             'Acme Distribution', 'Carthage Conseil SARL', 'CLI-0007', 'Matricule fiscal', '1234567APM000', 'Rue de Rome',
             'Portable &lt;14&quot;&gt;', '<td>Unité</td>', "1\u{a0}250,000", "2\u{a0}500,000", 'FODEC', "2\u{a0}525,000",
             'Exportation exonérée de la TVA.', 'Livrer au quai 3.', 'Marchandise voyageant aux risques du client.',
@@ -92,7 +92,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
     {
         $html = $this->html(DeliveryNotePage::CANCELLED, false, 'en', '');
 
-        foreach (['<html lang="en">', 'Delivery note', 'CANCELLED', 'BL-2026-00001', 'Carthage Conseil SARL', 'Quantity', 'Date and time', 'Signature and stamp', 'Reservations'] as $expected) {
+        foreach (['<html lang="en" dir="ltr">', 'Delivery note', 'CANCELLED', 'BL-2026-00001', 'Carthage Conseil SARL', 'Quantity', 'Date and time', 'Signature and stamp', 'Reservations'] as $expected) {
             self::assertStringContainsString($expected, $html);
         }
         foreach (['1,250.000', '2,525.000', 'FODEC', 'fiscal.mention', 'pdf.'] as $absent) {
@@ -119,7 +119,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
     {
         $html = $this->html(null, true, 'fr', '', dateFormat: 'ymd', numberFormat: 'comma-dot');
 
-        foreach (['<html lang="fr">', 'Bon de livraison', '2026-09-15', '2026-09-20', '1,250.000', '2,525.000'] as $expected) {
+        foreach (['<html lang="fr" dir="ltr">', 'Bon de livraison', '2026-09-15', '2026-09-20', '1,250.000', '2,525.000'] as $expected) {
             self::assertStringContainsString($expected, $html);
         }
         foreach (['15/09/2026', "1\u{a0}250,000"] as $absent) {

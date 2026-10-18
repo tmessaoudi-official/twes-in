@@ -24,7 +24,7 @@ final class CatalogueLanguages implements Languages
     private const array PLURALS = ['zero', 'one', 'two', 'few', 'many', 'other'];
     private const array FLAGS = ['interface', 'documents', 'legal'];
 
-    /** @var array{default: string, interface: list<string>, documents: list<string>, legal: list<string>}|null */
+    /** @var array{default: string, interface: list<string>, documents: list<string>, legal: list<string>, directions: array<string, 'ltr'|'rtl'>}|null */
     private ?array $read = null;
 
     public function __construct(#[Autowire('%kernel.project_dir%/config/languages.json')] private readonly string $file)
@@ -56,13 +56,20 @@ final class CatalogueLanguages implements Languages
         return \in_array($asked, $this->interface(), true) ? $asked : $this->default();
     }
 
-    /** @return array{default: string, interface: list<string>, documents: list<string>, legal: list<string>} */
+    public function direction(string $tag): string
+    {
+        $directions = $this->catalogue()['directions'];
+
+        return $directions[$tag] ?? $directions[$this->default()];
+    }
+
+    /** @return array{default: string, interface: list<string>, documents: list<string>, legal: list<string>, directions: array<string, 'ltr'|'rtl'>} */
     private function catalogue(): array
     {
         return $this->read ??= $this->parse();
     }
 
-    /** @return array{default: string, interface: list<string>, documents: list<string>, legal: list<string>} */
+    /** @return array{default: string, interface: list<string>, documents: list<string>, legal: list<string>, directions: array<string, 'ltr'|'rtl'>} */
     private function parse(): array
     {
         $contents = file_get_contents($this->file);
@@ -77,6 +84,7 @@ final class CatalogueLanguages implements Languages
 
         $by = ['interface' => [], 'documents' => [], 'legal' => []];
         $tags = [];
+        $directions = [];
         foreach ($decoded['languages'] as $entry) {
             $tag = \is_array($entry) ? ($entry['tag'] ?? null) : null;
             if (!\is_string($tag) || 1 !== preg_match(self::TAG, $tag)) {
@@ -92,6 +100,7 @@ final class CatalogueLanguages implements Languages
             if (!\in_array($entry['direction'] ?? null, ['ltr', 'rtl'], true)) {
                 $this->refuse("gives \"$tag\" a direction that is neither ltr nor rtl");
             }
+            $directions[$tag] = $entry['direction'];
             $plurals = $entry['plurals'] ?? null;
             if (!\is_array($plurals) || !\in_array('other', $plurals, true) || [] !== array_filter($plurals, static fn (mixed $form): bool => !\in_array($form, self::PLURALS, true))) {
                 $this->refuse("gives \"$tag\" plural forms that are not CLDR's, or lack other");
@@ -112,7 +121,7 @@ final class CatalogueLanguages implements Languages
         }
         $interface = [$default, ...array_values(array_diff($by['interface'], [$default]))];
 
-        return ['default' => $default, 'interface' => $interface, 'documents' => $by['documents'], 'legal' => $by['legal']];
+        return ['default' => $default, 'interface' => $interface, 'documents' => $by['documents'], 'legal' => $by['legal'], 'directions' => $directions];
     }
 
     private function refuse(string $why): never

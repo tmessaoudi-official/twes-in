@@ -15,11 +15,13 @@
     }
 {% endautoescape %}
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: "Inter", "Helvetica Neue", Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #1f2328; }
+    body { margin: 0; font-family: "Inter", "Helvetica Neue", Arial, "Noto Sans Arabic", sans-serif; font-size: 10pt; line-height: 1.4; color: #1f2328; }
     .parties { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
     .party { width: 48%; }
     .party h2 { margin: 0 0 4px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #57606a; }
     .logo { display: block; width: {{ design.logoWidthMm }}mm; height: {{ design.logoHeightMm }}mm; object-fit: {{ design.logoKeepsProportions ? 'contain' : 'fill' }}; object-position: left center; margin-bottom: 8px; }
+    {# The logo sits at the start of its box, which is the right in a language read right to left. #}
+    [dir="rtl"] .logo { object-position: right center; }
     .company-name { font-size: 14pt; font-weight: 700; }
     .title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--accent-text); padding-bottom: 6px; margin-bottom: 12px; }
     .title h1 { margin: 0; font-size: 18pt; color: var(--accent-text); }
@@ -27,15 +29,15 @@
     .facts dt { font-size: 8pt; color: #57606a; }
     .facts dd { margin: 0; font-weight: 600; }
     table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: .04em; color: #57606a; border-bottom: 1px solid #d0d7de; padding: 4px; }
+    th { text-align: start; font-size: 8pt; text-transform: uppercase; letter-spacing: .04em; color: #57606a; border-bottom: 1px solid #d0d7de; padding: 4px; }
     td { padding: 6px 4px; border-bottom: 1px solid #eaeef2; vertical-align: top; }
-    .number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .totals { margin-left: auto; margin-top: 12px; }
+    .number { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .totals { margin-inline-start: auto; margin-top: 12px; }
     .totals td { border: 0; padding: 2px 4px; }
     .totals .grand td { border-top: 2px solid var(--accent-text); font-weight: 700; padding-top: 6px; }
     .mention, .remarks { margin-top: 16px; }
     .muted { color: #57606a; }
-    .watermark { position: fixed; top: 45%; left: 0; right: 0; text-align: center; transform: rotate(-30deg); font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, .14); letter-spacing: .1em; }
+    .watermark { position: fixed; top: 45%; inset-inline: 0; text-align: center; transform: rotate(-30deg); font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, .14); letter-spacing: .1em; }
 
     {# Modern: the title, the table's head and the total on bands of the accent. #}
     .layout-modern .party h2 { color: var(--accent-text); }

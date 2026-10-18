@@ -27,7 +27,7 @@ final class ShippedDepositDeductions
     {
         $translator = new Translator('fr');
         $translator->addLoader('yaml', new YamlFileLoader());
-        foreach (['fr', 'en'] as $language) {
+        foreach (ShippedLanguages::catalogue()->documents() as $language) {
             $translator->addResource('yaml', __DIR__.'/../../translations/pdf.'.$language.'.yaml', $language, 'pdf');
         }
 

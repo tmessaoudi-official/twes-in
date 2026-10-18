@@ -1,0 +1,52 @@
+{
+  "schedule": {
+    "fields": {
+      "unit": "يتكرّر كل",
+      "every": "الفاصل",
+      "every_hint": "1 لكل مرة، 2 لمرة من كل مرتين، وهكذا.",
+      "anchor": "أي يوم",
+      "month_day": "يوم",
+      "month_day_hint": "الشهر الأقصر يأخذ آخر يوم فيه.",
+      "ordinal": "أيّها",
+      "weekday": "يوم الأسبوع"
+    },
+    "units": {
+      "day": "يوم",
+      "week": "أسبوع",
+      "month": "شهر",
+      "year": "سنة"
+    },
+    "anchors": {
+      "date": "تاريخ من الشهر (يوم 5…)",
+      "last_day": "آخر يوم من الشهر",
+      "weekday": "يوم من الأسبوع (الثلاثاء الثاني…)",
+      "last_weekday": "آخر يوم معيّن من الأسبوع في الشهر (آخر جمعة…)"
+    },
+    "ordinals": {
+      "1": "الأول",
+      "2": "الثاني",
+      "3": "الثالث",
+      "4": "الرابع"
+    },
+    "every": {
+      "day": "{every, plural, =1 {كل يوم} zero {كل {{every}} يوم} one {كل يوم} two {كل يومين} few {كل {{every}} أيام} many {كل {{every}} يومًا} other {كل {{every}} يوم}}",
+      "week": "{every, plural, =1 {كل أسبوع} zero {كل {{every}} أسبوع} one {كل أسبوع} two {كل أسبوعين} few {كل {{every}} أسابيع} many {كل {{every}} أسبوعًا} other {كل {{every}} أسبوع}}",
+      "month": "{every, plural, =1 {كل شهر} zero {كل {{every}} شهر} one {كل شهر} two {كل شهرين} few {كل {{every}} أشهر} many {كل {{every}} شهرًا} other {كل {{every}} شهر}}",
+      "year": "{every, plural, =1 {كل سنة} zero {كل {{every}} سنة} one {كل سنة} two {كل سنتين} few {كل {{every}} سنوات} many {كل {{every}} سنةً} other {كل {{every}} سنة}}"
+    },
+    "on": {
+      "week": "{{every}}، يوم {{weekday}}",
+      "date": "{{every}}، يوم {day, plural, =1 {1} zero {{{day}}} one {{{day}}} two {{{day}}} few {{{day}}} many {{{day}}} other {{{day}}}}",
+      "last_day": "{{every}}، آخر يوم من الشهر",
+      "weekday": "{{every}}، {{weekday}} {{ordinal}}",
+      "last_weekday": "{{every}}، {{weekday}} الأخير"
+    },
+    "in_month": "{{on}}، في {{month}}",
+    "errors": {
+      "every": "يتراوح الفاصل بين 1 و99.",
+      "monthDay": "يتراوح يوم الشهر بين 1 و31.",
+      "ordinal": "اختر أيّها.",
+      "weekday": "اختر يومًا من الأسبوع."
+    }
+  }
+}
