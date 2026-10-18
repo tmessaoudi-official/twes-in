@@ -55,6 +55,7 @@ export const HISTORY_SIZE = 20;
               <code>{{ row.action }}</code>
             }
             @if (row.fields.length > 0) {
+              <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
               <span class="text-on-surface-variant"
                 >({{ row.fields | activityFields: kind() }})</span
               >

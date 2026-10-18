@@ -301,7 +301,9 @@
             data-testid="stock-map-found"
           >
             <div class="me-auto flex min-w-0 flex-col gap-1">
-              <p class="font-semibold">{{ now.productName }} · {{ now.productReference }}</p>
+              <p class="font-semibold">
+                <bdi>{{ now.productName }}</bdi> · <bdi>{{ now.productReference }}</bdi>
+              </p>
               @if (foundPlaces().length === 0 && undrawn() === null) {
                 <p class="text-sm" data-testid="stock-map-nowhere">
                   {{ 'inventory.plan.search.nowhere' | translate }}
@@ -546,7 +548,9 @@
                 [attr.data-testid]="'stock-floor-' + one.id"
               >
                 <span class="flex flex-wrap items-center gap-2">
-                  <span class="font-medium">{{ one.name }}</span>
+                  <span class="font-medium"
+                    ><bdi>{{ one.name }}</bdi></span
+                  >
                   @if (hitsByFloor().get(one.id); as count) {
                     <span
                       class="twes-map-hit-chip rounded-full px-2 text-xs font-medium"
@@ -750,7 +754,9 @@
                 [attr.aria-pressed]="chosen().has(shape.drawing.id)"
                 [attr.data-testid]="'stock-drawing-' + shape.drawing.locationCode"
               >
-                <span class="font-medium">{{ shape.drawing.locationCode }}</span>
+                <span class="font-medium"
+                  ><bdi>{{ shape.drawing.locationCode }}</bdi></span
+                >
                 <span class="min-w-0 grow text-on-surface-variant"
                   ><span class="twes-value" dir="auto">{{ shape.drawing.locationName }}</span></span
                 >
@@ -841,7 +847,7 @@
                       class="tabular-nums text-sm text-on-surface-variant"
                       [attr.data-testid]="'stock-layer-count-' + layer.id"
                     >
-                      {{ layer.count }}
+                      <bdi>{{ layer.count }}</bdi>
                     </span>
                     <!-- Switches: their name says what they do, the word they show is their state. -->
                     <button
@@ -1413,7 +1419,9 @@
                       data-testid="stock-map-scale-line"
                     ></span>
                   }
-                  <span data-testid="stock-map-scale">{{ bar.label }}</span>
+                  <span data-testid="stock-map-scale"
+                    ><bdi>{{ bar.label }}</bdi></span
+                  >
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                   @if (panArrows()) {
@@ -1476,7 +1484,7 @@
                     <span
                       class="min-w-12 text-center text-xs tabular-nums text-on-surface-variant"
                       data-testid="stock-map-zoom"
-                      >{{ zoomLabel() }}</span
+                      ><bdi>{{ zoomLabel() }}</bdi></span
                     >
                     <button
                       type="button"
@@ -1671,7 +1679,7 @@
                 {{ 'inventory.plan.chosen' | translate: { count: chosenDrawings().length } }}
               </h2>
               <p class="text-sm text-on-surface-variant">
-                {{ chosenCodes() }}
+                <bdi>{{ chosenCodes() }}</bdi>
               </p>
               @if (actsOnGroup()) {
                 <p class="text-sm text-on-surface-variant">
@@ -1737,7 +1745,7 @@
             >
               <div class="flex flex-col gap-1">
                 <h2 class="text-lg font-semibold">
-                  {{ drawing.locationCode }} · {{ drawing.locationName }}
+                  <bdi>{{ drawing.locationCode }}</bdi> · <bdi>{{ drawing.locationName }}</bdi>
                 </h2>
                 <p class="text-sm text-on-surface-variant">
                   {{ 'inventory.kinds.' + drawing.locationKind | translate }}
@@ -1903,7 +1911,7 @@
                           this sentence, not a decoration of it, and the person is about to accept them.
                         -->
                         <span class="font-medium" data-testid="stock-repeat-codes">
-                          {{ repeatCodes().join(', ') }}
+                          <bdi>{{ repeatCodes().join(', ') }}</bdi>
                         </span>
                       } @else {
                         {{ 'inventory.plan.repeat_incomplete' | translate }}
@@ -1968,15 +1976,18 @@
                     >
                       <span class="flex w-full items-baseline justify-between gap-3">
                         <span class="font-medium">
-                          {{ place.row.locationCode }} · {{ place.row.locationName }}
+                          <bdi>{{ place.row.locationCode }}</bdi> ·
+                          <bdi>{{ place.row.locationName }}</bdi>
                         </span>
                         <span class="whitespace-nowrap font-semibold tabular-nums">
                           {{ place.row.quantity | amount: found()!.unitDecimals }}
-                          {{ found()!.unitName }}
+                          <bdi>{{ found()!.unitName }}</bdi>
                         </span>
                       </span>
                       @if (!place.here) {
-                        <span class="text-sm text-on-surface-variant">{{ place.floorName }}</span>
+                        <span class="text-sm text-on-surface-variant"
+                          ><bdi>{{ place.floorName }}</bdi></span
+                        >
                       }
                       @if (place.row.lines.length > 1) {
                         <span class="text-sm text-on-surface-variant">
@@ -2051,14 +2062,19 @@
                       "
                     >
                       <span class="flex flex-col">
-                        <span>{{ place.row.locationCode }} · {{ place.row.locationName }}</span>
+                        <span
+                          ><bdi>{{ place.row.locationCode }}</bdi> ·
+                          <bdi>{{ place.row.locationName }}</bdi></span
+                        >
                         @if (!place.here) {
-                          <span class="text-sm text-on-surface-variant">{{ place.floorName }}</span>
+                          <span class="text-sm text-on-surface-variant"
+                            ><bdi>{{ place.floorName }}</bdi></span
+                          >
                         }
                       </span>
                       <span class="whitespace-nowrap font-semibold tabular-nums">
                         {{ place.row.quantity | amount: group.product.unitDecimals }}
-                        {{ group.product.unitName }}
+                        <bdi>{{ group.product.unitName }}</bdi>
                       </span>
                     </button>
                   }

@@ -31,7 +31,10 @@
 
 <p class="m-0 text-sm" data-testid="camera-last-read">
   @if (lastRead(); as code) {
-    {{ 'scan.camera.last_read' | translate }} <span class="font-mono">{{ code }}</span>
+    {{ 'scan.camera.last_read' | translate }}
+    <span class="font-mono"
+      ><bdi>{{ code }}</bdi></span
+    >
   } @else {
     {{ 'scan.camera.hint' | translate }}
   }

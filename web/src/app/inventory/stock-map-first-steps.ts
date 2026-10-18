@@ -67,7 +67,7 @@ import { TranslatePipe } from '@ngx-translate/core';
               [class.border-outline]="!step.done"
               aria-hidden="true"
             >
-              {{ step.done ? '✓' : index + 1 }}
+              <bdi>{{ step.done ? '✓' : index + 1 }}</bdi>
             </span>
             <span class="text-sm">
               {{ 'inventory.plan.first.steps.' + step.key | translate }}

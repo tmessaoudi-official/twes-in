@@ -117,7 +117,10 @@
               <span class="sr-only">{{
                 'list.filters_active' | translate: { count: activeCount() }
               }}</span>
-              <span aria-hidden="true" data-testid="list-filters-count">({{ activeCount() }})</span>
+              <span aria-hidden="true" data-testid="list-filters-count"
+                >(<bdi>{{ activeCount() }}</bdi
+                >)</span
+              >
             }
           </button>
         }

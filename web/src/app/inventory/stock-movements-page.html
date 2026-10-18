@@ -74,7 +74,9 @@
           >
         }
         @if (row.note; as note) {
-          <span class="block text-sm" data-testid="movement-note">{{ note }}</span>
+          <span class="block text-sm" data-testid="movement-note"
+            ><bdi>{{ note }}</bdi></span
+          >
         }
         @if (row.attachmentCount) {
           <span class="block text-sm" data-testid="movement-files">{{

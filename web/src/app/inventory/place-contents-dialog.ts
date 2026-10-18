@@ -23,7 +23,7 @@ export interface PlaceContentsDialogData {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="place-contents-title">
-      {{ 'inventory.plan.here.title' | translate }} · {{ data.path }}
+      {{ 'inventory.plan.here.title' | translate }} · <bdi>{{ data.path }}</bdi>
     </h2>
     <mat-dialog-content>
       <app-place-contents [companyId]="data.companyId" [locationId]="data.locationId" />

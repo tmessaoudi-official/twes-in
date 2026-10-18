@@ -65,7 +65,9 @@
   <main class="twes-auth-main">
     <header class="twes-auth-brand">
       <app-brand-wordmark [name]="brand.name()" />
-      <p class="twes-auth-tagline" data-testid="brand-tagline">{{ brand.tagline() }}</p>
+      <p class="twes-auth-tagline" data-testid="brand-tagline">
+        <bdi>{{ brand.tagline() }}</bdi>
+      </p>
     </header>
     <div
       [class.twes-auth-card]="!plain()"

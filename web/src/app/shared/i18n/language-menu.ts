@@ -30,7 +30,9 @@ import { LANGUAGE_NAMES, LanguageFacade, SUPPORTED_LANGUAGES } from './language-
       data-testid="language-menu"
     >
       <mat-icon aria-hidden="true">translate</mat-icon>
-      <span aria-hidden="true" class="font-semibold uppercase">{{ language.current() }}</span>
+      <span aria-hidden="true" class="font-semibold uppercase"
+        ><bdi>{{ language.current() }}</bdi></span
+      >
     </button>
     <mat-menu #menu="matMenu" xPosition="before">
       @for (lang of languages; track lang) {
@@ -46,9 +48,11 @@ import { LANGUAGE_NAMES, LanguageFacade, SUPPORTED_LANGUAGES } from './language-
             <span
               aria-hidden="true"
               class="w-7 rounded border border-outline-variant text-center text-xs font-semibold uppercase text-on-surface-variant"
-              >{{ lang }}</span
+              ><bdi>{{ lang }}</bdi></span
             >
-            <span class="flex-1" [attr.lang]="lang">{{ names[lang] }}</span>
+            <span class="flex-1" [attr.lang]="lang"
+              ><bdi>{{ names[lang] }}</bdi></span
+            >
             <span
               aria-hidden="true"
               class="material-symbols-outlined text-primary"

@@ -237,7 +237,9 @@
                           />
                           <mat-autocomplete #inUse="matAutocomplete">
                             @for (value of suggested(field); track value) {
-                              <mat-option [value]="value">{{ value }}</mat-option>
+                              <mat-option [value]="value"
+                                ><bdi>{{ value }}</bdi></mat-option
+                              >
                             }
                           </mat-autocomplete>
                         } @else {

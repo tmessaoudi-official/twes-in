@@ -115,7 +115,7 @@
                   class="col-span-2 break-words sm:col-span-1"
                   data-heading
                   [id]="'import-pairing-heading-' + index"
-                  >{{ row.heading }}</span
+                  ><bdi>{{ row.heading }}</bdi></span
                 >
                 <app-select
                   class="min-w-0"
@@ -246,10 +246,18 @@
             <tbody>
               @for (change of shownChanges(); track $index) {
                 <tr class="border-t border-outline-variant align-top">
-                  <th scope="row" class="py-2 pe-4 text-start font-normal">{{ change.line }}</th>
-                  <td class="py-2 pe-4 font-mono">{{ change.column }}</td>
-                  <td class="py-2 pe-4 break-all text-on-surface-variant">{{ change.before }}</td>
-                  <td class="py-2 break-all">{{ change.after }}</td>
+                  <th scope="row" class="py-2 pe-4 text-start font-normal">
+                    <bdi>{{ change.line }}</bdi>
+                  </th>
+                  <td class="py-2 pe-4 font-mono">
+                    <bdi>{{ change.column }}</bdi>
+                  </td>
+                  <td class="py-2 pe-4 break-all text-on-surface-variant">
+                    <bdi>{{ change.before }}</bdi>
+                  </td>
+                  <td class="py-2 break-all">
+                    <bdi>{{ change.after }}</bdi>
+                  </td>
                 </tr>
               }
             </tbody>
@@ -279,8 +287,13 @@
             <tbody>
               @for (note of report.notes; track $index) {
                 <tr class="border-t border-outline-variant align-top">
-                  <th scope="row" class="py-2 pe-4 text-start font-normal">{{ note.line }}</th>
-                  <td class="py-2 pe-4 font-mono">{{ note.column }}</td>
+                  <th scope="row" class="py-2 pe-4 text-start font-normal">
+                    <bdi>{{ note.line }}</bdi>
+                  </th>
+                  <td class="py-2 pe-4 font-mono">
+                    <bdi>{{ note.column }}</bdi>
+                  </td>
+                  <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
                   <td class="py-2">{{ noteOf(note) }}</td>
                 </tr>
               }
@@ -305,8 +318,13 @@
             <tbody>
               @for (rejection of report.rejected; track $index) {
                 <tr class="border-t border-outline-variant align-top">
-                  <th scope="row" class="py-2 pe-4 text-start font-normal">{{ rejection.line }}</th>
-                  <td class="py-2 pe-4 font-mono">{{ rejection.column }}</td>
+                  <th scope="row" class="py-2 pe-4 text-start font-normal">
+                    <bdi>{{ rejection.line }}</bdi>
+                  </th>
+                  <td class="py-2 pe-4 font-mono">
+                    <bdi>{{ rejection.column }}</bdi>
+                  </td>
+                  <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
                   <td class="py-2">{{ reasonOf(rejection) }}</td>
                 </tr>
               }
@@ -395,7 +413,9 @@
                   <td class="py-2 pe-4">
                     {{ column.headingKey ? (column.headingKey | translate) : column.label }}
                   </td>
-                  <td class="py-2 pe-4 font-mono text-on-surface-variant">{{ column.example }}</td>
+                  <td class="py-2 pe-4 font-mono text-on-surface-variant">
+                    <bdi>{{ column.example }}</bdi>
+                  </td>
                   <td class="py-2 text-on-surface-variant">
                     {{ column.noteKey ? (column.noteKey | translate) : '' }}
                   </td>

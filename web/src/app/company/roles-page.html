@@ -13,6 +13,7 @@
       <p>{{ 'company.roles.errors.' + code | translate }}</p>
       @if (detail()) {
         <!-- The names in here are data the API knows and we do not; it is shown as written. -->
+        <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
         <p data-testid="roles-error-detail">{{ detail() }}</p>
       }
     </div>

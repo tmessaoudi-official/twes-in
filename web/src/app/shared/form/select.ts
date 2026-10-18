@@ -78,6 +78,7 @@ function fold(text: string): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (labelInside() && label() !== '') {
+      <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
       <span
         [id]="labelId"
         class="pointer-events-none absolute -top-2 inset-s-3 z-[1] bg-surface px-1 text-xs leading-4 text-on-surface-variant"
@@ -106,6 +107,7 @@ function fold(text: string): string {
           <span class="text-on-surface-variant">{{ emptyLabel() | translate }}</span>
         } @else if (multiple()) {
           @for (option of chipped(); track option.value) {
+            <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
             <span
               data-chip
               class="rounded-full bg-secondary-container px-2.5 py-0.5 text-sm text-on-secondary-container"
@@ -226,6 +228,7 @@ function fold(text: string): string {
                 <!-- Keeps the words of an option with no tone (« all ») in line with the toned ones. -->
                 <span aria-hidden="true" class="size-2.5 shrink-0"></span>
               }
+              <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
               <span data-option-label class="min-w-0 flex-1">{{ option.label }}</span>
               @if (hasCount(option.count)) {
                 <app-count-badge

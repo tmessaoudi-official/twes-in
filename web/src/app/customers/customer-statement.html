@@ -99,10 +99,13 @@
                   class="underline"
                   [routerLink]="['/invoices', line.documentId]"
                   [attr.data-testid]="'statement-document-' + $index"
-                  >{{ 'customers.statement.kinds.' + line.kind | translate }} {{ line.number }}</a
+                  >{{ 'customers.statement.kinds.' + line.kind | translate }}
+                  <bdi>{{ line.number }}</bdi></a
                 >
                 @if (line.reference) {
-                  <span class="text-on-surface-variant"> · {{ line.reference }}</span>
+                  <span class="text-on-surface-variant">
+                    · <bdi>{{ line.reference }}</bdi></span
+                  >
                 }
               </td>
               <td class="p-2 text-end tabular-nums">
@@ -141,7 +144,7 @@
               {{ 'customers.statement.closing' | translate }}
             </th>
             <td class="p-2 text-end tabular-nums">
-              {{ s.closingBalance | amount: s.currencyScale }} {{ s.currency }}
+              {{ s.closingBalance | amount: s.currencyScale }} <bdi>{{ s.currency }}</bdi>
             </td>
           </tr>
         </tfoot>

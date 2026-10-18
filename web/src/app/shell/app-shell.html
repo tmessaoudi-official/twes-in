@@ -407,8 +407,12 @@
     <mat-menu #account="matMenu" xPosition="before">
       @if (me(); as me) {
         <div class="px-4 pb-2 pt-1">
-          <p class="font-medium text-on-surface">{{ me.user.displayName }}</p>
-          <p class="text-sm text-on-surface-variant">{{ me.user.email }}</p>
+          <p class="font-medium text-on-surface">
+            <bdi>{{ me.user.displayName }}</bdi>
+          </p>
+          <p class="text-sm text-on-surface-variant">
+            <bdi>{{ me.user.email }}</bdi>
+          </p>
         </div>
       }
       <mat-divider />
@@ -435,7 +439,9 @@
           <mat-icon aria-hidden="true">{{
             language.current() === lang ? 'radio_button_checked' : 'radio_button_unchecked'
           }}</mat-icon>
-          <span [attr.lang]="lang">{{ languageNames[lang] }}</span>
+          <span [attr.lang]="lang"
+            ><bdi>{{ languageNames[lang] }}</bdi></span
+          >
         </button>
       }
       <mat-divider />

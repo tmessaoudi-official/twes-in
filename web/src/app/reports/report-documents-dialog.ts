@@ -71,13 +71,15 @@ export interface ReportDocumentsData {
                       document.number ?? ('reports.documents.kinds.' + document.kind | translate);
                     <th scope="row" class="p-2 text-start font-medium">
                       @if (link(document); as opens) {
-                        <a [routerLink]="opens" (click)="ref.close()">{{ named }}</a>
+                        <a [routerLink]="opens" (click)="ref.close()"
+                          ><bdi>{{ named }}</bdi></a
+                        >
                       } @else {
                         {{ named }}
                       }
                     </th>
                     <td class="p-2" [attr.data-label]="'reports.documents.party' | translate">
-                      {{ document.party }}
+                      <bdi>{{ document.party }}</bdi>
                     </td>
                     <td class="p-2" [attr.data-label]="'reports.documents.day' | translate">
                       {{ document.day | day }}

@@ -22,7 +22,8 @@
             ><span [attr.data-testid]="'line-' + i + '-quantity'">{{
               line.quantity | amount: line.quantityScale
             }}</span
-            >&nbsp;<span [attr.data-testid]="'line-' + i + '-unit'">{{ line.unit }}</span
+            >&nbsp;<span [attr.data-testid]="'line-' + i + '-unit'"
+              ><bdi>{{ line.unit }}</bdi></span
             >&nbsp;×&nbsp;<span [attr.data-testid]="'line-' + i + '-price'">{{
               line.unitPrice | amount: currencyScale()
             }}</span></span
@@ -38,7 +39,9 @@
             }}</span>
           }
           @if (line.taxes !== '') {
-            <span [attr.data-testid]="'line-' + i + '-taxes'">{{ line.taxes }}</span>
+            <span [attr.data-testid]="'line-' + i + '-taxes'"
+              ><bdi>{{ line.taxes }}</bdi></span
+            >
           }
         </p>
       </li>
@@ -73,7 +76,9 @@
             <td class="twes-number" [attr.data-testid]="'line-' + i + '-quantity'">
               {{ line.quantity | amount: line.quantityScale }}
             </td>
-            <td [attr.data-testid]="'line-' + i + '-unit'">{{ line.unit }}</td>
+            <td [attr.data-testid]="'line-' + i + '-unit'">
+              <bdi>{{ line.unit }}</bdi>
+            </td>
             <td class="twes-number" [attr.data-testid]="'line-' + i + '-price'">
               {{ line.unitPrice | amount: currencyScale() }}
             </td>
@@ -86,7 +91,9 @@
                 }
               </td>
             }
-            <td [attr.data-testid]="'line-' + i + '-taxes'">{{ line.taxes }}</td>
+            <td [attr.data-testid]="'line-' + i + '-taxes'">
+              <bdi>{{ line.taxes }}</bdi>
+            </td>
             @if (withNet()) {
               <td class="twes-number font-semibold" [attr.data-testid]="'line-' + i + '-net'">
                 {{ line.net | amount: currencyScale() }}
@@ -100,7 +107,9 @@
 }
 
 <ng-template #what let-line>
-  <span class="font-medium">{{ line.description }}</span>
+  <span class="font-medium"
+    ><bdi>{{ line.description }}</bdi></span
+  >
   @if (line.reference !== null || line.lot !== null || line.notes.length > 0) {
     <span class="twes-dot-list text-sm text-on-surface-variant">
       @if (line.reference !== null) {

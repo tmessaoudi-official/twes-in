@@ -37,7 +37,7 @@
       "credit_limit": "Plafond de crédit",
       "credit_limit_note": "Ce que ce client peut devoir : au-delà, une notification le dit après la facture qui le dépasse. 0 n’en fixe aucun.",
       "document_language": "Langue des documents",
-      "document_language_note": "fr ou en (français ou anglais) : la langue dans laquelle ses documents sont imprimés.",
+      "document_language_note": "La langue dans laquelle ses documents sont imprimés, par son code (« fr ») ou par son nom (« français »).",
       "exemption_reference": "Texte d’exonération de TVA",
       "exemption_reference_note": "Imprimé pour ce client s’il est exonéré, par exemple « article 261-4-4° du CGI ».",
       "notes": "Notes",

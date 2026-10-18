@@ -20,7 +20,9 @@
       </a>
     </div>
   } @else if (linkEmail(); as email) {
-    <p class="twes-auth-intro" data-testid="signup-finish-email">{{ email }}</p>
+    <p class="twes-auth-intro" data-testid="signup-finish-email">
+      <bdi>{{ email }}</bdi>
+    </p>
 
     <form
       [formGroup]="form"

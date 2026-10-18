@@ -16,9 +16,9 @@
               @if (s.margin !== null) {
                 <span class="text-4xl font-semibold tabular-nums">
                   {{ s.margin | amount: s.currencyScale }}
-                  <span class="text-base font-normal text-on-surface-variant">{{
-                    s.currency
-                  }}</span>
+                  <span class="text-base font-normal text-on-surface-variant"
+                    ><bdi>{{ s.currency }}</bdi></span
+                  >
                 </span>
                 @if (marginVersus(); as v) {
                   <span class="text-sm tabular-nums text-on-surface-variant">{{
@@ -52,7 +52,9 @@
             }}</span>
             <span class="text-3xl font-semibold tabular-nums">
               {{ s.invoicedMonth | amount: s.currencyScale }}
-              <span class="text-base font-normal text-on-surface-variant">{{ s.currency }}</span>
+              <span class="text-base font-normal text-on-surface-variant"
+                ><bdi>{{ s.currency }}</bdi></span
+              >
             </span>
             @if (invoicedVersus(); as v) {
               <span class="text-sm tabular-nums text-on-surface-variant">{{
@@ -75,7 +77,9 @@
               }}</span>
               <span class="text-3xl font-semibold tabular-nums">
                 {{ s.withheldMonth | amount: s.currencyScale }}
-                <span class="text-base font-normal text-on-surface-variant">{{ s.currency }}</span>
+                <span class="text-base font-normal text-on-surface-variant"
+                  ><bdi>{{ s.currency }}</bdi></span
+                >
               </span>
               @if (withheldVersus(); as v) {
                 <span class="text-sm tabular-nums text-on-surface-variant">{{
@@ -101,7 +105,9 @@
             }}</span>
             <span class="text-3xl font-semibold tabular-nums">
               {{ s.outstanding | amount: s.currencyScale }}
-              <span class="text-base font-normal text-on-surface-variant">{{ s.currency }}</span>
+              <span class="text-base font-normal text-on-surface-variant"
+                ><bdi>{{ s.currency }}</bdi></span
+              >
             </span>
             <dl class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
               <div class="flex items-center gap-2">
@@ -130,7 +136,9 @@
             @if (s.overdueCount > 0) {
               <span class="text-3xl font-semibold tabular-nums text-error">
                 {{ s.overdue | amount: s.currencyScale }}
-                <span class="text-base font-normal">{{ s.currency }}</span>
+                <span class="text-base font-normal"
+                  ><bdi>{{ s.currency }}</bdi></span
+                >
               </span>
               <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span class="text-on-surface-variant">{{
@@ -156,7 +164,9 @@
             }}</span>
             <span class="text-3xl font-semibold tabular-nums">
               {{ thisMonth() | amount: s.currencyScale }}
-              <span class="text-base font-normal text-on-surface-variant">{{ s.currency }}</span>
+              <span class="text-base font-normal text-on-surface-variant"
+                ><bdi>{{ s.currency }}</bdi></span
+              >
             </span>
             @if (collectedVersus(); as v) {
               <span class="text-sm tabular-nums text-on-surface-variant">{{
@@ -176,7 +186,9 @@
             }}</span>
             <span class="text-3xl font-semibold tabular-nums">
               {{ s.vatTotal | amount: s.currencyScale }}
-              <span class="text-base font-normal text-on-surface-variant">{{ s.currency }}</span>
+              <span class="text-base font-normal text-on-surface-variant"
+                ><bdi>{{ s.currency }}</bdi></span
+              >
             </span>
             @if (s.vat.length > 0) {
               <ul class="flex flex-wrap gap-x-3 gap-y-1 text-sm text-on-surface-variant">
@@ -268,7 +280,7 @@
                       <span
                         aria-hidden="true"
                         class="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-xs font-semibold"
-                        >{{ row.initials }}</span
+                        ><bdi>{{ row.initials }}</bdi></span
                       >
                       <span class="flex min-w-0 flex-1 flex-col">
                         <span class="twes-value font-medium" dir="auto">{{
@@ -329,6 +341,7 @@
                     [class.bg-primary]="bar.current"
                     [class.bg-surface-container-highest]="!bar.current"
                   ></span>
+                  <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
                   <span class="text-xs text-on-surface-variant">{{ bar.label }}</span>
                 </li>
               }

@@ -79,7 +79,9 @@ export interface QuoteDepositDialogData {
             (ngModelChange)="onValue($event)"
             data-testid="quote-deposit-value"
           />
-          <span matTextSuffix>{{ by() === 'percentage' ? '%' : '' }}</span>
+          <span matTextSuffix
+            ><bdi>{{ by() === 'percentage' ? '%' : '' }}</bdi></span
+          >
           <mat-hint>{{ 'quotes.deposit.' + by() + '_hint' | translate }}</mat-hint>
         </mat-form-field>
       </div>

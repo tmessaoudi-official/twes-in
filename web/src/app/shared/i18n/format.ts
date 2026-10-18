@@ -89,10 +89,11 @@ const numberFormats = new Map<string, NumberFormat>();
 function numberFormat(locale: string, style: NumberStyle = 'auto'): NumberFormat {
   if (style !== 'auto') {
     const [thousands, decimal] = NUMBER_STYLES[style];
+    // The separators are chosen, the sign is the language's: a language read right to left writes a mark before it.
     return {
       group: (digits) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, thousands),
       decimal,
-      minus: '-',
+      minus: numberFormat(locale).minus,
     };
   }
   let known = numberFormats.get(locale);
@@ -102,7 +103,15 @@ function numberFormat(locale: string, style: NumberStyle = 'auto'): NumberFormat
     known = {
       group: (digits) => numbers.format(BigInt(digits)),
       decimal: parts.find((part) => part.type === 'decimal')?.value ?? '.',
-      minus: parts.find((part) => part.type === 'minusSign')?.value ?? '-',
+      // Everything before the digits: the sign, and in a language read right to left the left-to-right mark that keeps
+      // the sign on the figure's left.
+      minus: parts
+        .slice(
+          0,
+          parts.findIndex((part) => part.type === 'integer'),
+        )
+        .map((part) => part.value)
+        .join(''),
     };
     numberFormats.set(locale, known);
   }

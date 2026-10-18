@@ -17,7 +17,8 @@
         >
           <span>{{ line.taxes || ('expenses.bill.untaxed' | translate) }}</span>
           <span class="tabular-nums">
-            {{ line.amountNet | amount: options().currencyScale }} {{ options().currency }}
+            {{ line.amountNet | amount: options().currencyScale }}
+            <bdi>{{ options().currency }}</bdi>
           </span>
         </li>
       }
@@ -171,7 +172,9 @@
             {{ charge.label | translate }}
             @if (charge.amount !== null) {
               <span class="tabular-nums">
-                ({{ charge.amount | amount: options().currencyScale }} {{ options().currency }})
+                ({{ charge.amount | amount: options().currencyScale }}
+                <bdi>{{ options().currency }}</bdi
+                >)
               </span>
             }
           </mat-checkbox>
@@ -193,7 +196,9 @@
           @for (tax of printed(); track tax.code) {
             <div class="flex flex-col">
               <mat-form-field>
-                <mat-label>{{ tax.name }}</mat-label>
+                <mat-label
+                  ><bdi>{{ tax.name }}</bdi></mat-label
+                >
                 <input
                   matInput
                   [formControlName]="tax.code"

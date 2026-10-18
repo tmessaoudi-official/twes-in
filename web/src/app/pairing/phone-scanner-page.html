@@ -91,20 +91,27 @@
                 {{ 'scan.phone.page.unsent_choice' | translate }}
               }
               @default {
-                <span class="font-mono">{{ entry.code }}</span>
+                <span class="font-mono"
+                  ><bdi>{{ entry.code }}</bdi></span
+                >
               }
             }
           </p>
         } @else if (entry.kind === 'scan') {
           <p class="m-0 text-sm" data-testid="phone-sending">
             {{ 'scan.phone.page.sending' | translate }}
-            <span class="font-mono">{{ entry.code }}</span>
+            <span class="font-mono"
+              ><bdi>{{ entry.code }}</bdi></span
+            >
           </p>
         }
       }
       @if (sent(); as code) {
         <p class="m-0 text-sm" data-testid="phone-sent">
-          {{ 'scan.phone.page.sent' | translate }} <span class="font-mono">{{ code }}</span>
+          {{ 'scan.phone.page.sent' | translate }}
+          <span class="font-mono"
+            ><bdi>{{ code }}</bdi></span
+          >
         </p>
       }
     </div>
@@ -127,14 +134,20 @@
           </p>
           @if (echo.product; as product) {
             <p class="m-0 flex justify-between gap-2 font-medium">
-              <span>{{ product.name }}</span>
-              <span>{{ product.price }}</span>
+              <span
+                ><bdi>{{ product.name }}</bdi></span
+              >
+              <span
+                ><bdi>{{ product.price }}</bdi></span
+              >
             </p>
           }
           @if (echo.details?.length) {
             <ul class="m-0 flex list-none flex-col gap-0.5 p-0 text-sm">
               @for (line of echo.details; track $index) {
-                <li data-testid="phone-detail">{{ line }}</li>
+                <li data-testid="phone-detail">
+                  <bdi>{{ line }}</bdi>
+                </li>
               }
             </ul>
           }

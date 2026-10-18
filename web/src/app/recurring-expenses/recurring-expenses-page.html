@@ -29,9 +29,12 @@
       <ng-template appDataListCell="description" let-row>
         {{ row.description || ('expenses.recurring.model_gone' | translate) }}
         @if (row.payee; as payee) {
-          <span class="block text-sm text-on-surface-variant">{{ payee }}</span>
+          <span class="block text-sm text-on-surface-variant"
+            ><bdi>{{ payee }}</bdi></span
+          >
         }
       </ng-template>
+      <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
       <ng-template appDataListCell="schedule" let-row>{{ sentence(row) }}</ng-template>
       <ng-template appDataListCell="amount" let-row>
         @if (row.amountGross; as amount) {

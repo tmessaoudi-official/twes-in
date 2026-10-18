@@ -70,7 +70,8 @@
               {{ 'expenses.fields.amountNet' | translate }}
             </dt>
             <dd class="tabular-nums">
-              {{ expense.amountNet | amount: options()?.currencyScale }} {{ expense.currency }}
+              {{ expense.amountNet | amount: options()?.currencyScale }}
+              <bdi>{{ expense.currency }}</bdi>
             </dd>
           </div>
           <div>
@@ -78,7 +79,8 @@
               {{ 'expenses.fields.taxAmount' | translate }}
             </dt>
             <dd class="tabular-nums" data-testid="expense-tax">
-              {{ expense.taxAmount | amount: options()?.currencyScale }} {{ expense.currency }}
+              {{ expense.taxAmount | amount: options()?.currencyScale }}
+              <bdi>{{ expense.currency }}</bdi>
             </dd>
           </div>
           <div>
@@ -86,7 +88,8 @@
               {{ 'expenses.fields.amountGross' | translate }}
             </dt>
             <dd class="font-semibold tabular-nums" data-testid="expense-gross">
-              {{ expense.amountGross | amount: options()?.currencyScale }} {{ expense.currency }}
+              {{ expense.amountGross | amount: options()?.currencyScale }}
+              <bdi>{{ expense.currency }}</bdi>
             </dd>
           </div>
           <div>
@@ -144,7 +147,9 @@
             <tbody>
               @for (tax of taxRows(); track tax.code) {
                 <tr [attr.data-testid]="'expense-tax-' + tax.code">
-                  <th class="py-1 text-start font-normal" scope="row">{{ tax.name }}</th>
+                  <th class="py-1 text-start font-normal" scope="row">
+                    <bdi>{{ tax.name }}</bdi>
+                  </th>
                   <td class="py-1 text-end tabular-nums">
                     {{ tax.base === null ? '—' : (tax.base | amount: options()?.currencyScale) }}
                   </td>
@@ -329,7 +334,7 @@
                   class="underline"
                   [attr.data-testid]="'expense-attachment-open-' + attachment.name"
                 >
-                  {{ attachment.name }}
+                  <bdi>{{ attachment.name }}</bdi>
                 </a>
                 <span class="text-sm text-on-surface-variant">
                   {{ kilobytes(attachment.size) }} KB · {{ attachment.createdAt | moment }}

@@ -36,7 +36,7 @@ import { STORED_ITEMS } from './stored-items';
               [attr.lang]="code"
               [attr.data-testid]="'legal-language-' + code"
             >
-              {{ names[code] }}
+              <bdi>{{ names[code] }}</bdi>
             </button>
           } @else {
             <button
@@ -47,7 +47,7 @@ import { STORED_ITEMS } from './stored-items';
               [attr.lang]="code"
               [attr.data-testid]="'legal-language-' + code"
             >
-              {{ names[code] }}
+              <bdi>{{ names[code] }}</bdi>
             </button>
           }
         }

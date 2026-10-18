@@ -141,8 +141,12 @@
         >
           <span class="twes-auth-option-icon"><mat-icon>storefront</mat-icon></span>
           <span class="twes-auth-option-text">
-            <strong>{{ countryName(country.code) }}</strong>
-            <span>{{ country.company }}</span>
+            <strong
+              ><bdi>{{ countryName(country.code) }}</bdi></strong
+            >
+            <span
+              ><bdi>{{ country.company }}</bdi></span
+            >
           </span>
           <mat-icon class="mat-icon-rtl-mirror">chevron_right</mat-icon>
         </button>

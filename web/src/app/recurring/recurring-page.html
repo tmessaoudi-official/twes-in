@@ -27,6 +27,7 @@
       <ng-template appDataListCell="model" let-row>
         {{ row.modelNumber ?? ('recurring.model_draft' | translate) }}
       </ng-template>
+      <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
       <ng-template appDataListCell="schedule" let-row>{{ sentence(row) }}</ng-template>
       <ng-template appDataListCell="nextOn" let-row>
         @if (row.nextOn; as day) {

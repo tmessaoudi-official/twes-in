@@ -68,8 +68,8 @@
                 <img class="twes-rail-company-logo-small" [src]="url" alt="" aria-hidden="true" />
               }
               <span class="twes-company-option-name">
-                {{ company.name }}
-                <span class="text-on-surface-variant"
+                <bdi>{{ company.name }}</bdi>
+                &ngsp;<span class="text-on-surface-variant"
                   >— {{ 'roles.' + company.role | translate }}</span
                 >
               </span>
@@ -101,6 +101,7 @@
           <span class="twes-rail-company-name twes-value" dir="auto" data-testid="company-name">{{
             current.name
           }}</span>
+          <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
           <span class="twes-rail-company-sub">{{ where() }}</span>
         </span>
       </div>
@@ -134,8 +135,8 @@
         >
           <span class="twes-company-option">
             <span class="twes-company-option-name">
-              {{ company.name }}
-              <span class="opacity-60">— {{ 'roles.' + company.role | translate }}</span>
+              <bdi>{{ company.name }}</bdi>
+              &ngsp;<span class="opacity-60">— {{ 'roles.' + company.role | translate }}</span>
             </span>
             <app-count-badge
               class="twes-company-option-count"

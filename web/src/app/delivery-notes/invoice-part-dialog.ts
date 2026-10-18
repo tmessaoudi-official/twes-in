@@ -47,7 +47,9 @@ export interface InvoicePartLine {
       <div class="flex flex-col gap-3">
         @for (line of lines; track line.lineId; let index = $index) {
           <mat-form-field subscriptSizing="dynamic" class="w-full">
-            <mat-label>{{ line.description }}</mat-label>
+            <mat-label
+              ><bdi>{{ line.description }}</bdi></mat-label
+            >
             <input
               matInput
               appDecimal

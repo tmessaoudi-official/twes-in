@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Twig;
 
+use App\Shared\Application\Languages;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
@@ -21,6 +22,10 @@ use Twig\TwigFunction;
  *
  * `deduction`: an amount the document subtracts (a discount, a withholding), written with one sign: "−15,126" for an
  * invoice's 15.126, and "15,126" for a credit note's -15.126, which gives back what the invoice took (row 29).
+ *
+ * In a language read right to left a sign before a figure is a neutral character, which the line's direction sends to
+ * the figure's right (« 15,126− »): a left-to-right mark before the sign keeps it on the left, as Unicode's own Arabic
+ * number formats write it.
  */
 final class DecimalExtension extends AbstractExtension
 {
@@ -33,7 +38,9 @@ final class DecimalExtension extends AbstractExtension
     /** A company's chosen date format (`presentation.date-format`), as a PHP date pattern; `auto` is the language's. */
     private const array DATE_PATTERNS = ['dmy' => 'd/m/Y', 'mdy' => 'm/d/Y', 'ymd' => 'Y-m-d', 'dmy-dots' => 'd.m.Y'];
 
-    public function __construct(private readonly TranslatorInterface $translator)
+    private const string LEFT_TO_RIGHT_MARK = "\u{200e}";
+
+    public function __construct(private readonly TranslatorInterface $translator, private readonly Languages $languages)
     {
     }
 
@@ -65,7 +72,7 @@ final class DecimalExtension extends AbstractExtension
         $groups = array_reverse(str_split(strrev('' === $integer ? '0' : $integer), 3));
         $decimals = str_pad(rtrim($parts[3] ?? '', '0'), $minimumDecimals, '0');
 
-        return $parts[1].implode($thousands, array_map(strrev(...), $groups)).('' === $decimals ? '' : $point.$decimals);
+        return $this->sign($parts[1], $language).implode($thousands, array_map(strrev(...), $groups)).('' === $decimals ? '' : $point.$decimals);
     }
 
     public function deduction(string $value, int $minimumDecimals, string $language, string $style = 'auto'): string
@@ -73,6 +80,11 @@ final class DecimalExtension extends AbstractExtension
         $written = $this->format(ltrim($value, '-'), $minimumDecimals, $language, $style);
         $zero = 1 !== preg_match('/[1-9]/', $value);
 
-        return $zero || str_starts_with($value, '-') ? $written : '−'.$written;
+        return $zero || str_starts_with($value, '-') ? $written : $this->sign('−', $language).$written;
+    }
+
+    private function sign(string $sign, string $language): string
+    {
+        return '' !== $sign && 'rtl' === $this->languages->direction($language) ? self::LEFT_TO_RIGHT_MARK.$sign : $sign;
     }
 }

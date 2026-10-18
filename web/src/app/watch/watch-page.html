@@ -32,9 +32,9 @@
                         <mat-icon aria-hidden="true">{{ card.icon }}</mat-icon>
                         {{ 'watch.subjects.' + card.kind + '.title' | translate }}
                       </span>
-                      <span class="text-2xl font-semibold" data-testid="watch-subject-count">{{
-                        card.count
-                      }}</span>
+                      <span class="text-2xl font-semibold" data-testid="watch-subject-count"
+                        ><bdi>{{ card.count }}</bdi></span
+                      >
                     </span>
                     <span class="text-sm text-on-surface-variant">{{
                       'watch.subjects.' + card.kind + '.hint' | translate

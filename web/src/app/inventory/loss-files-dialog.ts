@@ -36,7 +36,9 @@ export interface LossFilesDialogData {
     <mat-dialog-content>
       <!-- Material's own display beats a layout class on mat-dialog-content: the column is laid out inside it. -->
       <div class="flex flex-col gap-4">
-        <p class="font-semibold" data-testid="loss-files-product">{{ data.product }}</p>
+        <p class="font-semibold" data-testid="loss-files-product">
+          <bdi>{{ data.product }}</bdi>
+        </p>
         <p class="text-sm text-on-surface-variant">{{ 'inventory.loss.files.hint' | translate }}</p>
         @if (error(); as code) {
           <p role="alert" class="text-error" data-testid="loss-files-error">
@@ -57,7 +59,7 @@ export interface LossFilesDialogData {
                     class="underline"
                     [attr.data-testid]="'loss-file-open-' + file.name"
                   >
-                    {{ file.name }}
+                    <bdi>{{ file.name }}</bdi>
                   </a>
                   <span class="text-sm text-on-surface-variant">
                     {{ kilobytes(file.size) }} KB · {{ file.createdAt | moment }}

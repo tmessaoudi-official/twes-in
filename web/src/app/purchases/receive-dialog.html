@@ -47,7 +47,7 @@
         [attr.data-testid]="'receive-row-' + i"
       >
         <legend class="px-1 font-semibold">
-          {{ row.line.productReference }} · {{ row.line.description }}
+          <bdi>{{ row.line.productReference }}</bdi> · <bdi>{{ row.line.description }}</bdi>
         </legend>
         <p
           class="text-sm text-on-surface-variant"
@@ -93,7 +93,9 @@
                 (ngModelChange)="update(i, { quantity: $event })"
                 [attr.data-testid]="'receive-row-' + i + '-quantity'"
               />
-              <span matTextSuffix>{{ row.line.unitName }}</span>
+              <span matTextSuffix
+                ><bdi>{{ row.line.unitName }}</bdi></span
+              >
             </mat-form-field>
           }
           <mat-form-field subscriptSizing="dynamic">
@@ -104,7 +106,9 @@
               [attr.data-testid]="'receive-row-' + i + '-place'"
             >
               @for (place of places; track place.id) {
-                <mat-option [value]="place.id">{{ place.label }}</mat-option>
+                <mat-option [value]="place.id"
+                  ><bdi>{{ place.label }}</bdi></mat-option
+                >
               }
             </mat-select>
           </mat-form-field>

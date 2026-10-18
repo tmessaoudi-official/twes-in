@@ -59,7 +59,9 @@ interface ShownSection {
                   >
                     {{ lead.label | translate }}
                   </dt>
-                  <dd class="break-words" [attr.data-testid]="lead.testId">{{ lead.value }}</dd>
+                  <dd class="break-words" [attr.data-testid]="lead.testId">
+                    <bdi>{{ lead.value }}</bdi>
+                  </dd>
                 </div>
               }
             }
