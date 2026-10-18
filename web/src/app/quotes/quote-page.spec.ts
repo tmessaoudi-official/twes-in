@@ -610,6 +610,9 @@ describe('QuotePage', () => {
       expect(over('add-to-title')).toBeNull();
       expect(facade.addToInvoice).not.toHaveBeenCalled();
       await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said.at(-1)?.key).toBe(
+        'quotes.invoiced',
+      );
     });
 
     it('offers the drafts beside a new invoice, and adds the quote to the one chosen', async () => {
@@ -628,6 +631,10 @@ describe('QuotePage', () => {
       await vi.waitFor(() => expect(facade.addToInvoice).toHaveBeenCalledWith('c1', 'q1', 'd1'));
       expect(facade.invoice).not.toHaveBeenCalled();
       await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'd1']));
+      // The quote joined a draft that was there: it did not become one.
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said.at(-1)?.key).toBe(
+        'quotes.added_to_invoice',
+      );
     });
 
     it('starts a new invoice when that is the one chosen, and does nothing when the question is left', async () => {
