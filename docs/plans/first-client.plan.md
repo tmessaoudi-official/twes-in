@@ -79,6 +79,7 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-18 07:31] ASSUMED (review): Row 259: an invoice's quoteId stays the quote it was drafted from; a quote added later is recorded on the quote (invoiced, with the invoice id) and in its audit entry, not on the invoice — because the invoice holds one quote link today. Follow-up: the invoice page lists every quote it carries, as it lists its delivery notes. Alternatives: a quote-source link per line now.
 - [2026-10-18 07:31] ASSUMED (review): Row 259: deposit invoices and credit notes are refused as targets for both a quote's and a delivery note's lines, in the domain (Invoice::addLines) and at both callers; an added deposit give-back line is checked as on create (same customer, never on a deposit) — because the same hole was open for delivery notes, and goods added to a deposit would be charged twice. Alternatives: refuse at the callers only.
 - [2026-10-18 08:01] ASSUMED (review): Row 259 wording: the picker asks « Sur quelle facture ce devis est-il facturé ? » / « Where is this quote invoiced? » with the delivery notes' help text, and a quote added to a draft toasts « Le devis a été ajouté à la facture en brouillon. » / « The quote was added to the draft invoice. » (a new invoice keeps « Le devis est devenu une facture en brouillon. ») — because they mirror the delivery notes' question and say what happened. Alternatives: the developer's own words.
+- [2026-10-18 08:30] ASSUMED (review): Step 3 S0: the five stored language columns (user.locale, company.locale, signup.locale, legal_text.language, invoice.language) widen to VARCHAR(35) now, the length RFC 5646 asks a store to keep — because it is free before the first release tag and a two-release column swap after it, though VARCHAR(5) already fits every variant ruled (fr-TN, en-GB, ar-TN). Alternatives: keep 5 until a script subtag is needed. The inventory agent ran on the session's model (autonomous mode, no model question).
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -113,7 +114,7 @@ was and was not certified by execution.
 | 0 | Sign-in restored: the development database migrated | S | done | 976d6c04 | CLAUDE.md |
 | 1 | Release core: install on Windows, Linux, macOS; safe updates with backup and rollback; security; LAN HTTPS | L | doing | - | infra/** scripts/** compose*.yaml docs/** |
 | 2 | Demo sandbox per sign-in, stamped, deleted at sign-out or after 2 h idle | L | done | ec91e167 | api/** web/** |
-| 3 | Language foundations and RTL | L | todo | - | api/** web/** |
+| 3 | Language foundations and RTL | L | doing | - | api/** web/** |
 | 4 | Proof pass of every built module in fr, en, ar; the client's Excel mapped | L | todo | - | web/e2e/** api/** web/** |
 | 5 | Reports | L | todo | - | api/** web/** |
 | 6 | Supplier orders and goods receipts | L | todo | - | api/** web/** |
