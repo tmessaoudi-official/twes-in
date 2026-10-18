@@ -131,7 +131,8 @@ test('a locked company declares what it paid and the operator confirms it back o
   const waiting = page
     .locator('mat-card[data-testid^="payment-"]')
     .filter({ hasText: `Payante ${stamp}` });
-  await expect(waiting.first()).toContainText('600.000');
+  // Written as the operator's screen writes an amount, with its currency.
+  await expect(waiting.first()).toContainText(/600,000\s+TND/);
   await page.screenshot({ path: test.info().outputPath('platform-payments.png'), fullPage: true });
   await page.goto(`/platform?tab=companies&q=${encodeURIComponent(`Payante ${stamp}`)}`);
   await expect(page.getByTestId(`company-Payante ${stamp}`)).toContainText('Règlement en attente');
