@@ -13,12 +13,13 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Module\Quotes\Application\QuotePage;
 use App\Module\Quotes\Application\QuoteTemplate;
 use App\Tenancy\Application\Company\CompanyLogo;
+use App\Tenancy\Application\Company\DemoCompanies;
 use Twig\Environment;
 
 /** `templates/pdf/quote.html.twig`, worded from `translations/pdf.<language>.yaml`. */
 final readonly class TwigQuoteTemplate implements QuoteTemplate
 {
-    public function __construct(private Environment $twig, private CurrencyScales $scales, private CompanyLogo $logo)
+    public function __construct(private Environment $twig, private CurrencyScales $scales, private CompanyLogo $logo, private DemoCompanies $demos)
     {
     }
 
@@ -36,6 +37,7 @@ final readonly class TwigQuoteTemplate implements QuoteTemplate
             'scale' => $this->scales->of($page->seller->currency),
             'locale' => $page->language,
             'logo' => $this->logo->dataUri($company),
+            'demo' => $this->demos->isDemo($company->getId()),
         ]);
     }
 }

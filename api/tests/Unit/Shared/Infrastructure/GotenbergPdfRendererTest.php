@@ -37,6 +37,38 @@ final class GotenbergPdfRendererTest extends TestCase
         self::assertMatchesRegularExpression('/^Content-Type: multipart\/form-data; boundary=/mi', implode("\n", array_filter($options['headers'], is_string(...))));
     }
 
+    public function testAPagesOwnHeaderAndFooterLeaveItAndGoAsHeaderAndFooterDocuments(): void
+    {
+        $response = new MockResponse('%PDF-1.7 rendered', ['http_code' => 200]);
+        $page = '<html><head><title>x</title></head><body>'
+            ."<template data-pdf=\"header\"><div>DEMO top</div></template>\n  "
+            .'<template data-pdf="footer"><div>DEMO bottom</div></template>'
+            .'<h1>FA-1</h1></body></html>';
+
+        new GotenbergPdfRenderer(new MockHttpClient($response), self::URL)->render($page);
+
+        $options = $response->getRequestOptions();
+        self::assertIsString($options['body']);
+        preg_match_all('/name="files"; filename="([^"]+)".*?\r\n\r\n(.*?)\r\n--/s', $options['body'], $parts);
+        self::assertSame([
+            'index.html' => '<html><head><title>x</title></head><body><h1>FA-1</h1></body></html>',
+            'header.html' => '<!doctype html><html><head><meta charset="utf-8"></head><body><div>DEMO top</div></body></html>',
+            'footer.html' => '<!doctype html><html><head><meta charset="utf-8"></head><body><div>DEMO bottom</div></body></html>',
+        ], array_combine($parts[1], $parts[2]), 'the page keeps nothing of them, and each goes as a document of its own');
+        foreach (['marginTop' => '0.4', 'marginBottom' => '0.4', 'printBackground' => 'true'] as $field => $value) {
+            self::assertMatchesRegularExpression('/name="'.$field.'".*?\r\n\r\n'.preg_quote($value, '/').'\r\n/s', $options['body'], $field);
+        }
+    }
+
+    public function testAPageCarriesOneHeaderAndOneFooterAtMost(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('one header at most');
+
+        new GotenbergPdfRenderer(new MockHttpClient(new MockResponse('%PDF-1.7', ['http_code' => 200])), self::URL)
+            ->render('<template data-pdf="header">a</template><template data-pdf="header">b</template>');
+    }
+
     public function testTheFirstPageComesBackAsAPictureAtTheSizeAndMarginsOfThePrintedPage(): void
     {
         $png = "\x89PNG\r\n\x1a\n picture";

@@ -21,7 +21,8 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
  * A demo visitor tries everything a company does, inside the sandbox, but never makes the throwaway account a real one
  * nor reaches past the sandbox: no password, second factor or passkey of its own, no deleting it ahead of the sandbox,
  * no company outside it, no one invited into it, and nothing that calls on the platform's operators (support access, a
- * payment to confirm, a closing to keep, a module asked for). Matched on route names, which the router has set by now;
+ * payment to confirm, a closing to keep, a module asked for), nor any Factur-X file, which is meant for a real customer's
+ * books and carries no band saying the document is worth nothing. Matched on route names, which the router has set by now;
  * DemoAccountGuardTest holds every account and company route to this list or to the allowed one.
  *
  * After the firewall (8), so the account is known, and before API Platform reads anything (4).
@@ -50,6 +51,8 @@ final readonly class DemoAccountGuard
         '_api_/companies/{companyId}/closing_put',
         'declare_payment',
         '_api_/companies/{companyId}/modules/{moduleKey}/interest_put',
+        'api_invoice_factur_x_xml',
+        'api_invoice_factur_x_pdf',
     ];
 
     public function __construct(private Security $security, private DemoAccounts $demoAccounts)

@@ -31,6 +31,7 @@
   </style>
 </head>
 <body>
+  {%- include 'pdf/_demo_band.html.twig' with {demo: demo, t: t, locale: locale} only %}
   <div class="parties">
     <div class="party">
       {%- if logo %}<img class="logo" src="{{ logo }}" alt="">{% endif %}
@@ -60,7 +61,7 @@
 
   <div class="title">
     <h1>{{ 'statement.title'|trans({}, t, locale) }}</h1>
-    <div class="muted">{{ 'statement.period'|trans({'%from%': statement.from|date(dateFormat, 'UTC'), '%to%': statement.to|date(dateFormat, 'UTC')}, t, locale) }} · {{ 'company.currency'|trans({'%currency%': statement.currency}, t, locale) }}</div>
+    <div class="muted">{{ 'statement.period'|trans({'%from%': statement.from|date(dateFormat, 'UTC'), '%to%': statement.to|date(dateFormat, 'UTC')}, t, locale) }} · {{ 'totals.currency'|trans({'%currency%': statement.currency}, t, locale) }}</div>
   </div>
 
   <table>

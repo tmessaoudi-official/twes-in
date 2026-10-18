@@ -12,12 +12,13 @@ namespace App\Module\Invoices\Infrastructure\Pdf;
 use App\Module\Invoices\Application\Statement\StatementPage;
 use App\Module\Invoices\Application\Statement\StatementTemplate;
 use App\Tenancy\Application\Company\CompanyLogo;
+use App\Tenancy\Application\Company\DemoCompanies;
 use Twig\Environment;
 
 /** `templates/pdf/statement.html.twig`, worded from `translations/pdf.<language>.yaml`. */
 final readonly class TwigStatementTemplate implements StatementTemplate
 {
-    public function __construct(private Environment $twig, private CompanyLogo $logo)
+    public function __construct(private Environment $twig, private CompanyLogo $logo, private DemoCompanies $demos)
     {
     }
 
@@ -33,6 +34,7 @@ final readonly class TwigStatementTemplate implements StatementTemplate
             'country' => strtolower($company->getCountryCode()),
             'locale' => $page->language,
             'logo' => $this->logo->dataUri($company),
+            'demo' => $this->demos->isDemo($company->getId()),
         ]);
     }
 }

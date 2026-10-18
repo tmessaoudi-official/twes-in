@@ -61,8 +61,11 @@ final class DemoAccountGuardTest extends ApiTestCase
         'api_support_access_read',
     ];
 
-    /** The account's own routes, and a company's that change who belongs to it or call on the platform's operators. */
-    private const string SWEPT = '#^/api/(auth/|me/|companies$|companies/\{companyId\}/(members|support-access|close-down|closing|subscription|modules/\{moduleKey\}/interest))#';
+    /**
+     * The account's own routes, and a company's that change who belongs to it, call on the platform's operators or hand
+     * an invoice over as Factur-X, a file meant for a real customer's books.
+     */
+    private const string SWEPT = '#^/api/(auth/|me/|companies$|companies/\{companyId\}/(members|support-access|close-down|closing|subscription|modules/\{moduleKey\}/interest|invoices/\{invoiceId\}/factur-x))#';
 
     public function testEveryRouteOfTheAccountIsRefusedOrAllowedOnPurpose(): void
     {
