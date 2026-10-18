@@ -24,6 +24,19 @@ framework:
                     max_retries: 3
                     delay: 1000
                     multiplier: 4
+            # A demo sandbox's build, a quarter of a minute or more: on a transport of its own, read by a container of its
+            # own (compose.yaml, demo-worker), since a consumer handles one message at a time and a mail queued behind a
+            # build would wait for all of it.
+            demo:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: demo
+                    use_notify: true
+                    check_delayed_interval: 60000
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 4
             # What failed for good, kept to be looked at and retried with messenger:failed:retry.
             failed:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
@@ -36,7 +49,7 @@ framework:
             App\Tenancy\Infrastructure\Signup\SignupAsked: async
             App\Tenancy\Infrastructure\Invitation\InvitationToMail: async
             App\Inbox\Infrastructure\Mail\NotificationToMail: async
-            App\Demo\Infrastructure\Messenger\SandboxToBuild: async
+            App\Demo\Infrastructure\Messenger\SandboxToBuild: demo
 
 when@test:
     framework:
@@ -45,3 +58,4 @@ when@test:
                 # Queued and kept, so a test sees what the request left for the worker and hands it over itself
                 # (ApiTestCase::deliverQueued). The failed transport stays the table, so the schema is production's.
                 async: 'in-memory://'
+                demo: 'in-memory://'

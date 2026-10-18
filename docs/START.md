@@ -14,6 +14,7 @@ Every command runs from the repository root unless it says `cd`. For version bum
 | `gotenberg`  | `localhost:8094`                            | renders PDFs                                                   |
 | `centrifugo` | not published (reached through `web`)       | realtime updates between tabs, and a phone lent as a scanner   |
 | `worker`     | not published                               | the work a request leaves for later (the forgotten-password, signup and invitation mails), read from the `messenger_messages` table |
+| `demo-worker` | not published                              | builds the demo sandboxes, on a queue of its own, so no mail waits behind a build |
 | `lan`        | https://<this machine's address>:8443 (certificate root on http://…:8095/root.crt) | a phone's HTTPS door to `web`; started by `make up` only |
 
 Ports come from `.env`. To change one, set it in your shell (`WEB_PORT=9090 make up`) or in a `.env.local` next to
@@ -518,9 +519,10 @@ and compile time: the first attempt spent about 2 minutes on those alone.
   classes (<https://symfony.com/doc/current/performance.html>);
 - installs no dev packages (`composer install --no-dev`) and warms the cache at build.
 
-`compose.prod.yaml` switches the api and worker services to that target; the worker is the same image reading the queue
+`compose.prod.yaml` switches the api and both workers to that target; the worker is the same image reading the queue
 (`messenger:consume async scheduler_default`: the queue and the schedule), and a deployment runs one, and only one,
-beside the API. Production refuses to start without secrets of
+beside the API. The `demo-worker` reads the demo sandboxes' builds alone (`messenger:consume demo`), a quarter of a
+minute or more each, which a mail would otherwise wait behind. Production refuses to start without secrets of
 its own, so give it four:
 
 ```sh

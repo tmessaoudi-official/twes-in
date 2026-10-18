@@ -58,6 +58,8 @@ services:
     environment: *onprem-environment
   worker:
     environment: *onprem-environment
+  demo-worker:
+    environment: *onprem-environment
   migrate:
     environment:
       <<: *onprem-environment

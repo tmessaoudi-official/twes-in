@@ -28,6 +28,9 @@ services:
   worker:
     image: busybox
     environment: *env
+  demo-worker:
+    image: busybox
+    environment: *env
   postgres:
     image: busybox
     environment:
@@ -69,6 +72,8 @@ services:
     ports: !reset []
     environment: *deploy
   worker:
+    environment: *deploy
+  demo-worker:
     environment: *deploy
   migrate:
     image: busybox
@@ -114,6 +119,8 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "a published database port is named"
 
 d=$(project); edit "$d/compose.deploy.yaml" '/^  worker:/,/^  postgres:/{/environment: \*deploy/d}' && edit "$d/compose.deploy.yaml" 's/^  worker:$/  worker: {}/'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a worker left on the development address is named" $? 1 "$out" "worker DEFAULT_URI"
+d=$(project); edit "$d/compose.deploy.yaml" '/^  demo-worker:/,/^  migrate:/{/environment: \*deploy/d}' && edit "$d/compose.deploy.yaml" 's/^  demo-worker:$/  demo-worker: {}/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "the demo worker left on the development address is named" $? 1 "$out" "demo-worker DEFAULT_URI"
 
 d=$(project); edit "$d/compose.deploy.yaml" 's/\${EDGE_TLS:?set EDGE_TLS}/${EDGE_TLS:-internal}/'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a required variable given a default is named" $? 1 "$out" "EDGE_TLS is not required"

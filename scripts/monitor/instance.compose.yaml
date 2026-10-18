@@ -21,6 +21,12 @@ services:
     volumes:
       - "${CHECK_DIR}:/check:ro"
     networks: [default, monitor-check]
+  demo-worker:
+    environment:
+      PHP_INI_SCAN_DIR: ":/check/php"
+    volumes:
+      - "${CHECK_DIR}:/check:ro"
+    networks: [default, monitor-check]
   backup:
     environment:
       CURL_CA_BUNDLE: /check/monitor-root.crt

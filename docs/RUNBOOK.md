@@ -181,7 +181,7 @@ procedure is done), then redeploy (`deploy.sh --release` at the running tag, or 
 
 | Value | What changing it does | Procedure | Tried |
 |---|---|---|---|
-| `APP_MFA_KEY` | every enrolled authenticator becomes unreadable until resealed | stop api and worker (`docker compose … stop api worker`); new key in the values; `printf '%s\n' "<old key>" \| docker compose … run --rm --no-deps -T api bin/console app:keys:rotate-mfa` (it answers `Resealed N …`, or refuses and changes nothing if a secret opens with neither key); redeploy | on the check stack (`make staging-check`: an enrolled operator refused under the new key alone, signed in after the reseal) |
+| `APP_MFA_KEY` | every enrolled authenticator becomes unreadable until resealed | stop api and both workers (`docker compose … stop api worker demo-worker`); new key in the values; `printf '%s\n' "<old key>" \| docker compose … run --rm --no-deps -T api bin/console app:keys:rotate-mfa` (it answers `Resealed N …`, or refuses and changes nothing if a secret opens with neither key); redeploy | on the check stack (`make staging-check`: an enrolled operator refused under the new key alone, signed in after the reseal) |
 | `APP_SECRET` | the links already mailed to stop a kind of mail stop working; nothing else (sessions are stored in the database) | new value, redeploy | on the check stack (a link made before refused, one made after taken) |
 | `REALTIME_TOKEN_KEY` | open realtime connections are dropped and reconnect with a new token | new value, redeploy (api and Centrifugo restart together) | on the check stack (the old token refused by Centrifugo, a new one taken) |
 | `REALTIME_API_KEY` | nothing visible | new value, redeploy | on the check stack (the old key refused by Centrifugo's API, the new one taken) |
@@ -213,7 +213,8 @@ Untried. The deep health turns red under 20 % free on the files volume (`app.hea
 Untried. Mails (invitations, password resets, notifications) leave through the Messenger queue on PostgreSQL; the deep
 health turns red when a message waited over 600 seconds or any message failed for good.
 
-1. Is the worker running? `docker compose … ps worker` and `… logs --tail 100 worker`.
+1. Is the worker running? `docker compose … ps worker` and `… logs --tail 100 worker`. The demo sandboxes' builds are
+   the `demo-worker`'s, on a queue of their own, so a mail never waits behind one.
 2. What waits: `docker compose … exec api bin/console messenger:stats`.
 3. What failed for good after three tries: `… exec api bin/console messenger:failed:show`. Fix the cause (the mail
    relay, usually), then `messenger:failed:retry`.

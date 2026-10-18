@@ -27,8 +27,13 @@ services:
     environment:
       <<: *api-environment
       POSTGRES_APP_PASSWORD: "${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD, the application role's own}"
-  # The worker runs the same production image with the same secrets.
+  # The workers run the same production image with the same secrets.
   worker:
+    restart: unless-stopped
+    build:
+      target: prod
+    environment: *api-environment
+  demo-worker:
     restart: unless-stopped
     build:
       target: prod
