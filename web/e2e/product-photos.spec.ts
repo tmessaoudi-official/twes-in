@@ -92,5 +92,15 @@ test('the main photo stands beside a product in an invoice line’s picker', asy
   );
   // The picture says nothing the words do not: the option still reads as its reference and name.
   await expect(option).toHaveAccessibleName(new RegExp(`^${reference} · `));
+  // The list may still change under its first answer: Material points the field at its new first row a timer later,
+  // and a scan in between reads the field naming a row that is gone. The scan is of the picker at rest.
+  await expect
+    .poll(() =>
+      page.getByTestId('line-0-product').evaluate((field) => {
+        const active = field.getAttribute('aria-activedescendant');
+        return active !== null && document.getElementById(active) !== null;
+      }),
+    )
+    .toBe(true);
   expect(await wcagViolations(page)).toEqual([]);
 });

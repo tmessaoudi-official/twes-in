@@ -172,7 +172,7 @@ was and was not certified by execution.
 | 4 | Proof pass of every built module in fr, en, ar; the client's Excel mapped | L | doing | - | web/e2e/** api/** web/** |
 | 5 | Reports: thirteen reports over the ruled ten, each with period, comparison, establishment, export and its figures opening their list | L | done | fc09f101 | api/** web/** |
 | 6 | Supplier orders and goods receipts | L | doing | d66ab297 | api/** web/** |
-| 7 | Arabic texts and printed documents | L | doing | - | web/public/i18n/** api/translations/** api/templates/** |
+| 7 | Arabic texts and printed documents | L | doing | 8ca442ab | web/public/i18n/** api/translations/** api/templates/** |
 | 8 | Guides, help and README on the final screens | M | todo | - | docs/** web/** |
 | 9 | Document links before the tag: the module port (335f778b), a delivery note names its invoices (93004285), an invoice its delivery notes (5f73574b), a quote onto an open draft (row 259, 08ad6709) and its toast | M | done | b6c8d52e | api/src/Module/** web/src/app/** web/e2e/** |
 <!-- /progress-block -->
