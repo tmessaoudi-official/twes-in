@@ -376,6 +376,7 @@ test('a second note is added to the draft invoice the first one started', async 
     const invoiceId = invoiceUrl.slice(invoiceUrl.lastIndexOf('/') + 1);
 
     await validatedNote(page, customerNumber, `Second ${run}`);
+    const noteUrl = page.url();
     await page.getByTestId('document-action-invoice').click();
     await page.getByTestId(`add-to-draft-${invoiceId}`).click();
     await expect(page).toHaveURL(invoiceUrl);
@@ -384,6 +385,13 @@ test('a second note is added to the draft invoice the first one started', async 
     // A line taken from a note keeps the note's product and says how much of it is left to invoice.
     await expect(page.getByTestId('line-0-product')).toBeDisabled();
     await expect(page.getByTestId('line-0-source-left')).toBeVisible();
+
+    // The note names the draft it went on, which opens from it.
+    await page.goto(noteUrl);
+    const carrying = page.getByTestId(`delivery-note-invoice-${invoiceId}`);
+    await expect(carrying).toHaveText(/brouillon|draft/);
+    await carrying.click();
+    await expect(page).toHaveURL(invoiceUrl);
   } finally {
     await retire(page, customerNumber);
   }

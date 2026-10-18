@@ -12,10 +12,10 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Module\DeliveryNotes\Application\DeliveryNoteNotFound;
-use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
+use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output\DeliveryNoteView;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteResource;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -27,7 +27,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 /** @implements ProcessorInterface<DeliveryNoteResource, DeliveryNoteResource> */
 final readonly class ReviseDeliveryNoteProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageDeliveryNotes $manage, private DeliveryNoteTotals $totals, private CompanyGuard $guard)
+    public function __construct(private ManageDeliveryNotes $manage, private DeliveryNoteView $view, private CompanyGuard $guard)
     {
     }
 
@@ -45,6 +45,6 @@ final readonly class ReviseDeliveryNoteProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return DeliveryNoteResource::of($note, $this->totals->of($note));
+        return $this->view->of($note);
     }
 }

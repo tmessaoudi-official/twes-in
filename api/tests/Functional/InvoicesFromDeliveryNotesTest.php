@@ -314,6 +314,74 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
     }
 
     /**
+     * A note names every invoice that carries it, so it links to them: drafts included, a cancelled one left out, the
+     * oldest first, each with its number once issued and its status. A list page names them as the note's own read does.
+     */
+    public function testANoteNamesTheInvoicesCarryingItDraftsIncludedAndCancelledOnesLeftOut(): void
+    {
+        $this->signedIn();
+        $note = $this->validatedNote(['lines' => [
+            ['productId' => $this->productId, 'quantity' => '10'],
+            ['description' => 'Transport', 'quantity' => '4', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '30', 'taxComponentIds' => []],
+        ]]);
+        [$goods, $transport] = $this->lineIds($note);
+        $this->getJson($this->notePath($note));
+        self::assertSame([], $this->json()['invoices'], 'a note no invoice carries names none');
+
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note], 'quantities' => [$goods => '2']]);
+        $cancelled = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->invoicePath($cancelled).'/cancel', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note], 'quantities' => [$transport => '4']]);
+        $issued = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->invoicePath($issued).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $number = $this->stringAt($this->json(), 'number');
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note]]);
+        $draft = $this->stringAt($this->json(), 'id');
+        $expected = [
+            ['invoiceId' => $issued, 'number' => $number, 'status' => 'issued'],
+            ['invoiceId' => $draft, 'number' => null, 'status' => 'draft'],
+        ];
+
+        $this->getJson($this->notePath($note));
+        self::assertResponseIsSuccessful();
+        self::assertSame($expected, $this->json()['invoices']);
+        self::assertNotContains($cancelled, array_column($expected, 'invoiceId'));
+
+        $other = $this->validatedNote();
+        $this->getJson($this->notePath());
+        self::assertResponseIsSuccessful();
+        $rows = array_column($this->jsonList(), 'invoices', 'id');
+        self::assertSame($expected, $rows[$note] ?? null, 'a list page names them too');
+        self::assertSame([], $rows[$other] ?? null, 'and only on the note they carry');
+
+        // The invoices are told only to whoever may open them, as costs are: a number and a status are an invoice's.
+        foreach (['accounting_export', 'recurring', 'invoices'] as $module) {
+            $this->sendJson('PUT', $this->companyPath().'/modules/'.$module, ['enabled' => false]);
+            self::assertResponseIsSuccessful($module);
+        }
+        $this->getJson($this->notePath($note));
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['invoices'], 'with the invoices switched off there is none to open');
+        $this->getJson($this->notePath());
+        self::assertSame([], array_column($this->jsonList(), 'invoices', 'id')[$note] ?? null, 'nor on a list page');
+        foreach (['invoices', 'recurring', 'accounting_export'] as $module) {
+            $this->sendJson('PUT', $this->companyPath().'/modules/'.$module, ['enabled' => true]);
+            self::assertResponseIsSuccessful($module);
+        }
+
+        $this->createUser('clerk@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('no company'), ['delivery_note.read', 'company.read'], 'clerk');
+        $this->login('clerk@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->notePath($note));
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['invoices'], 'who may not read invoices is not told of them');
+        $this->getJson($this->notePath());
+        self::assertSame([], array_column($this->jsonList(), 'invoices', 'id')[$note] ?? null, 'nor on a list page');
+    }
+
+    /**
      * A draft's line taken from a delivery note stays that line (docs/SPEC.md § 7, audit 2026-10-06 A-16): revising it
      * cannot invoice more than the note line has left, counting the company's other invoices that are not cancelled, nor
      * turn it into another product.

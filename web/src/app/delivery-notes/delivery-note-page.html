@@ -34,6 +34,21 @@
             >
           }
         </p>
+        @if (note.invoices.length > 0) {
+          <p class="flex flex-wrap gap-x-1 text-sm" data-testid="delivery-note-invoices">
+            <span>{{ 'delivery_notes.on_invoices' | translate }}</span>
+            <span class="twes-dot-list">
+              @for (invoice of note.invoices; track invoice.invoiceId) {
+                <a
+                  class="underline"
+                  [routerLink]="['/invoices', invoice.invoiceId]"
+                  [attr.data-testid]="'delivery-note-invoice-' + invoice.invoiceId"
+                  >{{ invoice.number ?? ('delivery_notes.invoice_draft' | translate) }}</a
+                >
+              }
+            </span>
+          </p>
+        }
       }
     </div>
     <div class="flex flex-wrap items-center gap-2">

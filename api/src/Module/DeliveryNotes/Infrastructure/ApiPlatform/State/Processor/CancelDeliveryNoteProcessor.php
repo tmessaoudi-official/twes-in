@@ -12,9 +12,9 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Module\DeliveryNotes\Application\DeliveryNoteNotFound;
-use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\DeliveryNoteWorkflow;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;
+use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output\DeliveryNoteView;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteResource;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -25,7 +25,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /** @implements ProcessorInterface<mixed, DeliveryNoteResource> */
 final readonly class CancelDeliveryNoteProcessor implements ProcessorInterface
 {
-    public function __construct(private DeliveryNoteWorkflow $workflow, private DeliveryNoteTotals $totals, private CompanyGuard $guard)
+    public function __construct(private DeliveryNoteWorkflow $workflow, private DeliveryNoteView $view, private CompanyGuard $guard)
     {
     }
 
@@ -41,6 +41,6 @@ final readonly class CancelDeliveryNoteProcessor implements ProcessorInterface
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         }
 
-        return DeliveryNoteResource::of($note, $this->totals->of($note));
+        return $this->view->of($note);
     }
 }

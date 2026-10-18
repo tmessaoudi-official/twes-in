@@ -144,6 +144,7 @@ describe('DeliveryNotesApi', () => {
       taxes: [{ code: 'TVA19', rate: '19', base: '2500.000', amount: '475.000' }],
       totalTax: '475.000',
       total: '2975.000',
+      invoices: [{ invoiceId: 'i1', number: null, status: 'draft' }],
     });
 
     expect(await pending).toEqual({
@@ -187,6 +188,7 @@ describe('DeliveryNotesApi', () => {
       taxes: [{ code: 'TVA19', rate: '19', base: '2500.000', amount: '475.000' }],
       totalTax: '475.000',
       total: '2975.000',
+      invoices: [{ invoiceId: 'i1', number: null, status: 'draft' }],
     });
   });
 

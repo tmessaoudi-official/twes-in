@@ -492,6 +492,11 @@ function toNote(
     })),
     totalTax: raw.totalTax ?? '0',
     total: raw.total ?? '0',
+    invoices: (raw.invoices ?? []).map((invoice) => ({
+      invoiceId: invoice.invoiceId,
+      number: invoice.number,
+      status: invoice.status,
+    })),
   };
 }
 

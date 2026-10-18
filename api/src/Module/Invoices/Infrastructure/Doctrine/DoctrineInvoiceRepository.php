@@ -319,14 +319,17 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         if ([] === $deliveryNoteLineIds) {
             return [];
         }
+        // Every line comes with its invoice, whole, in the one statement: whoever asks reads which notes each carries.
         $invoices = $this->entityManager->createQueryBuilder()
-            ->select('i')
+            ->select('i', 'all_lines')
             ->from(Invoice::class, 'i')
+            ->leftJoin('i.lines', 'all_lines')
             ->where('i.company = :company')
             ->andWhere('i.documentType = :type')
             ->andWhere('i.status <> :cancelled')
             ->andWhere('i.id IN (SELECT IDENTITY(l.invoice) FROM '.InvoiceLine::class.' l WHERE l.sourceDeliveryNoteLineId IN (:lines))')
             ->orderBy('i.createdAt')
+            ->addOrderBy('all_lines.position')
             ->setParameter('company', $companyId, 'uuid')
             ->setParameter('type', InvoiceType::Invoice->value)
             ->setParameter('cancelled', InvoiceStatus::Cancelled->value)

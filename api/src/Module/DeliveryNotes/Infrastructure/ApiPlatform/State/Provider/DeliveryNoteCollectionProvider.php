@@ -12,13 +12,13 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Provider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
-use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
-use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteSearch;
+use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output\DeliveryNoteView;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Payload\DeliveryNoteSearchReader;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteResource;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
+use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -33,7 +33,7 @@ final readonly class DeliveryNoteCollectionProvider implements ProviderInterface
 {
     public function __construct(
         private ManageDeliveryNotes $manage,
-        private DeliveryNoteTotals $totals,
+        private DeliveryNoteView $view,
         private CompanyGuard $guard,
         private Paging $paging,
     ) {
@@ -45,9 +45,8 @@ final readonly class DeliveryNoteCollectionProvider implements ProviderInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::READ);
         $search = DeliveryNoteSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, DeliveryNoteSearch::SORTS), $company);
 
-        return $this->paging->paginator(
-            $this->manage->search($company, $search, $this->paging->request($operation, $context)),
-            fn (DeliveryNote $note): DeliveryNoteResource => DeliveryNoteResource::of($note, $this->totals->of($note)),
-        );
+        $page = $this->manage->search($company, $search, $this->paging->request($operation, $context));
+
+        return $this->paging->paginator(new Page($this->view->page($page->items), $page->total, $page->request), static fn (DeliveryNoteResource $row): DeliveryNoteResource => $row);
     }
 }

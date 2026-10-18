@@ -61,6 +61,8 @@ class StaticLoader implements TranslateLoader {
           cancelled: 'Annulé, il peut encore être imprimé.',
         },
         invoiced_note: 'Ce bon est sur une facture.',
+        on_invoices: 'Facturé sur',
+        invoice_draft: 'facture en brouillon',
         invoice_part: { left: 'Il en reste {{left}}' },
       },
     });
@@ -129,6 +131,7 @@ const draft: DeliveryNoteRow = {
   taxes: [{ code: 'TVA19', rate: '19.000', base: '2500.000', amount: '475.000' }],
   totalTax: '475.000',
   total: '2975.000',
+  invoices: [],
 };
 const validated: DeliveryNoteRow = {
   ...draft,
@@ -1101,6 +1104,30 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-delivered-on')).toBeNull();
     expect(await inMenu('document-menu-')).toEqual([]);
     expect(q('document-action-pdf')).not.toBeNull();
+  });
+
+  it('links to each invoice carrying the note, a draft by what it is, and says nothing when none does', async () => {
+    note.set({
+      ...validated,
+      status: 'invoiced',
+      invoices: [
+        { invoiceId: 'i1', number: 'FAC-2026-10-00007', status: 'issued' },
+        { invoiceId: 'i2', number: null, status: 'draft' },
+      ],
+    });
+    await open('n1');
+
+    const issued = q('delivery-note-invoice-i1');
+    expect(q('delivery-note-invoices')?.textContent).toContain('Facturé sur');
+    expect(issued?.textContent?.trim()).toBe('FAC-2026-10-00007');
+    expect(issued?.getAttribute('href')).toBe('/invoices/i1');
+    expect(q('delivery-note-invoice-i2')?.textContent?.trim()).toBe('facture en brouillon');
+    expect(q('delivery-note-invoice-i2')?.getAttribute('href')).toBe('/invoices/i2');
+
+    fixture.destroy();
+    note.set({ ...validated, invoices: [] });
+    await open('n1');
+    expect(q('delivery-note-invoices')).toBeNull();
   });
 
   it('tells a delivered or a cancelled note only what it can still become', async () => {
