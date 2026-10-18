@@ -288,7 +288,7 @@ describe('PlatformApi', () => {
     expect((await rejected).status).toBe('suspended');
   });
 
-  it("reads the switches, the support channels, the delays and every key's version in one request", async () => {
+  it("reads the switches, the support channels, the delays, the demo and every key's version in one request", async () => {
     const settings = api.settings();
 
     http.expectOne('/api/platform/settings').flush([
@@ -316,10 +316,32 @@ describe('PlatformApi', () => {
         min: 1,
         max: 90,
       },
+      { key: 'demo.enabled', type: 'bool', value: false, versions: { platform: 4 } },
+      {
+        key: 'demo.sandboxes_max',
+        type: 'int',
+        labelKey: 'settings.platform.demo_sandboxes_max',
+        value: 12,
+        default: 10,
+        min: 3,
+        max: 100,
+        versions: { platform: 6 },
+      },
     ]);
 
     expect(await settings).toEqual({
       signup: { enabled: true, approvalRequired: false },
+      // The demo's count is not a delay: it has its own card.
+      demo: {
+        enabled: false,
+        most: {
+          key: 'demo.sandboxes_max',
+          labelKey: 'settings.platform.demo_sandboxes_max',
+          value: 12,
+          min: 3,
+          max: 100,
+        },
+      },
       support: {
         phone: '+216 71 000 000',
         whatsapp: '',
@@ -351,12 +373,29 @@ describe('PlatformApi', () => {
         'support.status_url': 0,
         'account.deletion_days': 3,
         'company.reopen_days': 0,
+        'demo.enabled': 4,
+        'demo.sandboxes_max': 6,
       },
     });
   });
 
-  it('sets one signup switch at the platform level', async () => {
-    const done = api.setSignup('signup.approval_required', true);
+  it('reads the demo as open, and with no count to set, when the API names neither', async () => {
+    const settings = api.settings();
+
+    http.expectOne('/api/platform/settings').flush([]);
+
+    expect((await settings).demo).toEqual({ enabled: true, most: null });
+  });
+
+  it('sets one switch at the platform level, the demo among them', async () => {
+    const demo = api.setSwitch('demo.enabled', false);
+    const demoRequest = http.expectOne('/api/platform/settings/demo.enabled');
+    expect(demoRequest.request.method).toBe('PUT');
+    expect(demoRequest.request.body).toEqual({ value: false });
+    demoRequest.flush({ key: 'demo.enabled', value: false });
+    await demo;
+
+    const done = api.setSwitch('signup.approval_required', true);
 
     const request = http.expectOne('/api/platform/settings/signup.approval_required');
     expect(request.request.method).toBe('PUT');

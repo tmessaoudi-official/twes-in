@@ -24,7 +24,8 @@ import type {
   PlatformCompanyRow,
   PlatformError,
   PlatformSignup,
-  PlatformDelay,
+  PlatformDemo,
+  PlatformNumber,
   PlatformSupport,
   ModuleDemandRow,
   PlatformSubscriptionRow,
@@ -44,9 +45,12 @@ class StaticLoader implements TranslateLoader {
         platform: {
           account_deletion_days: 'Jours avant qu’un compte supprimé le soit définitivement',
           company_reopen_days: 'Jours pour rouvrir une entreprise fermée',
+          demo_enabled: 'Démo ouverte aux visiteurs (« Essayer la démo »)',
+          demo_sandboxes_max: 'Démos au plus en même temps',
         },
       },
       platform: {
+        demo: { title: 'Démo', bounds: 'De {{min}} à {{max}} démos', save: 'Enregistrer' },
         failed: {
           title: 'Messages non partis',
           total: 'Non partis : {{count}}',
@@ -193,7 +197,7 @@ describe('PlatformPage', () => {
     email: '',
     status_url: '',
   });
-  const delayRows: readonly PlatformDelay[] = [
+  const delayRows: readonly PlatformNumber[] = [
     {
       key: 'account.deletion_days',
       labelKey: 'settings.platform.account_deletion_days',
@@ -209,7 +213,18 @@ describe('PlatformPage', () => {
       max: 90,
     },
   ];
-  const delays = signal<readonly PlatformDelay[] | null>(delayRows);
+  const delays = signal<readonly PlatformNumber[] | null>(delayRows);
+  const demoState: PlatformDemo = {
+    enabled: true,
+    most: {
+      key: 'demo.sandboxes_max',
+      labelKey: 'settings.platform.demo_sandboxes_max',
+      value: 10,
+      min: 3,
+      max: 100,
+    },
+  };
+  const demo = signal<PlatformDemo | null>(demoState);
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
@@ -242,13 +257,15 @@ describe('PlatformPage', () => {
     saveSupport: vi.fn(async () => true),
     delays: delays.asReadonly(),
     saveDelays: vi.fn(async () => true),
+    demo: demo.asReadonly(),
+    saveDemoMost: vi.fn(async () => true),
     busy,
     error,
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     approve: vi.fn(),
     reject: vi.fn(),
-    setSignup: vi.fn(),
+    setSwitch: vi.fn(),
     actOnAccount: vi.fn(),
     subscription: subscription.asReadonly(),
     openedSubscription: openedSubscription.asReadonly(),
@@ -272,6 +289,7 @@ describe('PlatformPage', () => {
     signup.set({ enabled: false, approvalRequired: true });
     support.set({ phone: '', whatsapp: '', email: '', status_url: '' });
     delays.set(delayRows);
+    demo.set(demoState);
     error.set(null);
     accounts.set([account]);
     companies.set([row]);
@@ -506,7 +524,45 @@ describe('PlatformPage', () => {
     switchOf('platform-signup-enabled').click();
     await fixture.whenStable();
 
-    expect(facade.setSignup).toHaveBeenCalledWith('signup.enabled', true);
+    expect(facade.setSwitch).toHaveBeenCalledWith('signup.enabled', true);
+  });
+
+  it('shows the demo switch as the platform holds it and turns the demo off', async () => {
+    const { fixture, query, switchOf } = await render();
+
+    expect(query('platform-demo')?.textContent).toContain('Démo ouverte aux visiteurs');
+    expect(switchOf('platform-demo-enabled').getAttribute('aria-checked')).toBe('true');
+
+    switchOf('platform-demo-enabled').click();
+    await fixture.whenStable();
+
+    expect(facade.setSwitch).toHaveBeenCalledWith('demo.enabled', false);
+  });
+
+  it('saves how many demos may exist at once, within its bounds, and leaves it out of the delays', async () => {
+    const { fixture, query } = await render();
+    expect(
+      query('platform-delays')?.querySelector('[data-testid="platform-delay-demo.sandboxes_max"]'),
+    ).toBeNull();
+    const most = query<HTMLInputElement>('platform-demo-most')!;
+    const save = query<HTMLButtonElement>('platform-demo-save')!;
+    expect(most.value).toBe('10');
+    expect(query('platform-demo')?.textContent).toContain('De 3 à 100 démos');
+    expect(save.disabled).toBe(true);
+
+    most.value = '2';
+    most.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(save.disabled).toBe(true);
+
+    most.value = '20';
+    most.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(save.disabled).toBe(false);
+    save.click();
+    await fixture.whenStable();
+
+    expect(facade.saveDemoMost).toHaveBeenCalledWith(20);
   });
 
   it('saves only the support channels typed, and only once one differs from what the platform holds', async () => {

@@ -122,6 +122,53 @@
               </div>
             </mat-card-content>
           </mat-card>
+          <mat-card appearance="outlined" data-testid="platform-demo">
+            <mat-card-header>
+              <mat-card-title>{{ 'platform.demo.title' | translate }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="mt-4 flex flex-col items-start gap-3">
+                <p class="max-w-prose text-sm">{{ 'platform.demo.intro' | translate }}</p>
+                <mat-slide-toggle
+                  data-testid="platform-demo-enabled"
+                  [checked]="demo()?.enabled ?? true"
+                  [disabled]="demo() === null"
+                  (change)="turn('demo.enabled', $event.checked)"
+                  >{{ 'settings.platform.demo_enabled' | translate }}</mat-slide-toggle
+                >
+                @if (demo()?.most; as most) {
+                  <mat-form-field>
+                    <mat-label>{{ most.labelKey | translate }}</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      inputmode="numeric"
+                      step="1"
+                      [min]="most.min"
+                      [max]="most.max"
+                      [value]="demoMostDraft() ?? most.value"
+                      (input)="typedDemoMost($event)"
+                      data-testid="platform-demo-most"
+                    />
+                    @if (most.min !== null && most.max !== null) {
+                      <mat-hint>{{
+                        'platform.demo.bounds' | translate: { min: most.min, max: most.max }
+                      }}</mat-hint>
+                    }
+                  </mat-form-field>
+                  <button
+                    mat-flat-button
+                    type="button"
+                    [disabled]="!demoMostReady() || busy()"
+                    (click)="saveDemoMost()"
+                    data-testid="platform-demo-save"
+                  >
+                    {{ 'platform.demo.save' | translate }}
+                  </button>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
           <mat-card appearance="outlined" data-testid="platform-support">
             <mat-card-header>
               <mat-card-title>{{ 'platform.support.title' | translate }}</mat-card-title>

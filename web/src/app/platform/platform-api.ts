@@ -34,8 +34,9 @@ import type {
   PlatformAccountRow,
   PlatformCompanyRow,
   PlatformError,
+  PlatformNumber,
   PlatformSettings,
-  SignupSwitch,
+  PlatformSwitch,
   SupportChannel,
 } from './platform-types';
 
@@ -97,8 +98,8 @@ export class PlatformApi {
   /**
    * The platform's own settings as its overview shows them, read once: whether anyone may sign up (closed unless set)
    * and whether a new company waits (it does unless set), how companies reach the operators (each channel empty where
-   * it is not set), every whole-number setting as a delay in the order the API declares them, and the version of
-   * each key's row, which a save sends back.
+   * it is not set), every whole-number setting but the demo's count as a delay in the order the API declares them,
+   * the demo (open unless switched off, and its count), and the version of each key's row, which a save sends back.
    */
   settings(): Promise<PlatformSettings> {
     return this.guard(async () => {
@@ -122,21 +123,21 @@ export class PlatformApi {
           status_url: channel('status_url'),
         },
         delays: rows
-          .filter((row) => row.type === 'int' && row.key !== undefined)
-          .map((row) => ({
-            key: row.key ?? '',
-            labelKey: row.labelKey ?? '',
-            value: Number(row.value ?? row.default),
-            min: row.min === null || row.min === undefined ? null : Number(row.min),
-            max: row.max === null || row.max === undefined ? null : Number(row.max),
-          })),
+          .filter((row) => row.type === 'int' && row.key !== undefined && row.key !== DEMO_MOST)
+          .map(toNumber),
+        demo: {
+          enabled: valueOf('demo.enabled') !== false,
+          most: ((row) => (row === undefined ? null : toNumber(row)))(
+            rows.find((row) => row.key === DEMO_MOST),
+          ),
+        },
         versions: platformVersions(rows),
       };
     });
   }
 
   /** One switch, the last word being the operator's: it sends no version. */
-  setSignup(key: SignupSwitch, value: boolean): Promise<void> {
+  setSwitch(key: PlatformSwitch, value: boolean): Promise<void> {
     return this.guard(async () => {
       await firstValueFrom(
         this.http.put<SettingSettingRead>(`/api/platform/settings/${key}`, { value }),
@@ -315,6 +316,19 @@ function accountParams(search: PlatformAccountSearch): HttpParams {
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;
+}
+
+/** How many demo sandboxes may exist at once: a whole-number setting with a card of its own, not a delay. */
+const DEMO_MOST = 'demo.sandboxes_max';
+
+function toNumber(row: SettingSettingRead): PlatformNumber {
+  return {
+    key: row.key ?? '',
+    labelKey: row.labelKey ?? '',
+    value: Number(row.value ?? row.default),
+    min: row.min === null || row.min === undefined ? null : Number(row.min),
+    max: row.max === null || row.max === undefined ? null : Number(row.max),
+  };
 }
 
 const subscriptionPath = (companyId: string): string =>

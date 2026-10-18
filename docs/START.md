@@ -358,7 +358,25 @@ Signup is **off** by default.
 4. With approval on, the company waits: its owner can sign in and sees that it is waiting. As the operator, go to
    **Platform** → **Waiting for approval** → **Approve** (the owner is mailed) or **Reject** (the company is suspended).
 
-### 5.4 Another platform operator
+### 5.4 Try the demo, and switch it
+
+The demo is **on** by default, a shop's own installation included. Signed out, http://localhost:8090/login offers
+**Essayer la démo** with one button per country (Tunisia, France): a click signs you in, with no account, as the owner of
+a company of your own, written with months of history. Every page says it is a demo; every PDF carries the band
+« DÉMO — sans valeur fiscale »; a mail it would send is kept under **Courriers de la démo** (the banner's link), never
+sent. The sandbox goes when you sign out, or after two hours away (`app.demo.idle_ttl` in `api/config/services.yaml`),
+within the five minutes the worker's tend takes.
+
+The `demo-worker` keeps one sandbox ready per country. On a fresh stack the first is built about five minutes after the
+worker starts, or as soon as someone tries: until then a click answers *La démo se prépare : réessayez dans un
+instant*. `docker compose logs demo-worker` shows the builds.
+
+As the operator, **Platform** → **Démo** switches it off (the login page stops offering it, and a visitor still inside
+keeps their sandbox until they leave) and sets how many sandboxes may exist at once (3 to 100, 10 by default): each is a
+whole company, so the count bounds what visitors cost the machine. Operators' company and account lists, and the data
+checks, leave sandboxes out.
+
+### 5.5 Another platform operator
 
 Operators are created from the console only, never from the application:
 
@@ -374,13 +392,13 @@ own authenticator at first sign-in. That is how a real deployment's operator is 
 `--operator-password` and `--operator-totp-secret` outright, since a known secret is a known second factor. Both
 remain for the development and CI stacks (`make seed`).
 
-### 5.5 Deactivate an account, end sessions
+### 5.6 Deactivate an account, end sessions
 
 **Platform** → **Accounts**: search an address, then **Deactivate** (or **Reactivate**) or **End sessions**. An
 operator cannot deactivate their own account. Removing someone from one company only is done on that company's
 **Members** page.
 
-### 5.6 Two-step verification for a company's members
+### 5.7 Two-step verification for a company's members
 
 Company settings → **Security** → **Require two-step verification** turns it on for everyone in that company. Each member
 then enrols an authenticator app or a passkey at their next sign-in.

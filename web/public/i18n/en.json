@@ -940,7 +940,8 @@
       "demo_enabled": "Demo open to visitors, through Try the demo",
       "demo_sandboxes_max": "Most demos at the same time",
       "company_reopen_days": "Days during which a closed company can be reopened",
-      "licensing_grace_days": "Days of grace after a subscription ends"
+      "licensing_grace_days": "Days of grace after a subscription ends",
+      "licensing_hold_days": "Days access is kept after a declared payment, while it is confirmed"
     },
     "intro": "The company's defaults. A customer, a product or a document may still say otherwise.",
     "no_company": "Choose a company first.",
@@ -3159,6 +3160,13 @@
       "title": "Signup",
       "enabled": "Anyone may sign up",
       "approval_required": "A company that signs up waits for approval"
+    },
+    "demo": {
+      "title": "Demo",
+      "intro": "A visitor tries the app in a demonstration company of their own, with no account, erased when they sign out or stop using it. No mail leaves and no document has fiscal value.",
+      "bounds": "From {{min}} to {{max}} demos",
+      "save": "Save",
+      "saved": "Number of demos saved."
     },
     "waiting": {
       "title": "Waiting for approval",

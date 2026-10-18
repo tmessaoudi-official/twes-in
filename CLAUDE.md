@@ -149,6 +149,14 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `Installation` (what a shop's installation script, `scripts/onprem/twes`, tells through `app:installation:tell`: a release
   out to each company's owners, a failed or rolled-back update, a failing health check or backup to the operators; a line
   it refuses exits 2, which the script drops),
+  `Demo` (« Essayer la démo »: a visitor with no account claims a `demo_sandbox`, a whole company written by
+  `Dataset/DemoDataset` and owned by a throwaway account; the pool is topped up by `KeepSandboxPool`, its builds on the
+  `demo` transport, which the `demo-worker` container alone consumes, so no mail waits behind one; `DemoAccountGuard`
+  refuses what would make the account a real one (403 `demo_refused`); a mail to a sandbox's owner is kept by
+  `CaptureDemoMailListener` for « Courriers de la démo », never sent, and `DemoMailReachTest` names every mail writer;
+  every PDF carries the « DÉMO » band and Factur-X is refused; a sandbox goes at sign-out or after `app.demo.idle_ttl`
+  away, taken by `TendDemoSandboxesEveryFiveMinutes`; operators' lists and the data checks leave sandboxes out through
+  the `DemoCompanies` and `DemoAccounts` ports; `demo.enabled` and `demo.sandboxes_max` are the platform's « Démo » card),
   and the modules one level down in `api/src/Module/<Name>/`, the scanner among them (`Module/Scanning`: a phone lent
   to a computer tab as a scanner, `scan_pairing`, the tab's endpoints under its company and the phone's four public ones
   behind its key, named in `UnauthenticatedSweepTest`, which check the module themselves through `ScannerSwitch`) (a module reaches another only through a port it owns in its
