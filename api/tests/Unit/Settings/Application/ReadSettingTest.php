@@ -28,14 +28,14 @@ final class ReadSettingTest extends TestCase
         $settings = new InMemorySettings();
         $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $settings->save(new Setting(SettingAddress::company($company), 'presentation.scheme', 'dark', new \DateTimeImmutable()));
-        $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new PresentationSettings()]), $settings));
+        $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), $settings));
 
         self::assertSame('dark', $read->value(new SettingContext($company), 'presentation.scheme'));
     }
 
     public function testCodeCannotReadAKeyNobodyDeclared(): void
     {
-        $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new PresentationSettings()]), new InMemorySettings()));
+        $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), new InMemorySettings()));
 
         $this->expectException(UnknownSetting::class);
         $read->value(new SettingContext(), 'document.hardcoded_somewhere');

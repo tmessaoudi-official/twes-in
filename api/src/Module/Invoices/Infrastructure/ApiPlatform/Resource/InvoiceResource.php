@@ -510,8 +510,8 @@ final class InvoiceResource
     #[Groups([self::READ])]
     public ?string $dueDate = null;
 
-    /** The language the document prints in, fixed at issue; null while it is a draft. */
-    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'enum' => ['fr', 'en', null]])]
+    /** The language the document prints in, a BCP 47 tag fixed at issue; null while it is a draft. */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null']])]
     #[Groups([self::READ])]
     public ?string $language = null;
 

@@ -108,7 +108,7 @@ final class InvoiceWorkflowTest extends TestCase
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->events = new RecordingDomainEvents($this->transactions);
         $settings = new InMemorySettings();
-        $catalog = new SettingCatalog([new BusinessDefaultSettings(), new PresentationSettings()]);
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
         $numbers = new AllocateNumber($this->series, $this->transactions, $this->clock);
@@ -324,7 +324,7 @@ final class InvoiceWorkflowTest extends TestCase
                 $yaml = (string) file_get_contents($file);
                 file_put_contents($presets.'/'.basename($file), 'TN.yaml' === basename($file) ? str_replace('stamp: given_back_once', 'stamp: kept', $yaml) : $yaml);
             }
-            $kept = new InvoiceTotals(new YamlFiscalPresets($presets), ShippedFiscalPresets::scales());
+            $kept = new InvoiceTotals(new YamlFiscalPresets($presets, \App\Tests\Support\ShippedLanguages::catalogue()), ShippedFiscalPresets::scales());
             self::assertSame([], $kept->of($credit)->fixedCharges);
             self::assertSame(['TIMBRE' => ChargeLeftOut::Kept], $kept->chargesLeftOut($credit));
         } finally {

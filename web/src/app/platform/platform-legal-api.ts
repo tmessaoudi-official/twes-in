@@ -26,7 +26,7 @@ export class PlatformLegalApi {
     );
     return rows.map((row) => ({
       page: row.page as LegalPage,
-      language: row.language as LegalLanguage,
+      language: row.language,
       written: row.written,
       publishedOn: row.publishedOn ?? null,
       validated: row.validated,

@@ -13,6 +13,7 @@ use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Domain\ValueObject\SettingType;
+use App\Shared\Application\Languages;
 use App\Shared\Domain\ValueObject\DocumentDesign;
 
 /**
@@ -25,13 +26,17 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
 {
     public const string MODULE = 'core';
 
+    public function __construct(private Languages $languages)
+    {
+    }
+
     public function settings(): iterable
     {
         $parties = [SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer, SettingLevel::Document];
         $articles = [SettingLevel::Company, SettingLevel::ProductCategory, SettingLevel::Product];
 
         yield new SettingDefinition('document.payment_terms_days', SettingType::Int, 30, SettingChain::Parties, $parties, 'settings.document.payment_terms_days', self::MODULE, min: 0, max: 365);
-        yield new SettingDefinition('document.language', SettingType::Enum, 'fr', SettingChain::Parties, $parties, 'settings.document.language', self::MODULE, choices: ['fr', 'en']);
+        yield new SettingDefinition('document.language', SettingType::Enum, $this->languages->default(), SettingChain::Parties, $parties, 'settings.document.language', self::MODULE, choices: $this->languages->documents());
         yield new SettingDefinition('document.printed_notes', SettingType::Text, '', SettingChain::Parties, $parties, 'settings.document.printed_notes', self::MODULE, maxLength: 2000);
 
         // The seller's bank details printed on an invoice as the way to pay it, its number the reference to give.

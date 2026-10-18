@@ -13,14 +13,12 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Settings\Application\PlatformSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Application\Languages;
 
 /** What the platform's operators decided about signup (docs/SPEC.md § 3 Settings), read fresh on every request. */
 final readonly class SignupPolicy
 {
-    /** The languages the application speaks; anything else asked for is answered in French. */
-    public const array LOCALES = ['fr', 'en'];
-
-    public function __construct(private ReadSetting $settings, private FiscalPresets $presets)
+    public function __construct(private ReadSetting $settings, private FiscalPresets $presets, private Languages $languages)
     {
     }
 
@@ -40,8 +38,9 @@ final readonly class SignupPolicy
         return $this->presets->keys();
     }
 
-    public static function locale(?string $asked): string
+    /** A language the interface speaks; anything else asked for is answered in the default one. */
+    public function locale(?string $asked): string
     {
-        return \in_array($asked, self::LOCALES, true) ? $asked : self::LOCALES[0];
+        return $this->languages->interfaceOr($asked);
     }
 }

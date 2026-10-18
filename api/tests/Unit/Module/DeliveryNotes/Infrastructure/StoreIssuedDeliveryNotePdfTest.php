@@ -66,7 +66,7 @@ final class StoreIssuedDeliveryNotePdfTest extends TestCase
             new RecordingDeliveryNoteTemplate(),
             $renderer,
             new Files(new InMemoryFileStorage(), $records, $clock),
-            new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(), new DeliveryNoteSettings(), new PresentationSettings()]), new InMemorySettings())),
+            new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new DeliveryNoteSettings(), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), new InMemorySettings())),
             new FakeTransactions(),
         );
         $logger = new class extends AbstractLogger {

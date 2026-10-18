@@ -40,7 +40,7 @@ final class ChangeSettingsTest extends TestCase
         $this->settings = new InMemorySettings();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $catalog = new SettingCatalog([new PresentationSettings()]);
+        $catalog = new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $this->change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->userId = Uuid::v7();

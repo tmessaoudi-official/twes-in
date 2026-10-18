@@ -2,6 +2,7 @@
 
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { marked } from 'marked';
+import { DEFAULT_LANGUAGE, directionOf } from '../i18n/languages';
 import type { LegalLanguage } from './legal-api';
 
 /**
@@ -20,7 +21,7 @@ import type { LegalLanguage } from './legal-api';
   template: `<div
     class="twes-legal-body"
     [attr.lang]="language()"
-    [attr.dir]="language() === 'ar' ? 'rtl' : 'ltr'"
+    [attr.dir]="direction()"
     [innerHTML]="html()"
     data-testid="legal-body"
   ></div>`,
@@ -30,13 +31,14 @@ export class LegalMarkdown {
   readonly language = input.required<LegalLanguage>();
   /** The identity filled in, by placeholder. */
   readonly values = input<Readonly<Record<string, string>>>({});
+  protected readonly direction = computed(() => directionOf(this.language()));
   protected readonly html = computed(() =>
     marked.parse(fillPlaceholders(this.body(), this.values(), this.language()), { async: false }),
   );
 }
 
-/** What a placeholder not filled in reads, in the text's language. */
-export const MISSING: Readonly<Record<LegalLanguage, string>> = {
+/** What a placeholder not filled in reads, in the text's language; a language not listed reads the default's. */
+export const MISSING: Readonly<Partial<Record<LegalLanguage, string>>> = {
   fr: '[à compléter]',
   en: '[to be completed]',
   ar: '[يُستكمل]',
@@ -49,6 +51,10 @@ export function fillPlaceholders(
   language: LegalLanguage,
 ): string {
   return body.replace(/\{\{\s*([a-z][a-z_.]*)\s*\}\}/g, (_, key: string) =>
-    Object.hasOwn(values, key) ? values[key]! : MISSING[language],
+    Object.hasOwn(values, key) ? values[key]! : missingMark(language),
   );
+}
+
+function missingMark(language: LegalLanguage): string {
+  return MISSING[language] ?? MISSING[DEFAULT_LANGUAGE] ?? '';
 }

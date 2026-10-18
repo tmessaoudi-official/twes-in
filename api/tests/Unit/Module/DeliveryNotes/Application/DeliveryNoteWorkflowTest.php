@@ -99,7 +99,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->events = new RecordingDomainEvents($this->transactions);
         $settings = new InMemorySettings();
-        $catalog = new SettingCatalog([new BusinessDefaultSettings(), new DeliveryNoteSettings(), new PresentationSettings()]);
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new DeliveryNoteSettings(), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
         $this->workflow = new DeliveryNoteWorkflow(

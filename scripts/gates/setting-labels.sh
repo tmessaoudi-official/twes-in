@@ -110,22 +110,31 @@ if ((${#chains[@]} < chains_floor)); then
 fi
 
 # The choice labels of every company setting: `settings.choices.<setting key>.<choice>`, one per value of a literal
-# `choices: [...]`. A list written any other way (a constant, a call) hides its values from a grep, so it is refused
-# by name instead of skipped. Platform and key-pattern settings are left out, as above.
+# `choices: [...]`, or the languages the catalogue names for one of its uses (`choices: $this->languages->documents()`,
+# read from api/config/languages.json). A list written any other way (a constant, another call) hides its values from
+# a grep, so it is refused by name instead of skipped. Platform and key-pattern settings are left out, as above.
 choice_out=$(
   cd "$root" && python3 - "${files[@]}" <<'PY'
-import re, sys
+import json, os, re, sys
 bad = []
+catalogue = None
+def languages(use):
+    global catalogue
+    if catalogue is None:
+        catalogue = json.load(open(os.path.join("api", "config", "languages.json"), encoding="utf-8"))["languages"]
+    return [language["tag"] for language in catalogue if language[use] is True]
 for path in sys.argv[1:]:
     for line in open(path, encoding="utf-8"):
         if "choices:" not in line or "keyPattern:" in line or "'settings.platform." in line:
             continue
         key = re.search(r"new SettingDefinition\(\s*'([^']+)'", line)
         values = re.search(r"choices:\s*\[([^\]]*)\]", line)
-        if key is None or values is None:
+        catalogued = re.search(r"choices:\s*\$this->languages->(interface|documents|legal)\(\)", line)
+        if key is None or (values is None and catalogued is None):
             bad.append(f"{path}: {line.strip()[:120]}")
             continue
-        for choice in re.findall(r"'([^']+)'", values.group(1)):
+        listed = re.findall(r"'([^']+)'", values.group(1)) if values is not None else languages(catalogued.group(1))
+        for choice in listed:
             print(f"settings.choices.{key.group(1)}.{choice}")
 for entry in bad:
     print("BAD " + entry)

@@ -2,6 +2,7 @@
 
 import { DEFAULT_SHORTCUTS, parseShellShortcuts, type ShellKeys } from '../actions/shortcuts';
 import { DATE_FORMATS, type DateFormat, NUMBER_FORMATS, type NumberStyle } from '../i18n/format';
+import { DEFAULT_LANGUAGE, INTERFACE_LANGUAGES, type Language } from '../i18n/languages';
 import { assertAccentColour } from '../theme/accent-theme';
 import type { ListFilterValues, ListPreferences, ListSort, ListView } from '../list/list-types';
 import { NO_LIST_PREFERENCES } from '../list/list-types';
@@ -10,9 +11,9 @@ import { type SettingDefinition, UnregisteredSetting } from './settings-facade';
 export type Density = 'comfortable' | 'compact';
 /** What a person chose: a scheme, or Automatique, which follows the device (docs/SPEC.md § 7, 2026-09-16 review). */
 export type SchemePreference = 'auto' | 'light' | 'dark';
-/** The interface languages, French first (Tunisia, France); Arabic and right-to-left come after the POC. */
-export const SUPPORTED_LANGUAGES = ['fr', 'en'] as const;
-export type Language = (typeof SUPPORTED_LANGUAGES)[number];
+/** The interface languages, those whose screen texts ship: the catalogue's to say (`shared/i18n/languages.json`). */
+export const SUPPORTED_LANGUAGES = INTERFACE_LANGUAGES;
+export type { Language };
 /** The sidebar on a wide screen: icons and labels, or icons alone with the labels as tooltips. */
 export type SidebarState = 'expanded' | 'rail';
 /**
@@ -138,7 +139,7 @@ export const PRESENTATION = {
   ),
   language: defineSetting<Language>(
     'presentation.language',
-    SUPPORTED_LANGUAGES[0],
+    DEFAULT_LANGUAGE,
     oneOf(...SUPPORTED_LANGUAGES),
   ),
   /**

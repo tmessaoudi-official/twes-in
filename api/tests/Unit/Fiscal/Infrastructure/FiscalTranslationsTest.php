@@ -31,7 +31,7 @@ final class FiscalTranslationsTest extends TestCase
 
     public function testEveryKeyAPresetUsesIsTranslated(): void
     {
-        $presets = new YamlFiscalPresets(self::PRESETS);
+        $presets = new YamlFiscalPresets(self::PRESETS, \App\Tests\Support\ShippedLanguages::catalogue());
         $used = [];
         foreach ($presets->keys() as $key) {
             $used = [...$used, ...$this->keysOf($presets->get($key))];

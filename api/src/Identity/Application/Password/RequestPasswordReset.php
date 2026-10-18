@@ -16,6 +16,7 @@ use App\Identity\Domain\Repository\PasswordResetRepository;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\Email;
 use App\Identity\Domain\ValueObject\PasswordResetToken;
+use App\Shared\Application\Languages;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -36,6 +37,7 @@ final readonly class RequestPasswordReset
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private Languages $languages,
         #[Autowire(param: 'app.password_reset.link_url')]
         private string $linkUrlTemplate,
         #[Autowire(param: 'app.password_reset.valid_for')]
@@ -64,7 +66,7 @@ final readonly class RequestPasswordReset
         $this->mailer->send(new PasswordResetMail(
             $email->value,
             str_replace('{token}', $token->raw, $this->linkUrlTemplate),
-            \in_array($locale, ['fr', 'en'], true) ? $locale : $user->getLocale(),
+            \in_array($locale, $this->languages->interface(), true) ? $locale : $user->getLocale(),
             intdiv($reset->getExpiresAt()->getTimestamp() - $now->getTimestamp(), 60),
         ));
     }

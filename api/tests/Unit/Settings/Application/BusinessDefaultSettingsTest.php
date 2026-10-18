@@ -24,7 +24,7 @@ final class BusinessDefaultSettingsTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->catalog = new SettingCatalog([new BusinessDefaultSettings()]);
+        $this->catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
     }
 
     public function testThePartiesChainCarriesTheDocumentDefaults(): void

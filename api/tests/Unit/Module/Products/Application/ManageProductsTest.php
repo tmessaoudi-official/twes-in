@@ -88,7 +88,7 @@ final class ManageProductsTest extends TestCase
         $this->stockHistory = new InMemoryProductStockHistory();
         $this->vendors = new InMemoryVendors();
         $settings = new InMemorySettings();
-        $catalog = new SettingCatalog([new BusinessDefaultSettings(), new ProductReferenceSettings()]);
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new ProductReferenceSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->changeSettings = new ChangeSettings($catalog, $settings, $resolve, $this->audit, $clock, $transactions);
         $this->costHistory = new InMemoryProductCostChanges();

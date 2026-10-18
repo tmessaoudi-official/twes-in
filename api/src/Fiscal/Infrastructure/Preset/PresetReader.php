@@ -35,8 +35,6 @@ use Symfony\Component\Intl\Currencies;
  */
 final readonly class PresetReader
 {
-    /** The languages the product renders documents in (api/translations). */
-    private const array LANGUAGES = ['fr', 'en'];
     /** A percentage that fits the NUMERIC(6,3) rate columns. */
     private const string RATE = '/^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$/';
     private const string AMOUNT = '/^(0|[1-9][0-9]{0,10})(?:\.([0-9]+))?$/';
@@ -47,7 +45,8 @@ final readonly class PresetReader
     private const string VATEX_CODE = '/^VATEX-[A-Z]{2}-[A-Z0-9]+(-[A-Z0-9]+)*$/';
     private const string TRANSLATION_KEY = '/^fiscal(\.[a-z0-9_]+){2,}$/';
 
-    public function __construct(private string $file, private string $key)
+    /** @param list<string> $languages the languages documents print in, which a preset names and gives its names in */
+    public function __construct(private string $file, private string $key, private array $languages)
     {
     }
 
@@ -68,8 +67,8 @@ final readonly class PresetReader
         }
 
         $languages = $this->strings($config, 'document_languages', 'document_languages');
-        if ([] !== array_diff($languages, self::LANGUAGES)) {
-            $this->refuse('document_languages', 'may only name '.implode(', ', self::LANGUAGES));
+        if ([] !== array_diff($languages, $this->languages)) {
+            $this->refuse('document_languages', 'may only name '.implode(', ', $this->languages));
         }
 
         $rounding = $this->node($config, 'rounding', 'rounding');
@@ -406,7 +405,7 @@ final readonly class PresetReader
     {
         $names = $this->node($node, 'names', $path);
         $out = [];
-        foreach (self::LANGUAGES as $language) {
+        foreach ($this->languages as $language) {
             $out[$language] = $this->string($names, $language, "$path.$language");
         }
 

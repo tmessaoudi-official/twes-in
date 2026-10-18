@@ -169,7 +169,7 @@ final class PasswordResetTest extends TestCase
 
     private function request(): RequestPasswordReset
     {
-        return new RequestPasswordReset($this->users, $this->resets, $this->mailer, $this->audit, $this->transactions, $this->clock, 'https://app.test/reset-password/{token}', 'PT1H');
+        return new RequestPasswordReset($this->users, $this->resets, $this->mailer, $this->audit, $this->transactions, $this->clock, \App\Tests\Support\ShippedLanguages::catalogue(), 'https://app.test/reset-password/{token}', 'PT1H');
     }
 
     private function reset(): ResetPassword

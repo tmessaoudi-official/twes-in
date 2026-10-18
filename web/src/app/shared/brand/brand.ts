@@ -2,11 +2,13 @@
 
 import { computed, inject, Injectable, signal, type Signal } from '@angular/core';
 import { type Language, LanguageFacade } from '../i18n/language-facade';
+import { DEFAULT_LANGUAGE } from '../i18n/languages';
 
 /** What an installation calls itself on the pages people see before signing in. */
 export interface BrandKit {
   readonly name: string;
-  readonly tagline: Readonly<Record<Language, string>>;
+  /** By language; a language with none reads the default language's. */
+  readonly tagline: Readonly<Partial<Record<Language, string>>>;
 }
 
 /** The defaults the developer chose (docs/SPEC.md Decisions Log, 2026-09-16), until an operator sets their own. */
@@ -35,5 +37,8 @@ export class DefaultBrand extends Brand {
   private readonly language = inject(LanguageFacade).current;
 
   readonly name = computed(() => this.kit().name);
-  readonly tagline = computed(() => this.kit().tagline[this.language()]);
+  readonly tagline = computed(() => {
+    const tagline = this.kit().tagline;
+    return tagline[this.language()] ?? tagline[DEFAULT_LANGUAGE] ?? '';
+  });
 }

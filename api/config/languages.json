@@ -1,0 +1,35 @@
+{
+  "default": "fr",
+  "languages": [
+    {
+      "tag": "fr",
+      "name": "Français",
+      "direction": "ltr",
+      "script": "Latn",
+      "plurals": ["one", "many", "other"],
+      "interface": true,
+      "documents": true,
+      "legal": true
+    },
+    {
+      "tag": "en",
+      "name": "English",
+      "direction": "ltr",
+      "script": "Latn",
+      "plurals": ["one", "other"],
+      "interface": true,
+      "documents": true,
+      "legal": true
+    },
+    {
+      "tag": "ar",
+      "name": "العربية",
+      "direction": "rtl",
+      "script": "Arab",
+      "plurals": ["zero", "one", "two", "few", "many", "other"],
+      "interface": false,
+      "documents": false,
+      "legal": true
+    }
+  ]
+}

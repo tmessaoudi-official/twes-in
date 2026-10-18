@@ -45,7 +45,7 @@ final readonly class RequestSignup
         if (!$this->policy->isOpen()) {
             throw new SignupClosed('Signup is closed.');
         }
-        $locale = SignupPolicy::locale($locale);
+        $locale = $this->policy->locale($locale);
 
         if (null !== $this->users->ofEmail($email)) {
             $this->mailer->accountExists(new AccountExistsMail($email->value, $this->loginUrl, $locale));
