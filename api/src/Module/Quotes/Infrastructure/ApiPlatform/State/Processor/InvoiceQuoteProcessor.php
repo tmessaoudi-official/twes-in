@@ -15,6 +15,8 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Module\Quotes\Application\QuoteInvoicingRefused;
 use App\Module\Quotes\Application\QuoteNotFound;
+use App\Module\Quotes\Application\QuoteTargetInvoiceNotDraft;
+use App\Module\Quotes\Application\QuoteTargetInvoiceNotFound;
 use App\Module\Quotes\Application\QuoteWorkflow;
 use App\Module\Quotes\Domain\Exception\QuoteTransitionRefused;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Output\QuoteView;
@@ -29,9 +31,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
- * « Facturer »: an accepted quote drafted wholly into a new invoice, which the answer names (`invoiceId`). It drafts an
- * invoice, so it asks invoice.write as well (403 without it), and the invoices module on: quoting needs only customers,
- * as delivery notes do.
+ * « Facturer »: an accepted quote drafted wholly into a new invoice, or added to an open draft of its customer named
+ * in the path (.../invoices/{invoiceId}), which the answer names (`invoiceId`). It writes an invoice, so it asks
+ * invoice.write as well (403 without it), and the invoices module on: quoting needs only customers, as delivery notes do.
  *
  * @implements ProcessorInterface<mixed, QuoteResource>
  */
@@ -52,11 +54,17 @@ final readonly class InvoiceQuoteProcessor implements ProcessorInterface
             throw new NotFoundHttpException('No such company.');
         }
 
+        $quoteId = CompanyPath::identifier($uriVariables, 'quoteId');
+        $actor = $this->guard->account()->getId();
         try {
-            $quote = $this->workflow->invoice($company, CompanyPath::identifier($uriVariables, 'quoteId'), $this->guard->account()->getId());
+            $quote = isset($uriVariables['invoiceId'])
+                ? $this->workflow->addToInvoice($company, $quoteId, CompanyPath::identifier($uriVariables, 'invoiceId'), $actor)
+                : $this->workflow->invoice($company, $quoteId, $actor);
         } catch (QuoteNotFound $absent) {
             throw new NotFoundHttpException('No such quote.', $absent);
-        } catch (QuoteTransitionRefused $conflict) {
+        } catch (QuoteTargetInvoiceNotFound $absent) {
+            throw new NotFoundHttpException($absent->getMessage(), $absent);
+        } catch (QuoteTransitionRefused|QuoteTargetInvoiceNotDraft $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (QuoteInvoicingRefused $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);

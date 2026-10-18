@@ -23,6 +23,7 @@ import type {
 import { InvoicesApi, refusedField } from '../invoices/invoices-api';
 import type {
   CustomerOption,
+  InvoiceDraftOption,
   InvoiceOptions,
   ProductOption,
   ResolvedPrice,
@@ -237,6 +238,32 @@ export class QuotesApi {
   /** Drafts the accepted quote wholly into a new invoice, which the answer names; 409 when it already stands. */
   async invoice(companyId: string, id: string): Promise<QuoteRow> {
     return this.step(companyId, id, 'invoice', null);
+  }
+
+  /**
+   * Adds the accepted quote's lines to an open draft of its customer instead, which the answer names; 409 when the quote
+   * already stands on an invoice or the draft is one no more.
+   */
+  async addToInvoice(companyId: string, id: string, invoiceId: string): Promise<QuoteRow> {
+    return this.guard(async () =>
+      toQuote(
+        await firstValueFrom(
+          this.http.post<QuoteQuoteRead>(
+            `${quotePath(companyId, id)}/invoices/${encodeURIComponent(invoiceId)}`,
+            null,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /** The drafts of this customer and establishment a quote could be added to (`InvoicesApi.openDraftsOf`). */
+  async draftsOf(
+    companyId: string,
+    customerId: string,
+    establishmentId: string | null,
+  ): Promise<InvoiceDraftOption[]> {
+    return this.guard(() => this.invoices.openDraftsOf(companyId, customerId, establishmentId));
   }
 
   /** Where the quote's PDF is downloaded from, with the session the browser already has. */

@@ -181,6 +181,8 @@ describe('QuotePage', () => {
     refuse: vi.fn(),
     cancel: vi.fn(),
     invoice: vi.fn(),
+    addToInvoice: vi.fn(),
+    draftsOf: vi.fn(),
     deposit: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
@@ -257,6 +259,8 @@ describe('QuotePage', () => {
     facade.refuse.mockReset().mockResolvedValue({ ...sent, status: 'refused' });
     facade.cancel.mockReset().mockResolvedValue({ ...draft, status: 'cancelled' });
     facade.invoice.mockReset().mockResolvedValue({ ...accepted, invoiceId: 'i7' });
+    facade.addToInvoice.mockReset().mockResolvedValue({ ...accepted, invoiceId: 'd1' });
+    facade.draftsOf.mockReset().mockResolvedValue([]);
     facade.deposit.mockReset().mockResolvedValue({
       ...accepted,
       deposits: [
@@ -586,6 +590,78 @@ describe('QuotePage', () => {
 
     expect(facade.invoice).toHaveBeenCalledWith('c1', 'q1');
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
+  });
+
+  describe('where an accepted quote is invoiced', () => {
+    const drafts = [
+      { id: 'd1', total: '120.000', lineCount: 2, customerReference: 'PO-7' },
+      { id: 'd2', total: '40.000', lineCount: 1, customerReference: null },
+    ];
+
+    it("reads its customer's drafts in its establishment, and starts a new invoice when there are none", async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      quote.set(accepted);
+      await open('q1');
+
+      q('document-action-invoice')!.click();
+      await settle();
+
+      expect(facade.draftsOf).toHaveBeenCalledWith('c1', 'k1', 'e1');
+      expect(over('add-to-title')).toBeNull();
+      expect(facade.addToInvoice).not.toHaveBeenCalled();
+      await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
+    });
+
+    it('offers the drafts beside a new invoice, and adds the quote to the one chosen', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.draftsOf.mockResolvedValue(drafts);
+      quote.set(accepted);
+      await open('q1');
+
+      q('document-action-invoice')!.click();
+      await settle();
+      expect(over('add-to-title')?.textContent).toContain('quotes.invoice_target.title');
+      await vi.waitFor(() => expect(over('add-to-draft-d2')).not.toBeNull());
+      expect(over('add-to-customer')).toBeNull();
+      over('add-to-draft-d1')!.click();
+
+      await vi.waitFor(() => expect(facade.addToInvoice).toHaveBeenCalledWith('c1', 'q1', 'd1'));
+      expect(facade.invoice).not.toHaveBeenCalled();
+      await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'd1']));
+    });
+
+    it('starts a new invoice when that is the one chosen, and does nothing when the question is left', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.draftsOf.mockResolvedValue(drafts);
+      quote.set(accepted);
+      await open('q1');
+
+      q('document-action-invoice')!.click();
+      await settle();
+      over('add-to-close')!.click();
+      await vi.waitFor(() => expect(over('add-to-title')).toBeNull());
+      await settle();
+      expect(facade.invoice).not.toHaveBeenCalled();
+
+      q('document-action-invoice')!.click();
+      await settle();
+      over('add-to-new')!.click();
+      await vi.waitFor(() => expect(facade.invoice).toHaveBeenCalledWith('c1', 'q1'));
+      expect(facade.addToInvoice).not.toHaveBeenCalled();
+    });
+
+    it('never offers a draft for a quote with a discount on the whole, which a new invoice alone takes as quoted', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.draftsOf.mockResolvedValue(drafts);
+      quote.set({ ...accepted, discountAmount: '10.000' });
+      await open('q1');
+
+      q('document-action-invoice')!.click();
+      await settle();
+
+      expect(facade.draftsOf).not.toHaveBeenCalled();
+      await vi.waitFor(() => expect(facade.invoice).toHaveBeenCalledWith('c1', 'q1'));
+    });
   });
 
   it('draws a deposit for the share asked, and opens the new draft', async () => {

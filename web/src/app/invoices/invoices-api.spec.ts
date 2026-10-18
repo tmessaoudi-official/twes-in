@@ -5,7 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { codeOf, InvoicesApi, InvoicesRefused } from './invoices-api';
-import type { InvoiceInput } from './invoices-types';
+import type { InvoiceInput, InvoiceRow } from './invoices-types';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 
 const input: InvoiceInput = {
@@ -340,6 +340,37 @@ describe('InvoicesApi', () => {
     const page = await pending;
     expect(page.rows.map((row) => row.number)).toEqual(['FAC-2026-00045']);
     expect(page.total).toBe(48);
+  });
+
+  it("lists the drafts another document can be added to: the customer's invoices in that establishment", async () => {
+    const row = (id: string, establishmentId: string | null, lines: number) =>
+      ({
+        id,
+        establishmentId,
+        total: '10.000',
+        customerReference: id === 'd1' ? 'PO-7' : null,
+        lines: Array.from({ length: lines }, () => ({})),
+      }) as unknown as InvoiceRow;
+    const listed = vi.spyOn(api, 'invoices').mockResolvedValue({
+      rows: [row('d1', 'e1', 2), row('d2', 'e2', 1), row('d3', 'e1', 3)],
+      total: 3,
+    });
+
+    expect(await api.openDraftsOf('c1', 'k1', 'e1')).toEqual([
+      { id: 'd1', total: '10.000', lineCount: 2, customerReference: 'PO-7' },
+      { id: 'd3', total: '10.000', lineCount: 3, customerReference: null },
+    ]);
+    // `invoice` alone: the list's kinds keep deposits and credit notes apart, neither of which takes other lines.
+    expect(listed).toHaveBeenCalledWith('c1', {
+      page: 1,
+      itemsPerPage: 20,
+      q: '',
+      status: ['draft'],
+      documentType: ['invoice'],
+      customerIds: ['k1'],
+      intervals: {},
+      order: null,
+    });
   });
 
   it('refuses a page that came without its total, rather than showing one page as the whole list', async () => {

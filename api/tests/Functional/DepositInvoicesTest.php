@@ -608,6 +608,31 @@ final class DepositInvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
     }
 
+    public function testAQuoteAddedToAnOpenDraftGivesItsIssuedDepositsBackThereAndNeverGoesOnADeposit(): void
+    {
+        $this->signedIn(self::WRITER);
+        $first = $this->accepted();
+        $this->postJson($this->quotePath($first).'/invoice', null);
+        $draftId = $this->stringAt($this->json(), 'invoiceId');
+        $second = $this->accepted();
+        $depositId = $this->deposit($second, ['depositPercentage' => '30', 'depositAmount' => null]);
+
+        $this->postJson($this->quotePath($second).'/invoices/'.$depositId, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a deposit is a share of its own quote alone');
+        self::assertStringStartsWith('invoiceId:', $this->stringAt($this->json(), 'detail'));
+        $this->postJson($this->quotePath($second).'/invoices/'.$draftId, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a deposit still a draft is issued or cancelled first');
+        self::assertStringStartsWith('deposits:', $this->stringAt($this->json(), 'detail'));
+
+        $this->issue($depositId);
+        $this->postJson($this->quotePath($second).'/invoices/'.$draftId, null);
+
+        self::assertResponseIsSuccessful();
+        $final = $this->invoice($draftId);
+        self::assertSame([null, null, null, null, $depositId, $depositId], array_column($this->rows($final, 'lines'), 'deductsInvoiceId'));
+        self::assertSame([$first, '3927.000'], [$final['quoteId'], $final['subtotalNet']], 'both quotes, less what the deposit charged');
+    }
+
     private function accepted(): string
     {
         $id = $this->draft();

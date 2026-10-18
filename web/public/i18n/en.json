@@ -4232,6 +4232,10 @@
     "cancelled": "The quote was closed as not pursued.",
     "invoiced": "The quote became a draft invoice.",
     "invoiced_link": "See the invoice drawn from this quote",
+    "invoice_target": {
+      "title": "Where is this quote invoiced?",
+      "help": "A new invoice, or added after the lines of a draft of this customer. An issued invoice is never changed: a credit note corrects it."
+    },
     "refusal_shown": "Reason for refusal: {{reason}}",
     "fixed": {
       "sent": "This quote is sent and no longer changes; it waits for the customer's answer.",

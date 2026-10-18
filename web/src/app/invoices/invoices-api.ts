@@ -48,6 +48,7 @@ import {
   type IssuePreview,
   OPERATION_CATEGORIES,
   type OperationCategory,
+  type InvoiceDraftOption,
   type InvoiceInput,
   type InvoiceOptions,
   type InvoiceRow,
@@ -207,6 +208,36 @@ export class InvoicesApi {
         throw new Error('A page of invoices came without its total.');
       return { rows: page.member.map(toInvoice), total: page.totalItems };
     });
+  }
+
+  /**
+   * The drafts of this customer and establishment another document's lines could be added to, newest work first as the
+   * API lists them: invoices only, never a deposit or a credit note, and a draft of another establishment left out,
+   * because its series numbers it. At most the first page.
+   */
+  async openDraftsOf(
+    companyId: string,
+    customerId: string,
+    establishmentId: string | null,
+  ): Promise<InvoiceDraftOption[]> {
+    const page = await this.invoices(companyId, {
+      page: 1,
+      itemsPerPage: 20,
+      q: '',
+      status: ['draft'],
+      documentType: ['invoice'],
+      customerIds: [customerId],
+      intervals: {},
+      order: null,
+    });
+    return page.rows
+      .filter((row) => row.establishmentId === establishmentId)
+      .map((row) => ({
+        id: row.id,
+        total: row.total,
+        lineCount: row.lines.length,
+        customerReference: row.customerReference,
+      }));
   }
 
   /** What each status chip would list, counted by the API under the search's words, kind and customer. */

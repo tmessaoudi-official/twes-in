@@ -50,7 +50,7 @@ describe('DeliveryNotesApi', () => {
   let api: DeliveryNotesApi;
   let http: HttpTestingController;
 
-  const invoices = { invoices: vi.fn() };
+  const invoices = { invoices: vi.fn(), openDraftsOf: vi.fn() };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -545,33 +545,12 @@ describe('DeliveryNotesApi', () => {
     await expect(gone).rejects.toEqual(new DeliveryNotesRefused('conflict'));
   });
 
-  it("lists the drafts of the notes' customer, leaving out those of another establishment", async () => {
-    const row = (id: string, establishmentId: string | null, lines: number) => ({
-      id,
-      establishmentId,
-      total: '10.000',
-      customerReference: id === 'd1' ? 'PO-7' : null,
-      lines: Array.from({ length: lines }, () => ({})),
-    });
-    invoices.invoices.mockResolvedValue({
-      rows: [row('d1', 'e1', 2), row('d2', 'e2', 1), row('d3', 'e1', 3)],
-      total: 3,
-    });
+  it("reads the drafts of the notes' customer through the invoices' own reader", async () => {
+    const drafts = [{ id: 'd1', total: '10.000', lineCount: 2, customerReference: 'PO-7' }];
+    invoices.openDraftsOf.mockResolvedValue(drafts);
 
-    expect(await api.draftsOf('c1', 'k1', 'e1')).toEqual([
-      { id: 'd1', total: '10.000', lineCount: 2, customerReference: 'PO-7' },
-      { id: 'd3', total: '10.000', lineCount: 3, customerReference: null },
-    ]);
-    expect(invoices.invoices).toHaveBeenCalledWith('c1', {
-      page: 1,
-      itemsPerPage: 20,
-      q: '',
-      status: ['draft'],
-      documentType: ['invoice'],
-      customerIds: ['k1'],
-      intervals: {},
-      order: null,
-    });
+    expect(await api.draftsOf('c1', 'k1', 'e1')).toEqual(drafts);
+    expect(invoices.openDraftsOf).toHaveBeenCalledWith('c1', 'k1', 'e1');
   });
 
   it('reads what of a note is still to invoice', async () => {

@@ -76,7 +76,7 @@ function raw(changes: Record<string, unknown> = {}): Record<string, unknown> {
 describe('QuotesApi', () => {
   let api: QuotesApi;
   let http: HttpTestingController;
-  const invoices = { productPrice: vi.fn() };
+  const invoices = { productPrice: vi.fn(), openDraftsOf: vi.fn() };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -205,6 +205,25 @@ describe('QuotesApi', () => {
       request.flush(raw());
       await pending;
     }
+  });
+
+  it("adds an accepted quote to a draft named in the path, and reads its customer's drafts through the invoices", async () => {
+    const added = api.addToInvoice('c1', 'q1', 'i 7');
+    const request = http.expectOne('/api/companies/c1/quotes/q1/invoices/i%207');
+    expect([request.request.method, request.request.body]).toEqual(['POST', null]);
+    request.flush(raw({ status: 'accepted', invoiceId: 'i 7' }));
+    expect((await added).invoiceId).toBe('i 7');
+
+    const stale = api.addToInvoice('c1', 'q1', 'i7');
+    http
+      .expectOne('/api/companies/c1/quotes/q1/invoices/i7')
+      .flush({}, { status: 409, statusText: 'Conflict' });
+    await expect(stale).rejects.toEqual(new QuotesRefused('conflict'));
+
+    const drafts = [{ id: 'i7', total: '10.000', lineCount: 2, customerReference: null }];
+    invoices.openDraftsOf.mockResolvedValue(drafts);
+    expect(await api.draftsOf('c1', 'k1', 'e1')).toEqual(drafts);
+    expect(invoices.openDraftsOf).toHaveBeenCalledWith('c1', 'k1', 'e1');
   });
 
   it('draws a deposit as a percentage or an amount, and reads the deposits the quote lists', async () => {

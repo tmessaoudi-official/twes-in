@@ -180,6 +180,15 @@ use Symfony\Component\Validator\Constraints as Assert;
             input: false,
             normalizationContext: self::NORMALIZATION,
         ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/quotes/{quoteId}/invoices/{invoiceId}',
+            status: 200,
+            processor: InvoiceQuoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            input: false,
+            normalizationContext: self::NORMALIZATION,
+        ),
     ],
 )]
 final class QuoteResource

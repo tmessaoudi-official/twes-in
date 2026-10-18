@@ -68,6 +68,8 @@ describe('QuotesFacade', () => {
     refuse: vi.fn(),
     cancel: vi.fn(),
     invoice: vi.fn(),
+    addToInvoice: vi.fn(),
+    draftsOf: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
     restoreAttachment: vi.fn(),
@@ -93,6 +95,21 @@ describe('QuotesFacade', () => {
     await facade.loadQuote('c1', 'q1');
     expect(api.attachments).toHaveBeenCalledWith('c1', 'q1');
     expect(facade.quote()).toEqual(sent);
+  });
+
+  it("adds a quote to a draft as a step, and reads the customer's drafts as none when they cannot be read", async () => {
+    await facade.loadQuote('c1', 'q1');
+    api.addToInvoice.mockResolvedValue({ ...sent, status: 'accepted', invoiceId: 'd1' });
+    expect((await facade.addToInvoice('c1', 'q1', 'd1'))?.invoiceId).toBe('d1');
+    expect(api.addToInvoice).toHaveBeenCalledWith('c1', 'q1', 'd1');
+    expect(facade.quote()?.invoiceId).toBe('d1');
+
+    const drafts = [{ id: 'd1', total: '10.000', lineCount: 1, customerReference: null }];
+    api.draftsOf.mockResolvedValue(drafts);
+    expect(await facade.draftsOf('c1', 'k1', 'e1')).toEqual(drafts);
+    api.draftsOf.mockRejectedValue(new QuotesRefused('network'));
+    expect(await facade.draftsOf('c1', 'k1', 'e1')).toBeNull();
+    expect(facade.error()).toBe('network');
   });
 
   it('puts a file back, reading the quote again only while it is still the one open', async () => {

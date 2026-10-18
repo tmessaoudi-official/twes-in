@@ -68,6 +68,11 @@ import {
   type QuoteInput,
 } from './quotes-types';
 import { QuantityTotalsView } from '../shared/documents/quantity-totals';
+import {
+  askInvoiceTarget,
+  type InvoiceTarget,
+  QUOTE_INVOICE_TARGET,
+} from '../shared/documents/invoice-target';
 
 /** What a quote will offer once its planned modules ship, shown « Bientôt » beside what it offers today. */
 export const QUOTE_PLANNED: readonly PlannedAction[] = [
@@ -640,11 +645,40 @@ export class QuotePage {
     const companyId = this.company()?.id;
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
-    const invoiced = await this.facade.invoice(companyId, id);
+    const target = await this.chooseTarget(companyId);
+    if (target === null) return;
+    const invoiced =
+      target.draftId === null
+        ? await this.facade.invoice(companyId, id)
+        : await this.facade.addToInvoice(companyId, id, target.draftId);
     if (invoiced?.invoiceId) {
       this.feedback.success('quotes.invoiced');
       await this.router.navigate(['/invoices', invoiced.invoiceId]);
     }
+  }
+
+  /**
+   * Where the quote is invoiced: asked only when its customer has a draft in its establishment to add it to, otherwise
+   * it starts a new invoice as it always did. A quote with a discount on the whole always does: spread over another
+   * document's lines it would move tax between rates, which the API refuses. Null when the person left the question.
+   */
+  private async chooseTarget(companyId: string): Promise<InvoiceTarget | null> {
+    const current = this.current();
+    if (!current || hasWholeDiscount(current.discountAmount)) return { draftId: null };
+    const drafts = await this.facade.draftsOf(
+      companyId,
+      current.customerId,
+      current.establishmentId,
+    );
+    // A lookup that failed is said in `error`; the quote then still starts a new invoice rather than going nowhere.
+    if (drafts === null || drafts.length === 0) return { draftId: null };
+    return askInvoiceTarget(
+      this.dialog,
+      QUOTE_INVOICE_TARGET,
+      drafts,
+      current.customerId,
+      this.scale(),
+    );
   }
 
   /** « Facture d'acompte »: the share asked in a dialog, then the new draft opened, the quote's deposits listing it. */
@@ -765,4 +799,9 @@ export class QuotePage {
       (line, product) => this.linesEditor()?.scanned(line, product),
     );
   }
+}
+
+/** Whether the quote takes a discount off its whole, read from the API's decimal string: any digit but a zero. */
+function hasWholeDiscount(amount: string | null): boolean {
+  return amount !== null && /[1-9]/.test(amount);
 }

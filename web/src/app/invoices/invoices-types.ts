@@ -226,6 +226,15 @@ export interface InvoiceStatusCounts {
   statuses: Record<InvoiceShownStatus, number>;
 }
 
+/** A draft invoice of a customer another document's lines could be added to instead of starting a new one. */
+export interface InvoiceDraftOption {
+  id: string;
+  /** The draft's total as it stands, the API's decimal string. */
+  total: string;
+  lineCount: number;
+  customerReference: string | null;
+}
+
 export interface InvoiceSearch {
   /** Numbered from 1. */
   page: number;
