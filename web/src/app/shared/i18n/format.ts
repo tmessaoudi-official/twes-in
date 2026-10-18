@@ -4,6 +4,8 @@
 const DECIMAL = /^-?\d+(?:\.\d+)?$/;
 const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MOMENT = /^\d{4}-\d{2}-\d{2}T/;
+/** A locale whose parts alone are read, so only its Latin digits and Gregorian calendar matter, never its language. */
+const DIGIT_PARTS = 'en-CA'; // language-literal: its parts are numbers, not words in a language
 
 /**
  * How a person chose to see days and figures (docs/SPEC.md § 7, 2026-09-25 12:45, row 130), whatever the language:
@@ -229,7 +231,7 @@ export function formatMoment(
   const date = new Date(value);
   if (!MOMENT.test(value) || Number.isNaN(date.getTime())) return value;
   if (style !== 'auto') {
-    const parts = new Intl.DateTimeFormat('en-CA', {
+    const parts = new Intl.DateTimeFormat(DIGIT_PARTS, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -273,7 +275,7 @@ export function dayKey(moment: string, timeZone: string): string {
   if (Number.isNaN(date.getTime())) return moment;
   let format = dayFormats.get(timeZone);
   if (format === undefined) {
-    format = new Intl.DateTimeFormat('en-CA', {
+    format = new Intl.DateTimeFormat(DIGIT_PARTS, {
       timeZone,
       year: 'numeric',
       month: '2-digit',

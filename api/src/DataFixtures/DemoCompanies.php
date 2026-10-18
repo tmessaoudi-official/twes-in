@@ -13,6 +13,7 @@ use App\Demo\Infrastructure\Dataset\DemoCatalogue;
 use App\Demo\Infrastructure\Dataset\DemoCompany;
 use App\Demo\Infrastructure\Dataset\DemoDataset;
 use App\Demo\Infrastructure\Dataset\OpenedCompany;
+use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Application\Invitation\AcceptInvitation;
@@ -61,6 +62,7 @@ final class DemoCompanies extends Fixture
         private readonly AcceptInvitation $acceptances,
         private readonly CapturingInvitationMailer $mailed,
         private readonly ImmediateInvitationMail $mailNow,
+        private readonly FiscalPresets $presets,
     ) {
     }
 
@@ -75,7 +77,7 @@ final class DemoCompanies extends Fixture
             }
             $this->dataset->write($demo, function (DemoCompany $demo) use ($operatorId): OpenedCompany {
                 // The seed is the one path that makes a company active, owned by the operator and provisioned at once.
-                $this->seed->seed(new SeedRequest(self::OPERATOR, null, 'Operator', $demo->name, $demo->country, $demo->currency, 'fr', $demo->timezone));
+                $this->seed->seed(new SeedRequest(self::OPERATOR, null, 'Operator', $demo->name, $demo->country, $demo->currency, $this->presets->get($demo->country)->documentLanguages[0] ?? throw new \LogicException('A preset documents in one language at least.'), $demo->timezone));
                 $companyId = ($this->companies->ofName($demo->name) ?? throw new \LogicException("$demo->name was seeded a moment ago."))->getId();
                 $this->addTesters($companyId, $operatorId);
 

@@ -206,6 +206,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/language-literals.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/additive-migrations.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/decision-stamps.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/screen-texts-budget.test.sh
@@ -252,6 +253,7 @@ in-gate-licences:
 	bash scripts/gates/stored-items.sh
 	bash scripts/gates/icons-declared.sh
 	bash scripts/gates/float-casts.sh
+	bash scripts/gates/language-literals.sh
 	bash scripts/gates/additive-migrations.sh
 	bash scripts/gates/decision-stamps.sh
 	bash scripts/gates/screen-texts-budget.sh

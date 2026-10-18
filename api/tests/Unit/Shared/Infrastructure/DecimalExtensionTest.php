@@ -10,7 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Shared\Infrastructure;
 
 use App\Shared\Infrastructure\Twig\DecimalExtension;
+use App\Tests\Support\ShippedPdfTexts;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Translation\Loader\ArrayLoader;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
 
@@ -18,7 +20,7 @@ final class DecimalExtensionTest extends TestCase
 {
     public function testADecimalIsWrittenTheWayItsLanguageWritesNumbersWithoutLosingADigit(): void
     {
-        $decimal = new DecimalExtension();
+        $decimal = new DecimalExtension(ShippedPdfTexts::translator());
         $space = "\u{a0}";
 
         foreach ([
@@ -37,9 +39,21 @@ final class DecimalExtensionTest extends TestCase
     }
 
     // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: the company's number format wins over the language; `auto` is the language's.
+    /** A language's separators are its texts, so a new language brings its own and a language without them reads the default's. */
+    public function testTheSeparatorsAreTheLanguagesTexts(): void
+    {
+        $translator = ShippedPdfTexts::translator();
+        $translator->addLoader('array', new ArrayLoader());
+        $translator->addResource('array', ['format.decimal_point' => '·', 'format.thousands_separator' => '\''], 'xx', 'pdf');
+        $decimal = new DecimalExtension($translator);
+
+        self::assertSame("1'250·5", $decimal->format('1250.5', 1, 'xx'));
+        self::assertSame("1\u{a0}250,5", $decimal->format('1250.5', 1, 'yy'), 'the default language\'s');
+    }
+
     public function testAChosenNumberFormatWinsOverTheLanguage(): void
     {
-        $decimal = new DecimalExtension();
+        $decimal = new DecimalExtension(ShippedPdfTexts::translator());
         $space = "\u{a0}";
         foreach ([
             ['1250.0000', 3, 'fr', 'comma-dot', '1,250.000'],
@@ -55,7 +69,7 @@ final class DecimalExtensionTest extends TestCase
 
     public function testADayIsWrittenInTheChosenOrderOrTheLanguagesPattern(): void
     {
-        $decimal = new DecimalExtension();
+        $decimal = new DecimalExtension(ShippedPdfTexts::translator());
         foreach (['dmy' => 'd/m/Y', 'mdy' => 'm/d/Y', 'ymd' => 'Y-m-d', 'dmy-dots' => 'd.m.Y', 'auto' => 'the language\'s'] as $style => $pattern) {
             self::assertSame($pattern, $decimal->datePattern($style, 'the language\'s'), $style);
         }
@@ -63,7 +77,7 @@ final class DecimalExtensionTest extends TestCase
 
     public function testADeductionIsWrittenWithOneSignWhateverTheSignOfTheAmount(): void
     {
-        $decimal = new DecimalExtension();
+        $decimal = new DecimalExtension(ShippedPdfTexts::translator());
         $space = "\u{a0}";
 
         // An invoice's withholding (15.126) prints as a deduction; a credit note's (-15.126) gives back what it took,
@@ -82,10 +96,10 @@ final class DecimalExtensionTest extends TestCase
 
     public function testWhatIsNotADecimalIsRefusedAndTheFiltersAreNamed(): void
     {
-        self::assertSame(['date_pattern'], array_map(static fn (TwigFunction $function): string => $function->getName(), new DecimalExtension()->getFunctions()));
-        self::assertSame(['decimal', 'deduction'], array_map(static fn (TwigFilter $filter): string => $filter->getName(), new DecimalExtension()->getFilters()));
+        self::assertSame(['date_pattern'], array_map(static fn (TwigFunction $function): string => $function->getName(), new DecimalExtension(ShippedPdfTexts::translator())->getFunctions()));
+        self::assertSame(['decimal', 'deduction'], array_map(static fn (TwigFilter $filter): string => $filter->getName(), new DecimalExtension(ShippedPdfTexts::translator())->getFilters()));
 
         $this->expectException(\InvalidArgumentException::class);
-        new DecimalExtension()->format('1e3', 2, 'fr');
+        new DecimalExtension(ShippedPdfTexts::translator())->format('1e3', 2, 'fr');
     }
 }

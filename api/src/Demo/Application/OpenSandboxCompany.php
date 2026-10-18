@@ -61,9 +61,10 @@ final readonly class OpenSandboxCompany
                 throw new \LogicException("A company is already named $name.");
             }
 
-            $owner = new User(Email::fromString("demo-$mark@example.com"), 'Démo', $catalogue->locale, $now);
+            $locale = $catalogue->locale ?? throw new \LogicException('A catalogue company names the language it prints in.');
+            $owner = new User(Email::fromString("demo-$mark@example.com"), 'Démo', $locale, $now);
             $this->users->save($owner);
-            $company = new Company($name, $catalogue->countryCode, $catalogue->currency, $catalogue->locale, $catalogue->timezone, $now);
+            $company = new Company($name, $catalogue->countryCode, $catalogue->currency, $locale, $catalogue->timezone, $now);
             $this->companies->save($company);
             $this->provision->handle($company);
             $role = $this->roles->builtIn(Role::OWNER) ?? throw new \LogicException('The owner role is seeded at every start.');

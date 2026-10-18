@@ -25,10 +25,9 @@ final readonly class DeliveryNotePrinting
     {
         $customer = $note->getCustomer();
         $context = new SettingContext($note->getCompany(), customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
-        $language = $settings->value($context, 'document.language');
 
         return new DeliveryNotePrint(
-            \is_string($language) ? $language : 'fr',
+            $settings->text($context, 'document.language'),
             true === $settings->value($context, 'delivery_note.show_prices'),
             true === $settings->value($context, 'delivery_note.reception_block'),
             DocumentFormats::print($settings, $context, $note->getCompany())->withoutHowToPay(),

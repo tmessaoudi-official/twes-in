@@ -1,6 +1,8 @@
 # What a printed document says (templates/pdf). pdf.fr.yaml carries the same keys (ApiTranslationParityTest).
 format:
     date: 'd/m/Y'
+    decimal_point: '.'
+    thousands_separator: ','
 company:
     phone: 'Phone'
     email: 'Email'

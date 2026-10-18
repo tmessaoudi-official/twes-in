@@ -28,7 +28,7 @@ final readonly class TranslatorDepositWording implements DepositWording
         // 30, 12.5 or 12,5 as the language writes a decimal, never 30.000.
         $share = rtrim(rtrim(Decimal::format(Decimal::of($percentage), 3), '0'), '.');
 
-        return $this->translator->trans('invoice.deposit_share_line', ['%share%' => 'fr' === $language ? str_replace('.', ',', $share) : $share, '%number%' => $quoteNumber], 'pdf', $language);
+        return $this->translator->trans('invoice.deposit_share_line', ['%share%' => str_replace('.', $this->translator->trans('format.decimal_point', [], 'pdf', $language), $share), '%number%' => $quoteNumber], 'pdf', $language);
     }
 
     public function deductionLine(string $language, string $depositNumber, \DateTimeImmutable $issueDate): string

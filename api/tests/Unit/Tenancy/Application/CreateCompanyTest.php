@@ -66,6 +66,20 @@ final class CreateCompanyTest extends TestCase
         self::assertSame('TN', $company->getFiscalPreset());
     }
 
+    public function testACompanyGivenNoLanguagePrintsInTheFirstOneItsPresetNames(): void
+    {
+        $company = $this->create->handle(new NewCompany('Acme', 'tn', 'TND', null, 'Africa/Tunis'), null);
+
+        self::assertSame(ShippedFiscalPresets::presets()->get('TN')->documentLanguages[0], $company->getLocale());
+    }
+
+    public function testACompanyGivenALanguageKeepsIt(): void
+    {
+        $company = $this->create->handle(new NewCompany('Acme', 'TN', 'TND', 'en', 'Africa/Tunis'), null);
+
+        self::assertSame('en', $company->getLocale());
+    }
+
     public function testTheCompanyOpensWithItsPresetsTaxesAndUnits(): void
     {
         $company = $this->create->handle(self::request(), null);

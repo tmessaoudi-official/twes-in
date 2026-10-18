@@ -65,8 +65,8 @@ final readonly class DraftLateFee
             return null;
         }
         $customer = $late->getCustomer();
-        $language = $this->settings->value(new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId()), 'document.language');
-        $description = $this->wording->lateFeeLine(\is_string($language) ? $language : 'fr', $late->getNumber() ?? '', $stage, $daysLate);
+        $language = $this->settings->text(new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId()), 'document.language');
+        $description = $this->wording->lateFeeLine($language, $late->getNumber() ?? '', $stage, $daysLate);
 
         try {
             $line = new InvoiceLineDetails(null, $description, '1', $unit, $fee, null, []);

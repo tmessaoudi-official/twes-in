@@ -42,9 +42,7 @@ final readonly class DepositDeductions
     /** The language the customer's documents are written in, which issuing prints them in too. */
     public function language(Company $company, Customer $customer): string
     {
-        $language = $this->settings->value(new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId()), 'document.language');
-
-        return \is_string($language) ? $language : 'fr';
+        return $this->settings->text(new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId()), 'document.language');
     }
 
     /**

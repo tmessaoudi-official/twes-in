@@ -106,8 +106,7 @@ final readonly class InvoiceWorkflow
             // Before the series, as a mention is: an invoice that cannot name its parties takes no number.
             $this->parties->assertNamed($company, $invoice->getEstablishment(), $customer);
             $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
-            $language = $this->settings->value($context, 'document.language');
-            $language = \is_string($language) ? $language : 'fr';
+            $language = $this->settings->text($context, 'document.language');
             // Before the series and the mentions, which depend on it: a document that cannot say what its operations are takes no number.
             $fields = $this->presets->get($company->getFiscalPreset())->invoiceFields;
             $operations = $fields->operationCategory ? ($invoice->operations() ?? throw new InvalidInvoice('operationCategory', 'Say what this invoice\'s operations are: deliveries of goods, services or both. A line naming no product says nothing of it.')) : null;

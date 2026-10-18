@@ -16,6 +16,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\Console\SeedCommand;
+use App\Tests\Support\ShippedLanguages;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -100,6 +101,19 @@ final class SeedCommandTest extends ApiTestCase
         self::assertCount(0, $this->em()->getRepository(User::class)->findAll());
     }
 
+    /** The first company prints in the catalogue's default language unless told another one documents print in. */
+    public function testTheFirstCompanysLanguageIsTheCataloguesUnlessToldAnotherItPrintsIn(): void
+    {
+        $tester = $this->seed(['--operator-email' => 'op@example.test', '--operator-password' => 'seeded-secret', '--locale' => 'de']);
+        self::assertSame(2, $tester->getStatusCode());
+        self::assertStringContainsString('--locale', $tester->getDisplay());
+        self::assertCount(0, $this->em()->getRepository(User::class)->findAll());
+
+        $tester = $this->seed(['--operator-email' => 'op@example.test', '--operator-password' => 'seeded-secret', '--company-name' => 'Seeded']);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertSame(ShippedLanguages::catalogue()->default(), $this->em()->getRepository(Company::class)->findOneBy(['name' => 'Seeded'])?->getLocale());
+    }
+
     public function testCreatingTheOperatorWithoutAPasswordIsRefused(): void
     {
         $tester = $this->seed(['--operator-email' => 'op@example.test']);
@@ -115,7 +129,7 @@ final class SeedCommandTest extends ApiTestCase
             '--operator-password' => ['--operator-password' => 'on-the-command-line'],
             '--operator-totp-secret' => ['--operator-password-stdin' => true, '--operator-totp-secret' => 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'],
         ] as $option => $options) {
-            $tester = new CommandTester(new SeedCommand(self::getContainer()->get(SeedPlatform::class), 'prod'));
+            $tester = new CommandTester(new SeedCommand(self::getContainer()->get(SeedPlatform::class), ShippedLanguages::catalogue(), 'prod'));
             $tester->setInputs(["stdin-secret\n"]);
             $tester->execute(['--operator-email' => 'op@example.test', ...$options], ['interactive' => false]);
 
@@ -127,7 +141,7 @@ final class SeedCommandTest extends ApiTestCase
 
     public function testAProductionKernelStillSeedsFromStdin(): void
     {
-        $tester = new CommandTester(new SeedCommand(self::getContainer()->get(SeedPlatform::class), 'prod'));
+        $tester = new CommandTester(new SeedCommand(self::getContainer()->get(SeedPlatform::class), ShippedLanguages::catalogue(), 'prod'));
         $tester->setInputs(["stdin-secret\n"]);
         $tester->execute(['--operator-email' => 'op@example.test', '--operator-password-stdin' => true, '--without-company' => true], ['interactive' => false]);
 

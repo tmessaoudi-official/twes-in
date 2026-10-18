@@ -171,9 +171,8 @@ final readonly class PrintInvoice
         $issuedLanguage = $invoice->getLanguage();
         $operations = $invoice->getOperationCategory();
         if (null === $issuedLanguage) {
-            $language = $this->settings->value($context, 'document.language');
+            $language = $this->settings->text($context, 'document.language');
             $profile = $company->getProfile();
-            $language = \is_string($language) ? $language : 'fr';
             $operations = $this->presets->get($company->getFiscalPreset())->invoiceFields->operationCategory ? $invoice->operations() : null;
             [$mentions, $latePenaltyText, $footer] = [$this->mentions->asTheyStand($company, $customer, $invoice->getType(), $language, $operations), $profile->latePenaltyText, $profile->invoiceFooterText];
         } else {

@@ -16,7 +16,8 @@ final readonly class NewCompany
         public string $name,
         public string $countryCode,
         public string $currency,
-        public string $locale,
+        /** Null: the first language its country's fiscal preset prints in. */
+        public ?string $locale,
         public string $timezone,
     ) {
     }

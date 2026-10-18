@@ -12,6 +12,7 @@ namespace App\Tests\Functional;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Model\Unit;
 use App\Tenancy\Domain\Model\Company;
+use App\Tests\Support\ShippedFiscalPresets;
 use Symfony\Component\HttpFoundation\Response;
 
 /** POST /api/companies: only a platform operator opens a company, and it waits for its first owner. */
@@ -36,6 +37,29 @@ final class CompanyTest extends ApiTestCase
         self::assertSame('Acme', $body['name']);
         self::assertSame(Company::STATUS_PENDING, $body['status']);
         self::assertIsString($body['id']);
+    }
+
+    /** The country's preset says which language a company there prints in; the operator need not repeat it. */
+    public function testACompanyCreatedWithNoLanguageTakesItsPresetsFirst(): void
+    {
+        $this->operatorSignedIn();
+
+        $body = self::VALID;
+        unset($body['locale']);
+        $this->postJson('/api/companies', $body);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(ShippedFiscalPresets::presets()->get('TN')->documentLanguages[0], $this->json()['locale']);
+    }
+
+    public function testAnEmptyLanguageIsRefused(): void
+    {
+        $this->operatorSignedIn();
+
+        $this->postJson('/api/companies', [...self::VALID, 'locale' => '']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['locale'], array_column($this->refusals(), 'propertyPath'));
     }
 
     public function testTheCompanyIsReallyStored(): void

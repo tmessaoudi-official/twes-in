@@ -87,6 +87,7 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-18 09:53] ASSUMED (review): S3: a person's own screen language (presentation.language at user level) becomes their account's language through a PersonalSettingChanged event that ChangeSettings publishes after commit; going back to the company's choice leaves the account on the last language chosen, and a language the screens do not speak is never an account's. A one-off UPDATE migration gives accounts the choice made before. Alternatives: read the setting at mail time (worker has no request context, and every mail writer would need the settings engine); clear the account to the default on reset (loses the person's last explicit choice).
 - [2026-10-18 09:53] ASSUMED (review): S3: a company's language at creation must be a catalogue language documents print in (DocumentLanguage constraint replaces Assert\Locale, so fr_TN, de and ar are refused); an invited person's new account takes the company's language only when the screens speak it, else the catalogue default; the account constructor has no built-in 'fr'. Alternative: keep Assert\Locale (accepts any ICU locale, which nothing downstream can print or speak).
 - [2026-10-18 09:53] ASSUMED (review): S3 known issue, parked: an operator-created company whose language differs from the platform default still prints documents in the default until document.language is set at company level, because a setting's default cannot depend on the company. Signup is unaffected (both presets document in fr). Options for review: write the company-level document.language at creation, or let the parties chain fall back to the company's language. Not a release blocker for the first client (French).
+- [2026-10-18 10:44] ASSUMED (review): A company opened without a language (POST /api/companies with no locale) takes the first language its country's fiscal preset prints in; the platform page sends none, so a country's language lives only in its preset — because the language gate found it repeated per country in the web, and the signup already resolves it from the preset. Alternatives: keep the web map (a language added to a preset would not reach operator-opened companies); require the operator to pick one (a choice the preset already makes).
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -145,6 +146,8 @@ was and was not certified by execution.
 ### Known issues
 - Step 3 S3: an operator-created company in a language other than the platform default prints in the default until its
   document language is set at company level (ASSUMED 2026-10-18 09:53, parked for review).
+- Step 3 S2: the platform page still repeats each country's currency and time zone (`COMPANY_COUNTRIES` in
+  `web/src/app/platform/platform-types.ts`), which the fiscal presets also hold; a third country means editing both.
 - Step 1 on macOS: nothing schedules `twes start` and `twes tick` (run by hand, and `twes install` says so); untried.
 - Step 1 on Windows: `install.ps1` is checked by PowerShell's parser and PSScriptAnalyzer and its `$verify` line runs in
   `twes.test.sh`; the rest is untried until the developer's test.

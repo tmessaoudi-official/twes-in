@@ -65,7 +65,7 @@ final class YamlFiscalPresets implements FiscalPresets
     {
         $file = $this->fileOf($key);
         try {
-            $config = (new Processor())->processConfiguration(new FiscalPresetConfiguration(), [Yaml::parseFile($file)]);
+            $config = (new Processor())->processConfiguration(new FiscalPresetConfiguration($this->languages->documents()), [Yaml::parseFile($file)]);
         } catch (ParseException|InvalidConfigurationException $invalid) {
             throw new InvalidFiscalPreset(basename($file).': '.$invalid->getMessage(), 0, $invalid);
         }

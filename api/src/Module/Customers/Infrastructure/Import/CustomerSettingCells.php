@@ -56,6 +56,14 @@ final readonly class CustomerSettingCells
     ) {
     }
 
+    /** The value a setting takes when nobody chose one, as a column's example: the language documents print in by default. */
+    private function defaultOf(string $column): string
+    {
+        $default = $this->catalog->definitionOf(self::SETTING_OF[$column])?->default;
+
+        return \is_string($default) ? $default : throw new \LogicException(\sprintf('%s has no text default to show.', $column));
+    }
+
     /** Whether the column is one of a customer's own settings. */
     public static function covers(string $column): bool
     {
@@ -68,7 +76,7 @@ final readonly class CustomerSettingCells
         return [
             new ImportColumn(self::TERMS, 'import.customers.payment_terms_days', false, '30', 'import.customers.payment_terms_days_note'),
             new ImportColumn(self::CREDIT, 'import.customers.credit_limit', false, '5000', 'import.customers.credit_limit_note'),
-            new ImportColumn(self::LANGUAGE, 'import.customers.document_language', false, 'fr', 'import.customers.document_language_note'),
+            new ImportColumn(self::LANGUAGE, 'import.customers.document_language', false, $this->defaultOf(self::LANGUAGE), 'import.customers.document_language_note'),
             new ImportColumn(self::EXEMPTION, 'import.customers.exemption_reference', false, null, 'import.customers.exemption_reference_note'),
         ];
     }
