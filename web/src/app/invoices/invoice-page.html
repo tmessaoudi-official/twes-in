@@ -60,6 +60,21 @@
             >
           }
         }
+        @if (invoice.deliveryNotes.length > 0) {
+          <p class="flex flex-wrap gap-x-1 text-sm" data-testid="invoice-delivery-notes">
+            <span>{{ 'invoices.from_delivery_notes' | translate }}</span>
+            <span class="twes-dot-list">
+              @for (note of invoice.deliveryNotes; track note.deliveryNoteId) {
+                <a
+                  class="underline"
+                  [routerLink]="['/delivery-notes', note.deliveryNoteId]"
+                  [attr.data-testid]="'invoice-delivery-note-' + note.deliveryNoteId"
+                  >{{ note.number ?? ('invoices.delivery_note_unnumbered' | translate) }}</a
+                >
+              }
+            </span>
+          </p>
+        }
         @if (invoice.creditNoteReason; as reason) {
           <p class="text-sm" data-testid="invoice-credit-reason">
             {{ 'invoices.credit_note.reason_shown' | translate: { reason } }}

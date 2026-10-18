@@ -1791,6 +1791,8 @@
     },
     "deposit_draft_title": "Facture d’acompte en brouillon",
     "from_quote": "Voir le devis d’origine",
+    "from_delivery_notes": "Bons de livraison d’origine",
+    "delivery_note_unnumbered": "bon de livraison",
     "tours": {
       "first_invoice": {
         "title": "Votre première facture",

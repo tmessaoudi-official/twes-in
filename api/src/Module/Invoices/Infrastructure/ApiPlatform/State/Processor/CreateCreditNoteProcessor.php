@@ -12,10 +12,10 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Module\Invoices\Application\InvoiceNotFound;
-use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Output\InvoiceView;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -32,7 +32,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
  */
 final readonly class CreateCreditNoteProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageInvoices $manage, private InvoiceTotals $totals, private CompanyGuard $guard)
+    public function __construct(private ManageInvoices $manage, private InvoiceView $view, private CompanyGuard $guard)
     {
     }
 
@@ -50,6 +50,6 @@ final readonly class CreateCreditNoteProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return InvoiceResource::of($credit, $this->totals->figures($credit));
+        return $this->view->of($company, $credit);
     }
 }

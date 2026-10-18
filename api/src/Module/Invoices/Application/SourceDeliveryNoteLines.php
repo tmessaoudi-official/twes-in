@@ -36,4 +36,13 @@ interface SourceDeliveryNoteLines
      * @return array<string, SourceDeliveryNoteLine>
      */
     public function lockedOfIds(array $lineIds, Uuid $companyId): array;
+
+    /**
+     * The company's delivery notes these lines belong to, each once, by number, so an invoice links back to them.
+     *
+     * @param list<Uuid> $lineIds
+     *
+     * @return list<SourceDeliveryNote>
+     */
+    public function notesOf(array $lineIds, Uuid $companyId): array;
 }

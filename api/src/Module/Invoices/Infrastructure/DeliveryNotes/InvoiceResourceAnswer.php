@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\DeliveryNotes;
 
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output\InvoiceAnswer;
-use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
+use App\Module\Invoices\Infrastructure\ApiPlatform\Output\InvoiceView;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
@@ -19,7 +19,7 @@ use Symfony\Component\Uid\Uuid;
 /** Answers the delivery notes' `InvoiceAnswer` port with the invoice resource this module answers everywhere else. */
 final readonly class InvoiceResourceAnswer implements InvoiceAnswer
 {
-    public function __construct(private InvoiceTotals $totals, private ManageInvoices $manage)
+    public function __construct(private InvoiceView $view, private ManageInvoices $manage)
     {
     }
 
@@ -27,6 +27,6 @@ final readonly class InvoiceResourceAnswer implements InvoiceAnswer
     {
         $invoice = $this->manage->get($company, $invoiceId);
 
-        return InvoiceResource::of($invoice, $this->totals->figures($invoice), false, $this->manage->roomOnSources($company, $invoice));
+        return $this->view->of($company, $invoice, false, $this->manage->roomOnSources($company, $invoice));
     }
 }

@@ -386,6 +386,13 @@ test('a second note is added to the draft invoice the first one started', async 
     await expect(page.getByTestId('line-0-product')).toBeDisabled();
     await expect(page.getByTestId('line-0-source-left')).toBeVisible();
 
+    // The invoice names both notes it was taken from, each opening from it.
+    await expect(page.getByTestId('invoice-delivery-notes').getByRole('link')).toHaveCount(2);
+    await page
+      .getByTestId(`invoice-delivery-note-${noteUrl.slice(noteUrl.lastIndexOf('/') + 1)}`)
+      .click();
+    await expect(page).toHaveURL(noteUrl);
+
     // The note names the draft it went on, which opens from it.
     await page.goto(noteUrl);
     const carrying = page.getByTestId(`delivery-note-invoice-${invoiceId}`);

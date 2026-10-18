@@ -382,6 +382,83 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
     }
 
     /**
+     * An invoice names the delivery notes its lines come from, so it links back to them: each once, by number, on its
+     * own read, on a list page and on what an action answers, and only to whoever may open them.
+     */
+    public function testAnInvoiceNamesTheDeliveryNotesItsLinesComeFrom(): void
+    {
+        $this->signedIn();
+        $first = $this->validatedNote(['lines' => [
+            ['productId' => $this->productId, 'quantity' => '2'],
+            ['description' => 'Transport', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '30', 'taxComponentIds' => []],
+        ]]);
+        $second = $this->validatedNote();
+        $numbers = [];
+        foreach ([$first, $second] as $note) {
+            $this->getJson($this->notePath($note));
+            $numbers[$note] = $this->stringAt($this->json(), 'number');
+        }
+        $expected = [
+            ['deliveryNoteId' => $first, 'number' => $numbers[$first]],
+            ['deliveryNoteId' => $second, 'number' => $numbers[$second]],
+        ];
+
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$second, $first]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $draft = $this->json();
+        $invoice = $this->stringAt($draft, 'id');
+        self::assertSame($expected, $draft['deliveryNotes'], 'the draft made names them, each once, by number');
+        $this->getJson($this->invoicePath($invoice));
+        self::assertSame($expected, $this->json()['deliveryNotes']);
+        $this->postJson($this->invoicePath($invoice).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame($expected, $this->json()['deliveryNotes'], 'what an action answers names them too');
+        $this->getJson($this->invoicePath());
+        $rows = array_column($this->jsonList(), 'deliveryNotes', 'id');
+        self::assertSame($expected, $rows[$invoice] ?? null, 'and a list page');
+
+        $this->postJson($this->invoicePath(), [
+            'customerId' => $this->stringAt($draft, 'customerId'),
+            'establishmentId' => $this->stringAt($draft, 'establishmentId'),
+            'lines' => [['description' => 'Conseil', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '10', 'taxComponentIds' => []]],
+        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame([], $this->json()['deliveryNotes'], 'an invoice of no note names none');
+
+        $this->sendJson('PUT', $this->companyPath().'/modules/delivery_notes', ['enabled' => false]);
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->invoicePath($invoice));
+        self::assertSame([], $this->json()['deliveryNotes'], 'with the delivery notes switched off there is none to open');
+        $this->sendJson('PUT', $this->companyPath().'/modules/delivery_notes', ['enabled' => true]);
+        self::assertResponseIsSuccessful();
+
+        $this->createUser('ledger@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('no company'), ['invoice.read', 'company.read'], 'ledger');
+        $this->login('ledger@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->invoicePath($invoice));
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['deliveryNotes'], 'who may not read delivery notes is not told of them');
+        $this->getJson($this->invoicePath());
+        self::assertSame([], array_column($this->jsonList(), 'deliveryNotes', 'id')[$invoice] ?? null, 'nor on a list page');
+    }
+
+    /** The notes a page of invoices names are read once for the page, whatever its rows (audit PF-07). */
+    public function testAPageOfInvoicesFromNotesCostsTheSameStatementsWhateverTheRowsItHolds(): void
+    {
+        $this->signedIn();
+        foreach (range(1, 6) as $n) {
+            $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$this->validatedNote()]]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+        $this->em()->clear();
+
+        $statements = [1 => $this->statementsForAPageOf($this->invoicePath(), 1), 6 => $this->statementsForAPageOf($this->invoicePath(), 6)];
+
+        self::assertSame($statements[1], $statements[6], 'six rows cost what one does');
+        self::assertSame(6, \count(array_filter(array_column($this->jsonList(), 'deliveryNotes'))), 'each row names its note');
+    }
+
+    /**
      * A draft's line taken from a delivery note stays that line (docs/SPEC.md § 7, audit 2026-10-06 A-16): revising it
      * cannot invoice more than the note line has left, counting the company's other invoices that are not cancelled, nor
      * turn it into another product.

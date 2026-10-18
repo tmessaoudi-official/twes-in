@@ -58,6 +58,7 @@ const invoice: InvoiceRow = {
   creditNoteReason: null,
   deposit: false,
   quoteId: null,
+  deliveryNotes: [],
   number: 'FAC-2026-00045',
   status: 'partially_paid',
   customerId: 'k1',

@@ -37,4 +37,10 @@ final class InMemorySourceDeliveryNoteLines implements SourceDeliveryNoteLines
 
         return array_filter($this->lines, static fn (string $id): bool => \in_array($id, $wanted, true), \ARRAY_FILTER_USE_KEY);
     }
+
+    /** The unit tests ask nothing of notes: no note is declared here. */
+    public function notesOf(array $lineIds, Uuid $companyId): array
+    {
+        return [];
+    }
 }
