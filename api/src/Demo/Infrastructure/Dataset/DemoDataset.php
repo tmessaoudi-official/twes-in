@@ -181,7 +181,10 @@ final readonly class DemoDataset
             $this->planRecurringExpense($demo, $timeline, $company, $vendors[0], $tax, $actor);
             $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $tracked, $actor);
             $this->planQuotes($timeline, $company, $customerIds, $sellable, $actor);
-            $this->planInvoices($demo, $timeline, $company, $customerIds, $sellable, $actor);
+            // A tracked article leaves through a delivery note, which names its lot or serial number as a shop hands it
+            // over; an invoice naming none would sell the pieces the notes already took, and move nothing.
+            $untracked = array_values(array_filter($sellable, static fn (Uuid $id): bool => [] === array_filter($tracked, static fn (Uuid $each): bool => $each->equals($id))));
+            $this->planInvoices($demo, $timeline, $company, $customerIds, $untracked, $actor);
             $timeline->run();
 
             return $companyId;
@@ -591,7 +594,7 @@ final readonly class DemoDataset
      *
      * @param \Closure(): Company $company
      * @param list<Uuid>          $customerIds
-     * @param list<Uuid>          $sellable
+     * @param list<Uuid>          $sellable    services and untracked goods
      */
     private function planInvoices(DemoCompany $demo, Timeline $timeline, \Closure $company, array $customerIds, array $sellable, Uuid $actor): void
     {
