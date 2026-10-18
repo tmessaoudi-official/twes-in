@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Console;
 
+use App\Shared\Application\Languages;
 use App\Tenancy\Application\Seed\InvalidOperatorTotpSecret;
 use App\Tenancy\Application\Seed\OperatorPasswordRequired;
 use App\Tenancy\Application\Seed\SeedPlatform;
@@ -28,6 +29,7 @@ final class SeedCommand extends Command
 {
     public function __construct(
         private readonly SeedPlatform $seed,
+        private readonly Languages $languages,
         #[Autowire('%kernel.environment%')] private readonly string $environment,
     ) {
         parent::__construct();
@@ -46,7 +48,7 @@ final class SeedCommand extends Command
             ->addOption('company-name', null, InputOption::VALUE_REQUIRED, 'Name of the first company', 'Demo')
             ->addOption('country', null, InputOption::VALUE_REQUIRED, 'ISO 3166-1 alpha-2 country of the first company', 'TN')
             ->addOption('currency', null, InputOption::VALUE_REQUIRED, 'ISO 4217 currency of the first company', 'TND')
-            ->addOption('locale', null, InputOption::VALUE_REQUIRED, 'Locale of the first company and the operator', 'fr')
+            ->addOption('locale', null, InputOption::VALUE_REQUIRED, 'Language the first company prints in and the operator reads, a tag of the language catalogue (default: its default language)')
             ->addOption('timezone', null, InputOption::VALUE_REQUIRED, 'Timezone of the first company', 'Africa/Tunis');
     }
 
@@ -74,6 +76,12 @@ final class SeedCommand extends Command
             $password = self::firstLine($input);
         }
         $totpSecret = $input->getOption('operator-totp-secret');
+        $locale = $input->getOption('locale') ?? $this->languages->default();
+        if (!\in_array($locale, $this->languages->documents(), true)) {
+            $io->error(\sprintf('--locale must be a language documents print in: %s.', implode(', ', $this->languages->documents())));
+
+            return Command::INVALID;
+        }
 
         try {
             $created = $this->seed->seed(new SeedRequest(
@@ -83,7 +91,7 @@ final class SeedCommand extends Command
                 self::option($input, 'company-name'),
                 self::option($input, 'country'),
                 self::option($input, 'currency'),
-                self::option($input, 'locale'),
+                $locale,
                 self::option($input, 'timezone'),
                 \is_string($totpSecret) ? $totpSecret : null,
                 true !== $input->getOption('without-company'),

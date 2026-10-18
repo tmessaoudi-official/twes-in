@@ -41,6 +41,7 @@ import { ZxingBarcodeReader } from './shared/scan/zxing-barcode-reader';
 import { trackNavigation } from './shared/feedback/navigation-activity';
 import { ReportingErrorHandler } from './shared/errors/reporting-error-handler';
 import { LanguageFacade } from './shared/i18n/language-facade';
+import { DEFAULT_LANGUAGE } from './shared/i18n/languages';
 import { ThemeFacade } from './shared/theme/theme-facade';
 
 export const appConfig: ApplicationConfig = {
@@ -64,10 +65,11 @@ export const appConfig: ApplicationConfig = {
       ]),
       withNoXsrfProtection(),
     ),
-    // French first (Tunisia, France); English second. Files live in public/i18n/<lang>.json.
+    // The catalogue's default language first, and what a text missing in another language falls back to. Files live
+    // in public/i18n/<lang>.json.
     provideTranslateService({
-      lang: 'fr',
-      fallbackLang: 'fr',
+      lang: DEFAULT_LANGUAGE,
+      fallbackLang: DEFAULT_LANGUAGE,
       loader: provideTranslateHttpLoader({ prefix: '/i18n/', suffix: '.json' }),
       // A count is said in the form its language gives it (`{count, plural, one {…} other {…}}`).
       compiler: provideTranslateCompiler(PluralCompiler),

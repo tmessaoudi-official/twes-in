@@ -153,7 +153,6 @@ describe('PlatformFacade', () => {
       name: 'Globex',
       countryCode: 'FR',
       currency: 'EUR',
-      locale: 'fr',
       timezone: 'Europe/Paris',
     });
     expect(api.inviteOwner).toHaveBeenCalledWith('c9', 'nadia@example.test');

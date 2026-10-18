@@ -59,10 +59,11 @@ final class CompanyResource
     #[Groups([self::READ, self::WRITE])]
     public string $currency = '';
 
-    #[Assert\NotBlank(groups: ['create'])]
+    /** Left out on create: the first language the country's fiscal preset prints in. */
+    #[Assert\NotBlank(allowNull: true, groups: ['create'])]
     #[DocumentLanguage(groups: ['create'])]
     #[Groups([self::READ, self::WRITE])]
-    public string $locale = '';
+    public ?string $locale = null;
 
     #[Assert\NotBlank(groups: ['create'])]
     #[Assert\Timezone(groups: ['create'])]

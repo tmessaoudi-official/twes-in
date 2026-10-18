@@ -17,11 +17,15 @@ namespace App\Shared\Domain\Service;
  */
 final class AmountInWords
 {
+    /** The languages it can count in: each one's grammar of numbers is code, as a new tax kind is. */
+    private const string FRENCH = 'fr'; // language-literal: the French counting rules below are written for French alone
+    private const string ENGLISH = 'en'; // language-literal: the English counting rules below are written for English alone
+
     /** @var array<string, array{fr: array{string, string, string, string}, en: array{string, string, string, string}, digits: int}> */
     private const CURRENCIES = [
-        'TND' => ['fr' => ['dinar', 'dinars', 'millime', 'millimes'], 'en' => ['dinar', 'dinars', 'millime', 'millimes'], 'digits' => 3],
-        'EUR' => ['fr' => ['euro', 'euros', 'centime', 'centimes'], 'en' => ['euro', 'euros', 'cent', 'cents'], 'digits' => 2],
-        'USD' => ['fr' => ['dollar', 'dollars', 'cent', 'cents'], 'en' => ['dollar', 'dollars', 'cent', 'cents'], 'digits' => 2],
+        'TND' => [self::FRENCH => ['dinar', 'dinars', 'millime', 'millimes'], self::ENGLISH => ['dinar', 'dinars', 'millime', 'millimes'], 'digits' => 3],
+        'EUR' => [self::FRENCH => ['euro', 'euros', 'centime', 'centimes'], self::ENGLISH => ['euro', 'euros', 'cent', 'cents'], 'digits' => 2],
+        'USD' => [self::FRENCH => ['dollar', 'dollars', 'cent', 'cents'], self::ENGLISH => ['dollar', 'dollars', 'cent', 'cents'], 'digits' => 2],
     ];
 
     private const FR_UNITS = ['zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
@@ -33,8 +37,8 @@ final class AmountInWords
     public static function of(string $amount, string $currency, string $language): ?string
     {
         $entry = self::CURRENCIES[$currency] ?? null;
-        $names = null === $entry ? null : ('fr' === $language ? $entry['fr'] : ('en' === $language ? $entry['en'] : null));
-        if (null === $entry || null === $names || !\in_array($language, ['fr', 'en'], true) || 1 !== preg_match('/^-?(\d{1,15})(?:\.(\d*))?$/', $amount, $parts)) {
+        $names = null === $entry ? null : (self::FRENCH === $language ? $entry[self::FRENCH] : (self::ENGLISH === $language ? $entry[self::ENGLISH] : null));
+        if (null === $entry || null === $names || !\in_array($language, [self::FRENCH, self::ENGLISH], true) || 1 !== preg_match('/^-?(\d{1,15})(?:\.(\d*))?$/', $amount, $parts)) {
             return null;
         }
         $digits = $entry['digits'];
@@ -43,7 +47,7 @@ final class AmountInWords
 
         $words = self::counted($whole, $names[0], $names[1], $language);
         if ($fraction > 0) {
-            $words .= ('fr' === $language ? ' et ' : ' and ').self::counted($fraction, $names[2], $names[3], $language);
+            $words .= (self::FRENCH === $language ? ' et ' : ' and ').self::counted($fraction, $names[2], $names[3], $language);
         }
 
         return $words;
@@ -59,7 +63,7 @@ final class AmountInWords
 
     private static function counted(int $number, string $singular, string $plural, string $language): string
     {
-        if ('en' === $language) {
+        if (self::ENGLISH === $language) {
             return self::english($number).' '.(1 === $number ? $singular : $plural);
         }
 

@@ -17,6 +17,9 @@ import { formatTime, todayIn } from '../shared/i18n/format';
  * stamps its own now, which a browser clock running ahead cannot push past. Changed, it closes on the moment written,
  * `YYYY-MM-DDTHH:MM` on the company's clock; on `null` only when nothing was asked of it.
  */
+/** The locale the field's time is written in: the API's `HH:MM`, whatever the screen's language. */
+const WALL_CLOCK = 'en-GB'; // language-literal: its 24-hour HH:MM is the API's format, not a language
+
 @Component({
   selector: 'app-deliver-dialog',
   imports: [
@@ -87,7 +90,7 @@ export class DeliverDialog {
   private readonly zone = inject<string | null>(MAT_DIALOG_DATA);
   private readonly opened = {
     day: todayIn(this.zone),
-    time: formatTime(new Date().toISOString(), 'en-GB', this.zone ?? undefined),
+    time: formatTime(new Date().toISOString(), WALL_CLOCK, this.zone ?? undefined),
   };
   protected readonly day = signal(this.opened.day);
   protected readonly time = signal(this.opened.time);

@@ -24,10 +24,9 @@ final readonly class QuotePrinting
     public static function today(ReadSetting $settings, Quote $quote): QuotePrint
     {
         $context = self::context($quote);
-        $language = $settings->value($context, 'document.language');
 
         return new QuotePrint(
-            \is_string($language) ? $language : 'fr',
+            $settings->text($context, 'document.language'),
             true === $settings->value($context, QuoteSettings::SIGNATURE_BLOCK),
             DocumentFormats::print($settings, $context, $quote->getCompany()),
         );

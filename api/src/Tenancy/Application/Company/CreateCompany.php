@@ -50,17 +50,19 @@ final readonly class CreateCompany
                 throw new CompanyNameTaken(\sprintf('A company named "%s" already exists.', $request->name));
             }
 
+            // A company's fiscal preset is its country's: read before the company exists, as its language may come from it.
+            $preset = strtoupper($request->countryCode);
+            if (!$this->presets->has($preset)) {
+                throw new NoFiscalPreset(\sprintf('There is no fiscal preset for %s yet, so a company there could not invoice.', $preset));
+            }
             $company = Company::pending(
                 $request->name,
                 $request->countryCode,
                 $request->currency,
-                $request->locale,
+                $request->locale ?? $this->presets->get($preset)->documentLanguages[0] ?? throw new \LogicException(\sprintf('The %s preset names no language its documents print in.', $preset)),
                 $request->timezone,
                 $this->clock->now(),
             );
-            if (!$this->presets->has($company->getFiscalPreset())) {
-                throw new NoFiscalPreset(\sprintf('There is no fiscal preset for %s yet, so a company there could not invoice.', $company->getCountryCode()));
-            }
             $this->companies->save($company);
             $this->provision->handle($company);
 

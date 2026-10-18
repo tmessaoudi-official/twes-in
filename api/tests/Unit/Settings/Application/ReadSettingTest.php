@@ -33,6 +33,16 @@ final class ReadSettingTest extends TestCase
         self::assertSame('dark', $read->value(new SettingContext($company), 'presentation.scheme'));
     }
 
+    /** A text setting always holds text, its declared default when nobody chose: anything else is a bug, never a fallback. */
+    public function testATextSettingIsReadAsTextAndAnotherIsRefused(): void
+    {
+        $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), new InMemorySettings()));
+
+        self::assertSame(\App\Tests\Support\ShippedLanguages::catalogue()->default(), $read->text(new SettingContext(), PresentationSettings::LANGUAGE));
+        $this->expectException(\UnexpectedValueException::class);
+        $read->text(new SettingContext(), 'presentation.show-coming');
+    }
+
     public function testCodeCannotReadAKeyNobodyDeclared(): void
     {
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), new InMemorySettings()));

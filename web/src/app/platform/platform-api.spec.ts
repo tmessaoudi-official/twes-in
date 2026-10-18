@@ -244,7 +244,6 @@ describe('PlatformApi', () => {
       name: 'Globex',
       countryCode: 'TN',
       currency: 'TND',
-      locale: 'fr',
       timezone: 'Africa/Tunis',
     };
     const opened = api.createCompany(company);
@@ -462,7 +461,6 @@ describe('PlatformApi', () => {
       name: 'Acme',
       countryCode: 'TN',
       currency: 'TND',
-      locale: 'fr',
       timezone: 'Africa/Tunis',
     });
     http

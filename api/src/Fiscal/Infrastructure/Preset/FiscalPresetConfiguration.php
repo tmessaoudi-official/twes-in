@@ -25,6 +25,11 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  */
 final class FiscalPresetConfiguration implements ConfigurationInterface
 {
+    /** @param list<string> $languages the languages documents print in, which every label is given in */
+    public function __construct(private readonly array $languages)
+    {
+    }
+
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $tree = new TreeBuilder('fiscal_preset');
@@ -131,15 +136,15 @@ final class FiscalPresetConfiguration implements ConfigurationInterface
         return $tree;
     }
 
-    /** A label in every language the product speaks. */
+    /** A label in every language documents print in. */
     private function names(): ArrayNodeDefinition
     {
         $node = (new TreeBuilder('names'))->getRootNode();
-        $node->isRequired()
-            ->children()
-                ->scalarNode('fr')->isRequired()->cannotBeEmpty()->end()
-                ->scalarNode('en')->isRequired()->cannotBeEmpty()->end()
-            ->end();
+        $children = $node->isRequired()->children();
+        foreach ($this->languages as $language) {
+            $children->scalarNode($language)->isRequired()->cannotBeEmpty()->end();
+        }
+        $children->end();
 
         return $node;
     }

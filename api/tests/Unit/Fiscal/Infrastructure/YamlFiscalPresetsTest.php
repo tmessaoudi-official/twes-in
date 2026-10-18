@@ -19,6 +19,7 @@ use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Fiscal\Infrastructure\Preset\InvalidFiscalPreset;
 use App\Fiscal\Infrastructure\Preset\YamlFiscalPresets;
+use App\Shared\Infrastructure\Intl\CatalogueLanguages;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
@@ -151,6 +152,36 @@ final class YamlFiscalPresetsTest extends TestCase
         $this->writeTunisia(Yaml::parseFile(self::SHIPPED.'/TN.yaml'));
 
         self::assertSame('TND', (new YamlFiscalPresets($this->dir, \App\Tests\Support\ShippedLanguages::catalogue()))->get('TN')->currency);
+    }
+
+    /** A language documents print in is an entry of the catalogue: a preset then names its taxes and units in it too. */
+    public function testALanguageAddedToTheCatalogueIsOneAPresetNamesThingsIn(): void
+    {
+        $catalogue = json_decode((string) file_get_contents(__DIR__.'/../../../../config/languages.json'), true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($catalogue);
+        $languages = $catalogue['languages'] ?? null;
+        self::assertIsArray($languages);
+        $catalogue['languages'] = array_map(static function (mixed $language): array {
+            self::assertIsArray($language);
+
+            return 'ar' === ($language['tag'] ?? null) ? [...$language, 'documents' => true] : $language;
+        }, $languages);
+        file_put_contents($this->dir.'/languages.json', json_encode($catalogue, \JSON_THROW_ON_ERROR));
+        $preset = Yaml::parseFile(self::SHIPPED.'/TN.yaml');
+        self::assertIsArray($preset);
+        foreach (['tax_components', 'units'] as $list) {
+            self::assertIsArray($preset);
+            $entries = $preset[$list] ?? null;
+            self::assertIsArray($entries);
+            foreach (array_keys($entries) as $i) {
+                $preset = self::edit($preset, "$list.$i.names.ar", 'اسم');
+            }
+        }
+        $this->writeTunisia($preset);
+
+        $tunisia = (new YamlFiscalPresets($this->dir, new CatalogueLanguages($this->dir.'/languages.json')))->get('TN');
+
+        self::assertSame('اسم', $tunisia->taxComponents[0]->names['ar'] ?? null);
     }
 
     /** @return iterable<string, array{string, mixed, string}> */

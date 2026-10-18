@@ -50,7 +50,7 @@ final readonly class PrintStatement
         $customer = $this->customers->ofIdInCompany($customerId, $company->getId()) ?? throw new CustomerNotFound();
         $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
         $print = DocumentFormats::print($this->settings, $context, $company);
-        $language = $this->settings->value($context, 'document.language');
+        $language = $this->settings->text($context, 'document.language');
         $establishment = $this->establishments->ofCompany($company->getId())[0] ?? throw new \LogicException('A company always has an establishment.');
 
         return new PrintedStatement(
@@ -60,7 +60,7 @@ final readonly class PrintStatement
                 $statement,
                 CustomerSnapshot::of($customer),
                 SellerSnapshot::of($company, $establishment),
-                \is_string($language) ? $language : 'fr',
+                $language,
                 $print->dateFormat,
                 $print->numberFormat,
                 $print->design,

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Twig;
 
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
@@ -24,8 +25,6 @@ use Twig\TwigFunction;
 final class DecimalExtension extends AbstractExtension
 {
     private const string DECIMAL = '/^(-?)(\d+)(?:\.(\d+))?$/';
-    /** The decimal point and the thousands separator of each language; French groups with a no-break space. */
-    private const array SEPARATORS = ['fr' => [',', "\u{a0}"], 'en' => ['.', ',']];
     /**
      * A company's chosen number format (`presentation.number-format`, docs/SPEC.md § 7, 2026-09-25 12:45, row 130), which
      * wins over the language; `auto` is the language's.
@@ -33,6 +32,10 @@ final class DecimalExtension extends AbstractExtension
     private const array STYLES = ['space-comma' => [',', "\u{a0}"], 'dot-comma' => [',', '.'], 'comma-dot' => ['.', ',']];
     /** A company's chosen date format (`presentation.date-format`), as a PHP date pattern; `auto` is the language's. */
     private const array DATE_PATTERNS = ['dmy' => 'd/m/Y', 'mdy' => 'm/d/Y', 'ymd' => 'Y-m-d', 'dmy-dots' => 'd.m.Y'];
+
+    public function __construct(private readonly TranslatorInterface $translator)
+    {
+    }
 
     public function getFilters(): array
     {
@@ -55,7 +58,8 @@ final class DecimalExtension extends AbstractExtension
         if (1 !== preg_match(self::DECIMAL, $value, $parts)) {
             throw new \InvalidArgumentException(\sprintf('"%s" is not a decimal.', $value));
         }
-        [$point, $thousands] = self::STYLES[$style] ?? self::SEPARATORS[$language] ?? self::SEPARATORS['fr'];
+        // A language writes its own decimal point and thousands separator, which are its printed texts.
+        [$point, $thousands] = self::STYLES[$style] ?? [$this->translator->trans('format.decimal_point', [], 'pdf', $language), $this->translator->trans('format.thousands_separator', [], 'pdf', $language)];
 
         $integer = ltrim($parts[2], '0');
         $groups = array_reverse(str_split(strrev('' === $integer ? '0' : $integer), 3));
