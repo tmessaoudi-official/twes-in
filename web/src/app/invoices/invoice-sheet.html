@@ -24,14 +24,15 @@
         </h2>
         @if (customerLinked()) {
           <a
-            class="truncate text-accent-text underline-offset-2 hover:underline"
+            class="twes-value text-accent-text underline-offset-2 hover:underline"
+            dir="auto"
             [routerLink]="['/customers', invoice.customerId]"
             data-testid="invoice-sheet-customer"
           >
             {{ invoice.recordedCustomerName ?? invoice.customerName }}
           </a>
         } @else {
-          <span class="truncate" data-testid="invoice-sheet-customer">
+          <span class="twes-value" dir="auto" data-testid="invoice-sheet-customer">
             {{ invoice.recordedCustomerName ?? invoice.customerName }}
           </span>
         }
@@ -154,7 +155,9 @@
                   <span class="tabular-nums">{{ payment.date | day }}</span>
                 </span>
                 @if (payment.reference) {
-                  <span class="truncate text-on-surface-variant">{{ payment.reference }}</span>
+                  <span class="twes-value text-on-surface-variant" dir="auto">{{
+                    payment.reference
+                  }}</span>
                 }
               </span>
               <span class="tabular-nums">{{ payment.amount | amount: scale() }}</span>

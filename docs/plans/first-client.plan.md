@@ -133,6 +133,7 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-18 18:55] ASSUMED (review): Step 7, mixed directions: printed documents isolate every typed value (codes, identifiers, addresses, phones, line descriptions) in <bdi> and read their direction from the catalogue (Languages::direction, text_direction in Twig) with logical CSS; on screen every plain list value is a <bdi> and every free-text, mail and phone field is dir=auto, so « +216 71 000 000 » keeps its order in Arabic. Alternatives: dir=ltr on phone and mail fields only (Arabic typed in a note would then read the wrong way). Basis: the Arabic invoice rendered through Gotenberg and the customers list in Arabic, looked at.
 - [2026-10-18 18:55] ASSUMED (review): Step 7, the label gates (coming-texts, permission-labels, planned-module-labels, setting-labels) and nine API tests read their languages from the catalogue rather than a list of fr and en, so switching a language on asks for its labels; the gate tests cover a language switched on without its labels and a tree without the catalogue. Basis: setting-labels then caught the language choice « ar » unlabelled in every language, fixed. Alternatives: glob the shipped files (a missing language file would then pass).
 - [2026-10-18 19:06] ASSUMED (review): The TN and FR presets keep document_languages: [fr]: a new company prints in French until its owner picks Arabic or English, since Arabic is shown to a shop only once the developer has reviewed its wording. Alternatives: [fr, ar] for TN.
+- [2026-10-18 19:37] ASSUMED (review): Step 7, mixed directions, revised after the Arabic lists and fields were looked at: a typed value cut short sits in a twes-value box with dir=auto (fit-content, at the start of its cell), so it cuts at its own end and keeps its start in either direction (scripts/gates/value-direction.sh, 17 places); every input and textarea reads each line its own way through unicode-bidi: plaintext in styles.scss, which replaces the per-field dir=auto of the 18:55 entry (in Chromium a right-to-left field turned a phone into « 000 000 71 216+ » and a negative amount into « 250,000 1- »); a printed document's typed notes, late-payment text and footer are dir=auto blocks. So a Latin value aligns to the left inside an Arabic field or note, as a mixed-direction page reads. Alternatives: keep it right-aligned with a physical text-align under [dir=rtl] (match-parent is not honoured by this Chromium). Basis: Gotenberg probes and web/e2e/direction.spec.ts with its two mutants red.
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -192,6 +193,12 @@ was and was not certified by execution.
   and the list hides the lowest ones that do not fit, named in the column chooser as hidden for width, so a value is
   never cut; (b) declared columns never narrow and the card scrolls sideways; (c) keep narrowing, as today. Waiting on
   the developer: what a person sees on every list.
+- A unit prints in the language the company was created in, whatever the document's: an Arabic invoice of a company
+  created in French says « Unité » (Gotenberg, 2026-10-18). A unit holds one name, its company's, which the company may
+  rename; the preset's names in every language are read once, at creation. Options: (a, recommended) a unit keeps a
+  name per language the catalogue prints in, filled from the preset and editable, and a document prints the one of its
+  language, else the company's; (b) keep one name, the company's own word for it. Waiting on the developer: whether a
+  shop's units are its own words or the document's language.
 - After Wednesday, in an order to set: declarations (fiscal rules await an accountant), composite products, jobs, the till (the Tunisian homologated-register question), zakat (its research pass, row 120).
 ### Needs research
 - Protecting the data at rest on a shop's PC without asking anything of the client (disk encryption is neither checked nor required for Wednesday).
@@ -211,8 +218,8 @@ was and was not certified by execution.
   scrolled away; the audit now compares what is seen (`web/e2e-gallery/audit.ts`). The real defect beside them, the list's
   foot slid off by the wheel, was found from the developer's report, not from the gallery.
 - Steps 4 to 7: `web/public/i18n/fr.json` is at 60,677 of 61,440 B gzipped (2026-10-18, S5's gate run): 763 B left before any new screen text; a slice adding texts moves its page's own into a part (`textsPart`) first.
-- Step 7: right to left was proven on a running screen for the menu's side and a list's columns only (`web/e2e/direction.spec.ts`); a dialog or menu opened in right to left, the row actions' shadow, a mirrored icon drawn, and real Arabic text were not, and need their e2e with the Arabic texts.
-- Step 7: in right to left a cell holding a code or a name in Latin letters (ACC-1791…) is cut at its start, the ellipsis on the left: what a person typed takes `dir="auto"` before Arabic ships. The direction gate cannot see styles a component's TypeScript writes inline nor an icon named through a binding; those were read by hand once (the stock map stays drawn left to right on purpose).
+- Step 7: right to left with the Arabic texts is proven on a running screen (`web/e2e/direction.spec.ts`) for the menu's side, a list's columns, a value cut short keeping its start, the command palette, every field's reading and axe on seven screens; a menu opened in right to left, the row actions' shadow and a mirrored icon drawn were not, and the 182-shot gallery was not run again in Arabic.
+- Step 7: the cell that cut a Latin code at its start (« …791728493868 ») is fixed by the `twes-value` box, held by `scripts/gates/value-direction.sh` and the e2e. The direction gate cannot see styles a component's TypeScript writes inline nor an icon named through a binding; those were read by hand once (the stock map stays drawn left to right on purpose).
 - Step 3 S3: an operator-created company in a language other than the platform default prints in the default until its
   document language is set at company level (ASSUMED 2026-10-18 09:53, parked for review).
 - Step 3 S2: the platform page still repeats each country's currency and time zone (`COMPANY_COUNTRIES` in

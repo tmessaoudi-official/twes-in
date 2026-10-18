@@ -180,6 +180,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icon-buttons-named.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/password-eyes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/dialog-content-layout.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/value-direction.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/scrollers-contain.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/outcomes-as-toasts.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-log-rotation.test.sh
@@ -234,6 +235,7 @@ in-gate-licences:
 	bash scripts/gates/icon-buttons-named.sh
 	bash scripts/gates/password-eyes.sh
 	bash scripts/gates/dialog-content-layout.sh
+	bash scripts/gates/value-direction.sh
 	bash scripts/gates/scrollers-contain.sh
 	bash scripts/gates/outcomes-as-toasts.sh
 	bash scripts/gates/compose-log-rotation.sh

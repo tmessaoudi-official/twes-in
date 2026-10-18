@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
+import { aCustomer } from './catalogue';
 import { forgetPresentationChoices } from './presentation';
 import { inACompany, signIn } from './session';
 
@@ -71,6 +72,45 @@ test('a screen in Arabic turns over and speaks Arabic', async ({ page }, testInf
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 });
 
+// A value cut short keeps its start in sight in either direction: its box cuts at the value's own end, so a Latin
+// number in an Arabic list loses its last characters, never its first (« …791728493868 » was a customer number
+// without its letters). The customer's number and name are made too long for their columns; a customer is never
+// deleted, so each run leaves one, as the other scenarios creating customers do.
+test('a value cut short in Arabic keeps its start in sight', async ({ page }, testInfo) => {
+  const number = `RTL-${Date.now()}-QUINCAILLERIE`;
+  await aCustomer(page, number);
+  await chooseArabic(page);
+  await page.goto('/customers');
+  await page.getByTestId('list-filter').fill(number);
+  const row = page.getByTestId('customers-table').locator('tr', { hasText: number });
+  await expect(row).toHaveCount(1);
+  await expect(row.locator('td .twes-value').first()).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('customers-rtl-cut.png'), fullPage: false });
+
+  const cut = await row.locator('td .twes-value').evaluateAll((boxes) =>
+    boxes
+      .filter((box) => box.scrollWidth > box.clientWidth)
+      .map((box) => {
+        const text = document.createTreeWalker(box, NodeFilter.SHOW_TEXT).nextNode() as Text;
+        const start = text.data.search(/\S/);
+        const range = document.createRange();
+        range.setStart(text, start);
+        range.setEnd(text, start + 1);
+        const first = range.getBoundingClientRect();
+        const shown = box.getBoundingClientRect();
+        return {
+          value: box.textContent?.trim(),
+          firstInSight: first.left >= shown.left - 0.5 && first.right <= shown.right + 0.5,
+        };
+      }),
+  );
+  expect(
+    cut.map((each) => each.value),
+    'the number and the name are both cut',
+  ).toEqual([number, `Client ${number}`]);
+  expect(cut.filter((each) => !each.firstInSight)).toEqual([]);
+});
+
 // The screens a shop opens first, each without a WCAG failure in Arabic: a label that does not fit, a name not
 // translated, an icon pointing the wrong way all show here before the shop sees them.
 const ARABIC_WALK: readonly string[] = [
@@ -85,6 +125,7 @@ const ARABIC_WALK: readonly string[] = [
 
 test('the screens a shop opens first pass WCAG in Arabic', async ({ page }) => {
   await chooseArabic(page);
+  let fieldsRead = 0;
   for (const route of ARABIC_WALK) {
     await page.goto(route);
     // A module switched off sends its route home, which would walk the home page again and read as covered.
@@ -94,7 +135,17 @@ test('the screens a shop opens first pass WCAG in Arabic', async ({ page }) => {
     await expect(page.locator('#main-content h1').first()).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     expect(await wcagViolations(page), route).toEqual([]);
+    // What is typed reads the way it is written: no field here reads in the screen's direction instead.
+    const fields = await page
+      .locator('input:not([type=checkbox]):not([type=radio]), textarea')
+      .evaluateAll((all) => all.map((field) => getComputedStyle(field).unicodeBidi));
+    expect(
+      fields.filter((reading) => reading !== 'plaintext'),
+      route,
+    ).toEqual([]);
+    fieldsRead += fields.length;
   }
+  expect(fieldsRead, 'the fields are found, so an empty walk cannot pass').toBeGreaterThan(5);
 });
 
 // Arabic letters come from a face of their own behind the body's stack, fetched only once a page shows one: an Arabic

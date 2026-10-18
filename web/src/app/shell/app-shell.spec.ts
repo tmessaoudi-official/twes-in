@@ -976,7 +976,9 @@ describe('AppShell', () => {
     expect(company?.closest('header')).not.toBeNull();
     const leading = el.querySelector('[data-testid="top-bar-leading"]');
     expect(leading?.contains(company as Node)).toBe(true);
-    expect(company?.className).toContain('truncate');
+    // Cut short rather than pushing the bar's controls off, at the name's own end in either direction.
+    expect(company?.className).toContain('twes-value');
+    expect(company?.getAttribute('dir')).toBe('auto');
     for (const id of ['command-open', 'notification-bell', 'user-menu']) {
       expect(byTestId(id)?.closest('header'), id).not.toBeNull();
     }

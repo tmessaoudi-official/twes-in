@@ -180,19 +180,19 @@
     {%- endif %}
   {%- endfor %}
   {%- if page.latePenaltyText %}
-    <p class="mention">{{ page.latePenaltyText|nl2br }}</p>
+    <p class="mention" dir="auto">{{ page.latePenaltyText|nl2br }}</p>
   {%- endif %}
 
   {%- if header.notesPrinted or page.printedNotes %}
     <div class="remarks">
       <h2 class="muted" style="font-size: 9pt; margin: 0 0 4px;">{{ 'invoice.remarks'|trans({}, t, locale) }}</h2>
-      {% if header.notesPrinted %}<p style="margin: 0;">{{ header.notesPrinted|nl2br }}</p>{% endif %}
-      {% if page.printedNotes %}<p style="margin: 4px 0 0;">{{ page.printedNotes|nl2br }}</p>{% endif %}
+      {% if header.notesPrinted %}<p dir="auto" style="margin: 0;">{{ header.notesPrinted|nl2br }}</p>{% endif %}
+      {% if page.printedNotes %}<p dir="auto" style="margin: 4px 0 0;">{{ page.printedNotes|nl2br }}</p>{% endif %}
     </div>
   {%- endif %}
 
   {%- if page.footer %}
-    <div class="footer">{{ page.footer|nl2br }}</div>
+    <div class="footer" dir="auto">{{ page.footer|nl2br }}</div>
   {%- endif %}
   {#- Outside the footer: a company that prints no footer text still prints where its document stands in the chain. #}
   {%- if page.fingerprint %}

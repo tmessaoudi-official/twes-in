@@ -530,26 +530,41 @@
               <!-- A real link, so a middle click, a copied address and a screen reader's list of links all work; an
                  (click) on the row gives none of those (design review finding 1). It WRAPS the cell rather than
                  replacing it, because the column that names a record is usually the one with a template on it. -->
+              <!-- A plain value sits in a box of its own direction, so one cut short keeps its start in sight in a
+                   screen of the other direction, and one with no letter of its own (a phone, a code) keeps its
+                   order; an end column's box sits at the cell's end. -->
               @if (column.id === linkColumnId() && descriptor().link; as link) {
-                <a
-                  [routerLink]="link(row)"
-                  [queryParams]="descriptor().linkQuery?.(row) ?? null"
-                  [queryParamsHandling]="descriptor().linkQuery?.(row) ? 'merge' : null"
-                  class="twes-row-link"
-                  [attr.data-testid]="'list-link-' + descriptor().rowId(row)"
-                >
-                  @if (cellTemplates().get(column.id); as template) {
+                @if (cellTemplates().get(column.id); as template) {
+                  <a
+                    [routerLink]="link(row)"
+                    [queryParams]="descriptor().linkQuery?.(row) ?? null"
+                    [queryParamsHandling]="descriptor().linkQuery?.(row) ? 'merge' : null"
+                    class="twes-row-link"
+                    [attr.data-testid]="'list-link-' + descriptor().rowId(row)"
+                  >
                     <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
-                  } @else {
-                    <bdi>{{ column.value(row) }}</bdi>
-                  }
-                </a>
+                  </a>
+                } @else {
+                  <a
+                    [routerLink]="link(row)"
+                    [queryParams]="descriptor().linkQuery?.(row) ?? null"
+                    [queryParamsHandling]="descriptor().linkQuery?.(row) ? 'merge' : null"
+                    class="twes-row-link twes-value"
+                    dir="auto"
+                    [class.twes-value-end]="column.align === 'end'"
+                    [attr.data-testid]="'list-link-' + descriptor().rowId(row)"
+                    >{{ column.value(row) }}</a
+                  >
+                }
               } @else if (cellTemplates().get(column.id); as template) {
                 <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
               } @else {
-                <!-- Every plain value is isolated, in the cards too, so one with no letter of its own (a phone, a
-                     code) keeps its order whatever the line's direction. -->
-                <bdi>{{ column.value(row) }}</bdi>
+                <span
+                  class="twes-value"
+                  dir="auto"
+                  [class.twes-value-end]="column.align === 'end'"
+                  >{{ column.value(row) }}</span
+                >
               }
             </td>
           </ng-container>

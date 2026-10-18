@@ -130,8 +130,8 @@
   {%- if header.notesPrinted or page.printedNotes %}
     <div class="remarks">
       <h2 class="muted" style="font-size: 9pt; margin: 0 0 4px;">{{ 'quote.remarks'|trans({}, t, locale) }}</h2>
-      {% if header.notesPrinted %}<p style="margin: 0;">{{ header.notesPrinted|nl2br }}</p>{% endif %}
-      {% if page.printedNotes %}<p style="margin: 4px 0 0;">{{ page.printedNotes|nl2br }}</p>{% endif %}
+      {% if header.notesPrinted %}<p dir="auto" style="margin: 0;">{{ header.notesPrinted|nl2br }}</p>{% endif %}
+      {% if page.printedNotes %}<p dir="auto" style="margin: 4px 0 0;">{{ page.printedNotes|nl2br }}</p>{% endif %}
     </div>
   {%- endif %}
 

@@ -187,11 +187,8 @@
                   <mat-form-field>
                     @switch (field.kind) {
                       @case ('textarea') {
-                        <!-- Free text reads in the direction of what is typed in it: a Latin note on an Arabic screen
-                           keeps its order, and Arabic typed on a French one still reads right to left. -->
                         <textarea
                           matInput
-                          dir="auto"
                           [id]="controlId(field)"
                           rows="3"
                           [formControlName]="field.id"
@@ -230,7 +227,6 @@
                         @if (hasSuggestions(field)) {
                           <input
                             matInput
-                            dir="auto"
                             [id]="controlId(field)"
                             [type]="field.kind"
                             [formControlName]="field.id"
@@ -247,7 +243,6 @@
                         } @else {
                           <input
                             matInput
-                            dir="auto"
                             [id]="controlId(field)"
                             [type]="field.kind"
                             [formControlName]="field.id"
