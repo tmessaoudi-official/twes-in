@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
@@ -151,14 +152,16 @@ final class DeepHealthTest extends WebTestCase
     {
         $connection = $client->getContainer()->get('doctrine.dbal.default_connection');
         self::assertInstanceOf(Connection::class, $connection);
-        $at = new \DateTimeImmutable($availableIn, new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
-        $connection->insert('messenger_messages', [
-            'body' => '{}',
-            'headers' => '[]',
-            'queue_name' => $queue,
-            'created_at' => $at,
-            'available_at' => $at,
-            'delivered_at' => $delivered ? $at : null,
-        ]);
+        // Placed on the database's clock, which the reading measures with: inside the test's transaction that clock
+        // stands at the transaction's start, before this line runs, so a time taken from PHP's clock reads younger.
+        $connection->executeStatement(
+            <<<'SQL'
+                INSERT INTO messenger_messages (body, headers, queue_name, created_at, available_at, delivered_at)
+                SELECT '{}', '[]', :queue, at, at, CASE WHEN :delivered THEN at END
+                FROM (SELECT (now() AT TIME ZONE 'UTC') + CAST(:availableIn AS interval) AS at) placed
+                SQL,
+            ['queue' => $queue, 'availableIn' => $availableIn, 'delivered' => $delivered],
+            ['delivered' => ParameterType::BOOLEAN],
+        );
     }
 }
