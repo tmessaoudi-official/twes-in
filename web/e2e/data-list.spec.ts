@@ -83,6 +83,49 @@ test('a scan waits for a tooltip to arrive instead of reading it mid-fade', asyn
   expect(await tooltipsArriving(page), 'the scan waited for the tooltip').toBe(false);
 });
 
+test('a scan waits for an overlay that arrives a few frames after the page looked still', async ({
+  page,
+}) => {
+  // CI read `color-contrast: .mat-mdc-tooltip-surface` on the build line's tooltip (run 39093920621): a select's option
+  // was clicked where the footer lies beneath, the panel closed, and the browser hovered the build line on a later
+  // frame, after the scan had found nothing moving. The late arrival is staged two frames after the scan first looks,
+  // so the moment does not depend on where a panel happens to close or on how fast the runner answers.
+  await signIn(page);
+  await openMembers(page);
+  await page.evaluate(() => {
+    // The scan reads the overlays' container, which the CDK only makes for the first overlay: none has opened yet.
+    const overlays =
+      document.querySelector('.cdk-overlay-container') ??
+      document.body.appendChild(
+        Object.assign(document.createElement('div'), { className: 'cdk-overlay-container' }),
+      );
+    const later = (frames: number, then: () => void): void => {
+      requestAnimationFrame(() => (frames > 1 ? later(frames - 1, then) : then()));
+    };
+    const looking = Element.prototype.getAnimations;
+    Element.prototype.getAnimations = function (this: Element, options?: GetAnimationsOptions) {
+      Element.prototype.getAnimations = looking;
+      later(2, () => {
+        const arriving = document.createElement('div');
+        arriving.dataset['testid'] = 'late-overlay';
+        overlays.append(arriving);
+        // Longer than a scan takes, shorter than the helper waits.
+        arriving.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 6_000 });
+      });
+      return looking.call(this, options);
+    };
+  });
+
+  expect(await wcagViolations(page), 'members, an overlay arriving late').toEqual([]);
+  const stillArriving = await page.evaluate(() =>
+    [...document.querySelectorAll('.cdk-overlay-container')]
+      .flatMap((overlays) => overlays.getAnimations({ subtree: true }))
+      .some((animation) => 'running' === animation.playState),
+  );
+  expect(await page.getByTestId('late-overlay').count(), 'the late overlay arrived').toBe(1);
+  expect(stillArriving, 'the scan waited for the late overlay').toBe(false);
+});
+
 test('a column moves without dragging, and the order survives a reload', async ({ page }) => {
   await signIn(page);
   await openMembers(page);

@@ -16,15 +16,24 @@ export async function wcagViolations(page: Page): Promise<string[]> {
   // computed style (2026-09-17, CI run 35272397610 on a commit that changed one Markdown file). The same holds for
   // every overlay, not tooltips alone: a dialog read while it fades in failed on its filter chips (2026-09-23, CI run
   // 35833959425, the notification centre). An endless animation (a spinner) never finishes, and is not a fade.
+  // Still means still for a few frames, not at one look: a pointer left where a panel closed hovers what lies beneath
+  // on the next frame, and a tooltip there starts its fade a moment later, after a single look found nothing moving
+  // (CI run 39093920621, the build line's tooltip under a select's option).
   await expect
     .poll(
       () =>
-        page.evaluate(() =>
-          [...document.querySelectorAll('.cdk-overlay-container')]
-            .flatMap((overlays) => overlays.getAnimations({ subtree: true }))
-            .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
-            .every((animation) => 'running' !== animation.playState),
-        ),
+        page.evaluate(async () => {
+          const moving = (): boolean =>
+            [...document.querySelectorAll('.cdk-overlay-container')]
+              .flatMap((overlays) => overlays.getAnimations({ subtree: true }))
+              .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+              .some((animation) => 'running' === animation.playState);
+          for (let frame = 0; frame < 3; frame += 1) {
+            if (moving()) return false;
+            await new Promise<void>((next) => requestAnimationFrame(() => next()));
+          }
+          return !moving();
+        }),
       // Real fades take 150 ms; the margin is for a scan taken while one is deliberately slowed, and for a loaded CI
       // runner, which is where this was found in the first place.
       { timeout: 10_000 },
