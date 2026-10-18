@@ -38,7 +38,7 @@ final class WorkingCompanyTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->user = new User(Email::fromString('u@example.test'), 'U');
+        $this->user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $this->memberships = new InMemoryMemberships();
         $this->current = new InMemoryCurrentCompany();
     }

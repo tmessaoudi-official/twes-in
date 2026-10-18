@@ -31,7 +31,7 @@ final class UserTest extends TestCase
 
     public function testANewPasswordForcesEverySessionOutAndARehashDoesNot(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $stamp = $user->getSecurityStamp();
 
         $user->upgradePasswordHash('same-password-newer-parameters');
@@ -44,7 +44,7 @@ final class UserTest extends TestCase
     public function testTheAccountLocksOnTheNthConsecutiveFailureAndOnlyUntilTheDeadline(): void
     {
         $now = new \DateTimeImmutable('2026-09-09 12:00:00');
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
 
         for ($i = 1; $i <= 4; ++$i) {
             $user->recordFailedLogin($now, 5, new \DateInterval('PT15M'));
@@ -62,7 +62,7 @@ final class UserTest extends TestCase
     public function testASuccessfulLoginResetsTheCounterAndTheLock(): void
     {
         $now = new \DateTimeImmutable('2026-09-09 12:00:00');
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         for ($i = 0; $i < 5; ++$i) {
             $user->recordFailedLogin($now, 5, new \DateInterval('PT15M'));
         }
@@ -91,7 +91,7 @@ final class UserTest extends TestCase
 
     public function testRotatingTheSecurityStampChangesIt(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $before = $user->getSecurityStamp();
 
         $user->rotateSecurityStamp();

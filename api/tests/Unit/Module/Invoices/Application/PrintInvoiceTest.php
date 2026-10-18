@@ -54,6 +54,7 @@ use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStoredFiles;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\RecordingDomainEvents;
 use App\Tests\Support\RecordingInvoiceTemplate;
 use App\Tests\Support\ShippedFiscalPresets;
 use App\Tests\Support\ShippedMentionWording;
@@ -93,7 +94,7 @@ final class PrintInvoiceTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents());
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
         $this->print = new PrintInvoice(
             $this->invoices,

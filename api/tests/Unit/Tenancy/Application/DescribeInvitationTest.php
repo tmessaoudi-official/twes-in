@@ -52,7 +52,7 @@ final class DescribeInvitationTest extends TestCase
     public function testALinkForAnAddressWithAnAccountSaysSoSoThePageAsksForNothing(): void
     {
         $token = $this->open();
-        $this->users->save(new User(Email::fromString('stranger@twes.local'), 'Already Here'));
+        $this->users->save(new User(Email::fromString('stranger@twes.local'), 'Already Here', 'fr'));
 
         $summary = $this->describe()->for($token->raw);
 

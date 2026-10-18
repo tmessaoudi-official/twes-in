@@ -169,7 +169,7 @@ final class ModuleInterestsTest extends TestCase
     /** @param list<string> $permissions */
     private function member(string $email, Company $company, array $permissions): Uuid
     {
-        $user = new User(Email::fromString($email), 'Someone');
+        $user = new User(Email::fromString($email), 'Someone', 'fr');
         $this->memberships->save(new Membership($user, $company, new Role(Role::MEMBER, $permissions, $company)));
 
         return $user->getId();

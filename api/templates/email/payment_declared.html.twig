@@ -1,6 +1,6 @@
 {# The mail an operator receives the moment a company says it paid its subscription. Plain, inline-styled HTML. #}
 <!DOCTYPE html>
-<html lang="{{ app.request.locale|default('fr') }}">
+<html lang="{{ app.locale }}">
   <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
     <h1 style="font-size: 20px;">{{ 'payment_declared.heading'|trans({'%company%': companyName}, 'emails') }}</h1>
     <p>{{ 'payment_declared.intro'|trans({'%company%': companyName, '%amount%': amount, '%currency%': currency, '%date%': paidOn}, 'emails') }}</p>

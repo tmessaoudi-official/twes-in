@@ -154,7 +154,7 @@ final class ManageAccountsTest extends TestCase
 
     private function account(string $email, string $name): User
     {
-        $user = new User(Email::fromString($email), $name);
+        $user = new User(Email::fromString($email), $name, 'fr');
         $this->users->save($user);
 
         return $user;

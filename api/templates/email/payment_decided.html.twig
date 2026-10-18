@@ -1,6 +1,6 @@
 {# The mail a company's owners receive once the operator has decided on the payment they declared. #}
 <!DOCTYPE html>
-<html lang="{{ app.request.locale|default('fr') }}">
+<html lang="{{ app.locale }}">
   <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
     {% if confirmed %}
       <h1 style="font-size: 20px;">{{ 'payment_decided.confirmed_heading'|trans({'%amount%': amount, '%currency%': currency}, 'emails') }}</h1>

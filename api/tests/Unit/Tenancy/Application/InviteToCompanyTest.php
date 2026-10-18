@@ -105,7 +105,7 @@ final class InviteToCompanyTest extends TestCase
 
     public function testAnAddressThatAlreadyHasAnAccountIsInvitedByMailAndJoinsNothingYet(): void
     {
-        $user = new User(Email::fromString('joiner@twes.local'), 'Joiner');
+        $user = new User(Email::fromString('joiner@twes.local'), 'Joiner', 'fr');
         $this->users->save($user);
 
         $this->invite->handle($this->request('joiner@twes.local'), null);
@@ -118,7 +118,7 @@ final class InviteToCompanyTest extends TestCase
 
     public function testAnExistingAccountIsToldOfTheInvitationWithoutTheLink(): void
     {
-        $user = new User(Email::fromString('joiner@twes.local'), 'Joiner');
+        $user = new User(Email::fromString('joiner@twes.local'), 'Joiner', 'fr');
         $this->users->save($user);
 
         $this->invite->handle($this->request('joiner@twes.local'), null);
@@ -303,7 +303,7 @@ final class InviteToCompanyTest extends TestCase
 
     private function memberOfTheCompany(string $email, string $roleName): User
     {
-        $user = new User(Email::fromString($email), 'Someone');
+        $user = new User(Email::fromString($email), 'Someone', 'fr');
         $this->users->save($user);
         $role = $this->roles->builtIn($roleName);
         self::assertNotNull($role);

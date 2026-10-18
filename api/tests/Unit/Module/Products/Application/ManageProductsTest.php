@@ -54,6 +54,7 @@ use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\InMemoryVendors;
+use App\Tests\Support\RecordingDomainEvents;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -90,7 +91,7 @@ final class ManageProductsTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new ProductReferenceSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->changeSettings = new ChangeSettings($catalog, $settings, $resolve, $this->audit, $clock, $transactions);
+        $this->changeSettings = new ChangeSettings($catalog, $settings, $resolve, $this->audit, $clock, $transactions, new RecordingDomainEvents());
         $this->costHistory = new InMemoryProductCostChanges();
         $products = new InMemoryProducts();
         $this->references = new ProductReferences(new InMemoryProductReferenceSequences(), $products, $this->categories, new ReadSetting($resolve), $transactions);

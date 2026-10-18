@@ -36,7 +36,7 @@ final class RecordFailedLoginTest extends TestCase
 
     public function testAWrongPasswordCountsAgainstTheAccountAndIsAudited(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $this->users->save($user);
 
         $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'BadCredentialsException', wrongCredential: true));
@@ -53,7 +53,7 @@ final class RecordFailedLoginTest extends TestCase
 
     public function testTheFifthWrongPasswordLocksTheAccount(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $this->users->save($user);
 
         for ($i = 0; $i < 5; ++$i) {
@@ -67,7 +67,7 @@ final class RecordFailedLoginTest extends TestCase
 
     public function testARefusalThatIsNotAWrongPasswordLeavesTheCounterAlone(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
         $this->users->save($user);
 
         // Already locked, disabled, throttled: retrying must not extend the lock without end.

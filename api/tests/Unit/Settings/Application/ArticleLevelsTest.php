@@ -23,6 +23,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemorySettings;
+use App\Tests\Support\RecordingDomainEvents;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -45,7 +46,7 @@ final class ArticleLevelsTest extends TestCase
         $this->settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $this->resolve = new ResolveSettings($catalog, $this->settings);
-        $this->change = new ChangeSettings($catalog, $this->settings, $this->resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), new MockClock('2026-09-14 09:00:00'), $transactions);
+        $this->change = new ChangeSettings($catalog, $this->settings, $this->resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), new MockClock('2026-09-14 09:00:00'), $transactions, new RecordingDomainEvents());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->categoryId = Uuid::v7();
         $this->productId = Uuid::v7();

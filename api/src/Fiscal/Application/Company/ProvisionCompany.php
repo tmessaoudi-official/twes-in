@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Fiscal\Application\Company;
 
 use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Application\Preset\FiscalPreset;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\UnknownFiscalPreset;
 use App\Fiscal\Domain\Model\TaxComponent;
@@ -53,7 +54,6 @@ final readonly class ProvisionCompany
     public function handle(Company $company): array
     {
         $preset = $this->presets->get($company->getFiscalPreset());
-        $language = str_starts_with(strtolower($company->getLocale()), 'en') ? 'en' : 'fr';
         $now = $this->clock->now();
         $copied = [];
 
@@ -63,7 +63,7 @@ final readonly class ProvisionCompany
                 $this->components->save(TaxComponent::create(
                     $company,
                     $component->code,
-                    $component->names[$language],
+                    self::nameIn($component->names, $company, $preset),
                     $component->family,
                     $component->rate,
                     $component->amount,
@@ -81,7 +81,7 @@ final readonly class ProvisionCompany
 
         if ([] === $this->units->ofCompany($company->getId())) {
             foreach ($preset->units as $unit) {
-                $this->units->save(Unit::create($company, $unit->code, $unit->names[$language], $unit->decimals, $unit->sortOrder, $now));
+                $this->units->save(Unit::create($company, $unit->code, self::nameIn($unit->names, $company, $preset), $unit->decimals, $unit->sortOrder, $now));
             }
             $copied[] = \sprintf('units of %s', $company->getName());
         }
@@ -106,5 +106,16 @@ final readonly class ProvisionCompany
         }
 
         return $copied;
+    }
+
+    /**
+     * A preset names everything in each language documents print in; a company printing in none of its own is given
+     * the names in its country's first.
+     *
+     * @param array<string, string> $names
+     */
+    private static function nameIn(array $names, Company $company, FiscalPreset $preset): string
+    {
+        return $names[$company->getLocale()] ?? $names[$preset->documentLanguages[0] ?? ''] ?? throw new \LogicException('A preset names everything in its document languages.');
     }
 }

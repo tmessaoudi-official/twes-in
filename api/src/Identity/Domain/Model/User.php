@@ -92,7 +92,7 @@ class User
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
-    public function __construct(Email $email, string $displayName, string $locale = 'fr', ?\DateTimeImmutable $now = null)
+    public function __construct(Email $email, string $displayName, string $locale, ?\DateTimeImmutable $now = null)
     {
         $now ??= new \DateTimeImmutable();
         $this->id = Uuid::v7();
@@ -122,6 +122,16 @@ class User
     public function getLocale(): string
     {
         return $this->locale;
+    }
+
+    /** The language this account's mails and the API's own words are written in. */
+    public function changeLocale(string $locale): void
+    {
+        if ($locale === $this->locale) {
+            return;
+        }
+        $this->locale = $locale;
+        $this->touch();
     }
 
     public function isActive(): bool

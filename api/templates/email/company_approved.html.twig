@@ -1,6 +1,6 @@
 {# The mail an owner receives when an operator approves their company. Plain, inline-styled HTML. #}
 <!DOCTYPE html>
-<html lang="{{ app.request.locale|default('fr') }}">
+<html lang="{{ app.locale }}">
   <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
     <h1 style="font-size: 20px;">{{ 'company_approved.heading'|trans({'%company%': companyName}, 'emails') }}</h1>
     <p>{{ 'company_approved.intro'|trans({'%company%': companyName, '%product%': productName}, 'emails') }}</p>

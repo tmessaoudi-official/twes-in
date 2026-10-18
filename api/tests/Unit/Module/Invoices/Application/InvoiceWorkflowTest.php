@@ -110,7 +110,7 @@ final class InvoiceWorkflowTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents());
         $numbers = new AllocateNumber($this->series, $this->transactions, $this->clock);
         $this->workflow = new InvoiceWorkflow(
             $this->invoices,

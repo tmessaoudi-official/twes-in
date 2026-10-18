@@ -11,11 +11,13 @@ namespace App\Settings\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Settings\Domain\Event\PersonalSettingChanged;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\Repository\SettingRepository;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\DomainEvents;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
@@ -38,6 +40,7 @@ final readonly class ChangeSettings
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private DomainEvents $events,
     ) {
     }
 
@@ -57,9 +60,8 @@ final readonly class ChangeSettings
 
         // A single key is a person's own choice or a value set from a script: the last word is the intent, and holding
         // the row keeps two of them from meeting at the version check of a flush.
-        $this->transactions->run(function () use ($address, $key, $value, $actorUserId): void {
-            $this->store($address, $key, $value, $this->settings->lockedFind($address, $key), $actorUserId);
-        });
+        $told = $this->transactions->run(fn (): array => $this->store($address, $key, $value, $this->settings->lockedFind($address, $key), $actorUserId));
+        $this->events->publish(...$told);
 
         return $this->resolve->one($context, $key);
     }
@@ -90,27 +92,34 @@ final readonly class ChangeSettings
             $located[$change->key] = [$address, $definition->normalize($change->value), $change->version];
         }
 
-        $this->transactions->run(function () use ($located, $actorUserId): void {
+        $told = $this->transactions->run(function () use ($located, $actorUserId): array {
+            $told = [];
             foreach ($located as $key => [$address, $value, $version]) {
                 $setting = $this->settings->lockedFind($address, $key);
                 if ((null === $setting ? 0 : $setting->getVersion()) !== $version) {
                     throw new RecordChanged();
                 }
-                $this->store($address, $key, $value, $setting, $actorUserId);
+                array_push($told, ...$this->store($address, $key, $value, $setting, $actorUserId));
             }
+
+            return $told;
         });
+        $this->events->publish(...$told);
     }
 
-    private function store(SettingAddress $address, string $key, mixed $value, ?Setting $setting, ?Uuid $actorUserId): void
+    /** @return list<PersonalSettingChanged> what to tell once the transaction has committed */
+    private function store(SettingAddress $address, string $key, mixed $value, ?Setting $setting, ?Uuid $actorUserId): array
     {
         $now = $this->clock->now();
         if (null === $setting) {
             $setting = new Setting($address, $key, $value, $now);
         } elseif (!$setting->change($value, $now)) {
-            return;
+            return [];
         }
         $this->settings->save($setting);
         $this->record(self::CHANGED, $setting, $address, $actorUserId);
+
+        return self::personal($address, $key, $value);
     }
 
     /**
@@ -120,13 +129,17 @@ final readonly class ChangeSettings
     public function reset(SettingContext $context, string $key, SettingLevel $level, ?Uuid $actorUserId): ResolvedSetting
     {
         [, $address] = $this->locate($context, $key, $level);
-        $this->transactions->run(function () use ($address, $key, $actorUserId): void {
+        $told = $this->transactions->run(function () use ($address, $key, $actorUserId): array {
             $setting = $this->settings->lockedFind($address, $key);
-            if (null !== $setting) {
-                $this->settings->remove($setting);
-                $this->record(self::RESET, $setting, $address, $actorUserId);
+            if (null === $setting) {
+                return [];
             }
+            $this->settings->remove($setting);
+            $this->record(self::RESET, $setting, $address, $actorUserId);
+
+            return self::personal($address, $key, null);
         });
+        $this->events->publish(...$told);
 
         return $this->resolve->one($context, $key);
     }
@@ -141,6 +154,12 @@ final readonly class ChangeSettings
         $address = $context->addressOf($level) ?? throw new SettingLevelRefused(\sprintf('There is no %s here to set %s for.', $level->value, $key));
 
         return [$definition, $address];
+    }
+
+    /** @return list<PersonalSettingChanged> */
+    private static function personal(SettingAddress $address, string $key, mixed $value): array
+    {
+        return SettingLevel::User === $address->level ? [new PersonalSettingChanged(Uuid::fromString($address->levelId), $key, $value)] : [];
     }
 
     /** A person's own preferences are theirs alone and change too often to be worth a trail; every shared default is audited. */

@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\Resource;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
+use App\Shared\Infrastructure\Validation\DocumentLanguage;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\CreateCompanyProcessor;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -59,7 +60,7 @@ final class CompanyResource
     public string $currency = '';
 
     #[Assert\NotBlank(groups: ['create'])]
-    #[Assert\Locale(canonicalize: true, groups: ['create'])]
+    #[DocumentLanguage(groups: ['create'])]
     #[Groups([self::READ, self::WRITE])]
     public string $locale = '';
 

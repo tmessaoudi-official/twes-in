@@ -1,6 +1,6 @@
 {# The invitation mail. Plain, inline-styled HTML: mail clients strip stylesheets, and this has one job. #}
 <!DOCTYPE html>
-<html lang="{{ app.request.locale|default('fr') }}">
+<html lang="{{ app.locale }}">
   <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
     <h1 style="font-size: 20px;">{{ 'invitation.heading'|trans({'%company%': companyName}, 'emails') }}</h1>
     {% if invitedByName %}

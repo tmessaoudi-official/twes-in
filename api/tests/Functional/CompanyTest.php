@@ -119,6 +119,20 @@ final class CompanyTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
+    /** A company's language is the one its documents print in: a tag of the catalogue, never any locale ICU knows. */
+    public function testALanguageDocumentsDoNotPrintInIsRefused(): void
+    {
+        $this->operatorSignedIn();
+
+        foreach (['de', 'fr_TN', 'ar'] as $locale) {
+            $this->postJson('/api/companies', [...self::VALID, 'name' => 'Acme '.$locale, 'locale' => $locale]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $locale);
+            self::assertSame(['locale'], array_column($this->refusals(), 'propertyPath'), $locale);
+        }
+        $this->postJson('/api/companies', [...self::VALID, 'locale' => 'en']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
     public function testAnUnknownTimezoneIsRefused(): void
     {
         $this->operatorSignedIn();

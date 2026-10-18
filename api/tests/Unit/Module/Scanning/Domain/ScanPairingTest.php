@@ -147,6 +147,6 @@ final class ScanPairingTest extends TestCase
 
     private function user(): User
     {
-        return new User(Email::fromString('amel@twes.local'), 'Amel');
+        return new User(Email::fromString('amel@twes.local'), 'Amel', 'fr');
     }
 }

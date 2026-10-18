@@ -31,6 +31,7 @@ use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemorySettings;
+use App\Tests\Support\RecordingDomainEvents;
 use App\Tests\Support\ShippedFiscalPresets;
 use App\Tests\Support\ShippedMentionWording;
 use PHPUnit\Framework\TestCase;
@@ -57,7 +58,7 @@ final class InvoiceMentionsTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), $this->clock, $transactions);
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), $this->clock, $transactions, new RecordingDomainEvents());
         $presets = ShippedFiscalPresets::presets();
         $this->mentions = new InvoiceMentions($presets, new ExcludedTaxFamilies($presets), ShippedMentionWording::wording(), new ReadSetting($resolve));
         $this->atelier = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris');

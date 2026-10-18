@@ -379,7 +379,7 @@ final class RolesTest extends ApiTestCase
         self::assertInstanceOf(Role::class, $role);
         $company = $em->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
-        $user = new User(Email::fromString($email), 'Sami');
+        $user = new User(Email::fromString($email), 'Sami', 'fr');
         $em->persist($user);
         $em->persist(new Membership($user, $company, $role));
         $em->flush();
