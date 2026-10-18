@@ -289,6 +289,23 @@ class PurchaseOrder implements CompanyOwned
     }
 
     /** @throws PurchaseOrderTransitionRefused */
+    /**
+     * Each line's vendor's own code for its product, by product id. Read again on every save of the draft and when it is
+     * sent, never typed and never counted as a change of the lines: what the order keeps is what the product said when
+     * the order went out, under whichever vendor it then names.
+     *
+     * @param array<string, string> $codes
+     *
+     * @throws PurchaseOrderTransitionRefused
+     */
+    public function keepVendorCodes(array $codes): void
+    {
+        $this->assertDraft('reads its vendor\'s codes');
+        foreach ($this->lines as $line) {
+            $line->keepVendorCode($codes[$line->getProductId()->toRfc4122()] ?? null);
+        }
+    }
+
     public function assertDraft(string $what): void
     {
         if (PurchaseOrderStatus::Draft !== $this->status) {

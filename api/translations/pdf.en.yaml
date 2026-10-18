@@ -25,6 +25,7 @@ purchase_order:
     title: 'Purchase order'
     vendor: 'Vendor'
     vendor_number: 'Vendor code'
+    vendor_code: 'Vendor ref.'
     issue_date: 'Date'
     expected_on: 'Expected on'
     reference: 'Ref.'

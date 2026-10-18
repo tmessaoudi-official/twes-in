@@ -33,4 +33,15 @@ interface OrderProducts
      * @return list<OrderProduct>
      */
     public function ofIds(Company $company, array $ids): array;
+
+    /**
+     * The vendor's own code for those of these products it has one for, by product id: the product's supplier code
+     * naming the vendor that enters one piece, the first in the product's code order when there are several. A code
+     * entering a carton is left out, as a line counts the product's own unit.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return array<string, string>
+     */
+    public function vendorCodes(Company $company, Uuid $vendorId, array $ids): array;
 }

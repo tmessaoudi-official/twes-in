@@ -71,6 +71,8 @@ export interface PurchaseOrderLine {
   unitPriceNet: string | null;
   /** The line's net at the currency's scale; null when its price is. */
   net: string | null;
+  /** The vendor's own code for the product; null when it has none, or withheld from whoever may not read costs. */
+  vendorCode: string | null;
   received: string;
   outstanding: string;
 }

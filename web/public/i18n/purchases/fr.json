@@ -63,6 +63,7 @@
       "title": "Lignes",
       "position": "Ligne {{position}}",
       "line": "La ligne",
+      "vendor_code": "Réf. fournisseur :",
       "productId": "Produit",
       "description": "Désignation",
       "description_hint": "Le nom du produit au départ ; écrivez-la comme le fournisseur doit la lire.",

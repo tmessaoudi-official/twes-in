@@ -13,6 +13,9 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Inventory\Application\KeepProductHomes;
 use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\ValueObject\Barcode;
+use App\Module\Products\Domain\ValueObject\BarcodeLine;
+use App\Module\Products\Domain\ValueObject\BarcodeRole;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
@@ -265,6 +268,60 @@ final class PurchaseOrdersTest extends ApiTestCase
         self::assertSame('0.2500', $this->em()->getConnection()->fetchOne('SELECT cost_price FROM product WHERE id = ?', [$this->screws]), 'whoever may not read costs moves no cost');
     }
 
+    public function testALineKeepsTheVendorsOwnCodeForItsProductAndOnlyACostReaderReadsIt(): void
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Outillage du Nord'), new \DateTimeImmutable());
+        $this->em()->persist($other);
+        $this->codes([
+            new BarcodeLine(BarcodeRole::Unit, new Barcode('6191234567897'), 1),
+            // A carton's code is not the code of what a line counts.
+            new BarcodeLine(BarcodeRole::Supplier, new Barcode('SUD-C100'), 100, $this->vendorEntity($this->vendor)),
+            new BarcodeLine(BarcodeRole::Supplier, new Barcode('SUD-VIS6'), 1, $this->vendorEntity($this->vendor)),
+            new BarcodeLine(BarcodeRole::Supplier, new Barcode('NORD-61'), 1, $other),
+        ]);
+        $otherId = $other->getId()->toRfc4122();
+
+        $this->signedIn('buyer', self::BUYER);
+        $this->postJson($this->path(), ['vendorId' => $this->vendor, 'lines' => [
+            ['productId' => $this->screws, 'quantity' => '10'],
+            ['productId' => $this->paint, 'quantity' => '2'],
+        ]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame(['SUD-VIS6', null], array_column($this->rows($this->json(), 'lines'), 'vendorCode'));
+
+        // Another vendor named by the next save brings its own code, and the lines did not change for it.
+        $this->sendJson('PUT', $this->path($id), ['vendorId' => $otherId, 'version' => $this->intAt($this->json(), 'version'), 'lines' => [
+            ['productId' => $this->screws, 'quantity' => '10', 'unitPriceNet' => '0.2500'],
+            ['productId' => $this->paint, 'quantity' => '2'],
+        ]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['NORD-61', null], array_column($this->rows($this->json(), 'lines'), 'vendorCode'));
+        self::assertSame(['fields' => ['vendorId']], json_decode($this->text("SELECT changes::text FROM audit_log WHERE action = 'purchase_order.revised'"), true));
+
+        // What the vendor's code is when the order goes out is what the order keeps.
+        $this->codes([new BarcodeLine(BarcodeRole::Supplier, new Barcode('NORD-62'), 1, $this->vendorEntity($otherId))]);
+        $this->postJson($this->path($id).'/send', null);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['NORD-62', null], array_column($this->rows($this->json(), 'lines'), 'vendorCode'));
+        $this->codes([new BarcodeLine(BarcodeRole::Supplier, new Barcode('NORD-63'), 1, $this->vendorEntity($otherId))]);
+        $this->getJson($this->path($id));
+        self::assertSame(['NORD-62', null], array_column($this->rows($this->json(), 'lines'), 'vendorCode'));
+
+        // A supplier's code is a cost reader's to read, in the order as on the product.
+        $this->signedIn('writer', self::WRITER);
+        foreach ([$this->path($id), $this->path().'?q=nord'] as $read) {
+            $this->getJson($read);
+            self::assertResponseIsSuccessful();
+            foreach (str_contains($read, '?') ? $this->jsonList() : [$this->json()] as $row) {
+                self::assertSame([null, null], array_column($this->rows($row, 'lines'), 'vendorCode'), $read);
+            }
+        }
+        self::assertSame('NORD-62', $this->text('SELECT vendor_code FROM purchase_order_line WHERE vendor_code IS NOT NULL'));
+    }
+
     public function testAnOrderIsClosedShortOrCancelledWhileNothingCame(): void
     {
         $this->signedIn('buyer', self::BUYER);
@@ -472,6 +529,24 @@ final class PurchaseOrdersTest extends ApiTestCase
         $this->signedIn('receiver', self::RECEIVER);
         $this->getJson($this->path(self::ABSENT).'/receiving');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /** @param list<BarcodeLine> $lines the screws' codes from now on */
+    private function codes(array $lines): void
+    {
+        $screws = $this->em()->find(Product::class, Uuid::fromString($this->screws));
+        self::assertNotNull($screws);
+        $screws->replaceBarcodes($lines, new \DateTimeImmutable());
+        $this->em()->flush();
+    }
+
+    /** A vendor as the entity manager holds it now: a request reboots the kernel and detaches what was read before. */
+    private function vendorEntity(string $id): Vendor
+    {
+        $vendor = $this->em()->find(Vendor::class, Uuid::fromString($id));
+        self::assertNotNull($vendor);
+
+        return $vendor;
     }
 
     /** @param list<string> $permissions */

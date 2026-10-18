@@ -110,6 +110,7 @@
             [companyId]="company()?.id ?? ''"
             [seesCost]="seesCost()"
             [named]="named()"
+            [vendorCodes]="vendorCodes()"
             [refused]="refusedLine()"
           />
         } @else if (current(); as order) {
@@ -151,6 +152,14 @@
                         <span class="block text-sm text-on-surface-variant"
                           ><bdi>{{ line.description }}</bdi></span
                         >
+                        @if (line.vendorCode) {
+                          <span
+                            class="block text-sm text-on-surface-variant"
+                            [attr.data-testid]="'purchase-order-line-' + i + '-vendor-code'"
+                            >{{ 'purchases.lines.vendor_code' | translate }}
+                            <bdi>{{ line.vendorCode }}</bdi></span
+                          >
+                        }
                       </td>
                       <td class="p-2 text-end tabular-nums">
                         {{ plain(line.quantity) | amount: null }} <bdi>{{ line.unitName }}</bdi>

@@ -88,6 +88,7 @@ function orderIn(status: PurchaseOrderStatus): PurchaseOrderRow {
         unitName: 'pièce',
         unitPriceNet: '0.1200',
         net: '12.000',
+        vendorCode: 'SUD-VIS6',
         received: status === 'partly_received' ? '40.000' : '0.000',
         outstanding: status === 'partly_received' ? '60.000' : '100.000',
       },
@@ -390,6 +391,25 @@ describe('PurchaseOrderPage', () => {
     order.set(orderIn('sent'));
     await open('o1');
     expect(await offered()).toEqual(['cancel', 'receive']);
+  });
+
+  it('names each line by the vendor’s own code for its product, in a draft as on a sent order', async () => {
+    order.set(orderIn('draft'));
+    await open('o1');
+    expect(q('purchase-line-0-vendor-code')?.textContent).toContain('SUD-VIS6');
+
+    fixture.destroy();
+    order.set(orderIn('sent'));
+    await open('o1');
+    expect(q('purchase-order-line-0-vendor-code')?.textContent).toContain('SUD-VIS6');
+
+    fixture.destroy();
+    order.set({
+      ...orderIn('sent'),
+      lines: orderIn('sent').lines.map((line) => ({ ...line, vendorCode: null })),
+    });
+    await open('o1');
+    expect(q('purchase-order-line-0-vendor-code')).toBeNull();
   });
 
   it('offers nothing on a sent order to whoever neither writes orders nor receives goods', async () => {

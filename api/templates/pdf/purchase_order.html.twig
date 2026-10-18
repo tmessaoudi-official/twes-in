@@ -62,10 +62,13 @@
     {% if header.expectedOn %}<div><dt>{{ 'purchase_order.expected_on'|trans({}, t, locale) }}</dt><dd>{{ header.expectedOn|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
   </dl>
 
+  {#- The vendor's own codes get a column only when a line has one. #}
+  {%- set vendorCodes = order.lines|filter(line => line.vendorCode is not null)|length > 0 %}
   <table>
     <thead>
       <tr>
         <th>{{ 'purchase_order.reference'|trans({}, t, locale) }}</th>
+        {%- if vendorCodes %}<th>{{ 'purchase_order.vendor_code'|trans({}, t, locale) }}</th>{% endif %}
         <th>{{ 'line.description'|trans({}, t, locale) }}</th>
         <th class="number">{{ 'line.quantity'|trans({}, t, locale) }}</th>
         <th>{{ 'line.unit'|trans({}, t, locale) }}</th>
@@ -78,6 +81,7 @@
         {%- set net = page.totals.nets[loop.index0] %}
         <tr>
           <td><bdi>{{ line.productReference }}</bdi></td>
+          {%- if vendorCodes %}<td>{% if line.vendorCode is not null %}<bdi>{{ line.vendorCode }}</bdi>{% endif %}</td>{% endif %}
           <td><bdi>{{ line.description|nl2br }}</bdi></td>
           <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
           <td>{{ line.unit.name }}</td>
