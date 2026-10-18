@@ -64,6 +64,7 @@ const numbered: DeliveryNoteRow = {
   taxes: [],
   totalTax: '0.000',
   total: '2500',
+  invoices: [],
 };
 
 describe('DeliveryNotesPage', () => {

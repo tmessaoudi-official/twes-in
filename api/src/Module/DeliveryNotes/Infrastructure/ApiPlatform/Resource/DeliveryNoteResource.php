@@ -22,6 +22,7 @@ use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\LineTotals;
 use App\Fiscal\Domain\Calculation\TaxTotal;
 use App\Fiscal\Infrastructure\ApiPlatform\Output\DocumentPreview;
+use App\Module\DeliveryNotes\Application\CarryingInvoice;
 use App\Module\DeliveryNotes\Application\DeliveryNoteInput;
 use App\Module\DeliveryNotes\Application\DeliveryNoteLineInput;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
@@ -201,6 +202,27 @@ final class DeliveryNoteResource
     #[Groups([self::READ])]
     public ?string $invoicedByInvoiceId = null;
 
+    /**
+     * The invoices that are not cancelled carrying the note's lines, drafts included, the oldest first: where the note
+     * links to.
+     *
+     * @var list<array{invoiceId: string, number: string|null, status: string}>
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['invoiceId', 'number', 'status'],
+            'properties' => [
+                'invoiceId' => self::ID,
+                'number' => self::TEXT_OR_NULL,
+                'status' => ['type' => 'string', 'enum' => ['draft', 'issued', 'partially_paid', 'paid']],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $invoices = [];
+
     /** One of the company's active customers (GET .../delivery-note-options). */
     #[Assert\NotBlank(groups: [self::WRITE])]
     #[Assert\Uuid(groups: [self::WRITE])]
@@ -374,7 +396,8 @@ final class DeliveryNoteResource
     #[Groups([self::READ])]
     public string $total = '0';
 
-    public static function of(DeliveryNote $note, DocumentTotals $totals): self
+    /** @param list<CarryingInvoice> $invoices */
+    public static function of(DeliveryNote $note, DocumentTotals $totals, array $invoices = []): self
     {
         $header = $note->getHeader();
         $resource = new self();
@@ -383,6 +406,7 @@ final class DeliveryNoteResource
         $resource->number = $note->getNumber();
         $resource->status = $note->getStatus()->value;
         $resource->invoicedByInvoiceId = $note->getInvoicedByInvoiceId()?->toRfc4122();
+        $resource->invoices = array_map(static fn (CarryingInvoice $invoice): array => ['invoiceId' => $invoice->id->toRfc4122(), 'number' => $invoice->number, 'status' => $invoice->status], $invoices);
         $resource->customerId = $note->getCustomer()->getId()->toRfc4122();
         $resource->customerName = $note->getCustomer()->getProfile()->name;
         $resource->establishmentId = $note->getEstablishment()->getId()->toRfc4122();

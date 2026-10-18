@@ -12,8 +12,8 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Provider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\DeliveryNotes\Application\DeliveryNoteNotFound;
-use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
+use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output\DeliveryNoteView;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteResource;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -23,7 +23,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /** @implements ProviderInterface<DeliveryNoteResource> */
 final readonly class DeliveryNoteItemProvider implements ProviderInterface
 {
-    public function __construct(private ManageDeliveryNotes $manage, private DeliveryNoteTotals $totals, private CompanyGuard $guard)
+    public function __construct(private ManageDeliveryNotes $manage, private DeliveryNoteView $view, private CompanyGuard $guard)
     {
     }
 
@@ -37,6 +37,6 @@ final readonly class DeliveryNoteItemProvider implements ProviderInterface
             throw new NotFoundHttpException('No such delivery note.', $absent);
         }
 
-        return DeliveryNoteResource::of($note, $this->totals->of($note));
+        return $this->view->of($note);
     }
 }

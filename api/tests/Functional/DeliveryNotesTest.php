@@ -581,7 +581,7 @@ final class DeliveryNotesTest extends ApiTestCase
 
     public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
     {
-        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'invoice.read', 'invoice.write']);
         // A product per note, so the identity map cannot hide a read per row; made before the first request, which
         // reboots the kernel and leaves the company detached.
         $products = [];
@@ -595,8 +595,12 @@ final class DeliveryNotesTest extends ApiTestCase
             $this->postJson($this->path(), $this->note(['lines' => [['productId' => $productId, 'quantity' => '2'], ['productId' => $this->productId, 'quantity' => '1']]]));
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
             if ($n > 3) {
-                $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/validate', null);
+                $note = $this->stringAt($this->json(), 'id');
+                $this->postJson($this->path($note).'/validate', null);
                 self::assertResponseStatusCodeSame(Response::HTTP_OK);
+                // An invoice of its own per note, so reading each invoice's lines apart would show as a read per row.
+                $this->postJson($this->companyPath().'/invoices/from-delivery-notes', ['deliveryNoteIds' => [$note]]);
+                self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
             }
         }
         $this->em()->clear();
@@ -604,9 +608,12 @@ final class DeliveryNotesTest extends ApiTestCase
         $statements = [1 => $this->statementsForAPageOf($this->path(), 1), 6 => $this->statementsForAPageOf($this->path(), 6)];
 
         self::assertSame($statements[1], $statements[6], 'six rows cost what one does (audit PF-07)');
-        // Measured 11 on 2026-09-25 (15 for one row, 35 for six before), the session and the company's checks included, plus one:
-        // the read of whether the person ended this session (the connected devices screen), made on every signed-in request.
-        self::assertLessThanOrEqual(12, $statements[6]);
+        // Measured 11 (15 for one row, 35 for six before), the session and the company's checks included, plus two: the read
+        // of whether the person ended this session (the connected devices screen), made on every signed-in request, and the
+        // invoices carrying the page's notes, which each note links to, read once for the page with their lines; plus
+        // three for whether the person may open those invoices: the invoices module's state, their role and the
+        // company's standing, read once for the page.
+        self::assertLessThanOrEqual(16, $statements[6]);
     }
 
     /** A draft delivering one unit of the product; its id. */

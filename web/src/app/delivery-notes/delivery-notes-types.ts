@@ -161,6 +161,13 @@ export interface TaxTotal {
   amount: string;
 }
 
+/** An invoice that is not cancelled carrying lines of a note, which the note links to; a draft has no number yet. */
+export interface CarryingInvoice {
+  invoiceId: string;
+  number: string | null;
+  status: 'draft' | 'issued' | 'partially_paid' | 'paid';
+}
+
 export interface DeliveryNoteRow {
   id: string;
   /** The version read, which a revision sends back; one saved since is refused as `record_changed`. */
@@ -188,6 +195,8 @@ export interface DeliveryNoteRow {
   taxes: TaxTotal[];
   totalTax: string;
   total: string;
+  /** The invoices carrying the note, oldest first; none when the person may not open invoices. */
+  invoices: CarryingInvoice[];
 }
 
 export interface DeliveryNoteInput {

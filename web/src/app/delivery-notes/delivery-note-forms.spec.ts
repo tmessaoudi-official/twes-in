@@ -98,6 +98,7 @@ const validated: DeliveryNoteRow = {
   taxes: [{ code: 'TVA19', rate: '19', base: '20.000', amount: '3.800' }],
   totalTax: '3.800',
   total: '23.8',
+  invoices: [],
 };
 
 describe('delivery note forms', () => {

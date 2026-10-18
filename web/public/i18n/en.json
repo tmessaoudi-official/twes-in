@@ -1879,6 +1879,8 @@
       "cancelled": "This note is cancelled and no longer changes; it can still be printed."
     },
     "invoiced_note": "This note is on an issued invoice: it is neither delivered nor cancelled any more, and can still be printed.",
+    "on_invoices": "Invoiced on",
+    "invoice_draft": "draft invoice",
     "statuses": {
       "draft": "Draft",
       "validated": "Validated",

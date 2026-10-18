@@ -1879,6 +1879,8 @@
       "cancelled": "Ce bon est annulé et ne change plus ; il peut encore être imprimé."
     },
     "invoiced_note": "Ce bon figure sur une facture émise : il n’est plus ni livré ni annulé, et peut encore être imprimé.",
+    "on_invoices": "Facturé sur",
+    "invoice_draft": "facture en brouillon",
     "statuses": {
       "draft": "Brouillon",
       "validated": "Validé",
