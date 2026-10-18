@@ -13,6 +13,9 @@ const CSRF = '0123456789abcdef0123456789abcdef';
 test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and the stock list names it', async ({
   page,
 }) => {
+  // A product set up, two receipts, three accessibility scans, the recall and the clean-up: 15 to 32 s on CI, where the
+  // default 30 s cut the clean-up off and left the product behind.
+  test.setTimeout(90_000);
   const run = Date.now().toString(36).toUpperCase();
   const reference = `LOT-${run}`;
   const lot = `L-${run}`;
