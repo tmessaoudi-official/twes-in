@@ -72,6 +72,24 @@ describe('ColourField', () => {
     expect(fixture.componentInstance.control.value).toBe('#455a64');
   });
 
+  it('moves to the next swatch with the arrow towards the end of the line, the left one in right to left', async () => {
+    document.documentElement.dir = 'rtl';
+    try {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ providers: [provideTranslateService()] });
+      fixture = TestBed.createComponent(Host);
+      await settle();
+
+      q('accent-swatch-blue').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }),
+      );
+      await settle();
+      expect(fixture.componentInstance.control.value).toBe('#b3261e');
+    } finally {
+      document.documentElement.dir = '';
+    }
+  });
+
   it('takes a written colour, and flags text that is not one without dropping it', async () => {
     const input = q('accent') as HTMLInputElement;
     input.value = '#ABCDEF';

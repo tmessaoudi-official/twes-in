@@ -537,6 +537,48 @@ describe('DataList', () => {
     expect(q('list-header-balance')!.style.width).toBe('136px');
   });
 
+  describe('right to left', () => {
+    beforeEach(async () => {
+      document.documentElement.dir = 'rtl';
+      await mount();
+    });
+
+    afterEach(() => {
+      document.documentElement.dir = '';
+    });
+
+    it('widens a column with the arrow towards the end of the line, the left one', async () => {
+      q('list-resize-balance')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+      );
+      await settle();
+
+      expect(preferences().widths).toEqual({ balance: 136 });
+    });
+
+    it('widens a column dragged towards the end of the line, leftwards', async () => {
+      q('list-resize-balance')!.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, clientX: 300 }),
+      );
+      window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 280 }));
+      await settle();
+
+      expect(q('list-header-balance')!.style.width).toBe('140px');
+      window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    });
+  });
+
+  it('narrows a column dragged leftwards, left to right', async () => {
+    q('list-resize-balance')!.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, clientX: 300 }),
+    );
+    window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 280 }));
+    await settle();
+
+    expect(q('list-header-balance')!.style.width).toBe('100px');
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  });
+
   it('starts from what a person saved', async () => {
     await mount({
       ...NO_LIST_PREFERENCES,

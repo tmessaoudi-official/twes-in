@@ -27,6 +27,15 @@ out=$(run "$d"); check "a tag in PHP is refused with its file and line" $? 1 "$o
 d=$(tree); printf "const locale = \"en-GB\";\n" > "$d/web/src/app/clock.ts"
 out=$(run "$d"); check "a tag with its region, in TypeScript, is refused" $? 1 "$out" "web/src/app/clock.ts:1"
 
+d=$(tree); printf "<?php\n\\Locale::setDefault('fr_FR');\n" > "$d/api/src/Intl.php"
+out=$(run "$d"); check "a tag in intl's underscore form is refused" $? 1 "$out" "api/src/Intl.php:2"
+
+d=$(tree); printf "<?php\n\\Locale::setDefault('ar_Arab_TN');\n" > "$d/api/src/Intl.php"
+out=$(run "$d"); check "a tag in intl's form with its script is refused" $? 1 "$out" "api/src/Intl.php:2"
+
+d=$(tree); printf "<?php\nenum Check: string { case Key = 'fr_vat_key'; }\n" > "$d/api/src/Check.php"
+out=$(run "$d"); check "a key starting with a language and an underscore is no tag" $? 0 "$out" "OK"
+
 d=$(tree); printf '<html lang="fr"></html>\n' > "$d/api/templates/email/old.html.twig"
 out=$(run "$d"); check "a tag in a template is refused" $? 1 "$out" "old.html.twig:1"
 
@@ -60,6 +69,9 @@ out=$(run "$d"); check "specs and the generated API types are left out" $? 0 "$o
 
 d=$(tree); printf '{"languages": []}\n' > "$d/api/config/languages.json"
 out=$(run "$d"); check "a catalogue with no language is refused, not read as nothing to find" $? 1 "$out" "no language"
+
+d=$(tree); chmod 000 "$d/web/src/app/hello.html"
+out=$(run "$d"); status=$?; chmod 644 "$d/web/src/app/hello.html"; check "a file that cannot be read is refused, not read as clean" "$status" 1 "$out" "hello.html: cannot be read"
 
 d=$(tree); rm -r "$d/web/src/app"
 out=$(run "$d"); check "a missing web/src/app is refused, not skipped" $? 1 "$out" "found no web/src/app"

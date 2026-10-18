@@ -30,7 +30,7 @@ import { LegalText } from '../shared/legal/legal-text';
             class="inline-flex items-center gap-1"
             data-testid="legal-back"
           >
-            <mat-icon aria-hidden="true">arrow_back</mat-icon>
+            <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">arrow_back</mat-icon>
             <span>{{ 'legal.back' | translate }}</span>
           </a>
         </p>

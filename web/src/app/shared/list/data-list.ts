@@ -7,6 +7,7 @@ import {
   CdkDropList,
   moveItemInArray,
 } from '@angular/cdk/drag-drop';
+import { Directionality } from '@angular/cdk/bidi';
 import { NgTemplateOutlet } from '@angular/common';
 import {
   afterNextRender,
@@ -46,6 +47,7 @@ import { MatTableModule } from '@angular/material/table';
 import { ActivatedRoute, type Params, Router, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FormatFacade } from '../i18n/format-facade';
+import { arrowAlongLine, scrolledFromStart, towardsEnd } from '../i18n/inline-direction';
 import { SettingsFacade } from '../settings/settings-facade';
 import {
   listPreferencesSetting,
@@ -197,6 +199,7 @@ export class DataList<Row> implements OnInit {
   private readonly router = inject(Router, { optional: true });
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly document = inject(DOCUMENT);
+  private readonly direction = inject(Directionality);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly translate = inject(TranslateService);
@@ -273,8 +276,8 @@ export class DataList<Row> implements OnInit {
   protected readonly toolbarHeight = signal<number | null>(null);
   /** How wide the table's card is, once measured; null before, and where there is no layout. */
   private readonly boxWidth = signal<number | null>(null);
-  /** Whether columns sit past the card's right edge, under the pinned actions: a shadow then says so. */
-  protected readonly scrollsRight = signal(false);
+  /** Whether columns sit past the card's end edge, under the pinned actions: a shadow then says so. */
+  protected readonly scrollsOn = signal(false);
 
   protected readonly columns = computed(() =>
     resolveColumns(this.descriptor(), this.preferences()),
@@ -669,7 +672,7 @@ export class DataList<Row> implements OnInit {
       if (box === undefined || typeof ResizeObserver === 'undefined') return;
       const measure = (): void => {
         this.boxWidth.set(box.clientWidth);
-        this.scrollsRight.set(box.scrollLeft + box.clientWidth < box.scrollWidth - 1);
+        this.scrollsOn.set(scrolledFromStart(box) + box.clientWidth < box.scrollWidth - 1);
       };
       const observer = new ResizeObserver(measure);
       observer.observe(box);
@@ -1217,8 +1220,8 @@ export class DataList<Row> implements OnInit {
   }
 
   protected onResizeKey(event: KeyboardEvent, column: ListColumn<Row>): void {
-    const delta =
-      event.key === 'ArrowRight' ? RESIZE_STEP : event.key === 'ArrowLeft' ? -RESIZE_STEP : 0;
+    // The handle sits at the column's end: the arrow towards the end of the line widens it, the left one in Arabic.
+    const delta = arrowAlongLine(event.key, this.direction.value) * RESIZE_STEP;
     if (delta === 0) return;
     event.preventDefault();
     event.stopPropagation();
@@ -1237,7 +1240,9 @@ export class DataList<Row> implements OnInit {
     const move = (moved: PointerEvent) =>
       this.liveWidth.set({
         id: column.id,
-        width: clampWidth(Math.round(startWidth + moved.clientX - startX)),
+        width: clampWidth(
+          Math.round(startWidth + towardsEnd(moved.clientX - startX, this.direction.value)),
+        ),
       });
     const up = () => {
       const live = this.liveWidth();

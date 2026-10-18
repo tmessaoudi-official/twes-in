@@ -183,7 +183,7 @@
     >
       @for (chip of chips(); track chip.key) {
         <li
-          class="inline-flex items-center gap-1 rounded-full bg-secondary-container py-0.5 pl-3 pr-1 text-sm text-on-secondary-container"
+          class="inline-flex items-center gap-1 rounded-full bg-secondary-container py-0.5 ps-3 pe-1 text-sm text-on-secondary-container"
           [attr.data-testid]="'list-chip-' + chip.key"
         >
           <span>
@@ -451,7 +451,7 @@
     <div
       #tableBox
       class="twes-list-table overflow-x-auto"
-      [class.twes-list-scrolls]="scrollsRight()"
+      [class.twes-list-scrolls]="scrollsOn()"
       (pointerover)="titleIfCut($event)"
       (focusin)="titleIfCut($event)"
     >
@@ -513,7 +513,7 @@
                 [attr.aria-valuenow]="widthOf(column)"
                 [attr.aria-valuemin]="minWidth"
                 [attr.aria-valuemax]="maxWidth"
-                class="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-outline-variant focus:bg-primary focus:outline-none"
+                class="absolute inset-e-0 top-0 h-full w-2 cursor-col-resize hover:bg-outline-variant focus:bg-primary focus:outline-none"
                 (click)="$event.stopPropagation()"
                 (keydown)="onResizeKey($event, column)"
                 (pointerdown)="startResize($event, column)"

@@ -689,6 +689,7 @@ export class AppShell {
     this.dialog
       .open(CameraScanPanel, {
         hasBackdrop: false,
+        // The overlay reads right as the end of the line, so the camera keeps to the corner away from the menu.
         position: { bottom: '1rem', right: '1rem' },
         width: 'min(22rem, calc(100vw - 2rem))',
         autoFocus: '[data-testid="camera-close"]',

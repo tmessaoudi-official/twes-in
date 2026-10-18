@@ -139,11 +139,13 @@ was and was not certified by execution.
 - After Wednesday, in an order to set: declarations (fiscal rules await an accountant), composite products, jobs, the till (the Tunisian homologated-register question), zakat (its research pass, row 120).
 ### Needs research
 - Protecting the data at rest on a shop's PC without asking anything of the client (disk encryption is neither checked nor required for Wednesday).
+- Step 7, with a reader of Arabic: whether `logout`, `undo`, `help` and `open_in_new` turn over in Arabic as well (the five that point along the line, back, forward, the chevrons and send, already do, as Material's guidance asks).
 ### Fragile
 - The local restore drill once read « relation restore_drill does not exist » at its point-in-time read; cause not found.
   `scripts/backup/restore-drill.sh` now waits for promotion (`promoted`) and prints the container's log on that failure;
   the four runs since passed, waiting 0 s each. Read that log if it comes back.
 ### Known issues
+- Step 7: in right to left a cell holding a code or a name in Latin letters (ACC-1791…) is cut at its start, the ellipsis on the left: what a person typed takes `dir="auto"` before Arabic ships. The direction gate cannot see styles a component's TypeScript writes inline nor an icon named through a binding; those were read by hand once (the stock map stays drawn left to right on purpose).
 - Step 3 S3: an operator-created company in a language other than the platform default prints in the default until its
   document language is set at company level (ASSUMED 2026-10-18 09:53, parked for review).
 - Step 3 S2: the platform page still repeats each country's currency and time zone (`COMPANY_COUNTRIES` in

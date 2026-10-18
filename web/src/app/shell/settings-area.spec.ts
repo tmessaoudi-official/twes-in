@@ -309,9 +309,9 @@ describe('SettingsArea', () => {
     const nav = byTestId('settings-nav');
     const classes = (nav?.className ?? '').split(/\s+/);
     expect(classes).not.toContain('rounded-xl');
-    // A card is a box on all four sides; a dock is one edge. `border` alone is the box, `border-r` the edge.
+    // A card is a box on all four sides; a dock is one edge. `border` alone is the box, `border-e` the edge.
     expect(classes).not.toContain('border');
-    expect(classes).toContain('lg:border-r');
+    expect(classes).toContain('lg:border-e');
     expect(nav?.className).toMatch(/min-h-/);
 
     const row = el.querySelector('[data-testid="settings-area"]');

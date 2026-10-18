@@ -6,7 +6,7 @@
     (click)="back()"
     data-testid="place-movement-back"
   >
-    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">arrow_back</mat-icon>
     {{ 'inventory.plan.here.title' | translate }}
   </button>
   @if (error(); as code) {

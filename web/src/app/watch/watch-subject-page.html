@@ -4,7 +4,8 @@
     class="flex w-fit items-center gap-1 font-medium text-primary"
     data-testid="watch-back"
   >
-    <mat-icon aria-hidden="true">arrow_back</mat-icon>{{ 'watch.title' | translate }}
+    <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">arrow_back</mat-icon
+    >{{ 'watch.title' | translate }}
   </a>
 
   @if (switcher().length > 1) {
@@ -49,7 +50,8 @@
           class="flex w-fit items-center gap-1 font-medium text-primary"
           data-testid="watch-elsewhere"
         >
-          {{ elsewhere.label | translate }}<mat-icon aria-hidden="true">arrow_forward</mat-icon>
+          {{ elsewhere.label | translate
+          }}<mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">arrow_forward</mat-icon>
         </a>
       }
     </header>

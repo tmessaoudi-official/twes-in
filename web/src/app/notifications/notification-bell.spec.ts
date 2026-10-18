@@ -15,6 +15,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import type { SignedInState } from '../auth/auth-types';
 import { formatAmount, formatDay, formatMoment } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
+import { DocumentDirection } from '../shared/i18n/document-direction';
 import { NotificationBell } from './notification-bell';
 import { NotificationsFacade } from './notifications-facade';
 import type { InboxEntry } from './notifications-types';
@@ -290,6 +291,22 @@ describe('NotificationBell', () => {
     expect(drawn?.textContent).toBe('');
     expect(drawn?.getAttribute('data-glyph')).toBe('9+');
     expect(bell(row).querySelector('.twes-rail-label')?.textContent?.trim()).toBe('Notifications');
+  });
+
+  it("slides the rail's panel over the start of the line, the right edge in right to left", async () => {
+    document.documentElement.dir = 'rtl';
+    try {
+      TestBed.inject(DocumentDirection);
+      await new Promise<void>((resolve) => setTimeout(resolve));
+      const fixture = render();
+      fixture.componentRef.setInput('variant', 'row');
+      await open(fixture);
+
+      const wrapper = document.querySelector<HTMLElement>('.cdk-global-overlay-wrapper');
+      expect(wrapper?.style.justifyContent).toBe('flex-end');
+    } finally {
+      document.documentElement.dir = '';
+    }
   });
 
   it('opens the centre as a named panel on the right, and Escape gives the focus back to the bell', async () => {

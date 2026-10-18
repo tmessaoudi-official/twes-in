@@ -98,7 +98,7 @@ export const PICK_PAUSE_MS = 300;
             @if (option.picture !== undefined) {
               <!-- The words name the row; the picture only helps tell rows apart, so it says nothing more. -->
               <span
-                class="mr-2 inline-flex size-8 shrink-0 overflow-hidden rounded bg-surface-container align-middle"
+                class="me-2 inline-flex size-8 shrink-0 overflow-hidden rounded bg-surface-container align-middle"
               >
                 @if (option.picture) {
                   <img

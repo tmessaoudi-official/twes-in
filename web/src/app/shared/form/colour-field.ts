@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, forwardRef, input, signal } from '@angular/core';
+import { Directionality } from '@angular/cdk/bidi';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  forwardRef,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import {
   type AbstractControl,
   type ControlValueAccessor,
@@ -11,6 +19,7 @@ import {
 } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
+import { arrowAlongLine } from '../i18n/inline-direction';
 import { ACCENT_PRESETS } from '../theme/accent-presets';
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -84,6 +93,7 @@ const HEX = /^#[0-9a-f]{6}$/;
   `,
 })
 export class ColourField implements ControlValueAccessor, Validator {
+  private readonly direction = inject(Directionality);
   readonly inputId = input('');
   readonly labelledBy = input('');
   readonly testId = input('');
@@ -104,12 +114,13 @@ export class ColourField implements ControlValueAccessor, Validator {
   }
 
   protected arrow(event: KeyboardEvent): void {
+    // Along the row of swatches the arrow towards the end of the line moves on, the left one in Arabic.
     const step =
-      event.key === 'ArrowRight' || event.key === 'ArrowDown'
+      event.key === 'ArrowDown'
         ? 1
-        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+        : event.key === 'ArrowUp'
           ? -1
-          : 0;
+          : arrowAlongLine(event.key, this.direction.value);
     if (step === 0 || this.disabled()) return;
     event.preventDefault();
     const from = this.presets.findIndex((preset) => preset.hex === this.text());

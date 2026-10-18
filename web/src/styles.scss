@@ -376,7 +376,8 @@ html {
   align-items: center;
   gap: 0.5rem;
   min-height: 3.5rem;
-  padding: 0.25rem 0.5rem 0.25rem 1rem;
+  padding-block: 0.25rem;
+  padding-inline: 1rem 0.5rem;
   border-radius: var(--mat-sys-corner-medium);
   background: var(--mat-sys-secondary-container);
   color: var(--mat-sys-on-secondary-container);
@@ -400,7 +401,7 @@ html {
     flex: 1 1 12rem;
     max-width: 20rem;
     min-width: 0;
-    margin-right: auto;
+    margin-inline-end: auto;
   }
 
   > button {
@@ -560,7 +561,7 @@ body {
 }
 
 .twes-shell-nav.mat-drawer-side {
-  border-right: 0;
+  border-inline-end: 0;
   background: transparent;
 }
 
@@ -1014,7 +1015,7 @@ body {
 .twes-soon-dot {
   position: absolute;
   top: 0.5rem;
-  right: 1rem;
+  inset-inline-end: 1rem;
   width: 0.4375rem;
   height: 0.4375rem;
   border: 1.5px solid var(--mat-sys-outline);
@@ -1425,7 +1426,7 @@ app-cookie-notice {
 .twes-shell-content[data-window='medium'],
 .twes-shell-content[data-window='expanded'] {
   margin-block: 0.5rem;
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
   border-radius: 1.25rem;
   background-color: var(--mat-sys-surface);
   box-shadow: var(--twes-shadow-1);
@@ -1728,10 +1729,10 @@ app-cookie-notice {
     content: '';
     position: absolute;
     top: -0.2em;
-    left: 50%;
+    left: 50%; // physical-direction: centred over its letter, the same either way
     width: 0.42em;
     height: 0.42em;
-    transform: translateX(-35%);
+    transform: translateX(-35%); // physical-direction: centred over its letter, the same either way
     background-color: var(--mat-sys-primary);
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 9.5 9 3M4 2.75h5.25V8'/%3E%3C/svg%3E")
       center / contain no-repeat;
@@ -2158,14 +2159,14 @@ app-signed-out-layout {
 
 .twes-scene-invoice {
   top: 11%;
-  left: 6%;
+  inset-inline-start: 6%;
   width: 21rem;
   transform: rotate(-4deg);
 }
 
 .twes-scene-chart {
   top: 40%;
-  left: 18%;
+  inset-inline-start: 18%;
   width: 13rem;
   transform: rotate(-6deg);
   opacity: 0.8;
@@ -2173,7 +2174,7 @@ app-signed-out-layout {
 
 .twes-scene-delivery {
   bottom: 24%;
-  left: 10%;
+  inset-inline-start: 10%;
   flex-direction: row;
   align-items: center;
   width: 19rem;
@@ -2182,7 +2183,7 @@ app-signed-out-layout {
 
 .twes-scene-payment {
   top: 10%;
-  right: 6%;
+  inset-inline-end: 6%;
   flex-direction: row;
   align-items: center;
   gap: 0.75rem;
@@ -2192,7 +2193,7 @@ app-signed-out-layout {
 
 .twes-scene-stock {
   bottom: 22%;
-  right: 6%;
+  inset-inline-end: 6%;
   width: 18rem;
   transform: rotate(-3deg);
 }
@@ -2236,20 +2237,21 @@ app-signed-out-layout {
 .twes-activity-notice {
   position: fixed;
   inset-block-start: calc(env(safe-area-inset-top, 0px) + 0.75rem);
-  left: 50%;
+  left: 50%; // physical-direction: centred on the screen, the same either way
   z-index: 1100;
   display: flex;
   align-items: center;
   gap: 0.625rem;
   max-width: calc(100vw - 2rem);
-  padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+  padding-block: 0.5rem;
+  padding-inline: 0.875rem 0.5rem;
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 9999px;
   background-color: var(--mat-sys-surface-container-high);
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
   box-shadow: var(--twes-shadow-2);
-  transform: translateX(-50%);
+  transform: translateX(-50%); // physical-direction: centred on the screen, the same either way
 
   .mat-icon {
     flex-shrink: 0;
@@ -2279,7 +2281,8 @@ app-signed-out-layout {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.375rem 0.25rem 0.375rem 1rem;
+  padding-block: 0.375rem;
+  padding-inline: 1rem 0.25rem;
   color: var(--mat-sys-inverse-on-surface);
   font: var(--mat-sys-body-medium);
 
@@ -2346,7 +2349,7 @@ app-signed-out-layout {
 
 td.twes-row-actions {
   position: sticky;
-  right: 0;
+  inset-inline-end: 0;
   z-index: 1;
   background: var(--mat-sys-surface);
   white-space: nowrap;
@@ -2360,7 +2363,7 @@ td.twes-row-actions > .mat-mdc-button-base {
 /* The actions' header, by name: `:last-child` pinned a list's last DATA header when it had no actions (2026-09-26). */
 th.mat-mdc-header-cell.twes-row-actions {
   position: sticky;
-  right: 0;
+  inset-inline-end: 0;
   z-index: 2;
   /* The header row's own tint, which stopped short of the pinned cell. */
   background: var(--mat-sys-surface-container-low);
@@ -2388,7 +2391,14 @@ tr.mat-mdc-row.twes-row-active > td.twes-row-actions {
 /* Columns sit under the pinned actions: a shadow on its edge says the table goes on, which a cut cell alone did not. */
 .twes-list-scrolls td.twes-row-actions,
 .twes-list-scrolls th.mat-mdc-header-cell.twes-row-actions {
-  box-shadow: -10px 0 8px -8px color-mix(in oklch, var(--mat-sys-shadow) 35%, transparent);
+  // A shadow has no logical offset: it falls on the side the columns pass under, the line's start.
+  --twes-scrolls-shadow-x: -10px;
+  box-shadow: var(--twes-scrolls-shadow-x) 0 8px -8px
+    color-mix(in oklch, var(--mat-sys-shadow) 35%, transparent);
+
+  &:dir(rtl) {
+    --twes-scrolls-shadow-x: 10px;
+  }
 }
 
 /*
@@ -2511,7 +2521,8 @@ li.twes-row-new.twes-list-card {
   align-items: center;
   justify-content: space-between;
   gap: 0.25rem 0.5rem;
-  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  padding-block: 0.25rem;
+  padding-inline: 0.75rem 0.25rem;
   border-radius: 0.5rem;
   background-color: var(--mat-sys-tertiary-container);
   color: var(--mat-sys-on-tertiary-container);
@@ -2523,7 +2534,8 @@ li.twes-row-new.twes-list-card {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  padding-block: 0.75rem;
+  padding-inline: 1rem 0.75rem;
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 0.75rem;
   background-color: var(--mat-sys-tertiary-container);
