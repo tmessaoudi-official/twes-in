@@ -5,6 +5,7 @@
 # Measured at gzip level 6, the level infra/web/nginx.conf serves at, which this checks too: measured at one level
 # and served at another, the number would say nothing about what a phone receives.
 # A page's own texts, fetched when it first opens, are measured each on their own.
+# Every language the interface speaks (web/src/app/shared/i18n/languages.json) has its file.
 # Usage: screen-texts-budget.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -17,13 +18,29 @@ if ! grep -Eq "^[[:space:]]*gzip_comp_level[[:space:]]+${level};" "$root/infra/w
   exit 1
 fi
 
-shopt -s nullglob
-files=("$root"/web/public/i18n/*.json)
-# French and English at least: fewer means this stopped reading where the texts are.
-if ((${#files[@]} < 2)); then
-  printf 'screen-texts-budget: FAIL — %d languages found in web/public/i18n, at least 2 expected\n' "${#files[@]}"
+# The languages the interface speaks are the catalogue's: each has its texts, or its screens would show keys. A file
+# for a language not spoken yet, written before it is switched on, is measured all the same.
+catalogue="$root/web/src/app/shared/i18n/languages.json"
+spoken=()
+if [[ -f "$catalogue" ]]; then
+  mapfile -t spoken < <(jq -r '.languages[]? | select(.interface == true) | .tag' "$catalogue")
+fi
+if ((${#spoken[@]} == 0)); then
+  printf 'screen-texts-budget: FAIL — read no language the interface speaks from %s\n' "${catalogue#"$root/"}"
   exit 1
 fi
+unwritten=()
+for language in "${spoken[@]}"; do
+  [[ -f "$root/web/public/i18n/$language.json" ]] || unwritten+=("web/public/i18n/$language.json")
+done
+if ((${#unwritten[@]})); then
+  printf 'screen-texts-budget: FAIL — the interface speaks a language whose texts are missing:\n'
+  printf '  %s\n' "${unwritten[@]}"
+  exit 1
+fi
+
+shopt -s nullglob
+files=("$root"/web/public/i18n/*.json)
 
 over=()
 sizes=()
