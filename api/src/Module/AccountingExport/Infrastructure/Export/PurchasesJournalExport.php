@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\AccountingExport\Infrastructure\Export;
 
-use App\ImportExport\Application\DeclaresExport;
+use App\ImportExport\Application\ExportForTheBooks;
 use App\ImportExport\Application\ExportQuery;
 use App\Module\AccountingExport\Application\PurchaseEntries;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportModule;
@@ -20,7 +20,7 @@ use App\Tenancy\Domain\Model\Company;
  * The purchases journal of a period: one row per tax each expense entered in the books carries, its base and amount
  * beside the expense's net and gross, on its own day; a draft is not in them.
  */
-final readonly class PurchasesJournalExport implements DeclaresExport
+final readonly class PurchasesJournalExport implements ExportForTheBooks
 {
     public function __construct(private PurchaseEntries $purchases)
     {

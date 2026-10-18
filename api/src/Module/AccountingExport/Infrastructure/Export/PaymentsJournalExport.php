@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\AccountingExport\Infrastructure\Export;
 
-use App\ImportExport\Application\DeclaresExport;
+use App\ImportExport\Application\ExportForTheBooks;
 use App\ImportExport\Application\ExportQuery;
 use App\Module\AccountingExport\Application\PaymentEntries;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportModule;
@@ -17,7 +17,7 @@ use App\Module\AccountingExport\Infrastructure\Module\AccountingExportPermission
 use App\Tenancy\Domain\Model\Company;
 
 /** The payments journal of a period: one row per payment received on an invoice, on the day it was received. */
-final readonly class PaymentsJournalExport implements DeclaresExport
+final readonly class PaymentsJournalExport implements ExportForTheBooks
 {
     public function __construct(private PaymentEntries $payments)
     {
