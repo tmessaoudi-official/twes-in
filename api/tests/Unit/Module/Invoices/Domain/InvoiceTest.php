@@ -249,6 +249,19 @@ final class InvoiceTest extends TestCase
         self::assertSame([InvoiceStatus::Draft, null], [$invoice->getStatus(), $invoice->getNumber()]);
     }
 
+    public function testAnInvoiceIsIssuedOnlyWithANameForEachOfItsUnitsAndARefusalLeavesTheDraftAsItWas(): void
+    {
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
+
+        try {
+            $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), PrintedNames::in('fr', [], [])), static fn (Invoice $i) => throw new \RuntimeException('figures are asked only once the names are known'), $this->now);
+            self::fail('an invoice whose kept names miss a unit is not issued');
+        } catch (\LogicException $refused) {
+            self::assertStringContainsString('keeps no name for its unit', $refused->getMessage());
+        }
+        self::assertSame([InvoiceStatus::Draft, null, null, null, null], [$invoice->getStatus(), $invoice->getNumber(), $invoice->getIssuedFigures(), $invoice->getCustomerSnapshot(), $invoice->getPrintedNames()]);
+    }
+
     public function testIssuedFiguresHoldOneRowPerLineAndTheirAmountsAtTheCurrencyScale(): void
     {
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine(), $this->pieceLine()], [], $this->now);

@@ -215,6 +215,10 @@ class Quote implements CompanyOwned
         if ($validityDays < 1) {
             throw new InvalidQuote('validityDays', 'A quote binds its price for one day at least.');
         }
+        // Every unit it prints is named before anything is fixed, so a refusal leaves the draft as it was.
+        foreach ($this->getLines() as $line) {
+            $names->unit($line->getUnit());
+        }
         foreach ($this->getLines() as $line) {
             $line->assertCountedByItsUnit();
         }
@@ -225,9 +229,6 @@ class Quote implements CompanyOwned
         $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->printSettings = $print->toArray();
-        foreach ($this->getLines() as $line) {
-            $names->unit($line->getUnit());
-        }
         $this->printedNames = $names->toArray();
         $this->status = QuoteStatus::Sent;
         $this->number = $number;
