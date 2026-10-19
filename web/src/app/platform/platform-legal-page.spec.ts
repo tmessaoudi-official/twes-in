@@ -4,6 +4,7 @@ import { signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import {
+  provideTranslateCompiler,
   provideTranslateLoader,
   provideTranslateService,
   TranslateLoader,
@@ -12,6 +13,7 @@ import { of } from 'rxjs';
 import { Feedback } from '../shared/feedback/feedback';
 import { formatDay, formatMoment } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
+import { PluralCompiler } from '../shared/i18n/plural-compiler';
 import type { LegalLanguage } from '../shared/legal/legal-api';
 import { LEGAL_PAGES, type LegalPage } from '../shared/legal/legal-pages';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
@@ -26,6 +28,15 @@ class StaticLoader implements TranslateLoader {
       platform: {
         legal: {
           title: 'Pages légales',
+          texts: 'Textes',
+          language: 'Langue',
+          waiting:
+            '{{count}} {count, plural, one {texte à faire valider} other {textes à faire valider}}',
+          all_validated: 'Tous les textes sont validés',
+          to_validate: '{{count}} à valider',
+          others: 'Dans les autres langues',
+          others_waiting: '{{count}} à valider\u00a0:',
+          others_done: 'Validée partout',
           none: 'Pas écrite',
           draft: 'Brouillon du {{date}}',
           validated: 'Validée, du {{date}}',
@@ -98,13 +109,17 @@ describe('PlatformLegalPage', () => {
   };
   let histories: Record<string, LegalVersionRow[]>;
 
-  async function render(): Promise<void> {
+  async function render(lang = 'fr'): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [PlatformLegalPage],
       providers: [
         provideRouter([]),
         provideQuietFeedback(),
-        provideTranslateService({ lang: 'fr', fallbackLang: 'fr' }),
+        provideTranslateService({
+          lang,
+          fallbackLang: 'fr',
+          compiler: provideTranslateCompiler(PluralCompiler),
+        }),
         provideTranslateLoader(StaticLoader),
         { provide: PlatformLegalFacade, useValue: facade },
         {
@@ -159,6 +174,19 @@ describe('PlatformLegalPage', () => {
     await settle();
   };
   const said = () => (TestBed.inject(Feedback) as RecordedFeedback).said;
+  /** The table's language, chosen in its dropdown, whose list opens in an overlay outside the page. */
+  const showIn = async (language: LegalLanguage) => {
+    q('legal-overview-language')!.click();
+    await settle();
+    document
+      .querySelector<HTMLElement>(`[data-testid="legal-overview-language-${language}"]`)!
+      .click();
+    await settle();
+  };
+
+  afterEach(() => {
+    document.querySelectorAll('.cdk-overlay-container').forEach((node) => node.remove());
+  });
 
   // A text typed before the page's history arrived was replaced by the latest version when it did (CI, 2026-09-27).
   it("keeps the editor closed to typing until the page's history has arrived", async () => {
@@ -184,7 +212,8 @@ describe('PlatformLegalPage', () => {
     expect(body().value).toBe('## Éditeur\n\ntwes');
   });
 
-  it('lists every page in every language with where it stands', async () => {
+  // Languages grow: one row per page whatever their number, the chosen language's status and what waits in the others.
+  it('lists every page with where it stands in the chosen language, the screen one first', async () => {
     facade.overview.set(
       overviewWith({
         'mentions.fr': { written: true, publishedOn: '2026-09-20' },
@@ -193,15 +222,103 @@ describe('PlatformLegalPage', () => {
     );
     await render();
     expect(facade.load).toHaveBeenCalled();
-    expect(fixture.nativeElement.querySelectorAll('[data-testid^="legal-cell-"]').length).toBe(27);
+    const cells = () => fixture.nativeElement.querySelectorAll('[data-testid^="legal-cell-"]');
+    expect(cells().length).toBe(LEGAL_PAGES.length);
+    expect(q('legal-overview')?.querySelectorAll('thead th').length).toBe(3);
     expect(q('legal-cell-mentions-fr')?.textContent).toContain('Brouillon du 20/09/2026');
+
+    await showIn('en');
+    expect(cells().length).toBe(LEGAL_PAGES.length);
     expect(q('legal-cell-cookies-en')?.textContent).toContain('Validée, du 21/09/2026');
+    expect(q('legal-cell-mentions-fr')).toBeNull();
+
+    await showIn('ar');
     expect(q('legal-cell-security-ar')?.textContent).toContain('Pas écrite');
+  });
+
+  it('opens the table on the screen language when the legal pages are written in it', async () => {
+    await render('en');
+    expect(q('legal-cell-mentions-en')).not.toBeNull();
+    expect(q('legal-cell-mentions-fr')).toBeNull();
+  });
+
+  it('names, for each page, the other languages it waits to be validated in, each in its own language', async () => {
+    facade.overview.set(
+      overviewWith({
+        'cookies.en': { written: true, publishedOn: '2026-09-21', validated: true },
+        'cookies.ar': { written: true, publishedOn: '2026-09-21', validated: true },
+        'mentions.ar': { written: true, publishedOn: '2026-09-21', validated: true },
+      }),
+    );
+    await render();
+    expect(q('legal-others-security')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      '2 à valider : English et العربية',
+    );
+    expect(q('legal-others-security')?.querySelector('bdi[lang="ar"]')?.textContent).toBe(
+      'العربية',
+    );
+    expect(q('legal-others-mentions')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      '1 à valider : English',
+    );
+    expect(q('legal-others-cookies')?.textContent?.trim()).toBe('Validée partout');
+
+    await showIn('en');
+    expect(q('legal-others-cookies')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      '1 à valider : Français',
+    );
+  });
+
+  it('counts in the dropdown what waits to be validated in each language, and in all of them', async () => {
+    facade.overview.set(
+      overviewWith(
+        Object.fromEntries(
+          LEGAL_PAGES.map((page) => [
+            `${page}.ar`,
+            { written: true, publishedOn: '2026-09-21', validated: page !== 'cookies' },
+          ]),
+        ),
+      ),
+    );
+    await render();
+    expect(q('legal-waiting')?.textContent?.trim()).toBe(
+      `${2 * LEGAL_PAGES.length + 1} textes à faire valider`,
+    );
+    q('legal-overview-language')!.click();
+    await settle();
+    const count = (language: string) =>
+      document
+        .querySelector(
+          `[data-testid="legal-overview-language-${language}"] [data-option-count] [role="img"]`,
+        )
+        ?.getAttribute('aria-label');
+    expect(count('fr')).toBe(`${LEGAL_PAGES.length} à valider`);
+    expect(count('ar')).toBe('1 à valider');
+
+    facade.overview.set(
+      overviewWith(
+        Object.fromEntries(
+          LEGAL_PAGES.flatMap((page) =>
+            (['fr', 'en', 'ar'] as const).map((language) => [
+              `${page}.${language}`,
+              { written: true, publishedOn: '2026-09-21', validated: true },
+            ]),
+          ),
+        ),
+      ),
+    );
+    await settle();
+    expect(q('legal-waiting')?.textContent?.trim()).toBe('Tous les textes sont validés');
+    expect(
+      document.querySelector(
+        '[data-testid="legal-overview-language-fr"] [data-option-count] [role="img"]',
+      ),
+    ).toBeNull();
   });
 
   it('opens a page in a language with its latest version in the editor, laid out in that language', async () => {
     histories['cookies.ar'] = [version({ body: 'نص' })];
     await render();
+    await showIn('ar');
     q('legal-cell-cookies-ar')!.click();
     await settle();
     expect(facade.open).toHaveBeenCalledWith('cookies', 'ar');

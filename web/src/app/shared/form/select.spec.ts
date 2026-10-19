@@ -73,8 +73,10 @@ class StaticLoader implements TranslateLoader {
         select_all: 'Select all',
         clear_all: 'Clear all',
         more: '+{{count}}',
+        count: 'Count: {{count}}',
       },
       roles: { member: 'membre' },
+      waiting: '{{count}} to validate',
     });
   }
 }
@@ -347,6 +349,27 @@ describe('Select', () => {
     expect(q('sel')!.querySelector('[data-trigger-count] [data-count]')?.textContent?.trim()).toBe(
       '30',
     );
+  });
+
+  it('says what a count counts when the option names it, and draws no zero of what waits', async () => {
+    fixture.componentInstance.options.set([
+      { value: 'a', label: 'All', count: 30 },
+      { value: 'b', label: 'French', count: 9, countKind: 'waiting', countLabel: 'waiting' },
+      { value: 'c', label: 'Arabic', count: 0, countKind: 'waiting', countLabel: 'waiting' },
+    ]);
+    fixture.componentInstance.control.setValue('b');
+    await settle();
+    await open();
+
+    const badges = Array.from(document.body.querySelectorAll('[role="option"]')).map(
+      (option) =>
+        option.querySelector('[data-option-count] [role="img"]')?.getAttribute('aria-label') ??
+        null,
+    );
+    expect(badges).toEqual(['Count: 30', '9 to validate', null]);
+    expect(
+      q('sel')!.querySelector('[data-trigger-count] [role="img"]')?.getAttribute('aria-label'),
+    ).toBe('9 to validate');
   });
 
   it('draws a dot in the status tone before an option and beside the chosen label', async () => {

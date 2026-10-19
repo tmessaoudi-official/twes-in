@@ -48,31 +48,55 @@
     </p>
   </section>
 
-  <div class="relative overflow-x-auto">
-    <table class="twes-legal-table twes-stack-table" data-testid="legal-overview">
-      <thead>
-        <tr>
-          <th scope="col">{{ 'platform.legal.page' | translate }}</th>
-          @for (language of languages; track language) {
-            <th scope="col" [attr.lang]="language">
-              <bdi>{{ names[language] }}</bdi>
-            </th>
+  <section class="flex flex-col gap-3" aria-labelledby="legal-texts-title">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div class="flex flex-col gap-1">
+        <h2 id="legal-texts-title" class="text-xl font-semibold">
+          {{ 'platform.legal.texts' | translate }}
+        </h2>
+        <p class="text-sm" data-testid="legal-waiting">
+          @if (waitingTotal() === 0) {
+            {{ 'platform.legal.all_validated' | translate }}
+          } @else {
+            {{ 'platform.legal.waiting' | translate: { count: waitingTotal() } }}
           }
-        </tr>
-      </thead>
-      <tbody>
-        @for (page of pages; track page) {
+        </p>
+      </div>
+      <app-select
+        class="w-full max-w-72"
+        [label]="'platform.legal.language' | translate"
+        [labelInside]="true"
+        [languages]="true"
+        [options]="languageOptions()"
+        [ngModel]="language()"
+        (ngModelChange)="choose($event)"
+        testId="legal-overview-language"
+      />
+    </div>
+    <div class="relative overflow-x-auto">
+      <table class="twes-legal-table twes-stack-table" data-testid="legal-overview">
+        <thead>
           <tr>
-            <th scope="row">{{ 'legal.pages.' + page | translate }}</th>
-            @for (language of languages; track language) {
-              @let row = statusOf(page, language);
-              <td [attr.data-label]="names[language]">
+            <th scope="col">{{ 'platform.legal.page' | translate }}</th>
+            <th scope="col" [attr.lang]="language()">
+              <bdi>{{ names[language()] }}</bdi>
+            </th>
+            <th scope="col">{{ 'platform.legal.others' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (page of pages; track page) {
+            @let row = statusOf(page, language());
+            @let other = others().get(page)!;
+            <tr>
+              <th scope="row">{{ 'legal.pages.' + page | translate }}</th>
+              <td [attr.data-label]="names[language()]">
                 <button
                   mat-button
                   type="button"
-                  [attr.aria-pressed]="isOpen(page, language)"
-                  (click)="open(page, language)"
-                  [attr.data-testid]="'legal-cell-' + page + '-' + language"
+                  [attr.aria-pressed]="isOpen(page, language())"
+                  (click)="open(page, language())"
+                  [attr.data-testid]="'legal-cell-' + page + '-' + language()"
                 >
                   @if (row === undefined || !row.written || row.publishedOn === null) {
                     {{ 'platform.legal.none' | translate }}
@@ -83,12 +107,29 @@
                   }
                 </button>
               </td>
-            }
-          </tr>
-        }
-      </tbody>
-    </table>
-  </div>
+              <td
+                [attr.data-label]="'platform.legal.others' | translate"
+                [attr.data-testid]="'legal-others-' + page"
+              >
+                @if (other.count === 0) {
+                  {{ 'platform.legal.others_done' | translate }}
+                } @else {
+                  {{ 'platform.legal.others_waiting' | translate: { count: other.count } }}
+                  @for (part of other.parts; track $index) {
+                    @if (part.kind === 'language') {
+                      <bdi [attr.lang]="part.language">{{ part.name }}</bdi>
+                    } @else {
+                      {{ part.text }}
+                    }
+                  }
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
 
   @if (opened(); as current) {
     <section class="flex flex-col gap-3" aria-labelledby="legal-editor-title">
