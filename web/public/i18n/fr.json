@@ -2362,7 +2362,7 @@
     },
     "stock": {
       "title": "Stock",
-      "intro": "Le stock d’un produit est la somme de ses mouvements. Un bon de livraison validé sort les marchandises de l’emplacement par défaut de son établissement ; son annulation les y remet.",
+      "intro": "Le stock d’un produit est la somme de ses mouvements. Un bon de livraison validé, ou une facture émise pour ce qu’aucun bon n’a livré, sort les marchandises des emplacements du produit dans son établissement ; l’annulation du bon, ou un avoir qui les rend, les y remet.",
       "receive": "Réceptionner",
       "count": "Compter",
       "move": "Déplacer",

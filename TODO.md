@@ -138,6 +138,10 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
 ## Also waiting on you
 
 - [ ] The client's Excel file, under `var/claude/client-excel/`, to map its columns into the importer (plan step 4).
+- [ ] On the shop's installation, signed in as the shop's owner, « Paramètres » (the gear), « Valeurs par défaut »,
+  section « Produits »: tick « Suivre le stock », then « Enregistrer ». A new company keeps no stock until it is ticked:
+  an order received and an invoice issued move nothing (the trade chosen at sign-up, which would tick it for a shop, is
+  not built yet).
 - [ ] On the shop's installation, signed in as its operator, `/platform`, card « Contact du support »: your phone, WhatsApp
   and e-mail. They are what « Aide » shows under « Nous contacter » on every screen; left empty, the shop sees no way to
   reach you.
