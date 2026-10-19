@@ -263,6 +263,44 @@ test.describe('on a phone', () => {
       )
       .toBe(0);
   });
+
+  test('a stacked table cell reads its value as one text, never spread across the cell', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto('/platform/legal');
+    const cells = page.locator('[data-testid^="legal-others-"]');
+    await expect(cells.first()).toBeVisible();
+    // A labelled cell laid out as flex made every word run and every language name an item of its own, spread
+    // between the label and the cell's end: « 2 à    English    et    العربية ». Pieces sharing a line sit one
+    // space apart.
+    const spread = await cells.evaluateAll((all) => {
+      const pieces = (cell: Element): DOMRect[][] =>
+        [...cell.childNodes]
+          .filter(
+            (node) =>
+              (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE) &&
+              (node.textContent ?? '').trim() !== '',
+          )
+          .map((node) => {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            return [...range.getClientRects()];
+          });
+      return all.flatMap((cell) => {
+        const runs = pieces(cell);
+        return runs.slice(1).flatMap((run, index) => {
+          const before = runs[index].at(-1)!;
+          const after = run[0];
+          return Math.abs(before.top - after.top) < 3 && after.left - before.right > 8
+            ? [`${cell.getAttribute('data-testid')}: ${Math.round(after.left - before.right)} px`]
+            : [];
+        });
+      });
+    });
+    await expect(cells.locator('bdi').first()).toBeAttached();
+    expect(spread).toEqual([]);
+  });
 });
 
 test('stores in the browser nothing the Cookies page does not declare', async ({
