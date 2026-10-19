@@ -61,6 +61,12 @@ export interface VersionedSettingChange {
 }
 
 /** `record_changed`: a key of the save was saved, created or reset since it was read, and nothing was kept. */
+/** What a parties setting holds across a company; `parties` is null for someone who may not read customers. */
+export interface SettingValuesInUse {
+  company: unknown;
+  parties: readonly unknown[] | null;
+}
+
 export type SettingsError = 'not_found' | 'invalid' | 'record_changed' | 'network';
 
 /** Whom a parties-chain read or change is for, below the company: one customer, or one customer group. */

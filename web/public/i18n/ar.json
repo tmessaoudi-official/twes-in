@@ -945,7 +945,10 @@
     "names": {
       "section": "الاسم في الوثائق",
       "description": "الاسم المطبوع بكل لغة؛ إن تُرك فارغًا، تطبع الوثيقة الاسم أعلاه.",
-      "in": "الاسم — {{language}}"
+      "in": "الاسم — {{language}}",
+      "documents_language": "لغة الوثائق",
+      "add": "إضافة لغة",
+      "remove": "سحب الاسم — {{language}}"
     }
   },
   "settings": {

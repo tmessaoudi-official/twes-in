@@ -15,6 +15,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { SettingsApi } from '../shared/settings/settings-api';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
@@ -104,6 +105,11 @@ describe('FiscalUnitsPage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+        // The company prints in French, and one of its customers in Arabic.
+        {
+          provide: SettingsApi,
+          useValue: { valuesInUse: async () => ({ company: 'fr', parties: ['ar'] }) },
+        },
       ],
     });
     fixture = TestBed.createComponent(FiscalUnitsPage);
@@ -182,6 +188,37 @@ describe('FiscalUnitsPage', () => {
       'u1',
       expect.objectContaining({ name: 'Heure de travail', sortOrder: 70 }),
       2,
+    );
+  });
+
+  it('names a unit in the languages the company prints in, the others asked for, and one let go left out', async () => {
+    q('row-action-edit-u1')!.click();
+    await settle();
+
+    expect(q('field-name-fr')).not.toBeNull();
+    expect(q('field-remove-name-fr')).toBeNull();
+    expect(q('field-note-name-fr')).not.toBeNull();
+    expect(q('field-name-en')).toBeNull();
+    type('field-name-ar', 'ساعة');
+    q('field-remove-name-ar')!.click();
+    await settle();
+    expect(q('field-name-ar')).toBeNull();
+
+    q('names-add')!.click();
+    await settle();
+    // The dropdown's list opens on the overlay, outside the page.
+    document.querySelector<HTMLElement>('[data-testid="names-add-en"]')!.click();
+    await settle();
+    expect(document.activeElement).toBe(q('field-name-en'));
+    type('field-name-en', 'Hour');
+    q('unit-save')!.click();
+    await settle();
+
+    expect(fiscal.reviseUnit).toHaveBeenCalledWith(
+      'c1',
+      'u1',
+      expect.objectContaining({ names: { en: 'Hour' } }),
+      1,
     );
   });
 

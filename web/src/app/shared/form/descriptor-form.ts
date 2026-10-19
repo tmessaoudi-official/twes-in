@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   effect,
@@ -15,11 +16,13 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { type Subscription, take } from 'rxjs';
 import { FormatFacade } from '../i18n/format-facade';
+import { Label } from '../a11y/label';
 import { DecimalInput } from './decimal-input';
 import { ColourField } from './colour-field';
 import { DayCalendarButton } from './day-calendar-button';
@@ -54,6 +57,8 @@ export interface PickSource {
     MatFormFieldModule,
     MatInputModule,
     MatAutocompleteModule,
+    MatIconModule,
+    Label,
     TranslatePipe,
     DecimalInput,
     DayInput,
@@ -96,6 +101,19 @@ export class DescriptorForm {
    * An input, like `pickers`, and not part of the descriptor, so suggestions that arrive later never rebuild the form.
    */
   readonly suggestions = input<Readonly<Record<string, readonly string[]>>>({});
+  /**
+   * Fields the screen keeps off it for now, such as a name in a language the company does not use: they stay in the
+   * form with what they hold, and one holding a value is shown whatever this says, so nothing typed or saved is ever
+   * out of sight. Inputs rather than descriptor data, like `pickers`, so choosing them never rebuilds the form.
+   */
+  readonly withheld = input<ReadonlySet<string>>(new Set());
+  /** Fields offering a button that empties them and tells the screen through `removed`, which then withholds them. */
+  readonly removable = input<ReadonlySet<string>>(new Set());
+  readonly removed = output<string>();
+  /** A word written after a field's label, per field id, as a translation key: « langue des documents ». */
+  readonly notes = input<Readonly<Record<string, string>>>({});
+  /** The section whose fields end with what the screen projects as `formTrail`, such as « Ajouter une langue ». */
+  readonly trailIn = input<string | null>(null);
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the messages. */
   private readonly revision = signal(0);
@@ -126,7 +144,38 @@ export class DescriptorForm {
 
   protected applies(field: FormField): boolean {
     this.revision();
-    return fieldApplies(field, this.form().getRawValue());
+    const values = this.form().getRawValue();
+    if (this.withheld().has(field.id) && isBlank(values[field.id])) return false;
+    return fieldApplies(field, values);
+  }
+
+  /** The remove button's name, for a field the screen lets go; none for any other, or on a read-only form. */
+  protected removeLabelOf(field: FormField): string | null {
+    if (this.readOnly() || !this.removable().has(field.id)) return null;
+    return field.removeLabel ?? null;
+  }
+
+  /**
+   * Empties the field and tells the screen, which withholds it; the person is then put on the section's trail (where
+   * the field can be asked for again), since the button they pressed is gone.
+   */
+  protected remove(field: FormField): void {
+    const control = this.form().controls[field.id];
+    control?.setValue('');
+    control?.markAsDirty();
+    this.removed.emit(field.id);
+    afterNextRender(
+      () => {
+        const host = this.host.nativeElement;
+        if (host.querySelector(`[data-testid="field-${field.id}"]`)) return;
+        host
+          .querySelector<HTMLElement>(
+            '.twes-form-trail button:not([disabled]), .twes-form-trail [href]',
+          )
+          ?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   protected errorFor(field: FormField): FieldError | null {
@@ -266,4 +315,10 @@ export class DescriptorForm {
       .querySelector<HTMLElement>(`[data-testid="field-${first.id}"]`)
       ?.focus();
   }
+}
+
+function isBlank(value: FieldValue | undefined): boolean {
+  if (value === null || value === undefined) return true;
+  if (Array.isArray(value)) return value.length === 0;
+  return typeof value === 'string' && value.trim() === '';
 }

@@ -12,6 +12,7 @@ namespace App\Tests\Support;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\Repository\SettingRepository;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Tenancy\Domain\Model\Company;
 
 final class InMemorySettings implements SettingRepository
 {
@@ -23,6 +24,14 @@ final class InMemorySettings implements SettingRepository
         return array_values(array_filter(
             $this->settings,
             static fn (Setting $setting) => array_any($addresses, static fn (SettingAddress $address) => $setting->isAt($address)),
+        ));
+    }
+
+    public function heldBy(Company $company, string $key, array $levels): array
+    {
+        return array_values(array_filter(
+            $this->settings,
+            static fn (Setting $setting) => $setting->isHeldBy($company) && $setting->getKey() === $key && \in_array($setting->getLevel(), $levels, true),
         ));
     }
 

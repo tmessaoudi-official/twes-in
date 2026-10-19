@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import type {
   SettingChangesSettingChangesWriteSettingChangesCompanyRecordReviseValidationSettingChangesWriteSettingChangesCompanyRecordRevise as SettingChangesBody,
   SettingSettingRead,
+  SettingValuesInUse as SettingValuesInUseRead,
 } from '../../api/types.gen';
 import type {
   SettingChain,
@@ -14,6 +15,7 @@ import type {
   SettingsError,
   SettingSubject,
   SettingType,
+  SettingValuesInUse,
   VersionedSettingChange,
 } from './settings-types';
 import { SILENT } from '../feedback/activity-interceptor';
@@ -49,6 +51,21 @@ export class SettingsApi {
         )
       ).map(toRow),
     );
+  }
+
+  /**
+   * What a parties setting holds across the company: the value in force for the company, and the values its customer
+   * groups and customers hold of their own, null when the caller may not read customers.
+   */
+  async valuesInUse(companyId: string, key: string): Promise<SettingValuesInUse> {
+    return this.guard(async () => {
+      const answer = await firstValueFrom(
+        this.http.get<SettingValuesInUseRead>(
+          `${this.path(companyId)}/${encodeURIComponent(key)}/in-use`,
+        ),
+      );
+      return { company: answer.company ?? null, parties: answer.parties ?? null };
+    });
   }
 
   async change(

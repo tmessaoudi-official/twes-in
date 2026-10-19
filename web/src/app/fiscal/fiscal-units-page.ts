@@ -31,6 +31,8 @@ import {
 } from './fiscal-forms';
 import type { UnitRow } from './fiscal-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { NameLanguageAdd } from './name-language-add';
+import { NameLanguages } from './name-languages';
 
 /** The units a company sells in: UN/ECE Recommendation 20 codes, named in the company's own words. */
 @Component({
@@ -42,6 +44,7 @@ import { Feedback } from '../shared/feedback/feedback';
     DataList,
     DataListCell,
     DescriptorForm,
+    NameLanguageAdd,
     RecordChanged,
   ],
   templateUrl: './fiscal-units-page.html',
@@ -75,6 +78,8 @@ export class FiscalUnitsPage implements OnInit {
   protected readonly mayManage = computed(() => this.auth.hasPermission('fiscal.write'));
   protected readonly rowTestId = (row: UnitRow): string => `unit-${row.code}`;
 
+  /** Which languages the names section shows: the company's own, its customers', and those a record names. */
+  protected readonly nameLanguages = new NameLanguages();
   protected readonly editing = signal<UnitRow | 'new' | null>(null);
   protected readonly descriptor = computed(() => {
     const editing = this.editing();
@@ -105,7 +110,7 @@ export class FiscalUnitsPage implements OnInit {
     const companyId = this.company()?.id;
     if (companyId) {
       this.live.reloadOn(['unit'], () => this.fiscal.loadUnits(companyId), this.destroyRef);
-      await this.fiscal.loadUnits(companyId);
+      await Promise.all([this.fiscal.loadUnits(companyId), this.nameLanguages.load(companyId)]);
     }
   }
 
@@ -146,6 +151,7 @@ export class FiscalUnitsPage implements OnInit {
 
   private open(target: UnitRow | 'new'): void {
     this.fiscal.clearError();
+    this.nameLanguages.open(target === 'new' ? {} : target.names);
     this.editing.set(target);
   }
 }

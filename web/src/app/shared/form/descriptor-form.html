@@ -95,6 +95,11 @@
                   [for]="controlId(field)"
                 >
                   {{ field.label | translate: field.labelParams }}
+                  @if (notes()[field.id]; as note) {
+                    <span class="twes-field-optional" [attr.data-testid]="'field-note-' + field.id"
+                      >· {{ note | translate }}</span
+                    >
+                  }
                   @if (!field.required) {
                     <span class="twes-field-optional">· {{ 'form.optional' | translate }}</span>
                   }
@@ -257,6 +262,18 @@
                         }
                       }
                     }
+                    @if (removeLabelOf(field); as removeLabel) {
+                      <button
+                        mat-icon-button
+                        matSuffix
+                        type="button"
+                        [appLabel]="removeLabel | translate: field.labelParams"
+                        (click)="remove(field)"
+                        [attr.data-testid]="'field-remove-' + field.id"
+                      >
+                        <mat-icon aria-hidden="true">close</mat-icon>
+                      </button>
+                    }
                     @if (field.hint) {
                       <mat-hint>{{ field.hint | translate }}</mat-hint>
                     }
@@ -302,6 +319,11 @@
               </div>
             }
           }
+        }
+        @if (section.id === trailIn()) {
+          <div class="twes-form-trail flex min-w-0 flex-wrap gap-2 @min-[30rem]:col-span-2">
+            <ng-content select="[formTrail]" />
+          </div>
         }
       </div>
     </fieldset>

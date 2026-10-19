@@ -11,6 +11,8 @@ namespace App\Settings\Domain\Repository;
 
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Tenancy\Domain\Model\Company;
 
 interface SettingRepository
 {
@@ -20,6 +22,13 @@ interface SettingRepository
      * @return list<Setting> every value stored at any of the addresses, whatever its key
      */
     public function at(array $addresses): array;
+
+    /**
+     * @param list<SettingLevel> $levels
+     *
+     * @return list<Setting> every value of the key the company's own subjects hold at those levels
+     */
+    public function heldBy(Company $company, string $key, array $levels): array;
 
     public function find(SettingAddress $address, string $key): ?Setting;
 
