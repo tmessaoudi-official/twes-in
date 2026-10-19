@@ -613,3 +613,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - A test placing a row on a clock the database reads with `now()` must use that clock: inside the test's transaction it
   stands at the transaction's start, which DAMA opened at the previous test's teardown, before PHP's clock. A TIMESTAMP(0)
   column rounds half a second up: cut with `date_trunc('second', now())`. DeepHealthTest failed 4 runs in 10 on both (2026-10-18).
+- A list gives a column way whole when the values do not fit, so an e2e reading a low-priority column must use values
+  whose width does not vary per run: `Date.now().toString(36)` letters moved « Vis LOT-<run> » by 20 px, and at 1600 px
+  the stock list has 8 px to spare. Use digits (`lots.spec.ts`); reproduce a width flake with the widest letters (2026-10-19).
