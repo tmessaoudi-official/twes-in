@@ -230,16 +230,40 @@ describe('ReportPage', () => {
       '169.000 Période comparée 40.000',
       '2 Période comparée 1',
     ]);
-    // A row the compared period did not have shows nothing under its figures, never a zero.
+    // A row the compared period did not have says it had none under its figures, never a zero.
     expect(cells(el.querySelector('[data-row="none"]'))).toEqual([
       'Non renseigné',
-      '10.000 Période comparée',
-      '1 Période comparée',
+      '10.000 Période comparée —',
+      '1 Période comparée —',
     ]);
     expect(cells(el.querySelector('[data-testid="report-totals"]'))).toEqual([
       'Total',
       '179.000 Période comparée 40.000',
       '3 Période comparée 1',
+    ]);
+  });
+
+  it('says « — » for a figure the period on screen had none of, so the period compared never reads as this one', async () => {
+    report.set({
+      status: 'ready',
+      result: {
+        ...SEPTEMBER,
+        rows: [
+          {
+            key: 'rent',
+            cells: { category: 'Loyer', gross: null, expenses: null },
+            previous: { category: 'Loyer', gross: '300.000', expenses: 1 },
+            drill: { list: null, filters: {} },
+          },
+        ],
+      },
+    });
+    const { el } = await open('/reports/expenses-by-category');
+
+    expect(cells(el.querySelector('[data-row="rent"]'))).toEqual([
+      'Loyer',
+      '— Période comparée 300.000',
+      '— Période comparée 1',
     ]);
   });
 
