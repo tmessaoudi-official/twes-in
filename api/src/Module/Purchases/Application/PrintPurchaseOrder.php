@@ -52,6 +52,8 @@ final readonly class PrintPurchaseOrder
         $buyer = $order->getBuyerSnapshot() ?? SellerSnapshot::of($order->getCompany(), $order->getEstablishment());
         $formats = DocumentFormats::of($this->settings, $company);
 
+        $language = $this->settings->text(new SettingContext($company), 'document.language');
+
         return new PrintedPurchaseOrder(self::fileName($order), $this->renderer->render($this->template->html(new PurchaseOrderPage(
             $order,
             PurchaseOrderTotals::of($order, $this->scales->of($buyer->currency)),
@@ -62,11 +64,11 @@ final readonly class PrintPurchaseOrder
                 PurchaseOrderStatus::Cancelled => PurchaseOrderPage::CANCELLED,
                 PurchaseOrderStatus::Sent, PurchaseOrderStatus::PartlyReceived, PurchaseOrderStatus::Received, PurchaseOrderStatus::Closed => null,
             },
-            $this->settings->text(new SettingContext($company), 'document.language'),
+            $language,
             $formats['dateFormat'],
             $formats['numberFormat'],
             DocumentFormats::design($this->settings, $company),
-            QuantityTotals::ofUnits(array_map(static fn (PurchaseOrderLine $line): array => [$line->getUnit(), $line->getQuantity()], $order->getLines())),
+            QuantityTotals::ofUnits(array_map(static fn (PurchaseOrderLine $line): array => [$line->getUnit(), $line->getQuantity()], $order->getLines()), $language),
         ))));
     }
 

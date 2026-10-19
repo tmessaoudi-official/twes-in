@@ -13,6 +13,7 @@ use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Fiscal\Application\TaxComponent\TaxNames;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
@@ -58,6 +59,7 @@ final readonly class PrintInvoice
         private ClockInterface $clock,
         private FiscalPresets $presets,
         private Transactions $transactions,
+        private TaxNames $taxNames,
     ) {
     }
 
@@ -202,8 +204,9 @@ final readonly class PrintInvoice
             $mentions->parameters,
             $design ?? $print->design,
             InvoiceType::CreditNote === $invoice->getType() ? null : $print->savingsPrinted($figures->savings),
-            self::quantities($invoice),
+            self::quantities($invoice, $language),
             $operations,
+            $this->taxNames->in($company, $language),
         ));
     }
 
@@ -212,11 +215,11 @@ final readonly class PrintInvoice
      *
      * @return list<QuantityTotal>
      */
-    private static function quantities(Invoice $invoice): array
+    private static function quantities(Invoice $invoice, string $language): array
     {
         $lines = array_values(array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => null === $line->getDeduction()));
 
-        return QuantityTotals::ofUnits(array_map(static fn (InvoiceLine $line): array => [$line->getUnit(), $line->getQuantity()], $lines));
+        return QuantityTotals::ofUnits(array_map(static fn (InvoiceLine $line): array => [$line->getUnit(), $line->getQuantity()], $lines), $language);
     }
 
     /**

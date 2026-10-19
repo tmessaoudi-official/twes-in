@@ -116,6 +116,33 @@ final class TaxComponentTest extends TestCase
         self::assertSame('19.000', $vat->getRate());
     }
 
+    public function testAStampPrintsItsNameInTheDocumentsLanguage(): void
+    {
+        $stamp = TaxComponent::create($this->company, 'TIMBRE', 'Droit de timbre', TaxFamily::Stamp, null, '1', null, false, true, null, 50, 3, $this->now, ['ar' => 'معلوم الطابع الجبائي']);
+
+        self::assertSame('معلوم الطابع الجبائي', $stamp->nameIn('ar'));
+        self::assertSame('Droit de timbre', $stamp->nameIn('en'));
+    }
+
+    public function testARevisionOfTheNamesAloneIsAChangeAndARefusedOneLeavesThemAsTheyWere(): void
+    {
+        $vat = $this->vat();
+        $later = $this->now->modify('+1 day');
+
+        self::assertTrue($vat->revise('TVA 19 %', '19', null, null, false, false, true, null, 0, 3, $later, ['en' => 'VAT 19%']));
+        self::assertSame(['en' => 'VAT 19%'], $vat->getNames());
+        self::assertFalse($vat->revise('TVA 19 %', '19', null, null, false, false, true, null, 0, 3, $later));
+
+        try {
+            $vat->revise('TVA 19 %', '20', null, null, false, false, true, null, 0, 3, $later, ['en' => str_repeat('V', 121)]);
+            self::fail('expected InvalidFiscalValue');
+        } catch (InvalidFiscalValue $refused) {
+            self::assertSame('names', $refused->field);
+        }
+        self::assertSame('19.000', $vat->getRate());
+        self::assertSame(['en' => 'VAT 19%'], $vat->getNames());
+    }
+
     private function vat(): TaxComponent
     {
         return TaxComponent::create($this->company, 'TVA19', 'TVA 19 %', TaxFamily::Vat, '19', null, null, false, false, null, 0, 3, $this->now);

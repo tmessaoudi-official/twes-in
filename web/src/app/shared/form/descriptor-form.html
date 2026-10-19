@@ -36,7 +36,7 @@
                 [attr.data-testid]="'field-wrapper-' + field.id"
               >
                 <mat-checkbox [formControlName]="field.id" [attr.data-testid]="'field-' + field.id">
-                  {{ field.label | translate }}
+                  {{ field.label | translate: field.labelParams }}
                 </mat-checkbox>
                 @if (field.hint) {
                   <span class="px-2 text-xs text-on-surface-variant">{{
@@ -94,14 +94,14 @@
                   [id]="controlId(field) + '-label'"
                   [for]="controlId(field)"
                 >
-                  {{ field.label | translate }}
+                  {{ field.label | translate: field.labelParams }}
                   @if (!field.required) {
                     <span class="twes-field-optional">· {{ 'form.optional' | translate }}</span>
                   }
                 </label>
                 @if (field.kind === 'pick' && pickerFor(field); as picker) {
                   <app-pick-field
-                    [label]="field.label | translate"
+                    [label]="field.label | translate: field.labelParams"
                     [labelInside]="false"
                     [inputId]="controlId(field)"
                     [testId]="'field-' + field.id"

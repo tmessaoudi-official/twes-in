@@ -12,6 +12,8 @@ namespace App\Tests\Unit\Module\Invoices\Application;
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
+use App\Fiscal\Application\TaxComponent\TaxNames;
+use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Customers\Domain\Model\Customer;
@@ -107,6 +109,7 @@ final class PrintInvoiceTest extends TestCase
             $this->clock,
             ShippedFiscalPresets::presets(),
             new FakeTransactions(),
+            new TaxNames($this->taxes),
         );
     }
 
@@ -137,6 +140,20 @@ final class PrintInvoiceTest extends TestCase
 
         $page = $this->template->pages[0];
         self::assertSame(['en', 'Payable by transfer.', ['fiscal.mention.tn.export'], 'Pénalité de retard : 1 % par mois', 'Merci'], [$page->language, $page->printedNotes, $page->mentionKeys, $page->latePenaltyText, $page->footer]);
+    }
+
+    public function testADocumentNamesItsTaxesAndUnitsInItsOwnLanguage(): void
+    {
+        $customer = $this->customer('standard', null);
+        $this->change->change(new SettingContext($this->company, customerId: $customer->getId()), 'document.language', SettingLevel::Customer, 'ar', null);
+
+        $this->print->pdf($this->company, $this->draft($customer, lineCount: 2)->getId());
+
+        $page = $this->template->pages[0];
+        self::assertSame('ar', $page->language);
+        self::assertSame('معلوم الطابع الجبائي', $page->taxNames['TIMBRE'] ?? null);
+        self::assertSame('الخصم من المورد 1 %', $page->taxNames['RS1'] ?? null);
+        self::assertSame(['وحدة'], array_map(static fn (QuantityTotal $each): string => $each->unitName, $page->quantities));
     }
 
     // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: a printed document follows the company's formats, never the person printing it.

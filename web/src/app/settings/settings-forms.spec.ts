@@ -214,6 +214,7 @@ describe('withUnitChoice', () => {
     decimals: 0,
     isActive,
     sortOrder: 0,
+    names: {},
     version: 1,
   });
 

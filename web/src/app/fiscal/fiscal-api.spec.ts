@@ -18,9 +18,17 @@ const stamp: TaxComponentInput = {
   isActive: true,
   exemptionMention: null,
   sortOrder: 50,
+  names: { en: 'Revenue stamp' },
 };
 
-const tonne: UnitInput = { code: 'TNE', name: 'Tonne', decimals: 3, isActive: true, sortOrder: 0 };
+const tonne: UnitInput = {
+  code: 'TNE',
+  name: 'Tonne',
+  decimals: 3,
+  isActive: true,
+  sortOrder: 0,
+  names: { en: 'Ton' },
+};
 
 describe('FiscalApi', () => {
   let api: FiscalApi;
@@ -53,6 +61,7 @@ describe('FiscalApi', () => {
       isActive: true,
       exemptionMention: null,
       sortOrder: 50,
+      names: { en: 'Revenue stamp' },
       version: 3,
     });
     request.flush({ ...stamp, id: 's1', kind: 'fixed_document', version: 4 });
@@ -72,6 +81,7 @@ describe('FiscalApi', () => {
       name: 'Tonne',
       decimals: 3,
       sortOrder: 0,
+      names: { en: 'Ton' },
     });
     creation.flush({ ...tonne, id: 'u9' });
     await created;
@@ -83,6 +93,7 @@ describe('FiscalApi', () => {
       decimals: 3,
       isActive: false,
       sortOrder: 0,
+      names: { en: 'Ton' },
       version: 1,
     });
     revision.flush({ ...tonne, id: 'u9', isActive: false, version: 2 });

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Fiscal\Application;
 
+use App\Fiscal\Application\DocumentLanguageNames;
 use App\Fiscal\Application\Unit\ManageUnits;
 use App\Fiscal\Application\Unit\UnitChanges;
 use App\Fiscal\Application\Unit\UnitCodeTaken;
@@ -19,6 +20,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\ShippedLanguages;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
@@ -34,7 +36,7 @@ final class ManageUnitsTest extends TestCase
         $this->units = new InMemoryUnits();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManageUnits($this->units, $this->audit, new MockClock('2026-09-13 10:00:00'), $transactions, new InMemoryRecordVersions());
+        $this->manage = new ManageUnits($this->units, $this->audit, new MockClock('2026-09-13 10:00:00'), $transactions, new InMemoryRecordVersions(), new DocumentLanguageNames(ShippedLanguages::catalogue()));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 

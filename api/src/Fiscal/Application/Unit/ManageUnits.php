@@ -11,6 +11,7 @@ namespace App\Fiscal\Application\Unit;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Fiscal\Application\DocumentLanguageNames;
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Domain\Model\Unit;
 use App\Fiscal\Domain\Repository\UnitRepository;
@@ -34,6 +35,7 @@ final readonly class ManageUnits
         private ClockInterface $clock,
         private Transactions $transactions,
         private RecordVersions $versions,
+        private DocumentLanguageNames $languageNames,
     ) {
     }
 
@@ -53,7 +55,7 @@ final readonly class ManageUnits
             if (null !== $this->units->ofCodeInCompany($draft->code, $company->getId())) {
                 throw new UnitCodeTaken(\sprintf('The company already has a unit coded %s.', $draft->code));
             }
-            $unit = Unit::create($company, $draft->code, $draft->name, $draft->decimals, $draft->sortOrder, $this->clock->now());
+            $unit = Unit::create($company, $draft->code, $draft->name, $draft->decimals, $draft->sortOrder, $this->clock->now(), $this->languageNames->checked($draft->names) ?? []);
             $this->units->save($unit);
             $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::CREATED, $actorUserId, self::snapshot($unit), $company->getId()));
 
@@ -75,7 +77,7 @@ final readonly class ManageUnits
             if (null !== $version) {
                 $this->versions->expect($unit, $version);
             }
-            if ($unit->revise($changes->name, $changes->decimals, $changes->isActive, $changes->sortOrder, $this->clock->now())) {
+            if ($unit->revise($changes->name, $changes->decimals, $changes->isActive, $changes->sortOrder, $this->clock->now(), $this->languageNames->checked($changes->names))) {
                 $this->units->save($unit);
                 $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::REVISED, $actorUserId, self::snapshot($unit), $company->getId()));
             }
@@ -87,6 +89,6 @@ final readonly class ManageUnits
     /** @return array<string, mixed> */
     private static function snapshot(Unit $unit): array
     {
-        return ['code' => $unit->getCode(), 'name' => $unit->getName(), 'decimals' => $unit->getDecimals(), 'is_active' => $unit->isActive()];
+        return ['code' => $unit->getCode(), 'name' => $unit->getName(), 'names' => $unit->getNames(), 'decimals' => $unit->getDecimals(), 'is_active' => $unit->isActive()];
     }
 }

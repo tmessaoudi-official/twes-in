@@ -69,4 +69,69 @@ final class UnitTest extends TestCase
         self::assertFalse($unit->isActive());
         self::assertEquals($later, $unit->getUpdatedAt());
     }
+
+    public function testADocumentPrintsTheNameInItsLanguageAndTheNameWhereItHasNone(): void
+    {
+        $unit = Unit::create($this->company, 'C62', 'Unité', 0, 10, $this->now, ['ar' => ' وحدة ', 'en' => 'Unit']);
+
+        self::assertSame(['ar' => 'وحدة', 'en' => 'Unit'], $unit->getNames());
+        self::assertSame('وحدة', $unit->nameIn('ar'));
+        self::assertSame('Unité', $unit->nameIn('fr'));
+    }
+
+    public function testANameLeftBlankInALanguageIsDroppedSoTheNamePrints(): void
+    {
+        $unit = Unit::create($this->company, 'C62', 'Unité', 0, 10, $this->now, ['ar' => '  ', 'en' => 'Unit']);
+
+        self::assertSame(['en' => 'Unit'], $unit->getNames());
+        self::assertSame('Unité', $unit->nameIn('ar'));
+    }
+
+    public function testARevisionOfTheNamesAloneIsAChangeAndLeavingThemOutKeepsThem(): void
+    {
+        $unit = Unit::create($this->company, 'C62', 'Unité', 0, 10, $this->now, ['ar' => 'وحدة']);
+        $later = $this->now->modify('+1 day');
+
+        self::assertFalse($unit->revise('Unité', 0, true, 10, $later));
+        self::assertSame(['ar' => 'وحدة'], $unit->getNames());
+        self::assertTrue($unit->revise('Unité', 0, true, 10, $later, ['ar' => 'قطعة']));
+        self::assertSame('قطعة', $unit->nameIn('ar'));
+        self::assertEquals($later, $unit->getUpdatedAt());
+    }
+
+    /** @return iterable<string, array{array<array-key, string>}> */
+    public static function badNames(): iterable
+    {
+        yield 'a name past 60 characters' => [['ar' => str_repeat('و', 61)]];
+        yield 'a list rather than names by language' => [['وحدة']];
+        yield 'a blank language' => [[' ' => 'وحدة']];
+    }
+
+    /** @param array<array-key, string> $names */
+    #[DataProvider('badNames')]
+    public function testNamesThatAreNotByLanguageOrTooLongAreRefused(array $names): void
+    {
+        try {
+            Unit::create($this->company, 'C62', 'Unité', 0, 10, $this->now, $names);
+            self::fail('expected InvalidFiscalValue');
+        } catch (InvalidFiscalValue $refused) {
+            self::assertSame('names', $refused->field);
+        }
+    }
+
+    public function testAUnitFromBeforeNamesByLanguageIsGivenThemOnceAndNeverAgain(): void
+    {
+        $unit = Unit::create($this->company, 'C62', 'Unité', 0, 10, $this->now);
+        self::assertFalse($unit->awaitsLanguageNames());
+
+        $reflection = new \ReflectionProperty(Unit::class, 'names');
+        $reflection->setValue($unit, null);
+        self::assertTrue($unit->awaitsLanguageNames());
+        self::assertSame([], $unit->getNames());
+
+        self::assertTrue($unit->giveLanguageNames(['ar' => 'وحدة']));
+        self::assertSame('وحدة', $unit->nameIn('ar'));
+        self::assertFalse($unit->giveLanguageNames(['ar' => 'قطعة']));
+        self::assertSame('وحدة', $unit->nameIn('ar'));
+    }
 }

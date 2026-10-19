@@ -37,7 +37,7 @@ final readonly class ReviseUnitProcessor implements ProcessorInterface
             $unit = $this->manage->revise(
                 $company,
                 CompanyPath::identifier($uriVariables, 'unitId'),
-                new UnitChanges($data->name, $data->decimals, $data->isActive, $data->sortOrder),
+                new UnitChanges($data->name, $data->decimals, $data->isActive, $data->sortOrder, $data->names),
                 $this->guard->account()->getId(),
                 $data->version,
             );

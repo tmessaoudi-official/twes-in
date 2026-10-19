@@ -11,7 +11,8 @@ namespace App\Fiscal\Application\Unit;
 
 final readonly class UnitDraft
 {
-    public function __construct(public string $code, public string $name, public int $decimals, public int $sortOrder)
+    /** @param array<array-key, mixed> $names the name in other languages documents print in, by language */
+    public function __construct(public string $code, public string $name, public int $decimals, public int $sortOrder, public array $names = [])
     {
     }
 }

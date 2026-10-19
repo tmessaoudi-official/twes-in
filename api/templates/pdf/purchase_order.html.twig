@@ -84,7 +84,7 @@
           {%- if vendorCodes %}<td>{% if line.vendorCode is not null %}<bdi>{{ line.vendorCode }}</bdi>{% endif %}</td>{% endif %}
           <td><bdi>{{ line.description|nl2br }}</bdi></td>
           <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
-          <td>{{ line.unit.name }}</td>
+          <td>{{ line.unit.nameIn(locale) }}</td>
           <td class="number">{% if line.unitPriceNet is not null %}{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
           <td class="number">{% if net is not null %}{{ net|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
         </tr>

@@ -11,6 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Tenancy\Domain\Model\Company;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
 
 /** A company's units: listed by anyone who may read the fiscal setup, added and revised by whoever may write it. */
@@ -56,6 +57,48 @@ final class UnitsTest extends ApiTestCase
         self::assertSame(2, $body['decimals']);
         self::assertFalse($body['isActive']);
         self::assertSame(2, $body['version']);
+    }
+
+    public function testAUnitCarriesItsNameInEachLanguageDocumentsPrintIn(): void
+    {
+        $this->signedIn(['fiscal.read', 'fiscal.write']);
+
+        $this->getJson($this->path());
+        $piece = $this->jsonList()[0];
+        self::assertSame(['Unité', ['ar' => 'وحدة', 'en' => 'Unit']], [$piece['name'], $piece['names']]);
+
+        $this->postJson($this->path(), ['code' => 'TNE', 'name' => 'Tonne', 'decimals' => 3, 'sortOrder' => 90]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertStringContainsString('"names":{}', (string) $this->client->getResponse()->getContent(), 'no names is an empty object, never a list');
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => 1, 'name' => 'Tonne', 'names' => ['ar' => 'طن'], 'decimals' => 3, 'isActive' => true, 'sortOrder' => 90]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([['ar' => 'طن'], 2], [$this->json()['names'], $this->json()['version']]);
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['version' => 2, 'name' => 'Tonne', 'decimals' => 3, 'isActive' => true, 'sortOrder' => 90]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([['ar' => 'طن'], 2], [$this->json()['names'], $this->json()['version']], 'a revision naming no names keeps them');
+    }
+
+    /** @return iterable<string, array{mixed}> */
+    public static function namesRefused(): iterable
+    {
+        yield 'a language documents do not print in' => [['de' => 'Tonne']];
+        yield 'a list' => [['طن']];
+        yield 'a name that is not text' => [['ar' => 12]];
+    }
+
+    #[DataProvider('namesRefused')]
+    public function testNamesInALanguageDocumentsDoNotPrintInOrNotByLanguageAreRefused(mixed $names): void
+    {
+        $this->signedIn(['fiscal.read', 'fiscal.write']);
+
+        $this->postJson($this->path(), ['code' => 'TNE', 'name' => 'Tonne', 'names' => $names, 'decimals' => 3, 'sortOrder' => 90]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->getJson($this->path());
+        self::assertNotContains('TNE', array_column($this->jsonList(), 'code'));
     }
 
     public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void

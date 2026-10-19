@@ -11,6 +11,8 @@ namespace App\Tests\Unit\Fiscal\Domain;
 
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
+use App\Fiscal\Domain\Model\Unit;
+use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\TestCase;
 
 /** What a document's lines come to in each unit: the « Quantités » line under its lines. */
@@ -26,6 +28,18 @@ final class QuantityTotalsTest extends TestCase
         ]);
 
         self::assertEquals([new QuantityTotal('kg', 3, '3.300'), new QuantityTotal('pièce', 0, '12')], $totals);
+    }
+
+    public function testEachUnitIsNamedInTheDocumentsLanguage(): void
+    {
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $now = new \DateTimeImmutable('2026-10-19 10:00:00');
+        $piece = Unit::create($company, 'C62', 'Unité', 0, 10, $now, ['ar' => 'وحدة']);
+        $kilo = Unit::create($company, 'KGM', 'Kilogramme', 3, 20, $now);
+
+        $totals = QuantityTotals::ofUnits([[$piece, '2'], [$kilo, '1.500'], [$piece, '3']], 'ar');
+
+        self::assertEquals([new QuantityTotal('وحدة', 0, '5'), new QuantityTotal('Kilogramme', 3, '1.500')], $totals);
     }
 
     public function testOneLineHasNothingToAddUp(): void

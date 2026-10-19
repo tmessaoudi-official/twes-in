@@ -180,6 +180,7 @@ describe('SettingsPage', () => {
           decimals: 0,
           isActive: true,
           sortOrder: 0,
+          names: {},
           version: 1,
         },
       ]),

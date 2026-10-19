@@ -18,17 +18,17 @@ use App\Fiscal\Domain\Model\Unit;
 final class QuantityTotals
 {
     /**
-     * The same, from each line's unit and quantity.
+     * The same, from each line's unit and quantity, each unit named in the document's language.
      *
      * @param list<array{Unit, string}> $lines
      *
      * @return list<QuantityTotal>
      */
-    public static function ofUnits(array $lines): array
+    public static function ofUnits(array $lines, string $language): array
     {
         return self::of(array_map(static fn (array $line): array => [
             'unit' => $line[0]->getId()->toRfc4122(),
-            'name' => $line[0]->getName(),
+            'name' => $line[0]->nameIn($language),
             'decimals' => $line[0]->getDecimals(),
             'quantity' => $line[1],
         ], $lines));
