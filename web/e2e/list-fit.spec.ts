@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 
+import { aCustomer, aProduct, aVendor, forget, retireVendor } from './catalogue';
 import { forgetPresentationChoices } from './presentation';
 import { inACompany, signIn } from './session';
 
@@ -75,6 +76,12 @@ async function cutValues(page: Page): Promise<{ rows: number; cut: string[] }> {
         })
         .map((element) => (element.textContent ?? '').trim()),
     );
+    // A cell is cut as well when what it holds is wider than it, whatever box inside does the clipping.
+    const cells = rows.flatMap((row) =>
+      [...row.querySelectorAll<HTMLElement>('td[data-column]')]
+        .filter((cell) => cell.scrollWidth > cell.clientWidth + 1)
+        .map((cell) => `cell ${cell.dataset['column']}: ${(cell.textContent ?? '').trim()}`),
+    );
     // A header is cut when its label draws past its cell's padding: it has no clipping box of its own.
     const headers = [...document.querySelectorAll<HTMLElement>('th[data-column]')].flatMap(
       (header) => {
@@ -90,14 +97,14 @@ async function cutValues(page: Page): Promise<{ rows: number; cut: string[] }> {
         return inside ? [] : [`header ${(label.textContent ?? '').trim()}`];
       },
     );
-    return { rows: rows.length, cut: [...cut, ...headers] };
+    return { rows: rows.length, cut: [...cut, ...cells, ...headers] };
   }, RECORD_ROW);
 }
 
 /** Every list with rows, at one window width: none shows a value cut short once its columns have fitted. */
-async function noValueCut(page: Page): Promise<number> {
+async function noValueCut(page: Page, paths: readonly string[]): Promise<number> {
   let read = 0;
-  for (const path of LISTS) {
+  for (const path of paths) {
     await page.goto(path);
     await expect(page.getByTestId('list-columns'), path).toBeVisible();
     // An empty list has nothing to cut; the count below makes sure most lists were read with rows.
@@ -118,13 +125,32 @@ async function noValueCut(page: Page): Promise<number> {
 // A list never cuts a value: a column is as wide as its widest value, and where they do not all fit the lowest give
 // way whole. Names in French and Arabic, at the widest page and at a laptop's.
 test.describe('no list cuts a value', () => {
+  // The run's own records, each as long as its fields allow, so a code and a name wider than their columns declare are
+  // read whatever else the company holds: CI's seed gives the operator a company and no row.
+  const code = `F${Date.now().toString(36)}-QUINCAILLERIE-GENERALE`.slice(0, 32);
+  let product = '';
+  let vendor = '';
   test.beforeEach(async ({ page }) => {
     await signIn(page);
     await inACompany(page, CSRF);
     await forgetPresentationChoices(page);
+    if (product === '') {
+      await aCustomer(page, code);
+      product = await aProduct(page, code);
+      vendor = await aVendor(page, code);
+    }
   });
   test.afterEach(async ({ page }) => {
     await forgetPresentationChoices(page);
+  });
+  test.afterAll(async ({ browser }) => {
+    if (product === '') return;
+    const page = await browser.newPage();
+    await signIn(page);
+    await inACompany(page, CSRF);
+    await forget(page, [product]);
+    await retireVendor(page, vendor);
+    await page.close();
   });
 
   for (const language of ['fr', 'ar'] as const) {
@@ -137,9 +163,11 @@ test.describe('no list cuts a value', () => {
       }
       for (const width of [1600, 1280]) {
         await page.setViewportSize({ width, height: 900 });
-        expect(await noValueCut(page), `lists read with rows at ${width}`).toBeGreaterThanOrEqual(
-          10,
-        );
+        // The run's records are found by their code, so these three lists are always read with rows.
+        const own = ['/customers', '/products', '/vendors'].map((path) => `${path}?q=${code}`);
+        expect(await noValueCut(page, own), `the run's records at ${width}`).toBe(own.length);
+        // The rest are read where earlier scenarios or the demo left rows, which a fresh CI company may not have.
+        await noValueCut(page, LISTS);
       }
     });
   }
