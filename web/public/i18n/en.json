@@ -2362,7 +2362,7 @@
     },
     "stock": {
       "title": "Stock",
-      "intro": "A product’s stock is the sum of its movements. A validated delivery note takes the goods out of its establishment’s default location; cancelling it puts them back.",
+      "intro": "A product’s stock is the sum of its movements. A validated delivery note, or an issued invoice for what no delivery note handed over, takes the goods out of the product’s places at its establishment; cancelling the note, or a credit note returning them, puts them back.",
       "receive": "Receive",
       "count": "Count",
       "move": "Move",
