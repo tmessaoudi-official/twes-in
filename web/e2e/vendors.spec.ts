@@ -49,6 +49,8 @@ test('a vendor is added with its bank account and terms, then revised', async ({
   // Long enough that the title never shares a row with the bar: beside it, the « Bientôt » button would add one and
   // folds into « ⋮ », so a short name made the check below depend on how wide the run's letters happened to be.
   const name = `Sotumag, Société tunisienne de matériel ${run}`;
+  // A name that long widens its column, and on a laptop the city then gives way for width: a wide window shows it.
+  await page.setViewportSize({ width: 1600, height: 900 });
   await signIn(page);
   await inACompany(page, CSRF);
   try {
