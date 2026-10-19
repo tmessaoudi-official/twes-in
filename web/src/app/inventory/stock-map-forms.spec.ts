@@ -2,7 +2,6 @@
 
 import {
   drawingForm,
-  drawingInput,
   drawingValues,
   floorForm,
   floorInput,
@@ -13,9 +12,10 @@ import {
   planRectangles,
   rectValues,
   structureForm,
-  structureInput,
+  structureFacts,
   structureRectangles,
   structureValues,
+  typedRect,
 } from './stock-map-forms';
 import type {
   StockDrawingRow,
@@ -208,35 +208,6 @@ describe('drawingForm', () => {
   });
 
   /**
-   * The grid holds a rectangle's PLACE, never its SIZE, as the approved canvas draws it: a rack of 3,90 × 0,60 m
-   * sitting at x 2,50. Rounding a real 3,90 m rack up to 4,00 would be losing a measurement somebody took.
-   */
-  it('takes the place to the grid and leaves the measurements as they were typed', () => {
-    expect(
-      drawingInput({
-        locationId: 'l1',
-        x: '2.6',
-        y: '4.1',
-        width: '3.9',
-        depth: '0.6',
-        rotation: '97',
-        height: '2.1',
-      }),
-    ).toEqual({
-      locationId: 'l1',
-      // Where it stands: on the quarter.
-      x: '2.500',
-      y: '4.000',
-      // How big it is: exactly what was measured.
-      width: '3.900',
-      depth: '0.600',
-      height: '2.100',
-      // How it is turned: in fifteens, because a rack stands square to a wall or at an angle off it.
-      rotation: 90,
-    });
-  });
-
-  /**
    * A rack or a zone posed from the palette creates its place with its rectangle (the stock map brief § 5.3, finding D):
    * « Emplacement : ◉ nouveau — code [R9] nom [ ] ○ existant [picker] », « nouveau » first.
    */
@@ -297,35 +268,6 @@ describe('drawingForm', () => {
     expect(offered?.map((option) => option.value)).toEqual(['l1']);
   });
 
-  it('sends a new place in full and an existing one by its id, never both', () => {
-    const rect = { x: '1', y: '2', width: '1', depth: '1', rotation: 0, height: '2' };
-    expect(
-      drawingInput({
-        ...rect,
-        origin: 'new',
-        locationId: 'l1',
-        newLocationKind: 'rack',
-        newLocationCode: ' R9 ',
-        newLocationName: ' Rayonnage 9 ',
-      }),
-    ).toEqual(
-      expect.objectContaining({
-        locationId: '',
-        newLocationKind: 'rack',
-        newLocationCode: 'R9',
-        newLocationName: 'Rayonnage 9',
-      }),
-    );
-    const existing = drawingInput({
-      ...rect,
-      origin: 'existing',
-      locationId: 'l1',
-      newLocationCode: 'R9',
-    });
-    expect(existing.locationId).toBe('l1');
-    expect(existing).not.toHaveProperty('newLocationCode');
-  });
-
   /** The code proposed is the one after the highest of that kind in the establishment, as a repeat counts on. */
   it('proposes the code after the establishment’s highest of the same kind', () => {
     const locations = [
@@ -345,19 +287,6 @@ describe('drawingForm', () => {
       'zone',
       'zone',
     ]);
-  });
-
-  it('keeps a size that is already on the grid, so the rule costs a round rack nothing', () => {
-    const input = drawingInput({
-      locationId: 'l1',
-      x: '0',
-      y: '0',
-      width: '2.5',
-      depth: '1',
-      rotation: '0',
-      height: '2',
-    });
-    expect([input.width, input.depth, input.height]).toEqual(['2.500', '1.000', '2.000']);
   });
 });
 
@@ -480,49 +409,38 @@ describe('the structure layer', () => {
     });
   });
 
-  /** The same rule as a rectangle of stock: the grid holds a PLACE, never a measurement somebody took. */
-  it('puts the place on the quarter-metre and leaves the measurements alone', () => {
-    expect(
-      structureInput({
-        kind: 'door',
-        name: '  Porte du quai 2  ',
-        x: '2.6',
-        y: '4.1',
-        width: '0.9',
-        depth: '0.2',
-        rotation: 7,
-        height: '2.1',
-      }),
-    ).toEqual({
-      kind: 'door',
-      name: 'Porte du quai 2',
-      x: '2.500',
-      y: '4.000',
-      width: '0.900',
-      depth: '0.200',
-      rotation: 0,
-      height: '2.100',
-    });
-  });
-
   /** An unknown kind cannot reach the API: the select is the only way in, and a bad one falls back to a wall. */
-  it('never sends a kind the building is not made of', () => {
-    expect(
-      structureInput({
-        kind: 'moat',
-        x: '0',
-        y: '0',
-        width: '1',
-        depth: '1',
-        rotation: 0,
-        height: '1',
-      }).kind,
-    ).toBe('wall');
+  it('never sends a kind the building is not made of, and keeps the name as typed without its spaces', () => {
+    expect(structureFacts({ kind: 'moat', name: '  Porte du quai 2  ' })).toEqual({
+      kind: 'wall',
+      name: 'Porte du quai 2',
+    });
+    expect(structureFacts({ kind: 'door' })).toEqual({ kind: 'door', name: '' });
   });
 
   it('reads a piece as metres the drawing can work in', () => {
     expect(structureRectangles([wall])).toEqual([
       { x: 0, y: 0, width: 6.9, depth: 0.2, rotation: 0, height: 3 },
     ]);
+  });
+});
+
+describe('typedRect', () => {
+  /**
+   * A typed place enters the plan on the grid, as a dragged one does, so the board shows where « Enregistrer » puts
+   * it; a typed size is a measurement and stays as typed (a real 3,90 m rack is not a 4,00 m one).
+   */
+  it('takes a typed place to the quarter-metre and a typed turn to fifteen degrees, the size as typed', () => {
+    expect(
+      typedRect({ x: '2.4', y: '3.9', width: '3.9', depth: '0.6', rotation: 47, height: '2.1' }),
+    ).toEqual({ x: 2.5, y: 4, width: 3.9, depth: 0.6, rotation: 45, height: 2.1 });
+    expect(typedRect({ x: '', y: null, rotation: 352 })).toEqual({
+      x: 0,
+      y: 0,
+      width: 0,
+      depth: 0,
+      rotation: 345,
+      height: 0,
+    });
   });
 });

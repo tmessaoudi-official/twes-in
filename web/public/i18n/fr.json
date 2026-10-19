@@ -3536,6 +3536,7 @@
         "scan_gap": "Le délai entre deux touches qui distingue votre scanner d’une main.",
         "notice": "Que vous avez fermé le bandeau sur les cookies.",
         "customer_screen_place": "L’établissement où se trouve l’écran client de cet appareil, pour chaque entreprise.",
+        "stock_plan": "Le plan d’un étage arrangé et pas encore enregistré, pour le reprendre sur cet appareil.",
         "phone": "Le lien d’un téléphone prêté comme scanner."
       },
       "third_party": "Aucun script tiers, aucune mesure d’audience, aucune publicité."

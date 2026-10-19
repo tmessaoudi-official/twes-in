@@ -135,32 +135,16 @@
                 {{ 'inventory.plan.view_names.plan' | translate }}
               </button>
             } @else if (one === 'volume') {
-              <!--
-                Arranging is done on the plan: there the volume is named and says why it waits, rather than
-                vanishing from the switch the moment the mode changes.
-              -->
-              @if (arranging()) {
-                <button
-                  type="button"
-                  class="min-h-9 whitespace-nowrap rounded-md px-3 text-sm text-on-surface-variant"
-                  aria-disabled="true"
-                  [matTooltip]="'inventory.plan.volume.read_only' | translate"
-                  data-testid="stock-map-view-volume"
-                >
-                  {{ 'inventory.plan.view_names.volume' | translate }}
-                </button>
-              } @else {
-                <button
-                  type="button"
-                  class="min-h-9 whitespace-nowrap rounded-md px-3 text-sm font-medium"
-                  [class.bg-secondary-container]="volumeShown()"
-                  [attr.aria-pressed]="volumeShown()"
-                  (click)="chooseView('volume')"
-                  data-testid="stock-map-view-volume"
-                >
-                  {{ 'inventory.plan.view_names.volume' | translate }}
-                </button>
-              }
+              <button
+                type="button"
+                class="min-h-9 whitespace-nowrap rounded-md px-3 text-sm font-medium"
+                [class.bg-secondary-container]="volumeShown()"
+                [attr.aria-pressed]="volumeShown()"
+                (click)="chooseView('volume')"
+                data-testid="stock-map-view-volume"
+              >
+                {{ 'inventory.plan.view_names.volume' | translate }}
+              </button>
             } @else if (showComing() && !(full() && compact())) {
               <!--
                 Reached and named, never a dead end: a view that is not built says so where it will be, rather than
@@ -259,6 +243,63 @@
       }
     </div>
 
+    <ng-template #unsavedBar>
+      <!--
+        The whole floor's unsaved work, counted where the eye is, with the one « Enregistrer » that sends it
+        all and the way to let it go. Nothing on the board is sent before this button.
+      -->
+      <span
+        role="status"
+        class="rounded-full bg-primary-container px-3 py-1 text-xs font-medium text-on-primary-container"
+        data-testid="stock-plan-unsaved"
+        [attr.data-count]="planChanges()"
+      >
+        {{ 'inventory.plan.draft.unsaved' | translate: { count: planChanges() } }}
+      </span>
+      <span class="flex grow flex-wrap justify-end gap-2">
+        <button
+          mat-button
+          type="button"
+          [disabled]="busy()"
+          (click)="discardPlan()"
+          data-testid="stock-plan-discard"
+        >
+          {{ 'form.revert' | translate }}
+        </button>
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="busy()"
+          (click)="savePlan()"
+          data-testid="stock-plan-save"
+        >
+          {{ 'inventory.save' | translate }}
+        </button>
+      </span>
+    </ng-template>
+    <ng-template #keptOffer>
+      @if (arranging() && offered(); as kept) {
+        <!--
+        A floor arranged and not saved, kept in this browser from an earlier visit. Nothing is drawn over it
+        until it is taken up or let go, so the kept work cannot be written over by a stray gesture.
+      -->
+        <div
+          role="status"
+          class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-outline-variant bg-secondary-container px-3 py-2 text-sm text-on-secondary-container"
+          data-testid="stock-plan-kept"
+        >
+          <span class="grow">{{
+            'inventory.plan.draft.kept' | translate: { count: keptCount() }
+          }}</span>
+          <button mat-button type="button" (click)="abandon()" data-testid="stock-plan-abandon">
+            {{ 'inventory.plan.draft.abandon' | translate }}
+          </button>
+          <button mat-flat-button type="button" (click)="resume()" data-testid="stock-plan-resume">
+            {{ 'inventory.plan.draft.resume' | translate }}
+          </button>
+        </div>
+      }
+    </ng-template>
     <ng-template #searchField>
       <app-pick-field
         class="twes-map-search w-full min-w-32 max-w-xl lg:max-w-sm lg:shrink-0"
@@ -896,12 +937,21 @@
             placeholder holds the board's place meanwhile, so nothing below it jumps.
           -->
           <div class="twes-map-board min-w-0 [grid-area:board]">
+            <!-- The floor's unsaved work stands over the volume as over the plan: the volume draws the draft too. -->
+            @if (arranging() && owesSave()) {
+              <div
+                class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-outline-variant px-3 py-2 text-sm"
+              >
+                <ng-container [ngTemplateOutlet]="unsavedBar" />
+              </div>
+            }
+            <ng-container [ngTemplateOutlet]="keptOffer" />
             @defer (on immediate) {
               <app-stock-map-volume
                 [floorName]="floor()?.name ?? ''"
                 [size]="floorSize()"
-                [drawings]="floorDrawings()"
-                [structures]="floorStructures()"
+                [drawings]="drawnRows()"
+                [structures]="builtRows()"
                 [lit]="litIds()"
                 [chosen]="chosen()"
                 [filling]="full()"
@@ -933,21 +983,15 @@
             >
               @if (arranging()) {
                 @if (owesSave()) {
-                  <span
-                    role="status"
-                    class="rounded-full bg-primary-container px-3 py-1 text-xs font-medium text-on-primary-container"
-                    data-testid="stock-map-not-saved"
-                  >
-                    {{ 'inventory.plan.not_saved' | translate }}
-                  </span>
+                  <ng-container [ngTemplateOutlet]="unsavedBar" />
                 } @else {
                   <span class="font-medium" data-testid="stock-map-arranging">
                     {{ 'inventory.plan.arranging' | translate: { floor: floor()?.name ?? '' } }}
                   </span>
+                  <span class="text-on-surface-variant">{{
+                    'inventory.plan.arrange_hint' | translate
+                  }}</span>
                 }
-                <span class="text-on-surface-variant">{{
-                  'inventory.plan.arrange_hint' | translate
-                }}</span>
               } @else {
                 <span
                   class="rounded-full bg-surface-container-high px-3 py-1 text-xs font-medium"
@@ -966,6 +1010,7 @@
                 }}</span>
               }
             </div>
+            <ng-container [ngTemplateOutlet]="keptOffer" />
             <!--
               The board takes the focus itself, so its keys are the board's and not the page's: + and − come nearer, the
               arrows move what is shown. Its buttons keep their own Enter and Space.
@@ -1348,6 +1393,31 @@
                       }
                     </g>
                   }
+                  <!--
+                    The floor's own edges, pulled to make it wider or longer: a dot to see, a grip to take hold of, as on
+                    a rack. Its measures are typed in the floor's form for whoever does not point.
+                  -->
+                  @for (grip of floorHandles(); track grip.key) {
+                    <circle
+                      [attr.cx]="grip.x"
+                      [attr.cy]="grip.y"
+                      [attr.r]="handleRadius()"
+                      [attr.stroke-width]="handleRadius() / 3"
+                      class="pointer-events-none fill-surface stroke-outline"
+                    />
+                    <circle
+                      [attr.cx]="grip.x"
+                      [attr.cy]="grip.y"
+                      [attr.r]="gripRadius()"
+                      pointer-events="all"
+                      class="touch-none fill-none"
+                      [class.cursor-ew-resize]="grip.handle.hy === 0.5"
+                      [class.cursor-ns-resize]="grip.handle.hx === 0.5"
+                      [class.cursor-nwse-resize]="grip.handle.hx === 1 && grip.handle.hy === 1"
+                      (pointerdown)="grabFloor($event, grip.handle)"
+                      [attr.data-testid]="'stock-floor-grip-' + grip.key"
+                    />
+                  }
                   <!-- The box choosing what it touches, drawn over everything and taking no pointer itself. -->
                   @if (lassoRect(); as lasso) {
                     <rect
@@ -1368,7 +1438,7 @@
                 the moment a rectangle is being placed, and sits in a corner so the bare floor stays there to trace on.
               -->
                 @if (
-                  floorDrawings().length === 0 &&
+                  drawnRows().length === 0 &&
                   editing() === null &&
                   editingStructure() === null &&
                   !tracing()
@@ -1379,7 +1449,7 @@
                   >
                     <app-stock-map-first-steps
                       [measured]="floorSize() !== null"
-                      [built]="floorStructures().length > 0"
+                      [built]="builtRows().length > 0"
                       [drawn]="false"
                     />
                     @if (!arranging() && mayDraw()) {
@@ -1554,55 +1624,34 @@
               data-testid="stock-map-inspector"
             >
               @if (drawingFormGroup(); as group) {
-                @if (drawingSync.changedBy(); as changedBy) {
-                  <app-record-changed
-                    [changedBy]="changedBy"
-                    [conflictCount]="drawingSync.conflicts().length"
-                    (reload)="drawingSync.reloadSaved(group)"
-                  />
-                }
                 @if (drawingDescriptor(); as descriptor) {
+                  <!-- Every field writes into the board's draft as it is typed; « Enregistrer » above the board sends it. -->
                   <app-descriptor-form
                     [descriptor]="descriptor"
                     [form]="group"
-                    [updated]="drawingSync.updated()"
-                    [conflicts]="drawingSync.conflicts()"
-                    (resolved)="drawingSync.resolve(group, $event)"
                     testId="stock-drawing-form"
-                    (submitted)="saveDrawing($event)"
                   >
                     <div
                       class="sticky bottom-0 -mx-1 flex flex-wrap items-center justify-end gap-2 bg-surface px-1 py-2"
                     >
-                      @if (unsaved(); as changes) {
-                        <!-- Announced: nothing else on the plan says a rectangle was moved and not yet saved. -->
-                        <span
-                          role="status"
-                          class="grow text-sm text-on-surface-variant"
-                          data-testid="stock-drawing-unsaved"
-                          [attr.data-count]="changes"
+                      @if (editingRow(); as drawing) {
+                        <button
+                          mat-button
+                          type="button"
+                          class="grow-0 text-error"
+                          (click)="erase(drawing)"
+                          data-testid="stock-drawing-erase"
                         >
-                          {{
-                            (changes === 1 ? 'form.one_unsaved' : 'form.unsaved')
-                              | translate: { count: changes }
-                          }}
-                        </span>
+                          {{ 'inventory.plan.erase' | translate }}
+                        </button>
                       }
                       <button
                         mat-button
                         type="button"
-                        (click)="cancelDrawing()"
-                        data-testid="stock-drawing-cancel"
+                        (click)="closeDrawing()"
+                        data-testid="stock-drawing-close"
                       >
                         {{ 'inventory.cancel' | translate }}
-                      </button>
-                      <button
-                        mat-flat-button
-                        type="submit"
-                        [disabled]="busy()"
-                        data-testid="stock-drawing-save"
-                      >
-                        {{ 'inventory.save' | translate }}
                       </button>
                     </div>
                   </app-descriptor-form>
@@ -1614,55 +1663,33 @@
                 repair: a doorway traced with the wall tool is right in every measurement and wrong in exactly one.
               -->
               @if (structureFormGroup(); as group) {
-                @if (structureSync.changedBy(); as changedBy) {
-                  <app-record-changed
-                    [changedBy]="changedBy"
-                    [conflictCount]="structureSync.conflicts().length"
-                    (reload)="structureSync.reloadSaved(group)"
-                  />
-                }
                 @if (structureDescriptor(); as descriptor) {
                   <app-descriptor-form
                     [descriptor]="descriptor"
                     [form]="group"
-                    [updated]="structureSync.updated()"
-                    [conflicts]="structureSync.conflicts()"
-                    (resolved)="structureSync.resolve(group, $event)"
                     testId="stock-structure-form"
-                    (submitted)="saveStructure($event)"
                   >
                     <div
                       class="sticky bottom-0 -mx-1 flex flex-wrap items-center justify-end gap-2 bg-surface px-1 py-2"
                     >
-                      @if (editingStructure(); as editing) {
-                        @if (editing !== 'new') {
-                          <button
-                            mat-button
-                            type="button"
-                            class="grow-0 text-error"
-                            [disabled]="busy()"
-                            (click)="eraseStructure(editing)"
-                            data-testid="stock-structure-erase"
-                          >
-                            {{ 'inventory.plan.erase' | translate }}
-                          </button>
-                        }
+                      @if (selectedStructure(); as piece) {
+                        <button
+                          mat-button
+                          type="button"
+                          class="grow-0 text-error"
+                          (click)="eraseStructure(piece)"
+                          data-testid="stock-structure-erase"
+                        >
+                          {{ 'inventory.plan.erase' | translate }}
+                        </button>
                       }
                       <button
                         mat-button
                         type="button"
-                        (click)="cancelStructure()"
-                        data-testid="stock-structure-cancel"
+                        (click)="closeStructure()"
+                        data-testid="stock-structure-close"
                       >
                         {{ 'inventory.cancel' | translate }}
-                      </button>
-                      <button
-                        mat-flat-button
-                        type="submit"
-                        [disabled]="busy()"
-                        data-testid="stock-structure-save"
-                      >
-                        {{ 'inventory.save' | translate }}
                       </button>
                     </div>
                   </app-descriptor-form>
@@ -1705,7 +1732,6 @@
                   <button
                     mat-stroked-button
                     type="button"
-                    [disabled]="busy()"
                     (click)="eraseGroup()"
                     data-testid="stock-map-group-erase"
                   >
@@ -1717,25 +1743,6 @@
                 <button mat-button type="button" (click)="letGo()" data-testid="stock-map-let-go">
                   {{ 'inventory.plan.let_go' | translate }}
                 </button>
-                @if (groupDraft() !== null) {
-                  <button
-                    mat-button
-                    type="button"
-                    (click)="cancelGroup()"
-                    data-testid="stock-map-group-cancel"
-                  >
-                    {{ 'inventory.cancel' | translate }}
-                  </button>
-                  <button
-                    mat-flat-button
-                    type="button"
-                    [disabled]="busy()"
-                    (click)="saveGroup()"
-                    data-testid="stock-map-group-save"
-                  >
-                    {{ 'inventory.save' | translate }}
-                  </button>
-                }
               </div>
             </div>
           } @else if (selected(); as drawing) {
@@ -1799,14 +1806,10 @@
                   >
                     {{ 'inventory.edit' | translate }}
                   </button>
-                  <!--
-                    Guarded visibly, never silently: `erase` returns early while something is in flight, so without
-                    this the button depresses and nothing at all happens — no toast, no error, no change.
-                  -->
+                  <!-- Into the plan's draft, so it never waits on a request: « Rétablir » takes it back, or the toast’s « Annuler ». -->
                   <button
                     mat-button
                     type="button"
-                    [disabled]="busy()"
                     (click)="erase(drawing)"
                     data-testid="stock-drawing-erase"
                   >
@@ -1815,12 +1818,21 @@
                   <button
                     mat-button
                     type="button"
+                    [disabled]="!mayRepeat()"
                     (click)="openRepeat(drawing)"
                     data-testid="stock-drawing-repeat"
                   >
                     {{ 'inventory.plan.repeat' | translate }}
                   </button>
                 </div>
+                @if (!mayRepeat()) {
+                  <p
+                    class="text-sm text-on-surface-variant"
+                    data-testid="stock-drawing-repeat-waits"
+                  >
+                    {{ 'inventory.plan.repeat_waits' | translate }}
+                  </p>
+                }
 
                 <!--
                   Repeating it down an aisle. Every box is a control a keyboard reaches, the four ways included: the
@@ -1955,6 +1967,26 @@
               <p class="text-sm text-on-surface-variant">
                 {{ 'inventory.plan.structure_note' | translate }}
               </p>
+              @if (arranging()) {
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    mat-button
+                    type="button"
+                    (click)="openStructure(piece)"
+                    data-testid="stock-structure-edit"
+                  >
+                    {{ 'inventory.edit' | translate }}
+                  </button>
+                  <button
+                    mat-button
+                    type="button"
+                    (click)="eraseStructure(piece)"
+                    data-testid="stock-structure-erase"
+                  >
+                    {{ 'inventory.plan.erase' | translate }}
+                  </button>
+                </div>
+              }
             </div>
           } @else if (found() !== null && foundPlaces().length > 0) {
             <!-- « Où elle se trouve »: each drawn place holding it, this floor first; a card goes to the place. -->

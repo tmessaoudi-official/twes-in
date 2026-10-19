@@ -97,11 +97,7 @@ describe('InventoryFacade', () => {
     floors: vi.fn(),
     reviseFloor: vi.fn(),
     structures: vi.fn(),
-    buildStructure: vi.fn(),
-    reshapeStructure: vi.fn(),
-    draw: vi.fn(),
-    moveDrawing: vi.fn(),
-    changeDrawings: vi.fn(),
+    changePlan: vi.fn(),
     locationHomes: vi.fn(),
     whereabouts: vi.fn(),
     pickProducts: vi.fn(),
@@ -127,11 +123,7 @@ describe('InventoryFacade', () => {
     api.floors.mockReset().mockResolvedValue([]);
     api.reviseFloor.mockReset().mockResolvedValue({});
     api.structures.mockReset().mockResolvedValue([]);
-    api.buildStructure.mockReset();
-    api.reshapeStructure.mockReset();
-    api.draw.mockReset();
-    api.moveDrawing.mockReset();
-    api.changeDrawings.mockReset();
+    api.changePlan.mockReset();
     api.locationHomes.mockReset().mockResolvedValue([]);
     api.whereabouts.mockReset();
     api.pickProducts.mockReset().mockResolvedValue([]);
@@ -392,8 +384,7 @@ describe('InventoryFacade', () => {
    * otherwise the racks it had just made would be missing from every picker on the screen that made them,
    * including the one the next rectangle is drawn for.
    */
-  /** « Annuler » after a piece is saved sends the version that save produced, which only the answer carries. */
-  it('revises a floor and a piece on the version read, and answers the piece as saved', async () => {
+  it('revises a floor on the version read', async () => {
     const floor = {
       establishmentId: 'e1',
       name: 'Quai',
@@ -406,64 +397,56 @@ describe('InventoryFacade', () => {
     };
     expect(await facade.reviseFloor('c1', 'f1', floor, 4)).toBe(true);
     expect(api.reviseFloor).toHaveBeenCalledWith('c1', 'f1', floor, 4);
-
-    const piece = {
-      kind: 'wall' as const,
-      name: 'Mur nord',
-      x: '0.000',
-      y: '0.000',
-      width: '6.900',
-      depth: '0.200',
-      rotation: 0,
-      height: '3.000',
-    };
-    const saved = { ...piece, id: 's1', floorId: 'f1', version: 3 };
-    api.reshapeStructure.mockResolvedValue(saved);
-    expect(await facade.buildStructure('c1', 'f1', piece, 's1', 2)).toEqual(saved);
-    expect(api.reshapeStructure).toHaveBeenCalledWith('c1', 's1', piece, 2);
-    api.buildStructure.mockResolvedValue({ ...saved, id: 's2', version: 1 });
-    expect(await facade.buildStructure('c1', 'f1', piece, null, null)).toMatchObject({ id: 's2' });
-    expect(api.buildStructure).toHaveBeenCalledWith('c1', 'f1', piece);
-
-    api.reshapeStructure.mockRejectedValue(new InventoryRefused('record_changed'));
-    expect(await facade.buildStructure('c1', 'f1', piece, 's1', 2)).toBeNull();
-    expect(facade.error()).toBe('record_changed');
   });
 
-  /** A rectangle moved on the version it was opened at answers the one it was saved at, for « Annuler ». */
-  it('moves a rectangle on its version and gives back the rectangle the API kept', async () => {
-    const input = {
-      locationId: 'l1',
-      x: '1.000',
-      y: '2.000',
-      width: '3.000',
-      depth: '1.000',
-      rotation: 0,
-      height: '2.000',
+  /**
+   * A floor's draft saved in one request: the answer comes back for the toast's « Annuler », the floor and the places
+   * are read again, and a refusal leaves the code and the entry it names for the page to open.
+   */
+  it('saves a floor’s draft and reads the floor again, or keeps the refusal and the entry it names', async () => {
+    const step = {
+      draws: [],
+      moves: [],
+      erasures: [],
+      newPlaces: [
+        {
+          kind: 'rack' as const,
+          code: 'R9',
+          name: 'Rayonnage 9',
+          x: '0.000',
+          y: '0.000',
+          width: '1.000',
+          depth: '1.000',
+          rotation: 0,
+          height: '2.000',
+        },
+      ],
+      structureBuilds: [],
+      structureMoves: [],
+      structureErasures: [],
     };
-    const saved = { ...input, id: 'd1', floorId: 'f1', version: 3 };
-    api.moveDrawing.mockResolvedValue(saved);
-    expect(await facade.draw('c1', 'f1', input, 'd1', 2)).toEqual(saved);
-    expect(api.moveDrawing).toHaveBeenCalledWith('c1', 'd1', input, 2);
-    api.draw.mockResolvedValue({ ...saved, id: 'd2', version: 1 });
-    expect(await facade.draw('c1', 'f1', input, null, null)).toMatchObject({ id: 'd2' });
-    expect(api.draw).toHaveBeenCalledWith('c1', 'f1', input);
+    const saved = {
+      drawings: [],
+      structures: [],
+      created: {
+        draws: [],
+        newPlaces: [{ drawingId: 'd9', locationId: 'l9' }],
+        structureBuilds: [],
+      },
+      floorVersion: null,
+    };
+    api.changePlan.mockResolvedValue(saved);
+    expect(await facade.changePlan('c1', 'f1', step)).toEqual(saved);
+    expect(api.changePlan).toHaveBeenCalledWith('c1', 'f1', step);
+    expect(api.drawings).toHaveBeenCalledWith('c1', 'f1');
+    expect(api.structures).toHaveBeenCalledWith('c1', 'f1');
+    expect(api.locations).toHaveBeenCalled();
 
-    api.moveDrawing.mockRejectedValue(new InventoryRefused('record_changed'));
-    expect(await facade.draw('c1', 'f1', input, 'd1', 2)).toBeNull();
-    expect(facade.error()).toBe('record_changed');
-  });
-
-  it('gives back the rectangles a group step left, and nothing when it was refused', async () => {
-    const step = { draws: [], moves: [], erasures: [{ drawingId: 'd1', version: 2 }] };
-    const left = [{ id: 'd2', version: 4 }];
-    api.changeDrawings.mockResolvedValue(left);
-    expect(await facade.changeDrawings('c1', 'f1', step)).toEqual(left);
-    expect(api.changeDrawings).toHaveBeenCalledWith('c1', 'f1', step);
-
-    api.changeDrawings.mockRejectedValue(new InventoryRefused('record_changed'));
-    expect(await facade.changeDrawings('c1', 'f1', step)).toBeNull();
-    expect(facade.error()).toBe('record_changed');
+    api.changePlan.mockRejectedValue(new InventoryRefused('code_taken', 'newPlaces[0].code'));
+    expect(await facade.changePlan('c1', 'f1', step)).toBeNull();
+    expect(facade.error()).toBe('code_taken');
+    expect(facade.refusedEntry()).toBe('newPlaces[0].code');
+    expect(facade.busy()).toBe(false);
   });
 
   it('reads the locations again after a repeat, not only the floor', async () => {

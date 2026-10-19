@@ -479,32 +479,11 @@ export interface StockDrawingRow {
   version: number;
 }
 
-export type StockDrawingInput = Pick<
-  StockDrawingRow,
-  'locationId' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
-> & {
-  /** A place created with the rectangle, all three or none, and then no `locationId`: the API refuses one naming both. */
-  newLocationKind?: StockLocationKind;
-  newLocationCode?: string;
-  newLocationName?: string;
-};
-
 /** Where a rectangle stands, without what it is drawn for. */
 export type StockDrawingRect = Pick<
   StockDrawingRow,
   'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
 >;
-
-/**
- * A group's step on the plan, all of it or none of it: places drawn at rectangles, rectangles moved or turned, and
- * rectangles undrawn. Its inverse has the same shape, which is what one « Annuler » sends.
- */
-export interface StockDrawingChanges {
-  draws: readonly (StockDrawingRect & { locationId: string })[];
-  /** Each with the version it was chosen at: one changed since refuses the whole step. */
-  moves: readonly (StockDrawingRect & { drawingId: string; version: number })[];
-  erasures: readonly { drawingId: string; version: number }[];
-}
 
 /**
  * The structure layer's four tools, which are the four things the building is drawn out of. The order is the
@@ -538,11 +517,6 @@ export interface StockStructureRow {
   /** The version read, which a revision sends back. */
   version: number;
 }
-
-export type StockStructureInput = Pick<
-  StockStructureRow,
-  'kind' | 'name' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
->;
 
 /**
  * A repeat of one rectangle down an aisle: how many MORE of it, the free floor between two of them in metres, which
@@ -597,4 +571,17 @@ export interface StockOnHand {
   unitId: string;
   /** A decimal string, below zero when more left than came in. */
   onHand: string;
+}
+
+/** A floor as one step left it: its rectangles and building, with their versions, and what the step created. */
+export interface StockPlanSaved {
+  drawings: StockDrawingRow[];
+  structures: StockStructureRow[];
+  created: {
+    draws: readonly string[];
+    newPlaces: readonly { drawingId: string; locationId: string }[];
+    structureBuilds: readonly string[];
+  };
+  /** The floor's version once the step is done, which a size taken back stands on. */
+  floorVersion: number | null;
 }

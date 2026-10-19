@@ -14,8 +14,6 @@ import type {
   StockDrawingChangesStockDrawingChangesWriteValidationStockDrawingChangesWrite as StockDrawingChangesStockDrawingChangesWrite,
   StockDrawingStockDrawingRead,
   StockHoldingStockHoldingRead,
-  StockDrawingStockDrawingWriteRecordReviseValidationStockDrawingWriteRecordRevise as StockDrawingStockDrawingRevise,
-  StockDrawingStockDrawingWriteValidationStockDrawingWrite as StockDrawingStockDrawingWrite,
   StockFloorStockFloorRead,
   StockFloorStockFloorWriteValidationStockFloorWriteStockFloorCreate as StockFloorStockFloorWrite,
   StockFloorStockFloorWriteRecordReviseValidationStockFloorWriteRecordRevise as StockFloorStockFloorRevise,
@@ -29,8 +27,6 @@ import type {
   StockValuationStockValuationRead,
   StockOptionsStockOptionsRead,
   StockStructureStockStructureRead,
-  StockStructureStockStructureWriteValidationStockStructureWrite as StockStructureStockStructureWrite,
-  StockStructureStockStructureWriteRecordReviseValidationStockStructureWriteRecordRevise as StockStructureStockStructureRevise,
   StockProductPickStockProductPickRead,
   StockVendorPickStockVendorPickRead,
   StockWhereaboutStockWhereaboutRead,
@@ -52,11 +48,8 @@ import {
   type InventoryError,
   type LocationHomeRow,
   type Whereabouts,
-  type StockDrawingChanges,
-  type StockDrawingInput,
   type StockDrawingRow,
   type StructureKind,
-  type StockStructureInput,
   type StockStructureRow,
   type StockRepeatInput,
   type StockFloorInput,
@@ -83,15 +76,21 @@ import {
   type StockSearch,
   type StockOnHand,
   type StockValuation,
+  type StockPlanSaved,
 } from './inventory-types';
 import { SILENT } from '../shared/feedback/activity-interceptor';
+import type { PlanStep } from './stock-plan-draft';
 
 /** How many products one question about stock on hand may name (`StockOnHandResource::MOST`). */
 const ON_HAND_MOST = 100;
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class InventoryRefused extends Error {
-  constructor(readonly code: InventoryError) {
+  /** The entry of a step the API named in its refusal (`newPlaces[1].code`), when it named one. */
+  constructor(
+    readonly code: InventoryError,
+    readonly entry: string | null = null,
+  ) {
     super(code);
   }
 }
@@ -499,53 +498,6 @@ export class InventoryApi {
   }
 
   /**
-   * Draws a location on a floor. Drawing one that is already drawn moves it — a rack is in one place — and a
-   * location the plan does not carry, a bin, answers 422 naming `locationId`. A new place created with its rectangle
-   * whose code another place of the establishment has answers 409.
-   */
-  async draw(
-    companyId: string,
-    floorId: string,
-    input: StockDrawingInput,
-  ): Promise<StockDrawingRow> {
-    return this.guard(
-      async () =>
-        toDrawing(
-          await firstValueFrom(
-            this.http.post<StockDrawingStockDrawingRead>(
-              `${path(companyId, 'stock-floors', floorId)}/drawings`,
-              drawingBody(input),
-            ),
-          ),
-        ),
-      'code_taken',
-    );
-  }
-
-  /**
-   * Moves or resizes a rectangle by its own address, and says which location it is drawn for: a rectangle never
-   * changes floor, because goods do not climb — that is another rectangle.
-   */
-  async moveDrawing(
-    companyId: string,
-    drawingId: string,
-    input: StockDrawingInput,
-    version: number | null,
-  ): Promise<StockDrawingRow> {
-    const body: StockDrawingStockDrawingRevise = { ...drawingBody(input), version };
-    return this.guard(async () =>
-      toDrawing(
-        await firstValueFrom(
-          this.http.put<StockDrawingStockDrawingRead>(
-            path(companyId, 'stock-drawings', drawingId),
-            body,
-          ),
-        ),
-      ),
-    );
-  }
-
-  /**
    * Repeats a rectangle down an aisle: N more of it AND the stock locations they are, in one call, because it is one
    * decision. It answers what it created, so the screen never has to read the floor back to learn what it had just
    * asked for — a read that would race anyone else drawing on the same plan.
@@ -573,38 +525,32 @@ export class InventoryApi {
   }
 
   /**
-   * A group's step on one floor, in one request: all of it or none of it. It answers the floor as the step left it; a
-   * refusal answers 422 naming the entry, `moves[2].x`.
+   * A floor's whole draft in one request: rectangles drawn, moved and undrawn, places created with theirs, the
+   * building's pieces and the floor's own size, all of it or none of it. A refusal names the entry it refuses.
    */
-  async changeDrawings(
-    companyId: string,
-    floorId: string,
-    changes: StockDrawingChanges,
-  ): Promise<StockDrawingRow[]> {
-    const body: StockDrawingChangesStockDrawingChangesWrite = {
-      draws: [...changes.draws],
-      moves: [...changes.moves],
-      erasures: changes.erasures.map(({ drawingId, version }) => ({ drawingId, version })),
-    };
+  async changePlan(companyId: string, floorId: string, step: PlanStep): Promise<StockPlanSaved> {
+    try {
+      const body: StockDrawingChangesStockDrawingChangesWrite = step;
+      const raw = await firstValueFrom(
+        this.http.post<StockDrawingChangesStockDrawingChangesReadStockDrawingRead>(
+          `${path(companyId, 'stock-floors', floorId)}/drawing-changes`,
+          body,
+        ),
+      );
 
-    return this.guard(
-      async () =>
-        (
-          await firstValueFrom(
-            this.http.post<StockDrawingChangesStockDrawingChangesReadStockDrawingRead>(
-              `${path(companyId, 'stock-floors', floorId)}/drawing-changes`,
-              body,
-            ),
-          )
-        ).drawings?.map(toDrawing) ?? [],
-    );
-  }
-
-  /** The rectangle is erased; the location it was drawn for is untouched. */
-  async eraseDrawing(companyId: string, drawingId: string): Promise<void> {
-    await this.guard(async () =>
-      firstValueFrom(this.http.delete(path(companyId, 'stock-drawings', drawingId))),
-    );
+      return {
+        drawings: raw.drawings?.map(toDrawing) ?? [],
+        structures: raw.structures?.map(toStructure) ?? [],
+        created: {
+          draws: raw.created?.draws ?? [],
+          newPlaces: raw.created?.newPlaces ?? [],
+          structureBuilds: raw.created?.structureBuilds ?? [],
+        },
+        floorVersion: raw.floorVersion ?? null,
+      };
+    } catch (error) {
+      throw new InventoryRefused(codeOf(error, 'invalid'), refusedEntry(error));
+    }
   }
 
   /** The building drawn on one floor. It names no location: nothing on this layer holds goods. */
@@ -617,53 +563,6 @@ export class InventoryApi {
           ),
         )
       ).map(toStructure),
-    );
-  }
-
-  /** Draws a piece of the building on a floor. A measurement out of bounds answers 422 naming the field. */
-  async buildStructure(
-    companyId: string,
-    floorId: string,
-    input: StockStructureInput,
-  ): Promise<StockStructureRow> {
-    return this.guard(async () =>
-      toStructure(
-        await firstValueFrom(
-          this.http.post<StockStructureStockStructureRead>(
-            `${path(companyId, 'stock-floors', floorId)}/structures`,
-            structureBody(input),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /**
-   * Corrects a piece by its own address — what it IS as well as where it stands, because a doorway traced with
-   * the wall tool is right in every measurement and wrong in exactly one field.
-   */
-  async reshapeStructure(
-    companyId: string,
-    structureId: string,
-    input: StockStructureInput,
-    version: number | null,
-  ): Promise<StockStructureRow> {
-    const body: StockStructureStockStructureRevise = { ...structureBody(input), version };
-    return this.guard(async () =>
-      toStructure(
-        await firstValueFrom(
-          this.http.put<StockStructureStockStructureRead>(
-            path(companyId, 'stock-structures', structureId),
-            body,
-          ),
-        ),
-      ),
-    );
-  }
-
-  async eraseStructure(companyId: string, structureId: string): Promise<void> {
-    await this.guard(async () =>
-      firstValueFrom(this.http.delete(path(companyId, 'stock-structures', structureId))),
     );
   }
 
@@ -941,10 +840,6 @@ function floorBody(input: StockFloorInput): StockFloorStockFloorWrite {
   return { ...input };
 }
 
-function drawingBody(input: StockDrawingInput): StockDrawingStockDrawingWrite {
-  return { ...input };
-}
-
 function toFloor(raw: StockFloorStockFloorRead): StockFloorRow {
   return {
     id: raw.id ?? '',
@@ -962,14 +857,21 @@ function toFloor(raw: StockFloorStockFloorRead): StockFloorRow {
   };
 }
 
-function structureBody(input: StockStructureInput): StockStructureStockStructureWrite {
-  return { ...input };
-}
-
 /**
  * A piece of the building, as the screen works in it. An unknown kind falls back to `wall`, the only one that is
  * always drawable: a piece the screen could not name would otherwise disappear off a plan it is really on.
  */
+/** What a floor's step answers, as the API writes it. */
+/** The entry a 422 names first, as API Platform writes its violations. */
+function refusedEntry(error: unknown): string | null {
+  if (!(error instanceof HttpErrorResponse) || error.status !== 422) return null;
+  const violations: unknown = (error.error as { violations?: unknown } | null)?.violations;
+  const first: unknown = Array.isArray(violations) ? violations[0] : null;
+  const entry = (first as { propertyPath?: unknown } | null)?.propertyPath;
+
+  return typeof entry === 'string' && entry !== '' ? entry : null;
+}
+
 function toStructure(raw: StockStructureStockStructureRead): StockStructureRow {
   return {
     id: raw.id ?? '',

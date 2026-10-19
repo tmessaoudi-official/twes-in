@@ -10,9 +10,6 @@
       "group_hint": "Drag any of them to move the whole group, or use the arrows and R on the keyboard.",
       "group_turn_left": "Turn {{degrees}}° left",
       "group_turn_right": "Turn {{degrees}}° right",
-      "group_saved": "{{count}} {count, plural, one {rectangle moved} other {rectangles moved}}.",
-      "group_erased": "{{count}} {count, plural, one {rectangle erased} other {rectangles erased}}.",
-      "group_changed": "A rectangle of the group was changed in the meantime: nothing was changed. The plan has been read again; make the move again.",
       "nothing_drawn": "No location is drawn on this floor yet.",
       "plan_of": "Plan of {{floor}}: {{count}} {count, plural, one {rectangle} other {rectangles}} drawn",
       "trace": "Trace a rectangle",
@@ -28,8 +25,6 @@
       "remove_floor": "Remove the floor",
       "floor_saved": "Floor saved.",
       "floor_removed": "Floor removed.",
-      "drawing_saved": "Rectangle saved.",
-      "drawing_erased": "Rectangle erased.",
       "undo": "Undo",
       "undone": "Plan change undone.",
       "floor_section": "The floor",
@@ -83,8 +78,6 @@
         "post": "Post",
         "dock": "Dock door"
       },
-      "structure_saved": "Piece of structure saved.",
-      "structure_erased": "Piece of structure removed.",
       "labels": "Labels",
       "label_modes": {
         "code": "Code",
@@ -131,7 +124,6 @@
       "zoom_in": "Come nearer",
       "zoom_out": "Step back",
       "fit": "Fit",
-      "not_saved": "Not saved yet: Save, alongside",
       "views": "Ways to look at the floor",
       "view_names": {
         "plan": "Plan",
@@ -232,8 +224,7 @@
         "closer": "Come nearer",
         "further": "Move back",
         "overview": "Overview",
-        "top": "Top view",
-        "read_only": "The 3D is looked at in View; in Arrange, the plan is 2D."
+        "top": "Top view"
       },
       "first": {
         "title": "Draw your depot",
@@ -277,6 +268,19 @@
         "menu": "Lists, floors and views",
         "bar": "Plan controls",
         "close_panel": "Close the panel"
+      },
+      "plan_saved": "Plan saved: {{count}} {count, plural, one {change} other {changes}}.",
+      "plan_changed": "Someone else saved this plan in the meantime: nothing was saved. The shapes they changed were read again ({{count}}); the rest waits for “Save”.",
+      "plan_discarded": "Plan reverted to what was saved: {{count}} {count, plural, one {change} other {changes}} removed.",
+      "repeat_waits": "Save the plan to repeat this shape.",
+      "draft": {
+        "unsaved": "{{count}} {count, plural, one {unsaved change} other {unsaved changes}}",
+        "kept": "This browser kept {{count}} {count, plural, one {unsaved change} other {unsaved changes}} to this plan.",
+        "resume": "Resume",
+        "abandon": "Discard",
+        "resumed": "{{count}} {count, plural, one {change resumed} other {changes resumed}}.",
+        "dropped": "Changes resumed, except on {{count}} {count, plural, one {shape} other {shapes}} someone else saved in the meantime.",
+        "abandoned": "The changes kept in this browser were discarded."
       }
     }
   }

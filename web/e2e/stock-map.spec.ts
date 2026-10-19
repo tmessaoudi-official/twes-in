@@ -30,7 +30,6 @@ const comma = (shown: string): number => Number(shown.replace(',', '.'));
 const floorButton = (name: string): RegExp =>
   new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
 
-/** A rack under the default establishment's own location, through the API. */
 /**
  * What does not fit in the full screen's bar: a control past the window's edge, over its neighbour, or whose label
  * runs onto a second line. Each is named with what is wrong, so a failure says which control and how.
@@ -75,6 +74,7 @@ async function barMisfits(page: Page): Promise<string[]> {
   });
 }
 
+/** A rack under the default establishment's own location, through the API. */
 async function prepare(page: Page, code: string): Promise<Fixture> {
   return page.evaluate(
     async ([csrf, locationCode]) => {
@@ -89,6 +89,14 @@ async function prepare(page: Page, code: string): Promise<Fixture> {
         if (!response.ok) throw new Error(`${method} ${url} answered ${response.status}`);
         return response.json();
       };
+      // Every scenario starts on the plan, the declared view: the choice belongs to the operator every scenario shares,
+      // and Aménager keeps the volume once chosen, so a choice left by another run would hide the board drawn on.
+      const view = await fetch(`${base}/settings/presentation.stock-map-view?level=user`, {
+        method: 'DELETE',
+        headers: { 'csrf-token': csrf },
+      });
+      if (!view.ok && view.status !== 404)
+        throw new Error(`forgetting the view answered ${view.status}`);
       const options = (await (await fetch(`${base}/stock-options`)).json()) as {
         establishments: { id: string; code: string; name: string }[];
       };
@@ -182,6 +190,23 @@ async function clean(
   );
 }
 
+/**
+ * « Enregistrer » above the board: the floor's whole draft in one request, said with how many changes it carried.
+ * The count is read before the press, so a shape the board never took into its draft fails here, not later.
+ */
+async function savePlan(page: Page, changes: number): Promise<void> {
+  await expect(page.getByTestId('stock-plan-unsaved')).toHaveAttribute(
+    'data-count',
+    String(changes),
+  );
+  await page.getByTestId('stock-plan-save').click();
+  // French holds the colon with a no-break space, which a pattern's \s reads and a typed space would not.
+  await expect(toast(page)).toContainText(
+    new RegExp(`Plan enregistré\\s:\\s${changes} modification`),
+  );
+  await expect(page.getByTestId('stock-plan-unsaved')).toHaveCount(0);
+}
+
 /** A rectangle drawn for a place that exists: « Existant » first, since a new rectangle draws a new place by default. */
 async function chooseExisting(page: Page): Promise<void> {
   await page.getByTestId('field-origin').click();
@@ -235,13 +260,12 @@ test.describe('the drawn stock map', () => {
         'the form is posed at the size the palette offered',
       ).toEqual([comma(offered[1] ?? ''), comma(offered[2] ?? '')]);
 
-      // A rack posed from the palette is a NEW rack, created with its rectangle; « Annuler » takes both back, so
-      // nothing of it is left behind.
+      // A rack posed from the palette is a NEW rack, created with its rectangle when the plan is saved; the save's
+      // « Annuler » takes both back, so nothing of it is left behind.
       const posed = `${code}N`;
       await page.getByTestId('field-newLocationCode').fill(posed);
       await page.getByTestId('field-newLocationName').fill('Rayonnage posé');
-      await page.getByTestId('stock-drawing-save').click();
-      await expect(toast(page)).toContainText('Rectangle enregistré');
+      await savePlan(page, 1);
       await expect(page.getByTestId(`stock-drawing-${posed}`)).toBeVisible();
       await toast(page).getByRole('button', { name: 'Annuler' }).click();
       await expect(page.getByTestId(`stock-drawing-${posed}`)).toHaveCount(0);
@@ -265,8 +289,7 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('field-width').fill('3,9');
       await page.getByTestId('field-depth').fill('0,6');
       await page.getByTestId('field-height').fill('2,1');
-      await page.getByTestId('stock-drawing-save').click();
-      await expect(toast(page)).toContainText('Rectangle enregistré');
+      await savePlan(page, 1);
 
       // Read back off the plan: 2,6 m was typed and the grid is a quarter of a metre, so it sits at 2,5.
       const drawn = page.getByTestId(`stock-drawing-${code}`);
@@ -282,8 +305,7 @@ test.describe('the drawn stock map', () => {
       await drawn.click();
       await page.getByTestId('stock-drawing-edit').click();
       await page.getByTestId('field-x').fill('5');
-      await page.getByTestId('stock-drawing-save').click();
-      await expect(toast(page)).toContainText('Rectangle enregistré');
+      await savePlan(page, 1);
       await expect(page.locator('[data-testid^="stock-drawing-rect-"]')).toHaveCount(1);
       await expect(page.locator('[data-testid^="stock-drawing-rect-"]')).toHaveAttribute('x', '5');
 
@@ -303,31 +325,21 @@ test.describe('the drawn stock map', () => {
       await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, { steps: 12 });
       await page.mouse.up();
 
-      await expect(page.getByTestId('stock-drawing-unsaved')).toBeVisible();
-
-      // Both halves are read and reported together: a failure that prints only "not 5" cannot say whether the form
-      // never took the drag or the plan never drew it, which cost a CI round to work out once already.
-      const after = {
-        form: await page.getByTestId('field-x').inputValue(),
-        plan: await rect.getAttribute('x'),
-      };
-      expect(
-        after,
-        'a drag of 120 px must move the rectangle off 5 m in the form AND on the plan',
-      ).not.toEqual({ form: '5', plan: '5' });
-      const dragged = comma(after.form);
+      // The drag is the board's draft, counted once, and the rectangle pressed is the one that moved.
+      await expect(page.getByTestId('stock-plan-unsaved')).toHaveAttribute('data-count', '1');
+      const dragged = Number(await rect.getAttribute('x'));
+      expect(dragged, 'a drag of 120 px must move the rectangle off 5 m').not.toBe(5);
       expect(Math.round(dragged * 4)).toBeCloseTo(dragged * 4, 6);
 
-      await page.getByTestId('stock-drawing-save').click();
-      await expect(toast(page)).toContainText('Rectangle enregistré');
+      await savePlan(page, 1);
 
       // It survives the round trip: what the drag wrote is what the API kept.
       await page.reload();
       await page.getByRole('button', { name: floorButton(floorName) }).click();
       await expect(rect).toHaveAttribute('x', String(dragged));
 
-      // Moved by the keyboard, as a drag would: chosen, then an arrow writes a quarter metre into its form, unsaved
-      // until Enregistrer, and abandoned here so the rectangle stays where the drag left it.
+      // Moved by the keyboard, as a drag would: chosen, then an arrow moves it a quarter metre, unsaved until
+      // « Enregistrer », and « Rétablir » puts the floor back as saved, so the rectangle stays where the drag left it.
       await page.getByTestId(`stock-drawing-${code}`).click();
 
       // What a pointer lands on at a handle is its grip, at least 24 px across, not the small dot drawn under it.
@@ -352,16 +364,18 @@ test.describe('the drawn stock map', () => {
 
       await page.getByTestId('stock-map-board').focus();
       await page.keyboard.press('ArrowRight');
-      await expect(page.getByTestId('stock-drawing-unsaved')).toBeVisible();
-      expect(comma(await page.getByTestId('field-x').inputValue())).toBeCloseTo(dragged + 0.25, 6);
-      await page.getByTestId('stock-drawing-cancel').click();
+      await expect(page.getByTestId('stock-plan-unsaved')).toHaveAttribute('data-count', '1');
+      await expect(rect).toHaveAttribute('x', String(dragged + 0.25));
+      await page.getByTestId('stock-plan-discard').click();
+      await expect(toast(page)).toContainText('Plan rétabli');
+      await expect(page.getByTestId('stock-plan-unsaved')).toHaveCount(0);
       await expect(rect).toHaveAttribute('x', String(dragged));
 
-      // Erased: the rectangle goes, the rack stays a rack — so « Annuler » draws it again where it stood.
+      // Erased: the rectangle goes, the rack stays a rack — so the save's « Annuler » draws it again where it stood.
       await page.getByTestId(`stock-drawing-${code}`).click();
       await page.getByTestId('stock-drawing-erase').click();
-      await expect(toast(page)).toContainText('Rectangle effacé');
       await expect(page.getByTestId('stock-map-empty')).toBeVisible();
+      await savePlan(page, 1);
       await toast(page).getByRole('button', { name: 'Annuler' }).click();
       await expect(toast(page)).toContainText('Modification du plan annulée');
       await expect(rect).toHaveAttribute('x', String(dragged));
@@ -369,10 +383,11 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId(`stock-drawing-${code}`).click();
       await page.getByTestId('stock-drawing-erase').click();
       await expect(page.getByTestId('stock-map-empty')).toBeVisible();
+      await savePlan(page, 1);
 
       // Traced, not typed: the floor is bare now, so any part of the sheet is floor to draw on. It is armed first —
-      // the sheet only becomes a drawing surface once the tool says so — and the box is abandoned rather than
-      // saved, so the run leaves no rectangle and no location behind it.
+      // the sheet only becomes a drawing surface once the tool says so — and the box is let go with « Rétablir »
+      // rather than saved, so the run leaves no rectangle and no location behind it.
       await expect(toast(page)).toBeHidden({ timeout: 15_000 });
       await page.getByTestId('stock-map-trace').click();
       await expect(page.getByTestId('stock-map-trace')).toHaveAttribute('aria-pressed', 'true');
@@ -405,7 +420,9 @@ test.describe('the drawn stock map', () => {
       // One box per arming, so the sheet is something a finger can scroll past again. The traced box's form stands
       // where the tools were (finding B), so the sheet says it first, then the tool once it is back.
       await expect(sheet).not.toHaveClass(/cursor-crosshair/);
-      await page.getByTestId('stock-drawing-cancel').click();
+      await page.getByTestId('stock-plan-discard').click();
+      await expect(page.getByTestId('stock-drawing-form')).toHaveCount(0);
+      await expect(page.getByTestId('stock-map-empty')).toBeVisible();
       await expect(page.getByTestId('stock-map-trace')).toHaveAttribute('aria-pressed', 'false');
 
       // Filtered first: the locations other runs left sort it onto a later page.
@@ -464,8 +481,7 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('field-width').fill('3,9');
       await page.getByTestId('field-depth').fill('0,6');
       await page.getByTestId('field-height').fill('2,1');
-      await page.getByTestId('stock-drawing-save').click();
-      await expect(toast(page)).toContainText('Rectangle enregistré');
+      await savePlan(page, 1);
 
       await page.getByTestId(`stock-drawing-${code}`).click();
       await page.getByTestId('stock-drawing-repeat').click();
@@ -547,11 +563,12 @@ test.describe('the drawn stock map', () => {
       await expect(chosen).toHaveCount(4);
       await expect(page.getByTestId('stock-map-chosen')).toContainText('4 rectangles choisis');
 
-      // Acted on together (slice 7c): undrawn in one request, drawn back for the same places by one « Annuler ».
+      // Acted on together: undrawn into the draft, saved in one request, drawn back for the same places by the save's
+      // one « Annuler ».
       const rects = page.locator('[data-testid^="stock-drawing-rect-"]');
       await page.getByTestId('stock-map-group-erase').click();
-      await expect(toast(page)).toContainText('4 rectangles effacés');
       await expect(rects).toHaveCount(0);
+      await savePlan(page, 4);
       await toast(page).getByRole('button', { name: 'Annuler' }).click();
       await expect(rects).toHaveCount(4);
       const backAgain = await rects.evaluateAll((nodes) =>
@@ -568,8 +585,7 @@ test.describe('the drawn stock map', () => {
       await expect(chosen).toHaveCount(4);
       await page.getByTestId('stock-map-board').focus();
       await page.keyboard.press('ArrowRight');
-      await page.getByTestId('stock-map-group-save').click();
-      await expect(toast(page)).toContainText('4 rectangles déplacés');
+      await savePlan(page, 4);
       await expect(page.getByTestId(`stock-drawing-rect-${stem}2`)).toHaveAttribute('x', '2.75');
 
       await page.keyboard.press('Escape');
@@ -633,8 +649,7 @@ test.describe('the drawn stock map', () => {
 
       await page.getByTestId('field-x').fill('1');
       await page.getByTestId('field-y').fill('0');
-      await page.getByTestId('stock-structure-save').click();
-      await expect(toast(page)).toContainText('Élément de structure enregistré');
+      await savePlan(page, 1);
 
       // Read back off the plan by its own metres, and counted on its own layer.
       const door = page.locator('[data-testid="stock-structure-door"]');
@@ -659,9 +674,10 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('stock-layer-locked-structure').click();
       await door.click();
       await page.getByTestId('stock-structure-erase').click();
-      await expect(toast(page)).toContainText('Élément de structure supprimé');
       await expect(door).toHaveCount(0);
       await expect(page.getByTestId('stock-layer-count-structure')).toHaveText('0');
+      await savePlan(page, 1);
+      await expect(door).toHaveCount(0);
     } finally {
       if (!page.isClosed()) await clean(page, fixture, floorName);
     }
@@ -704,15 +720,13 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('field-y').fill('2');
       await page.getByTestId('field-width').fill('4');
       await page.getByTestId('field-depth').fill('1');
-      await page.getByTestId('stock-drawing-save').click();
-      await expect(toast(page)).toContainText('Rectangle enregistré');
 
+      // The rack and the wall go together: one floor, one « Enregistrer ».
       await page.getByTestId('stock-structure-tool-wall').click();
       await page.getByTestId('field-name').fill('Mur nord');
       await page.getByTestId('field-x').fill('0');
       await page.getByTestId('field-y').fill('0');
-      await page.getByTestId('stock-structure-save').click();
-      await expect(toast(page)).toContainText('Élément de structure enregistré');
+      await savePlan(page, 2);
       await expect(toast(page)).toBeHidden({ timeout: 15_000 });
 
       const label = page.locator('[data-testid^="stock-drawing-label-"]');
@@ -795,18 +809,23 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('field-y').fill('2');
       await page.getByTestId('field-width').fill('6');
       await page.getByTestId('field-depth').fill('1');
-      await page.getByTestId('stock-drawing-save').click();
-      await expect(toast(page)).toContainText('Rectangle enregistré');
+      await savePlan(page, 1);
 
-      // Arranging is done on the plan: the volume is named there, and waits for Consulter.
-      await expect(page.getByTestId('stock-map-view-volume')).toHaveAttribute(
-        'aria-disabled',
-        'true',
-      );
+      // Arranging stands up in volume too: the rack moved on the plan is unsaved there, with « Rétablir » and
+      // « Enregistrer » above the volume as above the plan.
+      await page.getByTestId(`stock-drawing-${code}`).click();
+      await page.getByTestId('stock-map-board').focus();
+      await page.keyboard.press('ArrowRight');
+      await expect(page.getByTestId('stock-plan-unsaved')).toHaveAttribute('data-count', '1');
+      await page.getByTestId('stock-map-view-volume').click();
+      await expect(page.getByTestId('stock-map-board')).toHaveCount(0);
+      await expect(page.getByTestId('stock-plan-unsaved')).toHaveAttribute('data-count', '1');
+      await page.getByTestId('stock-plan-discard').click();
+      await expect(toast(page)).toContainText('Plan rétabli');
+      await expect(page.getByTestId('stock-plan-unsaved')).toHaveCount(0);
 
       await page.getByTestId('stock-map-mode-read').click();
       await page.getByRole('button', { name: floorButton(floorName) }).click();
-      await page.getByTestId('stock-map-view-volume').click();
       await expect(page.getByTestId('stock-map-view-volume')).toHaveAttribute(
         'aria-pressed',
         'true',
@@ -837,10 +856,13 @@ test.describe('the drawn stock map', () => {
       );
       await expect(page.getByTestId('stock-volume-summary')).toContainText(floorName);
 
-      // Aménager draws on the plan whatever was chosen.
+      // Aménager keeps the view chosen: arranging is seen in volume as well as on the plan.
       await page.getByTestId('stock-map-mode-arrange').click();
-      await expect(page.getByTestId('stock-map-board')).toBeVisible();
-      await expect(page.getByTestId('stock-volume')).toHaveCount(0);
+      await expect(page.getByTestId('stock-map-view-volume')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      await expect(page.getByTestId('stock-volume-summary')).toContainText(floorName);
     } finally {
       if (!page.isClosed()) {
         // Forgotten, so every other scenario on this shared account opens on the plan as it expects to.
@@ -891,8 +913,7 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('field-y').fill('2');
       await page.getByTestId('field-width').fill('6');
       await page.getByTestId('field-depth').fill('1');
-      await page.getByTestId('stock-drawing-save').click();
-      await expect(toast(page)).toContainText('Rectangle enregistré');
+      await savePlan(page, 1);
 
       await page.getByTestId('stock-map-mode-read').click();
       await page.getByRole('button', { name: floorButton(floorName) }).click();
@@ -953,6 +974,130 @@ test.describe('the drawn stock map', () => {
   });
 
   /**
+   * The gestures that went wrong before the board became the floor's draft, through real pointer events: a drag moved
+   * the rectangle whose form was open rather than the one pressed, a wall did not follow the pointer, and a move was
+   * lost with its form. Every gesture is now a change of the draft, and one « Enregistrer » keeps them all.
+   */
+  test('moves the shape pressed, a wall as a rack, and keeps every move to one save', async ({
+    page,
+  }) => {
+    const stamp = Date.now().toString().slice(-8);
+    const code = `MOV${stamp}`;
+    const other = `${code}B`;
+    const floorName = `Gestes ${stamp}`;
+
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const fixture = await prepare(page, code);
+
+    try {
+      // Two racks and a wall on a floor of the run's own, laid through the API: the gestures are what is under test.
+      await page.evaluate(
+        async ([csrf, { companyId, establishmentId, locationId, level }, name, second]) => {
+          const base = `/api/companies/${companyId}`;
+          const send = async (url: string, body: unknown): Promise<{ id: string }> => {
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+              body: JSON.stringify(body),
+            });
+            if (!response.ok) throw new Error(`POST ${url} answered ${response.status}`);
+            return (await response.json()) as { id: string };
+          };
+          const floor = await send(`${base}/stock-floors`, {
+            establishmentId,
+            name,
+            level,
+            widthMetres: '20',
+            depthMetres: '12',
+          });
+          const place = await send(`${base}/stock-locations`, {
+            establishmentId,
+            parentId: null,
+            kind: 'rack',
+            code: second,
+            name: `Rayonnage ${second}`,
+          });
+          for (const [at, id] of [locationId, place.id].entries()) {
+            await send(`${base}/stock-floors/${floor.id}/drawings`, {
+              locationId: id,
+              x: String(3 + at * 7),
+              y: '2',
+              width: '4',
+              depth: '1.5',
+              rotation: 0,
+              height: '2',
+            });
+          }
+          await send(`${base}/stock-floors/${floor.id}/structures`, {
+            kind: 'wall',
+            name: 'Mur du fond',
+            x: '3',
+            y: '8',
+            width: '8',
+            depth: '0.25',
+            rotation: 0,
+            height: '3',
+          });
+        },
+        [CSRF, fixture, floorName, other] as const,
+      );
+
+      await page.goto('/stock/plan?mode=arrange');
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+      const first = page.getByTestId(`stock-drawing-rect-${code}`);
+      const second = page.getByTestId(`stock-drawing-rect-${other}`);
+      const wall = page.getByTestId('stock-structure-wall');
+      await expect(first).toHaveAttribute('x', '3');
+      await expect(second).toHaveAttribute('x', '10');
+      await expect(wall).toHaveAttribute('x', '3');
+
+      // Pressed where it is drawn, through `hover()`'s check that nothing covers it, then dragged by the pointer.
+      const dragBy = async (shape: typeof first, dx: number, dy: number): Promise<void> => {
+        await shape.scrollIntoViewIfNeeded();
+        await shape.hover();
+        const box = await shape.boundingBox();
+        if (box === null) throw new Error('the shape is not laid out');
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy, {
+          steps: 12,
+        });
+        await page.mouse.up();
+      };
+
+      await dragBy(first, 80, 0);
+      const firstAt = await first.getAttribute('x');
+      expect(firstAt, 'the first rack follows the pointer').not.toBe('3');
+
+      // The first rack's form is open now; the second, pressed, is the one that moves.
+      await dragBy(second, 0, 60);
+      await expect(second).not.toHaveAttribute('y', '2');
+      const secondAt = { x: await second.getAttribute('x'), y: await second.getAttribute('y') };
+      await expect(first, 'the rack whose form was open stays where it was left').toHaveAttribute(
+        'x',
+        firstAt!,
+      );
+
+      // A wall follows the pointer as a rack does.
+      await dragBy(wall, 60, 0);
+      await expect(wall).not.toHaveAttribute('x', '3');
+      const wallAt = await wall.getAttribute('x');
+      await expect(second).toHaveAttribute('y', secondAt.y!);
+
+      // Three gestures, three changes, sent together and read back as they were left.
+      await savePlan(page, 3);
+      await page.reload();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+      await expect(first).toHaveAttribute('x', firstAt!);
+      await expect(second).toHaveAttribute('x', secondAt.x!);
+      await expect(second).toHaveAttribute('y', secondAt.y!);
+      await expect(wall).toHaveAttribute('x', wallAt!);
+    } finally {
+      if (!page.isClosed()) await clean(page, fixture, floorName, other);
+    }
+  });
+
+  /**
    * What a place holds, read on the plan and from « Emplacements ». The run's rack holds nothing, so no count is
    * written on it: a place that received goods could not be taken away afterwards, and would leak one per run into the
    * shared company. The counts themselves are certified by the API's functional test and the board's unit spec.
@@ -986,8 +1131,7 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('field-y').fill('2');
       await page.getByTestId('field-width').fill('6');
       await page.getByTestId('field-depth').fill('1');
-      await page.getByTestId('stock-drawing-save').click();
-      await expect(toast(page)).toContainText('Rectangle enregistré');
+      await savePlan(page, 1);
 
       await page.getByTestId('stock-map-mode-read').click();
       await page.getByRole('button', { name: floorButton(floorName) }).click();
