@@ -175,6 +175,28 @@ function pause(): Promise<void> {
 }
 
 /**
+ * A scanner's burst: each key a millisecond after the one before, stamped rather than read off the clock, since a loaded
+ * machine can stretch the time between two dispatches past the scan gap and the burst then reads as typing.
+ */
+function burst(
+  target: EventTarget,
+  keys: readonly string[],
+  init: (key: string) => KeyboardEventInit = () => ({}),
+): void {
+  const start = performance.now();
+  keys.forEach((key, index) => {
+    const event = new KeyboardEvent('keydown', {
+      key,
+      bubbles: true,
+      cancelable: true,
+      ...init(key),
+    });
+    Object.defineProperty(event, 'timeStamp', { value: start + index });
+    target.dispatchEvent(event);
+  });
+}
+
+/**
  * Declares actions the way a screen does — a signal, from an injection context — so the shell reads them through
  * the real registry rather than a stand-in that could agree with a broken one.
  */
@@ -1264,11 +1286,7 @@ describe('AppShell', () => {
     } as never);
 
     // A supplier's own code is free text: this one starts with the key that issues an invoice.
-    [...'E-4711', 'Enter'].forEach((key) =>
-      document.body.dispatchEvent(
-        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
-      ),
-    );
+    burst(document.body, [...'E-4711', 'Enter']);
     await pause();
 
     expect(issued).toBe(0);
@@ -1374,12 +1392,7 @@ describe('AppShell', () => {
       afterClosed: () => of(undefined),
     } as never);
     // A wedge types the whole code and Enter within a millisecond or two of each other.
-    const scan = (target: EventTarget, code: string) =>
-      [...code, 'Enter'].forEach((key) =>
-        target.dispatchEvent(
-          new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
-        ),
-      );
+    const scan = (target: EventTarget, code: string) => burst(target, [...code, 'Enter']);
 
     // docs/SPEC.md § 7, 2026-09-25 10:13: the card learns which product's page is on view.
     TestBed.inject(ProductOnView).show({ id: 'p7', reference: 'ART-007' });
@@ -1411,15 +1424,8 @@ describe('AppShell', () => {
     } as never);
 
     // AltGr reports Ctrl and Alt together and TYPES the character: "]" is AltGr ) on AZERTY.
-    [...']C10113017620422000', 'Enter'].forEach((key) =>
-      document.body.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key,
-          bubbles: true,
-          cancelable: true,
-          ...(key === ']' ? { ctrlKey: true, altKey: true } : {}),
-        }),
-      ),
+    burst(document.body, [...']C10113017620422000', 'Enter'], (key) =>
+      key === ']' ? { ctrlKey: true, altKey: true } : {},
     );
 
     await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(1));
@@ -1458,11 +1464,7 @@ describe('AppShell', () => {
 
     expect(byTestId('camera-open')).toBeNull();
     expect(byTestId('phone-pair')).toBeNull();
-    [...'0s123', 'Enter'].forEach((key) =>
-      document.body.dispatchEvent(
-        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
-      ),
-    );
+    burst(document.body, [...'0s123', 'Enter']);
     await settled();
 
     expect(open).not.toHaveBeenCalled();
@@ -1499,11 +1501,7 @@ describe('AppShell', () => {
       afterClosed: () => of(undefined),
     } as never);
 
-    [...'3017620422003', 'Enter'].forEach((key) =>
-      document.body.dispatchEvent(
-        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
-      ),
-    );
+    burst(document.body, [...'3017620422003', 'Enter']);
 
     await settled();
     expect(open).not.toHaveBeenCalled();
@@ -1534,7 +1532,7 @@ describe('AppShell', () => {
     expect(TestBed.inject(ScanBus).multiplier()).toBe(5);
     expect(fixture.nativeElement.querySelector('[data-testid="scan-count"]')).not.toBeNull();
 
-    [...'3017620422003', 'Enter'].forEach((key) => press(key));
+    burst(document.body, [...'3017620422003', 'Enter']);
     await vi.waitFor(() => expect(seen).toEqual([5]));
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="scan-count"]')).toBeNull();
