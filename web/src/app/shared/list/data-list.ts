@@ -324,7 +324,8 @@ export class DataList<Row> implements OnInit {
   private readonly boxWidth = signal<number | null>(null);
   /**
    * How wide each column's widest value drew, its padding included, by column id: a column hidden for width keeps
-   * what it last measured, so it comes back only once the card has room for it.
+   * what it last measured, so it comes back only once the card has room for it, until other rows replace those it
+   * was measured on.
    */
   private readonly widest = signal<ReadonlyMap<string, number>>(new Map(), { equal: sameWidths });
   /** Whether columns sit past the card's end edge, under the pinned actions: a shadow then says so. */
@@ -712,6 +713,19 @@ export class DataList<Row> implements OnInit {
     effect(() => {
       this.shownRows();
       untracked(() => this.dropSelection());
+    });
+    // A column given way keeps the width it measured, so it does not come and go as the card moves; but that width is
+    // its rows'. Once the page shows other rows (a filter, another page), it is forgotten, and the column is measured
+    // again on them if the card has room for what it declares. A live reload answering the same rows keeps it.
+    let rowsMeasured: string | null = null;
+    effect(() => {
+      const rows = this.pageIds().join('\n');
+      if (this.loading() || rows === rowsMeasured) return;
+      rowsMeasured = rows;
+      untracked(() => {
+        const shown = new Set(this.shownColumns().map((column) => column.id));
+        this.widest.set(new Map([...this.widest()].filter(([id]) => shown.has(id))));
+      });
     });
     // A row that left the page leaves the selection, once the page has been read: while it is read the rows may be the
     // last answer's, and a selection must survive a live reload that answers the same rows.

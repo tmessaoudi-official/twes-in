@@ -314,13 +314,19 @@ was and was not certified by execution.
   (« تنزيل » everywhere else, « تحميل » being loading), the order's « Enregistrer » for « Enregistrer le brouillon », its
   « Envoyer la commande » although nothing sends it (now « Marquer envoyée », as the quote is « Marquer envoyé » for that
   reason), and the delivery note's « Confirmer l’annulation » where every other confirmation names its action. The parity
-  spec now holds those actions alike on the four documents.
+  spec now holds those actions alike on the four documents. Formats hold one canon: no screen formats a date or a
+  number but through `FormatFacade` and its pipes. One exception found and fixed: a recurring invoice's or expense's
+  schedule named its weekday and month in the bare language, so a Tunisian company's Arabic screen said « يناير » beside
+  dates written in ar-TN, whose January is « جانفي »; the schedule now takes `FormatFacade.locale()`
+  (`recurring-expenses-page.spec.ts`, red first, mutant killed).
 - Master red on 50cb93d2 (e2e shard 2, `lots.spec.ts`): the use-by column had given way at 1600 px. Not the product:
   the scenario named its product with random base-36 letters, and at 1600 px the stock list's card (1088 px) leaves 8 px
   past its columns' declared widths, so « Vis LOT-MWQG… » pushed use-by out where « Vis LOT-ILJT… » did not; forcing
   wide letters reproduced the exact failure. The scenario now names with six digits. Seen on the way, for the floor sweep
   (#65): with a real shop's product names (« Vis à bois tête fraisée 4x40 inox »), lot and use-by give way on every
-  desktop, since the page's card stops at 1088 px however wide the window; and a column given way keeps the width it
-  measured on rows a filter has since removed, so it may stay away after filtering to rows it would fit.
+  desktop, since the page's card stops at 1088 px however wide the window (`max-w-6xl` on the shell's `main`). Fixed
+  (class A): a column given way kept the width it measured on rows a filter had since removed, so it stayed away after
+  filtering to rows it would fit; `DataList` now forgets a hidden column's width when other rows replace the page's,
+  `list-fit.spec.ts` « comes back for the rows left » (red first, mutant killed).
 - Step 1 on Windows: `install.ps1` is checked by PowerShell's parser and PSScriptAnalyzer and its `$verify` line runs in
   `twes.test.sh`; the rest is untried until the developer's test.
