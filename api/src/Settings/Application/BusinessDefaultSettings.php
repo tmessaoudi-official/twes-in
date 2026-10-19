@@ -73,6 +73,12 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         // settings page pairs it with one rather than shifting every field after it by a cell.
         yield new SettingDefinition('document.savings_line', SettingType::Bool, false, SettingChain::Parties, $parties, 'settings.document.savings_line', self::MODULE);
 
+        // Whether a copy or a reprint names the units and taxes as the document was issued with, or as they are named now.
+        // As issued unless the company asks, so a copy reads like what was sent; the original always prints what was
+        // issued. The company's alone: names are the company's, whoever the document goes to. Last of the document
+        // switches, so it shifts none of them.
+        yield new SettingDefinition('document.names_as_issued', SettingType::Bool, true, SettingChain::Parties, [SettingLevel::Company], 'settings.document.names_as_issued', self::MODULE);
+
         // What a customer may owe before a new delivery warns, in the company's currency; zero is no limit, so a customer
         // can be released from a group's limit by setting zero on it. A document has none: it is about the account.
         yield new SettingDefinition('credit.limit', SettingType::Money, '0', SettingChain::Parties, [SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer], 'settings.credit.limit', self::MODULE, min: '0');

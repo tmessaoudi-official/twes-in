@@ -55,6 +55,7 @@ use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySourceDeliveryNoteLines;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\KeptNames;
 use App\Tests\Support\ShelfLinePrices;
 use App\Tests\Support\ShippedDepositDeductions;
 use App\Tests\Support\ShippedFiscalPresets;
@@ -406,7 +407,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $note = DeliveryNote::create($company, $establishment ?? $this->establishment($company), $customer ?? ($company === $this->company ? $this->customer : $this->customer($company)), $header, $lines ?? [
             new DeliveryNoteLineDetails(null, 'Pièce', '1', $this->unit('C62', $company), '10', []),
         ], $now);
-        $note->validate($number, new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $now);
+        $note->validate($number, new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), KeptNames::of($note), $now);
         $note->releaseEvents();
         $this->notes->save($note);
 

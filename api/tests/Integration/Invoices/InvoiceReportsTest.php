@@ -59,6 +59,7 @@ use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tests\Support\KeptNames;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
@@ -459,7 +460,7 @@ final class InvoiceReportsTest extends KernelTestCase
     {
         $company ??= $this->company;
         $invoice = Invoice::create($company, $this->establishment($company), $this->customer($company, $customer), new InvoiceHeader(), [$this->line($company, array_keys($taxes))], [], $this->clock->now());
-        $invoice->issue($this->issue($number, $day, $terms), fn (): InvoiceFigures => $this->figures([$total], $total, $taxes, $withholding), $this->clock->now());
+        $invoice->issue($this->issue($invoice, $number, $day, $terms), fn (): InvoiceFigures => $this->figures([$total], $total, $taxes, $withholding), $this->clock->now());
         static::getContainer()->get(InvoiceRepository::class)->save($invoice);
 
         return $invoice;
@@ -474,7 +475,7 @@ final class InvoiceReportsTest extends KernelTestCase
         $company ??= $this->company;
         $details = array_map(fn (array $line): InvoiceLineDetails => new InvoiceLineDetails($line[0], 'Article', $line[1], $line[0]?->getUnit() ?? $this->unit('C62', $company), '1', null, []), $lines);
         $invoice = Invoice::create($company, $this->establishment($company), $this->customer($company, 'Client '.$number), new InvoiceHeader(), $details, [], $this->clock->now());
-        $invoice->issue($this->issue($number, $day, 30), fn (): InvoiceFigures => $this->figures($nets, $totalNet), $this->clock->now());
+        $invoice->issue($this->issue($invoice, $number, $day, 30), fn (): InvoiceFigures => $this->figures($nets, $totalNet), $this->clock->now());
         static::getContainer()->get(InvoiceRepository::class)->save($invoice);
 
         return $invoice;
@@ -484,7 +485,7 @@ final class InvoiceReportsTest extends KernelTestCase
     private function credit(Invoice $invoice, string $number, string $day, string $total, array $taxes = [], string $withholding = '0.000'): Invoice
     {
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
-        $credit->issue($this->issue($number, $day, 0), fn (): InvoiceFigures => $this->figures([$total], $total, $taxes, $withholding), $this->clock->now());
+        $credit->issue($this->issue($credit, $number, $day, 0), fn (): InvoiceFigures => $this->figures([$total], $total, $taxes, $withholding), $this->clock->now());
         $invoice->credit($credit, $this->clock->now());
         $invoices = static::getContainer()->get(InvoiceRepository::class);
         $invoices->save($credit);
@@ -493,9 +494,9 @@ final class InvoiceReportsTest extends KernelTestCase
         return $credit;
     }
 
-    private function issue(string $number, string $day, int $terms): InvoiceIssue
+    private function issue(Invoice $invoice, string $number, string $day, int $terms): InvoiceIssue
     {
-        return new InvoiceIssue($number, new \DateTimeImmutable($day), $terms, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'));
+        return new InvoiceIssue($number, new \DateTimeImmutable($day), $terms, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($invoice));
     }
 
     /** What one unit cost when the line at that position was issued, frozen at issue; set here as these products have none. */

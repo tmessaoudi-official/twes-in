@@ -35,6 +35,7 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\KeptNames;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -126,7 +127,7 @@ final class QuoteTest extends TestCase
     {
         $quote = $this->draft();
 
-        $quote->send('DEV-2026-10-00001', new \DateTimeImmutable('2026-10-01 23:30:00'), 30, new QuotePrint('fr', true, new PrintSettings('Merci', 'auto', 'auto')), $this->now);
+        $quote->send('DEV-2026-10-00001', new \DateTimeImmutable('2026-10-01 23:30:00'), 30, new QuotePrint('fr', true, new PrintSettings('Merci', 'auto', 'auto')), KeptNames::of($quote), $this->now);
 
         self::assertSame(QuoteStatus::Sent, $quote->getStatus());
         self::assertSame('DEV-2026-10-00001', $quote->getNumber());
@@ -143,7 +144,7 @@ final class QuoteTest extends TestCase
     {
         $empty = Quote::create($this->company, $this->establishment(), $this->customer, new QuoteHeader(), [], $this->now);
         $this->assertRefused('lines', fn () => $this->send($empty));
-        $this->assertRefused('validityDays', fn () => $this->draft()->send('DEV-1', $this->now, 0, $this->print(), $this->now));
+        $this->assertRefused('validityDays', fn () => ($draft = $this->draft())->send('DEV-1', $this->now, 0, $this->print(), KeptNames::of($draft), $this->now));
     }
 
     public function testItExpiresTheDayAfterItsValidityDateAndOnlyWhileItIsSent(): void
@@ -152,7 +153,7 @@ final class QuoteTest extends TestCase
         self::assertFalse($draft->isExpired(new \DateTimeImmutable('2027-01-01')), 'a draft has no date to pass');
 
         $quote = $this->draft();
-        $quote->send('DEV-1', new \DateTimeImmutable('2026-10-01'), 30, $this->print(), $this->now);
+        $quote->send('DEV-1', new \DateTimeImmutable('2026-10-01'), 30, $this->print(), KeptNames::of($quote), $this->now);
         self::assertFalse($quote->isExpired(new \DateTimeImmutable('2026-10-31 23:59:00')), 'the price holds on its last day');
         self::assertTrue($quote->isExpired(new \DateTimeImmutable('2026-11-01 00:00:00')));
 
@@ -233,7 +234,7 @@ final class QuoteTest extends TestCase
 
     private function send(Quote $quote): void
     {
-        $quote->send('DEV-2026-10-00001', new \DateTimeImmutable('2026-10-01'), 30, $this->print(), $this->now);
+        $quote->send('DEV-2026-10-00001', new \DateTimeImmutable('2026-10-01'), 30, $this->print(), KeptNames::of($quote), $this->now);
     }
 
     private function print(): QuotePrint

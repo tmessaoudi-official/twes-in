@@ -11,7 +11,7 @@ namespace App\Tests\Unit\Module\DeliveryNotes\Infrastructure;
 
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Application\TaxComponent\TaxNames;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
@@ -42,6 +42,7 @@ use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStoredFiles;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\KeptNames;
 use App\Tests\Support\RecordingDeliveryNoteTemplate;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
@@ -68,7 +69,7 @@ final class StoreIssuedDeliveryNotePdfTest extends TestCase
             $renderer,
             new Files(new InMemoryFileStorage(), $records, $clock),
             new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new DeliveryNoteSettings(), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), new InMemorySettings())),
-            new TaxNames(new InMemoryTaxComponents()),
+            new DocumentNames(new InMemoryTaxComponents()),
             new FakeTransactions(),
         );
         $logger = new class extends AbstractLogger {
@@ -85,7 +86,7 @@ final class StoreIssuedDeliveryNotePdfTest extends TestCase
         $unit = $units->ofCodeInCompany('C62', $company->getId());
         self::assertNotNull($unit);
         $note = DeliveryNote::create($company, $establishments->ofCompany($company->getId())[0], $customer, new DeliveryNoteHeader(), [new DeliveryNoteLineDetails(null, 'Pièce', '1', $unit, '10', [])], $now);
-        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $now);
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), KeptNames::of($note), $now);
         $notes->save($note);
         $event = $note->releaseEvents()[0];
         self::assertInstanceOf(DeliveryNoteValidated::class, $event);

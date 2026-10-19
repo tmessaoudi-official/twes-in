@@ -12,6 +12,7 @@ namespace App\Tests\Integration\Quotes;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
@@ -28,6 +29,7 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\KeptNames;
 use App\Tests\Support\ShippedFiscalPresets;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
@@ -64,6 +66,7 @@ final class TwigQuoteTemplateTest extends KernelTestCase
             'fr',
             '',
             false,
+            names: KeptNames::of($quote),
         ));
 
         self::assertMatchesRegularExpression('#<td class="number">10\s%</td>#u', $html, 'a rate with its sign');
@@ -81,6 +84,7 @@ final class TwigQuoteTemplateTest extends KernelTestCase
             false,
             savings: '42.500',
             quantities: [new QuantityTotal('pièce', 0, '3')],
+            names: KeptNames::of($quote),
         ));
         self::assertMatchesRegularExpression('#<p data-testid="savings">Vous économisez 42,50 HT grâce aux remises\.</p>#u', $html);
         self::assertMatchesRegularExpression('#data-testid="quantities">Quantités\x{00A0}: 3 pièce</p>#u', $html);
@@ -114,7 +118,7 @@ final class TwigQuoteTemplateTest extends KernelTestCase
             'fr',
             '',
             false,
-            taxNames: null === $name ? [] : ['TVA20' => $name],
+            names: new PrintedNames(KeptNames::of($quote)->units, null === $name ? [] : ['TVA20' => $name]),
         ));
 
         $named = $html('TVA 20 %');
@@ -151,6 +155,7 @@ final class TwigQuoteTemplateTest extends KernelTestCase
             '',
             false,
             exemptionReference: $reference,
+            names: KeptNames::of($quote),
         );
         $template = static::getContainer()->get(QuoteTemplate::class);
 

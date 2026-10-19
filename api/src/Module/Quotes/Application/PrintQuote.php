@@ -9,14 +9,16 @@ declare(strict_types=1);
 
 namespace App\Module\Quotes\Application;
 
-use App\Fiscal\Application\TaxComponent\TaxNames;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\Quotes\Domain\Model\Quote;
 use App\Module\Quotes\Domain\Model\QuoteLine;
 use App\Module\Quotes\Domain\Repository\QuoteRepository;
 use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
 use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Domain\Model\Company;
@@ -25,7 +27,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A quote's PDF, rendered on request. A sent quote prints what sending kept: its customer, its seller, its tax rates
- * and how it prints, so it reads the same whatever changes after. A draft prints as its settings say today across
+ * and how it prints, so it reads the same whatever changes after; and its unit and tax names too, unless the company
+ * keeps them live (`document.names_as_issued`). A draft prints as its settings say today across
  * « BROUILLON », and a cancelled one across « ANNULÉ ». Nothing is stored: a quote is not a fiscal document.
  */
 final readonly class PrintQuote
@@ -36,7 +39,7 @@ final readonly class PrintQuote
         private QuoteTemplate $template,
         private PdfRenderer $renderer,
         private ReadSetting $settings,
-        private TaxNames $taxNames,
+        private DocumentNames $names,
     ) {
     }
 
@@ -54,6 +57,12 @@ final readonly class PrintQuote
         };
         $printing = $quote->getPrintSettings() ?? QuotePrinting::today($this->settings, $quote);
         $totals = $this->totals->of($quote);
+        // No print of a sent quote is kept, so each is a reprint: it names things as it was sent unless the company keeps
+        // the names live.
+        $kept = $quote->getPrintedNames();
+        $names = null !== $kept && true === $this->settings->value(new SettingContext($quote->getCompany()), 'document.names_as_issued')
+            ? $kept
+            : $this->names->now($quote->getCompany(), $printing->language, array_map(static fn (QuoteLine $line): Unit => $line->getUnit(), $quote->getLines()));
 
         return new PrintedQuote(self::fileName($quote), $this->renderer->render($this->template->html(new QuotePage(
             $quote,
@@ -68,9 +77,9 @@ final readonly class PrintQuote
             $printing->print->numberFormat,
             $printing->print->design,
             $printing->print->savingsPrinted($totals->savings()),
-            QuantityTotals::ofUnits(array_map(static fn (QuoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $quote->getLines()), $printing->language),
+            QuantityTotals::ofUnits(array_map(static fn (QuoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $quote->getLines()), $names),
             $printing->print->exemptionReference,
-            $this->taxNames->in($quote->getCompany(), $printing->language),
+            $names,
         ))));
     }
 

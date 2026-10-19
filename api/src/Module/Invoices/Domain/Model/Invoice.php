@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Domain\Model;
 use App\Files\Domain\Model\StoredFile;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\TaxComponent;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
@@ -154,6 +155,10 @@ class Invoice implements CompanyOwned
     /** @var array<string, mixed>|null PrintSettings::toArray(), written by issuing */
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $printSettings = null;
+
+    /** @var array<string, mixed>|null PrintedNames::toArray(), written by issuing */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $printedNames = null;
 
     #[ORM\Column(name: 'footer_snapshot', type: Types::TEXT, nullable: true)]
     private ?string $footer = null;
@@ -710,6 +715,10 @@ class Invoice implements CompanyOwned
         $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->printSettings = $issue->print->toArray();
+        foreach ($this->getLines() as $line) {
+            $issue->names->unit($line->getUnit());
+        }
+        $this->printedNames = $issue->names->toArray();
         $this->status = InvoiceStatus::Issued;
         $this->number = $issue->number;
         $this->issueDate = self::day($issue->issueDate);
@@ -1001,6 +1010,15 @@ class Invoice implements CompanyOwned
     public function getPrintSettings(): ?PrintSettings
     {
         return null === $this->printSettings ? null : PrintSettings::fromArray($this->printSettings);
+    }
+
+    /**
+     * The names its units and the company's taxes had in its language the day it was issued; null while it is a draft,
+     * or for one issued before they were kept, which prints them as they are.
+     */
+    public function getPrintedNames(): ?PrintedNames
+    {
+        return null === $this->printedNames ? null : PrintedNames::fromArray($this->printedNames);
     }
 
     /** The seller as the document printed it the day it was issued; null while it is a draft or was cancelled as one. */

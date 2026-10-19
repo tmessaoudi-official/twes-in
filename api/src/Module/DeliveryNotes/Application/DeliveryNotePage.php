@@ -11,6 +11,7 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Shared\Domain\ValueObject\DocumentDesign;
@@ -31,7 +32,7 @@ final readonly class DeliveryNotePage
      * @param self::DRAFT|self::CANCELLED|null $watermark
      * @param string                           $language   a language the catalogue prints documents in
      * @param list<QuantityTotal>              $quantities what the lines come to in each unit, empty for a single line
-     * @param array<string, string>            $taxNames   each of the company's taxes named in the document's language, by code
+     * @param PrintedNames                     $names      what it calls its units and each of the company's taxes, by code; a tax code it lacks prints as itself
      */
     public function __construct(
         public DeliveryNote $note,
@@ -52,7 +53,7 @@ final readonly class DeliveryNotePage
         public array $quantities = [],
         /** What fills the customer's exemption mention, `%reference%`; null leaves a mention that needs it unprinted. */
         public ?string $exemptionReference = null,
-        public array $taxNames = [],
+        public PrintedNames $names = new PrintedNames([], []),
     ) {
     }
 }

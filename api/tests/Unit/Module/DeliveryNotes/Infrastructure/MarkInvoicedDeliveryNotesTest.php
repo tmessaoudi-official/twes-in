@@ -44,6 +44,7 @@ use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySourceDeliveryNoteLines;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\KeptNames;
 use App\Tests\Support\ShelfLinePrices;
 use App\Tests\Support\ShippedDepositDeductions;
 use App\Tests\Support\ShippedFiscalPresets;
@@ -75,7 +76,7 @@ final class MarkInvoicedDeliveryNotesTest extends TestCase
         $establishment = $establishments->ofCompany($company->getId())[0];
         $note = static function (string $number) use ($company, $establishment, $customer, $unit, $now, $notes): DeliveryNote {
             $note = DeliveryNote::create($company, $establishment, $customer, new DeliveryNoteHeader(), [new DeliveryNoteLineDetails(null, 'Pièce', '1', $unit, '10', [])], $now);
-            $note->validate($number, new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $now);
+            $note->validate($number, new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), KeptNames::of($note), $now);
             $notes->save($note);
 
             return $note;

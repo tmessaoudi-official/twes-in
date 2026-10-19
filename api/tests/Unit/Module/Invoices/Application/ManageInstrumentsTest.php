@@ -44,6 +44,7 @@ use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryPaymentInstruments;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\KeptNames;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -220,7 +221,7 @@ final class ManageInstrumentsTest extends TestCase
         self::assertNotNull($unit);
         $invoice = Invoice::create($company, $this->establishments->ofCompany($company->getId())[0], $customer, new InvoiceHeader(), [new InvoiceLineDetails(null, 'Pièce', '1', $unit, '1000', null, [])], [], $this->clock->now());
         $invoice->issue(
-            new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')),
+            new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($invoice)),
             static fn (Invoice $issuing): InvoiceFigures => new InvoiceFigures('1000.000', '0.000', '1000.000', [], '190.000', [], '1190.000', [['code' => 'RS1', 'rate' => '1.000', 'base' => '1190.000', 'amount' => '11.900']], '11.900', '1178.100', [['net' => '1000.000', 'tax' => '190.000', 'gross' => '1190.000']]),
             $this->clock->now(),
         );

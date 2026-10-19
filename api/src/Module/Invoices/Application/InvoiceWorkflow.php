@@ -12,8 +12,10 @@ namespace App\Module\Invoices\Application;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
 use App\Module\Invoices\Application\Credit\CreditExcessTo;
 use App\Module\Invoices\Application\Deposit\DepositDeductions;
@@ -25,6 +27,7 @@ use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Domain\Model\CustomerCreditEntry;
 use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\Model\InvoiceLine;
 use App\Module\Invoices\Domain\Repository\CustomerCreditRepository;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Domain\ValueObject\ChainSeries;
@@ -72,6 +75,7 @@ final readonly class InvoiceWorkflow
         private DepositQuotes $depositQuotes,
         private CurrencyScales $scales,
         private SealInvoiceChains $chains,
+        private DocumentNames $names,
     ) {
     }
 
@@ -140,6 +144,7 @@ final readonly class InvoiceWorkflow
                     $profile->invoiceFooterText,
                     $actorUserId,
                     DocumentFormats::print($this->settings, $context, $company),
+                    $this->names->now($company, $language, array_map(static fn (InvoiceLine $line): Unit => $line->getUnit(), $invoice->getLines())),
                     $mentions->parameters,
                     $operations,
                     $vatOnDebits,

@@ -9,13 +9,14 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Domain\ValueObject;
 
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * What issuing gives a draft besides its figures (docs/SPEC.md § 7, 2026-09-14): the number and day its series gave,
  * the terms and language its customer's settings say, the mentions and footer the company prints, the notes and
- * formats it prints with, who issued it, and where its country's law asks, the category of its operations and whether the
+ * formats it prints with, what it calls its units and taxes, who issued it, and where its country's law asks, the category of its operations and whether the
  * company had opted to pay VAT on the débits.
  */
 final readonly class InvoiceIssue
@@ -34,6 +35,7 @@ final readonly class InvoiceIssue
         public ?string $footer,
         public ?Uuid $issuedBy,
         public PrintSettings $print,
+        public PrintedNames $names,
         public array $mentionParameters = [],
         public ?OperationCategory $operationCategory = null,
         public ?bool $vatOnDebits = null,

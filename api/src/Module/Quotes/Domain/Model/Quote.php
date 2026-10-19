@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Quotes\Domain\Model;
 
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\Quotes\Domain\Exception\InvalidQuote;
@@ -97,6 +98,10 @@ class Quote implements CompanyOwned
     /** @var array<string, mixed>|null QuotePrint::toArray(), written by sending */
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $printSettings = null;
+
+    /** @var array<string, mixed>|null PrintedNames::toArray(), written by sending */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $printedNames = null;
 
     /** The day the customer agreed or declined; null before. */
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
@@ -195,13 +200,13 @@ class Quote implements CompanyOwned
 
     /**
      * Hands a draft with lines to its customer: its number, its issue day and the last day its price binds. From then
-     * on it prints what its customer and its seller were called that day, the rates its taxes had that day, and as its
-     * settings said that day (`$print`).
+     * on it prints what its customer and its seller were called that day, the rates its taxes had that day, as its
+     * settings said that day (`$print`), and keeps what its units and taxes were called that day (`$names`).
      *
      * @throws QuoteNotDraft
      * @throws InvalidQuote
      */
-    public function send(string $number, \DateTimeImmutable $issueDate, int $validityDays, QuotePrint $print, \DateTimeImmutable $now): void
+    public function send(string $number, \DateTimeImmutable $issueDate, int $validityDays, QuotePrint $print, PrintedNames $names, \DateTimeImmutable $now): void
     {
         $this->assertDraft('is sent');
         if ($this->lines->isEmpty()) {
@@ -220,6 +225,10 @@ class Quote implements CompanyOwned
         $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->printSettings = $print->toArray();
+        foreach ($this->getLines() as $line) {
+            $names->unit($line->getUnit());
+        }
+        $this->printedNames = $names->toArray();
         $this->status = QuoteStatus::Sent;
         $this->number = $number;
         $this->issueDate = self::day($issueDate);
@@ -309,6 +318,15 @@ class Quote implements CompanyOwned
     public function getSellerSnapshot(): ?SellerSnapshot
     {
         return null === $this->sellerSnapshot ? null : SellerSnapshot::fromArray($this->sellerSnapshot);
+    }
+
+    /**
+     * The names its units and the company's taxes had in its language the day it was sent; null while it is a draft,
+     * or for one sent before they were kept, which prints them as they are.
+     */
+    public function getPrintedNames(): ?PrintedNames
+    {
+        return null === $this->printedNames ? null : PrintedNames::fromArray($this->printedNames);
     }
 
     /** How the quote printed the day it was sent; null while it is a draft. */

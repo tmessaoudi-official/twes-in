@@ -11,10 +11,13 @@ namespace App\Module\Quotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Fiscal\Application\DocumentNames;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Quotes\Domain\Exception\InvalidQuote;
 use App\Module\Quotes\Domain\Exception\QuoteNotDraft;
 use App\Module\Quotes\Domain\Exception\QuoteTransitionRefused;
 use App\Module\Quotes\Domain\Model\Quote;
+use App\Module\Quotes\Domain\Model\QuoteLine;
 use App\Module\Quotes\Domain\Repository\QuoteRepository;
 use App\Settings\Application\ReadSetting;
 use App\Shared\Application\Transactions;
@@ -52,6 +55,7 @@ final readonly class QuoteWorkflow
         private ClockInterface $clock,
         private ReadSetting $settings,
         private QuoteInvoices $invoices,
+        private DocumentNames $names,
     ) {
     }
 
@@ -75,7 +79,9 @@ final readonly class QuoteWorkflow
             if ($this->quotes->numberTaken($company->getId(), $allocated->number)) {
                 throw new QuoteNumberTaken(\sprintf('The number %s is already on another quote of this company: give the quote series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $quote->getEstablishment()->getCode()));
             }
-            $quote->send($allocated->number, $allocated->issueDate, QuotePrinting::validityDays($this->settings, $quote), QuotePrinting::today($this->settings, $quote), $this->clock->now());
+            $printing = QuotePrinting::today($this->settings, $quote);
+            $units = array_map(static fn (QuoteLine $line): Unit => $line->getUnit(), $quote->getLines());
+            $quote->send($allocated->number, $allocated->issueDate, QuotePrinting::validityDays($this->settings, $quote), $printing, $this->names->now($company, $printing->language, $units), $this->clock->now());
             $this->quotes->save($quote);
             $this->record($company, $quote, self::SENT, ['number' => $allocated->number], $actorUserId);
 
