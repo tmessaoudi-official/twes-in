@@ -13,7 +13,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { DayPipe } from '../shared/i18n/format-pipes';
-import { LanguageFacade } from '../shared/i18n/language-facade';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
@@ -49,7 +49,7 @@ export class RecurringPage implements OnInit {
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
-  private readonly language = inject(LanguageFacade);
+  private readonly format = inject(FormatFacade);
 
   protected readonly tabs = RECURRING_TABS;
   protected readonly rows = signal<readonly RecurringInvoiceRow[]>([]);
@@ -65,14 +65,11 @@ export class RecurringPage implements OnInit {
 
   /** When each one recurs, in a sentence of the screen's language, read again when the language changes. */
   private readonly sentences = computed(() => {
-    const language = this.language.current();
+    const locale = this.format.locale();
     const say = (key: string, params?: Record<string, unknown>): string =>
       this.translate.instant(key, params) as string;
     return new Map(
-      this.rows().map((row) => [
-        row.id,
-        scheduleSentence(row.schedule, row.startsOn, say, language),
-      ]),
+      this.rows().map((row) => [row.id, scheduleSentence(row.schedule, row.startsOn, say, locale)]),
     );
   });
   protected readonly sentence = (row: RecurringInvoiceRow): string =>

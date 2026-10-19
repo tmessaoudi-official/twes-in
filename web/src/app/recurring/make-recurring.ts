@@ -14,7 +14,7 @@ import type { RecurringInvoiceDraft } from './recurring-types';
  * When, from which day and up to which: what making an invoice recurring asks. When is the shared schedule (docs/SPEC.md
  * § 7, 2026-10-15 17:46): any interval, a month or a year on a date, its last day or one of its weekdays.
  */
-export function makeRecurringForm(language: string, today: string): FormDescriptor {
+export function makeRecurringForm(locale: string, today: string): FormDescriptor {
   return {
     id: 'make-recurring',
     sections: [
@@ -23,7 +23,7 @@ export function makeRecurringForm(language: string, today: string): FormDescript
         title: 'recurring.make.title',
         description: 'recurring.make.intro',
         fields: [
-          ...scheduleFields(language, today),
+          ...scheduleFields(locale, today),
           {
             id: 'startsOn',
             label: 'recurring.fields.starts_on',

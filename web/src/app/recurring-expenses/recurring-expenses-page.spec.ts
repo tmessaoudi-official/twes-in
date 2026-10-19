@@ -14,6 +14,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { expensesTabs } from '../expenses/expenses-nav';
+import { LanguageFacade } from '../shared/i18n/language-facade';
 import { PluralCompiler } from '../shared/i18n/plural-compiler';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { Session } from '../shared/session/session';
@@ -101,11 +102,13 @@ const power: RecurringExpenseRow = {
 describe('RecurringExpensesPage', () => {
   const api = { list: vi.fn(), revise: vi.fn(), delete: vi.fn() };
   const live = { reloadOn: vi.fn() };
+  let company: { id: string; name: string; timezone: string; countryCode?: string } = {
+    id: 'c1',
+    name: 'Acme',
+    timezone: 'Africa/Tunis',
+  };
   const auth = {
-    me: () => ({
-      user: { id: 'u1' },
-      company: { id: 'c1', name: 'Acme', timezone: 'Africa/Tunis' },
-    }),
+    me: () => ({ user: { id: 'u1' }, company }),
     hasPermission: vi.fn(),
     hasModule: vi.fn(),
   };
@@ -143,6 +146,7 @@ describe('RecurringExpensesPage', () => {
   }
 
   beforeEach(() => {
+    company = { id: 'c1', name: 'Acme', timezone: 'Africa/Tunis' };
     api.list.mockReset().mockResolvedValue([rent, power]);
     api.revise
       .mockReset()
@@ -200,6 +204,28 @@ describe('RecurringExpensesPage', () => {
       expect.any(Function),
       expect.anything(),
     );
+  });
+
+  it('names a yearly one’s month as the screen writes its dates: in Tunisian Arabic, « جانفي »', async () => {
+    company = { ...company, countryCode: 'TN' };
+    await TestBed.inject(LanguageFacade).use('ar');
+    api.list.mockResolvedValue([
+      {
+        ...rent,
+        schedule: {
+          unit: 'year',
+          every: 1,
+          anchor: 'date',
+          monthDay: 5,
+          ordinal: null,
+          weekday: null,
+        },
+        startsOn: '2027-01-05',
+      },
+    ]);
+    await open();
+
+    expect(q('recurring-expense-r1')?.textContent ?? '').toContain('جانفي');
   });
 
   it('sits between the expenses and their categories as a tab of Dépenses', async () => {
