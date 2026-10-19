@@ -309,6 +309,9 @@ test('the operator publishes a legal page, which a visitor reads as a draft unti
   // Every platform write waits for the operator's recent proof (docs/SPEC.md § 7), given only when asked: every
   // attempt counts against the operator's five in five minutes.
   await page.goto('/platform/legal');
+  // The table shows one language at a time, the screen's first: Arabic is chosen above it.
+  await page.getByTestId('legal-overview-language').click();
+  await page.getByTestId('legal-overview-language-ar').click();
   await page.getByTestId('legal-cell-security-ar').click();
   await expect(page.getByTestId('legal-editor-body')).toHaveAttribute('dir', 'rtl');
   const mark = `نسخة ${Date.now()}`;

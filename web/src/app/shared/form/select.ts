@@ -24,7 +24,7 @@ import { Label } from '../a11y/label';
 import { languageOption } from '../i18n/language-options';
 import type { IconName } from '../icons/icons';
 import type { StatusTone } from '../theme/accent-theme';
-import { CountBadge } from '../ui/count-badge';
+import { CountBadge, type CountKind } from '../ui/count-badge';
 import { WINDOW_CLASS } from '../ui/window-class';
 
 /** One thing a Select offers: the value a control holds, and the words a person reads for it. */
@@ -41,6 +41,10 @@ export interface SelectOption {
   count?: number | null;
   /** False keeps the count to the option's row, never beside the chosen label: « all » counts what the list shows. */
   triggerCount?: boolean;
+  /** What the count is, a plain total unless it says otherwise: what waits for someone draws nothing at zero. */
+  countKind?: CountKind;
+  /** The screen text told `{{count}}` that names the count, « {{count}} à valider »: by default a plain number. */
+  countLabel?: string;
   /** A status tone: a dot of that tone is drawn before the label, which still says the same in words. */
   tone?: StatusTone;
   /** Raises the translated label's first letter: a word translated lowercase to sit inside sentences, standing alone. */
@@ -170,9 +174,11 @@ function fold(text: string): string {
             @if (chosen()[0].triggerCount !== false && hasCount(chosen()[0].count)) {
               <app-count-badge
                 data-trigger-count
-                kind="total"
+                [kind]="chosen()[0].countKind ?? 'total'"
                 [count]="chosen()[0].count!"
-                [label]="'select.count' | translate: { count: chosen()[0].count }"
+                [label]="
+                  chosen()[0].countLabel ?? 'select.count' | translate: { count: chosen()[0].count }
+                "
               />
             }
           }
@@ -288,9 +294,9 @@ function fold(text: string): string {
               @if (hasCount(option.count)) {
                 <app-count-badge
                   data-option-count
-                  kind="total"
+                  [kind]="option.countKind ?? 'total'"
                   [count]="option.count!"
-                  [label]="'select.count' | translate: { count: option.count }"
+                  [label]="option.countLabel ?? 'select.count' | translate: { count: option.count }"
                 />
               }
             </li>
