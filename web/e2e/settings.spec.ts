@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { toast } from './toast';
 
 // G3b through the real stack: the seeded company's owner sets a business default on the settings page, it survives
@@ -63,6 +63,7 @@ test('the fields of one row line up, whatever the length of their labels', async
   // Audit 2026-10-06 V-15: a sentence as a label pushed its input 40 px below its neighbour's, and two checkboxes
   // centred on texts of one and two lines did not line up.
   await signIn(page);
+  await inACompany(page, CSRF);
   await page.goto('/settings');
   await expect(page.getByTestId('field-document__payment_terms_days')).toBeVisible();
   const top = (testId: string, inner: string) =>
@@ -88,9 +89,16 @@ test('the fields of one row line up, whatever the length of their labels', async
   expect(await top('field-document__logo_keep_proportions', '.mdc-checkbox__background')).toBe(
     await top('field-document__paid_stamp', '.mdc-checkbox__background'),
   );
-  // The aged balance's three bounds come last, so they move no pair above them.
-  expect(await top('field-aged_balance__first_days', self)).toBe(
-    await top('field-aged_balance__second_days', self),
+  // The last two switches share a row, then the credit limit stands beside the aged balance's first bound and its other
+  // two share the last row: no cell is left alone.
+  expect(await top('field-document__savings_line', '.mdc-checkbox__background')).toBe(
+    await top('field-document__names_as_issued', '.mdc-checkbox__background'),
+  );
+  expect(await top('field-credit__limit', self)).toBe(
+    await top('field-aged_balance__first_days', self),
+  );
+  expect(await top('field-aged_balance__second_days', self)).toBe(
+    await top('field-aged_balance__third_days', self),
   );
   await expect(page.getByTestId('settings-title')).toHaveText('Valeurs par défaut');
 });
