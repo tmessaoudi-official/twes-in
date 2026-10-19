@@ -160,6 +160,7 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-19 02:59] ASSUMED (review): A printed tax (each tax on a line, each tax in the summary, the withholding) is its name in the document's language with the rate the document froze, as the expense screens already write it: a name that already says that rate (« TVA 19 % », as the presets name them) prints as it is, any other gains it, « TVA (19 %) » with a no-break space before the sign, so a renamed tax or a rate changed since still shows what this document charged; a line's taxes are listed with the language's separator (« ، » in Arabic). Basis: the 2026-10-18 21:20 ruling (a document prints the name of its language) and the frozen rates every document keeps; no preset or data changes. Alternatives: strip the rates from the preset names (changes data the companies already copied), print the name alone (hides what a renamed tax charged). It replaces the second commit planned at 02:09.
 - [2026-10-19 04:26] ASSUMED (review): A list's column is as wide as its widest value shown (measured from the drawn text, its padding included, kept for a column hidden for width), never narrower than it declares and at most 960 px; the columns then fit the card as ruled, the lowest priority giving way whole, so no value is cut; a width a person chose is kept as chosen, even one that cuts, and a cut cell still shows its whole text on hover. Basis: the 2026-10-18 21:20 ruling (a list never cuts a value; the Arabic gallery found « Groupe Hannibal Distri… » cut beside columns with room). It supersedes, for lists, the 2026-10-09 03:38 entry that narrowed every column alike and ended a cut value in an ellipsis. Alternatives: wrapping the values (rows of uneven height, not the ruled mechanism); a lower cap per column (a long value would be cut again).
 - [2026-10-19 05:35] ASSUMED (review): A column's measured width counts its header (label and sort arrow) as well as its values, so a floor lowered below a header still never cuts it; the recurring invoices' and expenses' schedule no longer declares 300 px (its sentence now widens it when one is long), which keeps their state shown at 1600 px; the members list's role is high priority, what that list is read for, so an address gives way first on its narrow card. At 1366 px, the first client's laptop, no high column gives way on the main lists (measured with the e2e data: an invoice's issue date, a product's kind, a lot's use-by and a movement's location do). Basis: the 04:26 entry and the 2026-10-19 01:08 priorities rule. Alternatives: keep the 300 px floor (state hidden at the widest page once a customer's name is long); the address high on members.
+- [2026-10-19 07:41] ASSUMED (review): A list column's measured width is its words and the boxes of their own width (badges, icons), never a plain inline element's box: a link around a block, the invoice's two-line number, reported the cell the table stretched and widened its column at every measure (CI on 1c77637c). Refines 04:26; held by list-fit.spec.ts, which widens and narrows the window and requires the same width back. The status floor's cost at 1280 px is D8 on the marking page.
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -195,7 +196,7 @@ was and was not certified by execution.
 | 1 | Release core: install on Windows, Linux, macOS; safe updates with backup and rollback; security; LAN HTTPS | L | doing | - | infra/** scripts/** compose*.yaml docs/** |
 | 2 | Demo sandbox per sign-in, stamped, deleted at sign-out or after 2 h idle | L | done | ec91e167 | api/** web/** |
 | 3 | Language foundations and RTL | L | done | 48659c89 | api/** web/** scripts/gates/** |
-| 4 | Proof pass of every built module in fr, en, ar; the client's Excel mapped | L | doing | - | web/e2e/** api/** web/** |
+| 4 | Proof pass of every built module in fr, en, ar; the client's Excel mapped (galleries in fr, en and ar done 2026-10-18/19; the Excel mapping waits on the client's files) | L | doing | - | web/e2e/** api/** web/** |
 | 5 | Reports: thirteen reports over the ruled ten, each with period, comparison, establishment, export and its figures opening their list | L | done | fc09f101 | api/** web/** |
 | 6 | Supplier orders and goods receipts | L | done | bec39bd1 | api/** web/** |
 | 7 | Arabic texts and printed documents | L | doing | ffb36182 | web/public/i18n/** api/translations/** api/templates/** |
@@ -242,7 +243,7 @@ was and was not certified by execution.
   found nothing on its 380 scans, and the audit, now counting a list cell holding more than it shows, found no cut
   value; its only cut text is the phone's company name above. Seen there, not changed: the units list on an Arabic
   screen shows each unit's name as the company writes it (« Unité »), not its Arabic printed name; whether a list
-  should read a catalogue entry in the screen's language is the developer's call.
+  should read a catalogue entry in the screen's language is the developer's call, D4 on the marking page.
 - Step 4b (#64), found by CI on 1c77637c: a column measured a link wrapping a block (the invoice's two-line number) at
   the cell's own box, which the table stretches to fill the card, so the number column grew at every measure and
   pushed the date and the status out of the invoices list at 1280 px. Only boxes of their own width (badges, icons)
@@ -250,7 +251,7 @@ was and was not certified by execution.
   back (red before the fix: 905 px became 920). With it, the invoices list at 1280 px (card 960) holds the number
   190, the customer 238, what is left to pay 140, the status 180 and the row's controls 192: 940, so a customer name
   past about 226 px of text still sends the status away, as ruled; the status floor of 180 is the first candidate
-  of the floor sweep (#65) for the developer's call.
+  of the floor sweep (#65), D8 on the marking page.
 - Step 4b: five scenarios reloaded right after a presentation choice, before its save had answered, and the reload
   cancelled it (the stock map's label choice went red on CI). They wait for the save now (`choiceSaved`,
   `web/e2e/presentation.ts`).
