@@ -200,7 +200,7 @@ was and was not certified by execution.
 | 5 | Reports: thirteen reports over the ruled ten, each with period, comparison, establishment, export and its figures opening their list | L | done | fc09f101 | api/** web/** |
 | 6 | Supplier orders and goods receipts | L | done | bec39bd1 | api/** web/** |
 | 7 | Arabic texts and printed documents | L | doing | ffb36182 | web/public/i18n/** api/translations/** api/templates/** |
-| 8 | Guides, help and README on the final screens | M | todo | - | docs/** web/** |
+| 8 | Guides, help and README on the final screens (8a, the reading against the final screens, done 2026-10-19) | M | doing | - | docs/** web/** |
 | 9 | Document links before the tag: the module port (335f778b), a delivery note names its invoices (93004285), an invoice its delivery notes (5f73574b), a quote onto an open draft (row 259, 08ad6709) and its toast | M | done | b6c8d52e | api/src/Module/** web/src/app/** web/e2e/** |
 <!-- /progress-block -->
 ### Blocked
@@ -280,5 +280,16 @@ was and was not certified by execution.
 - Step 3 S2: the platform page still repeats each country's currency and time zone (`COMPANY_COUNTRIES` in
   `web/src/app/platform/platform-types.ts`), which the fiscal presets also hold; a third country means editing both.
 - Step 1 on macOS: nothing schedules `twes start` and `twes tick` (run by hand, and `twes install` says so); untried.
+- Step 8a (2026-10-19): the first-invoice guide runs on the final screens (`web/e2e/tours.spec.ts` green in CI on
+  fe2c7323), and its two claims hold in the code: payment terms and document language are read at issue from the
+  customer's settings chain, discount and taxes when the customer is chosen. The glossary's quote said it could become
+  a delivery note, which nothing offers: it now says an invoice, in fr, en and ar. The help panel's shortcuts read the
+  declaration the keys run from; its contact is the platform's « Contact du support » card (`support.*` settings, empty by
+  default, the section hidden when empty), a TODO step for the shop's installation. The withholding entry matches
+  docs/fiscal/TN.md § 5. « Créer » offers more than the three the guide names (a delivery note, an expense, a product,
+  an order to a vendor too, by permission and module); the guide's words stay true. The README's versions match `make versions`, and § 16's
+  commands, flags, task names, packages and fingerprint match `install.ps1` and `twes` as they stand. The guide videos
+  are not filmed: uncertified. 8b is one guide at most (receiving an order to a vendor), after the audit rounds and only if its texts fit the
+  Arabic budget without moving texts into a part.
 - Step 1 on Windows: `install.ps1` is checked by PowerShell's parser and PSScriptAnalyzer and its `$verify` line runs in
   `twes.test.sh`; the rest is untried until the developer's test.

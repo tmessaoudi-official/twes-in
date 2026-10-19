@@ -138,3 +138,6 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
 ## Also waiting on you
 
 - [ ] The client's Excel file, under `var/claude/client-excel/`, to map its columns into the importer (plan step 4).
+- [ ] On the shop's installation, signed in as its operator, `/platform`, card « Contact du support »: your phone, WhatsApp
+  and e-mail. They are what « Aide » shows under « Nous contacter » on every screen; left empty, the shop sees no way to
+  reach you.

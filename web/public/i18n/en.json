@@ -4188,7 +4188,7 @@
     },
     "quote": {
       "term": "Quote",
-      "definition": "A priced offer made to the customer; once accepted, it can become an invoice or a delivery note."
+      "definition": "A priced offer made to the customer; once accepted, it can become an invoice."
     },
     "delivery_note": {
       "term": "Delivery note",
