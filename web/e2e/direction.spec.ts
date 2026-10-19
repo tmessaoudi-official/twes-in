@@ -116,6 +116,81 @@ test('a value cut short in Arabic keeps its start in sight', async ({ page }, te
   expect(cut.filter((each) => !each.firstInSight)).toEqual([]);
 });
 
+// A telephone number holds no letter to give it a direction, so on an Arabic screen it would take the screen's and read
+// « 000 000 74 216+ ». Typed into its field and shown in its list, it must read as it is written, the « + » first. The
+// field is left to right through Chromium's own stylesheet for a tel input; the list through its value's `dir="auto"`.
+test('a telephone number reads as it is written on an Arabic screen', async ({
+  page,
+}, testInfo) => {
+  const phone = '+216 74 000 000';
+  const id = await aCustomer(page, `RTL-TEL-${Date.now()}`);
+  await chooseArabic(page);
+  await page.goto(`/customers/${id}`);
+  await page.getByRole('tab', { name: 'جهات الاتصال' }).click();
+  const contacts = page.getByTestId('customer-tab-contacts');
+  await contacts.getByTestId('contact-add').click();
+  await contacts.getByTestId('field-firstName').fill('Leila');
+  const field = contacts.getByTestId('field-phone');
+  await field.fill(phone);
+  await page.screenshot({
+    path: testInfo.outputPath('contact-phone-field-rtl.png'),
+    fullPage: false,
+  });
+
+  // A field draws its text where no Range reaches: the same text is laid out beside it under the field's own direction
+  // rules, which are what decide the order.
+  const plusFirstInField = await field.evaluate((input: HTMLInputElement) => {
+    const style = getComputedStyle(input);
+    const mirror = document.createElement('div');
+    mirror.style.direction = style.direction;
+    mirror.style.unicodeBidi = style.unicodeBidi;
+    mirror.style.font = style.font;
+    mirror.style.position = 'absolute';
+    mirror.style.width = '600px';
+    mirror.textContent = input.value;
+    input.parentElement?.appendChild(mirror);
+    const at = (index: number) => {
+      const range = document.createRange();
+      range.setStart(mirror.firstChild as Text, index);
+      range.setEnd(mirror.firstChild as Text, index + 1);
+      return range.getBoundingClientRect().left;
+    };
+    const plusFirst = at(0) < at(input.value.length - 1);
+    mirror.remove();
+    return plusFirst;
+  });
+  expect(plusFirstInField, 'the field').toBe(true);
+
+  await contacts.getByTestId('contact-save').click();
+  const cell = page
+    .getByTestId('contacts-table')
+    .locator('[data-column="phone"]', { hasText: '000' });
+  await expect(cell).toHaveCount(1);
+  await page.screenshot({ path: testInfo.outputPath('contact-phone-rtl.png'), fullPage: false });
+  const plusFirstInList = await cell.evaluate((box, written) => {
+    const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = node as Text;
+      const start = text.data.indexOf(written);
+      // The list keeps copies of its values it measures widths from; only the one drawn on the screen counts.
+      if (
+        start < 0 ||
+        !text.parentElement?.checkVisibility({ opacityProperty: true, visibilityProperty: true })
+      )
+        continue;
+      const at = (index: number) => {
+        const range = document.createRange();
+        range.setStart(text, start + index);
+        range.setEnd(text, start + index + 1);
+        return range.getBoundingClientRect().left;
+      };
+      return at(0) < at(written.length - 1);
+    }
+    return null;
+  }, phone);
+  expect(plusFirstInList, 'the list').toBe(true);
+});
+
 // The screens a shop opens first, each without a WCAG failure in Arabic: a label that does not fit, a name not
 // translated, an icon pointing the wrong way all show here before the shop sees them.
 const ARABIC_WALK: readonly string[] = [
