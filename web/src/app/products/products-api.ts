@@ -11,7 +11,9 @@ import type {
   ProductCategoryProductCategoryWriteValidationProductCategoryWrite as ProductCategoryProductCategoryWrite,
   ProductHomeProductHomeOrderRecordReviseValidationProductHomeOrderRecordRevise,
   ProductHomeProductHomeRead,
+  ProductHomeProductHomeWrittenValidationProductHomeOrderRecordRevise,
   ProductReorderPointProductReorderPointRead,
+  ProductReorderPointProductReorderPointReadProductReorderPointWrittenValidationProductReorderPointWriteRecordRevise,
   ProductReorderPointProductReorderPointWriteRecordReviseValidationProductReorderPointWriteRecordRevise,
   ProductOptionsProductOptionsRead,
   PricePreviewPricePreviewReadValidationPricePreviewWrite as PricePreviewRead,
@@ -356,8 +358,9 @@ export class ProductsApi {
 
   /**
    * One establishment's homes written as a whole list, in order, the first the main one a receipt proposes: the places
-   * named are its homes and any it had that are not named stop being homes. 204; what the screen shows is read again.
-   * `version` is the product's, the one the list was read at: a product saved since answers `record_changed`.
+   * named are its homes and any it had that are not named stop being homes; an empty list clears them. It answers the
+   * product's version the write left; what the screen shows is read again. `version` is the product's, the one the
+   * list was read at: a product saved since answers `record_changed`.
    */
   async replaceHomes(
     companyId: string,
@@ -365,30 +368,21 @@ export class ProductsApi {
     establishmentId: string,
     locationIds: readonly string[],
     version: number,
-  ): Promise<void> {
+  ): Promise<number> {
     const body: ProductHomeProductHomeOrderRecordReviseValidationProductHomeOrderRecordRevise = {
       locationIds: [...locationIds],
       version,
     };
-    await this.guard(async () =>
-      firstValueFrom(
-        this.http.put(
+    return this.guard(async () => {
+      const written = await firstValueFrom(
+        this.http.put<ProductHomeProductHomeWrittenValidationProductHomeOrderRecordRevise>(
           `${homesPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`,
           body,
         ),
-      ),
-    );
-  }
-
-  /** Takes the home away in that establishment; one the product never had is not an error. */
-  async clearHome(companyId: string, productId: string, establishmentId: string): Promise<void> {
-    await this.guard(async () =>
-      firstValueFrom(
-        this.http.delete(
-          `${homesPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`,
-        ),
-      ),
-    );
+      );
+      // Every answer carries it; a 0 would be refused by the API rather than taken for a version.
+      return written.productVersion ?? 0;
+    });
   }
 
   /** Every establishment of the company with this product's reorder point there, null where it has none. */
@@ -405,43 +399,29 @@ export class ProductsApi {
   }
 
   /**
-   * Sets the product's reorder point in that establishment, changing the one it had there. `version` is the product's,
-   * the one the points were read at: a product saved since answers `record_changed`.
+   * Sets the product's reorder point in that establishment, changing the one it had there, or with no quantity takes
+   * it away (no alert there; one it never had is not an error). It answers the product's version the write left.
+   * `version` is the product's, the one the points were read at: a product saved since answers `record_changed`.
    */
   async setReorderPoint(
     companyId: string,
     productId: string,
     establishmentId: string,
-    quantity: string,
+    quantity: string | null,
     version: number,
-  ): Promise<ProductReorderPointRow> {
+  ): Promise<number> {
     const body: ProductReorderPointProductReorderPointWriteRecordReviseValidationProductReorderPointWriteRecordRevise =
       { quantity, version };
-    return this.guard(async () =>
-      toReorderPoint(
-        await firstValueFrom(
-          this.http.put<ProductReorderPointProductReorderPointRead>(
-            `${reorderPointsPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`,
-            body,
-          ),
-        ),
-      ),
-    );
-  }
-
-  /** Takes the reorder point away in that establishment: no alert there. One it never had is not an error. */
-  async clearReorderPoint(
-    companyId: string,
-    productId: string,
-    establishmentId: string,
-  ): Promise<void> {
-    await this.guard(async () =>
-      firstValueFrom(
-        this.http.delete(
+    return this.guard(async () => {
+      const written = await firstValueFrom(
+        this.http.put<ProductReorderPointProductReorderPointReadProductReorderPointWrittenValidationProductReorderPointWriteRecordRevise>(
           `${reorderPointsPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`,
+          body,
         ),
-      ),
-    );
+      );
+      // Every answer carries it; a 0 would be refused by the API rather than taken for a version.
+      return written.productVersion ?? 0;
+    });
   }
 
   /** What the product has cost the company over time, the latest changes first; a 404 for whoever may not read costs. */

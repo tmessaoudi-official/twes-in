@@ -3,6 +3,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ProductReorderPoints } from './product-reorder-points-facade';
 import { ProductsApi, ProductsRefused } from './products-api';
+import { ProductsFacade } from './products-facade';
 import type { ProductReorderPointRow } from './products-types';
 
 const row = (quantity: string | null): ProductReorderPointRow => ({
@@ -13,15 +14,20 @@ const row = (quantity: string | null): ProductReorderPointRow => ({
 });
 
 describe('ProductReorderPoints', () => {
-  const api = { reorderPoints: vi.fn(), setReorderPoint: vi.fn(), clearReorderPoint: vi.fn() };
+  const api = { reorderPoints: vi.fn(), setReorderPoint: vi.fn() };
+  const products = { versionMoved: vi.fn() };
   let facade: ProductReorderPoints;
 
   beforeEach(() => {
     api.reorderPoints.mockReset().mockResolvedValue([row('12.000')]);
-    api.setReorderPoint.mockReset().mockResolvedValue(row('12.000'));
-    api.clearReorderPoint.mockReset().mockResolvedValue(undefined);
+    api.setReorderPoint.mockReset().mockResolvedValue(5);
+    products.versionMoved.mockReset();
     TestBed.configureTestingModule({
-      providers: [ProductReorderPoints, { provide: ProductsApi, useValue: api }],
+      providers: [
+        ProductReorderPoints,
+        { provide: ProductsApi, useValue: api },
+        { provide: ProductsFacade, useValue: products },
+      ],
     });
     facade = TestBed.inject(ProductReorderPoints);
   });
@@ -32,6 +38,16 @@ describe('ProductReorderPoints', () => {
     expect(api.setReorderPoint).toHaveBeenCalledWith('c1', 'p1', 'e1', '12', 4);
     expect(facade.rows()).toEqual([row('12.000')]);
     expect(facade.error()).toBeNull();
+  });
+
+  /** A change straight after sends the version this one left, without waiting for the product to be read again. */
+  it('hands the version a write left to the product before reading the points again', async () => {
+    await facade.set('c1', 'p1', 'e1', '12', 4);
+
+    expect(products.versionMoved).toHaveBeenCalledWith('p1', 5);
+    const moved = products.versionMoved.mock.invocationCallOrder[0];
+    const readAgain = api.reorderPoints.mock.invocationCallOrder.at(-1);
+    expect(moved).toBeLessThan(readAgain!);
   });
 
   it('keeps a refusal to say', async () => {
@@ -54,12 +70,13 @@ describe('ProductReorderPoints', () => {
     expect(facade.busy()).toBe(false);
   });
 
-  it('clears a point and reads the points again', async () => {
+  it('clears a point on the product version read and reads the points again', async () => {
     api.reorderPoints.mockResolvedValue([row(null)]);
 
-    expect(await facade.clear('c1', 'p1', 'e1')).toBe('saved');
+    expect(await facade.set('c1', 'p1', 'e1', null, 4)).toBe('saved');
 
-    expect(api.clearReorderPoint).toHaveBeenCalledWith('c1', 'p1', 'e1');
+    expect(api.setReorderPoint).toHaveBeenCalledWith('c1', 'p1', 'e1', null, 4);
     expect(facade.rows()).toEqual([row(null)]);
+    expect(products.versionMoved).toHaveBeenCalledWith('p1', 5);
   });
 });

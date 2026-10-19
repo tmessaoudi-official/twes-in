@@ -74,7 +74,7 @@ final class ProductHomeTest extends ApiTestCase
         self::assertSame([[$this->bayId, 0, true]], $this->orderOfHomes(), 'a refused list changes nothing');
 
         $this->sendJson('PUT', $establishment, ['version' => $this->storedVersion('product', $this->productId), 'locationIds' => []]);
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertResponseIsSuccessful();
         self::assertSame([], $this->orderOfHomes());
     }
 
@@ -95,7 +95,7 @@ final class ProductHomeTest extends ApiTestCase
         self::assertContains(['propertyPath' => 'version', 'reason' => 'value_required', 'params' => []], $this->refusals());
 
         $this->sendJson('PUT', $establishment, ['locationIds' => [$this->rackId], 'version' => $read]);
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertResponseIsSuccessful();
         $moved = $this->storedVersion('product', $this->productId);
         self::assertSame($read + 1, $moved, 'the homes changed, so the product\'s version moved');
 
@@ -106,7 +106,7 @@ final class ProductHomeTest extends ApiTestCase
         self::assertSame($moved, $this->storedVersion('product', $this->productId));
 
         $this->sendJson('PUT', $establishment, ['locationIds' => [$this->rackId], 'version' => $moved]);
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertResponseIsSuccessful();
         self::assertSame($moved, $this->storedVersion('product', $this->productId), 'the same list changes nothing, its version neither');
 
         $this->sendJson('PUT', $this->homes(), ['locationId' => $this->bayId]);
@@ -116,6 +116,38 @@ final class ProductHomeTest extends ApiTestCase
         $this->sendJson('DELETE', $establishment);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         self::assertSame($moved + 2, $this->storedVersion('product', $this->productId), 'an establishment cleared moves it');
+    }
+
+    /**
+     * A list written answers the product's version it left, so the screen's next write sends it without waiting for the
+     * product to be read again: « Monter » then « Retirer » in a breath once sent the version from before the first and
+     * was refused. An empty list clears the establishment on the version it was read at, as any other list.
+     */
+    public function testAListWrittenAnswersTheVersionItLeftAndAnEmptyListClearsOnTheVersionReadAt(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $this->ground();
+        $establishment = $this->homes().'/'.$this->establishmentId;
+        $read = $this->storedVersion('product', $this->productId);
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->rackId, $this->bayId], 'version' => $read]);
+        self::assertResponseIsSuccessful();
+        $moved = $this->storedVersion('product', $this->productId);
+        self::assertSame($read + 1, $moved);
+        self::assertSame($moved, $this->intAt($this->json(), 'productVersion'), 'the answer names the version the write left');
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->rackId, $this->bayId], 'version' => $moved]);
+        self::assertSame($moved, $this->intAt($this->json(), 'productVersion'), 'a list that changes nothing answers the version it found');
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => [], 'version' => $read]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an empty list read before the change is refused');
+        self::assertSame([[$this->rackId, 0, true], [$this->bayId, 1, false]], $this->orderOfHomes(), 'and nothing is cleared');
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => [], 'version' => $moved]);
+        self::assertResponseIsSuccessful();
+        self::assertSame($moved + 1, $this->intAt($this->json(), 'productVersion'));
+        self::assertSame($moved + 1, $this->storedVersion('product', $this->productId));
+        self::assertSame([], $this->orderOfHomes(), 'the establishment is cleared');
     }
 
     public function testAProductIsGivenOneHomePerEstablishmentAndMovedRatherThanDoubled(): void

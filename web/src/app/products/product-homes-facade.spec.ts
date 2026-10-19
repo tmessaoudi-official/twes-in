@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { InventoryApi } from '../inventory/inventory-api';
 import { ProductHomes } from './product-homes-facade';
 import { ProductsApi, ProductsRefused } from './products-api';
+import { ProductsFacade } from './products-facade';
 import type { StockLocationRow } from '../inventory/inventory-types';
 import type { ProductHomeRow } from './products-types';
 
@@ -23,14 +24,15 @@ const place = (id: string, establishmentId: string): StockLocationRow =>
   ({ id, establishmentId, parentId: null, code: id, name: id }) as StockLocationRow;
 
 describe('ProductHomes', () => {
-  const api = { homes: vi.fn(), replaceHomes: vi.fn(), clearHome: vi.fn() };
+  const api = { homes: vi.fn(), replaceHomes: vi.fn() };
   const stock = { locations: vi.fn() };
+  const products = { versionMoved: vi.fn() };
   let facade: ProductHomes;
 
   beforeEach(() => {
     api.homes.mockReset().mockResolvedValue([home('l1')]);
-    api.replaceHomes.mockReset().mockResolvedValue(undefined);
-    api.clearHome.mockReset().mockResolvedValue(undefined);
+    api.replaceHomes.mockReset().mockResolvedValue(8);
+    products.versionMoved.mockReset();
     stock.locations
       .mockReset()
       .mockResolvedValue([place('l1', 'e1'), place('l2', 'e1'), place('l3', 'e2')]);
@@ -39,6 +41,7 @@ describe('ProductHomes', () => {
         ProductHomes,
         { provide: ProductsApi, useValue: api },
         { provide: InventoryApi, useValue: stock },
+        { provide: ProductsFacade, useValue: products },
       ],
     });
     facade = TestBed.inject(ProductHomes);
@@ -93,19 +96,35 @@ describe('ProductHomes', () => {
 
     expect(await facade.remove('c1', 'p1', home('l1'), 7)).toBe('saved');
     expect(api.replaceHomes).toHaveBeenCalledWith('c1', 'p1', 'e1', ['l2'], 7);
-    expect(api.clearHome).not.toHaveBeenCalled();
 
-    expect(await facade.remove('c1', 'p1', home('l3', 'e2'), 7)).toBe('saved');
-    expect(api.clearHome).toHaveBeenCalledWith('c1', 'p1', 'e2');
+    // The last one goes as an empty list, on the version read like any other list.
+    expect(await facade.remove('c1', 'p1', home('l3', 'e2'), 8)).toBe('saved');
+    expect(api.replaceHomes).toHaveBeenLastCalledWith('c1', 'p1', 'e2', [], 8);
   });
 
-  it('reads the homes again after one is cleared', async () => {
+  /**
+   * « Monter » then « Retirer » in a breath: the second write must send the version the first left, so it is the
+   * product's before the first says it is done, not once the product page has read the product again.
+   */
+  it('hands the version a write left to the product before reading the homes again', async () => {
+    api.homes.mockResolvedValue([home('l1'), home('l2', 'e1', 1)]);
     await facade.load('c1', 'p1');
-    api.homes.mockResolvedValue([]);
 
-    expect(await facade.clear('c1', 'p1', 'e1')).toBe(true);
-    expect(api.clearHome).toHaveBeenCalledWith('c1', 'p1', 'e1');
-    expect(facade.homes()).toEqual([]);
+    expect(await facade.move('c1', 'p1', home('l2', 'e1', 1), -1, 7)).toBe('saved');
+
+    expect(products.versionMoved).toHaveBeenCalledWith('p1', 8);
+    const moved = products.versionMoved.mock.invocationCallOrder[0];
+    const readAgain = api.homes.mock.invocationCallOrder.at(-1);
+    expect(moved).toBeLessThan(readAgain!);
+  });
+
+  it('hands over no version when the write is refused', async () => {
+    api.replaceHomes.mockRejectedValue(new ProductsRefused('record_changed'));
+    await facade.load('c1', 'p1');
+
+    expect(await facade.remove('c1', 'p1', home('l1'), 7)).toBe('changed');
+
+    expect(products.versionMoved).not.toHaveBeenCalled();
   });
 
   /** A tab that could not save says so about itself; the product screen around it is not put in an error. */

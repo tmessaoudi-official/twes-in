@@ -23,10 +23,11 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Writes the homes of one establishment as a whole list, in order, the first the main one. 204: what the screen shows
- * afterwards is read again, so nothing here is a second source for it.
+ * Writes the homes of one establishment as a whole list, in order, the first the main one; an empty list clears it.
+ * It answers only the product's version the write left: what the screen shows afterwards is read again, so nothing
+ * here is a second source for it.
  *
- * @implements ProcessorInterface<ProductHomeResource, null>
+ * @implements ProcessorInterface<ProductHomeResource, ProductHomeResource>
  */
 final readonly class ReplaceProductHomesProcessor implements ProcessorInterface
 {
@@ -34,11 +35,11 @@ final readonly class ReplaceProductHomesProcessor implements ProcessorInterface
     {
     }
 
-    public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): null
+    public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): ProductHomeResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::WRITE);
         try {
-            $this->homes->replace(
+            $version = $this->homes->replace(
                 $company,
                 CompanyPath::identifier($uriVariables, 'productId'),
                 CompanyPath::identifier($uriVariables, 'establishmentId'),
@@ -52,6 +53,9 @@ final readonly class ReplaceProductHomesProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return null;
+        $written = new ProductHomeResource();
+        $written->productVersion = $version;
+
+        return $written;
     }
 }

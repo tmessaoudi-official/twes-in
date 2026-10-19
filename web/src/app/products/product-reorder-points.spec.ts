@@ -41,7 +41,6 @@ describe('ProductReorderPointsSection', () => {
     error: signal(null).asReadonly(),
     load: vi.fn(),
     set: vi.fn(),
-    clear: vi.fn(),
   };
   const auth = { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }) };
   let fixture: ComponentFixture<ProductReorderPointsSection>;
@@ -75,7 +74,6 @@ describe('ProductReorderPointsSection', () => {
     rows.set([row('SIEGE', '12.000'), row('SFAX', null)]);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.set.mockReset().mockResolvedValue('saved');
-    facade.clear.mockReset().mockResolvedValue('saved');
     TestBed.configureTestingModule({
       imports: [ProductReorderPointsSection],
       providers: [
@@ -227,7 +225,7 @@ describe('ProductReorderPointsSection', () => {
     q('product-reorder-clear-SIEGE')!.click();
     await fixture.whenStable();
 
-    expect(facade.clear).toHaveBeenCalledWith('c1', 'p1', 'e-SIEGE');
+    expect(facade.set).toHaveBeenCalledWith('c1', 'p1', 'e-SIEGE', null, 7);
     expect(successToasts()).toContain('products.reorder.cleared');
     expect(moved).toEqual(['saved']);
   });

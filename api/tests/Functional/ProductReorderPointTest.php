@@ -105,6 +105,45 @@ final class ProductReorderPointTest extends ApiTestCase
         self::assertSame($moved + 2, $this->storedVersion('product', $this->productId), 'clearing what is clear moves nothing');
     }
 
+    /**
+     * A point written answers the product's version it left, so the screen's next write sends it without waiting for
+     * the product to be read again. A point set to nothing clears it on the version it was read at, as the list reads
+     * an establishment without one.
+     */
+    public function testAPointWrittenAnswersTheVersionItLeftAndNoQuantityClearsOnTheVersionReadAt(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->product();
+        $point = $this->points($this->establishmentId);
+        $read = $this->storedVersion('product', $this->productId);
+
+        $this->sendJson('PUT', $point, ['quantity' => '12', 'version' => $read]);
+        self::assertResponseIsSuccessful();
+        $moved = $this->storedVersion('product', $this->productId);
+        self::assertSame($read + 1, $moved);
+        self::assertSame($moved, $this->intAt($this->json(), 'productVersion'), 'the answer names the version the write left');
+
+        $this->sendJson('PUT', $point, ['quantity' => null, 'version' => $read]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a clearing read before the change is refused');
+        $this->getJson($this->points());
+        self::assertSame([[$this->establishmentId, '12.000']], $this->rows(), 'and nothing is cleared');
+
+        $this->sendJson('PUT', $point, ['quantity' => null, 'version' => $moved]);
+        self::assertResponseIsSuccessful();
+        self::assertNull($this->json()['quantity'] ?? null, 'the answer reads the establishment without a point');
+        self::assertSame($moved + 1, $this->intAt($this->json(), 'productVersion'));
+        self::assertSame($moved + 1, $this->storedVersion('product', $this->productId));
+        $this->getJson($this->points());
+        self::assertSame([[$this->establishmentId, null]], $this->rows(), 'the point is cleared');
+
+        $this->sendJson('PUT', $point, ['quantity' => null, 'version' => $moved + 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame($moved + 1, $this->intAt($this->json(), 'productVersion'), 'clearing what is clear moves nothing');
+
+        $this->sendJson('PUT', $point, ['quantity' => ' ', 'version' => $moved + 1]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a blank quantity is still refused: nothing is sent as null');
+    }
+
     public function testWhatIsRefusedIsRefusedWithItsField(): void
     {
         $this->signedIn(['product.read', 'product.write']);

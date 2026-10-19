@@ -4,6 +4,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { InventoryApi } from '../inventory/inventory-api';
 import type { StockLocationRow } from '../inventory/inventory-types';
 import { ProductsApi, ProductsRefused } from './products-api';
+import { ProductsFacade } from './products-facade';
 import { appended, groupByEstablishment, moved, without } from './product-home-order';
 import type { ProductHomeRow, ProductsError } from './products-types';
 
@@ -24,6 +25,7 @@ export type HomesWrite = 'saved' | 'refused' | 'changed';
 export class ProductHomes {
   private readonly api = inject(ProductsApi);
   private readonly stock = inject(InventoryApi);
+  private readonly products = inject(ProductsFacade);
   private readonly homesSignal = signal<readonly ProductHomeRow[]>([]);
   private readonly locationsSignal = signal<readonly StockLocationRow[]>([]);
   private readonly busySignal = signal(false);
@@ -99,8 +101,10 @@ export class ProductHomes {
   }
 
   /**
-   * The establishment's homes as a new list, written whole and read again: the API keeps the order. A product saved
-   * since refuses the list and the homes are read again, which the product page says as it reads the product again.
+   * The establishment's homes as a new list, written whole (an empty one clears them) and read again: the API keeps
+   * the order. The version the write left is the product's before this says it is done, so a click straight after
+   * sends it. A product saved since refuses the list and the homes are read again, which the product page says as it
+   * reads the product again.
    */
   private async write(
     companyId: string,
@@ -112,8 +116,10 @@ export class ProductHomes {
     const own = this.groups().find((group) => group.establishmentId === establishmentId);
     const ids = change((own?.homes ?? []).map((home) => home.locationId));
     const done = await this.run(async () => {
-      if (ids.length === 0) await this.api.clearHome(companyId, productId, establishmentId);
-      else await this.api.replaceHomes(companyId, productId, establishmentId, ids, version);
+      this.products.versionMoved(
+        productId,
+        await this.api.replaceHomes(companyId, productId, establishmentId, ids, version),
+      );
       this.homesSignal.set(await this.api.homes(companyId, productId));
     });
     if (done) return 'saved';
@@ -121,13 +127,6 @@ export class ProductHomes {
     this.errorSignal.set(null);
     await this.run(async () => this.homesSignal.set(await this.api.homes(companyId, productId)));
     return 'changed';
-  }
-
-  async clear(companyId: string, productId: string, establishmentId: string): Promise<boolean> {
-    return this.run(async () => {
-      await this.api.clearHome(companyId, productId, establishmentId);
-      this.homesSignal.set(await this.api.homes(companyId, productId));
-    });
   }
 
   private async run(work: () => Promise<void>): Promise<boolean> {

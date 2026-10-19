@@ -227,6 +227,17 @@ export class ProductsFacade {
     if (product?.id === productId) this.productSignal.set({ ...product, barcodes, version });
   }
 
+  /**
+   * The version a write beside the form left (the homes, a reorder point), written into the product this screen holds
+   * before that write says it is done: the next one sends it at once, where the product read again a moment later
+   * would come too late for a second click. A version read since that is already later stays.
+   */
+  versionMoved(productId: string, version: number): void {
+    const product = this.productSignal();
+    if (product?.id === productId && version > product.version)
+      this.productSignal.set({ ...product, version });
+  }
+
   private async save(call: () => Promise<ProductRow>): Promise<ProductRow | null> {
     this.busySignal.set(true);
     this.errorSignal.set(null);

@@ -42,7 +42,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             processor: SetProductReorderPointProcessor::class,
             security: 'is_granted("ROLE_USER")',
             read: false,
-            normalizationContext: ['groups' => [self::READ]],
+            normalizationContext: ['groups' => [self::READ, self::WRITTEN], 'skip_null_values' => false],
             denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
             validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
@@ -58,6 +58,7 @@ final class ProductReorderPointResource
 {
     public const string READ = 'product_reorder_point:read';
     public const string WRITE = 'product_reorder_point:write';
+    public const string WRITTEN = 'product_reorder_point:written';
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
@@ -76,9 +77,12 @@ final class ProductReorderPointResource
     #[Groups([self::READ])]
     public string $establishmentName = '';
 
-    /** A decimal from 0, in the product's unit and never finer than it counts; answered with three decimals. */
+    /**
+     * A decimal from 0, in the product's unit and never finer than it counts; answered with three decimals. Null where
+     * the establishment has none, and sent as null it clears the point, as the list reads one without it.
+     */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'example' => '12'])]
-    #[Assert\NotBlank(normalizer: 'trim', groups: [self::WRITE])]
+    #[Assert\NotBlank(allowNull: true, normalizer: 'trim', groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $quantity = null;
 
@@ -90,6 +94,14 @@ final class ProductReorderPointResource
     #[Assert\Positive(groups: [RecordVersion::REVISE])]
     #[Groups([RecordVersion::REVISE])]
     public ?int $version = null;
+
+    /**
+     * The product's version the write left (the answer to the PUT): the page's next write sends it at once, rather than
+     * the one it read before, which another change a moment later would send again. Null on a list read.
+     */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::WRITTEN])]
+    public ?int $productVersion = null;
 
     /** @param ProductReorderPoint|null $point null where the product has none in that establishment */
     public static function of(Establishment $establishment, ?ProductReorderPoint $point): self

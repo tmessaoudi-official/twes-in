@@ -104,22 +104,31 @@ final readonly class KeepReorderPoints
     }
 
     /**
-     * Takes the reorder point away in that establishment; a product with none there is not an error.
+     * Takes the reorder point away in that establishment; a product with none there is not an error. `$version` is the
+     * product's, as for `set`.
+     *
+     * @return int the product's version the write left
      *
      * @throws ProductNotInCompany
+     * @throws RecordChanged
      */
-    public function clear(Company $company, Uuid $productId, Uuid $establishmentId, ?Uuid $actorUserId): void
+    public function clear(Company $company, Uuid $productId, Uuid $establishmentId, ?Uuid $actorUserId, ?int $version = null): int
     {
-        $this->transactions->run(function () use ($company, $productId, $establishmentId, $actorUserId): void {
-            $product = $this->held->held($company, $productId, null) ?? throw new ProductNotInCompany();
+        $product = $this->transactions->run(function () use ($company, $productId, $establishmentId, $actorUserId, $version): Product {
+            $product = $this->held->held($company, $productId, $version) ?? throw new ProductNotInCompany();
             $point = $this->points->ofProductInEstablishment($productId, $establishmentId);
             if (null === $point) {
-                return;
+                return $product;
             }
             $this->points->remove($point);
             $this->held->changedBeside($product);
             $this->record($company, $point, self::CLEARED, $actorUserId);
+
+            return $product;
         });
+
+        // Read once the transaction is stored: the version moves as the change is written.
+        return $product->getVersion();
     }
 
     /** @throws ProductNotInCompany */
