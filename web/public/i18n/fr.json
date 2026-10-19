@@ -4188,7 +4188,7 @@
     },
     "quote": {
       "term": "Devis",
-      "definition": "Une proposition chiffrée faite au client ; acceptée, elle peut devenir une facture ou un bon de livraison."
+      "definition": "Une proposition chiffrée faite au client ; acceptée, elle peut devenir une facture."
     },
     "delivery_note": {
       "term": "Bon de livraison",
