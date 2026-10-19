@@ -1,6 +1,6 @@
 {
   "purchases": {
-    "none": "No purchase order matches.",
+    "none": "No purchase orders yet.",
     "no_company": "Choose a company to see its purchase orders.",
     "read_only": "You may read purchase orders, not change them.",
     "back": "Back to orders",

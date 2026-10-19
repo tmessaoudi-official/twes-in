@@ -26,7 +26,7 @@
       "app_remove_message": "Les codes qu’elle affiche ne seront plus acceptés. Pour en utiliser une, il faudra la configurer à nouveau.",
       "passkeys_title": "Clés d’accès",
       "passkeys_intro": "Une clé d’accès confirme que c’est bien vous grâce à votre empreinte, votre visage ou le code de votre appareil, au lieu d’un code.",
-      "passkeys_none": "Aucune clé d’accès pour le moment.",
+      "passkeys_none": "Aucune clé d’accès pour l’instant.",
       "passkeys_unsupported": "Ce navigateur ne peut pas utiliser de clés d’accès.",
       "passkey_name": "Nom",
       "passkey_name_hint": "Pour distinguer vos appareils, par exemple Ordinateur du bureau.",
