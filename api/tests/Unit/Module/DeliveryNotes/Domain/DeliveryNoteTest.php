@@ -14,6 +14,7 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
@@ -106,6 +107,21 @@ final class DeliveryNoteTest extends TestCase
         $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
 
         self::assertSame(['Acme SARL', 'Tunis'], [$note->getSellerSnapshot()?->name, $note->getSellerSnapshot()?->address->city]);
+    }
+
+    public function testANoteIsValidatedOnlyWithANameForEachOfItsUnitsAndARefusalLeavesTheDraftAsItWas(): void
+    {
+        $note = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [
+            new DeliveryNoteLineDetails(null, 'Pose', '1', $this->unit('C62'), '40', []),
+        ], $this->now);
+
+        try {
+            $note->validate('BL-2026-00001', $this->now, new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), PrintedNames::in('fr', [], []), $this->now);
+            self::fail('a note whose kept names miss a unit is not validated');
+        } catch (\LogicException $refused) {
+            self::assertStringContainsString('keeps no name for its unit', $refused->getMessage());
+        }
+        self::assertSame([DeliveryNoteStatus::Draft, null, null, null, null], [$note->getStatus(), $note->getNumber(), $note->getCustomerSnapshot(), $note->getPrintSettings(), $note->getPrintedNames()]);
     }
 
     public function testAQuantityIsPositiveAndNoFinerThanItsUnitCounts(): void

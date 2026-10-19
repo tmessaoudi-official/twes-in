@@ -13,6 +13,7 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
@@ -138,6 +139,19 @@ final class QuoteTest extends TestCase
 
         $this->expectException(QuoteNotDraft::class);
         $this->send($quote);
+    }
+
+    public function testAQuoteIsSentOnlyWithANameForEachOfItsUnitsAndARefusalLeavesTheDraftAsItWas(): void
+    {
+        $quote = $this->draft();
+
+        try {
+            $quote->send('DEV-2026-10-00001', $this->now, 30, $this->print(), PrintedNames::in('fr', [], []), $this->now);
+            self::fail('a quote whose kept names miss a unit is not sent');
+        } catch (\LogicException $refused) {
+            self::assertStringContainsString('keeps no name for its unit', $refused->getMessage());
+        }
+        self::assertSame([QuoteStatus::Draft, null, null, null, null], [$quote->getStatus(), $quote->getNumber(), $quote->getCustomerSnapshot(), $quote->getPrintSettings(), $quote->getPrintedNames()]);
     }
 
     public function testAQuoteIsSentWithALineAndAPriceThatBindsForADayAtLeast(): void

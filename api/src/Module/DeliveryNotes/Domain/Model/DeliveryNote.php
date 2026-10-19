@@ -226,6 +226,10 @@ class DeliveryNote implements CompanyOwned
         if ($this->lines->isEmpty()) {
             throw new InvalidDeliveryNote('lines', 'A delivery note is validated with at least one line.');
         }
+        // Every unit it prints is named before anything is fixed, so a refusal leaves the draft as it was.
+        foreach ($this->getLines() as $line) {
+            $names->unit($line->getUnit());
+        }
 
         foreach ($this->getLines() as $line) {
             $line->assertCountedByItsUnit();
@@ -241,9 +245,6 @@ class DeliveryNote implements CompanyOwned
         $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->printSettings = $print->toArray();
-        foreach ($this->getLines() as $line) {
-            $names->unit($line->getUnit());
-        }
         $this->printedNames = $names->toArray();
         $this->status = DeliveryNoteStatus::Validated;
         $this->number = $number;

@@ -690,6 +690,10 @@ class Invoice implements CompanyOwned
         if ($this->lines->isEmpty()) {
             throw new InvalidInvoice('lines', 'An invoice is issued with at least one line.');
         }
+        // Every unit it prints is named before anything is fixed, so a refusal leaves the draft as it was.
+        foreach ($this->getLines() as $line) {
+            $issue->names->unit($line->getUnit());
+        }
 
         $this->retakeTaxes();
         $fixed = $figures($this);
@@ -715,9 +719,6 @@ class Invoice implements CompanyOwned
         $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->printSettings = $issue->print->toArray();
-        foreach ($this->getLines() as $line) {
-            $issue->names->unit($line->getUnit());
-        }
         $this->printedNames = $issue->names->toArray();
         $this->status = InvoiceStatus::Issued;
         $this->number = $issue->number;
