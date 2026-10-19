@@ -26,6 +26,9 @@ final readonly class ProductTaxOption
         #[ApiProperty(schema: ['type' => 'string', 'enum' => ['vat', 'levy']])]
         #[Groups([ProductOptionsResource::READ])]
         public string $family,
+        /** The company's default rate, which a new product starts with as a line naming no product is charged it. */
+        #[Groups([ProductOptionsResource::READ])]
+        public bool $isDefault,
     ) {
     }
 }

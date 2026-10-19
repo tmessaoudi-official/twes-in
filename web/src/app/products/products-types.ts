@@ -205,6 +205,8 @@ export interface LineTaxOption {
   code: string;
   name: string;
   family: LineTaxFamily;
+  /** The company's default rate, ticked on a new product as a line naming no product is charged it. */
+  isDefault: boolean;
 }
 
 /** What the product form offers: the company's currency, its active units and its active line taxes. */

@@ -139,6 +139,42 @@ final class RefusalReasonsTest extends KernelTestCase
         self::assertSame([], $untranslated);
     }
 
+    /**
+     * What an import points out about a row it takes, a note, reaches the report by its code alone: each has its text
+     * in every language the import page speaks, or the person reads the key.
+     */
+    public function testEveryNoteAnImportWritesHasItsTextInEveryLanguage(): void
+    {
+        $root = \dirname(__DIR__, 2);
+        $found = [];
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator("$root/src", \FilesystemIterator::SKIP_DOTS));
+        foreach ($files as $file) {
+            \assert($file instanceof \SplFileInfo);
+            preg_match_all("/->note\\([^,]+, (?:[^;]*?\\? )?'([a-z]+(?:_[a-z]+)+)'(?: : '([a-z]+(?:_[a-z]+)+)')?/", (string) file_get_contents($file->getPathname()), $notes);
+            foreach ([...$notes[1], ...$notes[2]] as $code) {
+                if ('' !== $code) {
+                    $found[$code] = $file->getFilename();
+                }
+            }
+        }
+
+        self::assertArrayHasKey('name_shared', $found, 'a note chosen between two is found');
+        self::assertArrayHasKey('no_taxes', $found, 'a product created without a tax is pointed out');
+        $missing = [];
+        foreach (glob(\dirname($root).'/web/public/i18n/import/*.json') ?: [] as $part) {
+            $texts = json_decode((string) file_get_contents($part), true, 512, \JSON_THROW_ON_ERROR);
+            self::assertIsArray($texts);
+            $notes = \is_array($texts['import'] ?? null) && \is_array($texts['import']['notes'] ?? null) ? $texts['import']['notes'] : [];
+            foreach ($found as $code => $where) {
+                if (!\is_string($notes[$code] ?? null) || '' === $notes[$code]) {
+                    $missing[] = \sprintf('%s in %s: no text in %s', $code, $where, basename($part));
+                }
+            }
+        }
+
+        self::assertSame([], $missing);
+    }
+
     /** @return array<mixed> the screens' texts for a refusal, by reason */
     private static function translated(): array
     {

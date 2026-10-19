@@ -237,8 +237,8 @@ describe('ProductsApi', () => {
       currencyScale: 3,
       units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
       taxes: [
-        { id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat' },
-        { id: 't9', code: 'X', name: 'Inconnue', family: 'stamp' },
+        { id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat', isDefault: true },
+        { id: 't9', code: 'X', name: 'Inconnue', family: 'stamp', isDefault: false },
       ],
       photosPerProduct: 6,
       photoMaxBytes: 5242880,
@@ -248,7 +248,7 @@ describe('ProductsApi', () => {
       currency: 'TND',
       currencyScale: 3,
       units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
-      taxes: [{ id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat' }],
+      taxes: [{ id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat', isDefault: true }],
       photosPerProduct: 6,
       photoMaxBytes: 5242880,
     });

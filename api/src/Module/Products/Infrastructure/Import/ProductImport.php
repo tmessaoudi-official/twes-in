@@ -245,6 +245,11 @@ final readonly class ProductImport implements DeclaresImport
                 if (null === $reference) {
                     $notes->note('reference', 'reference_given', ['reference' => $written->getReference()]);
                 }
+                // Created as the file says, without a tax, which only the preview can show before every document sells
+                // it so: a file chooses no rate on its own (docs/SPEC.md § 7, 2026-09-19).
+                if ([] === $written->getDefaultTaxComponentIds()) {
+                    $notes->note('default_tax_codes', 'no_taxes');
+                }
                 $this->settleStock($company, $written, $record, $quantity, $home, $actorUserId, $context, $notes);
 
                 return RowImported::Created;
