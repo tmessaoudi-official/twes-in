@@ -31,7 +31,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A quote past its draft: sent (numbered from its own series in the transaction that stores it, nothing being mailed
  * yet, so it is a mark the company makes), accepted or refused on the customer's word, cancelled while a draft, and
- * an accepted one invoiced wholly into a new draft invoice (docs/SPEC.md § 7, 2026-10-07 10:21) or added to an open one.
+ * an accepted one invoiced wholly into a new draft invoice or added to an open one.
  * Every move is audited.
  */
 final readonly class QuoteWorkflow

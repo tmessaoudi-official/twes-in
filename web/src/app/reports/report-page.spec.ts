@@ -94,7 +94,7 @@ const ESTABLISHMENTS = [
   { id: 'e2', code: '001', name: 'Dépôt' },
 ] as EstablishmentRow[];
 
-// docs/SPEC.md § 7, 2026-09-24 12:05: each report with its period, its comparison and its establishment, every row
+// Each report with its period, its comparison and its establishment, every row
 // opening the documents behind its figures.
 describe('ReportPage', () => {
   const catalogue = signal<readonly ReportEntry[] | null>(null);

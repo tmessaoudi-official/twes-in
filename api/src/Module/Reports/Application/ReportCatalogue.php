@@ -20,7 +20,7 @@ final readonly class ReportCatalogue
     public const string MODULE = 'reports';
 
     /**
-     * The order of the Reports area (docs/SPEC.md § 7, 2026-09-24 12:05); a report not named here comes after these, by
+     * The order of the Reports area; a report not named here comes after these, by
      * key, so a new one is offered before it is placed.
      */
     public const array ORDER = [

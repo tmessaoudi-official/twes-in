@@ -30,7 +30,7 @@ use Doctrine\DBAL\ParameterType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What each customer owes today, by how late (docs/SPEC.md § 7, 2026-09-24 12:05): the amount still due on every issued
+ * What each customer owes today, by how late: the amount still due on every issued
  * invoice, in the bracket its due day puts it in. It reads today, not a period: what was owed on a past day would have
  * to be rebuilt from every payment and credit note since, and a figure rebuilt is no longer the one the documents hold.
  * A customer's row opens the invoices list on that customer's invoices still to be paid, which add up to its total.

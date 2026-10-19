@@ -20,7 +20,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 
 /**
- * The documents behind one row of a report (docs/SPEC.md § 7, 2026-09-20 03:40: every figure opens the documents behind
+ * The documents behind one row of a report (every figure opens the documents behind
  * it), for a row no list of the app can show exactly: the payments of one day, the invoices that sold one product. Each
  * with what it brings to the figure, so the documents add up to it. Same absence as the report for a report the member may
  * not read.

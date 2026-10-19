@@ -96,7 +96,9 @@ final class ChangeSettingsTest extends TestCase
         $entry = $this->audit->entries[0];
         self::assertSame('setting.changed', $entry->action);
         self::assertTrue($this->company->getId()->equals($entry->companyId));
-        self::assertSame(['key' => 'presentation.accent', 'level' => 'company', 'value' => '#a0b1c2'], $entry->changes);
+        // Names only, never the value: a shared setting may hold a bank account in a document's printed notes or a
+        // person's phone in the publisher's details.
+        self::assertSame(['key' => 'presentation.accent', 'level' => 'company'], $entry->changes);
     }
 
     public function testAnUnknownSettingIsRefused(): void

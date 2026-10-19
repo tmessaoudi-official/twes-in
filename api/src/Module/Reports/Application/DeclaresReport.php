@@ -12,8 +12,8 @@ namespace App\Module\Reports\Application;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
- * A module's report, declared from inside its own directory as it declares its imports and what it puts on « À surveiller »
- * (docs/SPEC.md § 7, 2026-09-20 03:40). The engine gives every report the same period, the same comparison and the same
+ * A module's report, declared from inside its own directory as it declares its imports and what it puts on « À surveiller ».
+ * The engine gives every report the same period, the same comparison and the same
  * permission check; a report says only what it shows and reads it.
  *
  * Its figures are read, never recomputed: a report sums the amounts the documents stored and re-derives no tax and no

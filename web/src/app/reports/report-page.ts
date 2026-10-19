@@ -69,7 +69,7 @@ export const REPORT_KINDS = [
 ] as const;
 
 /**
- * One report (docs/SPEC.md § 7, 2026-09-24 12:05): its period, the period it is compared with, the establishment it is
+ * One report: its period, the period it is compared with, the establishment it is
  * narrowed to, and its figures, each row opening the list of its documents or the documents themselves. What is asked
  * stays in the address, so a report come back to from a list reads as it was left. The figures are the API's own
  * decimal strings, shown through the pipes, never summed here.

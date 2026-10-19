@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Reports\Application;
 
 /**
- * What a report is read against (docs/SPEC.md § 7, 2026-09-20 03:40: comparison is a parameter, not a separate report):
+ * What a report is read against (comparison is a parameter, not a separate report):
  * nothing, the period before, or the same days a year earlier.
  */
 enum ReportComparison: string

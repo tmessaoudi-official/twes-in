@@ -162,13 +162,17 @@ final readonly class ChangeSettings
         return SettingLevel::User === $address->level ? [new PersonalSettingChanged(Uuid::fromString($address->levelId), $key, $value)] : [];
     }
 
-    /** A person's own preferences are theirs alone and change too often to be worth a trail; every shared default is audited. */
+    /**
+     * A person's own preferences are theirs alone and change too often to be worth a trail; every shared default is
+     * audited, by its name and level and never its value, which may be a bank account in a document's printed notes or
+     * a person's phone in the publisher's details.
+     */
     private function record(string $action, Setting $setting, SettingAddress $address, ?Uuid $actorUserId): void
     {
         if (SettingLevel::User === $address->level) {
             return;
         }
-        $changes = ['key' => $setting->getKey(), 'level' => $address->level->value, 'value' => $setting->getValue()];
+        $changes = ['key' => $setting->getKey(), 'level' => $address->level->value];
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $setting->getId(), $action, $actorUserId, $changes, $address->company?->getId()));
     }
 }

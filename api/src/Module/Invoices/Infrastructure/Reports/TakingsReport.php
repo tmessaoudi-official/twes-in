@@ -27,7 +27,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
 /**
- * The money taken each day, by means of payment (docs/SPEC.md § 7, 2026-09-24 12:05, the first report): the same money
+ * The money taken each day, by means of payment (the first report): the same money
  * the home counts as collected, so the two never disagree. Payments into issued invoices, except those made of a
  * customer's credit, which was money already taken; what was paid beyond an invoice, whose means the company did not
  * record apart, in a column of its own; and what was refunded, on the day it left.
