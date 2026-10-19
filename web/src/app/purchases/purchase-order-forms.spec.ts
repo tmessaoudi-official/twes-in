@@ -45,6 +45,7 @@ const order: PurchaseOrderRow = {
   notesInternal: null,
   lines: [line],
   totalNet: '31.250',
+  currencyScale: 3,
   receipts: [],
 };
 

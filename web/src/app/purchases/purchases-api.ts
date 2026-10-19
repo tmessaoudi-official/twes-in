@@ -344,6 +344,7 @@ function toOrder(
       outstanding: line.outstanding ?? line.quantity,
     })),
     totalNet: raw.totalNet ?? null,
+    currencyScale: raw.currencyScale ?? 2,
     receipts: (raw.receipts ?? []).map((receipt) => ({
       id: receipt.id,
       receivedOn: receipt.receivedOn,

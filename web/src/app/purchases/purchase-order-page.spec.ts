@@ -96,6 +96,7 @@ function orderIn(status: PurchaseOrderStatus): PurchaseOrderRow {
       },
     ],
     totalNet: '12.000',
+    currencyScale: 3,
     receipts:
       status === 'partly_received'
         ? [
@@ -363,6 +364,19 @@ describe('PurchaseOrderPage', () => {
     expect(q('purchase-order-lines-read')).not.toBeNull();
     expect(q('purchase-order-line-0-outstanding')?.textContent?.trim()).toBe('100');
     expect(await offered()).toEqual(['cancel', 'pdf', 'receive']);
+  });
+
+  it('writes a price at the currency’s scale, as the printed order does, finer only when the price is', async () => {
+    const sent = orderIn('sent');
+    sent.lines = [
+      sent.lines[0]!,
+      { ...sent.lines[0]!, id: 'l2', unitPriceNet: '2.5625', net: '256.250' },
+    ];
+    order.set(sent);
+    await open('o1');
+
+    expect(q('purchase-order-line-0-price')?.textContent?.trim()).toMatch(/^0[,.]120$/);
+    expect(q('purchase-order-line-1-price')?.textContent?.trim()).toMatch(/^2[,.]5625$/);
   });
 
   it('offers to receive the rest or close a part-received order, and lists what came', async () => {
