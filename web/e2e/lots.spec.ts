@@ -16,7 +16,10 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
   // A product set up, two receipts, three accessibility scans, the recall and the clean-up: 15 to 32 s on CI, where the
   // default 30 s cut the clean-up off and left the product behind.
   test.setTimeout(90_000);
-  const run = Date.now().toString(36).toUpperCase();
+  // Six digits rather than letters: at 1600 px the stock list's columns fill its card to within a few pixels, so its
+  // use-by column shows only while every value fits its column, and « Vis LOT-MWQG… » did not where « Vis LOT-ILJT… »
+  // did. Digits draw alike, whatever the run.
+  const run = String(Date.now() % 1_000_000).padStart(6, '0');
   const reference = `LOT-${run}`;
   const lot = `L-${run}`;
   const scannedLot = `S-${run}`;
@@ -35,7 +38,8 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await page.getByTestId('record-save').click();
     await expect(toast(page)).toBeVisible();
 
-    // The lot and use-by columns give way first on a laptop, where most products carry neither: a wide window shows them.
+    // The lot and use-by columns give way first on a laptop, where most products carry neither: a wide window shows them
+    // while the values are short.
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto('/stock');
     await page.getByTestId('stock-receive').click();
@@ -68,7 +72,6 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await scan(page, `]C1010${code}1727053110${scannedLot}`);
     await expect(page.getByTestId('field-quantity')).toHaveValue('2');
     await page.getByTestId('stock-movement-save').click();
-    // Closed, the form gives the list back the width its use-by column needs.
     await page.getByTestId('stock-movement-cancel').click();
     await expect(page.getByRole('row').filter({ hasText: scannedLot })).toContainText('31/05/2027');
 
