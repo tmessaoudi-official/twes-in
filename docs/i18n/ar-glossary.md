@@ -63,7 +63,7 @@ the IRPP/IS code, published in the Journal officiel, was not read). A term marke
 | numérotation, série | الترقيم، سلسلة الترقيم | |
 | émettre (an invoice) | إصدار | |
 | brouillon | مسودة | |
-| arrêtée la présente facture à la somme de | أُوقفت هذه الفاتورة على مبلغ | `[Unverified]` not printed in Arabic yet |
+| arrêtée la présente facture à la somme de | أُوقفت هذه الفاتورة على مبلغ … قدره: | `[Unverified]` printed, the amount in the nominative after « قدره » (`AmountInWords`: مائة، not مئة), for the developer's review |
 
 ## People, places and things
 
