@@ -258,9 +258,6 @@ was and was not certified by execution.
   under the number) is the developer's call; nothing changed until then.
 - After Wednesday, in an order to set: declarations (fiscal rules await an accountant), composite products, jobs, the till (the Tunisian homologated-register question), zakat (its research pass, row 120).
 ### Needs research
-- On an Arabic screen, a telephone number in a field (`kind: 'tel'`) and the contacts list's phone column are not
-  measured: the printed documents laid « +216 74 000 000 » out as « 000 000 74 216+ » (a number holds no letter to set
-  its direction) and now write it left to right (`PdfTypedTextDirectionTest`); the screens are checked in the Arabic pass.
 - Protecting the code and the data on a shop's PC: reopened later by the developer (ruled 2026-10-19 00:41), with
   BitLocker, the developer holding the administrator account, Symfony 8.2's encrypted columns from 8.2.0 and the contract.
 - Step 7, with a reader of Arabic: whether `logout`, `undo`, `help` and `open_in_new` turn over in Arabic as well (the five that point along the line, back, forward, the chevrons and send, already do, as Material's guidance asks).
@@ -269,6 +266,10 @@ was and was not certified by execution.
   `scripts/backup/restore-drill.sh` now waits for promotion (`promoted`) and prints the container's log on that failure;
   the four runs since passed, waiting 0 s each. Read that log if it comes back.
 ### Known issues
+- On an Arabic screen a telephone number reads « +216 74 000 000 » in its field and in the contacts list (measured
+  glyph by glyph, `direction.spec.ts`, 2026-10-19), as the printed documents do. The list holds it through its value's
+  `dir="auto"` (removing it reds the scenario); the field through Chromium's own stylesheet for a tel input (computed
+  `direction: ltr` with no attribute of ours), which is the browser's, so it is certified on Chromium (Edge) only.
 - Step 4b: on a phone the top bar cuts the company's name (« Carthage Con… », 149 Arabic shots, 2026-10-19); its whole
   name is the switcher's tooltip and accessible name. Not a list value, so not under the 21:20 ruling; left as is.
 - Step 4b, Arabic gallery of 2026-10-19 after #64 (425 shots, three window classes, light and dark, none missed): axe
