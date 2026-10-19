@@ -445,8 +445,8 @@
       "everything": "Le propriétaire a tous les droits, y compris ceux ajoutés par les futures versions.",
       "save": "Enregistrer",
       "close": "Fermer",
-      "saved": "Rôle enregistré",
-      "deleted": "Rôle supprimé",
+      "saved": "Rôle enregistré.",
+      "deleted": "Rôle supprimé.",
       "errors": {
         "network": "Le serveur est injoignable. Réessayez.",
         "not_found": "Ce rôle n’existe pas.",
@@ -466,7 +466,7 @@
       "no_company": "Choisissez une entreprise pour gérer la connexion de ses membres.",
       "mfa_required": "Exiger la vérification en deux étapes",
       "mfa_required_hint": "Chaque membre se connecte avec son mot de passe et un code d’une application d’authentification. Les membres qui n’en ont pas, vous compris, l’activent avant de pouvoir continuer.",
-      "saved": "Enregistré.",
+      "saved": "Le réglage de sécurité a été enregistré.",
       "errors": {
         "network": "Impossible de joindre le serveur. Réessayez.",
         "not_found": "Cette entreprise est introuvable.",
@@ -1393,7 +1393,7 @@
     "selected": "{count, plural, =0 {Aucune facture sélectionnée} one {{{count}} facture sélectionnée} other {{{count}} factures sélectionnées}}",
     "select_draft": "Sélectionner le brouillon pour {{customer}}",
     "bulk": {
-      "exported": "{count, plural, one {{{count}} facture exportée} other {{{count}} factures exportées}}",
+      "exported": "{count, plural, one {{{count}} facture exportée} other {{{count}} factures exportées}}.",
       "check_failed": "La sélection n’a pas pu être vérifiée. Réessayez.",
       "skipped_title": "{count, plural, =0 {Aucune facture laissée de côté} one {Une facture sélectionnée est laissée de côté} other {{{count}} factures sélectionnées sont laissées de côté}}",
       "unknown": "Facture inconnue",
@@ -1414,7 +1414,7 @@
         "zip": "Un PDF par facture (zip)"
       },
       "pdf_rest": "{count, plural, one {Télécharger la facture} other {Télécharger les {{count}} factures}}",
-      "printed": "{count, plural, one {{{count}} facture en PDF} other {{{count}} factures en PDF}}",
+      "printed": "{count, plural, one {{{count}} facture en PDF} other {{{count}} factures en PDF}}.",
       "include_drafts": "Inclure les brouillons (filigrane BROUILLON)",
       "include_cancelled": "Inclure les abandonnées (filigrane ANNULÉ)",
       "pay": "Encaisser",
@@ -1425,7 +1425,7 @@
       "pay_skipped": "{count, plural, one {Une facture n’est pas encaissée} other {{{count}} factures ne sont pas encaissées}}",
       "pay_go": "{count, plural, =0 {Encaisser} one {Encaisser la facture} other {Encaisser les {{count}} factures}}",
       "pay_changed": "Une facture a changé depuis l’aperçu : rien n’a été encaissé. Voici l’aperçu à jour.",
-      "paid": "{count, plural, one {{{count}} facture encaissée : {{total}}} other {{{count}} factures encaissées : {{total}}}}"
+      "paid": "{count, plural, one {{{count}} facture encaissée : {{total}}} other {{{count}} factures encaissées : {{total}}}}."
     },
     "title": "Factures",
     "add": "Nouvelle facture",
@@ -2530,8 +2530,8 @@
     "delete_confirm": "Supprimer",
     "keep": "Garder",
     "scan": {
-      "filled": "{{name}} : article, lot et quantité remplis",
-      "location_set": "{{name}} : emplacement rempli",
+      "filled": "{{name}} : article, lot et quantité remplis.",
+      "location_set": "{{name}} : emplacement rempli.",
       "location_ambiguous": "Le code « {{code}} » est celui d’un emplacement dans plusieurs établissements : scannez l’étiquette de l’emplacement."
     },
     "count": {
@@ -2546,8 +2546,8 @@
       "record": "Enregistrer le comptage",
       "incomplete": "Chaque ligne a besoin d’une quantité, et d’un lot pour un article suivi.",
       "recorded": "Comptage enregistré : {{count}} {count, plural, one {ligne} other {lignes}}.",
-      "at_location": "Comptage à : {{name}}",
-      "tallied": "{{name}} : {{quantity}} {quantity, plural, one {compté} other {comptés}}",
+      "at_location": "Comptage à : {{name}}.",
+      "tallied": "{{name}} : {{quantity}} {quantity, plural, one {compté} other {comptés}}.",
       "read_only": "Vous pouvez compter, mais pas enregistrer : l’enregistrement demande le droit d’écrire le stock."
     },
     "labels": {
@@ -3101,10 +3101,10 @@
   },
   "scan": {
     "count": "Prochain scan ×{{count}}",
-    "added": "{{name}} ajouté",
-    "incremented": "{{name}} : quantité {{quantity}}",
+    "added": "{{name}} ajouté.",
+    "incremented": "{{name}} : quantité {{quantity}}.",
     "undo": "Annuler",
-    "undone": "Scan {{code}} annulé",
+    "undone": "Scan {{code}} annulé.",
     "failed": "Le scan n’a pas pu être traité. Réessayez.",
     "not_editable": "Ce document n’est plus modifiable : le scan n’ajoute rien.",
     "retired": "{{name}} est retiré de la vente : il n’est pas ajouté.",
@@ -3141,7 +3141,7 @@
       "qr": "Code QR du lien pour le téléphone",
       "opening": "Préparation du lien…",
       "waiting": "En attente du téléphone",
-      "connected": "Téléphone relié",
+      "connected": "Téléphone relié.",
       "disconnect": "Libérer le téléphone",
       "close": "Fermer",
       "ended": "Le téléphone n’est plus relié à cet onglet",
@@ -4304,7 +4304,7 @@
     }
   },
   "data_erasure": {
-    "undone": "Effacement annulé : tout est revenu",
+    "undone": "Effacement annulé : tout est revenu.",
     "parts": {
       "stock_map": {
         "title": "Plan du stock",
