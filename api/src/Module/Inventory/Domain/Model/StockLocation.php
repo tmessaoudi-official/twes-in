@@ -173,6 +173,21 @@ class StockLocation implements CompanyOwned
         return $parent;
     }
 
+    /**
+     * Whether a new place's code and name are ones create() would keep, without creating it: a step that creates
+     * several places refuses a bad one before the first of them is written.
+     *
+     * @return string the code as it would be kept
+     *
+     * @throws InvalidStockLocation naming `code` or `name`
+     */
+    public static function namingOf(string $code, string $name): string
+    {
+        self::name($name);
+
+        return self::code($code);
+    }
+
     private static function code(string $code): string
     {
         $code = trim($code);
