@@ -201,7 +201,8 @@
       "name_shared": "Un produit porte déjà ce nom ({{reference}}) : sans référence ni code-barres, cette ligne en crée un autre.",
       "stock_change": "Stock à {{location}} : {{before}} → {{after}}.",
       "name_held": "Un autre produit porte déjà ce nom ({{reference}}).",
-      "identifier_missing": "Sans ce numéro d’immatriculation, ce client ne pourra recevoir aucune facture : ajoutez-le avant d’en émettre une."
+      "identifier_missing": "Sans ce numéro d’immatriculation, ce client ne pourra recevoir aucune facture : ajoutez-le avant d’en émettre une.",
+      "no_taxes": "Sans taxe : chaque document le vendra sans TVA. Donnez son taux dans le fichier, ou dans sa fiche."
     },
     "stock": {
       "stock_add": "Quantité à ajouter",

@@ -70,7 +70,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import($this->twoProducts(), dryRun: true);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [self::untaxed(3)], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(0, $this->products());
     }
 
@@ -81,7 +81,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import($this->twoProducts());
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [self::untaxed(3)], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         $screw = $this->product('VIS-6X40');
         self::assertSame('Vis 6x40 zinguée', $screw->getDetails()->name);
         self::assertSame('goods', $screw->getDetails()->kind->value);
@@ -199,7 +199,9 @@ final class ProductImportTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $given = [
             ['line' => 2, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00001']],
+            self::untaxed(2),
             ['line' => 3, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00002']],
+            self::untaxed(3),
         ];
         self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => $given, 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(0, $this->products());
@@ -209,6 +211,28 @@ final class ProductImportTest extends ApiTestCase
         self::assertSame('Cheville 8', $this->product('ART-00001')->getDetails()->name);
         self::assertSame([['unit', '6191234567880', 1]], self::codes($this->product('ART-00001')));
         self::assertSame('Cheville 10', $this->product('ART-00002')->getDetails()->name);
+    }
+
+    /**
+     * A new product the row names no tax for is created without any, as the file says, and the preview points it out:
+     * every document would then sell it without VAT. A product already held keeps its taxes and is not pointed out.
+     */
+    public function testANewProductWithoutTaxesIsCreatedSoAndPointedOut(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $file = "reference,name,unit_code,unit_price_net,default_tax_codes\nVIS-1,Vis 1,H87,1,\nVIS-2,Vis 2,H87,1,TVA19\n";
+
+        $this->import($file, dryRun: true);
+        self::assertResponseIsSuccessful();
+        $untaxed = [self::untaxed(2)];
+        self::assertSame($untaxed, $this->json()['notes']);
+
+        $this->import($file);
+        self::assertSame([[2, 3], $untaxed], [$this->json()['created'], $this->json()['notes']]);
+        self::assertSame([], $this->product('VIS-1')->getDefaultTaxComponentIds());
+
+        $this->import("reference,name\nVIS-1,Vis une\n", mode: 'upsert');
+        self::assertSame([[2], []], [$this->json()['updated'], $this->json()['notes']]);
     }
 
     /** Without a reference, a row is found again by the unit code written in it, and only by that. */
@@ -261,7 +285,9 @@ final class ProductImportTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSame([
+            self::untaxed(2),
             ['line' => 2, 'column' => 'stock_count', 'code' => 'stock_change', 'params' => ['location' => '000', 'before' => '0', 'after' => '120']],
+            self::untaxed(3),
             ['line' => 3, 'column' => 'stock_count', 'code' => 'stock_change', 'params' => ['location' => 'Z1', 'before' => '0', 'after' => '7']],
         ], $this->json()['notes'] ?? null);
         self::assertSame(['120.000', '7.000'], [$this->onHand('VIS-6X40', '000'), $this->onHand('VIS-8X60', 'Z1')]);
@@ -285,7 +311,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import($file, dryRun: true, switches: ['ignore_quantities']);
 
         self::assertResponseIsSuccessful();
-        self::assertSame([[2, 3], [], []], [$this->json()['created'] ?? null, $this->json()['rejected'] ?? null, $this->json()['notes'] ?? null], 'no quantity read, so none refused and none noted');
+        self::assertSame([[2, 3], [], [self::untaxed(2), self::untaxed(3)]], [$this->json()['created'] ?? null, $this->json()['rejected'] ?? null, $this->json()['notes'] ?? null], 'no quantity read, so none refused and no stock noted');
     }
 
     public function testAServiceTakesNoQuantity(): void
@@ -345,7 +371,7 @@ Cheville 10 mm,6191234567897
 
         $this->import("reference,name,unit_code,unit_price_net\nVIS-NEUVE,Vis 6x40 zinguée,H87,0.5\n", dryRun: true);
 
-        self::assertSame([['line' => 2, 'column' => 'name', 'code' => 'name_held', 'params' => ['reference' => 'VIS-6X40']]], $this->json()['notes'] ?? null);
+        self::assertSame([['line' => 2, 'column' => 'name', 'code' => 'name_held', 'params' => ['reference' => 'VIS-6X40']], self::untaxed(2)], $this->json()['notes'] ?? null);
     }
 
     /** A row with neither a reference nor a code cannot be found again, so a name already held is pointed out. */
@@ -360,7 +386,9 @@ Cheville 10 mm,6191234567897
         self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [
             ['line' => 2, 'column' => 'name', 'code' => 'name_shared', 'params' => ['reference' => 'VIS-6X40']],
             ['line' => 2, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00001']],
+            self::untaxed(2),
             ['line' => 3, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00002']],
+            self::untaxed(3),
         ], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
     }
 
@@ -724,7 +752,7 @@ Cheville 10 mm,6191234567897
         $this->import(self::HEADER.",home_location\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,Z1\n");
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [self::untaxed(2)], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(1, $this->numberOf(
             'SELECT COUNT(*) FROM product_home_location h JOIN product p ON p.id = h.product_id'
             .' JOIN stock_location l ON l.id = h.location_id WHERE p.reference = ? AND l.code = ?',
@@ -751,7 +779,7 @@ Cheville 10 mm,6191234567897
         );
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2, 3, 4], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3, 4], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [self::untaxed(2), self::untaxed(3), self::untaxed(4)], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(3, $this->numberOf(
             'SELECT COUNT(*) FROM product_home_location h JOIN stock_location l ON l.id = h.location_id'
             .' WHERE l.code = ?',
@@ -770,7 +798,7 @@ Cheville 10 mm,6191234567897
         $this->import(self::HEADER.",reorder_point\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,12\n");
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [self::untaxed(2)], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
         self::assertSame(['12.000'], $this->pointsOf('VIS-6X40'), 'the company has one establishment, so the row needs no home to say which');
 
         $company = $this->em()->find(Company::class, $this->company->getId());
@@ -987,6 +1015,12 @@ Cheville 10 mm,6191234567897
         $this->import($this->twoProducts(), dryRun: true);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /** @return array{line: int, column: string, code: string, params: array{}} what the preview says of a new product left without a tax */
+    private static function untaxed(int $line): array
+    {
+        return ['line' => $line, 'column' => 'default_tax_codes', 'code' => 'no_taxes', 'params' => []];
     }
 
     private function twoProducts(): string

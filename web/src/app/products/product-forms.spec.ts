@@ -24,8 +24,8 @@ const options: ProductOptions = {
     { id: 'u-unit', code: 'C62', name: 'Unité', decimals: 0 },
   ],
   taxes: [
-    { id: 't-fodec', code: 'FODEC', name: 'FODEC 1 %', family: 'levy' },
-    { id: 't-vat', code: 'TVA19', name: 'TVA 19 %', family: 'vat' },
+    { id: 't-fodec', code: 'FODEC', name: 'FODEC 1 %', family: 'levy', isDefault: false },
+    { id: 't-vat', code: 'TVA19', name: 'TVA 19 %', family: 'vat', isDefault: true },
   ],
   photosPerProduct: 6,
   photoMaxBytes: 5242880,
@@ -249,6 +249,17 @@ describe('product forms', () => {
     expect(fields.map((field) => field.id)).toContain('custom__warranty');
   });
 
+  it("ticks the company's default line taxes on a new product only, so an exempt one keeps none", () => {
+    expect(productValues(null, options)['defaultTaxComponentIds']).toEqual(['t-vat']);
+    const exempt: ProductRow = { ...laptop, defaultTaxComponentIds: [] };
+    expect(productValues(exempt, options)['defaultTaxComponentIds']).toEqual([]);
+    const none: ProductOptions = {
+      ...options,
+      taxes: options.taxes.map((tax) => ({ ...tax, isDefault: false })),
+    };
+    expect(productValues(null, none)['defaultTaxComponentIds']).toEqual([]);
+  });
+
   it("starts a new product as goods in the company's unit, and fills a product's own values", () => {
     expect(productValues(null, options, [], 'HUR')['unitId']).toBe('u-hour');
     // A unit the company does not offer, or none resolved: the first unit it offers.
@@ -262,7 +273,7 @@ describe('product forms', () => {
         unitPriceNet: '',
         categoryId: '',
         isActive: true,
-        defaultTaxComponentIds: [],
+        defaultTaxComponentIds: ['t-vat'],
       }),
     );
     expect(productValues(laptop, options, [warranty])).toEqual(

@@ -47,7 +47,7 @@ final readonly class ProductOptionsProvider implements ProviderInterface
         $units = array_filter($this->units->ofCompany($company->getId()), static fn (Unit $unit) => $unit->isActive());
         $options->units = array_values(array_map(static fn (Unit $unit) => new ProductUnitOption($unit->getId()->toRfc4122(), $unit->getCode(), $unit->getName(), $unit->getDecimals()), $units));
         $taxes = array_filter($this->taxes->ofCompany($company->getId()), static fn (TaxComponent $tax) => $tax->isActive() && TaxKind::PercentageLine === $tax->getKind());
-        $options->taxes = array_values(array_map(static fn (TaxComponent $tax) => new ProductTaxOption($tax->getId()->toRfc4122(), $tax->getCode(), $tax->getName(), $tax->getFamily()->value), $taxes));
+        $options->taxes = array_values(array_map(static fn (TaxComponent $tax) => new ProductTaxOption($tax->getId()->toRfc4122(), $tax->getCode(), $tax->getName(), $tax->getFamily()->value, $tax->isDefault()), $taxes));
         $options->photosPerProduct = $this->photos->perProduct();
         $options->photoMaxBytes = $this->photos->maxBytes();
 

@@ -63,8 +63,8 @@ final class ProductOptionsResource
         'type' => 'array',
         'items' => [
             'type' => 'object',
-            'required' => ['id', 'code', 'name', 'family'],
-            'properties' => ['id' => ['type' => 'string'], 'code' => ['type' => 'string'], 'name' => ['type' => 'string'], 'family' => ['type' => 'string', 'enum' => ['vat', 'levy']]],
+            'required' => ['id', 'code', 'name', 'family', 'isDefault'],
+            'properties' => ['id' => ['type' => 'string'], 'code' => ['type' => 'string'], 'name' => ['type' => 'string'], 'family' => ['type' => 'string', 'enum' => ['vat', 'levy']], 'isDefault' => ['type' => 'boolean']],
         ],
     ])]
     #[Groups([self::READ])]

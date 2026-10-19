@@ -58,6 +58,11 @@ final class ProductsTest extends ApiTestCase
         self::assertContains('FODEC', $codes);
         self::assertNotContains('TIMBRE', $codes, 'a stamp is charged on the document');
         self::assertNotContains('RS1', $codes, 'a withholding is charged on the document');
+        // The preset's default rate is what a new product starts from, as a line naming no product already does.
+        $taxes = $this->arrayAt($options, 'taxes');
+        self::assertIsArray($taxes[0]);
+        self::assertSame(['id', 'code', 'name', 'family', 'isDefault'], array_keys($taxes[0]));
+        self::assertSame(['TVA19'], array_column(array_filter($taxes, static fn (mixed $tax): bool => \is_array($tax) && true === $tax['isDefault']), 'code'));
     }
 
     public function testAWriterAddsAProductWithItsCategoryAndLineTaxes(): void

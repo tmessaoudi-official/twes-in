@@ -399,7 +399,13 @@ export function productValues(
     substitutionGroup: row?.substitutionGroup ?? '',
     tracking: row?.tracking ?? defaultTracking,
   };
-  values['defaultTaxComponentIds'] = offeredTaxes(options, row?.defaultTaxComponentIds ?? []);
+  // A new product starts with the company's default rate ticked, as a line naming no product is charged it; a product
+  // already held keeps its own, none at all for an exempt good.
+  values['defaultTaxComponentIds'] = offeredTaxes(
+    options,
+    row?.defaultTaxComponentIds ??
+      options.taxes.filter((tax) => tax.isDefault).map((tax) => tax.id),
+  );
   return { ...values, ...customFieldValues(fields, row?.customFields ?? {}) };
 }
 

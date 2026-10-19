@@ -691,7 +691,9 @@ function toOptions(raw: ProductOptionsProductOptionsRead): ProductOptions {
     })),
     taxes: (raw.taxes ?? []).flatMap((tax) => {
       const family = LINE_TAX_FAMILIES.find((known) => known === tax.family);
-      return family === undefined ? [] : [{ id: tax.id, code: tax.code, name: tax.name, family }];
+      return family === undefined
+        ? []
+        : [{ id: tax.id, code: tax.code, name: tax.name, family, isDefault: tax.isDefault }];
     }),
     photosPerProduct: raw.photosPerProduct ?? 0,
     photoMaxBytes: raw.photoMaxBytes ?? 0,
