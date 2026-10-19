@@ -460,7 +460,16 @@ export class PurchaseOrderPage {
   private readonly revisedHere = (): void => {
     const form = this.form();
     if (form !== null) this.sync.savedHere(form);
-    this.linesVersion.update((version) => version + 1);
+    const lines = this.lines();
+    const saved = this.current()?.lines ?? null;
+    if (lines !== null && saved !== null && saved.length === lines.length) {
+      // Written into the lines shown rather than drawn again, so the field typed into keeps its place and its focus.
+      lines.setValue(linesArray(saved).getRawValue());
+      lines.markAsPristine();
+      lines.markAsUntouched();
+    } else {
+      this.linesVersion.update((version) => version + 1);
+    }
   };
 
   /** A save made over a version saved since is merged and said; any other refusal stays as the screen shows it. */

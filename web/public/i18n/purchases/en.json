@@ -116,7 +116,7 @@
       "serials_hint": "{{count}} of {{expected}} expected",
       "the_line": "The line",
       "refused": "“{{field}}” is refused: check the value.",
-      "confirm": "{count, plural, =0 {Receive} one {Receive # line} other {Receive # lines}}",
+      "confirm": "{count, plural, =0 {Receive} one {Receive {{count}} line} other {Receive {{count}} lines}}",
       "day_problems": {
         "day": "Write the day the goods arrived.",
         "before": "Goods arrive on the day the order was sent at the earliest.",

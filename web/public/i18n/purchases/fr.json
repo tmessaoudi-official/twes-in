@@ -116,7 +116,7 @@
       "serials_hint": "{{count}} sur {{expected}} attendus",
       "the_line": "La ligne",
       "refused": "« {{field}} » est refusé : vérifiez la valeur.",
-      "confirm": "{count, plural, =0 {Réceptionner} one {Réceptionner # ligne} other {Réceptionner # lignes}}",
+      "confirm": "{count, plural, =0 {Réceptionner} one {Réceptionner {{count}} ligne} other {Réceptionner {{count}} lignes}}",
       "day_problems": {
         "day": "Écrivez le jour où les marchandises sont arrivées.",
         "before": "Les marchandises arrivent au plus tôt le jour où la commande est envoyée.",
