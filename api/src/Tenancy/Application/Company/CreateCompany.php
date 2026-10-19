@@ -13,6 +13,10 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\Languages;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\CompanyRepository;
@@ -22,7 +26,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A platform operator opens a company. It starts pending, because a company with no owner cannot be signed
  * into; its first owner joining activates it (docs/SPEC.md § 7, 2026-09-09). It is opened with its fiscal
- * preset's taxes and units, so a country with no preset is refused before anything is written.
+ * preset's taxes and units, so a country with no preset is refused before anything is written. Its documents print in
+ * the language it is opened with, stored as its own setting, which it changes like any other.
  */
 final readonly class CreateCompany
 {
@@ -33,6 +38,8 @@ final readonly class CreateCompany
         private CompanyRepository $companies,
         private FiscalPresets $presets,
         private ProvisionCompany $provision,
+        private ChangeSettings $settings,
+        private Languages $languages,
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
@@ -65,6 +72,10 @@ final readonly class CreateCompany
             );
             $this->companies->save($company);
             $this->provision->handle($company);
+            // A language the screens speak and documents do not leaves the installation's default in force.
+            if (\in_array($company->getLocale(), $this->languages->documents(), true)) {
+                $this->settings->change(new SettingContext($company), 'document.language', SettingLevel::Company, $company->getLocale(), $actorUserId);
+            }
 
             $this->audit->record(new AuditEntry(
                 self::ENTITY_TYPE,

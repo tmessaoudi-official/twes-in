@@ -11,6 +11,8 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Model\Unit;
+use App\Settings\Domain\Repository\SettingRepository;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\ShippedFiscalPresets;
 use Symfony\Component\HttpFoundation\Response;
@@ -50,6 +52,25 @@ final class CompanyTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame(ShippedFiscalPresets::presets()->get('TN')->documentLanguages[0], $this->json()['locale']);
+    }
+
+    /**
+     * A company prints in the language it was opened with from its first document, and changes it as any setting: the
+     * value is the company's own from the start, not the installation's default it would otherwise fall back on.
+     */
+    public function testTheCompanysDocumentLanguageIsWrittenFromTheLanguageItIsOpenedWith(): void
+    {
+        $this->operatorSignedIn();
+
+        $this->postJson('/api/companies', [...self::VALID, 'locale' => 'ar']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $body = self::VALID;
+        unset($body['locale']);
+        $this->postJson('/api/companies', [...$body, 'name' => 'Sans langue']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        self::assertSame('ar', $this->documentLanguageOf('Acme'));
+        self::assertSame(ShippedFiscalPresets::presets()->get('TN')->documentLanguages[0], $this->documentLanguageOf('Sans langue'));
     }
 
     public function testAnEmptyLanguageIsRefused(): void
@@ -192,5 +213,14 @@ final class CompanyTest extends ApiTestCase
         $this->login('op@twes.local', 'password-1234');
         $this->stepUp('password-1234');
         self::assertResponseIsSuccessful();
+    }
+
+    /** The document language the company itself stores, null when it stores none. */
+    private function documentLanguageOf(string $name): mixed
+    {
+        $company = $this->em()->getRepository(Company::class)->findOneBy(['name' => $name]);
+        self::assertNotNull($company);
+
+        return static::getContainer()->get(SettingRepository::class)->find(SettingAddress::company($company), 'document.language')?->getValue();
     }
 }

@@ -10,6 +10,11 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Tenancy\Application;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Settings\Application\BusinessDefaultSettings;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\ResolveSettings;
+use App\Settings\Application\SettingCatalog;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Application\Company\CompanyNameTaken;
 use App\Tenancy\Application\Company\CreateCompany;
 use App\Tenancy\Application\Company\NewCompany;
@@ -18,9 +23,12 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCompanies;
+use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\RecordingDomainEvents;
 use App\Tests\Support\ShippedFiscalPresets;
+use App\Tests\Support\ShippedLanguages;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -33,6 +41,7 @@ final class CreateCompanyTest extends TestCase
     private InMemoryAuditTrail $audit;
     private InMemoryTaxComponents $components;
     private InMemoryUnits $units;
+    private InMemorySettings $settings;
     private CreateCompany $create;
 
     protected function setUp(): void
@@ -45,7 +54,10 @@ final class CreateCompanyTest extends TestCase
         $clock = new MockClock('2026-09-09 10:00:00');
         $presets = ShippedFiscalPresets::presets();
         $provision = new ProvisionCompany($presets, $this->components, $this->units, new \App\Tests\Support\InMemoryEstablishments(), new \App\Tests\Support\InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock);
-        $this->create = new CreateCompany($this->companies, $presets, $provision, $this->audit, $clock, $transactions);
+        $this->settings = new InMemorySettings();
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(ShippedLanguages::catalogue())]);
+        $change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), new InMemoryAuditTrail($transactions), $clock, $transactions, new RecordingDomainEvents());
+        $this->create = new CreateCompany($this->companies, $presets, $provision, $change, ShippedLanguages::catalogue(), $this->audit, $clock, $transactions);
     }
 
     public function testTheCompanyWaitsForItsFirstOwner(): void
@@ -78,6 +90,7 @@ final class CreateCompanyTest extends TestCase
         $company = $this->create->handle(new NewCompany('Acme', 'TN', 'TND', 'en', 'Africa/Tunis'), null);
 
         self::assertSame('en', $company->getLocale());
+        self::assertSame('en', $this->settings->find(SettingAddress::company($company), 'document.language')?->getValue(), 'its documents print in it');
     }
 
     public function testTheCompanyOpensWithItsPresetsTaxesAndUnits(): void
