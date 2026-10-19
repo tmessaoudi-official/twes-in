@@ -89,6 +89,9 @@ const SIGNED_IN: Screen[] = [
   { key: 'product-labels', group: 'Produits', path: '/print/product-labels' },
   { key: 'instruments', group: 'Factures', path: '/instruments' },
   { key: 'price-lists', group: 'Produits', path: '/price-lists' },
+  { key: 'reports', group: 'Rapports', path: '/reports' },
+  // A report reads this month against the one before, a figure and its previous value in each cell.
+  { key: 'report-sales-by-customer', group: 'Rapports', path: '/reports/sales-by-customer' },
   { key: 'watch', group: 'À surveiller', path: '/watch' },
   { key: 'watch-late', group: 'À surveiller', path: '/watch/invoices.late_customer' },
   { key: 'account', group: 'Mon compte', path: '/account' },
