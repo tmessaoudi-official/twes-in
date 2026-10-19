@@ -609,6 +609,7 @@
     "create": "Create",
     "user_menu": "Account",
     "language": "Language",
+    "language_close": "Close",
     "density_compact": "Compact density",
     "density_comfortable": "Comfortable density",
     "collapse_menu": "Collapse the menu",
@@ -1057,11 +1058,6 @@
         }
       },
       "document": {
-        "language": {
-          "fr": "French",
-          "en": "English",
-          "ar": "Arabic"
-        },
         "layout": {
           "classic": "Classic",
           "modern": "Modern",
@@ -1090,11 +1086,6 @@
           "code": "Code",
           "name": "Name",
           "both": "Both"
-        },
-        "language": {
-          "fr": "Français",
-          "en": "English",
-          "ar": "العربية"
         },
         "date-format": {
           "auto": "As the language writes it",

@@ -31,8 +31,9 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # would let either block vanish silently. Other declarations 11 + palette 8 = 19, so 23 reds on losing either eight.
 floor=${SETTING_LABELS_FLOOR:-23}
 chains_floor=${SETTING_CHAINS_FLOOR:-4}
-# 16 choices on 2026-09-23 (presentation 14, document language 2): losing the document's pair or any select reds.
-choices_floor=${SETTING_CHOICES_FLOOR:-15}
+# 41 choices from three declarations (presentation 31, business defaults 6, stock cost 4): losing the smallest
+# file's reds. The language settings' choices are named by the dropdown, not labelled here.
+choices_floor=${SETTING_CHOICES_FLOOR:-38}
 # Five whole-number platform settings, from four declarations (accounts, companies, licensing's two, the demo's count):
 # losing any one file's reds.
 platform_floor=${SETTING_PLATFORM_FLOOR:-5}
@@ -110,19 +111,15 @@ if ((${#chains[@]} < chains_floor)); then
 fi
 
 # The choice labels of every company setting: `settings.choices.<setting key>.<choice>`, one per value of a literal
-# `choices: [...]`, or the languages the catalogue names for one of its uses (`choices: $this->languages->documents()`,
-# read from api/config/languages.json). A list written any other way (a constant, another call) hides its values from
-# a grep, so it is refused by name instead of skipped. Platform and key-pattern settings are left out, as above.
+# `choices: [...]`. A setting offering the languages the catalogue names for one of its uses (`choices:
+# $this->languages->documents()`) needs none: the language dropdown names each language itself, in its own words and
+# the screen's (web `languageOption`), so a language added to the catalogue asks no label in every other language. A
+# list written any other way (a constant, another call) hides its values from a grep, so it is refused by name instead
+# of skipped. Platform and key-pattern settings are left out, as above.
 choice_out=$(
   cd "$root" && python3 - "${files[@]}" <<'PY'
-import json, os, re, sys
+import re, sys
 bad = []
-catalogue = None
-def languages(use):
-    global catalogue
-    if catalogue is None:
-        catalogue = json.load(open(os.path.join("api", "config", "languages.json"), encoding="utf-8"))["languages"]
-    return [language["tag"] for language in catalogue if language[use] is True]
 for path in sys.argv[1:]:
     for line in open(path, encoding="utf-8"):
         if "choices:" not in line or "keyPattern:" in line or "'settings.platform." in line:
@@ -133,8 +130,9 @@ for path in sys.argv[1:]:
         if key is None or (values is None and catalogued is None):
             bad.append(f"{path}: {line.strip()[:120]}")
             continue
-        listed = re.findall(r"'([^']+)'", values.group(1)) if values is not None else languages(catalogued.group(1))
-        for choice in listed:
+        if values is None:
+            continue
+        for choice in re.findall(r"'([^']+)'", values.group(1)):
             print(f"settings.choices.{key.group(1)}.{choice}")
 for entry in bad:
     print("BAD " + entry)

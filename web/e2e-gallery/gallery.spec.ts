@@ -466,7 +466,7 @@ test('every screen, desktop and phone, light and dark', async ({ browser, page }
   if (LANGUAGE === 'en' || LANGUAGE === 'ar') {
     // Chosen as a person does, on « Mon compte »; the next run's forgetting puts it back.
     await page.goto('/account?tab=preferences');
-    // The page's own Select; `account-language-<tag>` is the shell's account menu, closed here.
+    // The page's own Select; `account-menu-language` is the shell's account menu, closed here.
     await page.getByTestId('account-language').click();
     await page.getByTestId(`account-language-option-${LANGUAGE}`).click();
     await expect(page.locator('html')).toHaveAttribute('lang', LANGUAGE);

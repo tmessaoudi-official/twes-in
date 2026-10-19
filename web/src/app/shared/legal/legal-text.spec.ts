@@ -76,6 +76,20 @@ describe('LegalText', () => {
 
   const q = (id: string) =>
     (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(`[data-testid="${id}"]`);
+  /** The dropdown's list lives in an overlay, outside the component. */
+  const inPage = (id: string) => document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
+
+  /** Chooses the text's language as a reader does: opens « Langue du texte » and takes the language. */
+  async function pick(language: LegalLanguage): Promise<void> {
+    q('legal-language')!.click();
+    await settle();
+    inPage(`legal-language-${language}`)!.click();
+    await settle();
+  }
+
+  afterEach(() => {
+    document.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
 
   it('renders the version the API answers, in the interface language, dated and marked a draft until validated', async () => {
     await show('mentions', () => of(doc({ page: 'mentions' })));
@@ -111,12 +125,12 @@ describe('LegalText', () => {
 
   it('switches language, and lays the text out right to left in Arabic', async () => {
     await show('mentions', (language) => of(doc({ language, body: `texte ${language}` })));
-    q('legal-language-ar')!.click();
-    await settle();
+    await pick('ar');
     expect(read).toHaveBeenLastCalledWith('mentions', 'ar');
     expect(q('legal-body')?.getAttribute('lang')).toBe('ar');
     expect(q('legal-body')?.getAttribute('dir')).toBe('rtl');
-    expect(q('legal-language-ar')?.getAttribute('aria-pressed')).toBe('true');
+    // The dropdown shows the language chosen, named in itself.
+    expect(q('legal-language')?.textContent).toContain('العربية');
     // The line around the date is in the interface's language, so the date is written in it too: an Arabic one would
     // carry right-to-left marks into a left-to-right sentence and scramble it.
     expect(q('legal-version')?.textContent?.trim()).toBe('Version du 20/09/2026');
@@ -124,8 +138,7 @@ describe('LegalText', () => {
 
   it('says so when the page is not written in the language asked for and another answers', async () => {
     await show('mentions', () => of(doc({ language: 'fr' })));
-    q('legal-language-ar')!.click();
-    await settle();
+    await pick('ar');
     expect(q('legal-body')?.getAttribute('dir')).toBe('ltr');
     expect(q('legal-fallback')?.textContent).toContain('Français');
   });
@@ -143,8 +156,7 @@ describe('LegalText', () => {
     expect(q('legal-body')?.textContent).toContain(
       'Éditeur : twes SAS. Hébergeur : [à compléter].',
     );
-    q('legal-language-ar')!.click();
-    await settle();
+    await pick('ar');
     expect(q('legal-body')?.textContent).toContain('Hébergeur : [يُستكمل].');
   });
 

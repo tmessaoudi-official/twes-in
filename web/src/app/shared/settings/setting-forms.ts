@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { languageChoices } from '../i18n/language-options';
+import { languageEntry } from '../i18n/languages';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../form/form-types';
 import type {
   SettingChain,
@@ -178,6 +180,17 @@ function fieldOfType(row: SettingRow): FormField {
     case 'money':
       return { id, label, kind: 'decimal', required: true, pattern: DECIMAL };
     case 'enum':
+      if (row.choices.every((choice) => languageEntry(choice) !== undefined)) {
+        // Its choices are the catalogue's languages: the language dropdown names them, whatever the screen's language.
+        return {
+          id,
+          label,
+          kind: 'select',
+          required: true,
+          languages: true,
+          options: languageChoices(row.choices),
+        };
+      }
       return {
         id,
         label,

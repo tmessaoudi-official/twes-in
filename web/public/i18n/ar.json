@@ -609,6 +609,7 @@
     "create": "إنشاء",
     "user_menu": "الحساب",
     "language": "اللغة",
+    "language_close": "إغلاق",
     "density_compact": "عرض مضغوط",
     "density_comfortable": "عرض مريح",
     "collapse_menu": "طيّ القائمة",
@@ -1057,11 +1058,6 @@
         }
       },
       "document": {
-        "language": {
-          "fr": "الفرنسية",
-          "en": "الإنجليزية",
-          "ar": "العربية"
-        },
         "layout": {
           "classic": "كلاسيكي",
           "modern": "عصري",
@@ -1090,11 +1086,6 @@
           "code": "الرمز",
           "name": "الاسم",
           "both": "كلاهما"
-        },
-        "language": {
-          "fr": "الفرنسية",
-          "en": "الإنجليزية",
-          "ar": "العربية"
         },
         "date-format": {
           "auto": "حسب اللغة",

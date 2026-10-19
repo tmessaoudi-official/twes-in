@@ -427,23 +427,26 @@
       >
         {{ 'shell.language' | translate }}
       </p>
-      @for (lang of languages; track lang) {
-        <button
-          mat-menu-item
-          type="button"
-          role="menuitemradio"
-          [attr.aria-checked]="language.current() === lang"
-          (click)="useLanguage(lang)"
-          [attr.data-testid]="'account-language-' + lang"
+      <button
+        mat-menu-item
+        type="button"
+        aria-haspopup="dialog"
+        [attr.aria-label]="
+          'appearance.language_menu'
+            | translate
+              : {
+                  current: languageNames[language.current()],
+                  code: language.current().toUpperCase(),
+                }
+        "
+        (click)="chooseLanguage()"
+        data-testid="account-menu-language"
+      >
+        <mat-icon aria-hidden="true">translate</mat-icon>
+        <span [attr.lang]="language.current()"
+          ><bdi>{{ languageNames[language.current()] }}</bdi></span
         >
-          <mat-icon aria-hidden="true">{{
-            language.current() === lang ? 'radio_button_checked' : 'radio_button_unchecked'
-          }}</mat-icon>
-          <span [attr.lang]="lang"
-            ><bdi>{{ languageNames[lang] }}</bdi></span
-          >
-        </button>
-      }
+      </button>
       <mat-divider />
       <p
         class="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-on-surface-variant"

@@ -132,6 +132,7 @@
                   <app-select
                     [label]="'account.language' | translate"
                     [labelInside]="true"
+                    [languages]="true"
                     [options]="languageOptions"
                     [ngModel]="language.current()"
                     (ngModelChange)="useLanguage($event)"

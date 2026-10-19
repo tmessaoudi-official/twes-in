@@ -45,6 +45,7 @@ test('the legal line closes the sign-in page, centred, and opens each text over 
   await expect(page.getByTestId('legal-body')).toContainText('un seul cookie');
   await expect(page.getByTestId('legal-draft')).toBeVisible();
   expect(await wcagViolations(page)).toEqual([]);
+  await page.getByTestId('legal-language').click();
   await page.getByTestId('legal-language-ar').click();
   await expect(page.getByTestId('legal-body')).toHaveAttribute('dir', 'rtl');
   await expect(page.getByTestId('legal-body')).toHaveAttribute('lang', 'ar');
@@ -327,6 +328,7 @@ test('the operator publishes a legal page, which a visitor reads as a draft unti
   const visitor = await browser.newContext();
   const reader = await visitor.newPage();
   await reader.goto('/legal/security');
+  await reader.getByTestId('legal-language').click();
   await reader.getByTestId('legal-language-ar').click();
   await expect(reader.getByTestId('legal-body')).toContainText(mark);
   await expect(reader.getByTestId('legal-draft')).toBeVisible();
@@ -338,6 +340,7 @@ test('the operator publishes a legal page, which a visitor reads as a draft unti
   await proveIfHeldBack(page, OPERATOR_PASSWORD, validated);
   await expect(page.getByTestId('legal-validate')).toHaveCount(0);
   await reader.reload();
+  await reader.getByTestId('legal-language').click();
   await reader.getByTestId('legal-language-ar').click();
   await expect(reader.getByTestId('legal-body')).toContainText(mark);
   await expect(reader.getByTestId('legal-draft')).toHaveCount(0);

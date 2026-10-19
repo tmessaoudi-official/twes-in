@@ -4,6 +4,7 @@ import { wcagViolations } from './axe';
 import { aCustomer } from './catalogue';
 import { forgetPresentationChoices } from './presentation';
 import { inACompany, signIn } from './session';
+import { chooseLanguage } from './language';
 
 const CSRF = '0123456789abcdef0123456789abcdef';
 
@@ -22,9 +23,7 @@ test.afterEach(async ({ page }) => {
 });
 
 async function chooseArabic(page: Page): Promise<void> {
-  await page.getByTestId('user-menu').click();
-  await page.getByTestId('account-language-ar').click();
-  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await chooseLanguage(page, 'ar');
 }
 
 // One set of screens reads either way: Arabic, chosen as a person chooses it, turns the document over, moves the menu

@@ -5,6 +5,7 @@ import { inACompany, signIn } from './session';
 import { wcagViolations } from './axe';
 import { sidewaysOverflow } from './overflow';
 import { holds, pickOption } from './select';
+import { chooseLanguage } from './language';
 
 // The sidebar's desktop state through the real stack: the [ key turns it into a rail of named icons, the choice is
 // the person's presentation setting and outlives a reload. One database is shared by the whole suite, so the
@@ -567,8 +568,7 @@ test('« Mon compte » brings its own texts, never shows a key, and follows a la
     expect(fetched).toContain('/i18n/account/fr.json');
     await expect(page.locator('main')).not.toContainText(/\baccount\.[a-z_]/);
 
-    await page.getByTestId('user-menu').click();
-    await page.getByTestId('account-language-en').click();
+    await chooseLanguage(page, 'en');
     await expect(page.getByRole('tab', { name: /Preferences/ })).toBeVisible();
     await expect(page.getByTestId('account-show-coming')).toContainText('Show what is coming');
     expect(fetched).toContain('/i18n/account/en.json');

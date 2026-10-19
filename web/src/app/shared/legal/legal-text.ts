@@ -2,10 +2,12 @@
 
 import { ChangeDetectionStrategy, Component, inject, input, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { MatButtonModule } from '@angular/material/button';
+import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
+import { Select } from '../form/select';
 import { formatDay } from '../i18n/format';
 import { LanguageFacade } from '../i18n/language-facade';
+import { languageChoices } from '../i18n/language-options';
 import { LEGAL_LANGUAGE_NAMES, LEGAL_LANGUAGES, LegalApi, type LegalLanguage } from './legal-api';
 import { LegalMarkdown } from './legal-markdown';
 import { STORED_ITEMS } from './stored-items';
@@ -18,40 +20,20 @@ import { STORED_ITEMS } from './stored-items';
  */
 @Component({
   selector: 'app-legal-text',
-  imports: [LegalMarkdown, MatButtonModule, TranslatePipe],
+  imports: [FormsModule, LegalMarkdown, Select, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-4">
-      <div
-        class="flex flex-wrap gap-2"
-        role="group"
-        [attr.aria-label]="'legal.language' | translate"
-      >
-        @for (code of languages; track code) {
-          @if (language() === code) {
-            <button
-              mat-flat-button
-              type="button"
-              aria-pressed="true"
-              [attr.lang]="code"
-              [attr.data-testid]="'legal-language-' + code"
-            >
-              <bdi>{{ names[code] }}</bdi>
-            </button>
-          } @else {
-            <button
-              mat-stroked-button
-              type="button"
-              aria-pressed="false"
-              (click)="language.set(code)"
-              [attr.lang]="code"
-              [attr.data-testid]="'legal-language-' + code"
-            >
-              <bdi>{{ names[code] }}</bdi>
-            </button>
-          }
-        }
-      </div>
+      <app-select
+        class="w-full max-w-64"
+        [label]="'legal.language' | translate"
+        [labelInside]="true"
+        [languages]="true"
+        [options]="options"
+        [ngModel]="language()"
+        (ngModelChange)="choose($event)"
+        testId="legal-language"
+      />
       @if (text.error()) {
         <p role="alert" data-testid="legal-unavailable">{{ 'legal.unavailable' | translate }}</p>
       } @else if (text.hasValue()) {
@@ -120,11 +102,17 @@ export class LegalText {
   readonly slug = input.required<string>();
   private readonly api = inject(LegalApi);
   private readonly interface = inject(LanguageFacade);
-  protected readonly languages = LEGAL_LANGUAGES;
   protected readonly names = LEGAL_LANGUAGE_NAMES;
   protected readonly stored = STORED_ITEMS;
   /** The interface's language until the reader picks another here. */
   protected readonly language = linkedSignal<LegalLanguage>(() => this.interface.current());
+  protected readonly options = languageChoices(LEGAL_LANGUAGES, 'legal-language');
+
+  protected choose(tag: string | null): void {
+    if (tag !== null) {
+      this.language.set(tag);
+    }
+  }
 
   protected readonly text = rxResource({
     params: () => ({ page: this.slug(), language: this.language() }),

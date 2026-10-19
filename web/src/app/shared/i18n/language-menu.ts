@@ -1,73 +1,57 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
-import { TranslatePipe } from '@ngx-translate/core';
-import { Label } from '../a11y/label';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { TranslateService } from '@ngx-translate/core';
+import { Select, type SelectCompact } from '../form/select';
 import { LANGUAGE_NAMES, LanguageFacade, SUPPORTED_LANGUAGES } from './language-facade';
+import { languageChoices } from './language-options';
 
 /**
- * The interface language: the current one's code on the button, and each language named in itself in the menu, with
- * its `lang` so a screen reader pronounces it rightly. No flags (docs/SPEC.md § 7, 2026-09-16 review). The button's
- * name ends with the code it shows, which is what a speech user reads off it (WCAG 2.5.3).
+ * The interface language in a bar: the one language dropdown, drawn as a small button with the current language's
+ * code. Each language is named in itself, in its own `lang` so a screen reader pronounces it rightly, with its name in
+ * the screen's language under it. No flags. The button's name ends with the code it shows, which is what a speech
+ * user reads off it (WCAG 2.5.3).
  */
 @Component({
   selector: 'app-language-menu',
-  imports: [MatButtonModule, MatIconModule, MatMenuModule, TranslatePipe, Label],
+  imports: [FormsModule, Select],
   template: `
-    <button
-      mat-button
-      type="button"
-      class="twes-language-button"
-      [matMenuTriggerFor]="menu"
-      [appLabel]="
-        'appearance.language_menu'
-          | translate
-            : { current: names[language.current()], code: language.current().toUpperCase() }
-      "
-      data-testid="language-menu"
-    >
-      <mat-icon aria-hidden="true">translate</mat-icon>
-      <span aria-hidden="true" class="font-semibold uppercase"
-        ><bdi>{{ language.current() }}</bdi></span
-      >
-    </button>
-    <mat-menu #menu="matMenu" xPosition="before">
-      @for (lang of languages; track lang) {
-        <button
-          mat-menu-item
-          type="button"
-          role="menuitemradio"
-          [attr.aria-checked]="language.current() === lang"
-          (click)="language.use(lang)"
-          [attr.data-testid]="'language-' + lang"
-        >
-          <span class="flex min-w-40 items-center gap-3">
-            <span
-              aria-hidden="true"
-              class="w-7 rounded border border-outline-variant text-center text-xs font-semibold uppercase text-on-surface-variant"
-              ><bdi>{{ lang }}</bdi></span
-            >
-            <span class="flex-1" [attr.lang]="lang"
-              ><bdi>{{ names[lang] }}</bdi></span
-            >
-            <span
-              aria-hidden="true"
-              class="material-symbols-outlined text-primary"
-              [class.invisible]="language.current() !== lang"
-              >check</span
-            >
-          </span>
-        </button>
-      }
-    </mat-menu>
+    <app-select
+      [compact]="compact()"
+      [languages]="true"
+      [options]="options"
+      [ngModel]="language.current()"
+      (ngModelChange)="choose($event)"
+      testId="language-menu"
+    />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LanguageMenu {
   protected readonly language = inject(LanguageFacade);
-  protected readonly languages = SUPPORTED_LANGUAGES;
-  protected readonly names = LANGUAGE_NAMES;
+  private readonly translate = inject(TranslateService);
+  /** The button's name is a screen text: it is read again once the texts of a new language arrive. */
+  private readonly texts = toSignal(this.translate.onLangChange, { initialValue: null });
+
+  protected readonly options = languageChoices(SUPPORTED_LANGUAGES, 'language');
+  protected readonly compact = computed<SelectCompact>(() => {
+    this.texts();
+    const current = this.language.current();
+    return {
+      icon: 'translate',
+      text: current,
+      name: this.translate.instant('appearance.language_menu', {
+        current: LANGUAGE_NAMES[current],
+        code: current.toUpperCase(),
+      }) as string,
+    };
+  });
+
+  protected async choose(tag: string | null): Promise<void> {
+    if (tag !== null && tag !== this.language.current()) {
+      await this.language.use(tag);
+    }
+  }
 }

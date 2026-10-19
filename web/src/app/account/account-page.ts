@@ -43,7 +43,8 @@ import {
 } from '../shared/i18n/format';
 import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
-import { LANGUAGE_NAMES, LanguageFacade } from '../shared/i18n/language-facade';
+import { LanguageFacade } from '../shared/i18n/language-facade';
+import { languageChoices } from '../shared/i18n/language-options';
 import { ScanGap, SCAN_GAP_DEFAULT_MS, suggestGap } from '../shared/scan/scan-gap';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import {
@@ -115,7 +116,6 @@ export class AccountPage implements OnInit {
     ACCOUNT_TABS.filter((tab) => tab !== 'device' || this.scanning()),
   );
   protected readonly languages = SUPPORTED_LANGUAGES;
-  protected readonly languageNames = LANGUAGE_NAMES;
   protected readonly schemes: readonly SchemePreference[] = ['auto', 'light', 'dark'];
   protected readonly densities: readonly Density[] = ['comfortable', 'compact'];
 
@@ -139,13 +139,8 @@ export class AccountPage implements OnInit {
   protected readonly dateFormats = DATE_FORMATS;
   protected readonly numberFormats = NUMBER_FORMATS;
 
-  /** What each preference Select offers; a language is named in its own words, which the screen's language must not translate. */
-  protected readonly languageOptions: SelectOption[] = this.languages.map((lang) => ({
-    value: lang,
-    label: this.languageNames[lang],
-    lang,
-    testId: `account-language-option-${lang}`,
-  }));
+  /** What each preference Select offers; the language dropdown names each language itself, in its own words. */
+  protected readonly languageOptions = languageChoices(this.languages, 'account-language-option');
   protected readonly schemeOptions = this.choices('scheme', this.schemes);
   protected readonly densityOptions = this.choices('density', this.densities);
   protected readonly dateFormatOptions = this.choices('date-format', this.dateFormats);
