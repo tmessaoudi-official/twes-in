@@ -5,6 +5,7 @@ import { forgetPresentationChoices } from './presentation';
 import { signIn as signInAsOperator } from './session';
 import { wcagViolations } from './axe';
 import { sidewaysOverflow } from './overflow';
+import { chooseLanguage } from './language';
 
 // The design system's quality bar (docs/SPEC.md § 7, 2026-09-13): every screen passes axe's WCAG 2.1 A and AA
 // rules in both colour schemes, the shell works at phone width, and the Content Security Policy is never
@@ -93,8 +94,7 @@ test('the language switch translates the shell and the page', async ({ page }) =
   await signIn(page);
   await expect(page.getByTestId('nav-home')).toContainText('Accueil');
 
-  await page.getByTestId('user-menu').click();
-  await page.getByTestId('account-language-en').click();
+  await chooseLanguage(page, 'en');
 
   await expect(page.getByTestId('nav-home')).toContainText('Home');
   await expect(page.getByTestId('greeting')).toContainText('Hello');
@@ -328,8 +328,10 @@ test('Automatique follows the device until a scheme is chosen, and the sign-in p
 test('the sign-in page speaks the language chosen on it, after a reload too', async ({ page }) => {
   await page.goto('/login');
   await page.getByTestId('language-menu').click();
-  await expect(page.getByTestId('language-fr')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('language-fr')).toHaveAttribute('aria-selected', 'true');
+  // Each language named in itself, with its name in the screen's language under it.
   await expect(page.getByTestId('language-en')).toContainText('English');
+  await expect(page.getByTestId('language-en')).toContainText('Anglais');
   await page.getByTestId('language-en').click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 

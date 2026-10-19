@@ -11,7 +11,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { WINDOW_CLASS, type WindowClass } from '../ui/window-class';
-import { Select, type SelectOption } from './select';
+import { Select, type SelectCompact, type SelectOption } from './select';
 
 const few: SelectOption[] = [
   { value: 'tnd', label: 'Tunisian dinar' },
@@ -44,6 +44,8 @@ const many: SelectOption[] = [
       [multiple]="multiple()"
       labelledBy="lbl"
       [describedBy]="describedBy()"
+      [compact]="compact()"
+      [languages]="languages()"
       testId="sel"
     />
     <p id="hint">Applies once.</p>
@@ -57,6 +59,8 @@ class Host {
   readonly labelInside = signal(false);
   readonly translateLabels = signal(false);
   readonly describedBy = signal('');
+  readonly compact = signal<SelectCompact | null>(null);
+  readonly languages = signal(false);
 }
 
 class StaticLoader implements TranslateLoader {
@@ -224,6 +228,80 @@ describe('Select', () => {
         o.getAttribute('lang'),
       ),
     ).toEqual(['fr', 'en']);
+  });
+
+  it('writes a second line under an option, in its own language, and finds the option by either line', async () => {
+    fixture.componentInstance.options.set([
+      ...many,
+      { value: 'de', label: 'Deutsch', lang: 'de', hint: 'Allemand', hintLang: 'fr' },
+    ]);
+    await settle();
+    await open();
+
+    const option = Array.from(document.body.querySelectorAll('[role="option"]')).at(-1)!;
+    const hint = option.querySelector('[data-option-hint]')!;
+    expect(hint.textContent!.trim()).toBe('Allemand');
+    expect(hint.getAttribute('lang')).toBe('fr');
+    expect(option.querySelector('[data-option-label]')!.getAttribute('lang')).toBe('de');
+    // An option with no second line draws none.
+    expect(document.body.querySelectorAll('[data-option-hint]')).toHaveLength(1);
+
+    const search = q('sel-search') as HTMLInputElement;
+    for (const typed of ['allem', 'deutsch']) {
+      search.value = typed;
+      search.dispatchEvent(new Event('input'));
+      await settle();
+      expect(optionLabels()).toEqual(['Deutsch']);
+    }
+  });
+
+  it('names languages itself: each in itself and its own lang, with its name in the screen language under it', async () => {
+    fixture.componentInstance.languages.set(true);
+    // Even a form that translates its labels: a language's own name is never translated.
+    fixture.componentInstance.translateLabels.set(true);
+    fixture.componentInstance.options.set([
+      { value: 'fr', label: 'fr', testId: 'sel-fr' },
+      { value: 'en', label: 'en', testId: 'sel-en' },
+      { value: 'ar', label: 'ar', testId: 'sel-ar', count: 2 },
+    ]);
+    fixture.componentInstance.control.setValue('ar');
+    await settle();
+    expect(q('sel')!.textContent).toContain('العربية');
+
+    await open();
+    expect(optionLabels()).toEqual(['Français', 'English', 'العربية']);
+    const french = q('sel-fr')!;
+    expect(french.querySelector('[data-option-label]')!.getAttribute('lang')).toBe('fr');
+    expect(french.querySelector('[data-option-hint]')!.textContent!.trim()).toBe('French');
+    expect(french.querySelector('[data-option-hint]')!.getAttribute('lang')).toBe('en');
+    // The screen's own language needs no second line; a count an option carries stays.
+    expect(q('sel-en')!.querySelector('[data-option-hint]')).toBeNull();
+    expect(q('sel-ar')!.querySelector('[data-option-count]')).not.toBeNull();
+  });
+
+  it('can be a compact button, an icon and a short text named by its tooltip label, opening the same listbox', async () => {
+    fixture.componentInstance.compact.set({
+      icon: 'translate',
+      text: 'EN',
+      name: 'Language: English (EN)',
+    });
+    fixture.componentInstance.control.setValue('eur');
+    await settle();
+
+    const trigger = q('sel')!;
+    expect(trigger.getAttribute('role')).toBe('combobox');
+    expect(trigger.getAttribute('aria-label')).toBe('Language: English (EN)');
+    expect(trigger.hasAttribute('aria-labelledby')).toBe(false);
+    expect(trigger.textContent).toContain('EN');
+    expect(trigger.textContent).not.toContain('Euro');
+
+    await open();
+    expect(q('sel')!.getAttribute('aria-expanded')).toBe('true');
+    expect(optionLabels()).toEqual(['Tunisian dinar', 'Euro', 'US dollar']);
+    (document.body.querySelectorAll('[role="option"]')[2] as HTMLElement).click();
+    await settle();
+    expect(fixture.componentInstance.control.value).toBe('usd');
+    expect(document.activeElement).toBe(q('sel'));
   });
 
   it('translates a label with the parameters its option carries', async () => {

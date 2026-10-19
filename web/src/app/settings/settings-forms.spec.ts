@@ -139,9 +139,12 @@ describe('companySettingsForm', () => {
       maxLength: 2000,
       span: 2,
     });
+    // A setting whose choices are languages is the language dropdown, which names each language itself: no
+    // translation key per language and per screen language.
+    expect(byId['document__language']).toMatchObject({ kind: 'select', languages: true });
     expect(byId['document__language']?.options).toEqual([
-      { value: 'fr', label: 'settings.choices.document.language.fr' },
-      { value: 'en', label: 'settings.choices.document.language.en' },
+      { value: 'fr', label: 'fr' },
+      { value: 'en', label: 'en' },
     ]);
     expect(byId['article__default_unit']).toMatchObject({
       required: true,

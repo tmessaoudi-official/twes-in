@@ -609,6 +609,7 @@
     "create": "Créer",
     "user_menu": "Compte",
     "language": "Langue",
+    "language_close": "Fermer",
     "density_compact": "Affichage compact",
     "density_comfortable": "Affichage confortable",
     "collapse_menu": "Réduire le menu",
@@ -1057,11 +1058,6 @@
         }
       },
       "document": {
-        "language": {
-          "fr": "Français",
-          "en": "Anglais",
-          "ar": "Arabe"
-        },
         "layout": {
           "classic": "Classique",
           "modern": "Moderne",
@@ -1090,11 +1086,6 @@
           "code": "Code",
           "name": "Nom",
           "both": "Les deux"
-        },
-        "language": {
-          "fr": "Français",
-          "en": "English",
-          "ar": "العربية"
         },
         "date-format": {
           "auto": "Selon la langue",

@@ -3,7 +3,7 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogState } from '@angular/material/dialog';
 import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
@@ -679,8 +679,19 @@ describe('AppShell', () => {
 
     await click('user-menu');
     expect(byTestId('account-scheme-auto')?.getAttribute('aria-checked')).toBe('true');
-    await click('account-language-en');
+    // The menu opens the language dropdown in a dialog: its list stays searchable however many languages ship.
+    expect(byTestId('account-menu-language')?.getAttribute('aria-label')).toBe(
+      'Langue : Français, FR',
+    );
+    await click('account-menu-language');
+    const dialog = TestBed.inject(MatDialog).openDialogs.at(-1)!;
+    expect(dialog.getState()).toBe(MatDialogState.OPEN);
+    await click('language-dialog');
+    expect(byTestId('language-dialog-fr')?.getAttribute('aria-selected')).toBe('true');
+    await click('language-dialog-en');
     expect(language.use).toHaveBeenCalledWith('en');
+    // A choice applies at once and closes the dialog.
+    expect(dialog.getState()).not.toBe(MatDialogState.OPEN);
 
     await click('user-menu');
     await click('account-scheme-dark');

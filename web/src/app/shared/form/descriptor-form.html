@@ -131,6 +131,7 @@
                     [required]="field.required ?? false"
                     [options]="field.options ?? []"
                     [translateLabels]="true"
+                    [languages]="field.languages ?? false"
                     [multiple]="field.kind === 'multiselect'"
                     [testId]="'field-' + field.id"
                   />

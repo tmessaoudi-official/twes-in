@@ -141,8 +141,8 @@ out=$(gate --root "$d" 2>&1)
 code=$?
 check "a choice list that is not written out fails" "$code" 1 "$out" "not a literal list"
 
-# A language setting offers the languages the catalogue names, read from config/languages.json: each needs its label
-# like any choice, and a language added to the catalogue without one reds.
+# A language setting offers the languages the catalogue names: the language dropdown names each one itself, so it
+# asks no label, and a language the catalogue adds asks none either.
 language_tree() {
   local d=$1
   python3 - "$d" <<'PY'
@@ -167,7 +167,7 @@ PY
 d=$(repo) && translations "$d" && language_tree "$d"
 out=$(gate --root "$d" 2>&1)
 code=$?
-check "a language setting's choices are the catalogue's, each labelled" "$code" 0 "$out" "4 settings, 1 platform numbers, 4 choices"
+check "a language setting's choices ask no label" "$code" 0 "$out" "4 settings, 1 platform numbers, 2 choices"
 
 d=$(repo) && translations "$d" && language_tree "$d"
 python3 - "$d" <<'PY'
@@ -179,7 +179,7 @@ p.write_text(json.dumps(doc))
 PY
 out=$(gate --root "$d" 2>&1)
 code=$?
-check "a language the catalogue adds without its label fails" "$code" 1 "$out" "settings.choices.shop.letters.it"
+check "a language the catalogue adds asks no label in every other language" "$code" 0 "$out" "2 choices"
 
 d=$(repo) && translations "$d" && language_tree "$d"
 python3 - "$d" <<'PY'

@@ -20,6 +20,9 @@ import { NG_VALUE_ACCESSOR, type ControlValueAccessor } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { Label } from '../a11y/label';
+import { languageOption } from '../i18n/language-options';
+import type { IconName } from '../icons/icons';
 import type { StatusTone } from '../theme/accent-theme';
 import { CountBadge } from '../ui/count-badge';
 import { WINDOW_CLASS } from '../ui/window-class';
@@ -42,6 +45,20 @@ export interface SelectOption {
   tone?: StatusTone;
   /** Raises the translated label's first letter: a word translated lowercase to sit inside sentences, standing alone. */
   capitalize?: boolean;
+  /** A second line under the label, which the search also reads: a language's name in the screen's language. */
+  hint?: string;
+  /** The language the second line is in, when the label's `lang` is another. */
+  hintLang?: string;
+}
+
+/**
+ * A trigger drawn as a small button rather than a field, where a bar has no room for one: an icon and a short text
+ * (a language's code), named by `name`, which must contain that text (WCAG 2.5.3) and is also its tooltip.
+ */
+export interface SelectCompact {
+  icon: IconName;
+  text: string;
+  name: string;
 }
 
 const shown = (label: string, capitalize: boolean | undefined): string =>
@@ -73,7 +90,7 @@ function fold(text: string): string {
  */
 @Component({
   selector: 'app-select',
-  imports: [CountBadge, MatIconModule, TranslatePipe],
+  imports: [CountBadge, Label, MatIconModule, TranslatePipe],
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => Select), multi: true }],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -85,62 +102,84 @@ function fold(text: string): string {
         >{{ label() }}</span
       >
     }
-    <button
-      #trigger
-      type="button"
-      role="combobox"
-      class="flex min-h-10 w-full items-center gap-1 rounded-control border border-outline bg-surface py-1.5 pe-2 ps-4 text-start text-base text-on-surface hover:border-on-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent-text disabled:opacity-60"
-      aria-haspopup="listbox"
-      [id]="inputId() || null"
-      [attr.aria-expanded]="open()"
-      [attr.aria-controls]="open() ? listId : null"
-      [attr.aria-labelledby]="ownLabel() ? ownLabel() + ' ' + valueId : null"
-      [attr.aria-describedby]="describedBy() || null"
-      [attr.aria-required]="required() || null"
-      [attr.data-testid]="testId() || null"
-      [disabled]="disabled()"
-      (click)="toggle()"
-      (keydown)="triggerKey($event)"
-    >
-      <span [id]="valueId" class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-        @if (chosen().length === 0) {
-          <span class="text-on-surface-variant">{{ emptyLabel() | translate }}</span>
-        } @else if (multiple()) {
-          @for (option of chipped(); track option.value) {
-            <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
-            <span
-              data-chip
-              class="rounded-full bg-secondary-container px-2.5 py-0.5 text-sm text-on-secondary-container"
-              >{{ option.label }}</span
-            >
+    @if (compact(); as small) {
+      <button
+        #trigger
+        type="button"
+        role="combobox"
+        class="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm text-on-surface hover:bg-surface-container-high focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent-text disabled:opacity-60"
+        aria-haspopup="listbox"
+        [appLabel]="small.name"
+        [attr.aria-expanded]="open()"
+        [attr.aria-controls]="open() ? listId : null"
+        [attr.data-testid]="testId() || null"
+        [disabled]="disabled()"
+        (click)="toggle()"
+        (keydown)="triggerKey($event)"
+      >
+        <mat-icon aria-hidden="true">{{ small.icon }}</mat-icon>
+        <span aria-hidden="true" class="font-semibold uppercase"
+          ><bdi>{{ small.text }}</bdi></span
+        >
+      </button>
+    } @else {
+      <button
+        #trigger
+        type="button"
+        role="combobox"
+        class="flex min-h-10 w-full items-center gap-1 rounded-control border border-outline bg-surface py-1.5 pe-2 ps-4 text-start text-base text-on-surface hover:border-on-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent-text disabled:opacity-60"
+        aria-haspopup="listbox"
+        [id]="inputId() || null"
+        [attr.aria-expanded]="open()"
+        [attr.aria-controls]="open() ? listId : null"
+        [attr.aria-labelledby]="ownLabel() ? ownLabel() + ' ' + valueId : null"
+        [attr.aria-describedby]="describedBy() || null"
+        [attr.aria-required]="required() || null"
+        [attr.data-testid]="testId() || null"
+        [disabled]="disabled()"
+        (click)="toggle()"
+        (keydown)="triggerKey($event)"
+      >
+        <span [id]="valueId" class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          @if (chosen().length === 0) {
+            <span class="text-on-surface-variant">{{ emptyLabel() | translate }}</span>
+          } @else if (multiple()) {
+            @for (option of chipped(); track option.value) {
+              <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
+              <span
+                data-chip
+                class="rounded-full bg-secondary-container px-2.5 py-0.5 text-sm text-on-secondary-container"
+                >{{ option.label }}</span
+              >
+            }
+            @if (hiddenCount() > 0) {
+              <span class="text-sm text-on-surface-variant">{{
+                'select.more' | translate: { count: hiddenCount() }
+              }}</span>
+            }
+          } @else {
+            @if (chosen()[0].tone; as tone) {
+              <span
+                aria-hidden="true"
+                class="size-2.5 shrink-0 rounded-full"
+                data-tone-dot
+                [style.background-color]="'var(--twes-status-' + tone + '-dot)'"
+              ></span>
+            }
+            <span class="twes-value" dir="auto">{{ chosen()[0].label }}</span>
+            @if (chosen()[0].triggerCount !== false && hasCount(chosen()[0].count)) {
+              <app-count-badge
+                data-trigger-count
+                kind="total"
+                [count]="chosen()[0].count!"
+                [label]="'select.count' | translate: { count: chosen()[0].count }"
+              />
+            }
           }
-          @if (hiddenCount() > 0) {
-            <span class="text-sm text-on-surface-variant">{{
-              'select.more' | translate: { count: hiddenCount() }
-            }}</span>
-          }
-        } @else {
-          @if (chosen()[0].tone; as tone) {
-            <span
-              aria-hidden="true"
-              class="size-2.5 shrink-0 rounded-full"
-              data-tone-dot
-              [style.background-color]="'var(--twes-status-' + tone + '-dot)'"
-            ></span>
-          }
-          <span class="twes-value" dir="auto">{{ chosen()[0].label }}</span>
-          @if (chosen()[0].triggerCount !== false && hasCount(chosen()[0].count)) {
-            <app-count-badge
-              data-trigger-count
-              kind="total"
-              [count]="chosen()[0].count!"
-              [label]="'select.count' | translate: { count: chosen()[0].count }"
-            />
-          }
-        }
-      </span>
-      <mat-icon aria-hidden="true" class="shrink-0 text-on-surface-variant">expand_more</mat-icon>
-    </button>
+        </span>
+        <mat-icon aria-hidden="true" class="shrink-0 text-on-surface-variant">expand_more</mat-icon>
+      </button>
+    }
 
     <ng-template #panel>
       <div
@@ -228,8 +267,24 @@ function fold(text: string): string {
                 <!-- Keeps the words of an option with no tone (« all ») in line with the toned ones. -->
                 <span aria-hidden="true" class="size-2.5 shrink-0"></span>
               }
-              <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
-              <span data-option-label class="min-w-0 flex-1">{{ option.label }}</span>
+              @if (option.hint) {
+                <span class="flex min-w-0 flex-1 flex-col">
+                  <!-- value-direction: a text in the screen's language, or a language's own name in its own lang -->
+                  <span data-option-label [attr.lang]="option.lang ?? null">{{
+                    option.label
+                  }}</span>
+                  <!-- value-direction: the option's name in the screen's language, which reads in the screen's direction -->
+                  <span
+                    data-option-hint
+                    class="text-xs text-on-surface-variant"
+                    [attr.lang]="option.hintLang ?? null"
+                    >{{ option.hint }}</span
+                  >
+                </span>
+              } @else {
+                <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
+                <span data-option-label class="min-w-0 flex-1">{{ option.label }}</span>
+              }
               @if (hasCount(option.count)) {
                 <app-count-badge
                   data-option-count
@@ -266,6 +321,13 @@ export class Select implements ControlValueAccessor {
   readonly translateLabels = input(false);
   /** What the field reads with nothing chosen, as a translation key: a list's filter says « Tous » there. */
   readonly emptyLabel = input('select.placeholder');
+  /** Draws the trigger as a small button, for a bar: see `SelectCompact`. */
+  readonly compact = input<SelectCompact | null>(null);
+  /**
+   * The options are language tags, and the Select names them: each in itself, with its name in the screen's language
+   * under it, read again when the screen's language changes (`languageOption`). An option keeps its count and test id.
+   */
+  readonly languages = input(false);
 
   protected readonly open = signal(false);
   protected readonly disabled = signal(false);
@@ -299,6 +361,13 @@ export class Select implements ControlValueAccessor {
   /** The options with their words as a person reads them. */
   private readonly items = computed<readonly SelectOption[]>(() => {
     this.language();
+    if (this.languages()) {
+      const screen = this.translate.getCurrentLang() ?? this.translate.getFallbackLang() ?? '';
+      return this.options().map((option) => ({
+        ...option,
+        ...languageOption(option.value, screen),
+      }));
+    }
     return this.translateLabels()
       ? this.options().map((option) => ({
           ...option,
@@ -319,7 +388,9 @@ export class Select implements ControlValueAccessor {
     const words = fold(this.query().trim());
     return words === ''
       ? this.items()
-      : this.items().filter((option) => fold(option.label).includes(words));
+      : this.items().filter(
+          (option) => fold(option.label).includes(words) || fold(option.hint ?? '').includes(words),
+        );
   });
 
   /** What the control holds, as options, in the order the options were given. */
@@ -536,22 +607,28 @@ export class Select implements ControlValueAccessor {
         : this.overlay
             .position()
             .flexibleConnectedTo(origin)
-            .withPositions([
-              {
-                originX: 'start',
-                originY: 'bottom',
-                overlayX: 'start',
-                overlayY: 'top',
-                offsetY: 4,
-              },
-              {
-                originX: 'start',
-                originY: 'top',
-                overlayX: 'start',
-                overlayY: 'bottom',
-                offsetY: -4,
-              },
-            ])
+            .withPositions(
+              // A compact trigger sits at a bar's end: its panel, wider than it, opens towards the page instead.
+              (this.compact() === null
+                ? (['start'] as const)
+                : (['end', 'start'] as const)
+              ).flatMap((side) => [
+                {
+                  originX: side,
+                  originY: 'bottom' as const,
+                  overlayX: side,
+                  overlayY: 'top' as const,
+                  offsetY: 4,
+                },
+                {
+                  originX: side,
+                  originY: 'top' as const,
+                  overlayX: side,
+                  overlayY: 'bottom' as const,
+                  offsetY: -4,
+                },
+              ]),
+            )
             .withPush(false),
       scrollStrategy: this.overlay.scrollStrategies.reposition(),
       hasBackdrop: sheet,

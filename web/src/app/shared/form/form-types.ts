@@ -61,6 +61,8 @@ export interface FormField {
   pattern?: string;
   /** Required for `select`; the choices of a `multiselect`. */
   options?: FieldOption[];
+  /** A select whose options are language tags: the dropdown names each language itself (`Select.languages`). */
+  languages?: boolean;
   /** For a `pick` that may name nothing: what that answer reads as, and what an empty answer reads as. */
   noneLabel?: string;
   noneFoundLabel?: string;

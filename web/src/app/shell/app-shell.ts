@@ -56,11 +56,8 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from '../watch/watch-facade';
 import { WATCHED_KINDS } from '../watch/watch-types';
 import { RequestActivity } from '../shared/feedback/request-activity';
-import {
-  LANGUAGE_NAMES,
-  LanguageFacade,
-  SUPPORTED_LANGUAGES,
-} from '../shared/i18n/language-facade';
+import { LANGUAGE_NAMES, LanguageFacade } from '../shared/i18n/language-facade';
+import { LanguageDialog } from '../shared/i18n/language-dialog';
 import { type SchemePreference, ThemeFacade } from '../shared/theme/theme-facade';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
@@ -227,7 +224,6 @@ export class AppShell {
   }));
   protected readonly language = inject(LanguageFacade);
 
-  protected readonly languages = SUPPORTED_LANGUAGES;
   protected readonly languageNames = LANGUAGE_NAMES;
   protected readonly schemes: readonly SchemePreference[] = ['auto', 'light', 'dark'];
   protected readonly me = this.auth.me;
@@ -745,7 +741,8 @@ export class AppShell {
     }
   }
 
-  protected async useLanguage(language: string): Promise<void> {
-    await this.language.use(language);
+  /** The language list stays searchable however many ship, which a menu cannot hold: the menu opens the dialog. */
+  protected chooseLanguage(): void {
+    this.dialog.open(LanguageDialog, { autoFocus: 'first-tabbable', width: '24rem' });
   }
 }

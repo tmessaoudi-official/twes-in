@@ -5,6 +5,7 @@ import { aCustomer, aProduct, aVendor, forget, retireVendor } from './catalogue'
 import { forgetPresentationChoices } from './presentation';
 import { inACompany, signIn } from './session';
 import { runDigits } from './run';
+import { chooseLanguage } from './language';
 
 // A list hides its lowest columns when they do not fit and names them in the chooser. On the widest page every
 // column shown at first fits at its declared width: a default column hidden there would read « masquée faute de
@@ -159,9 +160,7 @@ test.describe('no list cuts a value', () => {
     test(`in ${language}`, async ({ page }) => {
       test.setTimeout(240_000);
       if (language === 'ar') {
-        await page.getByTestId('user-menu').click();
-        await page.getByTestId('account-language-ar').click();
-        await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+        await chooseLanguage(page, 'ar');
       }
       for (const width of [1600, 1280]) {
         await page.setViewportSize({ width, height: 900 });
