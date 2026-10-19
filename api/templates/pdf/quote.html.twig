@@ -85,10 +85,10 @@
         <tr>
           <td><bdi>{{ line.description|nl2br }}</bdi></td>
           <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
-          <td>{{ line.unit.nameIn(locale) }}</td>
+          <td>{{ page.names.unit(line.unit) }}</td>
           <td class="number">{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}</td>
           <td class="number">{% if line.discountRate %}{{ line.discountRate|decimal(0, locale, page.numberFormat) }} %{% elseif line.discountAmount %}{{ line.discountAmount|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
-          <td>{% for tax in line.taxes %}{{ loop.first ? '' : 'format.list_separator'|trans({}, t, locale) }}<bdi>{{ tax_label(page.taxNames[tax.code] ?? tax.code, tax.rate, locale, page.numberFormat) }}</bdi>{% endfor %}</td>
+          <td>{% for tax in line.taxes %}{{ loop.first ? '' : 'format.list_separator'|trans({}, t, locale) }}<bdi>{{ tax_label(page.names.taxes[tax.code] ?? tax.code, tax.rate, locale, page.numberFormat) }}</bdi>{% endfor %}</td>
           <td class="number">{{ figures.lines[loop.index0].net|decimal(scale, locale, page.numberFormat) }}</td>
         </tr>
       {%- endfor %}
@@ -104,7 +104,7 @@
     {%- endif %}
     {%- for tax in figures.taxes %}
       <tr>
-        <td><bdi>{{ tax_label(page.taxNames[tax.code] ?? tax.code, tax.rate.percentage(), locale, page.numberFormat) }}</bdi> <span class="muted">({{ tax.base|decimal(scale, locale, page.numberFormat) }})</span></td>
+        <td><bdi>{{ tax_label(page.names.taxes[tax.code] ?? tax.code, tax.rate.percentage(), locale, page.numberFormat) }}</bdi> <span class="muted">({{ tax.base|decimal(scale, locale, page.numberFormat) }})</span></td>
         <td class="number">{{ tax.amount|decimal(scale, locale, page.numberFormat) }}</td>
       </tr>
     {%- endfor %}

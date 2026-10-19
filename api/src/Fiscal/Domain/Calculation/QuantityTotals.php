@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Fiscal\Domain\Calculation;
 
 use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 
 /**
  * The « Quantités » line under a document's lines: how much it carries in each unit, so a delivery is counted at a
@@ -18,17 +19,17 @@ use App\Fiscal\Domain\Model\Unit;
 final class QuantityTotals
 {
     /**
-     * The same, from each line's unit and quantity, each unit named in the document's language.
+     * The same, from each line's unit and quantity, each unit named as the document names it.
      *
      * @param list<array{Unit, string}> $lines
      *
      * @return list<QuantityTotal>
      */
-    public static function ofUnits(array $lines, string $language): array
+    public static function ofUnits(array $lines, PrintedNames $names): array
     {
         return self::of(array_map(static fn (array $line): array => [
             'unit' => $line[0]->getId()->toRfc4122(),
-            'name' => $line[0]->nameIn($language),
+            'name' => $names->unit($line[0]),
             'decimals' => $line[0]->getDecimals(),
             'quantity' => $line[1],
         ], $lines));

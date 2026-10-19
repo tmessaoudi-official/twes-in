@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Domain\Model;
 
 use App\Files\Domain\Model\StoredFile;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\Event\DeliveryNoteCancelled;
@@ -110,6 +111,10 @@ class DeliveryNote implements CompanyOwned
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $printSettings = null;
 
+    /** @var array<string, mixed>|null PrintedNames::toArray(), written by validation */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $printedNames = null;
+
     /** The PDF as the note was issued; null until it is stored. */
     #[ORM\ManyToOne(targetEntity: StoredFile::class)]
     #[ORM\JoinColumn(name: 'pdf_file_id', nullable: true)]
@@ -208,13 +213,14 @@ class DeliveryNote implements CompanyOwned
     /**
      * Gives a draft with lines its number and issue day. From then on it prints what its customer was called that day,
      * the rates its taxes had that day, and, when it names no delivery address, where the customer takes goods
-     * (its shipping address, else its billing one), and it prints as its settings said that day (`$print`). Records
+     * (its shipping address, else its billing one), it prints as its settings said that day (`$print`), and it keeps
+     * what its units and taxes were called that day (`$names`). Records
      * `delivery_note.validated`.
      *
      * @throws DeliveryNoteNotDraft
      * @throws InvalidDeliveryNote
      */
-    public function validate(string $number, \DateTimeImmutable $issueDate, DeliveryNotePrint $print, \DateTimeImmutable $now): void
+    public function validate(string $number, \DateTimeImmutable $issueDate, DeliveryNotePrint $print, PrintedNames $names, \DateTimeImmutable $now): void
     {
         $this->assertDraft('is validated');
         if ($this->lines->isEmpty()) {
@@ -235,6 +241,10 @@ class DeliveryNote implements CompanyOwned
         $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->printSettings = $print->toArray();
+        foreach ($this->getLines() as $line) {
+            $names->unit($line->getUnit());
+        }
+        $this->printedNames = $names->toArray();
         $this->status = DeliveryNoteStatus::Validated;
         $this->number = $number;
         $this->issueDate = self::day($issueDate);
@@ -351,6 +361,15 @@ class DeliveryNote implements CompanyOwned
     public function getCustomerSnapshot(): ?CustomerSnapshot
     {
         return null === $this->customerSnapshot ? null : CustomerSnapshot::fromArray($this->customerSnapshot);
+    }
+
+    /**
+     * The names its units and the company's taxes had in its language the day it was validated; null while it is a draft,
+     * or for one validated before they were kept, which prints them as they are.
+     */
+    public function getPrintedNames(): ?PrintedNames
+    {
+        return null === $this->printedNames ? null : PrintedNames::fromArray($this->printedNames);
     }
 
     /** How the note printed the day it was validated; null while it is a draft, or for a note validated before this was kept. */

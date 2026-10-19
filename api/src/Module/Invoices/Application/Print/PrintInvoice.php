@@ -12,11 +12,13 @@ namespace App\Module\Invoices\Application\Print;
 use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Fiscal\Application\TaxComponent\TaxNames;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
+use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoicePage;
@@ -59,7 +61,7 @@ final readonly class PrintInvoice
         private ClockInterface $clock,
         private FiscalPresets $presets,
         private Transactions $transactions,
-        private TaxNames $taxNames,
+        private DocumentNames $names,
     ) {
     }
 
@@ -172,6 +174,7 @@ final readonly class PrintInvoice
         $print = $invoice->getPrintSettings() ?? DocumentFormats::print($this->settings, $context, $company);
         $issuedLanguage = $invoice->getLanguage();
         $operations = $invoice->getOperationCategory();
+        $kept = $invoice->getPrintedNames();
         if (null === $issuedLanguage) {
             $language = $this->settings->text($context, 'document.language');
             $profile = $company->getProfile();
@@ -182,6 +185,10 @@ final readonly class PrintInvoice
         }
 
         $figures = $this->totals->figures($invoice);
+        // The original prints what was issued; a copy or a preview does too unless the company keeps the names live.
+        $names = null !== $kept && (null === $watermark || true === $this->settings->value(new SettingContext($company), 'document.names_as_issued'))
+            ? $kept
+            : $this->names->now($company, $language, array_map(static fn (InvoiceLine $line): Unit => $line->getUnit(), $invoice->getLines()));
 
         return $this->template->html(new InvoicePage(
             $invoice,
@@ -204,9 +211,9 @@ final readonly class PrintInvoice
             $mentions->parameters,
             $design ?? $print->design,
             InvoiceType::CreditNote === $invoice->getType() ? null : $print->savingsPrinted($figures->savings),
-            self::quantities($invoice, $language),
+            self::quantities($invoice, $names),
             $operations,
-            $this->taxNames->in($company, $language),
+            $names,
         ));
     }
 
@@ -215,11 +222,11 @@ final readonly class PrintInvoice
      *
      * @return list<QuantityTotal>
      */
-    private static function quantities(Invoice $invoice, string $language): array
+    private static function quantities(Invoice $invoice, PrintedNames $names): array
     {
         $lines = array_values(array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => null === $line->getDeduction()));
 
-        return QuantityTotals::ofUnits(array_map(static fn (InvoiceLine $line): array => [$line->getUnit(), $line->getQuantity()], $lines), $language);
+        return QuantityTotals::ofUnits(array_map(static fn (InvoiceLine $line): array => [$line->getUnit(), $line->getQuantity()], $lines), $names);
     }
 
     /**

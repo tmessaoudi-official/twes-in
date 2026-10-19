@@ -11,6 +11,8 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Fiscal\Application\DocumentNames;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
@@ -49,6 +51,7 @@ final readonly class DeliveryNoteWorkflow
         private AuditTrail $audit,
         private ClockInterface $clock,
         private ReadSetting $settings,
+        private DocumentNames $names,
     ) {
     }
 
@@ -141,7 +144,9 @@ final readonly class DeliveryNoteWorkflow
         if ($this->notes->numberTaken($company->getId(), $allocated->number)) {
             throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()));
         }
-        $note->validate($allocated->number, $allocated->issueDate, DeliveryNotePrinting::today($this->settings, $note), $this->clock->now());
+        $printing = DeliveryNotePrinting::today($this->settings, $note);
+        $units = array_map(static fn (DeliveryNoteLine $line): Unit => $line->getUnit(), $note->getLines());
+        $note->validate($allocated->number, $allocated->issueDate, $printing, $this->names->now($company, $printing->language, $units), $this->clock->now());
         $this->totals->checked($note);
         $this->notes->save($note);
         $this->record($company, $note, self::VALIDATED, ['number' => $allocated->number], $actorUserId);

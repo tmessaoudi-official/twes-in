@@ -11,10 +11,12 @@ namespace App\Tests\Unit\Module\Invoices\Application;
 
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
-use App\Fiscal\Application\TaxComponent\TaxNames;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
@@ -27,6 +29,7 @@ use App\Module\Invoices\Application\Print\InvoiceMentions;
 use App\Module\Invoices\Application\Print\NoCopyOfADraft;
 use App\Module\Invoices\Application\Print\PrintInvoice;
 use App\Module\Invoices\Domain\Model\Invoice;
+use App\Module\Invoices\Domain\Model\InvoiceLine;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\InvoiceIssue;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
@@ -109,7 +112,7 @@ final class PrintInvoiceTest extends TestCase
             $this->clock,
             ShippedFiscalPresets::presets(),
             new FakeTransactions(),
-            new TaxNames($this->taxes),
+            new DocumentNames($this->taxes),
         );
     }
 
@@ -151,10 +154,68 @@ final class PrintInvoiceTest extends TestCase
 
         $page = $this->template->pages[0];
         self::assertSame('ar', $page->language);
-        self::assertSame('معلوم الطابع الجبائي', $page->taxNames['TIMBRE'] ?? null);
-        self::assertSame('الخصم من المورد 1 %', $page->taxNames['RS1'] ?? null);
+        self::assertSame('معلوم الطابع الجبائي', $page->names->taxes['TIMBRE'] ?? null);
+        self::assertSame('الخصم من المورد 1 %', $page->names->taxes['RS1'] ?? null);
         self::assertSame(['وحدة'], array_map(static fn (QuantityTotal $each): string => $each->unitName, $page->quantities));
         self::assertMatchesRegularExpression('/^\p{Arabic}[\p{Arabic} ]+$/u', $page->amountInWords ?? '', 'an Arabic invoice writes its total out in Arabic');
+    }
+
+    public function testACopyPrintsTheUnitAndTaxNamesTheInvoiceWasIssuedWith(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null));
+        $issuedWith = $this->namesNow('en');
+        $this->renameUnitAndStamp();
+
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::Duplicate);
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::UpToDate);
+
+        foreach ($this->template->pages as $page) {
+            self::assertSame($issuedWith, [$page->names->units['C62'] ?? null, $page->names->taxes['TIMBRE'] ?? null]);
+        }
+    }
+
+    public function testACompanyKeepingTheNamesLiveReprintsThemAsTheyAreNow(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null));
+        $this->renameUnitAndStamp();
+        $this->change->change(new SettingContext($this->company), 'document.names_as_issued', SettingLevel::Company, false, null);
+
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::Duplicate);
+        $this->print->designPreview($this->company, $invoice->getPrintSettings()->design ?? throw new \LogicException('An issued invoice keeps its design.'));
+
+        foreach ($this->template->pages as $page) {
+            self::assertSame(['Renamed piece', 'Renamed stamp'], [$page->names->units['C62'] ?? null, $page->names->taxes['TIMBRE'] ?? null]);
+        }
+    }
+
+    /** The original is the document as it was issued, whenever it is first rendered and whatever the switch says. */
+    public function testAnOriginalFirstRenderedAfterARenamePrintsTheNamesItWasIssuedWith(): void
+    {
+        $this->renderer->failing = true;
+        $invoice = $this->issued($this->customer('standard', null));
+        $issuedWith = $this->namesNow('en');
+        $this->renameUnitAndStamp();
+        $this->change->change(new SettingContext($this->company), 'document.names_as_issued', SettingLevel::Company, false, null);
+        $this->renderer->failing = false;
+
+        $this->print->pdf($this->company, $invoice->getId());
+
+        $page = $this->template->pages[0];
+        self::assertNull($page->watermark);
+        self::assertSame($issuedWith, [$page->names->units['C62'] ?? null, $page->names->taxes['TIMBRE'] ?? null]);
+    }
+
+    /** An invoice issued before names were kept has none to print, and prints them as they are, as it always did. */
+    public function testAnInvoiceIssuedBeforeNamesWereKeptPrintsThemAsTheyAreNow(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null));
+        new \ReflectionProperty(Invoice::class, 'printedNames')->setValue($invoice, null);
+        $this->renameUnitAndStamp();
+
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::Duplicate);
+
+        $page = $this->template->pages[0];
+        self::assertSame(['Renamed piece', 'Renamed stamp'], [$page->names->units['C62'] ?? null, $page->names->taxes['TIMBRE'] ?? null]);
     }
 
     // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: a printed document follows the company's formats, never the person printing it.
@@ -314,7 +375,7 @@ final class PrintInvoiceTest extends TestCase
     {
         $invoice = $this->issued($this->customer('standard', null), new PrintSettings('', 'auto', 'auto', savingsLine: true), '10');
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
-        $credit->issue(new InvoiceIssue('AV-2026-00001', new \DateTimeImmutable('2026-09-15'), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto', savingsLine: true)), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
+        $credit->issue(new InvoiceIssue('AV-2026-00001', new \DateTimeImmutable('2026-09-15'), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto', savingsLine: true), $this->keptNames($credit, 'fr')), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
         $this->invoices->save($credit);
 
         $this->print->pdf($this->company, $credit->getId());
@@ -478,13 +539,40 @@ final class PrintInvoiceTest extends TestCase
     {
         $invoice = $this->draft($customer, $discountRate);
         $invoice->issue(
-            new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'en', $customer->getTaxRegime()->getMentionKey() ? [$customer->getTaxRegime()->getMentionKey()] : [], null, 'Merci', null, $print),
+            new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'en', $customer->getTaxRegime()->getMentionKey() ? [$customer->getTaxRegime()->getMentionKey()] : [], null, 'Merci', null, $print, $this->keptNames($invoice, 'en')),
             fn (Invoice $issuing) => $this->totals->issued($issuing),
             $this->clock->now(),
         );
         $invoice->releaseEvents();
 
         return $invoice;
+    }
+
+    /** @return array{string, string} the piece's and the stamp's names in that language, as they are now */
+    private function namesNow(string $language): array
+    {
+        $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
+        $stamp = $this->taxes->ofCodeInCompany('TIMBRE', $this->company->getId());
+        self::assertNotNull($unit);
+        self::assertNotNull($stamp);
+
+        return [$unit->nameIn($language), $stamp->nameIn($language)];
+    }
+
+    private function renameUnitAndStamp(): void
+    {
+        $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
+        $stamp = $this->taxes->ofCodeInCompany('TIMBRE', $this->company->getId());
+        self::assertNotNull($unit);
+        self::assertNotNull($stamp);
+        self::assertTrue($unit->revise($unit->getName(), $unit->getDecimals(), true, $unit->getSortOrder(), $this->clock->now(), [...$unit->getNames(), 'en' => 'Renamed piece']));
+        self::assertTrue($stamp->revise($stamp->getName(), $stamp->getRate(), $stamp->getAmount(), $stamp->getThreshold(), $stamp->entersVatBase(), $stamp->isDefault(), true, $stamp->getExemptionMention(), $stamp->getSortOrder(), 3, $this->clock->now(), [...$stamp->getNames(), 'en' => 'Renamed stamp']));
+    }
+
+    /** What issuing keeps of the names, in that language, as DocumentNames would give it. */
+    private function keptNames(Invoice $invoice, string $language): PrintedNames
+    {
+        return PrintedNames::in($language, array_map(static fn (InvoiceLine $line): Unit => $line->getUnit(), $invoice->getLines()), $this->taxes->ofCompany($this->company->getId()));
     }
 
     private function stampOn(): void
@@ -495,7 +583,7 @@ final class PrintInvoiceTest extends TestCase
     private function creditInFull(Invoice $invoice): void
     {
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
-        $credit->issue(new InvoiceIssue('AV-2026-00001', new \DateTimeImmutable('2026-09-15'), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
+        $credit->issue(new InvoiceIssue('AV-2026-00001', new \DateTimeImmutable('2026-09-15'), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), $this->keptNames($credit, 'fr')), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
         $invoice->credit($credit, $this->clock->now());
     }
 

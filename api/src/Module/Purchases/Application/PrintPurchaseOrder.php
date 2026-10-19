@@ -11,6 +11,8 @@ namespace App\Module\Purchases\Application;
 
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
+use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Domain\Model\PurchaseOrderLine;
 use App\Module\Purchases\Domain\Repository\PurchaseOrderRepository;
@@ -68,7 +70,8 @@ final readonly class PrintPurchaseOrder
             $formats['dateFormat'],
             $formats['numberFormat'],
             DocumentFormats::design($this->settings, $company),
-            QuantityTotals::ofUnits(array_map(static fn (PurchaseOrderLine $line): array => [$line->getUnit(), $line->getQuantity()], $order->getLines()), $language),
+            // An order keeps no names of its own: it names its units as they are now, as it speaks today's language.
+            QuantityTotals::ofUnits(array_map(static fn (PurchaseOrderLine $line): array => [$line->getUnit(), $line->getQuantity()], $order->getLines()), PrintedNames::in($language, array_map(static fn (PurchaseOrderLine $line): Unit => $line->getUnit(), $order->getLines()), [])),
         ))));
     }
 

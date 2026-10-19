@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\DeliveryNotes\Application;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Customers\Domain\Model\Customer;
@@ -70,6 +71,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
 {
     private MockClock $clock;
     private InMemoryUnits $units;
+    private InMemoryTaxComponents $taxes;
     private InMemoryEstablishments $establishments;
     private InMemoryNumberingSeries $series;
     private InMemoryDeliveryNotes $notes;
@@ -90,7 +92,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
         $this->units = new InMemoryUnits();
         $this->establishments = new InMemoryEstablishments();
         $this->series = new InMemoryNumberingSeries();
-        $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), $this->units, $this->establishments, $this->series, ShippedFiscalPresets::scales(), $this->clock);
+        $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes = new InMemoryTaxComponents(), $this->units, $this->establishments, $this->series, ShippedFiscalPresets::scales(), $this->clock);
         $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
         $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'));
         $this->notes = new InMemoryDeliveryNotes();
@@ -112,6 +114,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
             $this->audit,
             $this->clock,
             new ReadSetting($resolve),
+            new DocumentNames($this->taxes),
         );
         $now = $this->clock->now();
         $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
@@ -132,6 +135,24 @@ final class DeliveryNoteWorkflowTest extends TestCase
             new DeliveryNotePrint('en', false, true, new PrintSettings('Marchandise voyageant aux risques du client.', 'auto', 'space-comma', true)),
             $note->getPrintSettings(),
         );
+    }
+
+    /** What the note calls its units and every tax of the company, in its own language, is kept as it is validated. */
+    public function testValidationKeepsTheNamesOfItsUnitsAndOfEveryTaxInTheNotesLanguage(): void
+    {
+        $this->change->change(new SettingContext($this->company, customerId: $this->customer->getId()), 'document.language', SettingLevel::Customer, 'ar', null);
+        $draft = $this->draft();
+        self::assertNull($draft->getPrintedNames(), 'a draft prints the names as they are');
+
+        $note = $this->workflow->validate($this->company, $draft->getId(), null);
+
+        $taxes = [];
+        foreach ($this->taxes->ofCompany($this->company->getId()) as $component) {
+            $taxes[$component->getCode()] = $component->nameIn('ar');
+        }
+        self::assertSame(['C62' => $this->unit('C62')->nameIn('ar')], $note->getPrintedNames()?->units);
+        self::assertSame($taxes, $note->getPrintedNames()->taxes);
+        self::assertSame('معلوم الطابع الجبائي', $note->getPrintedNames()?->taxes['TIMBRE'] ?? null);
     }
 
     public function testValidationNumbersTheNoteInOneTransactionAndTellsOnlyOnceItIsStored(): void

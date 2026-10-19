@@ -11,6 +11,7 @@ namespace App\Module\Quotes\Application;
 
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\Quotes\Domain\Model\Quote;
 use App\Shared\Domain\ValueObject\DocumentDesign;
@@ -31,7 +32,7 @@ final readonly class QuotePage
      * @param self::DRAFT|self::CANCELLED|null $watermark
      * @param string                           $language   a language the catalogue prints documents in
      * @param list<QuantityTotal>              $quantities what the lines come to in each unit, empty for a single line
-     * @param array<string, string>            $taxNames   each of the company's taxes named in the document's language, by code
+     * @param PrintedNames                     $names      what it calls its units and each of the company's taxes, by code; a tax code it lacks prints as itself
      */
     public function __construct(
         public Quote $quote,
@@ -53,7 +54,7 @@ final readonly class QuotePage
         public array $quantities = [],
         /** What fills the customer's exemption mention, `%reference%`; null leaves a mention that needs it unprinted. */
         public ?string $exemptionReference = null,
-        public array $taxNames = [],
+        public PrintedNames $names = new PrintedNames([], []),
     ) {
     }
 }

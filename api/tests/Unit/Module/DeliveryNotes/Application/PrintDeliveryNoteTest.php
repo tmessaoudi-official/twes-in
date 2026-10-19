@@ -11,9 +11,10 @@ namespace App\Tests\Unit\Module\DeliveryNotes\Application;
 
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Application\TaxComponent\TaxNames;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
@@ -23,6 +24,7 @@ use App\Module\DeliveryNotes\Application\DeliveryNoteSettings;
 use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteLineDetails;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNotePrint;
@@ -67,6 +69,8 @@ final class PrintDeliveryNoteTest extends TestCase
     private RecordingDeliveryNoteTemplate $template;
     private ChangeSettings $change;
     private PrintDeliveryNote $print;
+    private DocumentNames $names;
+    private InMemoryTaxComponents $taxes;
     private Company $company;
     private Customer $customer;
 
@@ -75,7 +79,7 @@ final class PrintDeliveryNoteTest extends TestCase
         $this->clock = new MockClock('2026-09-15 09:00:00');
         $this->units = new InMemoryUnits();
         $this->establishments = new InMemoryEstablishments();
-        new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes = new InMemoryTaxComponents(), $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock)
+        new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes = new InMemoryTaxComponents(), $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock)
             ->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
         $this->notes = new InMemoryDeliveryNotes();
         $this->storage = new InMemoryFileStorage();
@@ -93,7 +97,7 @@ final class PrintDeliveryNoteTest extends TestCase
             $this->renderer,
             new Files($this->storage, $this->records, $this->clock),
             new ReadSetting($resolve),
-            new TaxNames($taxes),
+            $this->names = new DocumentNames($this->taxes),
             new FakeTransactions(),
         );
         $now = $this->clock->now();
@@ -192,7 +196,32 @@ final class PrintDeliveryNoteTest extends TestCase
         $this->print->pdf($this->company, $this->draft(lineCount: 2)->getId());
 
         self::assertSame(['وحدة'], array_map(static fn (QuantityTotal $each): string => $each->unitName, $this->template->pages[0]->quantities));
-        self::assertSame('معلوم الطابع الجبائي', $this->template->pages[0]->taxNames['TIMBRE'] ?? null);
+        self::assertSame('معلوم الطابع الجبائي', $this->template->pages[0]->names->taxes['TIMBRE'] ?? null);
+    }
+
+    /**
+     * A note has no copy: once validated, what it prints is its original, which names its units and taxes as it was
+     * validated with, whenever it is first rendered and whatever the company's switch says.
+     */
+    public function testANoteFirstRenderedAfterARenamePrintsTheNamesItWasValidatedWith(): void
+    {
+        $this->renderer->failing = true;
+        $note = $this->validated();
+        $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
+        $stamp = $this->taxes->ofCodeInCompany('TIMBRE', $this->company->getId());
+        self::assertNotNull($unit);
+        self::assertNotNull($stamp);
+        $validatedWith = [$unit->nameIn('fr'), $stamp->nameIn('fr')];
+        self::assertTrue($unit->revise($unit->getName(), $unit->getDecimals(), true, $unit->getSortOrder(), $this->clock->now(), [...$unit->getNames(), 'fr' => 'Pièce renommée']));
+        self::assertTrue($stamp->revise($stamp->getName(), $stamp->getRate(), $stamp->getAmount(), $stamp->getThreshold(), $stamp->entersVatBase(), $stamp->isDefault(), true, $stamp->getExemptionMention(), $stamp->getSortOrder(), 3, $this->clock->now(), [...$stamp->getNames(), 'fr' => 'Timbre renommé']));
+        $this->change->change(new SettingContext($this->company), 'document.names_as_issued', SettingLevel::Company, false, null);
+        $this->renderer->failing = false;
+
+        $this->print->pdf($this->company, $note->getId());
+
+        $page = $this->template->pages[0];
+        self::assertNull($page->watermark);
+        self::assertSame($validatedWith, [$page->names->units['C62'] ?? null, $page->names->taxes['TIMBRE'] ?? null]);
     }
 
     /** The article an exemption mention names comes from the customer's chain, as an invoice's does; blank names none. */
@@ -274,7 +303,7 @@ final class PrintDeliveryNoteTest extends TestCase
     private function validated(DeliveryNotePrint $print = new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto'))): DeliveryNote
     {
         $note = $this->draft();
-        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $print, $this->clock->now());
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $print, $this->names->now($this->company, $print->language, array_map(static fn (DeliveryNoteLine $line): Unit => $line->getUnit(), $note->getLines())), $this->clock->now());
         $note->releaseEvents();
 
         return $note;

@@ -111,10 +111,10 @@
         <tr>
           <td><bdi>{{ line.description|nl2br }}</bdi></td>
           <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
-          <td>{{ line.unit.nameIn(locale) }}</td>
+          <td>{{ page.names.unit(line.unit) }}</td>
           <td class="number">{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}</td>
           <td class="number">{% if line.discountRate %}{{ line.discountRate|decimal(0, locale, page.numberFormat) }} %{% elseif line.discountAmount %}{{ line.discountAmount|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
-          <td>{% for tax in line.taxes %}{{ loop.first ? '' : 'format.list_separator'|trans({}, t, locale) }}<bdi>{{ tax_label(page.taxNames[tax.code] ?? tax.code, tax.rate, locale, page.numberFormat) }}</bdi>{% endfor %}</td>
+          <td>{% for tax in line.taxes %}{{ loop.first ? '' : 'format.list_separator'|trans({}, t, locale) }}<bdi>{{ tax_label(page.names.taxes[tax.code] ?? tax.code, tax.rate, locale, page.numberFormat) }}</bdi>{% endfor %}</td>
           <td class="number">{{ figures.lines[loop.index0].net|decimal(scale, locale, page.numberFormat) }}</td>
         </tr>
         {%- if sectionEnds[loop.index0] is defined %}
@@ -136,18 +136,18 @@
     {%- endif %}
     {%- for tax in figures.taxes %}
       <tr>
-        <td><bdi>{{ tax_label(page.taxNames[tax.code] ?? tax.code, tax.rate, locale, page.numberFormat) }}</bdi> <span class="muted">({{ tax.base|decimal(scale, locale, page.numberFormat) }})</span></td>
+        <td><bdi>{{ tax_label(page.names.taxes[tax.code] ?? tax.code, tax.rate, locale, page.numberFormat) }}</bdi> <span class="muted">({{ tax.base|decimal(scale, locale, page.numberFormat) }})</span></td>
         <td class="number">{{ tax.amount|decimal(scale, locale, page.numberFormat) }}</td>
       </tr>
     {%- endfor %}
     <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalTax|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- for charge in figures.fixedTaxes %}
-      <tr><td><bdi>{{ page.taxNames[charge.code] ?? charge.code }}</bdi></td><td class="number">{{ charge.amount|decimal(scale, locale, page.numberFormat) }}</td></tr>
+      <tr><td><bdi>{{ page.names.taxes[charge.code] ?? charge.code }}</bdi></td><td class="number">{{ charge.amount|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- endfor %}
     <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ figures.total|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- for withholding in figures.withholdings %}
       <tr>
-        <td>{% if page.taxNames[withholding.code] is not defined %}{{ 'totals.withheld'|trans({}, t, locale) }} {% endif %}<bdi>{{ tax_label(page.taxNames[withholding.code] ?? withholding.code, withholding.rate, locale, page.numberFormat) }}</bdi> <span class="muted">({{ withholding.base|decimal(scale, locale, page.numberFormat) }})</span></td>
+        <td>{% if page.names.taxes[withholding.code] is not defined %}{{ 'totals.withheld'|trans({}, t, locale) }} {% endif %}<bdi>{{ tax_label(page.names.taxes[withholding.code] ?? withholding.code, withholding.rate, locale, page.numberFormat) }}</bdi> <span class="muted">({{ withholding.base|decimal(scale, locale, page.numberFormat) }})</span></td>
         <td class="number">{{ withholding.amount|deduction(scale, locale, page.numberFormat) }}</td>
       </tr>
     {%- endfor %}

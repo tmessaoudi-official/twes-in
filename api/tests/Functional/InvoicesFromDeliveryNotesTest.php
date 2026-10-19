@@ -26,6 +26,7 @@ use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tests\Support\KeptNames;
 use Symfony\Component\HttpFoundation\Response;
 
 /** An invoice drafted from delivery notes, and the notes it invoices once it is issued. */
@@ -663,7 +664,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertNotNull($unit);
         $now = new \DateTimeImmutable();
         $note = DeliveryNote::create($company, $establishment, $this->customer('CLI-'.substr($company->getId()->toRfc4122(), -4), $company), new DeliveryNoteHeader(), [new DeliveryNoteLineDetails(null, 'Pièce', '1', $unit, '10', [])], $now);
-        $note->validate('BL-'.substr($company->getId()->toRfc4122(), -6), $now, new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $now);
+        $note->validate('BL-'.substr($company->getId()->toRfc4122(), -6), $now, new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), KeptNames::of($note), $now);
         $note->releaseEvents();
         $this->em()->persist($note);
         $this->em()->flush();

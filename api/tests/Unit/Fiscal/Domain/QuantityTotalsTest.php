@@ -12,6 +12,7 @@ namespace App\Tests\Unit\Fiscal\Domain;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
 use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\TestCase;
 
@@ -30,16 +31,18 @@ final class QuantityTotalsTest extends TestCase
         self::assertEquals([new QuantityTotal('kg', 3, '3.300'), new QuantityTotal('pièce', 0, '12')], $totals);
     }
 
-    public function testEachUnitIsNamedInTheDocumentsLanguage(): void
+    public function testEachUnitIsNamedAsTheDocumentNamesIt(): void
     {
         $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $now = new \DateTimeImmutable('2026-10-19 10:00:00');
         $piece = Unit::create($company, 'C62', 'Unité', 0, 10, $now, ['ar' => 'وحدة']);
         $kilo = Unit::create($company, 'KGM', 'Kilogramme', 3, 20, $now);
 
-        $totals = QuantityTotals::ofUnits([[$piece, '2'], [$kilo, '1.500'], [$piece, '3']], 'ar');
+        $totals = QuantityTotals::ofUnits([[$piece, '2'], [$kilo, '1.500'], [$piece, '3']], PrintedNames::in('ar', [$piece, $kilo], []));
+        $kept = QuantityTotals::ofUnits([[$piece, '2'], [$kilo, '1.500']], new PrintedNames(['C62' => 'قطعة', 'KGM' => 'كغ'], []));
 
         self::assertEquals([new QuantityTotal('وحدة', 0, '5'), new QuantityTotal('Kilogramme', 3, '1.500')], $totals);
+        self::assertEquals([new QuantityTotal('قطعة', 0, '2'), new QuantityTotal('كغ', 3, '1.500')], $kept, 'the names a document kept, not the units\' own');
     }
 
     public function testOneLineHasNothingToAddUp(): void

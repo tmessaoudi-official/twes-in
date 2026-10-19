@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Module\Invoices\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\Model\TaxComponent;
@@ -129,6 +130,7 @@ final class InvoiceWorkflowTest extends TestCase
             $this->quotes = new InMemoryDepositQuotes(),
             ShippedFiscalPresets::scales(),
             new SealInvoiceChains(new InMemoryInvoiceChains($this->invoices), $numbers, $this->transactions),
+            new DocumentNames($this->taxes),
         );
         foreach ([$this->company, $this->globex] as $company) {
             $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));
@@ -185,6 +187,30 @@ final class InvoiceWorkflowTest extends TestCase
      * A deposit draft is edited like any other: issued, it is held to what its quote nets less what the quote's issued
      * deposits charged, and a refusal takes no number. Another deposit still a draft charges nothing yet.
      */
+    /**
+     * What a copy prints the units and taxes as is kept as the invoice is issued, in its own language, for every tax of
+     * the company: a charge or a withholding the totals add is named from it as surely as a line's tax.
+     */
+    public function testIssuingKeepsTheNamesOfItsUnitsAndOfEveryTaxInTheDocumentsLanguage(): void
+    {
+        $customer = $this->customer('export', 'fiscal.mention.tn.export');
+        $this->change->change(new SettingContext($this->company, customerId: $customer->getId()), 'document.language', SettingLevel::Customer, 'ar', null);
+        $draft = $this->draft($customer);
+        self::assertNull($draft->getPrintedNames(), 'a draft prints the names as they are');
+
+        $invoice = $this->workflow->issue($this->company, $draft->getId(), null);
+
+        $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($unit);
+        $taxes = [];
+        foreach ($this->taxes->ofCompany($this->company->getId()) as $component) {
+            $taxes[$component->getCode()] = $component->nameIn('ar');
+        }
+        self::assertSame(['C62' => $unit->nameIn('ar')], $invoice->getPrintedNames()?->units);
+        self::assertSame($taxes, $invoice->getPrintedNames()->taxes);
+        self::assertSame('معلوم الطابع الجبائي', $invoice->getPrintedNames()?->taxes['TIMBRE'] ?? null);
+    }
+
     public function testADepositIsIssuedOnlyWithinWhatItsQuoteLeaves(): void
     {
         $customer = $this->customer('standard', null);

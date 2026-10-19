@@ -10,10 +10,11 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Invoices;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Fiscal\Application\TaxComponent\TaxNames;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
@@ -37,6 +38,7 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\KeptNames;
 use App\Tests\Support\ShippedFiscalPresets;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -101,7 +103,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         self::assertStringNotContainsString('data-testid="chain-fingerprint"', $this->html(new DocumentDesign(), [], []), 'a draft is in no chain');
 
         $now = new \DateTimeImmutable('2026-10-07 09:00:00');
-        $this->invoice->issue(new InvoiceIssue('FAC-2026-00001', $now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing): InvoiceFigures => $this->totals->issued($issuing), $now);
+        $this->invoice->issue(new InvoiceIssue('FAC-2026-00001', $now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($this->invoice)), fn (Invoice $issuing): InvoiceFigures => $this->totals->issued($issuing), $now);
         $this->invoice->seal(1, null);
         $hash = $this->invoice->getChainHash();
         self::assertNotNull($hash);
@@ -181,7 +183,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         $figures = $this->totals->figures($invoice);
         self::assertNotSame([], $figures->withholdings, 'the invoice withholds something');
         $template = static::getContainer()->get(InvoiceTemplate::class);
-        $page = static fn (string $language, bool $named): string => $template->html(new InvoicePage($invoice, $figures, CustomerSnapshot::of($customer), SellerSnapshot::of($company, $invoice->getEstablishment()), InvoicePage::DRAFT, $language, '', [], null, null, taxNames: $named ? new TaxNames($taxes)->in($company, $language) : []));
+        $page = static fn (string $language, bool $named): string => $template->html(new InvoicePage($invoice, $figures, CustomerSnapshot::of($customer), SellerSnapshot::of($company, $invoice->getEstablishment()), InvoicePage::DRAFT, $language, '', [], null, null, names: $named ? new DocumentNames($taxes)->now($company, $language, [$unit]) : KeptNames::of($invoice, $language)));
 
         $arabic = $page('ar', true);
         self::assertStringContainsString('<td><bdi>FODEC 1 %</bdi>، <bdi>أ.ق.م 19 %</bdi></td>', $arabic, 'the line, listed as Arabic lists');
@@ -210,8 +212,8 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         $figures = $this->totals->figures($invoice);
         $template = static::getContainer()->get(InvoiceTemplate::class);
 
-        self::assertStringContainsString('<td><bdi>معلوم الطابع الجبائي</bdi></td>', $template->html(new InvoicePage($invoice, $figures, CustomerSnapshot::of($customer), SellerSnapshot::of($company, $invoice->getEstablishment()), InvoicePage::DRAFT, 'ar', '', [], null, null, taxNames: ['TIMBRE' => 'معلوم الطابع الجبائي'])));
-        self::assertStringContainsString('<td><bdi>TIMBRE</bdi></td>', $template->html(new InvoicePage($invoice, $figures, CustomerSnapshot::of($customer), SellerSnapshot::of($company, $invoice->getEstablishment()), InvoicePage::DRAFT, 'ar', '', [], null, null)));
+        self::assertStringContainsString('<td><bdi>معلوم الطابع الجبائي</bdi></td>', $template->html(new InvoicePage($invoice, $figures, CustomerSnapshot::of($customer), SellerSnapshot::of($company, $invoice->getEstablishment()), InvoicePage::DRAFT, 'ar', '', [], null, null, names: new PrintedNames(KeptNames::of($invoice, 'ar')->units, ['TIMBRE' => 'معلوم الطابع الجبائي']))));
+        self::assertStringContainsString('<td><bdi>TIMBRE</bdi></td>', $template->html(new InvoicePage($invoice, $figures, CustomerSnapshot::of($customer), SellerSnapshot::of($company, $invoice->getEstablishment()), InvoicePage::DRAFT, 'ar', '', [], null, null, names: KeptNames::of($invoice, 'ar'))));
     }
 
     public function testTheClassicDesignByDefaultPrintsInTheInkDocumentsAlwaysPrintedIn(): void
@@ -260,7 +262,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         $invoice = Invoice::create($this->invoice->getCompany(), $this->invoice->getEstablishment(), $this->invoice->getCustomer(), new InvoiceHeader(discountAmount: '30'), [
             new InvoiceLineDetails(null, 'Réglage du tour', '2', $line->getUnit(), '150', null, [$line->getTaxes()[0]->getTaxComponent()]),
         ], [], $now);
-        $invoice->issue(new InvoiceIssue('FAC-2026-00001', $now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing): InvoiceFigures => $this->totals->issued($issuing), $now);
+        $invoice->issue(new InvoiceIssue('FAC-2026-00001', $now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($invoice)), fn (Invoice $issuing): InvoiceFigures => $this->totals->issued($issuing), $now);
         $this->invoice = Invoice::creditNoteFor($invoice, 'Retour', $now);
         self::assertNull($this->invoice->getHeader()->discountAmount, 'the credit note has no discount of its own');
 
@@ -377,7 +379,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
             design: $design,
             savings: $savings,
             quantities: $quantities,
-            taxNames: $taxNames,
+            names: new PrintedNames(KeptNames::of($this->invoice, $language)->units, $taxNames),
         ));
     }
 }

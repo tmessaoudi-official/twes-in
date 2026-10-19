@@ -36,6 +36,7 @@ use App\Shared\Domain\ValueObject\PaymentMethod;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tests\Support\KeptNames;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
@@ -276,7 +277,7 @@ final class SummarizeInvoicesTest extends KernelTestCase
     {
         $company ??= $this->company;
         $invoice = Invoice::create($company, $this->establishment($company), $this->customer($company, $customer), new InvoiceHeader(), [$this->line($company, array_keys($taxes))], [], $this->clock->now());
-        $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), $terms, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (): InvoiceFigures => $this->figures($total, $taxes, $withholding), $this->clock->now());
+        $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), $terms, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($invoice)), fn (): InvoiceFigures => $this->figures($total, $taxes, $withholding), $this->clock->now());
         static::getContainer()->get(InvoiceRepository::class)->save($invoice);
 
         return $invoice;
@@ -285,7 +286,7 @@ final class SummarizeInvoicesTest extends KernelTestCase
     private function issuedAt(string $number, string $day, InvoiceFigures $figures): Invoice
     {
         $invoice = Invoice::create($this->company, $this->establishment($this->company), $this->customer($this->company, $number), new InvoiceHeader(), [$this->line($this->company, [])], [], $this->clock->now());
-        $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), static fn (): InvoiceFigures => $figures, $this->clock->now());
+        $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($invoice)), static fn (): InvoiceFigures => $figures, $this->clock->now());
         static::getContainer()->get(InvoiceRepository::class)->save($invoice);
 
         return $invoice;
@@ -295,7 +296,7 @@ final class SummarizeInvoicesTest extends KernelTestCase
     private function credit(Invoice $invoice, string $number, string $day, string $total, array $taxes, string $withholding = '0.000'): Invoice
     {
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
-        $credit->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (): InvoiceFigures => $this->figures($total, $taxes, $withholding), $this->clock->now());
+        $credit->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($credit)), fn (): InvoiceFigures => $this->figures($total, $taxes, $withholding), $this->clock->now());
         $invoice->credit($credit, $this->clock->now());
         $invoices = static::getContainer()->get(InvoiceRepository::class);
         $invoices->save($credit);

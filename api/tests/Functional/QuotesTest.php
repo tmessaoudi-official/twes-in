@@ -435,7 +435,10 @@ final class QuotesTest extends ApiTestCase
         $this->getJson($this->path($id).'/attachments/'.$attachment.'/content');
         self::assertResponseIsSuccessful();
 
-        // Its tax renamed since: the quote prints the company's name for it in the quote's language, with the rate it froze.
+        // Its tax renamed since: the quote prints the name it was sent with, in its language, with the rate it froze; a
+        // company keeping the names live prints the name it has now.
+        $kept = $this->text(\sprintf("SELECT q.printed_names->'taxes'->>t.code FROM quote q JOIN quote_line l ON l.quote_id = q.id JOIN quote_line_tax qt ON qt.line_id = l.id JOIN tax_component t ON t.id = qt.tax_component_id WHERE q.id = '%s' LIMIT 1", $id));
+        self::assertNotSame('', $kept, 'sending kept the name of the tax it printed');
         $this->em()->getConnection()->executeStatement("UPDATE tax_component SET name = 'Autre nom', names = CAST(? AS jsonb) WHERE id IN (SELECT t.tax_component_id FROM quote_line_tax t JOIN quote_line l ON l.id = t.line_id WHERE l.quote_id = ?)", ['{"fr": "Taxe du devis"}', $id]);
         $this->client->request('GET', $this->path($id).'/pdf');
         self::assertResponseIsSuccessful();
@@ -443,7 +446,13 @@ final class QuotesTest extends ApiTestCase
         $html = (string) end(static::getContainer()->get(FakePdfRenderer::class)->rendered);
         self::assertStringContainsString('Bon pour accord', $html);
         self::assertStringContainsString('jusqu’au', $html);
-        self::assertMatchesRegularExpression('#<bdi>Taxe du devis \(\d+(,\d+)?\x{a0}%\)</bdi>#u', $html);
+        self::assertStringContainsString('<bdi>'.$kept, $html);
+        self::assertStringNotContainsString('Taxe du devis', $html);
+
+        $this->give(SettingLevel::Company, 'document.names_as_issued', false);
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseIsSuccessful();
+        self::assertMatchesRegularExpression('#<bdi>Taxe du devis \(\d+(,\d+)?\x{a0}%\)</bdi>#u', (string) end(static::getContainer()->get(FakePdfRenderer::class)->rendered));
 
         $this->sendJson('DELETE', $this->path($id).'/attachments/'.$attachment);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'a file attached by mistake comes off');
@@ -539,7 +548,7 @@ final class QuotesTest extends ApiTestCase
         ], ...$changes];
     }
 
-    private function give(SettingLevel $level, string $key, int $value): void
+    private function give(SettingLevel $level, string $key, int|bool $value): void
     {
         // The test client's requests reboot the kernel: the company is the one its entity manager holds now.
         $company = $this->em()->find(Company::class, $this->company->getId());

@@ -12,8 +12,9 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
-use App\Fiscal\Application\TaxComponent\TaxNames;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
@@ -42,7 +43,7 @@ final readonly class PrintDeliveryNote
         private PdfRenderer $renderer,
         private Files $files,
         private ReadSetting $settings,
-        private TaxNames $taxNames,
+        private DocumentNames $names,
         private Transactions $transactions,
     ) {
     }
@@ -106,6 +107,8 @@ final readonly class PrintDeliveryNote
     private function render(DeliveryNote $note, ?string $watermark): string
     {
         $printing = $note->getPrintSettings() ?? DeliveryNotePrinting::today($this->settings, $note);
+        // A note has no copy: what it prints once numbered is its original, which names things as it was validated with.
+        $names = $note->getPrintedNames() ?? $this->names->now($note->getCompany(), $printing->language, array_map(static fn (DeliveryNoteLine $line): Unit => $line->getUnit(), $note->getLines()));
 
         return $this->renderer->render($this->template->html(new DeliveryNotePage(
             $note,
@@ -120,9 +123,9 @@ final readonly class PrintDeliveryNote
             $printing->print->dateFormat,
             $printing->print->numberFormat,
             $printing->print->design,
-            QuantityTotals::ofUnits(array_map(static fn (DeliveryNoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $note->getLines()), $printing->language),
+            QuantityTotals::ofUnits(array_map(static fn (DeliveryNoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $note->getLines()), $names),
             $printing->print->exemptionReference,
-            $this->taxNames->in($note->getCompany(), $printing->language),
+            $names,
         )));
     }
 

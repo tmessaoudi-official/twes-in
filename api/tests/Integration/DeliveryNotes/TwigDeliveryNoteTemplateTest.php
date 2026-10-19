@@ -12,6 +12,7 @@ namespace App\Tests\Integration\DeliveryNotes;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
@@ -31,6 +32,7 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\KeptNames;
 use App\Tests\Support\ShippedFiscalPresets;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
@@ -64,7 +66,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         $this->note = DeliveryNote::create($company, $establishments->ofCompany($company->getId())[0], $customer, new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-20'), customerReference: 'PO-77', remarksPrinted: 'Livrer au quai 3.'), [
             new DeliveryNoteLineDetails(null, 'Portable <14">', '2', $piece, '1250', [$levy]),
         ], $now);
-        $this->note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $now);
+        $this->note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), KeptNames::of($this->note), $now);
         $this->totals = new DeliveryNoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
     }
 
@@ -192,6 +194,6 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         $seller = $this->note->getSellerSnapshot();
         self::assertInstanceOf(SellerSnapshot::class, $seller);
 
-        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $customer ?? $snapshot, $seller, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat, quantities: $quantities, exemptionReference: $exemptionReference, taxNames: $taxNames));
+        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $customer ?? $snapshot, $seller, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat, quantities: $quantities, exemptionReference: $exemptionReference, names: new PrintedNames(KeptNames::of($this->note, $language)->units, $taxNames)));
     }
 }
