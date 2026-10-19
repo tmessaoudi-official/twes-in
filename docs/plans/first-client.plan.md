@@ -238,6 +238,22 @@ was and was not certified by execution.
 ### Known issues
 - Step 4b: on a phone the top bar cuts the company's name (« Carthage Con… », 149 Arabic shots, 2026-10-19); its whole
   name is the switcher's tooltip and accessible name. Not a list value, so not under the 21:20 ruling; left as is.
+- Step 4b, Arabic gallery of 2026-10-19 after #64 (425 shots, three window classes, light and dark, none missed): axe
+  found nothing on its 380 scans, and the audit, now counting a list cell holding more than it shows, found no cut
+  value; its only cut text is the phone's company name above. Seen there, not changed: the units list on an Arabic
+  screen shows each unit's name as the company writes it (« Unité »), not its Arabic printed name; whether a list
+  should read a catalogue entry in the screen's language is the developer's call.
+- Step 4b (#64), found by CI on 1c77637c: a column measured a link wrapping a block (the invoice's two-line number) at
+  the cell's own box, which the table stretches to fill the card, so the number column grew at every measure and
+  pushed the date and the status out of the invoices list at 1280 px. Only boxes of their own width (badges, icons)
+  are measured now, beside the words; `list-fit.spec.ts` widens and narrows the window and requires the same width
+  back (red before the fix: 905 px became 920). With it, the invoices list at 1280 px (card 960) holds the number
+  190, the customer 238, what is left to pay 140, the status 180 and the row's controls 192: 940, so a customer name
+  past about 226 px of text still sends the status away, as ruled; the status floor of 180 is the first candidate
+  of the floor sweep (#65) for the developer's call.
+- Step 4b: five scenarios reloaded right after a presentation choice, before its save had answered, and the reload
+  cancelled it (the stock map's label choice went red on CI). They wait for the save now (`choiceSaved`,
+  `web/e2e/presentation.ts`).
 - Step 4b (#64): a list measures its headers as well as its values, but no header yet passes its declared width, so that
   measure is not exercised by execution (its sabotage survived); the floor sweep (#65, after the freeze) is what makes
   it matter. The no-cut scenario reads a customer, a product and a vendor of its own, whose 32-character codes run past

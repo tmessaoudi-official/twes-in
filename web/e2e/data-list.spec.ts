@@ -2,7 +2,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { aProduct, forget, stockKept } from './catalogue';
-import { forgetPresentationChoices } from './presentation';
+import { choiceSaved, forgetPresentationChoices } from './presentation';
 import { OPERATOR_EMAIL as EMAIL, inACompany, signIn as logIn } from './session';
 import { sidewaysOverflow } from './overflow';
 import { holds, pickOption } from './select';
@@ -45,8 +45,10 @@ test('a column hidden from the chooser stays hidden after a reload, until the co
 
   await page.getByTestId('list-columns').click();
   await expectAccessible(page, 'members, column chooser open');
+  const hidden = choiceSaved(page, 'presentation.list.members');
   await page.getByTestId('list-column-toggle-role').click();
   await expect(page.getByTestId('list-header-role')).toHaveCount(0);
+  await hidden;
 
   await page.reload();
   await expect(page.getByTestId(`member-${EMAIL}`)).toBeVisible();
@@ -132,6 +134,7 @@ test('a column moves without dragging, and the order survives a reload', async (
   await openMembers(page);
 
   await page.getByTestId('list-columns').click();
+  const placed = choiceSaved(page, 'presentation.list.members');
   await page.getByTestId('list-column-up-role').click();
   // Read in the chooser, which lists every column in its order: on a narrow card the last may give way for width.
   const order = () =>
@@ -141,6 +144,7 @@ test('a column moves without dragging, and the order survives a reload', async (
   const moved = ['list-column-toggle-name', 'list-column-toggle-role', 'list-column-toggle-email'];
   await expect.poll(order).toEqual(moved);
   await page.keyboard.press('Escape');
+  await placed;
 
   await page.reload();
   await expect(page.getByTestId(`member-${EMAIL}`)).toBeVisible();
@@ -152,8 +156,10 @@ test('the dark scheme survives a reload', async ({ page }) => {
   await signIn(page);
   // Signed in, the scheme is in the member's menu (docs/SPEC.md § 7, 2026-09-25 17:22).
   await page.getByTestId('user-menu').click();
+  const dark = choiceSaved(page, 'presentation.scheme', 'dark');
   await page.getByTestId('account-scheme-dark').click();
   await expect(page.locator('html')).toHaveClass(/theme-dark/);
+  await dark;
 
   await page.reload();
   await expect(page.getByTestId('greeting')).toBeVisible();

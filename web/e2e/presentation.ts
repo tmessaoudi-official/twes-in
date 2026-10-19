@@ -35,3 +35,19 @@ export async function forgetPresentationChoices(page: Page): Promise<void> {
   // What the page already shows was read before the choices were forgotten.
   await page.reload();
 }
+
+/**
+ * The save of one presentation choice, awaited before a reload: the choice is a request of its own, and a reload sent
+ * before its answer cancels it, so the next page opens on the choice before. Set it up before the click that makes
+ * the choice; `holding` tells it from a save of the same key still on its way, by a word its body carries.
+ */
+export function choiceSaved(page: Page, key: string, holding?: string): Promise<void> {
+  return page
+    .waitForResponse(
+      (response) =>
+        response.request().method() === 'PUT' &&
+        new URL(response.url()).pathname.endsWith(`/settings/${key}`) &&
+        (holding === undefined || (response.request().postData() ?? '').includes(holding)),
+    )
+    .then((response) => expect(response.ok(), `saving ${key}`).toBe(true));
+}
