@@ -620,6 +620,10 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   explained as a re-measure and the test "fixed", while the saved widths read 305, 321, 321: a press lost because the
   handler widened the `column` object the header last drew. A handler handed a template's object reads it as last
   rendered; read the current state by its id (2026-10-19, `DataList.onResizeKey`).
+- A setting declared in a section of the settings page takes one cell of its two-column grid and moves every field after
+  it by one; only `web/e2e/settings.spec.ts`'s row test sees it, and it reddened master (2026-10-19). Run that spec after
+  declaring a setting, and say in its comment what it pairs with. A label that wraps where its neighbour does not lowers
+  its input: a sentence goes in `SETTING_HINTS`, under a short label.
 - Symfony's `Request::create`, under every BrowserKit test request, sends `Accept-Language: en-us,en;q=0.5`, and the API now
   answers in the language a request names: `ApiTestCase` sends `fr` as the web does, and a test of another language sets it
   per request. A screen word the API writes follows the request, never `User.locale`, which only mails read (2026-10-19).
