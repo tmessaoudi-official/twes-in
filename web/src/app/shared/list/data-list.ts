@@ -149,9 +149,10 @@ export const LIST_SEARCH_PAUSE_MS = 300;
 const clampWidth = (width: number): number => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
 
 /**
- * How wide a cell's value draws whole, its padding included. A cell never wraps, so its text lays out on one line
- * however narrow the column: a range over each text measures it whole even where an ellipsis cuts what is painted,
- * and an inline box (a chip, an icon) by its own box. A block box would measure the column, not its value.
+ * How wide a cell's value, or a header's label, draws whole, its padding included. A cell never wraps, so its text
+ * lays out on one line however narrow the column: a range over each text measures it whole even where an ellipsis cuts
+ * what is painted, and an inline box (a chip, an icon) by its own box. A block box would measure the column, not its
+ * value.
  */
 function valueWidth(cell: HTMLElement, range: Range): number {
   let start = Number.POSITIVE_INFINITY;
@@ -173,6 +174,9 @@ function valueWidth(cell: HTMLElement, range: Range): number {
     if (getComputedStyle(element).display.startsWith('inline'))
       take(element.getBoundingClientRect());
   }
+  // A header's sort arrow is a block beside its label, there whether or not the column is sorted.
+  const arrow = cell.querySelector('.mat-sort-header-arrow');
+  if (arrow !== null) take(arrow.getBoundingClientRect());
   if (end < start) return 0;
   const style = getComputedStyle(cell);
   return Math.ceil(
@@ -1101,9 +1105,13 @@ export class DataList<Row> implements OnInit {
     return fittedWidth(this.declaredWidth(column), this.widest().get(column.id), chosen, MAX_WIDTH);
   }
 
-  /** Measures every value the rows show, column by column; the columns not shown keep what they last measured. */
+  /**
+   * Measures every column's header and the values its rows show; the columns not shown keep what they last measured.
+   */
   private measureValues(box: HTMLElement): void {
-    const cells = box.querySelectorAll<HTMLElement>('tr.mat-mdc-row > td[data-column]');
+    const cells = box.querySelectorAll<HTMLElement>(
+      'tr.mat-mdc-header-row > th[data-column], tr.mat-mdc-row > td[data-column]',
+    );
     if (cells.length === 0) return;
     const range = this.document.createRange();
     const measured = new Map<string, number>();

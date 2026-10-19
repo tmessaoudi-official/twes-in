@@ -58,7 +58,10 @@ function answered(page: Page): Promise<boolean> {
   );
 }
 
-/** The values a list's rows show cut short: the gallery audit's own test, a clipping box narrower than its text. */
+/**
+ * The values a list's rows show cut short, by the gallery audit's own test (a clipping box narrower than its text), and
+ * the headers whose label overruns their cell.
+ */
 async function cutValues(page: Page): Promise<{ rows: number; cut: string[] }> {
   return page.evaluate((recordRow) => {
     const rows = [...document.querySelectorAll(recordRow)];
@@ -72,7 +75,22 @@ async function cutValues(page: Page): Promise<{ rows: number; cut: string[] }> {
         })
         .map((element) => (element.textContent ?? '').trim()),
     );
-    return { rows: rows.length, cut };
+    // A header is cut when its label draws past its cell's padding: it has no clipping box of its own.
+    const headers = [...document.querySelectorAll<HTMLElement>('th[data-column]')].flatMap(
+      (header) => {
+        const label = header.querySelector('.mat-sort-header-content') ?? header;
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        const drawn = range.getBoundingClientRect();
+        const box = header.getBoundingClientRect();
+        const style = getComputedStyle(header);
+        const inside =
+          drawn.left >= box.left + parseFloat(style.paddingLeft) - 1 &&
+          drawn.right <= box.right - parseFloat(style.paddingRight) + 1;
+        return inside ? [] : [`header ${(label.textContent ?? '').trim()}`];
+      },
+    );
+    return { rows: rows.length, cut: [...cut, ...headers] };
   }, RECORD_ROW);
 }
 

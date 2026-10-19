@@ -134,8 +134,6 @@ export class RecurringExpensesPage implements OnInit {
         label: `${TEXTS}.columns.schedule`,
         value: (row) => SCHEDULE_UNITS.indexOf(row.schedule.unit) * 100 + row.schedule.every,
         sortable: true,
-        // The sentence is what the column is read for: room for « Tous les 3 mois, le dernier vendredi ».
-        width: 300,
       },
       {
         id: 'amount',

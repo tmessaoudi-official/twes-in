@@ -407,7 +407,9 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('stock-drawing-cancel').click();
       await expect(page.getByTestId('stock-map-trace')).toHaveAttribute('aria-pressed', 'false');
 
+      // Filtered first: the locations other runs left sort it onto a later page.
       await page.goto('/stock/locations');
+      await page.getByTestId('list-filter').fill(code);
       await expect(page.getByTestId(`stock-location-${code}`)).toBeVisible();
     } finally {
       // A timed-out case closes its page, and cleaning a closed page throws over the failure that caused it —
@@ -574,7 +576,9 @@ test.describe('the drawn stock map', () => {
       await expect(page.getByTestId('stock-map-chosen')).toHaveCount(0);
 
       // And each copy is a stock location of its own, ready for goods rather than a picture of one.
+      // Filtered first: the locations other runs left sort them onto a later page.
       await page.goto('/stock/locations');
+      await page.getByTestId('list-filter').fill(stem);
       for (const at of [2, 3, 4]) {
         await expect(page.getByTestId(`stock-location-${stem}${at}`)).toBeVisible();
       }

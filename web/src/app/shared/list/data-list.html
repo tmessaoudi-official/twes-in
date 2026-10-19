@@ -510,6 +510,7 @@
               class="relative"
               [class]="column.align === 'end' ? '!text-end' : ''"
               [style.width.px]="widthOf(column)"
+              [attr.data-column]="column.id"
               [attr.data-testid]="'list-header-' + column.id"
             >
               {{ column.label | translate }}
