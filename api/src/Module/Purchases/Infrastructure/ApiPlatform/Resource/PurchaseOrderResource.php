@@ -260,6 +260,11 @@ final class PurchaseOrderResource
     #[Groups([self::READ])]
     public ?string $totalNet = null;
 
+    /** The decimals the company's currency is written with, which a price is shown at unless it has more. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public int $currencyScale = 0;
+
     /**
      * The receipts against the order, the oldest first, each with what came of each line, where and in which lot.
      *
@@ -336,6 +341,7 @@ final class PurchaseOrderResource
             ];
         }
         $resource->totalNet = $totals?->total;
+        $resource->currencyScale = $scale;
         $resource->receipts = array_map(static fn (GoodsReceipt $receipt): array => [
             'id' => $receipt->getId()->toRfc4122(),
             'receivedOn' => $receipt->getReceivedOn()->format('Y-m-d'),

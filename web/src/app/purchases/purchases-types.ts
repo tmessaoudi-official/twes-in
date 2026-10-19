@@ -122,6 +122,8 @@ export interface PurchaseOrderRow {
   lines: PurchaseOrderLine[];
   /** At the currency's scale; null when a line's price is unknown or withheld. */
   totalNet: string | null;
+  /** The decimals the currency is written with: a price shows at it, finer only when the price itself is. */
+  currencyScale: number;
   /** Oldest first. */
   receipts: Receipt[];
 }

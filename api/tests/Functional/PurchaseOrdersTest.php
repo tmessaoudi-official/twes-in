@@ -121,6 +121,9 @@ final class PurchaseOrdersTest extends ApiTestCase
         self::assertSame(['0.2500', '0.3333'], array_column($lines, 'unitPriceNet'));
         self::assertSame(['125.000', '1.000'], array_column($lines, 'net'));
         self::assertSame('126.000', $order['totalNet']);
+        // What the screen writes a price at, as the printed order does: the dinar's three decimals, more only when a
+        // price has them.
+        self::assertSame(3, $order['currencyScale']);
     }
 
     public function testWhatTheOrderRefusesAnswersUnprocessableNamingTheField(): void

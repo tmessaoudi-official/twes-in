@@ -41,6 +41,7 @@ const answered = {
     },
   ],
   totalNet: '30.000',
+  currencyScale: 3,
   receipts: [
     {
       id: 'r1',
@@ -100,6 +101,7 @@ describe('PurchasesApi', () => {
       number: 'BC-2026-0001',
       status: 'partly_received',
       recordedVendorNumber: 'FRN-0001',
+      currencyScale: 3,
       lines: [
         { productTracking: 'lot', unitName: 'pièce', received: '4.000', outstanding: '8.000' },
       ],

@@ -177,10 +177,15 @@
                         {{ plain(line.outstanding) | amount: null }}
                       </td>
                       @if (seesCost()) {
-                        <td class="p-2 text-end tabular-nums">
-                          {{ line.unitPriceNet | amount: null }}
+                        <td
+                          class="p-2 text-end tabular-nums"
+                          [attr.data-testid]="'purchase-order-line-' + i + '-price'"
+                        >
+                          {{ line.unitPriceNet | amount: order.currencyScale }}
                         </td>
-                        <td class="p-2 text-end tabular-nums">{{ line.net | amount: null }}</td>
+                        <td class="p-2 text-end tabular-nums">
+                          {{ line.net | amount: order.currencyScale }}
+                        </td>
                       }
                     </tr>
                   }
@@ -203,7 +208,7 @@
               >)
             </dt>
             <dd class="text-end font-semibold" data-testid="purchase-order-total">
-              {{ order.totalNet | amount: null }}
+              {{ order.totalNet | amount: order.currencyScale }}
             </dd>
           </dl>
           <p class="text-xs opacity-70">{{ 'purchases.totals_as_saved' | translate }}</p>
