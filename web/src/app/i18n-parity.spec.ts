@@ -339,7 +339,8 @@ describe('translation files', () => {
           const params = Object.fromEntries(
             [...text.matchAll(/\{\{?(\w+)/g)].map((match) => [match[1], count]),
           );
-          expect((said as (params: object) => string)(params), text).not.toMatch(/[{}]|plural/);
+          // ICU's `#` is not read: the count is written as a parameter, `{{count}}`, or a screen shows « # lignes ».
+          expect((said as (params: object) => string)(params), text).not.toMatch(/[{}#]|plural/);
         }
       }
     }

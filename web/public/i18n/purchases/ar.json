@@ -116,7 +116,7 @@
       "serials_hint": "{{count}} من أصل {{expected}} منتظرة",
       "the_line": "السطر",
       "refused": "« {{field}} » مرفوض: تثبّت من القيمة.",
-      "confirm": "{count, plural, =0 {استلام} zero {استلام} one {استلام سطر واحد} two {استلام سطرين} few {استلام # أسطر} many {استلام # سطرًا} other {استلام # سطر}}",
+      "confirm": "{count, plural, =0 {استلام} zero {استلام} one {استلام سطر واحد} two {استلام سطرين} few {استلام {{count}} أسطر} many {استلام {{count}} سطرًا} other {استلام {{count}} سطر}}",
       "day_problems": {
         "day": "اكتب اليوم الذي وصلت فيه السلع.",
         "before": "تصل السلع في أقرب تقدير يوم إرسال الطلبية.",

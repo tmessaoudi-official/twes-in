@@ -489,6 +489,30 @@ describe('PurchaseOrderPage', () => {
     expect(successToasts()).toEqual([]);
   });
 
+  it('keeps a saved line where it is, showing what the API kept, so nothing typed into is redrawn', async () => {
+    order.set(orderIn('draft'));
+    await open('o1');
+    const field = q('purchase-line-0-quantity') as HTMLInputElement;
+    type('purchase-line-0-quantity', '120,5');
+    await settle();
+    const kept = orderIn('draft');
+    const saved: PurchaseOrderRow = {
+      ...kept,
+      version: kept.version + 1,
+      lines: kept.lines.map((line) => ({ ...line, quantity: '120.500' })),
+    };
+    facade.revise.mockImplementationOnce(async () => {
+      order.set(saved);
+      return saved;
+    });
+    q('document-action-save')!.click();
+    await settle();
+
+    expect(facade.revise).toHaveBeenCalled();
+    expect(q('purchase-line-0-quantity')).toBe(field);
+    expect(field.value.replace(',', '.')).toMatch(/^120\.50*$/);
+  });
+
   it('shows a save refused on a line on that line', async () => {
     order.set(orderIn('draft'));
     await open('o1');
