@@ -411,6 +411,18 @@ describe('translation files', () => {
     }
   });
 
+  // A list shows its « none » text only when it holds nothing and nothing is filtered: « ne correspond » there tells a
+  // shop with no orders yet that its search found nothing.
+  it('says an empty list holds nothing yet, never that nothing matches', () => {
+    const matches = { fr: /ne correspond/, en: /\bmatch/i, ar: /مطابق/ };
+    for (const lang of ['fr', 'en', 'ar'] as const) {
+      const said = entriesOf(load(lang)).filter(
+        ([key, text]) => key.endsWith('.none') && matches[lang].test(text),
+      );
+      expect(said, lang).toEqual([]);
+    }
+  });
+
   it('an invoice with nothing left due reads settled, not paid', () => {
     expect(paidStatus).toEqual(['Soldée', 'Settled', 'مُسوّاة', 'Soldée', 'Settled', 'مُسوّاة']);
   });

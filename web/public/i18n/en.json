@@ -2759,7 +2759,7 @@
     },
     "categories": {
       "title": "Expense categories",
-      "add": "New category",
+      "add": "Add a category",
       "intro": "Expenses are filed in a tree of categories. A category is deactivated rather than deleted, so the expenses already filed under it keep it.",
       "saved": "The category was saved.",
       "section": "Category",

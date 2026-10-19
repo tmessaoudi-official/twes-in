@@ -1,6 +1,6 @@
 {
   "purchases": {
-    "none": "Aucune commande fournisseur ne correspond.",
+    "none": "Aucune commande fournisseur pour l’instant.",
     "no_company": "Choisissez une entreprise pour voir ses commandes fournisseurs.",
     "read_only": "Vous pouvez consulter les commandes fournisseurs, pas les modifier.",
     "back": "Retour aux commandes",
