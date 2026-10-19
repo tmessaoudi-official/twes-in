@@ -8,7 +8,7 @@ import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthFacade } from '../auth/auth-facade';
 import { RecurringApi } from '../recurring/recurring-api';
-import { LanguageFacade } from '../shared/i18n/language-facade';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { onRecord, onRows } from '../shared/actions/record-action';
 import { FileSaver } from '../shared/files/save-file';
@@ -150,7 +150,7 @@ describe('InvoiceActions', () => {
         { provide: MatDialog, useValue: dialog },
         { provide: FileSaver, useValue: { save: vi.fn() } },
         { provide: RecurringApi, useValue: { create: vi.fn() } },
-        { provide: LanguageFacade, useValue: { current: () => 'fr' } },
+        { provide: FormatFacade, useValue: { locale: () => 'fr-TN' } },
         { provide: TextsParts, useValue: { open: () => Promise.resolve() } },
       ],
     });

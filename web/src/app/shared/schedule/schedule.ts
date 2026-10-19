@@ -39,15 +39,19 @@ export interface Schedule {
 
 const ANCHORED: string[] = ['month', 'year'];
 
-/** A weekday's name in a language: 1 for Monday to 7 for Sunday. The 1st of January 2024 was a Monday. */
-export function weekdayName(weekday: number, language: string): string {
-  return new Intl.DateTimeFormat(language, { weekday: 'long', timeZone: 'UTC' }).format(
+/**
+ * A weekday's name in the locale the screen writes its dates in (`FormatFacade.locale`): 1 for Monday to 7 for Sunday.
+ * The 1st of January 2024 was a Monday.
+ */
+export function weekdayName(weekday: number, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(
     Date.UTC(2024, 0, weekday),
   );
 }
 
-function monthName(day: string, language: string): string {
-  return new Intl.DateTimeFormat(language, { month: 'long', timeZone: 'UTC' }).format(
+/** A month's name as the screen's dates write it: Tunisian Arabic says « جانفي » where Arabic alone says « يناير ». */
+function monthName(day: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { month: 'long', timeZone: 'UTC' }).format(
     new Date(`${day}T00:00:00Z`),
   );
 }
@@ -64,9 +68,9 @@ function dayParts(day: string): { date: number; weekday: number; rank: number } 
  * The fields that ask how often, in the order they read: the unit, how many of them apart, then a month's or a year's
  * day and only the figures that day takes. They start as each month on `startsOn`'s date, and the weekday and its rank
  * are read from that day too, so switching to « le 3e jeudi » offers the first day's own. Weekday names come from the
- * language's calendar, not from screen texts.
+ * calendar of the locale the screen writes its dates in, not from screen texts.
  */
-export function scheduleFields(language: string, startsOn: string): FormField[] {
+export function scheduleFields(locale: string, startsOn: string): FormField[] {
   const first = dayParts(startsOn);
   const anchored = { field: 'unit', oneOf: ANCHORED };
   return [
@@ -129,7 +133,7 @@ export function scheduleFields(language: string, startsOn: string): FormField[] 
       // A name the screen texts do not hold reads as itself.
       options: [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({
         value: String(weekday),
-        label: weekdayName(weekday, language),
+        label: weekdayName(weekday, locale),
       })),
       visibleWhen: { field: 'anchor', oneOf: ['weekday', 'last_weekday'], and: anchored },
     },
@@ -177,24 +181,25 @@ export type Say = (key: string, params?: Record<string, unknown>) => string;
 
 /**
  * How often, in one sentence: « Tous les 3 mois, le dernier vendredi ». A week falls on `startsOn`'s weekday and a
- * year in its month, as the API counts them; weekday and month names come from the language's calendar.
+ * year in its month, as the API counts them; weekday and month names come from the calendar of the locale the screen
+ * writes its dates in.
  */
 export function scheduleSentence(
   schedule: Schedule,
   startsOn: string,
   say: Say,
-  language: string,
+  locale: string,
 ): string {
   const every = say(`schedule.every.${schedule.unit}`, { every: schedule.every });
   if (schedule.unit === 'day') return every;
   if (schedule.unit === 'week') {
     return say('schedule.on.week', {
       every,
-      weekday: weekdayName(dayParts(startsOn).weekday, language),
+      weekday: weekdayName(dayParts(startsOn).weekday, locale),
     });
   }
   const anchor = schedule.anchor ?? 'date';
-  const weekday = schedule.weekday === null ? '' : weekdayName(schedule.weekday, language);
+  const weekday = schedule.weekday === null ? '' : weekdayName(schedule.weekday, locale);
   const on = say(`schedule.on.${anchor}`, {
     every,
     ...(anchor === 'date' ? { day: schedule.monthDay } : {}),
@@ -202,6 +207,6 @@ export function scheduleSentence(
     ...(anchor === 'weekday' || anchor === 'last_weekday' ? { weekday } : {}),
   });
   return schedule.unit === 'year'
-    ? say('schedule.in_month', { on, month: monthName(startsOn, language) })
+    ? say('schedule.in_month', { on, month: monthName(startsOn, locale) })
     : on;
 }

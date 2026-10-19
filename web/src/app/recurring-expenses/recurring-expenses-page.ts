@@ -20,7 +20,7 @@ import { mergeSavedVersion, type FieldConflict } from '../shared/form/form-merge
 import type { FormValues } from '../shared/form/form-types';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
-import { LanguageFacade } from '../shared/i18n/language-facade';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { AMOUNT_WIDTH } from '../shared/list/list-view';
@@ -71,7 +71,7 @@ export class RecurringExpensesPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly translate = inject(TranslateService);
-  private readonly language = inject(LanguageFacade);
+  private readonly format = inject(FormatFacade);
 
   protected readonly tabs = computed(() =>
     expensesTabs(this.auth.hasModule(RECURRING_EXPENSES_MODULE)),
@@ -90,14 +90,11 @@ export class RecurringExpensesPage implements OnInit {
 
   /** How often each one recurs, in a sentence of the screen's language, read again when the language changes. */
   private readonly sentences = computed(() => {
-    const language = this.language.current();
+    const locale = this.format.locale();
     const say = (key: string, params?: Record<string, unknown>): string =>
       this.translate.instant(key, params) as string;
     return new Map(
-      this.rows().map((row) => [
-        row.id,
-        scheduleSentence(row.schedule, row.startsOn, say, language),
-      ]),
+      this.rows().map((row) => [row.id, scheduleSentence(row.schedule, row.startsOn, say, locale)]),
     );
   });
   protected readonly sentence = (row: RecurringExpenseRow): string =>
@@ -278,11 +275,7 @@ export class RecurringExpensesPage implements OnInit {
   ): Promise<void> {
     const company = this.company();
     if (!company || this.busy()) return;
-    const descriptor = recurringExpenseForm(
-      this.language.current(),
-      todayIn(company.timezone),
-      row,
-    );
+    const descriptor = recurringExpenseForm(this.format.locale(), todayIn(company.timezone), row);
     const data: RecurringExpenseDialogData = {
       descriptor,
       group: buildFormGroup(descriptor, again?.values ?? recurringExpenseValues(row)),

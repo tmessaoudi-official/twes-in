@@ -27,7 +27,7 @@ const TEXTS = 'expenses.recurring';
  * recurring asks. A revision asks the same but the first day, which has passed or is kept.
  */
 export function recurringExpenseForm(
-  language: string,
+  locale: string,
   today: string,
   revising: RecurringExpenseRow | null = null,
 ): FormDescriptor {
@@ -66,7 +66,7 @@ export function recurringExpenseForm(
         id: 'schedule',
         title: `${TEXTS}.${revising === null ? 'make' : 'revise'}.title`,
         description: `${TEXTS}.make.intro`,
-        fields: [...scheduleFields(language, startsOn), ...days],
+        fields: [...scheduleFields(locale, startsOn), ...days],
       },
     ],
   };

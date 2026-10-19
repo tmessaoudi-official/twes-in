@@ -19,7 +19,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { FileSaver } from '../shared/files/save-file';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { todayIn } from '../shared/i18n/format';
-import { LanguageFacade } from '../shared/i18n/language-facade';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SCHEDULE_TEXTS } from '../shared/schedule/schedule-texts';
 import { versus } from '../shared/ui/versus';
@@ -125,7 +125,7 @@ export class InvoiceActions {
   private readonly feedback = inject(Feedback);
   private readonly saver = inject(FileSaver);
   private readonly recurring = inject(RecurringApi);
-  private readonly language = inject(LanguageFacade);
+  private readonly format = inject(FormatFacade);
   private readonly texts = inject(TextsParts);
 
   rights(): InvoiceRights {
@@ -394,7 +394,7 @@ export class InvoiceActions {
     if (!companyId || this.facade.busy()) return;
     // The schedule's words, read in the dialog wherever the invoice is shown.
     await this.texts.open(SCHEDULE_TEXTS);
-    const descriptor = makeRecurringForm(this.language.current(), this.today());
+    const descriptor = makeRecurringForm(this.format.locale(), this.today());
     const data: MakeRecurringData = { descriptor, group: buildFormGroup(descriptor, {}) };
     const values = await firstValueFrom(
       this.dialog

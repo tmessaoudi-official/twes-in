@@ -53,7 +53,7 @@ import {
   RecurringExpenseRefused,
   RecurringExpensesApi,
 } from '../recurring-expenses/recurring-expenses-api';
-import { LanguageFacade } from '../shared/i18n/language-facade';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
@@ -109,7 +109,7 @@ export class ExpensePage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly recurring = inject(RecurringExpensesApi);
-  private readonly language = inject(LanguageFacade);
+  private readonly format = inject(FormatFacade);
   private readonly texts = inject(TextsParts);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `expenses/new`. */
@@ -414,7 +414,7 @@ export class ExpensePage {
     const current = this.current();
     if (!company || !current) return;
     await this.texts.open(SCHEDULE_TEXTS);
-    const descriptor = recurringExpenseForm(this.language.current(), todayIn(company.timezone));
+    const descriptor = recurringExpenseForm(this.format.locale(), todayIn(company.timezone));
     const data: RecurringExpenseDialogData = {
       descriptor,
       group: buildFormGroup(descriptor, {}),
