@@ -4,6 +4,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { aCustomer, aProduct, aVendor, forget, retireVendor } from './catalogue';
 import { forgetPresentationChoices } from './presentation';
 import { inACompany, signIn } from './session';
+import { runDigits } from './run';
 
 // A list hides its lowest columns when they do not fit and names them in the chooser. On the widest page every
 // column shown at first fits at its declared width: a default column hidden there would read « masquée faute de
@@ -203,6 +204,53 @@ test.describe('no list cuts a value', () => {
     }
   });
 });
+
+// A column given way keeps the width it measured, so it does not come and go as the card moves; but that width is its
+// rows': filtered down to rows it fits, it comes back.
+test('a column given way for rows a filter removes comes back for the rows left', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await forgetPresentationChoices(page);
+  const run = `V${runDigits()}`;
+  const wide = await aVendorIn(page, `${run}-W`, 'W'.repeat(120));
+  const short = await aVendorIn(page, `${run}-S`, 'Sfax');
+  try {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.goto(`/vendors?q=${run}`);
+    await expect(page.locator(RECORD_ROW)).toHaveCount(2);
+    // A city wider than the card leaves no room: its column gives way, and the chooser says so.
+    await expect(page.locator('th[data-column="city"]')).toHaveCount(0);
+    await page.getByTestId('list-filter').fill(`${run}-S`);
+    await expect(page.locator(RECORD_ROW)).toHaveCount(1);
+    await expect(page.locator('td[data-column="city"]')).toHaveText('Sfax');
+  } finally {
+    await retireVendor(page, wide);
+    await retireVendor(page, short);
+  }
+});
+
+/** A vendor in a city of the run's choosing, through the API; its id. */
+async function aVendorIn(page: Page, number: string, city: string): Promise<string> {
+  return page.evaluate(
+    async ([csrf, vendorNumber, vendorCity]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const created = await fetch(`/api/companies/${me.company.id}/vendors`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({
+          number: vendorNumber,
+          name: `Fournisseur ${vendorNumber}`,
+          city: vendorCity,
+        }),
+      });
+      if (!created.ok) throw new Error(`creating ${vendorNumber} answered ${created.status}`);
+      return ((await created.json()) as { id: string }).id;
+    },
+    [CSRF, number, city] as const,
+  );
+}
 
 function tableMinWidth(page: Page): Promise<string> {
   return page.evaluate(
