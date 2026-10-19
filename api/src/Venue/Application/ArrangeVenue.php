@@ -323,6 +323,29 @@ final readonly class ArrangeVenue
         });
     }
 
+    /**
+     * Whether a piece is still the version a person read it at, for a step that changes several at once and must
+     * refuse before writing any of them.
+     *
+     * @throws VenueStructureNotFound
+     * @throws RecordChanged
+     */
+    public function expectStructure(Company $company, Uuid $structureId, int $version): void
+    {
+        $this->versions->expect($this->structure($company, $structureId), $version);
+    }
+
+    /**
+     * Whether a floor is still the version a person read it at, for the same kind of step.
+     *
+     * @throws VenueAreaNotFound
+     * @throws RecordChanged
+     */
+    public function expectArea(Company $company, Uuid $areaId, int $version): void
+    {
+        $this->versions->expect($this->area($company, $areaId), $version);
+    }
+
     /** @throws VenueStructureNotFound */
     public function removeStructure(Company $company, Uuid $structureId, ?Uuid $actorUserId): void
     {

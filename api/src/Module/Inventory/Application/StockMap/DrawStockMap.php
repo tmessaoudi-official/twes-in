@@ -22,9 +22,11 @@ use App\Venue\Application\ArrangeVenue;
 use App\Venue\Application\VenueAreaNotFound;
 use App\Venue\Application\VenueLevelTaken;
 use App\Venue\Application\VenueSpotNotFound;
+use App\Venue\Application\VenueStructureNotFound;
 use App\Venue\Domain\Exception\InvalidVenue;
 use App\Venue\Domain\Model\VenueArea;
 use App\Venue\Domain\Model\VenueSpot;
+use App\Venue\Domain\Model\VenueStructure;
 use App\Venue\Domain\ValueObject\PlanRect;
 use App\Venue\Domain\ValueObject\PlanWay;
 use Symfony\Component\Uid\Uuid;
@@ -421,31 +423,114 @@ final readonly class DrawStockMap
     }
 
     /**
-     * A group chosen on the plan, changed as one step: rectangles drawn for places, rectangles moved or turned, and
-     * rectangles undrawn, all of it or none of it. The inverse of a step is a step of the same shape, which is how one
-     * « Annuler » takes back a whole group's move or undrawing.
+     * One floor's draft, saved as one step: rectangles drawn for places, moved, turned, given another place or undrawn,
+     * places created with their rectangles, the building's pieces built, reshaped or removed, and the floor's own size,
+     * all of it or none of it. The inverse of a step is a step of the same shape, which is how one « Annuler » takes a
+     * whole draft back; the answer says what the step created, so that inverse can be built.
      *
-     * Everything named is resolved before the first write, so a refusal leaves the floor exactly as it was and names
-     * the entry it refuses by its place in what was sent (`moves[2].drawingId`): a bare "drawingId" in a group of
-     * twelve leaves a person guessing. A move carries a rectangle only; which place a rectangle is drawn for is changed
-     * one rectangle at a time, through its own form.
+     * Everything named is resolved and checked before the first write, so a refusal leaves the floor exactly as it was
+     * and names the entry it refuses by its place in what was sent (`structureMoves[2].x`): a bare "x" in a draft of
+     * twelve changes leaves a person guessing.
      *
-     * Every rectangle moved or undrawn names the version it was chosen at, and one changed since refuses the whole
-     * step: the group is read again and moved on what is there, rather than half of it over someone else's change.
-     *
-     * @param list<array{Uuid, PlanRect}>      $draws    a place, and the rectangle to draw it at
-     * @param list<array{Uuid, PlanRect, int}> $moves    a rectangle of this floor, where it now stands, and its version
-     * @param list<array{Uuid, int}>           $erasures a rectangle of this floor to undraw, and its version
-     *
-     * @return list<StockLocation> what is drawn on the floor once the step is done
+     * Every rectangle, piece and floor changed names the version it was read at, and one saved since refuses the whole
+     * step: the draft is read again and saved on what is there, rather than half of it over someone else's change. The
+     * versions are checked once, together, before anything is written; the writes themselves carry none.
      *
      * @throws VenueAreaNotFound
-     * @throws InvalidStockLocation naming the entry it refuses
-     * @throws RecordChanged        when a rectangle was saved since the version named for it
+     * @throws InvalidStockLocation naming the entry of a rectangle or a place it refuses
+     * @throws InvalidVenue         naming the entry of a piece of the building, or the floor's side, it refuses
+     * @throws RecordChanged        when anything named was saved since the version named for it
      */
-    public function change(Company $company, Uuid $floorId, array $draws, array $moves, array $erasures, ?Uuid $actorUserId): array
+    public function change(Company $company, Uuid $floorId, StockMapStep $step, ?Uuid $actorUserId): StockMapStepDone
     {
         $floor = $this->venue->area($company, $floorId);
+        $this->checkRectangles($company, $floor, $step);
+        $this->checkNewPlaces($company, $floor, $step);
+        $this->checkBuilding($company, $floor, $step);
+        if (null !== $step->floor) {
+            try {
+                VenueArea::size($step->floor[0], $step->floor[1]);
+            } catch (InvalidVenue $refused) {
+                throw new InvalidVenue('floor.'.$refused->field, $refused->getMessage());
+            }
+        }
+
+        return $this->transactions->run(function () use ($company, $floor, $step, $actorUserId): StockMapStepDone {
+            // Checked once every entry is known to be well formed, so a malformed step is refused as such and a stale
+            // one as stale, and before the first write, so a stale one leaves the floor as it was.
+            if (null !== $step->floor) {
+                $this->venue->expectArea($company, $floor->getId(), $step->floor[2]);
+            }
+            foreach ($step->moves as [$drawingId, , $version]) {
+                $this->venue->expectSpot($company, $drawingId, $version);
+            }
+            foreach ($step->erasures as [$drawingId, $version]) {
+                $this->venue->expectSpot($company, $drawingId, $version);
+            }
+            foreach ($step->structureMoves as [$structureId, $version]) {
+                $this->venue->expectStructure($company, $structureId, $version);
+            }
+            foreach ($step->structureErasures as [$structureId, $version]) {
+                $this->venue->expectStructure($company, $structureId, $version);
+            }
+
+            if (null !== $step->floor) {
+                $this->venue->measureArea($company, $floor->getId(), $step->floor[0], $step->floor[1], $actorUserId);
+            }
+            // Undrawn first, so a place taken off a rectangle this step erases is free when a move gives it another.
+            foreach ($step->erasures as [$drawingId]) {
+                $this->eraseDrawing($company, $drawingId, $actorUserId);
+            }
+            foreach ($step->structureErasures as [$structureId]) {
+                $this->venue->removeStructure($company, $structureId, $actorUserId);
+            }
+            foreach ($step->moves as [$drawingId, $rect, , $locationId]) {
+                if (null === $locationId) {
+                    $this->venue->moveSpot($company, $drawingId, $rect, $actorUserId);
+                } else {
+                    $this->moveDrawing($company, $drawingId, $locationId, $rect, $actorUserId);
+                }
+            }
+            foreach ($step->structureMoves as [$structureId, , $kind, $name, $rect]) {
+                $this->venue->reshapeStructure($company, $structureId, $kind, $name, $rect, $actorUserId);
+            }
+            $drawn = [];
+            foreach ($step->draws as [$locationId, $rect]) {
+                $drawn[] = self::spotOf($this->draw($company, $floor->getId(), $locationId, $rect, $actorUserId));
+            }
+            // Put in the zone holding it as the floor stands now, the step's moves and earlier new places included: a
+            // rack drawn inside a zone the same draft moved belongs to that zone.
+            $made = [];
+            foreach ($step->newPlaces as [$kind, $code, $name, $rect]) {
+                $zone = $this->zoneHolding($company, $floor->getId(), $rect);
+                $place = $this->locations->create($company, $floor->getEstablishment()->getId(), $zone?->getId(), $kind, $code, $name, $actorUserId);
+                $made[] = [self::spotOf($this->draw($company, $floor->getId(), $place->getId(), $rect, $actorUserId)), $place->getId()];
+            }
+            $built = [];
+            foreach ($step->structureBuilds as [$kind, $name, $rect]) {
+                $built[] = $this->venue->build($company, $floor->getId(), $kind, $name, $rect, $actorUserId)->getId();
+            }
+
+            return new StockMapStepDone(
+                $floor,
+                $this->drawingsOf($company, $floor->getId()),
+                $this->venue->structuresOf($company, $floor->getId()),
+                $drawn,
+                $made,
+                $built,
+            );
+        });
+    }
+
+    /**
+     * The rectangles a step names, each of this floor and named once, and each place given one: drawable, of the
+     * floor's establishment, given once, and free — drawn nowhere, on a rectangle this step erases, or on the very
+     * rectangle it is given to. A place drawn on a rectangle the step keeps is refused rather than taken off it.
+     *
+     * @throws InvalidStockLocation naming the entry
+     */
+    private function checkRectangles(Company $company, VenueArea $floor, StockMapStep $step): void
+    {
         $touched = [];
         $onThisFloor = function (Uuid $drawingId, string $field) use ($company, $floor, &$touched): void {
             try {
@@ -461,48 +546,143 @@ final readonly class DrawStockMap
             }
             $touched[$drawingId->toRfc4122()] = true;
         };
-        foreach ($moves as $at => [$drawingId]) {
+        foreach ($step->moves as $at => [$drawingId]) {
             $onThisFloor($drawingId, "moves[$at].drawingId");
         }
-        foreach ($erasures as $at => [$drawingId]) {
+        $erased = [];
+        foreach ($step->erasures as $at => [$drawingId]) {
             $onThisFloor($drawingId, "erasures[$at].drawingId");
+            $erased[$drawingId->toRfc4122()] = true;
         }
         $placed = [];
-        foreach ($draws as $at => [$locationId]) {
-            $field = "draws[$at].locationId";
-            try {
-                $location = $this->drawable($company, $locationId);
-            } catch (StockLocationNotFound|InvalidStockLocation $refused) {
-                throw new InvalidStockLocation($field, $refused->getMessage());
+        foreach ($step->moves as $at => [$drawingId, , , $locationId]) {
+            if (null === $locationId) {
+                continue;
             }
-            $drawnOn = $location->getSpot()?->getId()->toRfc4122();
+            $field = "moves[$at].locationId";
+            $drawnOn = $this->placeFor($company, $floor, $locationId, $field)->getSpot()?->getId();
+            if (isset($placed[$locationId->toRfc4122()])) {
+                throw new InvalidStockLocation($field, 'A place is drawn once in a step.');
+            }
+            if (null !== $drawnOn && !$drawnOn->equals($drawingId) && !isset($erased[$drawnOn->toRfc4122()])) {
+                throw new InvalidStockLocation($field, 'This place is drawn on another rectangle, which the step keeps: undraw that one in the same step.');
+            }
+            $placed[$locationId->toRfc4122()] = true;
+        }
+        foreach ($step->draws as $at => [$locationId]) {
+            $field = "draws[$at].locationId";
+            $drawnOn = $this->placeFor($company, $floor, $locationId, $field)->getSpot()?->getId()->toRfc4122();
             if (isset($placed[$locationId->toRfc4122()]) || (null !== $drawnOn && isset($touched[$drawnOn]))) {
                 throw new InvalidStockLocation($field, 'A place is drawn once in a step, and not over a rectangle the step moves or undraws.');
             }
             $placed[$locationId->toRfc4122()] = true;
         }
+    }
 
-        return $this->transactions->run(function () use ($company, $floor, $draws, $moves, $erasures, $actorUserId): array {
-            // Checked once every entry is known to be well formed, so a malformed step is refused as such and a stale
-            // one as stale, and before the first write, so a stale one leaves the floor as it was.
-            foreach ($moves as [$drawingId, , $version]) {
-                $this->venue->expectSpot($company, $drawingId, $version);
-            }
-            foreach ($erasures as [$drawingId, $version]) {
-                $this->venue->expectSpot($company, $drawingId, $version);
-            }
-            foreach ($erasures as [$drawingId]) {
-                $this->eraseDrawing($company, $drawingId, $actorUserId);
-            }
-            foreach ($moves as [$drawingId, $rect]) {
-                $this->venue->moveSpot($company, $drawingId, $rect, $actorUserId);
-            }
-            foreach ($draws as [$locationId, $rect]) {
-                $this->draw($company, $floor->getId(), $locationId, $rect, $actorUserId);
-            }
+    /**
+     * A place a step gives a rectangle, refused under the field of the entry that names it: drawable, and of the
+     * floor's establishment, which StockLocation::drawAt() would otherwise find out only in the middle of the writes.
+     *
+     * @throws InvalidStockLocation naming `$field`
+     */
+    private function placeFor(Company $company, VenueArea $floor, Uuid $locationId, string $field): StockLocation
+    {
+        try {
+            $location = $this->drawable($company, $locationId);
+        } catch (StockLocationNotFound|InvalidStockLocation $refused) {
+            throw new InvalidStockLocation($field, $refused->getMessage());
+        }
+        if (!$location->getEstablishment()->getId()->equals($floor->getEstablishment()->getId())) {
+            throw new InvalidStockLocation($field, 'A location is drawn on a floor of its own establishment.');
+        }
 
-            return $this->drawingsOf($company, $floor->getId());
-        });
+        return $location;
+    }
+
+    /**
+     * The places a step creates: a kind the plan carries, a code and a name create() would keep, and a code no place
+     * of the floor's establishment has, nor another new place of the same step.
+     *
+     * @throws InvalidStockLocation naming the entry
+     */
+    private function checkNewPlaces(Company $company, VenueArea $floor, StockMapStep $step): void
+    {
+        if ([] === $step->newPlaces) {
+            return;
+        }
+        $taken = [];
+        foreach ($this->locations->list($company) as $location) {
+            if ($location->getEstablishment()->getId()->equals($floor->getEstablishment()->getId())) {
+                $taken[$location->getCode()] = true;
+            }
+        }
+        $given = [];
+        foreach ($step->newPlaces as $at => [$kind, $code, $name]) {
+            if (!$kind->isDrawable()) {
+                throw new InvalidStockLocation("newPlaces[$at].kind", 'A bin is placed in its rack rather than on the floor plan.');
+            }
+            try {
+                $kept = StockLocation::namingOf($code, $name);
+            } catch (InvalidStockLocation $refused) {
+                throw new InvalidStockLocation("newPlaces[$at].{$refused->field}", $refused->getMessage());
+            }
+            if (isset($taken[$kept])) {
+                throw new InvalidStockLocation("newPlaces[$at].code", new StockLocationCodeTaken($kept)->getMessage());
+            }
+            if (isset($given[$kept])) {
+                throw new InvalidStockLocation("newPlaces[$at].code", 'A code is given to one new place of a step.');
+            }
+            $given[$kept] = true;
+        }
+    }
+
+    /**
+     * The pieces of the building a step names, each of this floor and named once, and each name one a piece keeps.
+     *
+     * @throws InvalidVenue naming the entry
+     */
+    private function checkBuilding(Company $company, VenueArea $floor, StockMapStep $step): void
+    {
+        $named = [];
+        $onThisFloor = function (Uuid $structureId, string $field) use ($company, $floor, &$named): void {
+            try {
+                $structure = $this->venue->structure($company, $structureId);
+            } catch (VenueStructureNotFound) {
+                throw new InvalidVenue($field, 'No such piece of the building is drawn.');
+            }
+            if (!$structure->getArea()->getId()->equals($floor->getId())) {
+                throw new InvalidVenue($field, 'This piece stands on another floor.');
+            }
+            if (isset($named[$structureId->toRfc4122()])) {
+                throw new InvalidVenue($field, 'A piece is named once in a step.');
+            }
+            $named[$structureId->toRfc4122()] = true;
+        };
+        foreach ($step->structureMoves as $at => [$structureId, , , $name]) {
+            $onThisFloor($structureId, "structureMoves[$at].structureId");
+            self::pieceNamed($name, "structureMoves[$at].name");
+        }
+        foreach ($step->structureErasures as $at => [$structureId]) {
+            $onThisFloor($structureId, "structureErasures[$at].structureId");
+        }
+        foreach ($step->structureBuilds as $at => [, $name]) {
+            self::pieceNamed($name, "structureBuilds[$at].name");
+        }
+    }
+
+    /** @throws InvalidVenue naming `$field` */
+    private static function pieceNamed(string $name, string $field): void
+    {
+        try {
+            VenueStructure::trimmedName($name);
+        } catch (InvalidVenue $refused) {
+            throw new InvalidVenue($field, $refused->getMessage());
+        }
+    }
+
+    private static function spotOf(StockLocation $drawn): Uuid
+    {
+        return $drawn->getSpot()?->getId() ?? throw new \LogicException('A place just drawn is drawn on a rectangle.');
     }
 
     /**

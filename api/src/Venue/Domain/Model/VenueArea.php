@@ -228,17 +228,7 @@ class VenueArea implements CompanyOwned
      */
     public function measure(string $width, string $depth, \DateTimeImmutable $now): bool
     {
-        try {
-            $size = new PlanRect('0', '0', $width, '0.001', 0, '0');
-            $width = $size->width;
-        } catch (InvalidVenue $refused) {
-            throw new InvalidVenue('widthMetres', $refused->getMessage());
-        }
-        try {
-            $depth = new PlanRect('0', '0', '0.001', $depth, 0, '0')->depth;
-        } catch (InvalidVenue $refused) {
-            throw new InvalidVenue('depthMetres', $refused->getMessage());
-        }
+        [$width, $depth] = self::size($width, $depth);
         if ([$width, $depth] === [$this->widthMetres, $this->depthMetres]) {
             return false;
         }
@@ -247,6 +237,30 @@ class VenueArea implements CompanyOwned
         $this->updatedAt = $now;
 
         return true;
+    }
+
+    /**
+     * A floor's width and depth as measure() would keep them, or refused on the side at fault. Public so a step that
+     * changes the floor with many other things can refuse a size before the first of them is written.
+     *
+     * @return array{string, string}
+     *
+     * @throws InvalidVenue naming `widthMetres` or `depthMetres`
+     */
+    public static function size(string $width, string $depth): array
+    {
+        try {
+            $width = new PlanRect('0', '0', $width, '0.001', 0, '0')->width;
+        } catch (InvalidVenue $refused) {
+            throw new InvalidVenue('widthMetres', $refused->getMessage());
+        }
+        try {
+            $depth = new PlanRect('0', '0', '0.001', $depth, 0, '0')->depth;
+        } catch (InvalidVenue $refused) {
+            throw new InvalidVenue('depthMetres', $refused->getMessage());
+        }
+
+        return [$width, $depth];
     }
 
     public function getCreatedAt(): \DateTimeImmutable

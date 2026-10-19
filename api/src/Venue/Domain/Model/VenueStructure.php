@@ -103,7 +103,7 @@ class VenueStructure implements CompanyOwned
         $this->company = $area->getCompany();
         $this->area = $area;
         $this->kind = $kind;
-        $this->name = self::name($name);
+        $this->name = self::trimmedName($name);
         $this->write($rect);
         $this->createdAt = $now;
         $this->updatedAt = $now;
@@ -126,7 +126,7 @@ class VenueStructure implements CompanyOwned
      */
     public function reshape(StructureKind $kind, string $name, PlanRect $rect, \DateTimeImmutable $now): bool
     {
-        $named = self::name($name);
+        $named = self::trimmedName($name);
         if ($kind === $this->kind && $named === $this->name && $rect->equals($this->getRect())) {
             return false;
         }
@@ -183,8 +183,13 @@ class VenueStructure implements CompanyOwned
         return $this->updatedAt;
     }
 
-    /** Trimmed as every other name here is, and refused past the column's length rather than cut to fit it. */
-    private static function name(string $name): string
+    /**
+     * Trimmed as every other name here is, and refused past the column's length rather than cut to fit it. Public so
+     * a step that builds several pieces can refuse a name before the first of them is written.
+     *
+     * @throws InvalidVenue naming `name`
+     */
+    public static function trimmedName(string $name): string
     {
         $trimmed = trim($name);
         if (mb_strlen($trimmed) > self::NAME_MAX) {
