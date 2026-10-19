@@ -154,6 +154,7 @@ final class PrintInvoiceTest extends TestCase
         self::assertSame('معلوم الطابع الجبائي', $page->taxNames['TIMBRE'] ?? null);
         self::assertSame('الخصم من المورد 1 %', $page->taxNames['RS1'] ?? null);
         self::assertSame(['وحدة'], array_map(static fn (QuantityTotal $each): string => $each->unitName, $page->quantities));
+        self::assertMatchesRegularExpression('/^\p{Arabic}[\p{Arabic} ]+$/u', $page->amountInWords ?? '', 'an Arabic invoice writes its total out in Arabic');
     }
 
     // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: a printed document follows the company's formats, never the person printing it.

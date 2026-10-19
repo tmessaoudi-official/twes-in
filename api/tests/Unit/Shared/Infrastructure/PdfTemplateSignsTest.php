@@ -63,6 +63,7 @@ final class PdfTemplateSignsTest extends TestCase
         foreach ([
             'fr' => ['TTC', 'Arrêtée la présente facture à la somme', 'Arrêté le présent avoir à la somme'],
             'en' => ['tax included', 'This invoice is closed at the sum', 'This credit note is closed at the sum'],
+            'ar' => ['باعتبار الأداءات', 'أُوقفت هذه الفاتورة على مبلغ', 'أُوقفت هذه الفاتورة التعديلية على مبلغ'],
         ] as $language => [$withTax, $invoice, $creditNote]) {
             $messages = Yaml::parseFile($dir.'/pdf.'.$language.'.yaml');
             self::assertIsArray($messages);
