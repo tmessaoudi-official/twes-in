@@ -1,7 +1,8 @@
 # first-client Plan
 
-The first installation: a hardware shop (quincaillerie), on its own computer, free of charge, by Wednesday
-2026-10-21. It runs in production from then on, so nothing done after it may break what exists or lose data.
+The first installation: a hardware shop (quincaillerie), on its own computer (Windows, Docker Desktop or WSL), free
+of charge, released once everything below is built and certified (2026-10-20 00:49). It runs in production from then
+on and updates itself at night, so nothing done after it may break what exists or lose data.
 
 ## Decisions Log
 - [2026-10-17 16:31] AGREED: The release goal comes first: the tool-audit queue (steps 3b, 3c, 4, 5) and the i18n goal's order are paused, not dropped, and resume after the release.
@@ -216,10 +217,27 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-20 01:08] AGREED: Universal imports, one per subject (vendors, categories, products with the « à vérifier » marker and the vendor link whose code is optional, purchase history); the client's workbook is converted into those files outside the product, locally and never committed, once its open points are answered (developer, choosing the recommended option).
 - [2026-10-20 01:08] AGREED: Deletes and merges are undone from a « Récemment supprimés » page: each deleted record and each merge stays 24 hours with « Restaurer » or « Annuler la fusion », any number at once, the toast offering « Annuler » too; final after 24 hours; « Effacer des données » keeps its own single-undo rule (developer, choosing the recommended option).
 - [2026-10-20 01:08] AGREED: Added to the release: « Annuler cet import » for 24 hours on an import's record (removes what it created that nothing uses yet, says what it kept); release notes in fr, en and ar on the « Mises à jour » card; new screens built to the existing canon without mockups, their captures in fr, en and ar handed to the developer with the Arabic review (developer).
+- [2026-10-20 01:32] AGREED: Merges follow the alias model, replacing 00:36's « every link moves to the record that stays »: the merged-away customer, vendor or product stays, deactivated, pointing at the survivor; issued documents, stock movements and recorded expenses keep pointing at it (the invoice chain seals the customer's id, expenses keep no vendor snapshot, movements are append-only); drafts, price lists, barcodes and the marker move; lists, reports and pickers show the survivor; a product's stock moves by a transfer pair of movements; a merge is refused between two different matricules, tax regimes, units, kinds or tracking modes (developer, choosing the recommended option after the scope review, var/claude/review-scope-synthesis.md).
+- [2026-10-20 01:32] AGREED: « Annuler la fusion » stays offered 24 hours and is refused, naming why, once the survivor has sold, received, been invoiced or paid since; draft merges (invoices, delivery notes, quotes of the same customer and type) stay in the release (developer).
+- [2026-10-20 01:32] AGREED: Deleting while unused and restoring need the subject's write permission; merging and « Annuler cet import » need it and the identity check, audited by field names only; a merge touching a vendor's IBAN or a product's cost also needs that field's own right; no new permissions (developer, choosing the recommended option).
+- [2026-10-20 01:34] AGREED: The installation's acts (switching the demo on or off, « Mettre à jour maintenant », the night window) belong to the operator and to the owners and admins of the company named at twes install, behind the identity check, refused to every demo account, on one « Installation » card shown only on a shop's own computer; an owner or admin of another company on the same PC sees nothing (developer, choosing the recommended option). This narrows 01:01's « the owner and the operator ».
+- [2026-10-20 01:34] AGREED: On a shop's own computer the demo is off once twes install has run, replacing 2026-10-18 00:05's « the demo stays on, a shop's own computer included » (a demo visitor is a sandbox's owner and always passes the identity check, so on the shop's network it reached the owners' acts); switched on, it keeps one sandbox ready and at most three alive at once; the hosted platform keeps its own values (developer, choosing the recommended options).
+- [2026-10-20 01:40] AGREED: Imports for every shop: up to 5000 rows in one request for the release, one undoable run per file, one file per type; after the release, a background import of any size (the worker made company-safe, the identity check carried by the job) and the one-workbook form (sheets named by type, imported in order as one run) (developer, choosing the recommended option).
+- [2026-10-20 01:40] AGREED: The « à vérifier » marker's automatic reasons, each clearing itself once fixed, beside « à vérifier » by hand with a note: product: sale price missing (silenced once by « prix 0 voulu »), vendor missing, VAT missing, cost missing, barcode missing, category missing, unit to confirm, « à compter » (only while the company keeps stock); vendor: doubtful name; customer: matricule missing for a business (developer, choosing the larger set).
+- [2026-10-20 01:40] AGREED: A product may have several vendors; its vendors' names show to anyone who may read products, while each vendor's own code and the cost stay with whoever may read costs (developer).
+- [2026-10-20 01:43] AGREED: A purchase's cost is what the shop paid after every discount; purchase VAT is left out when the company's VAT regime recovers it, a fact carried by the regime in the country preset (Tunisia's standard regime recovers it); two company settings, « FODEC dans le coût » (on by default) and « Timbre dans le coût » (off); the converter and every later purchase read the same rule (developer, choosing the recommended option).
+- [2026-10-20 01:43] AGREED: « Annuler cet import » is offered on the import's result and in an « Imports récents » list on the import page (subject, when, who, created and updated counts, undoable until); the activity journal records it (developer, choosing the recommended option).
+- [2026-10-20 01:43] AGREED: twes install asks the shop's hours and proposes the update window from them (02:00-05:00 when the PC stays on, otherwise an hour after closing); after three missed windows the install company's owners and admins are told once in the app, with the button, and the developer gets the alert mail (developer, choosing the recommended option).
+- [2026-10-20 01:43] AGREED: Before a shop reports to the monitor, the monitor runs in its own VM or device on a network segment that cannot reach the machine holding the release-signing key and the GitHub credentials (developer). Not chosen for now: a domain of the developer's own instead of the DDNS name, the shops' lines kept off the public status page, the privacy page naming the monitor.
+- [2026-10-20 01:46] AGREED: Supersession record of 00:49 (one release, once everything is built and certified): it replaces the Wednesday 2026-10-21 10:00 deadline and its switch-off rule (2026-10-17 16:43), the Tuesday 20:00 freeze (2026-10-18 23:55) and the panel around Tuesday 15:00 (2026-10-19 18:14); the one three-lens panel runs on a frozen commit once everything is built. 01:01 likewise replaces 2026-10-17 16:31's macOS support for the first release (macOS scheduling in the backlog).
+- [2026-10-20 01:46] AGREED: Supersession record of 01:01: automatic updates on or off and the night window are set in the app (Paramètres › « Mises à jour »), replacing 2026-10-17 17:03's « changed by one command ».
+- [2026-10-20 01:46] ASSUMED (review): twes policy stays as the terminal's way to read and set the update policy; the app's setting, written into the installation by the next tick, is the source of truth and wins over a terminal change, which the card then shows. Because a shop has one place to look and the developer keeps a way in by terminal. Alternatives: drop the command; or the later change wins whichever side made it.
 
 ## Formal Plan
-Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
-or hidden and ships in the first update. Each step is sliced test-first, gated (`make gate`), committed by pathspec
+No fixed date (2026-10-20 00:49, replacing the Wednesday 10:00 deadline): the release is tagged once every step below
+is built and the three-lens panel on a frozen commit is clean. Order (2026-10-20 01:01): steps 12-16 (import, delete,
+merge) first, then 17-22 and the open steps above, then audit and maturity rounds until no security, leak, fiscal or
+legal issue is left. Each step is sliced test-first, gated (`make gate`), committed by pathspec
 from the index; pushes at the batch size or a step's end, CI read job by job. Every step's completion note says what
 was and was not certified by execution.
 
@@ -242,13 +260,30 @@ was and was not certified by execution.
 6. Supplier orders and goods receipts (row 81).
 7. The Arabic texts and printed documents, reviewed by the developer in the app and the source.
 8. Guides, help and README on the final screens.
+12. One reference declaration per subject: every record that names it, through a foreign key or not
+    (`purchase_order.vendor_id`, `setting.level_id`, JSONB tax lists, lot codes), read by the delete, the bin, the
+    merges and the import undo alike.
+13. Delete while unused (classes of 00:36) and « Récemment supprimés »: each deleted record 24 hours, « Restaurer ».
+14. Merges on the alias model (01:32): vendors, customers, products (stock by a transfer pair), product and expense
+    categories, drafts; refused across matricules, regimes, units, kinds, tracking; « Annuler la fusion » 24 hours.
+15. The « à vérifier » marker and its automatic reasons (01:40); several vendors per product; the categories import;
+    the cost rule and its two settings (01:43).
+16. Imports to 5000 rows, one undoable run per file, « Annuler cet import » and « Imports récents ».
+17. The client's workbook converted locally into those files, never committed, once its open points are answered.
+18. The « Installation » card on a shop's computer: the app's request read by twes tick, the night window, « Mettre à
+    jour maintenant », release notes in fr, en, ar, missed windows told, the demo off, sandboxes 1 ready and 3 at most.
+19. The « shop alive » heartbeat from twes tick to the monitor.
+20. Defects found by the scope review in existing code: personal values in a database error's DETAIL reaching the
+    monitor, `set_value` expanding escapes into the values file, release news told to demo sandboxes' owners.
+21. The rest: Arabic fixes (round 6), round 5's F7, the accessibility round, guide 8b, the list floor sweep.
+22. Audit and maturity rounds, then the one three-lens panel on a frozen commit, then the release's certification.
 
 ## Status
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
 | 0 | Sign-in restored: the development database migrated | S | done | 976d6c04 | CLAUDE.md |
-| 1 | Release core: install on Windows, Linux, macOS; safe updates with backup and rollback; security; LAN HTTPS | L | doing | - | infra/** scripts/** compose*.yaml docs/** |
+| 1 | Release core: install on Windows and Linux (macOS scheduling in the backlog, 01:01); safe updates with backup and rollback; security; LAN HTTPS | L | doing | - | infra/** scripts/** compose*.yaml docs/** |
 | 2 | Demo sandbox per sign-in, stamped, deleted at sign-out or after 2 h idle | L | done | ec91e167 | api/** web/** |
 | 3 | Language foundations and RTL | L | done | 48659c89 | api/** web/** scripts/gates/** |
 | 4 | Proof pass of every built module in fr, en, ar; the client's Excel mapped (galleries in fr, en and ar done 2026-10-18/19; the Excel mapping waits on the client's files) | L | doing | - | web/e2e/** api/** web/** |
@@ -259,6 +294,17 @@ was and was not certified by execution.
 | 9 | Document links before the tag: the module port (335f778b), a delivery note names its invoices (93004285), an invoice its delivery notes (5f73574b), a quote onto an open draft (row 259, 08ad6709) and its toast | M | done | b6c8d52e | api/src/Module/** web/src/app/** web/e2e/** |
 | 10 | Release decisions from the developer's marks: D8 the invoice status floor (b40f52e4), D7 the document language written at company creation (8bafb57f), D6 the Arabic sign-in tagline | S | done | 2baa5db1 | web/src/app/** api/src/** |
 | 11 | Release decision D2: a document reprints the unit and tax names it was issued with (bd7409ba), the company switch to keep them live, and the refusal before anything is fixed | M | done | 253f6355 | api/src/** api/templates/pdf/** api/migrations/** web/public/i18n/** |
+| 12 | Reference declaration per subject (foreign key or not), shared by delete, bin, merge and import undo | L | todo | - | api/src/** |
+| 13 | Delete while unused and « Récemment supprimés » (24 h restore) | L | todo | - | api/src/** web/src/app/** |
+| 14 | Merges on the alias model, « Annuler la fusion » 24 h | L | todo | - | api/src/** api/migrations/** web/src/app/** |
+| 15 | « À vérifier » marker, several vendors per product, categories import, cost rule settings | L | todo | - | api/src/** api/migrations/** web/src/app/** |
+| 16 | Imports to 5000 rows, « Annuler cet import », « Imports récents » | M | todo | - | api/src/ImportExport/** web/src/app/** |
+| 17 | Client workbook converted locally into the universal files (never committed) | M | todo | - | - |
+| 18 | « Installation » card: update request via tick, night window, update now, release notes, demo off, sandbox limits | L | todo | - | api/src/Installation/** scripts/onprem/** web/src/app/** |
+| 19 | « Shop alive » heartbeat from twes tick to the monitor | S | todo | - | scripts/onprem/** infra/monitor/** |
+| 20 | Scope-review defects in existing code: DETAIL scrub, set_value escapes, release news to demo owners | S | todo | - | api/src/** scripts/onprem/** |
+| 21 | Arabic fixes (round 6), F7, accessibility round, guide 8b, list floor sweep | M | todo | - | web/** api/** docs/** |
+| 22 | Audit and maturity rounds, the frozen-commit panel, certification | L | todo | - | - |
 <!-- /progress-block -->
 ### Blocked
 - Step 1 waits on the developer: `PUBLISH_IMAGES=true`; the three GHCR packages made public after the first publish
