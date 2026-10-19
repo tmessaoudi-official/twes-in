@@ -590,6 +590,9 @@ test.describe('a document scrolled under the top bar', () => {
     await inACompany(page, CSRF);
     await page.goto('/invoices/new');
     await expect(page.getByTestId('invoice-title')).toBeVisible();
+    // The title draws before the form, which waits for the company's data: scrolled any earlier, the page has nothing
+    // to scroll, and the header stays at its place in the flow.
+    await expect(page.locator('app-select').first()).toBeVisible();
     await page.evaluate(() => {
       const panel = document.querySelector('mat-sidenav-content')!;
       panel.scrollTop = panel.scrollHeight;
