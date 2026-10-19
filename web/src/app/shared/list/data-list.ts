@@ -76,6 +76,7 @@ import {
   FIT_PRIORITY,
   filterRows,
   fitColumns,
+  fittedWidth,
   isColumnVisible,
   orderColumns,
   paginate,
@@ -146,6 +147,42 @@ const ACTION_WORD = 104;
 export const LIST_SEARCH_PAUSE_MS = 300;
 
 const clampWidth = (width: number): number => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
+
+/**
+ * How wide a cell's value draws whole, its padding included. A cell never wraps, so its text lays out on one line
+ * however narrow the column: a range over each text measures it whole even where an ellipsis cuts what is painted,
+ * and an inline box (a chip, an icon) by its own box. A block box would measure the column, not its value.
+ */
+function valueWidth(cell: HTMLElement, range: Range): number {
+  let start = Number.POSITIVE_INFINITY;
+  let end = Number.NEGATIVE_INFINITY;
+  const take = (rect: DOMRect): void => {
+    if (rect.width === 0) return;
+    start = Math.min(start, rect.left);
+    end = Math.max(end, rect.right);
+  };
+  // jsdom lays nothing out and has no rectangle for a range.
+  if (typeof range.getBoundingClientRect !== 'function') return 0;
+  const texts = cell.ownerDocument.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+  for (let text = texts.nextNode(); text !== null; text = texts.nextNode()) {
+    if ((text.textContent ?? '').trim() === '') continue;
+    range.selectNodeContents(text);
+    take(range.getBoundingClientRect());
+  }
+  for (const element of cell.querySelectorAll('*')) {
+    if (getComputedStyle(element).display.startsWith('inline'))
+      take(element.getBoundingClientRect());
+  }
+  if (end < start) return 0;
+  const style = getComputedStyle(cell);
+  return Math.ceil(
+    end - start + parseFloat(style.paddingInlineStart) + parseFloat(style.paddingInlineEnd),
+  );
+}
+
+function sameWidths(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>): boolean {
+  return a.size === b.size && [...a].every(([id, width]) => b.get(id) === width);
+}
 
 /** Unique enough for one person's views of one list; `crypto.randomUUID` needs a secure context. */
 const newViewId = (): string =>
@@ -277,6 +314,11 @@ export class DataList<Row> implements OnInit {
   protected readonly toolbarHeight = signal<number | null>(null);
   /** How wide the table's card is, once measured; null before, and where there is no layout. */
   private readonly boxWidth = signal<number | null>(null);
+  /**
+   * How wide each column's widest value drew, its padding included, by column id: a column hidden for width keeps
+   * what it last measured, so it comes back only once the card has room for it.
+   */
+  private readonly widest = signal<ReadonlyMap<string, number>>(new Map(), { equal: sameWidths });
   /** Whether columns sit past the card's end edge, under the pinned actions: a shadow then says so. */
   protected readonly scrollsOn = signal(false);
 
@@ -295,7 +337,7 @@ export class DataList<Row> implements OnInit {
     return fitColumns(
       this.columns().map((column) => ({
         id: column.id,
-        width: this.declaredWidth(column),
+        width: this.columnWidth(column),
         priority: FIT_PRIORITY[column.priority ?? 'normal'],
         hideable: column.hideable !== false && column.id !== link,
       })),
@@ -614,7 +656,7 @@ export class DataList<Row> implements OnInit {
   protected readonly minWidth = MIN_WIDTH;
   protected readonly maxWidth = MAX_WIDTH;
   private readonly declaredColumns = computed(() =>
-    this.shownColumns().reduce((sum, column) => sum + this.declaredWidth(column), 0),
+    this.shownColumns().reduce((sum, column) => sum + this.columnWidth(column), 0),
   );
   /** At least the sum of the columns, so a narrow screen scrolls the list's own container and never the page. */
   protected readonly tableWidth = computed(
@@ -686,8 +728,26 @@ export class DataList<Row> implements OnInit {
       observer.observe(box);
       if (box.firstElementChild !== null) observer.observe(box.firstElementChild);
       box.addEventListener('scroll', measure, { passive: true });
+      // The values are measured again whenever the rows' text changes (another page, another language, a live
+      // reload) and once a font has loaded, which redraws every text; once a frame at most.
+      const view = this.document.defaultView;
+      let frame = 0;
+      const remeasure = (): void => {
+        if (frame !== 0 || view === null) return;
+        frame = view.requestAnimationFrame(() => {
+          frame = 0;
+          this.measureValues(box);
+        });
+      };
+      const values = new MutationObserver(remeasure);
+      values.observe(box, { childList: true, subtree: true, characterData: true });
+      this.document.fonts?.addEventListener('loadingdone', remeasure);
+      remeasure();
       onCleanup(() => {
         observer.disconnect();
+        values.disconnect();
+        this.document.fonts?.removeEventListener('loadingdone', remeasure);
+        if (frame !== 0) view?.cancelAnimationFrame(frame);
         box.removeEventListener('scroll', measure);
       });
     });
@@ -1012,11 +1072,11 @@ export class DataList<Row> implements OnInit {
 
   protected trackRow = (_index: number, row: Row): string => this.descriptor().rowId(row);
 
-  /** The width a column occupies: a live drag, then the chosen or declared width, never narrowed. */
+  /** The width a column occupies: a live drag, then the chosen width, else the declared one widened to its values. */
   protected widthOf(column: ListColumn<Row>): number {
     const live = this.liveWidth();
     if (live?.id === column.id) return live.width;
-    return this.declaredWidth(column);
+    return this.columnWidth(column);
   }
 
   /**
@@ -1033,6 +1093,26 @@ export class DataList<Row> implements OnInit {
   /** The chosen or declared width, then the fallback: what is saved, before any fitting. */
   private declaredWidth(column: ListColumn<Row>): number {
     return column.width ?? FALLBACK_WIDTH;
+  }
+
+  /** The declared width widened to the column's widest value, unless a person chose the width. */
+  private columnWidth(column: ListColumn<Row>): number {
+    const chosen = this.preferences().widths[column.id] !== undefined;
+    return fittedWidth(this.declaredWidth(column), this.widest().get(column.id), chosen, MAX_WIDTH);
+  }
+
+  /** Measures every value the rows show, column by column; the columns not shown keep what they last measured. */
+  private measureValues(box: HTMLElement): void {
+    const cells = box.querySelectorAll<HTMLElement>('tr.mat-mdc-row > td[data-column]');
+    if (cells.length === 0) return;
+    const range = this.document.createRange();
+    const measured = new Map<string, number>();
+    for (const cell of cells) {
+      const id = cell.dataset['column'];
+      if (id === undefined) continue;
+      measured.set(id, Math.max(measured.get(id) ?? 0, valueWidth(cell, range)));
+    }
+    this.widest.set(new Map([...this.widest(), ...measured]));
   }
 
   protected onFilter(event: Event): void {
@@ -1226,7 +1306,7 @@ export class DataList<Row> implements OnInit {
     if (delta === 0) return;
     event.preventDefault();
     event.stopPropagation();
-    this.saveWidth(column.id, this.declaredWidth(column) + delta);
+    this.saveWidth(column.id, this.columnWidth(column) + delta);
   }
 
   protected startResize(event: PointerEvent, column: ListColumn<Row>): void {

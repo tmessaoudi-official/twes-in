@@ -74,8 +74,9 @@ test('a screen in Arabic turns over and speaks Arabic', async ({ page }, testInf
 
 // A value cut short keeps its start in sight in either direction: its box cuts at the value's own end, so a Latin
 // number in an Arabic list loses its last characters, never its first (« …791728493868 » was a customer number
-// without its letters). The customer's number and name are made too long for their columns; a customer is never
-// deleted, so each run leaves one, as the other scenarios creating customers do.
+// without its letters). A list sizes its columns to their values, so only a person cuts one: the number and name
+// columns are narrowed with their handles, from the keyboard. A customer is never deleted, so each run leaves one, as
+// the other scenarios creating customers do.
 test('a value cut short in Arabic keeps its start in sight', async ({ page }, testInfo) => {
   const number = `RTL-${Date.now()}-QUINCAILLERIE`;
   await aCustomer(page, number);
@@ -85,6 +86,11 @@ test('a value cut short in Arabic keeps its start in sight', async ({ page }, te
   const row = page.getByTestId('customers-table').locator('tr', { hasText: number });
   await expect(row).toHaveCount(1);
   await expect(row.locator('td .twes-value').first()).toBeVisible();
+  // The arrow towards the line's start narrows a column: the right one in Arabic, 16 px a press.
+  for (const column of ['number', 'name']) {
+    await page.getByTestId(`list-resize-${column}`).focus();
+    for (let press = 0; press < 10; press += 1) await page.keyboard.press('ArrowRight');
+  }
   await page.screenshot({ path: testInfo.outputPath('customers-rtl-cut.png'), fullPage: false });
 
   const cut = await row.locator('td .twes-value').evaluateAll((boxes) =>

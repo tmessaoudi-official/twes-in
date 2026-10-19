@@ -7,6 +7,7 @@ import {
   DuplicateListColumn,
   filterRows,
   fitColumns,
+  fittedWidth,
   InvalidViewName,
   paginate,
   removeView,
@@ -352,5 +353,28 @@ describe('fitColumns', () => {
   it('hides nothing until the card has been measured', () => {
     expect(fitColumns([column('a', 2000)], 0, null)).toEqual(new Set());
     expect(fitColumns([column('a', 2000)], 0, 0)).toEqual(new Set());
+  });
+});
+
+/**
+ * The Arabic gallery found « Groupe Hannibal Distri… » cut while the columns beside it had room: a column is as wide as
+ * its widest value, so `fitColumns` hides whole columns instead of cutting one.
+ */
+describe('fittedWidth', () => {
+  it('is the declared width until a value is measured', () => {
+    expect(fittedWidth(160, undefined, false, 960)).toBe(160);
+  });
+
+  it('widens to the widest value, never narrows below the declared width', () => {
+    expect(fittedWidth(160, 214, false, 960)).toBe(214);
+    expect(fittedWidth(160, 90, false, 960)).toBe(160);
+  });
+
+  it('stops at the cap, past which a value is a text to open rather than a column', () => {
+    expect(fittedWidth(160, 1500, false, 960)).toBe(960);
+  });
+
+  it('keeps a width a person chose, even one that cuts', () => {
+    expect(fittedWidth(120, 214, true, 960)).toBe(120);
   });
 });
