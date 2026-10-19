@@ -203,7 +203,63 @@ test.describe('no list cuts a value', () => {
       await cancelDraft(page, invoice);
     }
   });
+
+  // The status floor is its longest label in any language, so on a laptop the room it does not need goes to the
+  // customer's name before the status gives way; a wider floor sent the status away for no label.
+  test('the invoice status column is as wide as its longest label, and no wider', async ({
+    page,
+  }) => {
+    const invoice = await aDraft(page, customer);
+    try {
+      // The widest page, where every column fits whatever this run's customer is called.
+      await page.setViewportSize({ width: 1600, height: 900 });
+      await page.goto(`/invoices?customer=${customer}`);
+      // The draft, and the run's other drafts already cancelled, none of them the longest status.
+      await expect(page.locator('td[data-column="status"] app-status-badge').first()).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      const longest = await longestStatusCell(page);
+      await expect(page.getByTestId('list-resize-status')).toHaveAttribute(
+        'aria-valuenow',
+        String(longest),
+      );
+    } finally {
+      await cancelDraft(page, invoice);
+    }
+  });
 });
+
+/**
+ * How wide the invoice list's status cell draws its longest label, in any language the screens speak: the one
+ * cell's badge, padding included, given each label in turn.
+ */
+async function longestStatusCell(page: Page): Promise<number> {
+  return page.evaluate(async () => {
+    const labels: string[] = [];
+    for (const language of ['fr', 'en', 'ar']) {
+      const texts = (await (await fetch(`/i18n/${language}.json`)).json()) as {
+        invoices: { statuses: Record<string, string> };
+      };
+      labels.push(...Object.values(texts.invoices.statuses));
+    }
+    const cell = document.querySelector<HTMLElement>('td[data-column="status"]');
+    const badge = cell?.querySelector<HTMLElement>('app-status-badge');
+    // The label is the badge's own text, beside its dot.
+    const label = [...(badge?.childNodes ?? [])].find(
+      (node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim() !== '',
+    );
+    if (cell == null || badge == null || label === undefined) throw new Error('no status cell');
+    const shown = label.textContent;
+    const style = getComputedStyle(cell);
+    const padding = parseFloat(style.paddingInlineStart) + parseFloat(style.paddingInlineEnd);
+    let widest = 0;
+    for (const text of labels) {
+      label.textContent = text;
+      widest = Math.max(widest, Math.ceil(badge.getBoundingClientRect().width + padding));
+    }
+    label.textContent = shown;
+    return widest;
+  });
+}
 
 // A column given way keeps the width it measured, so it does not come and go as the card moves; but that width is its
 // rows': filtered down to rows it fits, it comes back.
