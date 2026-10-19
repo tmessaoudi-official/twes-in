@@ -20,6 +20,8 @@
       "free_rect_note": "يُرسم على المخطط",
       "trace_type": "أو اكتب قياساته",
       "erase": "محو المستطيل",
+      "erase_piece": "محو العنصر",
+      "erase_group": "محو المجموعة",
       "add_floor": "إضافة طابق",
       "edit_floor": "تعديل الطابق",
       "remove_floor": "حذف الطابق",

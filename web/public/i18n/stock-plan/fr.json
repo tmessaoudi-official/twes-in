@@ -20,6 +20,8 @@
       "free_rect_note": "à tracer sur le plan",
       "trace_type": "ou tapez ses mesures",
       "erase": "Effacer le rectangle",
+      "erase_piece": "Effacer l’élément",
+      "erase_group": "Effacer le groupe",
       "add_floor": "Ajouter un étage",
       "edit_floor": "Modifier l’étage",
       "remove_floor": "Supprimer l’étage",
