@@ -65,6 +65,28 @@ final class StockMapStepTest extends ApiTestCase
         self::assertSame($this->jsonList()[0]['id'], $parents[$zone] ?? null);
     }
 
+    /**
+     * The zone a new place is put in is read as the floor stands once the step's moves are done: a rack drawn inside a
+     * zone the same draft moved belongs to that zone, where it now is, not to whatever stood there before.
+     */
+    public function testANewPlaceGoesInTheZoneAsTheStepMovedIt(): void
+    {
+        $this->signedIn();
+        $this->postJson($this->path('stock-floors', $this->ground).'/drawings', $this->drawing(['newLocationKind' => 'zone', 'newLocationCode' => 'Z1', 'newLocationName' => 'Visserie', 'x' => '10', 'y' => '8', 'width' => '6', 'depth' => '4']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        [$zone, $zonePlace] = [$this->stringAt($this->json(), 'id'), $this->stringAt($this->json(), 'locationId')];
+
+        $this->postJson($this->changes(), [
+            'moves' => [['drawingId' => $zone, ...$this->drawing(['x' => '0', 'y' => '0', 'width' => '6', 'depth' => '4']), 'version' => $this->versions()[$zone]]],
+            'newPlaces' => [$this->newPlace('rack', 'R9', 'Rayonnage 9', ['x' => '1', 'y' => '1', 'width' => '2', 'depth' => '1'])],
+        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $rack = $this->stringAt($this->rows($this->section($this->json(), 'created'), 'newPlaces')[0] ?? self::fail('a rack'), 'locationId');
+
+        $this->getJson($this->path('stock-locations'));
+        self::assertSame($zonePlace, array_column($this->jsonList(), 'parentId', 'id')[$rack] ?? null);
+    }
+
     /** A wall is built, reshaped and removed by the step, each answered with the building as the step left it. */
     public function testThePiecesOfTheBuildingAreBuiltReshapedAndRemovedByTheStep(): void
     {
