@@ -20,7 +20,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * A settings page's save (docs/SPEC.md § 7, 2026-10-17 03:44): every key it changed at one level, each with the version
+ * A settings page's save: every key it changed at one level, each with the version
  * its row held when read, stored together or not at all. A key saved, created or reset since answers 409 for the whole
  * save, an unknown key 404 and a value refused 422; the page reads the settings again after a 204.
  */

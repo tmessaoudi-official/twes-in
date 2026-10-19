@@ -21,8 +21,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 
 /**
- * One report over a period, each row beside the same row of the period compared, and the totals of both (docs/SPEC.md
- * § 7, 2026-09-20 03:40 and 2026-09-24 12:05). A report the member may not read, one of a module switched off and a key
+ * One report over a period, each row beside the same row of the period compared, and the totals of both.
+ * A report the member may not read, one of a module switched off and a key
  * nobody declared all answer 404, so asking by name learns nothing.
  */
 #[ApiResource(

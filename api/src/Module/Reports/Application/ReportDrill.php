@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Reports\Application;
 
 /**
- * Where a row's figures lead (docs/SPEC.md § 7, 2026-09-20 03:40: every figure opens the documents behind it). A list of
+ * Where a row's figures lead (every figure opens the documents behind it). A list of
  * the app (`invoices`) narrowed by the query parameters its own address takes, when those say exactly which documents make
  * the figure; with no list, the report's own documents behind the row, when no list can.
  */

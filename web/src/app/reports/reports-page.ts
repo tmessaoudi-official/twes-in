@@ -17,7 +17,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { ReportsFacade } from './reports-facade';
 
 /**
- * « Rapports » (docs/SPEC.md § 7, 2026-09-24 12:05): the reports this member may read, in the order the API offers them,
+ * « Rapports »: the reports this member may read, in the order the API offers them,
  * each opening on its own page. A module switched off, or a role changed, takes its reports with it on the next read.
  */
 @Component({

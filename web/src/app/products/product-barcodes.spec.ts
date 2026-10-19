@@ -170,7 +170,7 @@ describe('ProductBarcodesSection', () => {
     expect(q('field-conflict-barcodes')).toBeNull();
   });
 
-  // Docs/SPEC.md § 7, 2026-09-17: a form being typed in keeps what is typed and shows the banner.
+  // A form being typed in keeps what is typed and shows the banner.
   it("keeps rows being typed when another person's codes arrive, and takes theirs on request", async () => {
     await open();
     await scan('10012345678902');

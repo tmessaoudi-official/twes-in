@@ -194,6 +194,7 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-19 19:47] ASSUMED (review): Stock map draft: the button that lets the floor's unsaved work go reads « Rétablir » (the project's wording canon, form.revert), not « Annuler les modifications » as the 18:14 ruling words it; the toast after it offers « Annuler ». Because the canon gives one word per act across every screen. Alternatives: a new label « Annuler les modifications » for this screen alone.
 - [2026-10-19 19:47] ASSUMED (review): Stock map draft: in Aménager the 3D view draws the floor's draft, not only what is saved, and the unsaved count with « Rétablir » and « Enregistrer » (and the kept-draft offer) stand above it as above the plan. Because the 3D view is mandatory for the release and a view that hid unsaved work would contradict the 18:14 ruling. Alternatives: the 3D view read-only in Consulter alone (the earlier rule).
 - [2026-10-19 20:28] ASSUMED (review): A report's counted figure that its period had none of shows « — » (current or compared), never a blank: a row known only from the period compared left that period's figure as the only number on its line, reading as this period's. Basis: the screens' canon for none (expenses, stock cost, cost history all write « — »); alternative was a zero, refused since a zero is a figure counted.
+- [2026-10-19 21:39] ASSUMED (review): audit round 3 (A): a shared setting's audit row names its key and level, never its value (ChangeSettings::record), as the ruled audit invariant requires (names only, never values: banking details, private persons); a document's printed notes may hold a bank account, the publisher's details a person's phone. No screen read the value (ActivityEntry::fieldsOf shows names only). Rows written before keep theirs: no shop has data yet, and audit rows are not rewritten. Alternative: keep values for settings as configuration, carve them out of the invariant.
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -257,10 +258,26 @@ was and was not certified by execution.
   first high column to give way. Whether a long name should do something else (wrap on two lines, or the status move
   under the number) is the developer's call; nothing changed until then.
 - After Wednesday, in an order to set: declarations (fiscal rules await an accountant), composite products, jobs, the till (the Tunisian homologated-register question), zakat (its research pass, row 120).
+- Audit round 3 (architecture), parked as D for the marking page (`var/claude/audit-r3-architecture.md`): (F4) ten
+  of the thirteen reports, and the « À surveiller » declarations before them, join another module's tables in SQL
+  (`SalesByCustomerReport.php:83` `JOIN customer`, `DeadStockReport.php:128` `JOIN product`): rule a read-model join
+  as sanctioned, or give reports a port. (F2) Inventory's homes and reorder points and the delivery notes' lines handed
+  to invoices hold the Products module's `Product` entity (`ProductsHeld`, `InvoiceLineOfNote`), because their own
+  entities relate to it in Doctrine: the same crossing `ModuleBoundariesTest` keeps under `AWAITING_A_RULING`. (F7)
+  « Activité par membre » (Reports) shows the invoices' « émises » and « paiements » columns whatever the invoices
+  module's state; `ReportContext` carries no module state, so which module declares those columns is the choice.
 ### Needs research
 - Protecting the code and the data on a shop's PC: reopened later by the developer (ruled 2026-10-19 00:41), with
   BitLocker, the developer holding the administrator account, Symfony 8.2's encrypted columns from 8.2.0 and the contract.
 - Step 7, with a reader of Arabic: whether `logout`, `undo`, `help` and `open_in_new` turn over in Arabic as well (the five that point along the line, back, forward, the chevrons and send, already do, as Material's guidance asks).
+- Audit round 3, C items deferred past the freeze (advisor() did not agree to them before it; no behaviour defect):
+  (F3) exact-decimal parsing copied six times in web, disagreeing on malformed and signed input
+  (`purchases/receipt-forms.ts:177`, `shared/documents/quantity-totals.ts:37`, `invoices/invoice-forms.ts:540`,
+  `shared/documents/line-stock.ts:29`, `invoices/invoice-bulk-pay-dialog.ts:78`, `expenses/expense-forms.ts:535`);
+  (F5) `shared/documents/add-to-dialog.ts:13` enumerates the features' document kinds and names every party a
+  customer; (F6) the step-up and `export.downloaded` audit of a file handed out live in three controllers
+  (`ReportExportController.php:75`, `ExportController.php:76`, `InvoiceSelectionPdfController.php:63`); (F8)
+  `DeadStockReport.php:186` reads its threshold from the invoices module's `watch.unsold_after_days`.
 ### Fragile
 - The local restore drill once read « relation restore_drill does not exist » at its point-in-time read; cause not found.
   `scripts/backup/restore-drill.sh` now waits for promotion (`promoted`) and prints the container's log on that failure;

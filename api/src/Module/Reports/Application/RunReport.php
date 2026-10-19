@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Reports\Application;
 
 /**
- * Reads one report over a period and, when asked, the period it is compared with, and lays the two side by side
- * (docs/SPEC.md § 7, 2026-09-20 03:40). A row of the compared period that the period asked has not is kept, with nothing
+ * Reads one report over a period and, when asked, the period it is compared with, and lays the two side by side.
+ * A row of the compared period that the period asked has not is kept, with nothing
  * in its figures: a customer who bought last month and not this one is the row that matters most. The totals add up the
  * figures the rows hold, which the report read from the documents; nothing is derived again.
  */

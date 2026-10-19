@@ -167,7 +167,7 @@ describe('ProductReorderPointsSection', () => {
     expect(q('field-conflict-reorder-SIEGE')).toBeNull();
   });
 
-  // docs/SPEC.md § 7, 2026-09-17: what is being typed is kept, and the conflict says so.
+  // What is being typed is kept, and the conflict says so.
   it('keeps a point typed over one saved since by someone else, and offers theirs', async () => {
     await open();
     await typeInto('SIEGE', '15');

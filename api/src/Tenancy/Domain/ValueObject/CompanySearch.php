@@ -15,7 +15,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * What the platform's companies list asks for: words found in a company's name or in the address of one of its owners,
  * whatever their case and accents, the statuses and countries that narrow it — the values of one OR'd, the two AND'd
- * (docs/SPEC.md § 7, 2026-10-06 00:15) — and the order, always ending on the name so a page never shifts. The companies
+ * — and the order, always ending on the name so a page never shifts. The companies
  * left out are never found, nor counted: the demo's sandboxes, which are no operator's concern.
  */
 final readonly class CompanySearch

@@ -83,7 +83,7 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The demo dataset (docs/SPEC.md § 7, 2026-09-19): one company of `DemoCatalogue`, written through the application's
+ * The demo dataset: one company of `DemoCatalogue`, written through the application's
  * use cases, never around them, so it carries the numbers, totals, stock movements and audit rows the product itself
  * would have written. Five months of activity end a few days before it is written: invoices paid, part paid, overdue,
  * credited, drafted and cancelled; delivery notes in every state; expenses drafted, recorded and paid.
@@ -344,7 +344,7 @@ final readonly class DemoDataset
     }
 
     /**
-     * What a scanner finds a demo article by (docs/SPEC.md § 7, 2026-09-22 11:05): a unit EAN-13 under Tunisia's GS1
+     * What a scanner finds a demo article by: a unit EAN-13 under Tunisia's GS1
      * prefix 619 for every article, a carton of twelve as a GTIN-14 on every other one, and the supplier's own code on
      * every third, so the product sheet and a scan show each role. Invented numbers with real check digits.
      *

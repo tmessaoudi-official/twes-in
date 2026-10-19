@@ -39,7 +39,7 @@ function plain(quantity: string | null): string {
  * The quantity at or under which the product is to be reordered, in each establishment (docs/SPEC.md § 7, 2026-09-24
  * 11:40). Empty means no alert there; the alert itself reads it elsewhere. Clearing is an ordinary button: nothing is
  * lost that one step cannot put back. Another person's change is read again as it happens; a point being typed is kept
- * over it, and the conflict says so (docs/SPEC.md § 7, 2026-09-17).
+ * over it, and the conflict says so.
  */
 @Component({
   selector: 'app-product-reorder-points',

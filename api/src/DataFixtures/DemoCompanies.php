@@ -28,7 +28,7 @@ use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The demo companies of `DemoCatalogue` (docs/SPEC.md § 7, 2026-09-19), owned by the seeded operator and written by
+ * The demo companies of `DemoCatalogue`, owned by the seeded operator and written by
  * `DemoDataset`, each with one member per built-in role.
  *
  * Load with `make fixtures` (`doctrine:fixtures:load --append`: never without it, which empties the database). A

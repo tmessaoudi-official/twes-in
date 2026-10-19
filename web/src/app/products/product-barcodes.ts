@@ -92,8 +92,8 @@ export class ProductBarcodesSection implements OnInit {
   );
   /**
    * The rows being edited and the saved list they stand on. Another product starts them again; a list saved since by
-   * someone else replaces rows nobody touched, and rows being typed are kept while the conflict says so (docs/SPEC.md
-   * § 7, 2026-09-17: a form being typed in keeps what is typed and shows the banner).
+   * someone else replaces rows nobody touched, and rows being typed are kept while the conflict says so (a form being
+   * typed in keeps what is typed and shows the banner).
    */
   private readonly draft = linkedSignal<
     {

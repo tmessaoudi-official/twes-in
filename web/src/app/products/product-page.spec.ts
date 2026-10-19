@@ -547,7 +547,7 @@ describe('ProductPage', () => {
     );
   });
 
-  // The codes and the homes are shown beside the form and move the product's version (docs/SPEC.md § 7, 2026-10-17 08:55).
+  // The codes and the homes are shown beside the form and move the product's version.
   it('stands on the version a codes save left, keeping what is typed, and saves on it next', async () => {
     product.set(laptop);
     await open('p1');
