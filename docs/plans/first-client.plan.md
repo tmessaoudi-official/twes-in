@@ -230,17 +230,13 @@ was and was not certified by execution.
   dollar), every form for that same review.
 ### Needs input
 - The mails' language once someone goes back to the company's language: the account keeps the last language chosen (`KeepAccountLanguage`), so a person who tried Arabic and returned to French still gets Arabic mail. The screens no longer read it (2026-10-19 12:14). Should going back to the company's language also move the account's mail language to it?
-- The product choices parked as kind D (D1–D7: the invoice list's six columns, copies of issued documents reprinting
-  names, the « Nom — Français » field, names on screens, the euro in Arabic words, the tagline per language, an
-  operator-created company's document language) wait on the marking page https://claude.ai/artifact/NJZfSiA12yTinre4nQxwwt,
-  option A the pick on each; an absent mark is undecided.
 - Their Excel file, to map its columns into the importer (expected tonight or tomorrow). When it arrives, check first which row holds the headings and how many sheets it has: the importer reads the first sheet, headings on its first row.
-- Which six columns an invoice list shows on the widest page (D, parked 2026-10-19): seven need 1128 px of the 1086 the
-  page gives, so one waits in the chooser. Shown now: number, customer, issue date, left to pay, status; the total on
-  request. Options: (a, picked for now) the total on request; (b) the issue date on request and the total shown;
-  (c) list pages widen past `max-w-6xl` on a wide screen, so all seven fit there. Waiting on the developer.
-- The sign-in page's tagline stays French on an Arabic screen: it is the brand's own words (`brand.tagline`), typed
-  once by the operator. Options: (a, recommended) a tagline per interface language on the brand card; (b) leave it.
+- D8 built as ruled (2026-10-19 12:44): the invoice list's status floor is its longest label, « Partiellement payée »
+  in its badge, measured at 179 px (`list-fit.spec.ts`, red at 180; a first probe read 167 px, having dropped the
+  badge's dot and gap). The floor gives the customer's name 1 px. At 1280 px a customer name past
+  about 227 px of text still sends the status away, since the customer column is never hidden and the status is the
+  first high column to give way. Whether a long name should do something else (wrap on two lines, or the status move
+  under the number) is the developer's call; nothing changed until then.
 - After Wednesday, in an order to set: declarations (fiscal rules await an accountant), composite products, jobs, the till (the Tunisian homologated-register question), zakat (its research pass, row 120).
 ### Needs research
 - On an Arabic screen, a telephone number in a field (`kind: 'tel'`) and the contacts list's phone column are not

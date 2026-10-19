@@ -231,7 +231,9 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       label: `${FIELDS}.status`,
       value: (row) => row.shown,
       sortable: true,
-      width: 180,
+      // « Partiellement payée » in its badge, the longest status in any language, so the status never jumps as the
+      // page's rows change and gives no room it does not need away from the customer's name.
+      width: 179,
     },
   ],
   ranges: INVOICE_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
