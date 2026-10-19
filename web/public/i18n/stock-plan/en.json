@@ -20,6 +20,8 @@
       "free_rect_note": "to trace on the plan",
       "trace_type": "or type its measurements",
       "erase": "Erase the rectangle",
+      "erase_piece": "Erase the piece",
+      "erase_group": "Erase the group",
       "add_floor": "Add a floor",
       "edit_floor": "Edit the floor",
       "remove_floor": "Remove the floor",

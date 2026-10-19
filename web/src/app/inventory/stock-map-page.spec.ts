@@ -1533,6 +1533,8 @@ describe('StockMapPage', () => {
 
   it('undraws the group from its panel too, never only from the keyboard', async () => {
     await chooseBoth();
+    // Named for what it takes, the whole group, not a rectangle.
+    expect(q('stock-map-group-erase')!.textContent).toContain('inventory.plan.erase_group');
     q('stock-map-group-erase')!.click();
     await settle();
 
@@ -2242,6 +2244,8 @@ describe('StockMapPage', () => {
 
     q('stock-structure-wall')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await settle();
+    // A wall is a piece of the building, never called a rectangle.
+    expect(q('stock-structure-erase')!.textContent).toContain('inventory.plan.erase_piece');
     (q('stock-structure-erase') as HTMLElement).click();
     await settle();
     expect((await savePlanned()).structureErasures).toEqual([{ structureId: 's1', version: 1 }]);
