@@ -325,6 +325,9 @@
   @if (value === null || value === undefined) {
     @if (named) {
       <span class="text-on-surface-variant">{{ 'reports.unnamed' | translate }}</span>
+    } @else if (countedKinds.has(column.kind)) {
+      <!-- None counted, said as the other screens say it: a blank left the period compared beneath as the only figure. -->
+      —
     }
   } @else {
     @switch (column.kind) {
