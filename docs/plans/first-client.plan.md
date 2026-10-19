@@ -239,7 +239,10 @@ was and was not certified by execution.
 - Step 4b: on a phone the top bar cuts the company's name (« Carthage Con… », 149 Arabic shots, 2026-10-19); its whole
   name is the switcher's tooltip and accessible name. Not a list value, so not under the 21:20 ruling; left as is.
 - Step 4b (#64): a list measures its headers as well as its values, but no header yet passes its declared width, so that
-  measure is not exercised by execution (its sabotage survived); the floor sweep (#65) is what makes it matter. Locally
+  measure is not exercised by execution (its sabotage survived); the floor sweep (#65, after the freeze) is what makes
+  it matter. The no-cut scenario reads a customer, a product and a vendor of its own, whose 32-character codes run past
+  their columns' declared widths, so it does not depend on the demo data CI lacks; it and the gallery audit also count a
+  list cell holding more than it shows (both sabotages red, 28891856, e705ae24). Locally
   `import.spec.ts:100` and `notifications.spec.ts:167` fail with or without #64 (local data and Mailpit), CI arbitrates.
 - Step 5: « dû à 30 jours » (what falls due in the next 30 days) is deferred (ASSUMED 14:20), and saved report views,
   personal or shared, come later; neither is on the screen, and nothing says « Bientôt » for them yet.
@@ -250,7 +253,9 @@ was and was not certified by execution.
 - Step 4b: the gallery's « overlap » findings in Paramètres were the audit comparing whole boxes of entries its list had
   scrolled away; the audit now compares what is seen (`web/e2e-gallery/audit.ts`). The real defect beside them, the list's
   foot slid off by the wheel, was found from the developer's report, not from the gallery.
-- Steps 4 to 7: `web/public/i18n/fr.json` is at 60,677 of 61,440 B gzipped (2026-10-18, S5's gate run): 763 B left before any new screen text; a slice adding texts moves its page's own into a part (`textsPart`) first.
+- Steps 4 to 8: the root screen texts measured 2026-10-19 at 54,011 B gzipped in French, 48,937 in English and
+  58,884 in Arabic, of 61,440: Arabic binds, about 2.5 KB left; a slice adding texts moves its page's own into a part
+  (`textsPart`) first.
 - Step 7: right to left with the Arabic texts is proven on a running screen (`web/e2e/direction.spec.ts`) for the menu's side, a list's columns, a value cut short keeping its start, the command palette, every field's reading and axe on seven screens; a menu opened in right to left, the row actions' shadow and a mirrored icon drawn were not, and the 182-shot gallery was not run again in Arabic.
 - Step 7: the cell that cut a Latin code at its start (« …791728493868 ») is fixed by the `twes-value` box, held by `scripts/gates/value-direction.sh` and the e2e. The direction gate cannot see styles a component's TypeScript writes inline nor an icon named through a binding; those were read by hand once (the stock map stays drawn left to right on purpose).
 - Step 3 S3: an operator-created company in a language other than the platform default prints in the default until its

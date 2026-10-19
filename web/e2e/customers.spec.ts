@@ -65,6 +65,9 @@ test("a customer in a group inherits the group's payment terms and gets a contac
   const run = Date.now().toString(36).toUpperCase();
   const groupName = `E2E ${run}`;
   const number = `E2E-${run}`;
+  // The list is read for its group, a low column: on a laptop, with the name and city beside it, it gives way for
+  // width. A wide window shows it.
+  await page.setViewportSize({ width: 1600, height: 900 });
   await signIn(page);
   await inACompany(page, CSRF);
   try {
