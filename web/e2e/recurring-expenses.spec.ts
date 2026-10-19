@@ -3,6 +3,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
+import { runDigits } from './run';
 
 // Row 179 through the real stack: an expense is made recurring from its bar, on the last Friday of each month and of
 // variable amount; the toast leads to « Récurrentes », a tab of Dépenses, which says how often in words; it is revised
@@ -88,7 +89,7 @@ test('an expense made recurring is listed under « Récurrentes » in words, rev
   await page.setViewportSize({ width: 1600, height: 900 });
   await signIn(page);
   await inACompany(page, CSRF);
-  const description = `Internet ${Date.now().toString(36).toUpperCase()}`;
+  const description = `Internet ${runDigits()}`;
   const expenseId = await aDraftExpense(page, description);
   try {
     await page.goto(`/expenses/${expenseId}`);

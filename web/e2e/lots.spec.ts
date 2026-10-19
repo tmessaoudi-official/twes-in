@@ -5,6 +5,7 @@ import { aProduct, forget, gtin, stockKept, withCodes } from './catalogue';
 import { scan } from './scan';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
+import { runDigits } from './run';
 
 // docs/SPEC.md § 7, 2026-09-23 slice 7: lots on the web. A product set to be kept by lot asks its lot when goods of
 // it are received, and the stock list names the lot the goods went into.
@@ -16,10 +17,9 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
   // A product set up, two receipts, three accessibility scans, the recall and the clean-up: 15 to 32 s on CI, where the
   // default 30 s cut the clean-up off and left the product behind.
   test.setTimeout(90_000);
-  // Six digits rather than letters: at 1600 px the stock list's columns fill its card to within a few pixels, so its
-  // use-by column shows only while every value fits its column, and « Vis LOT-MWQG… » did not where « Vis LOT-ILJT… »
-  // did. Digits draw alike, whatever the run.
-  const run = String(Date.now() % 1_000_000).padStart(6, '0');
+  // At 1600 px the stock list's columns fill its card to within a few pixels, so its use-by column shows only while
+  // every value fits its column: « Vis LOT-MWQG… » did not where « Vis LOT-ILJT… » did.
+  const run = runDigits();
   const reference = `LOT-${run}`;
   const lot = `L-${run}`;
   const scannedLot = `S-${run}`;
