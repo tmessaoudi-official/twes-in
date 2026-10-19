@@ -225,15 +225,15 @@ final readonly class ProductImport implements DeclaresImport
         // want of it.
         $faults = new RowFaults();
         $home = $faults->read(fn (): ?Uuid => $this->homeOf($company, $record), false);
-        $reorderPoint = $faults->read(fn (): ?array => $this->reorderPointOf($company, $record, $home));
+        $reorderPoint = $faults->read(fn (): ?array => $this->reorderPointOf($company, $record, $home, $context));
         $quantity = $faults->read(fn (): ?array => $this->quantityOf($record, $context));
 
-        $seesCosts = $this->guard->may($company, ProductPermission::COST_READ);
+        $seesCosts = $context->once('sees-costs', fn (): bool => $this->guard->may($company, ProductPermission::COST_READ));
         $codes = $this->codes($company, $record, $existing, $seesCosts, $faults);
 
         $written = null;
         try {
-            $input = $this->input($company, $record, $existing, $faults, array_column($codes, 0), $seesCosts);
+            $input = $this->input($company, $record, $existing, $faults, array_column($codes, 0), $seesCosts, $context);
             $faults->stopIfAny();
             \assert(false !== $home);
             // Rendered before the write, which changes the product in place.
@@ -415,10 +415,14 @@ final readonly class ProductImport implements DeclaresImport
      */
     private function inFile(Company $company, Product $product, ImportContext $context, ImportRecord $record): array
     {
-        $codes = [];
-        foreach ($this->taxes->ofCompany($company->getId()) as $tax) {
-            $codes[$tax->getId()->toRfc4122()] = $tax->getCode();
-        }
+        $codes = $context->once('tax-codes', function () use ($company): array {
+            $codes = [];
+            foreach ($this->taxes->ofCompany($company->getId()) as $tax) {
+                $codes[$tax->getId()->toRfc4122()] = $tax->getCode();
+            }
+
+            return $codes;
+        });
         $cells = [];
         foreach (array_diff($context->columns, self::STOCK_COLUMNS) as $column) {
             $cells[$column] = ProductInFile::cell($product, $column, $codes, $record->value('pack_barcode'), $record->value('supplier_code'));
@@ -442,7 +446,7 @@ final readonly class ProductImport implements DeclaresImport
      *
      * @throws RowRejected
      */
-    private function reorderPointOf(Company $company, ImportRecord $record, Uuid|false|null $homeLocationId): ?array
+    private function reorderPointOf(Company $company, ImportRecord $record, Uuid|false|null $homeLocationId, ImportContext $context): ?array
     {
         $quantity = ImportCells::decimal($record, 'reorder_point', 3);
         if (null === $quantity || '' === trim($quantity)) {
@@ -457,7 +461,7 @@ final readonly class ProductImport implements DeclaresImport
         }
         $establishmentId = null === $homeLocationId ? null : $this->reorderPoints->establishmentOfLocation($company, $homeLocationId);
         if (null === $establishmentId) {
-            $establishments = $this->establishments->ofCompany($company->getId());
+            $establishments = $context->once('establishments', fn (): array => $this->establishments->ofCompany($company->getId()));
             if (1 !== \count($establishments)) {
                 throw new RowRejected('reorder_point', 'The company has several establishments, so a reorder point needs the row\'s home_location to say which one.', 'ambiguous_establishment');
             }
@@ -489,11 +493,11 @@ final readonly class ProductImport implements DeclaresImport
      * @throws InvalidProduct
      */
     /** @param list<BarcodeInput> $codes */
-    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults, array $codes, bool $seesCosts): ProductInput
+    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults, array $codes, bool $seesCosts, ImportContext $context): ProductInput
     {
         $held = $current?->getDetails();
         $kind = $record->value('kind');
-        $taxIds = $faults->read(fn (): array => $this->taxIds($company, $record, $current), false);
+        $taxIds = $faults->read(fn (): array => $this->taxIds($company, $record, $current, $context), false);
         $price = $faults->read(fn (): string => $this->priceOf($company, $record, $held, $taxIds), '0');
 
         return new ProductInput(
@@ -504,14 +508,14 @@ final readonly class ProductImport implements DeclaresImport
                 $record->value('description') ?? $held?->description,
                 null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods),
                 $price,
-                ($this->guard->may($company, ProductPermission::COST_READ) ? $faults->read(static fn (): ?string => ImportCells::decimal($record, 'cost_price', 4)) : null) ?? $held?->costPrice,
+                ($seesCosts ? $faults->read(static fn (): ?string => ImportCells::decimal($record, 'cost_price', 4)) : null) ?? $held?->costPrice,
                 $record->value('substitution_group') ?? $held?->substitutionGroup,
             ),
-            $faults->read(fn (): Uuid => $this->unitId($company, $record, $current), Uuid::v7()),
-            $faults->read(fn (): ?Uuid => $this->categoryId($company, $record, $current), $current?->getCategory()?->getId()),
+            $faults->read(fn (): Uuid => $this->unitId($company, $record, $current, $context), Uuid::v7()),
+            $faults->read(fn (): ?Uuid => $this->categoryId($company, $record, $current, $context), $current?->getCategory()?->getId()),
             false === $taxIds ? [] : $taxIds,
             $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
-            $this->customValues($company, $record, $current, $faults),
+            $this->customValues($company, $record, $current, $faults, $context),
             $codes,
             // Left blank, the product keeps its own; a new one follows what its category or company says.
             $faults->read(static fn (): ?ProductTracking => self::tracking($record)),
@@ -696,7 +700,7 @@ final readonly class ProductImport implements DeclaresImport
     }
 
     /** The unit the row names by code. A product is sold in one, so a row creating one names it. */
-    private function unitId(Company $company, ImportRecord $record, ?Product $current): Uuid
+    private function unitId(Company $company, ImportRecord $record, ?Product $current, ImportContext $context): Uuid
     {
         $code = $record->value('unit_code');
         if (null === $code) {
@@ -704,23 +708,23 @@ final readonly class ProductImport implements DeclaresImport
                 ?? throw new RowRejected('unit_code', 'A product is sold in a unit, so a new one names its code.', 'value_required');
         }
 
-        return $this->units->ofCodeInCompany($code, $company->getId())?->getId()
+        return $context->once('unit:'.$code, fn (): ?Uuid => $this->units->ofCodeInCompany($code, $company->getId())?->getId())
             ?? throw new RowRejected('unit_code', \sprintf('The company has no unit coded "%s".', $code), 'unknown_unit', ['code' => $code]);
     }
 
-    private function categoryId(Company $company, ImportRecord $record, ?Product $current): ?Uuid
+    private function categoryId(Company $company, ImportRecord $record, ?Product $current, ImportContext $context): ?Uuid
     {
         $name = $record->value('category');
         if (null === $name) {
             return $current?->getCategory()?->getId();
         }
 
-        return $this->categories->ofNameInCompany($name, $company->getId())?->getId()
+        return $context->once('category:'.$name, fn (): ?Uuid => $this->categories->ofNameInCompany($name, $company->getId())?->getId())
             ?? throw new RowRejected('category', \sprintf('The company has no product category named "%s". Create it first.', $name), 'unknown_category', ['name' => $name]);
     }
 
     /** @return list<Uuid> */
-    private function taxIds(Company $company, ImportRecord $record, ?Product $current): array
+    private function taxIds(Company $company, ImportRecord $record, ?Product $current, ImportContext $context): array
     {
         $codes = $record->value('default_tax_codes');
         if (null === $codes) {
@@ -729,7 +733,7 @@ final readonly class ProductImport implements DeclaresImport
 
         $ids = [];
         foreach (preg_split('/[\s;,]+/', $codes, -1, \PREG_SPLIT_NO_EMPTY) ?: [] as $code) {
-            $ids[] = $this->taxes->ofCodeInCompany($code, $company->getId())?->getId()
+            $ids[] = $context->once('tax:'.$code, fn (): ?Uuid => $this->taxes->ofCodeInCompany($code, $company->getId())?->getId())
                 ?? throw new RowRejected('default_tax_codes', \sprintf('The company has no tax coded "%s".', $code), 'unknown_tax_code', ['code' => $code]);
         }
 
@@ -741,10 +745,10 @@ final readonly class ProductImport implements DeclaresImport
      *
      * @return array<string, string|int|float|bool>
      */
-    private function customValues(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults): array
+    private function customValues(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults, ImportContext $context): array
     {
         $values = $current?->getCustomFields() ?? [];
-        foreach ($this->customFields->ofCompanyAndEntity($company->getId(), CustomFieldEntity::Product) as $field) {
+        foreach ($context->once('custom-fields', fn (): array => $this->customFields->ofCompanyAndEntity($company->getId(), CustomFieldEntity::Product)) as $field) {
             $column = self::CUSTOM_PREFIX.$field->getKey();
             $cell = $record->value($column);
             if (null === $cell || !$field->isActive()) {

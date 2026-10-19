@@ -31,8 +31,12 @@ parameters:
     app.notification.open_url: '%env(DEFAULT_URI)%/'
     app.notification.stop_url: '%env(DEFAULT_URI)%/notifications/stop/{token}'
     # Rows one import takes, header excluded: one file is one unit of work, run inside the request, so it must finish
-    # well within PHP's 30 seconds; 2500 rows measured 10.4 s on release PHP (docs/SPEC.md § 7, 2026-09-19).
+    # within app.import.max_seconds below.
     app.import.max_rows: 2000
+    # The seconds one import request is given: the largest file allowed took 15 s on a developer's machine, release kernel,
+    # and a shop's small computer may take a few times that. PHP's own limit is lifted to it for an import alone, never
+    # shortened, and infra/web/nginx.conf waits as long for the answer.
+    app.import.max_seconds: 120
     # What an imported workbook's parts may inflate to, together (64 MiB): a few kilobytes of zip can hold gigabytes, while
     # 2,000 rows of twenty forty-character cells inflate to about 4 MB.
     app.import.max_inflated_bytes: 67108864

@@ -16,23 +16,49 @@ use Symfony\Component\Uid\Uuid;
  * elsewhere may carry to read as the import's, the switches the person ticked among those the subject offers,
  * whether it is the preview, rolled back whatever it finds, so a row asks for nothing a preview cannot keep, and the
  * subject's columns as this person may see them, the ones a row found again is compared over.
+ *
+ * It also keeps what no row of the run changes, read for the first row that asks: who imports and what they may see, the
+ * company's units, taxes and custom fields. Read again for each row, a file of 2000 rows ran some fifty thousand queries
+ * and came close to the time a request is given.
  */
-final readonly class ImportContext
+final class ImportContext
 {
+    /** @var array<string, mixed> */
+    private array $known = [];
+
     /**
      * @param list<string> $ticked  the keys of the subject's switches the person ticked
      * @param list<string> $columns the subject's columns for this company and person
      */
     public function __construct(
-        public Uuid $runId,
-        private array $ticked = [],
-        public bool $dryRun = false,
-        public array $columns = [],
+        public readonly Uuid $runId,
+        private readonly array $ticked = [],
+        public readonly bool $dryRun = false,
+        public readonly array $columns = [],
     ) {
     }
 
     public function ticked(string $switch): bool
     {
         return \in_array($switch, $this->ticked, true);
+    }
+
+    /**
+     * What `$read` answers, read once in the run under `$key`: the key names what is read and every value it depends on.
+     *
+     * @template T
+     *
+     * @param \Closure(): T $read
+     *
+     * @return T
+     */
+    public function once(string $key, \Closure $read): mixed
+    {
+        if (!\array_key_exists($key, $this->known)) {
+            $this->known[$key] = $read();
+        }
+
+        /* @var T */
+        return $this->known[$key];
     }
 }
