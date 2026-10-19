@@ -7,7 +7,7 @@
     "draft": "Draft",
     "draft_title": "Draft order",
     "saved": "The draft was saved.",
-    "sent": "Order {{number}} is sent.",
+    "sent": "Order {{number}} is marked sent.",
     "received_part": "The receipt is recorded; the rest is still expected.",
     "received_all": "The receipt is recorded; the whole order is received.",
     "closed": "The order is closed.",
@@ -85,9 +85,9 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "send": "Send the order",
-      "send_title": "Send the order?",
+      "save": "Save the draft",
+      "send": "Mark sent",
+      "send_title": "Mark the order sent?",
       "send_message": "It gets its number and no longer changes. While nothing is received, it can still be cancelled.",
       "receive": "Receive",
       "pdf": "Download the PDF",
