@@ -9,7 +9,7 @@
     "kept": "Factures, avoirs et bons de livraison émis, leurs numéros et leurs PDF · paiements et dépenses enregistrés · clôtures · le journal d’activité · les membres, leurs rôles et l’abonnement. Gardez une copie avant : chaque liste a « Exporter ».",
     "waiting": "Un effacement attend encore sa fin : annulez-le depuis le bandeau, ou attendez qu’il soit définitif, avant d’en faire un autre.",
     "review": "Voir ce qui sera effacé ({{count}})",
-    "erased": "Effacé : {{parts}}",
+    "erased": "Effacé : {{parts}}.",
     "preview": {
       "title": "Ce qui sera effacé",
       "counted": "Calculé à l’instant, sans rien toucher. Cela disparaît des écrans de tous les membres dès « Effacer » ; l’effacement est inscrit au journal d’activité.",

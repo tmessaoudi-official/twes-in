@@ -9,7 +9,7 @@
     "kept": "Issued invoices, credit notes and delivery notes, their numbers and their PDFs · recorded payments and expenses · closings · the activity journal · members, their roles and the subscription. Keep a copy first: every list has « Export ».",
     "waiting": "An erasure is still waiting for its end: undo it from the banner, or wait until it is final, before making another.",
     "review": "See what will be erased ({{count}})",
-    "erased": "Erased: {{parts}}",
+    "erased": "Erased: {{parts}}.",
     "preview": {
       "title": "What will be erased",
       "counted": "Counted just now, without touching anything. It disappears from every member’s screens on « Erase »; the erasure is written to the activity journal.",

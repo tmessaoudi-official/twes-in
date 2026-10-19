@@ -183,6 +183,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/value-direction.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/scrollers-contain.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/outcomes-as-toasts.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/outcome-sentences.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-log-rotation.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/deploy-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/onprem-overlay.test.sh
@@ -238,6 +239,7 @@ in-gate-licences:
 	bash scripts/gates/value-direction.sh
 	bash scripts/gates/scrollers-contain.sh
 	bash scripts/gates/outcomes-as-toasts.sh
+	bash scripts/gates/outcome-sentences.sh
 	bash scripts/gates/compose-log-rotation.sh
 	bash scripts/gates/deploy-overlay.sh
 	bash scripts/gates/onprem-overlay.sh

@@ -445,8 +445,8 @@
       "everything": "The owner holds every right there is, including those later releases add.",
       "save": "Save",
       "close": "Close",
-      "saved": "Role saved",
-      "deleted": "Role deleted",
+      "saved": "Role saved.",
+      "deleted": "Role deleted.",
       "errors": {
         "network": "The server cannot be reached. Try again.",
         "not_found": "No such role.",
@@ -466,7 +466,7 @@
       "no_company": "Choose a company to manage how its members sign in.",
       "mfa_required": "Require two-step verification",
       "mfa_required_hint": "Every member signs in with a code from an authenticator app as well as their password. Members without one, you included, set it up before they can continue.",
-      "saved": "Saved.",
+      "saved": "The security setting was saved.",
       "errors": {
         "network": "The server could not be reached. Try again.",
         "not_found": "This company could not be found.",
@@ -1393,7 +1393,7 @@
     "selected": "{count, plural, =0 {No invoice selected} one {{{count}} invoice selected} other {{{count}} invoices selected}}",
     "select_draft": "Select the draft for {{customer}}",
     "bulk": {
-      "exported": "{count, plural, one {{{count}} invoice exported} other {{{count}} invoices exported}}",
+      "exported": "{count, plural, one {{{count}} invoice exported} other {{{count}} invoices exported}}.",
       "check_failed": "The selection could not be checked. Try again.",
       "skipped_title": "{count, plural, =0 {No invoice left out} one {One selected invoice is left out} other {{{count}} selected invoices are left out}}",
       "unknown": "Unknown invoice",
@@ -1414,7 +1414,7 @@
         "zip": "One PDF per invoice (zip)"
       },
       "pdf_rest": "{count, plural, one {Download the invoice} other {Download the {{count}} invoices}}",
-      "printed": "{count, plural, one {{{count}} invoice as PDF} other {{{count}} invoices as PDF}}",
+      "printed": "{count, plural, one {{{count}} invoice as PDF} other {{{count}} invoices as PDF}}.",
       "include_drafts": "Include the drafts (with a draft watermark)",
       "include_cancelled": "Include the abandoned ones (with a cancelled watermark)",
       "pay": "Record payment",
@@ -1425,7 +1425,7 @@
       "pay_skipped": "{count, plural, one {One invoice is not paid} other {{{count}} invoices are not paid}}",
       "pay_go": "{count, plural, =0 {Record payment} one {Record payment for the invoice} other {Record payment for the {{count}} invoices}}",
       "pay_changed": "An invoice changed since the preview: nothing was recorded. Here is the preview as it stands now.",
-      "paid": "{count, plural, one {{{count}} invoice paid: {{total}}} other {{{count}} invoices paid: {{total}}}}"
+      "paid": "{count, plural, one {{{count}} invoice paid: {{total}}} other {{{count}} invoices paid: {{total}}}}."
     },
     "title": "Invoices",
     "add": "New invoice",
@@ -2530,8 +2530,8 @@
     "delete_confirm": "Delete",
     "keep": "Keep",
     "scan": {
-      "filled": "{{name}}: article, lot and quantity filled in",
-      "location_set": "{{name}}: location filled in",
+      "filled": "{{name}}: article, lot and quantity filled in.",
+      "location_set": "{{name}}: location filled in.",
       "location_ambiguous": "The code “{{code}}” names a location in several establishments: scan the location’s label."
     },
     "count": {
@@ -2546,8 +2546,8 @@
       "record": "Record the count",
       "incomplete": "Every line needs a quantity, and a tracked article its lot.",
       "recorded": "Count recorded: {{count}} {count, plural, one {line} other {lines}}.",
-      "at_location": "Counting at: {{name}}",
-      "tallied": "{{name}}: {{quantity}} counted",
+      "at_location": "Counting at: {{name}}.",
+      "tallied": "{{name}}: {{quantity}} counted.",
       "read_only": "You may count, but not record: recording needs the right to write stock."
     },
     "labels": {
@@ -3101,10 +3101,10 @@
   },
   "scan": {
     "count": "Next scan ×{{count}}",
-    "added": "{{name}} added",
-    "incremented": "{{name}}: quantity {{quantity}}",
+    "added": "{{name}} added.",
+    "incremented": "{{name}}: quantity {{quantity}}.",
     "undo": "Undo",
-    "undone": "Scan {{code}} undone",
+    "undone": "Scan {{code}} undone.",
     "failed": "The scan could not be handled. Try again.",
     "not_editable": "This document can no longer be changed: the scan adds nothing.",
     "retired": "{{name}} is no longer sold: it is not added.",
@@ -3141,7 +3141,7 @@
       "qr": "QR code of the link for the phone",
       "opening": "Preparing the link…",
       "waiting": "Waiting for the phone",
-      "connected": "Phone connected",
+      "connected": "Phone connected.",
       "disconnect": "Let the phone go",
       "close": "Close",
       "ended": "The phone is no longer connected to this tab",
@@ -4304,7 +4304,7 @@
     }
   },
   "data_erasure": {
-    "undone": "Erasure undone: everything is back",
+    "undone": "Erasure undone: everything is back.",
     "parts": {
       "stock_map": {
         "title": "Stock map",
