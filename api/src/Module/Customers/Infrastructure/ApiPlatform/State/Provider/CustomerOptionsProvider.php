@@ -18,7 +18,6 @@ use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
-use App\Identity\Domain\Repository\UserRepository;
 use App\Module\Customers\Infrastructure\ApiPlatform\Output\CustomerIdentifierOption;
 use App\Module\Customers\Infrastructure\ApiPlatform\Output\CustomerRegimeOption;
 use App\Module\Customers\Infrastructure\ApiPlatform\Output\CustomerTaxOption;
@@ -36,7 +35,6 @@ final readonly class CustomerOptionsProvider implements ProviderInterface
         private FiscalPresets $presets,
         private ListCustomerTaxRegimes $regimes,
         private TaxComponentRepository $taxes,
-        private UserRepository $users,
         private TranslatorInterface $translator,
     ) {
     }
@@ -44,21 +42,20 @@ final readonly class CustomerOptionsProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): CustomerOptionsResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CustomerPermission::READ);
-        $locale = $this->users->ofId($this->guard->account()->getId())?->getLocale() ?? $company->getLocale();
 
         $options = new CustomerOptionsResource();
         $options->countryCode = $company->getCountryCode();
         foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
             $options->identifiers[] = new CustomerIdentifierOption(
                 $identifier->key,
-                $this->translator->trans($identifier->labelKey, [], 'fiscal', $locale),
+                $this->translator->trans($identifier->labelKey, [], 'fiscal'),
                 $identifier->patternFor(IdentifierRules::BUSINESS_CUSTOMER),
                 \in_array(IdentifierRules::BUSINESS_CUSTOMER, $identifier->requiredFor, true),
             );
         }
         $options->regimes = array_map(fn (CustomerTaxRegime $regime) => new CustomerRegimeOption(
             $regime->getCode(),
-            $this->translator->trans($regime->getLabelKey(), [], 'fiscal', $locale),
+            $this->translator->trans($regime->getLabelKey(), [], 'fiscal'),
             array_map(static fn (TaxFamily $family) => $family->value, $regime->getExcludedFamilies()),
         ), $this->regimes->for($company));
         $active = array_filter($this->taxes->ofCompany($company->getId()), static fn (TaxComponent $tax) => $tax->isActive());

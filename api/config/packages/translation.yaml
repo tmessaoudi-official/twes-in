@@ -3,6 +3,9 @@ framework:
     # that file, so CatalogueLanguagesTest holds these two lines to it. These files carry only what the API itself sends: mail and print.
     default_locale: fr
     enabled_locales: ['fr', 'en', 'ar']
+    # A request is answered in the language the screen asks for (Accept-Language, one of enabled_locales), so the words the
+    # API puts on a screen follow the screen, never the language last saved on the account, which only mails read.
+    set_locale_from_accept_language: true
     translator:
         default_path: '%kernel.project_dir%/translations'
         fallbacks:

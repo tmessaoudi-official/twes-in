@@ -11,7 +11,6 @@ namespace App\ImportExport\Infrastructure\ApiPlatform\State\Provider;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
-use App\Identity\Domain\Repository\UserRepository;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportHeading;
@@ -38,7 +37,6 @@ final readonly class ImportGuideProvider implements ProviderInterface
     public function __construct(
         private ImportCatalogue $catalogue,
         private CompanyGuard $guard,
-        private UserRepository $users,
         private TranslatorInterface $translator,
         private ImportRunRepository $runs,
         #[Autowire(param: 'app.import.max_rows')]
@@ -57,7 +55,6 @@ final readonly class ImportGuideProvider implements ProviderInterface
         } catch (UnknownImportSubject $unknown) {
             throw new NotFoundHttpException($unknown->getMessage(), $unknown);
         }
-        $locale = $this->users->ofId($this->guard->account()->getId())?->getLocale() ?? $company->getLocale();
 
         $guide = new ImportGuideResource();
         $guide->subject = $subject->key;
@@ -69,7 +66,7 @@ final readonly class ImportGuideProvider implements ProviderInterface
             ImportHeading::ScreenText === $column->headingIs ? $column->heading : null,
             match ($column->headingIs) {
                 ImportHeading::ScreenText => null,
-                ImportHeading::FiscalLabel => $this->translator->trans($column->heading, [], 'fiscal', $locale),
+                ImportHeading::FiscalLabel => $this->translator->trans($column->heading, [], 'fiscal'),
                 ImportHeading::Label => $column->heading,
             },
             $column->example,

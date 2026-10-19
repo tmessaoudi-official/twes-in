@@ -60,6 +60,9 @@ abstract class ApiTestCase extends WebTestCase
         $this->client = static::createClient();
         // Every request from a browser tab carries the site's origin; the CSRF manager checks it.
         $this->client->setServerParameter('HTTP_ORIGIN', 'http://localhost');
+        // Every request from the web names the screen's language, French unless the person chose another; the browser
+        // kit would otherwise send its own « en-us », and the API answers in the language a request names.
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
         // The login limiter's counters live in a filesystem pool that outlives the transaction dama rolls back.
         static::getContainer()->get('cache.rate_limiter')->clear();
     }

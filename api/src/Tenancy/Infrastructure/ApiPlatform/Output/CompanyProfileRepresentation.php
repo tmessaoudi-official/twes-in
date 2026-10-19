@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\ApiPlatform\Output;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Identity\Domain\Repository\UserRepository;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyProfileResource;
@@ -23,7 +22,6 @@ final readonly class CompanyProfileRepresentation
     public function __construct(
         private CompanyGuard $guard,
         private FiscalPresets $presets,
-        private UserRepository $users,
         private TranslatorInterface $translator,
         private CompanyLogo $logo,
     ) {
@@ -32,7 +30,6 @@ final readonly class CompanyProfileRepresentation
     public function of(Company $company): CompanyProfileResource
     {
         $preset = $this->presets->get($company->getFiscalPreset());
-        $locale = $this->users->ofId($this->guard->account()->getId())?->getLocale() ?? $company->getLocale();
         $profile = $company->getProfile();
 
         $resource = new CompanyProfileResource();
@@ -61,13 +58,13 @@ final readonly class CompanyProfileRepresentation
         foreach ($preset->identifiers as $identifier) {
             $resource->identifierFields[] = new CompanyIdentifierField(
                 $identifier->key,
-                $this->translator->trans($identifier->labelKey, [], 'fiscal', $locale),
+                $this->translator->trans($identifier->labelKey, [], 'fiscal'),
                 $identifier->pattern,
                 \in_array('company', $identifier->requiredFor, true),
             );
         }
         foreach ($preset->companyVatRegimes as $regime) {
-            $resource->vatRegimes[] = new CompanyVatRegimeOption($regime->code, $this->translator->trans($regime->labelKey, [], 'fiscal', $locale));
+            $resource->vatRegimes[] = new CompanyVatRegimeOption($regime->code, $this->translator->trans($regime->labelKey, [], 'fiscal'));
         }
 
         return $resource;
