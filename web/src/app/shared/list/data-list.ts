@@ -1332,7 +1332,9 @@ export class DataList<Row> implements OnInit {
     if (delta === 0) return;
     event.preventDefault();
     event.stopPropagation();
-    this.saveWidth(column.id, this.columnWidth(column) + delta);
+    // The column as it stands now, not as the header last drew it: a held key repeats faster than the redraw.
+    const current = this.columns().find((each) => each.id === column.id) ?? column;
+    this.saveWidth(column.id, this.columnWidth(current) + delta);
   }
 
   protected startResize(event: PointerEvent, column: ListColumn<Row>): void {

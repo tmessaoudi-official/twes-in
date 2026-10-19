@@ -538,6 +538,18 @@ describe('DataList', () => {
     expect(q('list-header-balance')!.style.width).toBe('136px');
   });
 
+  // A held arrow key repeats faster than the header redraws: each press widens what the last one chose, never the
+  // width the header was last drawn at, or a step is lost.
+  it('counts every press of the arrow, however fast they come', async () => {
+    const handle = q('list-resize-balance')!;
+    handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await settle();
+
+    expect(preferences().widths).toEqual({ balance: 168 });
+  });
+
   // A value holding no letter of its own (a phone, « 1000 Tunis », a code) takes the direction of the line it sits in,
   // and in Arabic its parts change places: each plain cell isolates its value, which reads in its own direction.
   it('puts each plain value in a box reading its own way, at the end of the cell in an end column', () => {
