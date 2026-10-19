@@ -128,6 +128,7 @@ test.describe('no list cuts a value', () => {
   // The run's own records, each as long as its fields allow, so a code and a name wider than their columns declare are
   // read whatever else the company holds: CI's seed gives the operator a company and no row.
   const code = `F${Date.now().toString(36)}-QUINCAILLERIE-GENERALE`.slice(0, 32);
+  let customer = '';
   let product = '';
   let vendor = '';
   test.beforeEach(async ({ page }) => {
@@ -135,7 +136,7 @@ test.describe('no list cuts a value', () => {
     await inACompany(page, CSRF);
     await forgetPresentationChoices(page);
     if (product === '') {
-      await aCustomer(page, code);
+      customer = await aCustomer(page, code);
       product = await aProduct(page, code);
       vendor = await aVendor(page, code);
     }
@@ -171,4 +172,96 @@ test.describe('no list cuts a value', () => {
       }
     });
   }
+
+  // The invoice's number cell is a link around a block; such a link's box is the cell's, which the table stretches to
+  // fill the card, so measuring it widened the column by the room it was given, a little more at every measure.
+  test('a column is as wide as its values, not as the room the table gave it', async ({ page }) => {
+    const invoice = await aDraft(page, customer);
+    try {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto(`/invoices?customer=${customer}`);
+      await expect(page.locator(RECORD_ROW)).toHaveCount(1);
+      const settled = async (): Promise<string> => {
+        let before = '';
+        await expect
+          .poll(async () => {
+            const now = await tableMinWidth(page);
+            const same = now === before;
+            before = now;
+            return same;
+          })
+          .toBe(true);
+        return before;
+      };
+      const narrow = await settled();
+      await page.setViewportSize({ width: 1600, height: 900 });
+      await settled();
+      await page.setViewportSize({ width: 1280, height: 900 });
+      expect(await settled()).toBe(narrow);
+    } finally {
+      await cancelDraft(page, invoice);
+    }
+  });
 });
+
+function tableMinWidth(page: Page): Promise<string> {
+  return page.evaluate(
+    () =>
+      new Promise<string>((done) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => done(document.querySelector('table')?.style.minWidth ?? '')),
+        ),
+      ),
+  );
+}
+
+/** A draft invoice for the run's customer, through the API; its id. */
+async function aDraft(page: Page, customerId: string): Promise<string> {
+  return page.evaluate(
+    async ([csrf, id]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}`;
+      const options = (await (await fetch(`${base}/invoice-options`)).json()) as {
+        units: { id: string; code: string }[];
+      };
+      const unit = options.units.find((each) => each.code === 'C62') ?? options.units[0];
+      const created = await fetch(`${base}/invoices`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({
+          customerId: id,
+          establishmentId: null,
+          lines: [
+            {
+              description: 'Vis à bois',
+              quantity: '1',
+              unitId: unit?.id,
+              unitPriceNet: '1',
+              discountRate: null,
+              taxComponentIds: [],
+            },
+          ],
+        }),
+      });
+      if (!created.ok) throw new Error(`creating the draft answered ${created.status}`);
+      return ((await created.json()) as { id: string }).id;
+    },
+    [CSRF, customerId] as const,
+  );
+}
+
+async function cancelDraft(page: Page, id: string): Promise<void> {
+  const status = await page.evaluate(
+    async ([csrf, invoice]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const cancelled = await fetch(`/api/companies/${me.company.id}/invoices/${invoice}/cancel`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: 'null',
+      });
+      return cancelled.status;
+    },
+    [CSRF, id] as const,
+  );
+  expect(status).toBe(200);
+}

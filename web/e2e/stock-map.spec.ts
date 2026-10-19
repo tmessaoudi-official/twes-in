@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
+import { choiceSaved } from './presentation';
 import { inACompany, signIn } from './session';
 import { wcagViolations } from './axe';
 import { toast } from './toast';
@@ -737,8 +738,11 @@ test.describe('the drawn stock map', () => {
       );
       await expect(wall).toHaveText('Mur nord', { timeout: 5_000 });
 
+      // The two choices before it may still be saving: the one awaited is the one carrying this choice.
+      const saved = choiceSaved(page, 'presentation.plan-labels', '"name"');
       await page.getByTestId('stock-map-label-name').click();
       await expect(label).toHaveText(`Rayonnage ${code}`);
+      await saved;
 
       // A preference, not a moment: the next visit opens on the numbering this store actually reads.
       await page.reload();

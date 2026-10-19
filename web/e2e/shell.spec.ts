@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
+import { choiceSaved } from './presentation';
 import { inACompany, signIn } from './session';
 import { wcagViolations } from './axe';
 import { sidewaysOverflow } from './overflow';
@@ -283,9 +284,11 @@ test('an entry not built yet says what it will do, and hiding what is coming tak
     await expect(page.getByTestId('coming-roadmap')).toHaveText('Pas encore planifié');
     await page.goto('/coming/works');
 
+    const hidden = choiceSaved(page, 'presentation.show-coming', 'false');
     await page.getByTestId('coming-hide').click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByTestId('nav-register')).toHaveCount(0);
+    await hidden;
     await page.reload();
     await expect(page.getByTestId('nav-home')).toBeVisible();
     await expect(page.getByTestId('nav-register')).toHaveCount(0);

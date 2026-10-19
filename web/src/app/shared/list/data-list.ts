@@ -170,8 +170,12 @@ function valueWidth(cell: HTMLElement, range: Range): number {
     range.selectNodeContents(text);
     take(range.getBoundingClientRect());
   }
+  // A box of its own width, a badge or an icon, counts whole. A plain inline element does not: its words are counted
+  // above, and one around a block (a link around a two-line number) has the block's box, which the table stretches to
+  // fill the card, so counting it widened the column by the room it was given.
   for (const element of cell.querySelectorAll('*')) {
-    if (getComputedStyle(element).display.startsWith('inline'))
+    const display = getComputedStyle(element).display;
+    if (display.startsWith('inline-') || (display === 'inline' && element instanceof SVGSVGElement))
       take(element.getBoundingClientRect());
   }
   // A header's sort arrow is a block beside its label, there whether or not the column is sorted.
