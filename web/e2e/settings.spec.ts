@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
+import { axeAtRest } from './axe';
 
 // G3b through the real stack: the seeded company's owner sets a business default on the settings page, it survives
 // a reload, and a reset returns it to the declared default. One database is shared by the whole suite, so the
@@ -39,7 +39,9 @@ test("the owner sets the company's payment terms, which survive a reload until r
     await expect(page.getByTestId('field-article__default_unit')).not.toContainText('C62');
 
     // The suite's accessibility bar is WCAG 2.1 AA, as in accessibility.spec.ts.
-    const axe = await new AxeBuilder({ page })
+    const axe = await (
+      await axeAtRest(page)
+    )
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
     expect(axe.violations.map((violation) => violation.id)).toEqual([]);

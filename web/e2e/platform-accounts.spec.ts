@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
 import { proveIfHeldBack, sendProving } from './step-up';
+import { axeAtRest } from './axe';
 
 // C3 through the whole stack (docs/SPEC.md § 7, 2026-09-15): an operator finds an account on /platform, ends its
 // sessions, deactivates it and reactivates it, while that account's own browser is signed in beside it. Each run
@@ -19,7 +19,9 @@ async function signIn(page: Page, email: string, password: string): Promise<void
 }
 
 async function expectAccessible(page: Page, screen: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
+  const results = await (
+    await axeAtRest(page)
+  )
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
   const violations = results.violations.map(

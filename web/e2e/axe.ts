@@ -39,11 +39,32 @@ export async function wcagViolations(page: Page): Promise<string[]> {
       { timeout: 10_000 },
     )
     .toBe(true);
-  const axe = await new AxeBuilder({ page })
+  const axe = await (
+    await axeAtRest(page)
+  )
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
   return axe.violations.map(
     (violation) =>
       `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
   );
+}
+
+/**
+ * The one way a scan starts: axe once the icon font has arrived. axe decides whether a font draws icons from the first
+ * three it measures and keeps that answer for the whole scan, so a scan begun while the font is still on its way reads
+ * every icon button as its name in words and fails label-content-name-mismatch on all of them at once.
+ */
+export async function axeAtRest(page: Page): Promise<AxeBuilder> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          await document.fonts.load('24px "Material Symbols Outlined"');
+          return document.fonts.check('24px "Material Symbols Outlined"');
+        }),
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  return new AxeBuilder({ page });
 }

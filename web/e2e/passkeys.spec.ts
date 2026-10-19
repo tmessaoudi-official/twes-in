@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
 import { proveIfAsked } from './step-up';
 import { toast } from './toast';
+import { axeAtRest } from './axe';
 
 // A passkey is bound to a domain, and Chromium refuses an IP address as one, so this file talks to the stack as
 // localhost whatever address the other files use. The API allows exactly that origin (APP_WEBAUTHN_ORIGINS).
@@ -36,7 +36,9 @@ async function signOut(page: Page): Promise<void> {
 }
 
 async function expectAccessible(page: Page, screen: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
+  const results = await (
+    await axeAtRest(page)
+  )
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
   const violations = results.violations.map(

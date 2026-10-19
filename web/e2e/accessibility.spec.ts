@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { forgetPresentationChoices } from './presentation';
 import { signIn as signInAsOperator } from './session';
-import { wcagViolations } from './axe';
+import { axeAtRest, wcagViolations } from './axe';
 import { sidewaysOverflow } from './overflow';
 import { chooseLanguage } from './language';
 
@@ -25,6 +24,25 @@ test('the login page is accessible', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByTestId('email')).toBeVisible();
   await expectAccessible(page, 'login');
+});
+
+test('a scan reads an icon as an icon even when its font arrives late', async ({ page }) => {
+  // axe decides whether a font draws icons from the first three it measures and keeps that answer for the rest of
+  // the scan: measured before the icon font has arrived, every icon button on the screen reads as its name in words
+  // and fails label-content-name-mismatch (a loaded machine, every shell button at once). The font is held back
+  // here past its block period, so a scan that does not wait for it fails the same way every time.
+  test.setTimeout(90_000);
+  await page.route('**/material-symbols-outlined*.woff2', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 8_000));
+    await route.continue();
+  });
+  await signIn(page);
+  await page.goto('/customers');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  const violations = await wcagViolations(page);
+  expect(
+    violations.filter((violation) => violation.startsWith('label-content-name-mismatch')),
+  ).toEqual([]);
 });
 
 test('the shell, the home page and the members page are accessible in light and dark', async ({
@@ -50,7 +68,9 @@ test('the shell, the home page and the members page are accessible in light and 
 
 test('the shell keeps its content in landmarks, each named once', async ({ page }) => {
   const expectLandmarks = async (screen: string) => {
-    const results = await new AxeBuilder({ page })
+    const results = await (
+      await axeAtRest(page)
+    )
       .withRules(['region', 'landmark-unique', 'duplicate-id-aria'])
       .analyze();
     expect(
@@ -141,7 +161,9 @@ async function walk(page: Page, scheme: string): Promise<void> {
     await expect(page, `${route} (${scheme}), still there once drawn`).toHaveURL(url);
     // Nothing is excluded in dark any more: a tab label read 1.08:1, 3.2:1 or 14.42:1 because it was still fading from
     // the light scheme's colour when axe read it, which ThemeFacade now prevents (§ 8 row 28).
-    const results = await new AxeBuilder({ page })
+    const results = await (
+      await axeAtRest(page)
+    )
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
     // A control that shows no words must say what it does when pointed at (§ 7, 2026-09-16 review): its tooltip,
