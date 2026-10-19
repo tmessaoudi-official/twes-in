@@ -69,6 +69,7 @@ const vat: TaxComponentRow = {
   isActive: true,
   exemptionMention: null,
   sortOrder: 10,
+  names: {},
   version: 1,
 };
 

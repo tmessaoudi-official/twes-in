@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Module\DeliveryNotes\Application;
 
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
@@ -180,6 +181,15 @@ final class PrintDeliveryNoteTest extends TestCase
         $page = $this->template->pages[0];
         self::assertSame([false, 'en', 'Goods travel at the customer\'s risk.', true], [$page->showPrices, $page->language, $page->printedNotes, $page->receptionBlock], 'the reception block is printed unless a level leaves it out');
         self::assertFalse($this->template->pages[1]->receptionBlock);
+    }
+
+    public function testItsUnitsAreNamedInItsLanguage(): void
+    {
+        $this->change->change(new SettingContext($this->company, customerId: $this->customer->getId()), 'document.language', SettingLevel::Customer, 'ar', null);
+
+        $this->print->pdf($this->company, $this->draft(lineCount: 2)->getId());
+
+        self::assertSame(['وحدة'], array_map(static fn (QuantityTotal $each): string => $each->unitName, $this->template->pages[0]->quantities));
     }
 
     /** The article an exemption mention names comes from the customer's chain, as an invoice's does; blank names none. */

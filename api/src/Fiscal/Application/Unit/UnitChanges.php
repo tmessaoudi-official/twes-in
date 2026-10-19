@@ -12,7 +12,8 @@ namespace App\Fiscal\Application\Unit;
 /** Everything a company may change on a unit; the code is fixed once created. */
 final readonly class UnitChanges
 {
-    public function __construct(public string $name, public int $decimals, public bool $isActive, public int $sortOrder)
+    /** @param array<array-key, mixed>|null $names null keeps them as they are */
+    public function __construct(public string $name, public int $decimals, public bool $isActive, public int $sortOrder, public ?array $names = null)
     {
     }
 }

@@ -226,6 +226,7 @@ describe('ArticleDefaults', () => {
         decimals: 0,
         isActive: true,
         sortOrder: 0,
+        names: {},
         version: 1,
       },
       {
@@ -235,6 +236,7 @@ describe('ArticleDefaults', () => {
         decimals: 2,
         isActive: true,
         sortOrder: 1,
+        names: {},
         version: 1,
       },
     ]);
@@ -259,6 +261,7 @@ describe('ArticleDefaults', () => {
               decimals: 0,
               isActive: true,
               sortOrder: 0,
+              names: {},
               version: 1,
             },
             {
@@ -268,6 +271,7 @@ describe('ArticleDefaults', () => {
               decimals: 2,
               isActive: true,
               sortOrder: 1,
+              names: {},
               version: 1,
             },
           ]);

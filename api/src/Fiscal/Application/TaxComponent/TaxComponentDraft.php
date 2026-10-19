@@ -11,6 +11,7 @@ namespace App\Fiscal\Application\TaxComponent;
 
 final readonly class TaxComponentDraft
 {
+    /** @param array<array-key, mixed> $names the name in other languages documents print in, by language */
     public function __construct(
         public string $code,
         public string $name,
@@ -22,6 +23,7 @@ final readonly class TaxComponentDraft
         public bool $isDefault,
         public ?string $exemptionMention,
         public int $sortOrder,
+        public array $names = [],
     ) {
     }
 }

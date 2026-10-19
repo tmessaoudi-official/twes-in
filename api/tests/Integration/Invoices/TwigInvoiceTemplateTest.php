@@ -128,6 +128,30 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         self::assertStringContainsString('<bdi>Réglage du tour</bdi>', $arabic);
         self::assertStringContainsString('"Noto Sans Arabic"', $arabic);
         self::assertDoesNotMatchRegularExpression('/%[a-z_]+%/', $arabic);
+        self::assertStringContainsString('<td>Unité</td>', $french);
+        self::assertStringContainsString('<td>وحدة</td>', $arabic, 'a unit prints its name in the document\'s language');
+    }
+
+    public function testAStampPrintsItsNameInTheDocumentsLanguageAndItsCodeWhenItHasNone(): void
+    {
+        self::bootKernel();
+        $now = new \DateTimeImmutable('2026-10-19 09:00:00');
+        $units = new InMemoryUnits();
+        $taxes = new InMemoryTaxComponents();
+        $establishments = new InMemoryEstablishments();
+        $company = new Company('Quincaillerie Ben Salah', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new \Symfony\Component\Clock\MockClock($now))->handle($company);
+        $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Société Mansour'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
+        $unit = $units->ofCodeInCompany('C62', $company->getId());
+        $stamp = $taxes->ofCodeInCompany('TIMBRE', $company->getId());
+        self::assertNotNull($unit);
+        self::assertNotNull($stamp);
+        $invoice = Invoice::create($company, $establishments->ofCompany($company->getId())[0], $customer, new InvoiceHeader(), [new InvoiceLineDetails(null, 'Vis', '2', $unit, '1', null, [])], [$stamp], $now);
+        $figures = $this->totals->figures($invoice);
+        $template = static::getContainer()->get(InvoiceTemplate::class);
+
+        self::assertStringContainsString('<td><bdi>معلوم الطابع الجبائي</bdi></td>', $template->html(new InvoicePage($invoice, $figures, CustomerSnapshot::of($customer), SellerSnapshot::of($company, $invoice->getEstablishment()), InvoicePage::DRAFT, 'ar', '', [], null, null, taxNames: ['TIMBRE' => 'معلوم الطابع الجبائي'])));
+        self::assertStringContainsString('<td><bdi>TIMBRE</bdi></td>', $template->html(new InvoicePage($invoice, $figures, CustomerSnapshot::of($customer), SellerSnapshot::of($company, $invoice->getEstablishment()), InvoicePage::DRAFT, 'ar', '', [], null, null)));
     }
 
     public function testTheClassicDesignByDefaultPrintsInTheInkDocumentsAlwaysPrintedIn(): void

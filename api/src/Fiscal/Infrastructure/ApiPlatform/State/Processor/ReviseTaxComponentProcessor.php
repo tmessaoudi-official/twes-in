@@ -37,7 +37,7 @@ final readonly class ReviseTaxComponentProcessor implements ProcessorInterface
             $component = $this->manage->revise(
                 $company,
                 CompanyPath::identifier($uriVariables, 'componentId'),
-                new TaxComponentChanges($data->name, $data->rate, $data->amount, $data->threshold, $data->entersVatBase, $data->isDefault, $data->isActive, $data->exemptionMention, $data->sortOrder),
+                new TaxComponentChanges($data->name, $data->rate, $data->amount, $data->threshold, $data->entersVatBase, $data->isDefault, $data->isActive, $data->exemptionMention, $data->sortOrder, $data->names),
                 $this->guard->account()->getId(),
                 $data->version,
             );

@@ -34,7 +34,7 @@ final readonly class CreateUnitProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), FiscalPermission::WRITE);
 
         try {
-            $unit = $this->manage->create($company, new UnitDraft($data->code, $data->name, $data->decimals, $data->sortOrder), $this->guard->account()->getId());
+            $unit = $this->manage->create($company, new UnitDraft($data->code, $data->name, $data->decimals, $data->sortOrder, $data->names ?? []), $this->guard->account()->getId());
         } catch (UnitCodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidFiscalValue $refused) {

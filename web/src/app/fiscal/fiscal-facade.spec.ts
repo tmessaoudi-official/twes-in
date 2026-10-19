@@ -24,6 +24,7 @@ const vat: TaxComponentRow = {
   isActive: true,
   exemptionMention: null,
   sortOrder: 10,
+  names: {},
   version: 1,
 };
 
@@ -42,6 +43,7 @@ const kilogram: UnitRow = {
   decimals: 3,
   isActive: true,
   sortOrder: 40,
+  names: {},
   version: 1,
 };
 
@@ -57,6 +59,7 @@ const input: TaxComponentInput = {
   isActive: true,
   exemptionMention: null,
   sortOrder: 35,
+  names: {},
 };
 
 describe('FiscalFacade', () => {

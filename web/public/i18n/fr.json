@@ -940,6 +940,11 @@
     "statuses": {
       "active": "Active",
       "inactive": "Inactive"
+    },
+    "names": {
+      "section": "Nom sur les documents",
+      "description": "Le nom imprimé dans chaque langue ; laissé vide, le document imprime le nom ci-dessus.",
+      "in": "Nom — {{language}}"
     }
   },
   "settings": {

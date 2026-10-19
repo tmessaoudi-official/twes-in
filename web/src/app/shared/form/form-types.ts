@@ -48,6 +48,8 @@ export interface FormField {
   id: string;
   /** A translation key for declared fields; custom fields carry their configured label. */
   label: string;
+  /** What fills the label's placeholders, such as the language a name is written in. */
+  labelParams?: Record<string, string>;
   kind: FieldKind;
   /** For a checkbox, required means it must be ticked. */
   required?: boolean;

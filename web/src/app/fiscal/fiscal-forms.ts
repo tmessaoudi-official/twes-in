@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
+import type {
+  FieldValue,
+  FormDescriptor,
+  FormField,
+  FormSection,
+  FormValues,
+} from '../shared/form/form-types';
+import { DOCUMENT_LANGUAGES, nameOf, type Language } from '../shared/i18n/languages';
 import type { ListFilter, ListDescriptor } from '../shared/list/list-types';
 import {
   TAX_FAMILIES,
   type CustomerTaxRegimeRow,
+  type LanguageNames,
   type TaxComponentInput,
   type TaxComponentRow,
   type TaxFamily,
@@ -18,6 +26,45 @@ const RATE = '\\d{1,3}(\\.\\d{1,3})?';
 const AMOUNT = '\\d{1,11}(\\.\\d{1,3})?';
 
 const withRate: readonly TaxFamily[] = ['vat', 'levy', 'withholding'];
+
+/** The API's longest names, in any language. */
+const TAX_NAME_MAX = 120;
+const UNIT_NAME_MAX = 60;
+
+/** The field holding the name in one language documents print in. */
+const nameField = (language: Language): string => `name-${language}`;
+
+/** One field per language documents print in, each labelled with the language's own name: blank, the name prints. */
+function namesSection(maxLength: number): FormSection {
+  return {
+    id: 'names',
+    title: 'fiscal.names.section',
+    description: 'fiscal.names.description',
+    fields: DOCUMENT_LANGUAGES.map((language) => ({
+      id: nameField(language),
+      label: 'fiscal.names.in',
+      labelParams: { language: nameOf(language) },
+      kind: 'text',
+      maxLength,
+    })),
+  };
+}
+
+function namesValues(names: LanguageNames): FormValues {
+  return Object.fromEntries(
+    DOCUMENT_LANGUAGES.map((language) => [nameField(language), names[language] ?? '']),
+  );
+}
+
+/** What was written in each language; a blank one is left out, so the document prints the name there. */
+function namesInput(values: FormValues): LanguageNames {
+  return Object.fromEntries(
+    DOCUMENT_LANGUAGES.map((language) => [
+      language,
+      String(values[nameField(language)] ?? '').trim(),
+    ]).filter(([, name]) => name !== ''),
+  );
+}
 
 /** The fields every tax has; the family decides which of rate, amount, threshold and "enters the VAT base" apply. */
 function valueFields(
@@ -64,7 +111,7 @@ function valueFields(
 }
 
 const commonFields: FormField[] = [
-  { id: 'name', label: 'fiscal.taxes.name', kind: 'text', required: true, maxLength: 120 },
+  { id: 'name', label: 'fiscal.taxes.name', kind: 'text', required: true, maxLength: TAX_NAME_MAX },
   {
     id: 'sortOrder',
     label: 'fiscal.taxes.sort_order',
@@ -113,6 +160,7 @@ export const TAX_CREATE_FORM: FormDescriptor = {
         ...commonFields,
       ],
     },
+    namesSection(TAX_NAME_MAX),
     {
       id: 'value',
       title: 'fiscal.taxes.section_value',
@@ -142,6 +190,7 @@ export function taxReviseForm(family: TaxFamily): FormDescriptor {
           },
         ],
       },
+      namesSection(TAX_NAME_MAX),
       {
         id: 'value',
         title: 'fiscal.taxes.section_value',
@@ -170,6 +219,7 @@ export function taxFormValues(row: TaxComponentRow): FormValues {
     amount: row.amount ?? '',
     threshold: row.threshold ?? '',
     entersVatBase: row.entersVatBase,
+    ...namesValues(row.names),
   };
 }
 
@@ -193,6 +243,7 @@ export function taxInput(
     isActive: values['isActive'] !== false,
     exemptionMention: text(values['exemptionMention']),
     sortOrder: Number(values['sortOrder'] ?? 0),
+    names: namesInput(values),
   };
 }
 
@@ -341,7 +392,13 @@ export const UNIT_LIST: ListDescriptor<UnitRow> = {
 };
 
 const unitCommon: FormField[] = [
-  { id: 'name', label: 'fiscal.units.name', kind: 'text', required: true, maxLength: 60 },
+  {
+    id: 'name',
+    label: 'fiscal.units.name',
+    kind: 'text',
+    required: true,
+    maxLength: UNIT_NAME_MAX,
+  },
   {
     id: 'decimals',
     label: 'fiscal.units.decimals',
@@ -380,6 +437,7 @@ export const UNIT_CREATE_FORM: FormDescriptor = {
         ...unitCommon,
       ],
     },
+    namesSection(UNIT_NAME_MAX),
   ],
 };
 
@@ -394,6 +452,7 @@ export const UNIT_REVISE_FORM: FormDescriptor = {
         { id: 'isActive', label: 'fiscal.units.is_active', kind: 'checkbox' },
       ],
     },
+    namesSection(UNIT_NAME_MAX),
   ],
 };
 
@@ -403,6 +462,7 @@ export function unitFormValues(row: UnitRow): FormValues {
     decimals: row.decimals,
     sortOrder: row.sortOrder,
     isActive: row.isActive,
+    ...namesValues(row.names),
   };
 }
 
@@ -413,5 +473,6 @@ export function unitInput(values: FormValues, code?: string): UnitInput {
     decimals: Number(values['decimals'] ?? 0),
     sortOrder: Number(values['sortOrder'] ?? 0),
     isActive: values['isActive'] !== false,
+    names: namesInput(values),
   };
 }

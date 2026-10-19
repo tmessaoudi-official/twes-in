@@ -56,6 +56,21 @@ final class TaxComponentsTest extends ApiTestCase
         self::assertIsString($body['id']);
     }
 
+    public function testATaxCarriesItsNameInEachLanguageDocumentsPrintInAndAWriterRevisesThem(): void
+    {
+        $this->signedIn(['fiscal.read', 'fiscal.write']);
+        $this->getJson($this->path());
+        $stamp = $this->jsonList()[4];
+        self::assertSame(['TIMBRE', ['ar' => 'معلوم الطابع الجبائي', 'en' => 'Stamp duty']], [$stamp['code'], $stamp['names']]);
+
+        $this->postJson($this->path(), ['code' => 'TVA12', 'name' => 'TVA 12 %', 'names' => ['de' => 'MwSt'], 'family' => 'vat', 'rate' => '12', 'sortOrder' => 35]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->postJson($this->path(), ['code' => 'TVA12', 'name' => 'TVA 12 %', 'names' => ['en' => 'VAT 12%'], 'family' => 'vat', 'rate' => '12', 'sortOrder' => 35]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['en' => 'VAT 12%'], $this->json()['names']);
+    }
+
     public function testAWriterRevisesATaxButNotItsCodeOrFamily(): void
     {
         $this->signedIn(['fiscal.read', 'fiscal.write']);

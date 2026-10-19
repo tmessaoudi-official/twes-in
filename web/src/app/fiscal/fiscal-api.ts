@@ -77,6 +77,7 @@ export class FiscalApi {
       isActive: input.isActive,
       exemptionMention: input.exemptionMention,
       sortOrder: input.sortOrder,
+      names: input.names,
       version,
     };
     return this.guard(async () =>
@@ -106,6 +107,7 @@ export class FiscalApi {
       name: input.name,
       decimals: input.decimals,
       sortOrder: input.sortOrder,
+      names: input.names,
     };
     return this.guard(async () =>
       toUnit(
@@ -126,6 +128,7 @@ export class FiscalApi {
       decimals: input.decimals,
       isActive: input.isActive,
       sortOrder: input.sortOrder,
+      names: input.names,
       version,
     };
     return this.guard(async () =>
@@ -183,6 +186,7 @@ function toTax(row: TaxComponentTaxComponentRead): TaxComponentRow {
     isActive: row.isActive ?? true,
     exemptionMention: row.exemptionMention ?? null,
     sortOrder: row.sortOrder ?? 0,
+    names: row.names ?? {},
     // Every read carries it; a 0 would be refused by the API rather than taken for a version.
     version: row.version ?? 0,
   };
@@ -196,6 +200,7 @@ function toUnit(row: UnitUnitRead): UnitRow {
     decimals: row.decimals ?? 0,
     isActive: row.isActive ?? true,
     sortOrder: row.sortOrder ?? 0,
+    names: row.names ?? {},
     version: row.version ?? 0,
   };
 }

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Fiscal\Domain\Model;
 
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
+use App\Fiscal\Domain\ValueObject\LanguageNames;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Shared\Domain\Service\CompanyOwned;
@@ -22,7 +23,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A tax a company charges, copied from its fiscal preset at creation and then the company's own to edit. Its code and
  * family are fixed once created, because documents will refer to them; its rate, amount and threshold may change,
- * and documents keep the snapshot they were issued with.
+ * and documents keep the snapshot they were issued with. A document in a language the tax names prints that language's
+ * name, any other its name.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'tax_component')]
@@ -50,6 +52,14 @@ class TaxComponent implements CompanyOwned
 
     #[ORM\Column(length: self::NAME_MAX)]
     private string $name;
+
+    /**
+     * Null for a tax created before taxes were named by language, until the next start gives it its preset's names.
+     *
+     * @var array<string, string>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $names = null;
 
     #[ORM\Column(length: 24, enumType: TaxKind::class)]
     private TaxKind $kind;
@@ -106,7 +116,10 @@ class TaxComponent implements CompanyOwned
         $this->updatedAt = $now;
     }
 
-    /** @param int $currencyScale the company currency's decimals, which an amount or a threshold may not exceed */
+    /**
+     * @param int                     $currencyScale the company currency's decimals, which an amount or a threshold may not exceed
+     * @param array<array-key, mixed> $names         the name in other languages, by language
+     */
     public static function create(
         Company $company,
         string $code,
@@ -121,14 +134,19 @@ class TaxComponent implements CompanyOwned
         int $sortOrder,
         int $currencyScale,
         \DateTimeImmutable $now,
+        array $names = [],
     ): self {
         $component = new self($company, $code, $family, $now);
-        $component->apply($name, $rate, $amount, $threshold, $entersVatBase, $isDefault, true, $exemptionMention, $sortOrder, $currencyScale);
+        $component->apply($name, $names, $rate, $amount, $threshold, $entersVatBase, $isDefault, true, $exemptionMention, $sortOrder, $currencyScale);
 
         return $component;
     }
 
-    /** @return bool whether anything changed */
+    /**
+     * @param array<array-key, mixed>|null $names null keeps them as they are
+     *
+     * @return bool whether anything changed
+     */
     public function revise(
         string $name,
         ?string $rate,
@@ -141,9 +159,10 @@ class TaxComponent implements CompanyOwned
         int $sortOrder,
         int $currencyScale,
         \DateTimeImmutable $now,
+        ?array $names = null,
     ): bool {
         $before = $this->state();
-        $this->apply($name, $rate, $amount, $threshold, $entersVatBase, $isDefault, $isActive, $exemptionMention, $sortOrder, $currencyScale);
+        $this->apply($name, $names, $rate, $amount, $threshold, $entersVatBase, $isDefault, $isActive, $exemptionMention, $sortOrder, $currencyScale);
         if ($before === $this->state()) {
             return false;
         }
@@ -152,7 +171,37 @@ class TaxComponent implements CompanyOwned
         return true;
     }
 
-    private function apply(string $name, ?string $rate, ?string $amount, ?string $threshold, bool $entersVatBase, bool $isDefault, bool $isActive, ?string $exemptionMention, int $sortOrder, int $currencyScale): void
+    /** The name a document in that language prints. */
+    public function nameIn(string $language): string
+    {
+        return $this->getNames()[$language] ?? $this->name;
+    }
+
+    /** Whether the tax is from before taxes were named by language and has not been given its names yet. */
+    public function awaitsLanguageNames(): bool
+    {
+        return null === $this->names;
+    }
+
+    /**
+     * Names a tax from before taxes were named by language, once: what a company wrote since is never overwritten.
+     *
+     * @param array<array-key, mixed> $names
+     *
+     * @return bool whether it was given them
+     */
+    public function giveLanguageNames(array $names): bool
+    {
+        if (!$this->awaitsLanguageNames()) {
+            return false;
+        }
+        $this->names = LanguageNames::of($names, self::NAME_MAX);
+
+        return true;
+    }
+
+    /** @param array<array-key, mixed>|null $names null keeps them as they are */
+    private function apply(string $name, ?array $names, ?string $rate, ?string $amount, ?string $threshold, bool $entersVatBase, bool $isDefault, bool $isActive, ?string $exemptionMention, int $sortOrder, int $currencyScale): void
     {
         $name = trim($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
@@ -171,8 +220,10 @@ class TaxComponent implements CompanyOwned
         if ($sortOrder < 0) {
             throw new InvalidFiscalValue('sortOrder', 'A sort order is never negative.');
         }
+        $names = null === $names ? $this->names : LanguageNames::of($names, self::NAME_MAX);
 
         $this->name = $name;
+        $this->names = $names;
         $this->rate = $rate;
         $this->amount = $amount;
         $this->threshold = $threshold;
@@ -211,7 +262,7 @@ class TaxComponent implements CompanyOwned
     /** @return list<mixed> every revisable value, to tell whether a revision changed anything */
     private function state(): array
     {
-        return [$this->name, $this->rate, $this->amount, $this->threshold, $this->entersVatBase, $this->isDefault, $this->isActive, $this->exemptionMention, $this->sortOrder];
+        return [$this->name, $this->getNames(), $this->rate, $this->amount, $this->threshold, $this->entersVatBase, $this->isDefault, $this->isActive, $this->exemptionMention, $this->sortOrder];
     }
 
     public function getVersion(): int
@@ -237,6 +288,15 @@ class TaxComponent implements CompanyOwned
     public function getName(): string
     {
         return $this->name;
+    }
+
+    /** @return array<string, string> */
+    public function getNames(): array
+    {
+        $names = $this->names ?? [];
+        ksort($names, \SORT_STRING);
+
+        return $names;
     }
 
     public function getKind(): TaxKind

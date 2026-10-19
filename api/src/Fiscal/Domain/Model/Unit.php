@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Fiscal\Domain\Model;
 
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
+use App\Fiscal\Domain\ValueObject\LanguageNames;
 use App\Shared\Domain\Service\CompanyOwned;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
@@ -18,7 +19,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A unit a company sells in. The code is a UN/ECE Recommendation 20 code, which an EN 16931 invoice line carries
- * (BT-130), so it is fixed once created; the name is the company's own wording.
+ * (BT-130), so it is fixed once created; the name is the company's own wording, and a document in a language the unit
+ * names prints that language's.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'unit')]
@@ -43,6 +45,14 @@ class Unit implements CompanyOwned
 
     #[ORM\Column(length: self::NAME_MAX)]
     private string $name;
+
+    /**
+     * Null for a unit created before units were named by language, until the next start gives it its preset's names.
+     *
+     * @var array<string, string>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $names = null;
 
     #[ORM\Column(type: Types::SMALLINT)]
     private int $decimals = 0;
@@ -76,20 +86,25 @@ class Unit implements CompanyOwned
         $this->updatedAt = $now;
     }
 
-    public static function create(Company $company, string $code, string $name, int $decimals, int $sortOrder, \DateTimeImmutable $now): self
+    /** @param array<array-key, mixed> $names the name in other languages, by language */
+    public static function create(Company $company, string $code, string $name, int $decimals, int $sortOrder, \DateTimeImmutable $now, array $names = []): self
     {
         $unit = new self($company, $code, $now);
-        $unit->apply($name, $decimals, true, $sortOrder);
+        $unit->apply($name, $names, $decimals, true, $sortOrder);
 
         return $unit;
     }
 
-    /** @return bool whether anything changed */
-    public function revise(string $name, int $decimals, bool $isActive, int $sortOrder, \DateTimeImmutable $now): bool
+    /**
+     * @param array<array-key, mixed>|null $names null keeps them as they are
+     *
+     * @return bool whether anything changed
+     */
+    public function revise(string $name, int $decimals, bool $isActive, int $sortOrder, \DateTimeImmutable $now, ?array $names = null): bool
     {
-        $before = [$this->name, $this->decimals, $this->isActive, $this->sortOrder];
-        $this->apply($name, $decimals, $isActive, $sortOrder);
-        if ($before === [$this->name, $this->decimals, $this->isActive, $this->sortOrder]) {
+        $before = [$this->name, $this->getNames(), $this->decimals, $this->isActive, $this->sortOrder];
+        $this->apply($name, $names, $decimals, $isActive, $sortOrder);
+        if ($before === [$this->name, $this->getNames(), $this->decimals, $this->isActive, $this->sortOrder]) {
             return false;
         }
         $this->updatedAt = $now;
@@ -97,7 +112,37 @@ class Unit implements CompanyOwned
         return true;
     }
 
-    private function apply(string $name, int $decimals, bool $isActive, int $sortOrder): void
+    /** The name a document in that language prints. */
+    public function nameIn(string $language): string
+    {
+        return $this->getNames()[$language] ?? $this->name;
+    }
+
+    /** Whether the unit is from before units were named by language and has not been given its names yet. */
+    public function awaitsLanguageNames(): bool
+    {
+        return null === $this->names;
+    }
+
+    /**
+     * Names a unit from before units were named by language, once: what a company wrote since is never overwritten.
+     *
+     * @param array<array-key, mixed> $names
+     *
+     * @return bool whether it was given them
+     */
+    public function giveLanguageNames(array $names): bool
+    {
+        if (!$this->awaitsLanguageNames()) {
+            return false;
+        }
+        $this->names = LanguageNames::of($names, self::NAME_MAX);
+
+        return true;
+    }
+
+    /** @param array<array-key, mixed>|null $names null keeps them as they are */
+    private function apply(string $name, ?array $names, int $decimals, bool $isActive, int $sortOrder): void
     {
         $name = trim($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
@@ -109,7 +154,9 @@ class Unit implements CompanyOwned
         if ($sortOrder < 0) {
             throw new InvalidFiscalValue('sortOrder', 'A sort order is never negative.');
         }
+        $names = null === $names ? $this->names : LanguageNames::of($names, self::NAME_MAX);
         $this->name = $name;
+        $this->names = $names;
         $this->decimals = $decimals;
         $this->isActive = $isActive;
         $this->sortOrder = $sortOrder;
@@ -138,6 +185,15 @@ class Unit implements CompanyOwned
     public function getName(): string
     {
         return $this->name;
+    }
+
+    /** @return array<string, string> */
+    public function getNames(): array
+    {
+        $names = $this->names ?? [];
+        ksort($names, \SORT_STRING);
+
+        return $names;
     }
 
     public function getDecimals(): int

@@ -5,6 +5,12 @@ export type TaxFamily = 'vat' | 'levy' | 'stamp' | 'withholding';
 
 export const TAX_FAMILIES: readonly TaxFamily[] = ['vat', 'levy', 'stamp', 'withholding'];
 
+/**
+ * A unit's or a tax's name in languages documents print in, by language tag: a document in one of them prints it, any
+ * other prints the name.
+ */
+export type LanguageNames = Readonly<Record<string, string>>;
+
 /** One tax a company charges, as the API returns it. Decimals stay strings: they are money and rates. */
 export interface TaxComponentRow {
   readonly id: string;
@@ -20,6 +26,7 @@ export interface TaxComponentRow {
   readonly isActive: boolean;
   readonly exemptionMention: string | null;
   readonly sortOrder: number;
+  readonly names: LanguageNames;
   /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
   readonly version: number;
 }
@@ -37,6 +44,7 @@ export interface TaxComponentInput {
   readonly isActive: boolean;
   readonly exemptionMention: string | null;
   readonly sortOrder: number;
+  readonly names: LanguageNames;
 }
 
 export interface UnitRow {
@@ -46,6 +54,7 @@ export interface UnitRow {
   readonly decimals: number;
   readonly isActive: boolean;
   readonly sortOrder: number;
+  readonly names: LanguageNames;
   /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
   readonly version: number;
 }
@@ -56,6 +65,7 @@ export interface UnitInput {
   readonly decimals: number;
   readonly isActive: boolean;
   readonly sortOrder: number;
+  readonly names: LanguageNames;
 }
 
 /** A regime a customer may be under, read-only, labelled by the API in the reader's language. */

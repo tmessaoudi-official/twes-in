@@ -22,6 +22,8 @@ use App\Fiscal\Infrastructure\ApiPlatform\State\Processor\ReviseTaxComponentProc
 use App\Fiscal\Infrastructure\ApiPlatform\State\Provider\TaxComponentCollectionProvider;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -35,13 +37,13 @@ use Symfony\Component\Validator\Constraints as Assert;
             uriTemplate: '/companies/{companyId}/tax-components',
             provider: TaxComponentCollectionProvider::class,
             security: 'is_granted("ROLE_USER")',
-            normalizationContext: ['groups' => [self::READ]],
+            normalizationContext: self::NORMALIZATION,
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/tax-components',
             processor: CreateTaxComponentProcessor::class,
             security: 'is_granted("ROLE_USER")',
-            normalizationContext: ['groups' => [self::READ]],
+            normalizationContext: self::NORMALIZATION,
             denormalizationContext: ['groups' => [self::CREATE, self::WRITE]],
             validationContext: ['groups' => [self::CREATE, self::WRITE]],
         ),
@@ -50,7 +52,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             processor: ReviseTaxComponentProcessor::class,
             security: 'is_granted("ROLE_USER")',
             read: false,
-            normalizationContext: ['groups' => [self::READ]],
+            normalizationContext: self::NORMALIZATION,
             denormalizationContext: ['groups' => [self::WRITE, self::REVISE, RecordVersion::REVISE]],
             validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
         ),
@@ -62,6 +64,13 @@ final class TaxComponentResource
     public const string WRITE = 'tax_component:write';
     public const string CREATE = 'tax_component:create';
     public const string REVISE = 'tax_component:revise';
+
+    /** A PHP array without entries serializes as `[]`; the names are a JSON object even when there are none. */
+    private const array NORMALIZATION = [
+        'groups' => [self::READ],
+        AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true,
+        AbstractNormalizer::CALLBACKS => ['names' => [self::class, 'asObject']],
+    ];
 
     // Not an API Platform identifier: every route is an explicit uriTemplate, and an identifier would publish an
     // item route no provider answers.
@@ -78,6 +87,16 @@ final class TaxComponentResource
     #[Assert\Length(max: 120, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public string $name = '';
+
+    /**
+     * The name in other languages documents print in, by language; a document in a language it lacks prints the name.
+     * A revision leaving it out keeps them.
+     *
+     * @var array<array-key, mixed>|null
+     */
+    #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string', 'maxLength' => 120]])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?array $names = null;
 
     #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [TaxKind::PercentageLine->value, TaxKind::FixedDocument->value, TaxKind::WithholdingTotal->value]])]
     #[Groups([self::READ])]
@@ -138,6 +157,7 @@ final class TaxComponentResource
         $resource->version = $component->getVersion();
         $resource->code = $component->getCode();
         $resource->name = $component->getName();
+        $resource->names = $component->getNames();
         $resource->kind = $component->getKind()->value;
         $resource->family = $component->getFamily()->value;
         $resource->rate = $component->getRate();
@@ -150,5 +170,15 @@ final class TaxComponentResource
         $resource->sortOrder = $component->getSortOrder();
 
         return $resource;
+    }
+
+    /**
+     * @param array<array-key, mixed>|null $values
+     *
+     * @return \ArrayObject<array-key, mixed>
+     */
+    public static function asObject(?array $values): \ArrayObject
+    {
+        return new \ArrayObject($values ?? []);
     }
 }

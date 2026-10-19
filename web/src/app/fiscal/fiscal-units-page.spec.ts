@@ -40,6 +40,7 @@ const hour: UnitRow = {
   decimals: 2,
   isActive: true,
   sortOrder: 20,
+  names: {},
   version: 1,
 };
 
@@ -129,6 +130,7 @@ describe('FiscalUnitsPage', () => {
       decimals: 3,
       sortOrder: 0,
       isActive: true,
+      names: {},
     });
   });
 

@@ -87,6 +87,53 @@ final class ProvisionCompanyTest extends TestCase
         self::assertNotSame($frenchHour, $englishHour);
     }
 
+    public function testEveryOtherLanguageDocumentsPrintInIsGivenThePresetsNameAndTheCompanysOwnIsTheName(): void
+    {
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->provision->handle($company);
+
+        $piece = $this->units->ofCodeInCompany('C62', $company->getId());
+        self::assertNotNull($piece);
+        self::assertSame('Unité', $piece->getName());
+        self::assertSame(['ar' => 'وحدة', 'en' => 'Unit'], $piece->getNames());
+        $stamp = $this->components->ofCodeInCompany('TIMBRE', $company->getId());
+        self::assertNotNull($stamp);
+        self::assertSame('Droit de timbre', $stamp->getName());
+        self::assertSame(['ar' => 'معلوم الطابع الجبائي', 'en' => 'Stamp duty'], $stamp->getNames());
+
+        $english = new Company('Globex', 'TN', 'TND', 'en', 'Africa/Tunis');
+        $this->provision->handle($english);
+        self::assertSame(['ar' => 'وحدة', 'fr' => 'Unité'], $this->units->ofCodeInCompany('C62', $english->getId())?->getNames());
+    }
+
+    public function testUnitsAndTaxesFromBeforeNamesByLanguageAreGivenThemOnceKeepingTheCompanysName(): void
+    {
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->provision->handle($company);
+        $piece = $this->units->ofCodeInCompany('C62', $company->getId());
+        $stamp = $this->components->ofCodeInCompany('TIMBRE', $company->getId());
+        self::assertNotNull($piece);
+        self::assertNotNull($stamp);
+        $piece->revise('U', 0, true, 10, new \DateTimeImmutable());
+        $own = Unit::create($company, 'BX', 'Boîte', 0, 90, new \DateTimeImmutable());
+        $this->units->save($own);
+        foreach ([[Unit::class, $piece], [Unit::class, $own], [TaxComponent::class, $stamp]] as [$class, $row]) {
+            new \ReflectionProperty($class, 'names')->setValue($row, null);
+        }
+
+        self::assertSame(['unit names by language of Acme', 'tax names by language of Acme'], $this->provision->handle($company));
+
+        self::assertSame('U', $piece->getName());
+        self::assertSame(['ar' => 'وحدة', 'en' => 'Unit'], $piece->getNames());
+        self::assertSame([], $own->getNames());
+        self::assertFalse($own->awaitsLanguageNames());
+        self::assertSame(['ar' => 'معلوم الطابع الجبائي', 'en' => 'Stamp duty'], $stamp->getNames());
+
+        $piece->revise('U', 0, true, 10, new \DateTimeImmutable(), []);
+        self::assertSame([], $this->provision->handle($company));
+        self::assertSame([], $piece->getNames());
+    }
+
     public function testAFrenchCompanyGetsTheFrenchRates(): void
     {
         $company = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris');

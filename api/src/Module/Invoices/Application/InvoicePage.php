@@ -43,6 +43,8 @@ final readonly class InvoicePage
      * @param string                                                                    $numberFormat      the company's `presentation.number-format`, `auto` for the language's
      * @param array<string, array<string, string>>                                      $mentionParameters what fills each mention's placeholders, by key
      * @param list<QuantityTotal>                                                       $quantities
+     * @param array<string, string>                                                     $taxNames          each of the company's taxes named in the document's language, by code;
+     *                                                                                                     a code it lacks prints as itself
      */
     public function __construct(
         public Invoice $invoice,
@@ -76,6 +78,7 @@ final readonly class InvoicePage
         public array $quantities = [],
         /** What its operations are, printed where its country's law asks: as issued, or as its draft says today; null when not said. */
         public ?OperationCategory $operations = null,
+        public array $taxNames = [],
     ) {
     }
 

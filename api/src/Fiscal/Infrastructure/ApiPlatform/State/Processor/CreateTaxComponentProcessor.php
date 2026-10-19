@@ -36,7 +36,7 @@ final readonly class CreateTaxComponentProcessor implements ProcessorInterface
         try {
             $component = $this->manage->create(
                 $company,
-                new TaxComponentDraft($data->code, $data->name, $data->family, $data->rate, $data->amount, $data->threshold, $data->entersVatBase, $data->isDefault, $data->exemptionMention, $data->sortOrder),
+                new TaxComponentDraft($data->code, $data->name, $data->family, $data->rate, $data->amount, $data->threshold, $data->entersVatBase, $data->isDefault, $data->exemptionMention, $data->sortOrder, $data->names ?? []),
                 $this->guard->account()->getId(),
             );
         } catch (TaxComponentCodeTaken $taken) {

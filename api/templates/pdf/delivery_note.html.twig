@@ -93,7 +93,7 @@
         <tr>
           <td><bdi>{{ line.description|nl2br }}</bdi></td>
           <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
-          <td>{{ line.unit.name }}</td>
+          <td>{{ line.unit.nameIn(locale) }}</td>
           {%- if page.showPrices %}
             <td class="number">{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}</td>
             <td><bdi>{{ line.taxes|map(tax => tax.code)|join(', ') }}</bdi></td>

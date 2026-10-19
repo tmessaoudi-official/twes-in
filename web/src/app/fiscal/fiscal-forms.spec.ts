@@ -17,6 +17,7 @@ import {
   UNIT_LIST,
 } from './fiscal-forms';
 import type { TaxComponentRow, TaxFamily, UnitRow } from './fiscal-types';
+import { DOCUMENT_LANGUAGES, nameOf } from '../shared/i18n/languages';
 
 const fieldIds = (descriptor: FormDescriptor): string[] =>
   descriptor.sections.flatMap((section) => section.fields.map((field) => field.id));
@@ -35,6 +36,7 @@ const stamp: TaxComponentRow = {
   isActive: true,
   exemptionMention: null,
   sortOrder: 50,
+  names: { ar: 'معلوم الطابع الجبائي' },
   version: 1,
 };
 
@@ -110,6 +112,7 @@ describe('fiscal forms', () => {
       isActive: true,
       exemptionMention: null,
       sortOrder: 35,
+      names: {},
     });
   });
 
@@ -137,7 +140,30 @@ describe('fiscal forms', () => {
       isActive: stamp.isActive,
       exemptionMention: stamp.exemptionMention,
       sortOrder: stamp.sortOrder,
+      names: { ar: 'معلوم الطابع الجبائي' },
     });
+  });
+
+  it('asks a name in each language documents print in, labelled in that language, a blank one left out', () => {
+    for (const descriptor of [
+      TAX_CREATE_FORM,
+      taxReviseForm('stamp'),
+      UNIT_CREATE_FORM,
+      UNIT_REVISE_FORM,
+    ]) {
+      const names = descriptor.sections.find((section) => section.id === 'names');
+      expect(names?.fields.map((field) => field.labelParams?.['language'])).toEqual(
+        DOCUMENT_LANGUAGES.map((language) => nameOf(language)),
+      );
+    }
+
+    const [first, ...others] = DOCUMENT_LANGUAGES;
+    const values = {
+      ...taxFormValues(stamp),
+      ...Object.fromEntries(others.map((language) => [`name-${language}`, '   '])),
+      [`name-${first}`]: '  Timbre  ',
+    };
+    expect(taxInput(values, stamp).names).toEqual({ [first]: 'Timbre' });
   });
 
   it('round-trips a unit through its revision form, keeping its code', () => {
@@ -148,6 +174,7 @@ describe('fiscal forms', () => {
       decimals: 2,
       isActive: false,
       sortOrder: 20,
+      names: { en: 'Hour' },
       version: 1,
     };
     expect(unitInput(unitFormValues(hour), 'HUR')).toEqual({
@@ -156,6 +183,7 @@ describe('fiscal forms', () => {
       decimals: 2,
       isActive: false,
       sortOrder: 20,
+      names: { en: 'Hour' },
     });
   });
 });

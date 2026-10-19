@@ -118,7 +118,7 @@ final readonly class PrintDeliveryNote
             $printing->print->dateFormat,
             $printing->print->numberFormat,
             $printing->print->design,
-            QuantityTotals::ofUnits(array_map(static fn (DeliveryNoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $note->getLines())),
+            QuantityTotals::ofUnits(array_map(static fn (DeliveryNoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $note->getLines()), $printing->language),
             $printing->print->exemptionReference,
         )));
     }

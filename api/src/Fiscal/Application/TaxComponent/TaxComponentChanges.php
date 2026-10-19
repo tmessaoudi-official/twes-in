@@ -12,6 +12,7 @@ namespace App\Fiscal\Application\TaxComponent;
 /** Everything a company may change on a tax component; the code and the family are fixed once created. */
 final readonly class TaxComponentChanges
 {
+    /** @param array<array-key, mixed>|null $names null keeps them as they are */
     public function __construct(
         public string $name,
         public ?string $rate,
@@ -22,6 +23,7 @@ final readonly class TaxComponentChanges
         public bool $isActive,
         public ?string $exemptionMention,
         public int $sortOrder,
+        public ?array $names = null,
     ) {
     }
 }

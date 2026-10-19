@@ -12,6 +12,7 @@ namespace App\Fiscal\Application\TaxComponent;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Application\DocumentLanguageNames;
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
@@ -37,6 +38,7 @@ final readonly class ManageTaxComponents
         private ClockInterface $clock,
         private Transactions $transactions,
         private RecordVersions $versions,
+        private DocumentLanguageNames $languageNames,
     ) {
     }
 
@@ -72,6 +74,7 @@ final readonly class ManageTaxComponents
                 $draft->sortOrder,
                 $this->scales->of($company->getCurrency()),
                 $this->clock->now(),
+                $this->languageNames->checked($draft->names) ?? [],
             );
             $this->components->save($component);
             $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $component->getId(), self::CREATED, $actorUserId, self::snapshot($component), $company->getId()));
@@ -108,6 +111,7 @@ final readonly class ManageTaxComponents
                 $changes->sortOrder,
                 $this->scales->of($company->getCurrency()),
                 $this->clock->now(),
+                $this->languageNames->checked($changes->names),
             );
             if ($changed) {
                 $this->components->save($component);
@@ -124,6 +128,7 @@ final readonly class ManageTaxComponents
         return [
             'code' => $component->getCode(),
             'name' => $component->getName(),
+            'names' => $component->getNames(),
             'family' => $component->getFamily()->value,
             'rate' => $component->getRate(),
             'amount' => $component->getAmount(),

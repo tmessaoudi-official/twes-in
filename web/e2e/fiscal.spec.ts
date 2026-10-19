@@ -59,3 +59,47 @@ test('the units page lists the preset units', async ({ page }) => {
   await expect(page.getByTestId('unit-KGM')).toBeVisible();
   await expect(page.getByTestId('unit-HUR')).toBeVisible();
 });
+
+/** The kilogram's names by language, read from the API. */
+async function kilogramNames(page: Page): Promise<Record<string, string>> {
+  return page.evaluate(async () => {
+    const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+    const units = (await (await fetch(`/api/companies/${me.company.id}/units`)).json()) as {
+      code: string;
+      names: Record<string, string>;
+    }[];
+    return units.find((unit) => unit.code === 'KGM')?.names ?? {};
+  });
+}
+
+async function nameKilogram(page: Page, field: string, name: string): Promise<void> {
+  await rowAction(page, 'unit-KGM', 'edit').click();
+  await page.getByTestId(field).fill(name);
+  await page.getByTestId('unit-save').click();
+  await expect(toast(page)).toContainText('L’unité a été enregistrée.');
+}
+
+test('a unit carries its name in each language documents print in, as a person writes it', async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto('/fiscal/units');
+
+  // The fields are drawn from the languages documents print in, one per language, after the name.
+  await rowAction(page, 'unit-KGM', 'edit').click();
+  const fields = page.locator('[data-testid^="field-name-"]');
+  await expect(fields.first()).toBeVisible();
+  const field = (await fields.last().getAttribute('data-testid')) ?? '';
+  const language = field.replace('field-name-', '');
+  const original = await fields.last().inputValue();
+  await page.getByTestId('unit-cancel').click();
+
+  const written = `Kilo ${Date.now()}`;
+  await nameKilogram(page, field, written);
+  try {
+    expect((await kilogramNames(page))[language]).toBe(written);
+  } finally {
+    await nameKilogram(page, field, original);
+  }
+  expect((await kilogramNames(page))[language] ?? '').toBe(original);
+});
