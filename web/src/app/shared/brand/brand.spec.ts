@@ -6,7 +6,7 @@ import { Brand, DEFAULT_BRAND_KIT, DefaultBrand } from './brand';
 import { signal } from '@angular/core';
 
 describe('DefaultBrand', () => {
-  const current = signal<'fr' | 'en'>('fr');
+  const current = signal<'fr' | 'en' | 'ar'>('fr');
 
   beforeEach(() => {
     current.set('fr');
@@ -32,5 +32,13 @@ describe('DefaultBrand', () => {
     current.set('en');
 
     expect(brand.tagline()).toBe('All kept safe. All on record. Nothing lost.');
+  });
+
+  it('says it in Arabic on an Arabic screen, never the French one', () => {
+    const brand = TestBed.inject(Brand);
+
+    current.set('ar');
+
+    expect(brand.tagline()).toBe('كل شيء في أمان. كل شيء موثّق. لا شيء يضيع.');
   });
 });
