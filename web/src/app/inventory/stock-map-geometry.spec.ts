@@ -355,16 +355,45 @@ describe('handlesThatFit', () => {
     expect(handlesThatFit(rect({ width: 4, depth: 2 }), 0.2)).toHaveLength(8);
   });
 
-  it('drops the middle handles of the long sides of a thin rack, keeping the corners and the ends', () => {
+  it('keeps only the two ends of a thin rack, whose corners would cover them', () => {
     const kept = handlesThatFit(rect({ width: 3.9, depth: 0.6 }), 0.29);
 
-    expect(kept).toHaveLength(6);
-    expect(kept.some((handle) => handle.hx === 0.5)).toBe(false);
-    expect(kept.filter((handle) => handle.hx !== 0.5 && handle.hy !== 0.5)).toHaveLength(4);
+    expect(kept).toEqual([
+      { hx: 0, hy: 0.5 },
+      { hx: 1, hy: 0.5 },
+    ]);
   });
 
-  it('keeps only the corners on a rectangle short both ways', () => {
-    expect(handlesThatFit(rect({ width: 0.4, depth: 0.4 }), 0.29)).toHaveLength(4);
+  it('keeps the ends of a wall standing along the other way', () => {
+    expect(handlesThatFit(rect({ width: 0.25, depth: 8 }), 0.4)).toEqual([
+      { hx: 0.5, hy: 0 },
+      { hx: 0.5, hy: 1 },
+    ]);
+  });
+
+  it('keeps no handle on a rectangle too small for one to leave its middle free', () => {
+    expect(handlesThatFit(rect({ width: 0.4, depth: 0.4 }), 0.29)).toEqual([]);
+  });
+
+  // The probe's rack: 4 × 1,5 m on a board where a fine pointer's grip is 0,75 m across its radius.
+  it('leaves the middle of every rectangle free, and no two grips over each other', () => {
+    for (const [width, depth, radius] of [
+      [4, 1.5, 0.75],
+      [4, 1.5, 0.3],
+      [8, 0.25, 0.3],
+      [2, 2, 0.4],
+      [12, 3, 0.5],
+    ] as const) {
+      const shape = rect({ width, depth });
+      const points = handlesThatFit(shape, radius).map((handle) => handleAt(shape, handle));
+      for (const point of points) {
+        expect(Math.hypot(point.x - width / 2, point.y - depth / 2)).toBeGreaterThan(radius * 2);
+        for (const other of points) {
+          if (other !== point)
+            expect(Math.hypot(point.x - other.x, point.y - other.y)).toBeGreaterThan(radius * 2);
+        }
+      }
+    }
   });
 });
 

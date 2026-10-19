@@ -40,6 +40,15 @@ import type {
   Whereabouts,
 } from './inventory-types';
 import { StockMapPage } from './stock-map-page';
+import { PLAN_DRAFT_STORAGE, planDraftKey } from './stock-plan-storage';
+import {
+  changeCount,
+  emptyDraft,
+  parseDraft,
+  placeDrawing,
+  type PlanStep,
+  type PlanStepCreated,
+} from './stock-plan-draft';
 import { StockMapVolume } from './stock-map-volume';
 import { PlaceContents } from './place-contents';
 import { PlaceMovement } from './place-movement';
@@ -179,6 +188,7 @@ describe('StockMapPage', () => {
   const contents = signal<LocationContents | null>(null);
   const whereabouts = signal<MapSearch | null>(null);
   const holdings = signal<ReadonlyMap<string, number>>(new Map());
+  const refusedEntry = signal<string | null>(null);
   const facade = {
     contents: contents.asReadonly(),
     holdings: holdings.asReadonly(),
@@ -196,21 +206,18 @@ describe('StockMapPage', () => {
     structures: structures.asReadonly(),
     busy: busy.asReadonly(),
     error: error.asReadonly(),
+    refusedEntry: refusedEntry.asReadonly(),
     loadPlanContext: vi.fn(),
     loadDrawings: vi.fn(),
     reloadDrawings: vi.fn(),
     loadStructures: vi.fn(),
     reloadStructures: vi.fn(),
-    buildStructure: vi.fn(),
-    eraseStructure: vi.fn(),
     createFloor: vi.fn(),
     reviseFloor: vi.fn(),
     deleteFloor: vi.fn(),
-    draw: vi.fn(),
-    eraseDrawing: vi.fn(),
     deleteLocation: vi.fn(),
     repeatDrawing: vi.fn(),
-    changeDrawings: vi.fn(),
+    changePlan: vi.fn(),
     clearError: vi.fn(),
     record: vi.fn(),
   };
@@ -221,6 +228,8 @@ describe('StockMapPage', () => {
   const windowClass = signal<WindowClass>('expanded');
   const coarse = signal(false);
   const showComing = signal(true);
+  /** This browser's kept drafts, fresh for each case so one case's work is never offered to the next. */
+  let planStorage = new PageMemoryStorage();
   let fixture: ComponentFixture<StockMapPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -245,7 +254,9 @@ describe('StockMapPage', () => {
     ).drawingFormGroup();
 
   beforeEach(async () => {
+    planStorage = new PageMemoryStorage();
     error.set(null);
+    refusedEntry.set(null);
     busy.set(false);
     floors.set([upstairs, ground]);
     drawings.set([drawn]);
@@ -265,41 +276,34 @@ describe('StockMapPage', () => {
     facade.reloadDrawings.mockReset().mockResolvedValue(undefined);
     facade.loadStructures.mockReset().mockResolvedValue(undefined);
     facade.reloadStructures.mockReset().mockResolvedValue(undefined);
-    facade.buildStructure
-      .mockReset()
-      .mockImplementation(
-        async (_company: string, floorId: string, input: object, id: string | null) => ({
-          ...wall,
-          ...input,
-          id: id ?? 's9',
-          floorId,
-          version: id === null ? 1 : 2,
-        }),
-      );
-    facade.eraseStructure.mockReset().mockResolvedValue(true);
     facade.createFloor.mockReset().mockResolvedValue(true);
     facade.reviseFloor.mockReset().mockResolvedValue(true);
     facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.deleteFloor.mockReset().mockResolvedValue(true);
-    facade.draw.mockReset().mockResolvedValue({ ...drawn, version: 2 });
     facade.deleteLocation.mockReset().mockResolvedValue(true);
-    facade.eraseDrawing.mockReset().mockResolvedValue(true);
     facade.repeatDrawing.mockReset().mockResolvedValue(true);
-    // The rectangles as the step left them: each moved one a version further.
-    facade.changeDrawings
-      .mockReset()
-      .mockImplementation(
-        async (
-          _c: string,
-          _f: string,
-          changes: { moves: { drawingId: string; version: number }[] },
-        ) =>
-          changes.moves.map((move) => ({
-            ...drawn,
-            id: move.drawingId,
-            version: move.version + 1,
-          })),
-      );
+    // The floor as the step left it: each rectangle and piece moved one version further, nothing created.
+    facade.changePlan.mockReset().mockImplementation(
+      async (
+        _c: string,
+        _f: string,
+        step: {
+          moves: { drawingId: string; version: number }[];
+          structureMoves: { structureId: string; version: number }[];
+        },
+      ) => ({
+        drawings: drawings().map((row) => ({
+          ...row,
+          version: row.version + (step.moves.some((move) => move.drawingId === row.id) ? 1 : 0),
+        })),
+        structures: structures().map((row) => ({
+          ...row,
+          version:
+            row.version + (step.structureMoves.some((move) => move.structureId === row.id) ? 1 : 0),
+        })),
+        created: { draws: [], newPlaces: [], structureBuilds: [] },
+      }),
+    );
     auth.hasPermission.mockReset().mockReturnValue(true);
     windowClass.set('expanded');
     coarse.set(false);
@@ -322,6 +326,7 @@ describe('StockMapPage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+        { provide: PLAN_DRAFT_STORAGE, useValue: planStorage },
         { provide: WINDOW_CLASS, useValue: windowClass.asReadonly() },
         { provide: COARSE_POINTER, useValue: coarse.asReadonly() },
         {
@@ -492,10 +497,35 @@ describe('StockMapPage', () => {
     q('stock-map-trace-type')!.click();
     await settle();
     expect(q('stock-drawing-form')).not.toBeNull();
-    expect(facade.draw).not.toHaveBeenCalled();
+    expect(facade.changePlan).not.toHaveBeenCalled();
   });
 
-  it('draws a location on the floor being looked at, snapped to the grid', async () => {
+  /** « Enregistrer »: the floor's draft sent as one step; answers the step it sent. */
+  async function savePlanned(): Promise<PlanStep> {
+    (q('stock-plan-save') as HTMLButtonElement).click();
+    await settle();
+    expect(facade.changePlan).toHaveBeenCalled();
+
+    return facade.changePlan.mock.calls.at(-1)![2] as PlanStep;
+  }
+
+  /** What « Enregistrer » would answer for a step that drew or built something new. */
+  function savedWith(
+    created: Partial<PlanStepCreated>,
+    drawn: readonly StockDrawingRow[] = drawings(),
+    built: readonly StockStructureRow[] = structures(),
+  ): void {
+    facade.changePlan.mockImplementationOnce(async () => ({
+      drawings: drawn,
+      structures: built,
+      created: { draws: [], newPlaces: [], structureBuilds: [], ...created },
+      floorVersion: null,
+    }));
+  }
+
+  const unsaved = (): string | null => q('stock-plan-unsaved')?.getAttribute('data-count') ?? null;
+
+  it('draws a location on the floor being looked at, snapped to the grid when it is saved', async () => {
     q('stock-map-trace')!.click();
     await settle();
     q('stock-map-trace-type')!.click();
@@ -504,19 +534,16 @@ describe('StockMapPage', () => {
     drawingGroup().get('locationId')!.setValue('l2');
     type('field-x', '2.6');
     type('field-y', '4.1');
-    q('stock-drawing-save')!.click();
     await settle();
+    expect(facade.changePlan).not.toHaveBeenCalled();
 
-    expect(facade.draw).toHaveBeenCalledWith(
-      'c1',
-      'f1',
-      // The place goes to the grid (2,6 → 2,5); a measurement does not.
+    const step = await savePlanned();
+    // The place goes to the grid (2,6 → 2,5); a measurement does not.
+    expect(step.draws).toEqual([
       expect.objectContaining({ locationId: 'l2', x: '2.500', y: '4.000' }),
-      // Null: this is a new rectangle, not one being moved, so it stands on no version.
-      null,
-      null,
-    );
-    expect(successToasts()).toContain('inventory.plan.drawing_saved');
+    ]);
+    expect(step.moves).toEqual([]);
+    expect(successToasts()).toContain('inventory.plan.plan_saved');
   });
 
   it('moves the rectangle being edited rather than drawing a second one for the same rack', async () => {
@@ -524,10 +551,15 @@ describe('StockMapPage', () => {
     await settle();
     q('stock-drawing-edit')!.click();
     await settle();
-    q('stock-drawing-save')!.click();
+    type('field-x', '7');
     await settle();
 
-    expect(facade.draw).toHaveBeenCalledWith('c1', 'f1', expect.anything(), 'd1', 1);
+    const step = await savePlanned();
+    expect(step.moves).toEqual([
+      expect.objectContaining({ drawingId: 'd1', x: '7.000', version: 1 }),
+    ]);
+    expect(step.draws).toEqual([]);
+    expect(step.newPlaces).toEqual([]);
   });
 
   it('erases a rectangle without touching what it was drawn for', async () => {
@@ -535,12 +567,15 @@ describe('StockMapPage', () => {
     await settle();
     q('stock-drawing-erase')!.click();
     await settle();
+    expect(firstRect()).toBeNull();
+    expect(facade.changePlan).not.toHaveBeenCalled();
 
-    expect(facade.eraseDrawing).toHaveBeenCalledWith('c1', 'f1', 'd1');
-    expect(successToasts()).toContain('inventory.plan.drawing_erased');
+    const step = await savePlanned();
+    expect(step.erasures).toEqual([{ drawingId: 'd1', version: 1 }]);
+    expect(facade.deleteLocation).not.toHaveBeenCalled();
   });
 
-  /** The toast's « Annuler » after a drawing change: what it runs, read back from what was recorded. */
+  /** The toast's « Annuler » after a save: what it runs, read back from what was recorded. */
   function undoOf(key: string): () => void {
     const said = [...(TestBed.inject(Feedback) as RecordedFeedback).said]
       .reverse()
@@ -552,17 +587,15 @@ describe('StockMapPage', () => {
   // ——— undo, not « are you sure » (the stock map brief, § 5.3): undrawing never touches the location ———
 
   it('draws an undrawn rectangle back where it was when « Annuler » is pressed', async () => {
-    facade.eraseDrawing.mockResolvedValue(true);
     q('stock-drawing-R1')!.click();
     await settle();
     q('stock-drawing-erase')!.click();
     await settle();
+    await savePlanned();
 
-    undoOf('inventory.plan.drawing_erased')();
+    undoOf('inventory.plan.plan_saved')();
     await settle();
-    expect(facade.draw).toHaveBeenLastCalledWith(
-      'c1',
-      'f1',
+    expect((facade.changePlan.mock.calls.at(-1)![2] as PlanStep).draws).toEqual([
       expect.objectContaining({
         locationId: 'l1',
         x: '2.500',
@@ -571,9 +604,7 @@ describe('StockMapPage', () => {
         depth: '0.600',
         height: '2.100',
       }),
-      null,
-      null,
-    );
+    ]);
     expect(successToasts()).toContain('inventory.plan.undone');
   });
 
@@ -583,49 +614,54 @@ describe('StockMapPage', () => {
     q('stock-drawing-edit')!.click();
     await settle();
     type('field-x', '7');
-    q('stock-drawing-save')!.click();
     await settle();
-    expect(facade.draw).toHaveBeenLastCalledWith(
-      'c1',
-      'f1',
-      expect.objectContaining({ x: '7.000' }),
-      'd1',
-      1,
-    );
+    expect((await savePlanned()).moves).toEqual([
+      expect.objectContaining({ drawingId: 'd1', x: '7.000', version: 1 }),
+    ]);
 
     // Taken back on the version its save produced, never over someone else's change.
-    const takeBack = undoOf('inventory.plan.drawing_saved');
+    const takeBack = undoOf('inventory.plan.plan_saved');
     takeBack();
     await settle();
-    expect(facade.draw).toHaveBeenLastCalledWith(
-      'c1',
-      'f1',
-      expect.objectContaining({ x: '2.500', y: '4.000' }),
-      'd1',
-      2,
-    );
+    expect((facade.changePlan.mock.calls.at(-1)![2] as PlanStep).moves).toEqual([
+      expect.objectContaining({ drawingId: 'd1', x: '2.500', y: '4.000', version: 2 }),
+    ]);
 
     (TestBed.inject(Feedback) as RecordedFeedback).said.length = 0;
-    facade.draw.mockImplementationOnce(async () => {
+    facade.changePlan.mockImplementationOnce(async () => {
       error.set('record_changed');
       return null;
     });
     takeBack();
+    // The refusal is cleared after the request answers, a turn later than the settle that follows the press.
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+        kind: 'failure',
+        key: 'live.undo_refused',
+        params: undefined,
+      }),
+    );
     await settle();
-    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
-      kind: 'failure',
-      key: 'live.undo_refused',
-      params: undefined,
-    });
     expect(q('stock-map-error')).toBeNull();
   });
 
-  it('merges a rectangle saved since into its open form, and saves on that version next', async () => {
+  /**
+   * Saved by someone else since: their rectangle is theirs now, and only it is let go. What else was arranged stays on
+   * the board, said, and goes with the next « Enregistrer ».
+   */
+  it('lets go only a rectangle saved since, keeps the rest of the plan, and says how many were let go', async () => {
+    drawings.set([drawn, { ...drawn, id: 'd2', locationId: 'l2', locationCode: 'Z1', x: '8.000' }]);
+    await settle();
     q('stock-drawing-R1')!.click();
     await settle();
-    q('stock-drawing-edit')!.click();
+    boardKey('ArrowRight');
+    q('stock-drawing-Z1')!.click();
     await settle();
-    facade.draw.mockImplementationOnce(async () => {
+    boardKey('ArrowRight');
+    await settle();
+    expect(unsaved()).toBe('2');
+
+    facade.changePlan.mockImplementationOnce(async () => {
       error.set('record_changed');
       return null;
     });
@@ -634,25 +670,44 @@ describe('StockMapPage', () => {
         drawings().map((one) => (one.id === 'd1' ? { ...one, height: '3.000', version: 2 } : one)),
       ),
     );
-
-    type('field-x', '7');
-    q('stock-drawing-save')!.click();
-    await settle();
+    await savePlanned();
     await vi.waitFor(() => expect(facade.reloadDrawings).toHaveBeenCalledWith('c1'));
     await settle();
 
-    expect(drawingGroup().get('x')!.value).toBe('7');
-    expect(drawingGroup().get('height')!.value).toBe('3.000');
     expect(q('stock-map-error')).toBeNull();
-    q('stock-drawing-save')!.click();
-    await settle();
-    expect(facade.draw).toHaveBeenLastCalledWith(
-      'c1',
-      'f1',
-      expect.objectContaining({ x: '7.000', height: '3.000' }),
-      'd1',
-      2,
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
+      expect.objectContaining({
+        kind: 'failure',
+        key: 'inventory.plan.plan_changed',
+        params: { count: 1 },
+      }),
     );
+    expect(unsaved()).toBe('1');
+    const step = await savePlanned();
+    expect(step.moves).toEqual([
+      expect.objectContaining({ drawingId: 'd2', x: '8.250', version: 1 }),
+    ]);
+  });
+
+  /** Refused for one shape: that shape is chosen, its form open where the error is said. */
+  it('opens the shape a refusal names, so the error is read beside what it is about', async () => {
+    q('stock-shape-rack')!.click();
+    await settle();
+    q('stock-drawing-close')!.click();
+    await settle();
+    expect(q('stock-drawing-form')).toBeNull();
+
+    facade.changePlan.mockImplementationOnce(async () => {
+      error.set('code_taken');
+      refusedEntry.set('newPlaces[0].code');
+      return null;
+    });
+    await savePlanned();
+    await settle();
+
+    expect(q('stock-drawing-form')).not.toBeNull();
+    expect(drawingGroup().get('newLocationCode')!.value).toBe('R2');
+    expect(unsaved()).toBe('1');
   });
 
   /** Slice 7b: a rack posed from the palette is a new rack, with the code after the establishment's last one. */
@@ -673,63 +728,56 @@ describe('StockMapPage', () => {
     q('stock-shape-rack')!.click();
     await settle();
     type('field-newLocationName', 'Rayonnage 2');
-    q('stock-drawing-save')!.click();
     await settle();
 
-    expect(facade.draw).toHaveBeenCalledWith(
-      'c1',
-      'f1',
-      expect.objectContaining({
-        locationId: '',
-        newLocationKind: 'rack',
-        newLocationCode: 'R2',
-        newLocationName: 'Rayonnage 2',
-      }),
-      null,
-      null,
-    );
+    const step = await savePlanned();
+    expect(step.newPlaces).toEqual([
+      expect.objectContaining({ kind: 'rack', code: 'R2', name: 'Rayonnage 2' }),
+    ]);
+    expect(step.draws).toEqual([]);
   });
 
   /** « Annuler » leaves nothing behind: the rectangle is undrawn and the place made a moment ago deleted. */
   it('takes back a new place and its rectangle together when « Annuler » is pressed', async () => {
-    facade.eraseDrawing.mockResolvedValue(true);
-    facade.deleteLocation.mockResolvedValue(true);
-    facade.draw.mockImplementation(async () => {
-      drawings.set([drawn, { ...drawn, id: 'd9', locationId: 'l9', locationCode: 'R2' }]);
-      return true;
-    });
     q('stock-shape-rack')!.click();
     await settle();
     type('field-newLocationName', 'Rayonnage 2');
-    q('stock-drawing-save')!.click();
     await settle();
+    savedWith({ newPlaces: [{ drawingId: 'd9', locationId: 'l9' }] }, [
+      drawn,
+      { ...drawn, id: 'd9', locationId: 'l9', locationCode: 'R2' },
+    ]);
+    await savePlanned();
 
-    undoOf('inventory.plan.drawing_saved')();
+    undoOf('inventory.plan.plan_saved')();
     await settle();
-    expect(facade.eraseDrawing).toHaveBeenLastCalledWith('c1', 'f1', 'd9');
+    expect((facade.changePlan.mock.calls.at(-1)![2] as PlanStep).erasures).toEqual([
+      { drawingId: 'd9', version: 1 },
+    ]);
     expect(facade.deleteLocation).toHaveBeenLastCalledWith('c1', 'l9');
   });
 
   it('undraws a rectangle just drawn when « Annuler » is pressed, leaving its location as it was', async () => {
-    // A place still undrawn after this one: drawing the LAST one while its form is open is slice 7b's (« nouveau »).
     locations.set([rack, zone, bin, { ...zone, id: 'l4', code: 'Z2', name: 'Quai' }]);
-    facade.eraseDrawing.mockResolvedValue(true);
-    facade.draw.mockImplementation(async () => {
-      drawings.set([drawn, { ...drawn, id: 'd9', locationId: 'l2', locationCode: 'R2' }]);
-      return true;
-    });
     q('stock-map-trace')!.click();
     await settle();
     q('stock-map-trace-type')!.click();
     await settle();
     drawingGroup().get('origin')!.setValue('existing');
     drawingGroup().get('locationId')!.setValue('l2');
-    q('stock-drawing-save')!.click();
     await settle();
+    savedWith({ draws: ['d9'] }, [
+      drawn,
+      { ...drawn, id: 'd9', locationId: 'l2', locationCode: 'Z1' },
+    ]);
+    await savePlanned();
 
-    undoOf('inventory.plan.drawing_saved')();
+    undoOf('inventory.plan.plan_saved')();
     await settle();
-    expect(facade.eraseDrawing).toHaveBeenLastCalledWith('c1', 'f1', 'd9');
+    expect((facade.changePlan.mock.calls.at(-1)![2] as PlanStep).erasures).toEqual([
+      { drawingId: 'd9', version: 1 },
+    ]);
+    expect(facade.deleteLocation).not.toHaveBeenCalled();
   });
 
   // ——— the keyboard in Aménager (the stock map brief, § 5.3): what a gesture does, without a pointer ———
@@ -740,36 +788,42 @@ describe('StockMapPage', () => {
     );
   }
 
-  it('moves the chosen rectangle by a quarter metre with the arrows, a metre with Shift, writing into its form', async () => {
+  it('moves the chosen rectangle by a quarter metre with the arrows, a metre with Shift, into the plan alone', async () => {
     q('stock-drawing-R1')!.click();
     await settle();
 
     boardKey('ArrowRight');
     await settle();
-    expect(drawingGroup().get('x')!.value).toBe('2.750');
+    expect(firstRect().getAttribute('x')).toBe('2.75');
     boardKey('ArrowRight', true);
     boardKey('ArrowDown');
     await settle();
-    expect(drawingGroup().get('x')!.value).toBe('3.750');
-    expect(drawingGroup().get('y')!.value).toBe('4.250');
-    expect(facade.draw).not.toHaveBeenCalled();
+    expect(firstRect().getAttribute('x')).toBe('3.75');
+    expect(firstRect().getAttribute('y')).toBe('4.25');
+    expect(unsaved()).toBe('1');
+    expect(facade.changePlan).not.toHaveBeenCalled();
   });
 
   it('turns the chosen rectangle by fifteen degrees with R, back with Shift R, and undraws it with Suppr', async () => {
     q('stock-drawing-R1')!.click();
     await settle();
+    const turn = (): string | null =>
+      fixture.nativeElement
+        .querySelector('[data-testid="stock-drawing-group-R1"]')
+        ?.getAttribute('transform') ?? null;
 
     boardKey('r');
     await settle();
-    expect(drawingGroup().get('rotation')!.value).toBe(15);
+    expect(turn()).toBe('rotate(15 4.45 4.3)');
     boardKey('R', true);
     boardKey('R', true);
     await settle();
-    expect(drawingGroup().get('rotation')!.value).toBe(345);
+    expect(turn()).toBe('rotate(345 4.45 4.3)');
 
     boardKey('Delete');
     await settle();
-    expect(facade.eraseDrawing).toHaveBeenCalledWith('c1', 'f1', 'd1');
+    expect(turn()).toBeNull();
+    expect((await savePlanned()).erasures).toEqual([{ drawingId: 'd1', version: 1 }]);
   });
 
   it('goes to the next rectangle with Tab, and lets the focus leave the board after the last', async () => {
@@ -797,7 +851,9 @@ describe('StockMapPage', () => {
     boardKey('Delete');
     await settle();
     expect(drawingGroup()).toBeNull();
-    expect(facade.eraseDrawing).not.toHaveBeenCalled();
+    // Neither moved nor erased: the rack is drawn where it was, and the plan holds nothing to save.
+    expect(q('stock-drawing-rect-R1')?.getAttribute('x')).toBe('2.5');
+    expect(planUnsaved() ?? '0').toBe('0');
   });
 
   it('offers to remove only a floor that carries nothing', async () => {
@@ -1156,6 +1212,177 @@ describe('StockMapPage', () => {
     expect(chosenCodes()).toEqual([]);
   });
 
+  // ——— the board is the draft: each gesture lands on the shape it was made on ———
+
+  /** The board's own count of shapes changed and not saved, or null when it shows none. */
+  const planUnsaved = (): string | null =>
+    q('stock-plan-unsaved')?.getAttribute('data-count') ?? null;
+  const drag = async (target: Element, dx: number, dy = 0): Promise<void> => {
+    fire(target, 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 100 + dx, 100 + dy);
+    fire(document, 'pointerup', 100 + dx, 100 + dy);
+    await settle();
+  };
+  const wallX = (): number => Number(q('stock-structure-wall')?.getAttribute('x') ?? Number.NaN);
+
+  it('moves the rack dragged, not the one whose form is open', async () => {
+    drawings.set([drawn, second]);
+    await settle();
+    surface();
+    q('stock-drawing-R1')!.click();
+    await settle();
+    press('stock-drawing-edit');
+    await settle();
+
+    await drag(q('stock-drawing-rect-Z1') as unknown as Element, 0, 60);
+
+    expect(placedX('R1')).toBe(2.5);
+    expect(Number(q('stock-drawing-rect-Z1')?.getAttribute('y'))).toBeGreaterThan(4);
+    expect(planUnsaved()).toBe('1');
+  });
+
+  it('keeps a wall moved and not saved when a rack is dragged next, and counts both', async () => {
+    surface();
+    await drag(q('stock-structure-wall') as unknown as Element, 60);
+    const movedWall = wallX();
+    expect(movedWall).toBeGreaterThan(0);
+
+    await drag(firstRect(), -40);
+
+    expect(wallX()).toBe(movedWall);
+    expect(placedX('R1')).toBeLessThan(2.5);
+    expect(planUnsaved()).toBe('2');
+    expect(facade.changePlan).not.toHaveBeenCalled();
+  });
+
+  /** Kept in this browser while it is arranged, so a closed tab costs nothing; gone from it once it is written. */
+  it('keeps the unsaved floor in this browser, and lets it go from there once it is saved', async () => {
+    surface();
+    await drag(firstRect(), 40);
+    const kept = parseDraft(planStorage.getItem(planDraftKey('c1', 'f1')), 'f1');
+    expect(kept === null ? 0 : changeCount(kept)).toBe(1);
+
+    savedWith({});
+    await savePlanned();
+    await settle();
+    expect(planStorage.getItem(planDraftKey('c1', 'f1'))).toBeNull();
+  });
+
+  /** A floor arranged on an earlier visit is offered again, and laid on the board only when it is taken up. */
+  it('offers a kept floor again: Reprendre lays it on the board, Abandonner lets it go', async () => {
+    const rect = { x: 6, y: 4, width: 3.9, depth: 0.6, rotation: 0, height: 2.1 };
+    const keep = (): void =>
+      planStorage.setItem(
+        planDraftKey('c1', 'f1'),
+        JSON.stringify(placeDrawing(emptyDraft('f1'), 'd1', rect, drawn)),
+      );
+    const reopen = async (): Promise<void> => {
+      fixture.destroy();
+      fixture = TestBed.createComponent(StockMapPage);
+      await settle();
+    };
+    const said = (): string[] =>
+      (TestBed.inject(Feedback) as RecordedFeedback).said.map((one) => one.key);
+
+    keep();
+    await reopen();
+    // Offered once the floor is read, at the end of the page's own start.
+    await vi.waitFor(async () => {
+      await settle();
+      expect(q('stock-plan-kept')).not.toBeNull();
+    });
+    expect(placedX('R1')).toBe(2.5);
+    expect(unsaved()).toBeNull();
+    press('stock-plan-resume');
+    await settle();
+    expect(q('stock-plan-kept')).toBeNull();
+    expect(placedX('R1')).toBe(6);
+    expect(unsaved()).toBe('1');
+    expect(said()).toContain('inventory.plan.draft.resumed');
+
+    keep();
+    await reopen();
+    await vi.waitFor(async () => {
+      await settle();
+      expect(q('stock-plan-abandon')).not.toBeNull();
+    });
+    press('stock-plan-abandon');
+    await settle();
+    expect(q('stock-plan-kept')).toBeNull();
+    expect(placedX('R1')).toBe(2.5);
+    expect(planStorage.getItem(planDraftKey('c1', 'f1'))).toBeNull();
+    expect(said()).toContain('inventory.plan.draft.abandoned');
+  });
+
+  /** A floor pulled wider by its edge joins the same draft, and travels with the floor's version read. */
+  it('widens the floor by its edge into the draft, sent with the version read', async () => {
+    floors.set([upstairs, { ...ground, widthMetres: '20.000', depthMetres: '10.000', version: 3 }]);
+    await settle();
+    surface();
+    // Pressed where the grip is drawn: a grip follows the pointer's place, as a rack's handles do. The floor is wider
+    // than the 400 px square is tall, so the square's width is the frame's.
+    const [left, , wide] = viewBox().split(' ').map(Number) as [number, number, number];
+    const gripX = ((20 - left) / wide) * 400;
+    const grip = q('stock-floor-grip-1:0.5') as unknown as Element;
+    fire(grip, 'pointerdown', gripX, 200);
+    fire(document, 'pointermove', gripX + 80, 200);
+    fire(document, 'pointerup', gripX + 80, 200);
+    await settle();
+    expect(unsaved()).toBe('1');
+
+    savedWith({});
+    const step = await savePlanned();
+    expect(Number(step.floor?.widthMetres)).toBeGreaterThan(20);
+    expect(step.floor).toEqual(expect.objectContaining({ depthMetres: '10.000', version: 3 }));
+  });
+
+  it('erases a rack and a wall into the draft with Suppr, sending nothing until Enregistrer', async () => {
+    q('stock-drawing-R1')!.click();
+    await settle();
+    (q('stock-map-board') as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }),
+    );
+    await settle();
+    (q('stock-structure-wall') as unknown as Element).dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    await settle();
+    (q('stock-map-board') as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }),
+    );
+    await settle();
+
+    expect(q('stock-drawing-rect-R1')).toBeNull();
+    expect(q('stock-structure-wall')).toBeNull();
+    expect(planUnsaved()).toBe('2');
+    expect(facade.changePlan).not.toHaveBeenCalled();
+  });
+
+  it('saves every change of the floor in one step from the board’s Enregistrer', async () => {
+    surface();
+    await drag(q('stock-structure-wall') as unknown as Element, 60);
+    await drag(firstRect(), -40);
+
+    press('stock-plan-save');
+    await settle();
+
+    expect(facade.changePlan).toHaveBeenCalledTimes(1);
+    const [, floorId, step] = facade.changePlan.mock.calls[0] as [
+      string,
+      string,
+      {
+        moves: { drawingId: string; version: number }[];
+        structureMoves: { structureId: string; version: number }[];
+      },
+    ];
+    expect(floorId).toBe('f1');
+    expect(step.moves).toEqual([expect.objectContaining({ drawingId: 'd1', version: 1 })]);
+    expect(step.structureMoves).toEqual([
+      expect.objectContaining({ structureId: 's1', version: 1 }),
+    ]);
+    expect(planUnsaved()).toBeNull();
+  });
+
   // ——— acting on a group in Aménager (slice 7c, § 7 2026-10-09 17:45) ———
 
   async function chooseBoth(): Promise<void> {
@@ -1168,7 +1395,8 @@ describe('StockMapPage', () => {
   }
   const placedX = (code: string): number =>
     Number(q(`stock-drawing-rect-${code}`)?.getAttribute('x') ?? Number.NaN);
-  const asSaved = (rect: PlanRectangle): Record<string, unknown> => ({
+  /** A rectangle as « Enregistrer » sends it: as the plan holds it, a turned group off the grid included. */
+  const asSent = (rect: PlanRectangle): Record<string, unknown> => ({
     x: rect.x.toFixed(3),
     y: rect.y.toFixed(3),
     rotation: rect.rotation,
@@ -1191,40 +1419,35 @@ describe('StockMapPage', () => {
     expect(placedX('Z1') - 8).toBeCloseTo(step, 9);
     expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
     expect(q('stock-drawing-form')).toBeNull();
+    expect(facade.changePlan).not.toHaveBeenCalled();
 
-    q('stock-map-group-save')!.click();
-    await settle();
-    expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
-      draws: [],
-      moves: [
-        expect.objectContaining({
-          drawingId: 'd1',
-          x: (2.5 + step).toFixed(3),
-          y: '4.000',
-          version: 1,
-        }),
-        expect.objectContaining({
-          drawingId: 'd2',
-          x: (8 + step).toFixed(3),
-          y: '4.000',
-          version: 4,
-        }),
-      ],
-      erasures: [],
-    });
-    expect(q('stock-map-group-save')).toBeNull();
+    const sent = await savePlanned();
+    expect(facade.changePlan).toHaveBeenCalledTimes(1);
+    expect(sent.moves).toEqual([
+      expect.objectContaining({
+        drawingId: 'd1',
+        x: (2.5 + step).toFixed(3),
+        y: '4.000',
+        version: 1,
+      }),
+      expect.objectContaining({
+        drawingId: 'd2',
+        x: (8 + step).toFixed(3),
+        y: '4.000',
+        version: 4,
+      }),
+    ]);
+    expect(sent.draws).toEqual([]);
+    expect(sent.erasures).toEqual([]);
+    expect(q('stock-plan-save')).toBeNull();
 
-    undoOf('inventory.plan.group_saved')();
+    undoOf('inventory.plan.plan_saved')();
     await settle();
-    expect(facade.changeDrawings).toHaveBeenLastCalledWith('c1', 'f1', {
-      draws: [],
-      moves: [
-        // Each on the version the step left it at.
-        expect.objectContaining({ drawingId: 'd1', x: '2.500', width: '3.900', version: 2 }),
-        expect.objectContaining({ drawingId: 'd2', x: '8.000', width: '3.900', version: 5 }),
-      ],
-      erasures: [],
-    });
+    expect((facade.changePlan.mock.calls.at(-1)![2] as PlanStep).moves).toEqual([
+      // Each on the version the step left it at.
+      expect.objectContaining({ drawingId: 'd1', x: '2.500', width: '3.900', version: 2 }),
+      expect.objectContaining({ drawingId: 'd2', x: '8.000', width: '3.900', version: 5 }),
+    ]);
     expect(successToasts()).toContain('inventory.plan.undone');
   });
 
@@ -1233,92 +1456,78 @@ describe('StockMapPage', () => {
     boardKey('r');
     boardKey('ArrowRight');
     await settle();
-    q('stock-map-group-save')!.click();
-    await settle();
 
     const saved = new Map([
       ['d1', { x: 2.5, y: 4, width: 3.9, depth: 0.6, rotation: 0, height: 2.1 }],
       ['d2', { x: 8, y: 4, width: 3.9, depth: 0.6, rotation: 0, height: 2.1 }],
     ]);
     const expected = shiftedGroup(turnedGroup(saved, 15), 0.25, 0);
-    expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
-      draws: [],
-      moves: [
-        expect.objectContaining({ drawingId: 'd1', ...asSaved(expected.get('d1')!) }),
-        expect.objectContaining({ drawingId: 'd2', ...asSaved(expected.get('d2')!) }),
-      ],
-      erasures: [],
-    });
+    expect((await savePlanned()).moves).toEqual([
+      expect.objectContaining({ drawingId: 'd1', ...asSent(expected.get('d1')!) }),
+      expect.objectContaining({ drawingId: 'd2', ...asSent(expected.get('d2')!) }),
+    ]);
   });
 
   it('turns the group from its panel too, never only from the keyboard', async () => {
     await chooseBoth();
     q('stock-map-group-turn-left')!.click();
     await settle();
-    q('stock-map-group-save')!.click();
-    await settle();
 
-    expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
-      draws: [],
-      moves: [
-        expect.objectContaining({ drawingId: 'd1', rotation: 345 }),
-        expect.objectContaining({ drawingId: 'd2', rotation: 345 }),
-      ],
-      erasures: [],
-    });
+    expect((await savePlanned()).moves).toEqual([
+      expect.objectContaining({ drawingId: 'd1', rotation: 345 }),
+      expect.objectContaining({ drawingId: 'd2', rotation: 345 }),
+    ]);
   });
 
-  it('puts a moved group back with Échap, then lets it go with a second', async () => {
+  it('puts a group being dragged back with Échap, then lets it go with a second', async () => {
     await chooseBoth();
-    boardKey('ArrowDown');
+    surface();
+    const rack = q('stock-drawing-rect-R1') as unknown as Element;
+    fire(rack, 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 100, 160);
     await settle();
-    expect(q('stock-map-group-save')).not.toBeNull();
+    expect(q('stock-drawing-rect-R1')?.getAttribute('y')).not.toBe('4');
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fire(document, 'pointerup', 100, 160);
     await settle();
-    expect(q('stock-map-group-save')).toBeNull();
     expect(q('stock-drawing-rect-R1')?.getAttribute('y')).toBe('4');
+    expect(unsaved()).toBeNull();
     expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await settle();
     expect(chosenCodes()).toEqual([]);
-    expect(facade.changeDrawings).not.toHaveBeenCalled();
+    expect(facade.changePlan).not.toHaveBeenCalled();
   });
 
   it('undraws the whole group with Suppr, and draws all of it back with one « Annuler »', async () => {
     await chooseBoth();
     boardKey('Delete');
     await settle();
-
-    expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
-      draws: [],
-      moves: [],
-      erasures: [
-        { drawingId: 'd1', version: 1 },
-        { drawingId: 'd2', version: 4 },
-      ],
-    });
     expect(chosenCodes()).toEqual([]);
+    expect(q('stock-drawing-rect-R1')).toBeNull();
+    expect(facade.changePlan).not.toHaveBeenCalled();
 
-    undoOf('inventory.plan.group_erased')();
+    expect((await savePlanned()).erasures).toEqual([
+      { drawingId: 'd1', version: 1 },
+      { drawingId: 'd2', version: 4 },
+    ]);
+
+    undoOf('inventory.plan.plan_saved')();
     await settle();
-    expect(facade.changeDrawings).toHaveBeenLastCalledWith('c1', 'f1', {
-      draws: [
-        {
-          locationId: 'l1',
-          x: '2.500',
-          y: '4.000',
-          width: '3.900',
-          depth: '0.600',
-          rotation: 0,
-          height: '2.100',
-        },
-        expect.objectContaining({ locationId: 'l2', x: '8.000' }),
-      ],
-      moves: [],
-      erasures: [],
-    });
+    expect((facade.changePlan.mock.calls.at(-1)![2] as PlanStep).draws).toEqual([
+      {
+        locationId: 'l1',
+        x: '2.500',
+        y: '4.000',
+        width: '3.900',
+        depth: '0.600',
+        rotation: 0,
+        height: '2.100',
+      },
+      expect.objectContaining({ locationId: 'l2', x: '8.000' }),
+    ]);
     expect(successToasts()).toContain('inventory.plan.undone');
   });
 
@@ -1327,43 +1536,41 @@ describe('StockMapPage', () => {
     q('stock-map-group-erase')!.click();
     await settle();
 
-    expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
-      draws: [],
-      moves: [],
-      erasures: [
-        { drawingId: 'd1', version: 1 },
-        { drawingId: 'd2', version: 4 },
-      ],
-    });
+    expect((await savePlanned()).erasures).toEqual([
+      { drawingId: 'd1', version: 1 },
+      { drawingId: 'd2', version: 4 },
+    ]);
   });
 
-  it('refuses the whole group when a rectangle changed since, reads the floor again and keeps the group chosen', async () => {
-    facade.changeDrawings.mockImplementation(async () => {
-      error.set('record_changed');
-      return null;
-    });
+  it('lets go only the rectangle of a group saved since, and keeps the group chosen and the rest moved', async () => {
     await chooseBoth();
     boardKey('ArrowDown');
     await settle();
-    q('stock-map-group-save')!.click();
+    facade.changePlan.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return null;
+    });
+    facade.reloadDrawings.mockImplementationOnce(async () =>
+      drawings.set(drawings().map((one) => (one.id === 'd2' ? { ...one, version: 5 } : one))),
+    );
+    await savePlanned();
+    await vi.waitFor(() => expect(facade.reloadDrawings).toHaveBeenCalledWith('c1'));
     await settle();
 
-    expect(facade.reloadDrawings).toHaveBeenCalledWith('c1');
-    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
-      kind: 'failure',
-      key: 'inventory.plan.group_changed',
-      params: undefined,
-    });
-    // The move is gone, to be made again on the rectangles as they now stand; the group is still chosen.
-    expect(q('stock-map-group-save')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
+      expect.objectContaining({
+        kind: 'failure',
+        key: 'inventory.plan.plan_changed',
+        params: { count: 1 },
+      }),
+    );
     expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
     expect(q('stock-map-error')).toBeNull();
-
-    boardKey('Delete');
-    await settle();
-    expect(facade.reloadDrawings).toHaveBeenCalledTimes(2);
-    expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
-    expect(successToasts()).not.toContain('inventory.plan.group_erased');
+    expect(q('stock-drawing-rect-Z1')?.getAttribute('y')).toBe('4');
+    expect(q('stock-drawing-rect-R1')?.getAttribute('y')).toBe('4.25');
+    expect((await savePlanned()).moves).toEqual([
+      expect.objectContaining({ drawingId: 'd1', y: '4.250' }),
+    ]);
   });
 
   it('acts on a group only in Aménager: Consulter chooses, and nothing moves', async () => {
@@ -1374,7 +1581,8 @@ describe('StockMapPage', () => {
 
     expect(q('stock-map-group-erase')).toBeNull();
     expect(q('stock-map-group-turn-right')).toBeNull();
-    expect(facade.changeDrawings).not.toHaveBeenCalled();
+    expect(planUnsaved() ?? '0').toBe('0');
+    expect(facade.changePlan).not.toHaveBeenCalled();
   });
 
   /** The choice is the same in Consulter, where row 248's action bar will act on it. */
@@ -1422,10 +1630,11 @@ describe('StockMapPage', () => {
     fire(document, 'pointerup', 200, 100);
     await settle();
 
-    expect(drawingGroup()?.get('x')?.value).toBe('6.000');
+    expect(firstRect().getAttribute('x')).toBe('6');
+    expect(unsaved()).toBe('1');
   });
 
-  it('moves a rectangle onto the grid and writes it into the form, sending nothing', async () => {
+  it('moves a rectangle onto the grid and into the plan, sending nothing', async () => {
     // Pointer arithmetic over the racks' own frame: the wall would widen it (walls count since findings E/H).
     structures.set([]);
     await settle();
@@ -1435,11 +1644,11 @@ describe('StockMapPage', () => {
     await settle();
 
     // 100 px right, on a frame of 13,9 m drawn across 400 px, is 3,47 m: 2,50 + 3,47 lands on 6,00.
-    expect(drawingGroup().get('x')!.value).toBe('6.000');
-    expect(drawingGroup().get('y')!.value).toBe('4.000');
+    expect(firstRect().getAttribute('x')).toBe('6');
+    expect(firstRect().getAttribute('y')).toBe('4');
     // A move carries the size through untouched, and nothing has been sent.
-    expect(drawingGroup().get('width')!.value).toBe('3.900');
-    expect(facade.draw).not.toHaveBeenCalled();
+    expect(firstRect().getAttribute('width')).toBe('3.9');
+    expect(facade.changePlan).not.toHaveBeenCalled();
   });
 
   /** The plan must follow the form, or a dragged rectangle stays where the API last put it. */
@@ -1467,7 +1676,7 @@ describe('StockMapPage', () => {
 
     // No editor opened and nothing changed: pressing a rack to read it must not cost an unsaved change.
     expect(drawingGroup()).toBeNull();
-    expect(q('stock-drawing-unsaved')).toBeNull();
+    expect(unsaved()).toBeNull();
   });
 
   it('pulls one handle and holds the opposite corner, changing the size and not the place', async () => {
@@ -1479,8 +1688,8 @@ describe('StockMapPage', () => {
     plan().drags(at(200, 100, svg));
     await settle();
 
-    expect(drawingGroup().get('x')!.value).toBe('2.500');
-    expect(drawingGroup().get('width')!.value).toBe('2.000');
+    expect(firstRect().getAttribute('x')).toBe('2.5');
+    expect(firstRect().getAttribute('width')).toBe('2');
   });
 
   it('counts what a drag left unsaved, because nothing else on the plan says so', async () => {
@@ -1489,7 +1698,7 @@ describe('StockMapPage', () => {
     plan().drags(at(200, 100, svg));
     await settle();
 
-    expect(q('stock-drawing-unsaved')?.getAttribute('data-count')).toBe('1');
+    expect(unsaved()).toBe('1');
   });
 
   it('gives the rectangle back exactly what it had when Échap is pressed', async () => {
@@ -1500,8 +1709,8 @@ describe('StockMapPage', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await settle();
 
-    expect(drawingGroup().get('x')!.value).toBe('2.500');
-    expect(q('stock-drawing-unsaved')).toBeNull();
+    expect(firstRect().getAttribute('x')).toBe('2.5');
+    expect(unsaved()).toBeNull();
   });
 
   /**
@@ -1594,17 +1803,21 @@ describe('StockMapPage', () => {
    * there, it depresses, and nothing happens — no toast, no error, no change. `erase` and `removeFloor` both guard
    * on `busy()` and said nothing about it, which a reload in the e2e turned into a real swallowed click.
    */
-  it('shows that erasing is unavailable while the plan is loading rather than swallowing the click', async () => {
+  /** Erasing is a change to the plan, so a load under way never swallows it; only « Enregistrer » waits for it. */
+  it('erases into the plan while the plan is loading, and saves once it has loaded', async () => {
     q('stock-drawing-R1')?.click();
     await settle();
     busy.set(true);
     await settle();
 
-    expect((q('stock-drawing-erase') as HTMLButtonElement).disabled).toBe(true);
+    q('stock-drawing-erase')!.click();
+    await settle();
+    expect(firstRect()).toBeNull();
+    expect((q('stock-plan-save') as HTMLButtonElement).disabled).toBe(true);
 
     busy.set(false);
     await settle();
-    expect((q('stock-drawing-erase') as HTMLButtonElement).disabled).toBe(false);
+    expect((q('stock-plan-save') as HTMLButtonElement).disabled).toBe(false);
   });
 
   // ——— tracing a box on bare floor (decision 1 of the approved canvas) ———
@@ -1633,7 +1846,7 @@ describe('StockMapPage', () => {
     expect(drawingGroup().get('depth')!.value).toBe('1.750');
     // It is a rectangle waiting for its location, and nothing has been sent.
     expect(q('stock-drawing-form')).not.toBeNull();
-    expect(facade.draw).not.toHaveBeenCalled();
+    expect(facade.changePlan).not.toHaveBeenCalled();
   });
 
   /** A trace decides an emprise, never an angle or a height: those are measurements, and decision 3 types them. */
@@ -1688,8 +1901,11 @@ describe('StockMapPage', () => {
     fire(document, 'pointermove', 200, 100);
     await settle();
 
-    expect(drawingGroup().get('x')!.value).toBe('6.000');
-    expect(drawingGroup().get('width')!.value).toBe('3.900');
+    expect(firstRect().getAttribute('x')).toBe('6');
+    expect(firstRect().getAttribute('width')).toBe('3.9');
+    expect(
+      fixture.nativeElement.querySelectorAll('[data-testid^="stock-drawing-rect-"]').length,
+    ).toBe(1);
   });
 
   /**
@@ -1737,7 +1953,7 @@ describe('StockMapPage', () => {
     // the quarter-metre around it.
     expect(drawingGroup().get('x')!.value).toBe('3.250');
     expect(drawingGroup().get('y')!.value).toBe('4.000');
-    expect(facade.draw).not.toHaveBeenCalled();
+    expect(facade.changePlan).not.toHaveBeenCalled();
   });
 
   /** A size is the COMPANY's, never the code's: the palette shows what it will pose, in metres. */
@@ -2002,44 +2218,36 @@ describe('StockMapPage', () => {
     expect((q('field-depth') as HTMLInputElement).value).toBe('0,150');
     expect((q('field-height') as HTMLInputElement).value).toBe('2,000');
 
-    (q('stock-structure-save') as HTMLElement).click();
-    await settle();
-
-    expect(facade.buildStructure).toHaveBeenCalledWith(
-      'c1',
-      'f1',
+    const step = await savePlanned();
+    expect(step.structureBuilds).toEqual([
       expect.objectContaining({ kind: 'door', width: '0.800', depth: '0.150', height: '2.000' }),
-      null,
-      null,
-    );
-    expect(successToasts()).toContain('inventory.plan.structure_saved');
+    ]);
+    expect(successToasts()).toContain('inventory.plan.plan_saved');
     expect(q('field-width')).toBeNull();
   });
 
   it('takes back a piece of the building just posed, moved or undrawn when « Annuler » is pressed', async () => {
-    facade.buildStructure.mockImplementation(async () => {
-      structures.set([wall, { ...wall, id: 's9', kind: 'door', name: 'Porte' }]);
-      return true;
-    });
     (q('stock-structure-tool-door') as HTMLElement).click();
     await settle();
-    (q('stock-structure-save') as HTMLElement).click();
+    savedWith({ structureBuilds: ['s9'] }, drawings(), [
+      wall,
+      { ...wall, id: 's9', kind: 'door', name: 'Porte' },
+    ]);
+    await savePlanned();
+    undoOf('inventory.plan.plan_saved')();
     await settle();
-    undoOf('inventory.plan.structure_saved')();
-    await settle();
-    expect(facade.eraseStructure).toHaveBeenLastCalledWith('c1', 'f1', 's9');
+    expect((facade.changePlan.mock.calls.at(-1)![2] as PlanStep).structureErasures).toEqual([
+      { structureId: 's9', version: 1 },
+    ]);
 
-    structures.set([wall]);
-    facade.buildStructure.mockReset().mockResolvedValue(true);
     q('stock-structure-wall')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await settle();
     (q('stock-structure-erase') as HTMLElement).click();
     await settle();
-    undoOf('inventory.plan.structure_erased')();
+    expect((await savePlanned()).structureErasures).toEqual([{ structureId: 's1', version: 1 }]);
+    undoOf('inventory.plan.plan_saved')();
     await settle();
-    expect(facade.buildStructure).toHaveBeenLastCalledWith(
-      'c1',
-      'f1',
+    expect((facade.changePlan.mock.calls.at(-1)![2] as PlanStep).structureBuilds).toEqual([
       expect.objectContaining({
         kind: 'wall',
         name: 'Mur nord',
@@ -2047,9 +2255,7 @@ describe('StockMapPage', () => {
         width: '6.900',
         depth: '0.200',
       }),
-      null,
-      null,
-    );
+    ]);
     expect(successToasts()).toContain('inventory.plan.undone');
   });
 
@@ -2070,7 +2276,13 @@ describe('StockMapPage', () => {
 
     expect((q('field-width') as HTMLInputElement).value).toBe('0,800');
     expect(q('stock-structure-door')).not.toBeNull();
-    expect(q('stock-structure-erase')).toBeNull();
+
+    // Taken off again from its own form, before anything was sent.
+    (q('stock-structure-erase') as HTMLElement).click();
+    await settle();
+    expect(q('stock-structure-door')).toBeNull();
+    expect(unsaved()).toBeNull();
+    expect(facade.changePlan).not.toHaveBeenCalled();
   });
 
   /**
@@ -2086,13 +2298,15 @@ describe('StockMapPage', () => {
     expect(inspector).not.toBeNull();
     expect(inspector.querySelector('[data-testid="stock-structure-form"]')).not.toBeNull();
     expect(q('stock-structure-tool-door')).not.toBeNull();
-    expect(q('stock-map-not-saved')).not.toBeNull();
+    expect(unsaved()).toBe('1');
 
-    (q('stock-structure-cancel') as HTMLElement).click();
+    (q('stock-structure-close') as HTMLElement).click();
     await settle();
 
+    // Closing the form puts nothing away: the door stays on the board, owed to « Enregistrer ».
     expect(q('stock-map-inspector')).toBeNull();
-    expect(q('stock-map-not-saved')).toBeNull();
+    expect(q('stock-structure-door')).not.toBeNull();
+    expect(unsaved()).toBe('1');
   });
 
   /**
@@ -2148,13 +2362,15 @@ describe('StockMapPage', () => {
       new MouseEvent('click', { bubbles: true }),
     );
     await settle();
-    expect(structureHandles()).toBe(6);
+    // A 0,20 m wall keeps its two ends: its corners would sit over them.
+    expect(structureHandles()).toBe(2);
 
     firstRect().dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await settle();
     expect(structureHandles()).toBe(0);
     expect(q('stock-structure-form')).toBeNull();
-    expect(stockHandles()).toBe(6);
+    // How many depends on the rack's size on screen (handlesThatFit); that it has its own is the point here.
+    expect(stockHandles()).toBeGreaterThan(0);
 
     (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
       new MouseEvent('click', { bubbles: true }),
@@ -2166,7 +2382,7 @@ describe('StockMapPage', () => {
   it('closes the building’s form when a rectangle of stock is started', async () => {
     (q('stock-structure-tool-door') as HTMLElement).click();
     await settle();
-    (q('stock-structure-cancel') as HTMLElement).click();
+    (q('stock-structure-close') as HTMLElement).click();
     await settle();
     (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
       new MouseEvent('click', { bubbles: true }),
@@ -2174,8 +2390,11 @@ describe('StockMapPage', () => {
     await settle();
     expect(q('stock-structure-form')).not.toBeNull();
 
-    // The tools are hidden while a form is open, so the rectangle is started from the list's own path.
-    (fixture.componentInstance as unknown as { draw: (t: 'new') => void }).draw('new');
+    // The tools are hidden while a form is open, so the rectangle is opened from the list's own path.
+    q('stock-drawing-R1')!.click();
+    await settle();
+    expect(q('stock-structure-form')).toBeNull();
+    q('stock-drawing-edit')!.click();
     await settle();
 
     expect(q('stock-structure-form')).toBeNull();
@@ -2196,7 +2415,7 @@ describe('StockMapPage', () => {
     expect(
       (q('stock-map-inspector') as HTMLElement).querySelector('[data-testid="stock-drawing-form"]'),
     ).not.toBeNull();
-    expect(q('stock-map-not-saved')).not.toBeNull();
+    expect(unsaved()).toBe('1');
   });
 
   it('moves a posed piece by dragging it, and saves it as a NEW piece', async () => {
@@ -2213,16 +2432,11 @@ describe('StockMapPage', () => {
     expect((q('field-x') as HTMLInputElement).value).not.toBe(before);
     expect((q('field-width') as HTMLInputElement).value).toBe('0,800');
 
-    (q('stock-structure-save') as HTMLElement).click();
-    await settle();
-
-    expect(facade.buildStructure).toHaveBeenCalledWith(
-      'c1',
-      'f1',
+    const step = await savePlanned();
+    expect(step.structureBuilds).toEqual([
       expect.objectContaining({ kind: 'door', width: '0.800' }),
-      null,
-      null,
-    );
+    ]);
+    expect(step.structureMoves).toEqual([]);
   });
 
   /** Correcting the kind is the common repair: a doorway traced with the wall tool is wrong in exactly one field. */
@@ -2233,17 +2447,20 @@ describe('StockMapPage', () => {
     await settle();
 
     expect((q('field-width') as HTMLInputElement).value).toBe('6,900');
-
-    (q('stock-structure-save') as HTMLElement).click();
+    type('field-name', 'Mur sud');
     await settle();
 
-    expect(facade.buildStructure).toHaveBeenCalledWith(
-      'c1',
-      'f1',
-      expect.objectContaining({ kind: 'wall', width: '6.900' }),
-      's1',
-      1,
-    );
+    const step = await savePlanned();
+    expect(step.structureMoves).toEqual([
+      expect.objectContaining({
+        structureId: 's1',
+        kind: 'wall',
+        name: 'Mur sud',
+        width: '6.900',
+        version: 1,
+      }),
+    ]);
+    expect(step.structureBuilds).toEqual([]);
   });
 
   /** « Annuler » puts back the piece on the version its save produced, and never over someone else's change. */
@@ -2251,41 +2468,46 @@ describe('StockMapPage', () => {
     q('stock-structure-wall')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await settle();
     type('field-name', 'Mur sud');
-    (q('stock-structure-save') as HTMLElement).click();
     await settle();
+    await savePlanned();
 
-    const takeBack = undoOf('inventory.plan.structure_saved');
+    const takeBack = undoOf('inventory.plan.plan_saved');
     takeBack();
     await settle();
-    expect(facade.buildStructure).toHaveBeenLastCalledWith(
-      'c1',
-      'f1',
-      expect.objectContaining({ name: 'Mur nord' }),
-      's1',
-      2,
-    );
+    expect((facade.changePlan.mock.calls.at(-1)![2] as PlanStep).structureMoves).toEqual([
+      expect.objectContaining({ structureId: 's1', name: 'Mur nord', version: 2 }),
+    ]);
     expect(successToasts()).toContain('inventory.plan.undone');
 
     (TestBed.inject(Feedback) as RecordedFeedback).said.length = 0;
-    facade.buildStructure.mockImplementationOnce(async () => {
+    facade.changePlan.mockImplementationOnce(async () => {
       error.set('record_changed');
       return null;
     });
     takeBack();
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+        kind: 'failure',
+        key: 'live.undo_refused',
+        params: undefined,
+      }),
+    );
     await settle();
-    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
-      kind: 'failure',
-      key: 'live.undo_refused',
-      params: undefined,
-    });
     expect(successToasts()).not.toContain('inventory.plan.undone');
     expect(q('stock-map-error')).toBeNull();
   });
 
-  it('merges a piece saved since into its open form, and saves on that version next', async () => {
+  it('lets go a piece saved since by someone else, and keeps the rack arranged with it', async () => {
     q('stock-structure-wall')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await settle();
-    facade.buildStructure.mockImplementationOnce(async () => {
+    type('field-name', 'Mur sud');
+    await settle();
+    q('stock-drawing-R1')!.click();
+    await settle();
+    boardKey('ArrowRight');
+    await settle();
+    expect(unsaved()).toBe('2');
+    facade.changePlan.mockImplementationOnce(async () => {
       error.set('record_changed');
       return null;
     });
@@ -2293,23 +2515,15 @@ describe('StockMapPage', () => {
       structures.set([{ ...wall, kind: 'door', version: 2 }]),
     );
 
-    type('field-name', 'Mur sud');
-    (q('stock-structure-save') as HTMLElement).click();
-    await settle();
+    await savePlanned();
     await vi.waitFor(() => expect(facade.reloadStructures).toHaveBeenCalledWith('c1'));
     await settle();
 
-    expect((q('field-name') as HTMLInputElement).value).toBe('Mur sud');
     expect(q('stock-map-error')).toBeNull();
-    (q('stock-structure-save') as HTMLElement).click();
-    await settle();
-    expect(facade.buildStructure).toHaveBeenLastCalledWith(
-      'c1',
-      'f1',
-      expect.objectContaining({ kind: 'door', name: 'Mur sud' }),
-      's1',
-      2,
-    );
+    expect(unsaved()).toBe('1');
+    const step = await savePlanned();
+    expect(step.structureMoves).toEqual([]);
+    expect(step.moves).toEqual([expect.objectContaining({ drawingId: 'd1', x: '2.750' })]);
   });
 
   /**
@@ -2328,7 +2542,7 @@ describe('StockMapPage', () => {
 
     // The building's own form is what moved, and nothing was sent.
     expect((q('field-x') as HTMLInputElement).value).not.toBe('1.000');
-    expect(facade.buildStructure).not.toHaveBeenCalled();
+    expect(facade.changePlan).not.toHaveBeenCalled();
     // The stock's form stayed shut: two layers, two forms, never both at once.
     expect(q('stock-drawing-form')).toBeNull();
   });
@@ -2337,7 +2551,7 @@ describe('StockMapPage', () => {
    * The same handles as a rack's, minus the middle ones of a side too short to keep its middle free: a 0,20 m wall
    * was all handle once selected, so it could be resized but no longer taken hold of (handlesThatFit).
    */
-  it('draws the rack’s handles around the piece of building being worked on, the corners and its ends', async () => {
+  it('draws the rack’s handles around the piece of building being worked on, its ends on a thin wall', async () => {
     expect(
       fixture.nativeElement.querySelectorAll('[data-testid^="stock-structure-handle-"]'),
     ).toHaveLength(0);
@@ -2350,8 +2564,8 @@ describe('StockMapPage', () => {
     const handles = [
       ...fixture.nativeElement.querySelectorAll('[data-testid^="stock-structure-handle-"]'),
     ].map((one) => (one as Element).getAttribute('data-testid'));
-    expect(handles).toHaveLength(6);
-    // The ends of the wall keep theirs: that is how a wall is lengthened.
+    // Only the ends of the wall: that is how a wall is lengthened, and its corners would sit over them.
+    expect(handles).toHaveLength(2);
     expect(handles).toContain('stock-structure-handle-0:0.5');
     expect(handles).toContain('stock-structure-handle-1:0.5');
   });
@@ -2379,8 +2593,9 @@ describe('StockMapPage', () => {
     (q('stock-structure-erase') as HTMLElement).click();
     await settle();
 
-    expect(facade.eraseStructure).toHaveBeenCalledWith('c1', 'f1', 's1');
-    expect(successToasts()).toContain('inventory.plan.structure_erased');
+    expect(q('stock-structure-wall')).toBeNull();
+    expect(q('stock-structure-form')).toBeNull();
+    expect((await savePlanned()).structureErasures).toEqual([{ structureId: 's1', version: 1 }]);
   });
 
   /**
@@ -2496,28 +2711,29 @@ describe('StockMapPage', () => {
     expect(q('stock-shape-rack')).toBeNull();
   });
 
-  it('asks before leaving Aménager with a shape posed and not saved', async () => {
-    const unsaved = TestBed.inject(UnsavedChanges);
-    const ask = vi.spyOn(unsaved, 'confirmLeave').mockReturnValue(of(false));
+  /**
+   * Choosing Consulter puts nothing away: the shape posed waits in the plan's draft, and it is leaving the PAGE that
+   * asks (UnsavedChanges), not changing what is done on it.
+   */
+  it('keeps a shape posed and not saved when Consulter is chosen, and owes it again back in Aménager', async () => {
+    const leaving = TestBed.inject(UnsavedChanges);
+    const ask = vi.spyOn(leaving, 'confirmLeave').mockReturnValue(of(false));
     press('stock-shape-rack');
     await settle();
-    expect(unsaved.count()).toBeGreaterThan(0);
+    expect(leaving.count()).toBeGreaterThan(0);
 
     press('stock-map-mode-read');
     await settle();
-
-    expect(ask).toHaveBeenCalled();
-    expect(TestBed.inject(Router).url).toBe('/?mode=arrange');
-    expect(q('stock-drawing-form')).not.toBeNull();
-
-    ask.mockReturnValue(of(true));
-    press('stock-map-mode-read');
-    // The answer arrives first and the navigation after it, a turn later.
     await settle();
-    await settle();
-
+    expect(ask).not.toHaveBeenCalled();
     expect(TestBed.inject(Router).url).toBe('/');
-    expect(q('stock-drawing-form')).toBeNull();
+    expect(leaving.count()).toBeGreaterThan(0);
+
+    press('stock-map-mode-arrange');
+    await settle();
+    await settle();
+    expect(unsaved()).toBe('1');
+    expect(q('stock-drawing-rect-R2')).not.toBeNull();
   });
 
   /** The list is the plan's keyboard path, so the building is in it too: a wall was reachable only by pointing. */
@@ -2802,18 +3018,31 @@ describe('StockMapPage', () => {
     expect(scrolled).toContain(q('stock-drawing-R1'));
   });
 
-  it('arranges on the plan whatever view was chosen, and says the volume waits in Consulter', async () => {
-    TestBed.inject(SettingsFacade).set(PRESENTATION.stockMapView, 'volume');
+  /** The 3D is for looking in either mode; in Aménager it stands up the plan being arranged, not the one saved. */
+  it('shows the volume in Aménager too, standing up the plan as it is being arranged', async () => {
+    q('stock-drawing-R1')!.click();
+    await settle();
+    boardKey('ArrowRight');
+    await settle();
+    q('stock-map-view-volume')!.click();
     await settle();
 
-    expect(q('stock-map-board')).not.toBeNull();
-    expect(q('stock-volume')).toBeNull();
-    const volume = q('stock-map-view-volume');
-    expect(volume?.getAttribute('aria-disabled')).toBe('true');
-    volume?.click();
-    await settle();
     expect(TestBed.inject(SettingsFacade).value(PRESENTATION.stockMapView)()).toBe('volume');
+    expect(q('stock-map-board')).toBeNull();
+    const volume = fixture.debugElement.query(By.directive(StockMapVolume))
+      .componentInstance as StockMapVolume;
+    expect(volume.drawings().find((one) => one.id === 'd1')?.x).toBe('2.750');
+    // The unsaved work stands over the volume as over the plan, and is saved from there as well.
+    expect(unsaved()).toBe('1');
+    savedWith({});
+    const step = await savePlanned();
+    expect(step.moves).toEqual([expect.objectContaining({ drawingId: 'd1', x: '2.750' })]);
+    expect(unsaved()).toBeNull();
+
+    q('stock-map-view-plan')!.click();
+    await settle();
     expect(q('stock-map-board')).not.toBeNull();
+    expect(unsaved()).toBeNull();
   });
 
   /**

@@ -8,8 +8,6 @@ import type {
   CostBasis,
   InventoryError,
   LocationContents,
-  StockDrawingChanges,
-  StockDrawingInput,
   StockDrawingRow,
   StockFloorInput,
   StockFloorRow,
@@ -27,13 +25,14 @@ import type {
   StockReceiptInput,
   ReceiptCostView,
   StockRepeatInput,
-  StockStructureInput,
   StockStructureRow,
   StockOnHand,
   StockSearch,
   StockValuation,
   MapSearch,
+  StockPlanSaved,
 } from './inventory-types';
+import type { PlanStep } from './stock-plan-draft';
 
 /** How many ids the stock product picker resolves in one question (its `ids` parameter's own bound). */
 const PICK_IDS_MOST = 20;
@@ -73,6 +72,7 @@ export class InventoryFacade {
   private readonly busySignal = signal(false);
   private reads = 0;
   private readonly errorSignal = signal<InventoryError | null>(null);
+  private readonly refusedEntrySignal = signal<string | null>(null);
 
   readonly options = this.optionsSignal.asReadonly();
   readonly levels = this.levelsSignal.asReadonly();
@@ -97,6 +97,8 @@ export class InventoryFacade {
   readonly whereabouts = this.whereaboutsSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
+  /** The entry of the last floor step the API refused by name (`moves[2].x`), so the screen can show that shape. */
+  readonly refusedEntry = this.refusedEntrySignal.asReadonly();
 
   /** What the stock screen needs besides its page: what a movement may be recorded against. */
   async loadStockContext(companyId: string): Promise<void> {
@@ -568,60 +570,32 @@ export class InventoryFacade {
   }
 
   /**
-   * Draws a location on a floor, or moves the rectangle it already has. The floor's rectangles are read again and
-   * so are the floors, because a floor carries how many rectangles it holds.
+   * A floor's whole draft, saved in one request, then the floor read again: its rectangles and building, the floors
+   * (a floor carries its size and how many rectangles it holds) and, when the step created places, the places.
    */
-  async draw(
+  async changePlan(
     companyId: string,
     floorId: string,
-    input: StockDrawingInput,
-    drawingId: string | null,
-    version: number | null,
-  ): Promise<StockDrawingRow | null> {
-    // The rectangle as the API kept it: its version is the one « Annuler » takes it back on.
-    const kept: { row: StockDrawingRow | null } = { row: null };
-    const accepted = await this.write(
-      async () => {
-        kept.row =
-          drawingId === null
-            ? await this.api.draw(companyId, floorId, input)
-            : await this.api.moveDrawing(companyId, drawingId, input, version);
-      },
-      // A place created with its rectangle is read again with the floor, or every picker would miss it.
-      async () => {
-        await Promise.all([
-          this.afterDrawing(companyId, floorId),
-          ...(input.newLocationCode === undefined ? [] : [this.reloadLocations(companyId)]),
-        ]);
-      },
-    );
-    return accepted ? kept.row : null;
-  }
-
-  async eraseDrawing(companyId: string, floorId: string, drawingId: string): Promise<boolean> {
-    return this.write(
-      () => this.api.eraseDrawing(companyId, drawingId),
-      () => this.afterDrawing(companyId, floorId),
-    );
-  }
-
-  /**
-   * A group's step: moved, turned or undrawn together, all or nothing, then the floor read again. It answers the
-   * rectangles as the step left them, whose versions are what its « Annuler » stands on.
-   */
-  async changeDrawings(
-    companyId: string,
-    floorId: string,
-    changes: StockDrawingChanges,
-  ): Promise<StockDrawingRow[] | null> {
-    const kept: { rows: StockDrawingRow[] } = { rows: [] };
-    const accepted = await this.write(
-      async () => {
-        kept.rows = await this.api.changeDrawings(companyId, floorId, changes);
-      },
-      () => this.afterDrawing(companyId, floorId),
-    );
-    return accepted ? kept.rows : null;
+    step: PlanStep,
+  ): Promise<StockPlanSaved | null> {
+    this.busySignal.set(true);
+    this.errorSignal.set(null);
+    this.refusedEntrySignal.set(null);
+    try {
+      const saved = await this.api.changePlan(companyId, floorId, step);
+      await Promise.all([
+        this.afterDrawing(companyId, floorId),
+        this.loadStructures(companyId, floorId),
+        ...(step.newPlaces.length > 0 ? [this.reloadLocations(companyId)] : []),
+      ]);
+      return saved;
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      this.refusedEntrySignal.set(error instanceof InventoryRefused ? error.entry : null);
+      return null;
+    } finally {
+      this.busySignal.set(false);
+    }
   }
 
   /**
@@ -661,38 +635,6 @@ export class InventoryFacade {
   async reloadStructures(companyId: string): Promise<void> {
     const floorId = this.structuresFloorId;
     if (floorId !== null) await this.loadStructures(companyId, floorId);
-  }
-
-  /**
-   * Draws a piece of the building, or corrects one. Only the structure is read again: a wall changes no floor's
-   * rectangle count, because a wall is not a rectangle of stock.
-   */
-  async buildStructure(
-    companyId: string,
-    floorId: string,
-    input: StockStructureInput,
-    structureId: string | null,
-    version: number | null,
-  ): Promise<StockStructureRow | null> {
-    // The piece as the API kept it: its version is the one « Annuler » takes it back on.
-    const kept: { row: StockStructureRow | null } = { row: null };
-    const accepted = await this.write(
-      async () => {
-        kept.row =
-          structureId === null
-            ? await this.api.buildStructure(companyId, floorId, input)
-            : await this.api.reshapeStructure(companyId, structureId, input, version);
-      },
-      () => this.loadStructures(companyId, floorId),
-    );
-    return accepted ? kept.row : null;
-  }
-
-  async eraseStructure(companyId: string, floorId: string, structureId: string): Promise<boolean> {
-    return this.write(
-      () => this.api.eraseStructure(companyId, structureId),
-      () => this.loadStructures(companyId, floorId),
-    );
   }
 
   clearError(): void {

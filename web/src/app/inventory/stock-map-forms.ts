@@ -2,9 +2,9 @@
 
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { snapAngle, snapMetres, type PlanRectangle } from './stock-map-geometry';
+import type { DraftPlace, StructureFacts } from './stock-plan-draft';
 import {
   DRAWABLE_STOCK_LOCATION_KINDS,
-  type StockDrawingInput,
   type StockDrawingRow,
   type StockFloorInput,
   type StockFloorRow,
@@ -12,7 +12,6 @@ import {
   type StockLocationKind,
   type StockOptions,
   STRUCTURE_KINDS,
-  type StockStructureInput,
   type StockStructureRow,
   type StockStructureShape,
   type StructureKind,
@@ -276,39 +275,6 @@ export function drawingValues(
 }
 
 /**
- * What the rectangle form sends. **The grid holds a rectangle's PLACE, never its SIZE** — the approved canvas draws
- * a rack of `3,90 × 0,60 m` sitting at `x 2,50 y 4,00`, and its scale reads *aimanté sur 0,25 m*, a magnet, which is
- * what a grid is while something is dragged.
- *
- * So where a rack stands is a decision about the plan and is taken to the quarter-metre; how wide and how deep it is
- * is a fact about the rack, and rounding a real 3,90 m rack up to 4,00 m would be losing a measurement somebody took.
- * The height is left alone for the same reason, and it is not on the floor's grid at all. The rotation IS a step: a
- * rack stands square to a wall or at an angle off it, and decision 3 draws those in fifteens.
- */
-export function drawingInput(values: FormValues): StockDrawingInput {
-  // A new place travels in full and an existing one by its id, never both: the API refuses a rectangle naming two.
-  const place =
-    values['origin'] === NEW_PLACE
-      ? {
-          locationId: '',
-          newLocationKind: text(values['newLocationKind']) as StockLocationKind,
-          newLocationCode: text(values['newLocationCode']),
-          newLocationName: text(values['newLocationName']),
-        }
-      : { locationId: text(values['locationId']) };
-
-  return {
-    ...place,
-    x: onGrid(values['x']),
-    y: onGrid(values['y']),
-    width: metres(Number(values['width'] ?? 0) || 0),
-    depth: metres(Number(values['depth'] ?? 0) || 0),
-    rotation: snapAngle(Number(values['rotation'] ?? 0) || 0),
-    height: metres(Number(values['height'] ?? 0) || 0),
-  };
-}
-
-/**
  * What a GESTURE writes into the open form — the one road from the plan back into the fields. It is shaped exactly
  * like what the API answered, because the unsaved-change count compares the two: a `1300` written against a saved
  * `1300.000` would read as a change and highlight a field nobody touched.
@@ -333,6 +299,61 @@ export function footprintValues(rect: PlanRectangle): FormValues {
   };
 }
 
+/**
+ * A form's rectangle as it enters the plan: where it stands on the grid and its turn in fifteens, as a drag would
+ * leave it, so the board shows where « Enregistrer » puts it. The size is a measurement and stays as typed.
+ */
+export function typedRect(values: FormValues): PlanRectangle {
+  const read = (field: string): number => Number(values[field] ?? 0) || 0;
+
+  return {
+    x: snapMetres(read('x')),
+    y: snapMetres(read('y')),
+    width: read('width'),
+    depth: read('depth'),
+    rotation: snapAngle(read('rotation')),
+    height: read('height'),
+  };
+}
+
+/** What a NEW rectangle's form says it is drawn for: a place created with it, or one that exists. */
+export function placeOfValues(values: FormValues): DraftPlace {
+  return values['origin'] === EXISTING_PLACE
+    ? { locationId: text(values['locationId']) }
+    : {
+        kind: (text(values['newLocationKind']) || 'rack') as StockLocationKind,
+        code: typeof values['newLocationCode'] === 'string' ? values['newLocationCode'] : '',
+        name: typeof values['newLocationName'] === 'string' ? values['newLocationName'] : '',
+      };
+}
+
+/** A new rectangle's form, filled from what the draft holds for it. */
+export function newDrawingValues(rect: PlanRectangle, place: DraftPlace): FormValues {
+  const drawnFor: FormValues =
+    'locationId' in place
+      ? {
+          origin: EXISTING_PLACE,
+          locationId: place.locationId,
+          newLocationKind: 'rack',
+          newLocationCode: '',
+          newLocationName: '',
+        }
+      : {
+          origin: NEW_PLACE,
+          locationId: '',
+          newLocationKind: place.kind,
+          newLocationCode: place.code,
+          newLocationName: place.name,
+        };
+
+  return { ...drawnFor, ...rectValues(rect) };
+}
+
+/** Where a rectangle added without a gesture starts: the floor's corner, at the size a new one is drawn. */
+export function newRect(): PlanRectangle {
+  return { x: 0, y: 0, width: NEW_WIDTH, depth: NEW_DEPTH, rotation: 0, height: NEW_HEIGHT };
+}
+
 /** The rectangles of a floor as the drawing works in them: metres as numbers, never the API's strings. */
 export function planRectangles(drawings: readonly StockDrawingRow[]): PlanRectangle[] {
   return drawings.map((drawn) => ({
@@ -343,10 +364,6 @@ export function planRectangles(drawings: readonly StockDrawingRow[]): PlanRectan
     rotation: drawn.rotation,
     height: Number(drawn.height),
   }));
-}
-
-function onGrid(value: unknown): string {
-  return metres(snapMetres(Number(value ?? 0) || 0));
 }
 
 function metres(value: number): string {
@@ -509,26 +526,15 @@ export function structureValues(
 }
 
 /**
- * What the structure form sends. The same rule as a rectangle of stock, for the same reason: the grid holds a
- * PLACE and never a measurement somebody went and took, so x and y are taken to the quarter-metre while a wall's
- * length and thickness are kept exactly as typed — the canvas's own partition is 0,20 m thick and a grid would
- * make it 0,25.
- *
- * An unknown kind becomes a wall rather than travelling on. The select is the only way in, so this is a guard
- * against a future caller rather than against a person: it fails to the one kind that is always drawable.
+ * What a piece of the building is, out of its form. An unknown kind becomes a wall rather than travelling on: the
+ * select is the only way in, so this guards against a future caller, and fails to the one kind always drawable.
  */
-export function structureInput(values: FormValues): StockStructureInput {
+export function structureFacts(values: FormValues): StructureFacts {
   const asked = text(values['kind']);
 
   return {
     kind: STRUCTURE_KINDS.find((kind) => kind === asked) ?? 'wall',
     name: text(values['name']),
-    x: onGrid(values['x']),
-    y: onGrid(values['y']),
-    width: metres(Number(values['width'] ?? 0) || 0),
-    depth: metres(Number(values['depth'] ?? 0) || 0),
-    rotation: snapAngle(Number(values['rotation'] ?? 0) || 0),
-    height: metres(Number(values['height'] ?? 0) || 0),
   };
 }
 

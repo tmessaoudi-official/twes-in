@@ -6,6 +6,7 @@ import { TestBed } from '@angular/core/testing';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import { InventoryApi } from './inventory-api';
 import type { StockLocationInput, StockLocationRow, StockMovementRow } from './inventory-types';
+import type { PlanStep } from './stock-plan-draft';
 
 const zone: StockLocationRow = {
   id: 'l2',
@@ -795,8 +796,8 @@ describe('InventoryApi', () => {
     ]);
   });
 
-  /** A floor's form and a piece's revision send the version read, and one saved since is told apart from the rest. */
-  it('revises a floor and a piece of the building on the version read', async () => {
+  /** A floor's form sends the version read, and one saved since is told apart from the rest. */
+  it('revises a floor on the version read', async () => {
     const floor = {
       establishmentId: 'e1',
       name: 'Quai',
@@ -812,22 +813,6 @@ describe('InventoryApi', () => {
     expect([put.request.method, put.request.body]).toEqual(['PUT', { ...floor, version: 4 }]);
     put.flush({ type: '/problems/record-changed' }, { status: 409, statusText: 'Conflict' });
     await expect(revised).rejects.toMatchObject({ code: 'record_changed' });
-
-    const piece = {
-      kind: 'door' as const,
-      name: 'Porte',
-      x: '0.000',
-      y: '0.000',
-      width: '0.900',
-      depth: '0.200',
-      rotation: 0,
-      height: '2.100',
-    };
-    const reshaped = api.reshapeStructure('c1', 's1', piece, 2);
-    const again = http.expectOne('/api/companies/c1/stock-structures/s1');
-    expect([again.request.method, again.request.body]).toEqual(['PUT', { ...piece, version: 2 }]);
-    again.flush({ id: 's1', floorId: 'f1', kind: 'door', name: 'Porte', version: 3 });
-    expect((await reshaped).version).toBe(3);
   });
 
   /**
@@ -835,7 +820,7 @@ describe('InventoryApi', () => {
    * every screen spec sets its rows directly, so a mapper that quietly dropped it would be invisible to all of them
    * and would show every piece of the building unnamed (docs/SPEC.md § 7, 2026-09-22).
    */
-  it('reads a piece of the building with the name the store gave it, and builds one with it', async () => {
+  it('reads a piece of the building with the name the store gave it', async () => {
     const pending = api.structures('c1', 'f1');
     const request = http.expectOne('/api/companies/c1/stock-floors/f1/structures');
     expect(request.request.method).toBe('GET');
@@ -870,23 +855,6 @@ describe('InventoryApi', () => {
         version: 5,
       },
     ]);
-
-    // And it travels the other way: what the form typed is what the API is asked to write down.
-    const built = api.buildStructure('c1', 'f1', {
-      kind: 'wall',
-      name: 'Mur nord',
-      x: '0.000',
-      y: '0.000',
-      width: '6.900',
-      depth: '0.200',
-      rotation: 0,
-      height: '3.000',
-    });
-    const post = http.expectOne('/api/companies/c1/stock-floors/f1/structures');
-    expect(post.request.method).toBe('POST');
-    expect(post.request.body.name).toBe('Mur nord');
-    post.flush({ id: 's2', floorId: 'f1', kind: 'wall', name: 'Mur nord' });
-    expect((await built).name).toBe('Mur nord');
   });
 
   it('says the level is taken when another floor of the establishment already has it', async () => {
@@ -958,56 +926,82 @@ describe('InventoryApi', () => {
     ]);
   });
 
-  /** Drawing goes to the floor; moving a rectangle already drawn goes to the rectangle, which never changes floor. */
-  it('draws on a floor and moves a rectangle by its own address', async () => {
+  /**
+   * A floor's draft travels exactly as the page built it, in one request, and comes back with what it created: the
+   * toast's « Annuler » takes back by those ids. A piece's name is part of what is built, so it is read back too.
+   */
+  it('sends a floor’s draft as one step and reads back what it created', async () => {
     const rect = {
-      locationId: 'l2',
       x: '1.000',
-      y: '1.000',
-      width: '3.000',
-      depth: '1.000',
+      y: '2.000',
+      width: '3.900',
+      depth: '0.600',
       rotation: 0,
-      height: '2.000',
+      height: '2.100',
     };
+    const step: PlanStep = {
+      draws: [{ locationId: 'l1', ...rect }],
+      moves: [{ drawingId: 'd1', ...rect, version: 2 }],
+      erasures: [{ drawingId: 'd4', version: 7 }],
+      newPlaces: [{ kind: 'rack', code: 'R9', name: 'Rayonnage 9', ...rect }],
+      structureBuilds: [{ kind: 'wall', name: 'Mur nord', ...rect }],
+      structureMoves: [],
+      structureErasures: [{ structureId: 's4', version: 3 }],
+      floor: { widthMetres: '30.000', depthMetres: '25.000', version: 4 },
+    };
+    const pending = api.changePlan('c1', 'f1', step);
+    const post = http.expectOne('/api/companies/c1/stock-floors/f1/drawing-changes');
+    expect([post.request.method, post.request.body]).toEqual(['POST', step]);
+    post.flush({
+      drawings: [{ id: 'd2', floorId: 'f1', locationId: 'l1', ...rect, version: 1 }],
+      structures: [
+        { id: 's9', floorId: 'f1', kind: 'wall', name: 'Mur nord', ...rect, version: 1 },
+      ],
+      created: {
+        draws: ['d2'],
+        newPlaces: [{ drawingId: 'd3', locationId: 'l9' }],
+        structureBuilds: ['s9'],
+      },
+      floorVersion: 5,
+    });
 
-    void api.draw('c1', 'f1', rect);
-    const drawn = http.expectOne('/api/companies/c1/stock-floors/f1/drawings');
-    expect(drawn.request.method).toBe('POST');
-    expect(drawn.request.body).toEqual(rect);
-    drawn.flush({ id: 'd1', floorId: 'f1', ...rect });
-
-    const move = api.moveDrawing('c1', 'd1', rect, 3);
-    const moved = http.expectOne('/api/companies/c1/stock-drawings/d1');
-    expect(moved.request.method).toBe('PUT');
-    // A move sends the version the rectangle was opened at, and reads the one it was saved at.
-    expect(moved.request.body).toEqual({ ...rect, version: 3 });
-    moved.flush({ id: 'd1', floorId: 'f1', ...rect, version: 4 });
-    expect((await move).version).toBe(4);
+    const saved = await pending;
+    expect(saved.created).toEqual({
+      draws: ['d2'],
+      newPlaces: [{ drawingId: 'd3', locationId: 'l9' }],
+      structureBuilds: ['s9'],
+    });
+    expect(saved.floorVersion).toBe(5);
+    expect(saved.drawings.map((row) => [row.id, row.version])).toEqual([['d2', 1]]);
+    expect(saved.structures.map((piece) => piece.name)).toEqual(['Mur nord']);
   });
 
-  /** A group's step names each rectangle with the version it was chosen at, and reads the versions it left. */
-  it('sends a group step with the versions it stands on', async () => {
-    const rect = {
-      x: '1.000',
-      y: '1.000',
-      width: '3.000',
-      depth: '1.000',
-      rotation: 0,
-      height: '2.000',
+  /** A refusal names the entry, so the page opens the shape it refuses; a step saved over is its own refusal. */
+  it('names the entry a refused step names, and tells a floor saved since apart', async () => {
+    const empty: PlanStep = {
+      draws: [],
+      moves: [],
+      erasures: [],
+      newPlaces: [],
+      structureBuilds: [],
+      structureMoves: [],
+      structureErasures: [],
     };
-    const step = api.changeDrawings('c1', 'f1', {
-      draws: [],
-      moves: [{ drawingId: 'd1', ...rect, version: 2 }],
-      erasures: [{ drawingId: 'd2', version: 5 }],
-    });
-    const sent = http.expectOne('/api/companies/c1/stock-floors/f1/drawing-changes');
-    expect(sent.request.body).toEqual({
-      draws: [],
-      moves: [{ drawingId: 'd1', ...rect, version: 2 }],
-      erasures: [{ drawingId: 'd2', version: 5 }],
-    });
-    sent.flush({ drawings: [{ id: 'd1', floorId: 'f1', locationId: 'l1', ...rect, version: 3 }] });
-    expect((await step).map((drawing) => [drawing.id, drawing.version])).toEqual([['d1', 3]]);
+    const url = '/api/companies/c1/stock-floors/f1/drawing-changes';
+    const refused = api.changePlan('c1', 'f1', empty);
+    http
+      .expectOne(url)
+      .flush(
+        { violations: [{ propertyPath: 'newPlaces[0].code', message: 'Ce code est déjà pris.' }] },
+        { status: 422, statusText: 'Unprocessable Entity' },
+      );
+    await expect(refused).rejects.toMatchObject({ entry: 'newPlaces[0].code' });
+
+    const changed = api.changePlan('c1', 'f1', empty);
+    http
+      .expectOne(url)
+      .flush({ type: '/problems/record-changed' }, { status: 409, statusText: 'Conflict' });
+    await expect(changed).rejects.toMatchObject({ code: 'record_changed', entry: null });
   });
 
   /**
@@ -1070,15 +1064,6 @@ describe('InventoryApi', () => {
       .expectOne('/api/companies/c1/stock-lots/k2/release')
       .flush({}, { status: 422, statusText: 'Unprocessable' });
     await expect(refused).rejects.toMatchObject({ code: 'invalid' });
-  });
-
-  it('erases a rectangle without touching what it was drawn for', async () => {
-    const pending = api.eraseDrawing('c1', 'd1');
-    const request = http.expectOne('/api/companies/c1/stock-drawings/d1');
-    expect(request.request.method).toBe('DELETE');
-    request.flush(null, { status: 204, statusText: 'No Content' });
-
-    await expect(pending).resolves.toBeUndefined();
   });
 
   it('says a floor is in use when it still carries rectangles', async () => {

@@ -25,17 +25,16 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltip } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { firstValueFrom, map } from 'rxjs';
+import { map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
-import { dirtyCount } from '../shared/form/dirty-count';
-import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AmountPipe, MeasurePipe } from '../shared/i18n/format-pipes';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
@@ -49,29 +48,26 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { isTypingTarget } from '../shared/actions/shortcuts';
 import {
-  STRUCTURE_KINDS,
   type StockDrawingRow,
   type StockFloorRow,
   type StockLevelRow,
-  type StockDrawingChanges,
-  type StockDrawingInput,
-  type StockDrawingRect,
   type StockLocationKind,
   type StockPlanShape,
   type StockStructureRow,
   type StockStructureShape,
-  type StructureKind,
   type WhereaboutRow,
 } from './inventory-types';
 import { sumQuantities } from './stock-quantities';
 import {
   drawingForm,
-  drawingInput,
   drawingValues,
+  newDrawingValues,
+  newRect,
+  placeOfValues,
+  typedRect,
   floorForm,
   floorInput,
   floorValues,
-  footprintValues,
   kindOfShape,
   type NewPlaceProposal,
   nextCodes,
@@ -79,7 +75,7 @@ import {
   proposedCode,
   rectValues,
   structureForm,
-  structureInput,
+  structureFacts,
   structureRectangles,
   structureValues,
 } from './stock-map-forms';
@@ -117,6 +113,32 @@ import {
   SNAP_DEGREES,
   snapAngle,
 } from './stock-map-geometry';
+import {
+  addDrawing,
+  addStructure,
+  changeCount,
+  emptyDraft,
+  erase as eraseFromDraft,
+  inverseOf,
+  isNewKey,
+  parseDraft,
+  rectOf,
+  placeDrawing,
+  placeFor,
+  placeStructure,
+  rebased,
+  shownDrawings,
+  shownFloorSize,
+  shownStructures,
+  sizeFloor,
+  sourceOf,
+  stepOf,
+  type DraftPlace,
+  type PlanDraft,
+  type PlanStep,
+  type PlanStepSources,
+} from './stock-plan-draft';
+import { PLAN_DRAFT_STORAGE, planDraftKey } from './stock-plan-storage';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import {
   PLAN_LABEL_MODES,
@@ -171,9 +193,6 @@ interface Lasso {
   startedAt: PlanPoint;
 }
 
-/** The id a rectangle carries while it is being drawn and has no id of its own yet. */
-const PENDING_ID = 'pending';
-
 /** A gesture in progress. It holds what the rectangle was, never what it is becoming: every move recomputes. */
 interface Drag {
   pointerId: number;
@@ -181,18 +200,21 @@ interface Drag {
    * Which layer the gesture is on. A wall moves exactly as a rack does — same press, same handles — but it is a
    * different form and a different editor, so the gesture has to say which (docs/SPEC.md § 7, 2026-09-22).
    */
-  on: 'drawing' | 'structure';
+  on: 'drawing' | 'structure' | 'floor';
   /** The handle being pulled, or `null` when the rectangle itself is being moved. */
   handle: PlanHandle | null;
-  /** The rectangle being worked on, and what it was when the gesture began — both `null` while one is traced. */
+  /**
+   * The rectangle being worked on, and what it was when the gesture began. A box being traced has neither until it has
+   * travelled, then its new key and still no origin; the floor's edge has no id and the floor as its origin.
+   */
   drawingId: string | null;
   origin: PlanRectangle | null;
   from: PlanPoint;
   /** Frozen at the start: both must stay still, or the metres under the pointer change as it moves. */
   frame: PlanFrame;
   box: PlanBox;
-  /** What the form held before the gesture, so Échap can put it back exactly. */
-  before: FormValues;
+  /** The floor's draft before the gesture, so Échap can put it back exactly. */
+  before: PlanDraft;
   past: boolean;
   startedAt: PlanPoint;
 }
@@ -247,27 +269,21 @@ const PLAN_VIEWS = ['plan', 'facade', 'volume'] as const;
 /** How far one press of a pan arrow or an arrow key moves what is shown: a fifth of it, so the eye keeps its place. */
 const PAN_STEP = 0.2;
 
+/** The grips on the floor's own edges in Aménager: the far side, the far end, and the corner that pulls both. */
+const FLOOR_HANDLES: readonly PlanHandle[] = [
+  { hx: 1, hy: 0.5 },
+  { hx: 0.5, hy: 1 },
+  { hx: 1, hy: 1 },
+];
+
+/** The smallest a floor is pulled to by its edge, in metres. */
+const FLOOR_LEAST = 1;
+
 /** One row of the layers panel: what it is, and how many things are on it right now. */
 interface PlanLayer {
   id: string;
   count: number;
 }
-
-/** A piece being drawn and not yet saved — enough of a row for the plan to show it taking shape. */
-const PENDING_PIECE: StockStructureRow = {
-  id: PENDING_ID,
-  floorId: '',
-  kind: 'wall',
-  name: '',
-  x: '0',
-  y: '0',
-  width: '0',
-  depth: '0',
-  rotation: 0,
-  height: '0',
-  // Never sent: a piece not yet saved is created, and a creation names no version.
-  version: 0,
-};
 
 /**
  * The drawn stock map (docs/SPEC.md row 83; § 7, 2026-09-21, the eight decisions): a floor is the canvas, and each
@@ -294,11 +310,11 @@ const PENDING_PIECE: StockStructureRow = {
     DescriptorForm,
     Label,
     PickField,
-    RecordChanged,
     StockMapVolume,
     StockMapFirstSteps,
     PlaceContents,
     PlaceMovement,
+    RecordChanged,
   ],
   templateUrl: './stock-map-page.html',
   styleUrl: './stock-map-page.css',
@@ -339,13 +355,11 @@ export class StockMapPage implements OnInit {
    */
   protected readonly labelMode = this.settings.value(PRESENTATION.planLabels);
   /**
-   * The volume is for looking: it is shown in Consulter when chosen, and Aménager always draws on the plan, so a
-   * person never arranges in a view that cannot be arranged in. The choice itself is kept for the next visit.
+   * The volume is for looking, in either mode: in Aménager it shows the plan being arranged, so a rack moved on the
+   * plan is seen standing where it now is before anything is saved. Gestures stay the plan's. The choice is kept.
    */
   protected readonly viewChosen = this.settings.value(PRESENTATION.stockMapView);
-  protected readonly volumeShown = computed(
-    () => !this.arranging() && this.viewChosen() === 'volume',
-  );
+  protected readonly volumeShown = computed(() => this.viewChosen() === 'volume');
   protected readonly labelModes = PLAN_LABEL_MODES;
   /**
    * The drawing's size on screen, measured, so that a metre's length in pixels is known: what the scale bar is drawn
@@ -373,49 +387,50 @@ export class StockMapPage implements OnInit {
     return floors.find((one) => one.id === chosen) ?? floors[0] ?? null;
   });
 
-  /**
-   * What the open form holds right now, kept in step with the controls by the effect below. The plan draws the
-   * rectangle being edited from THIS rather than from what the API answered, so a rectangle follows the pointer
-   * while it is dragged and follows the keyboard while a measurement is typed — one mechanism for both.
-   */
-  private readonly formValues = signal<FormValues | null>(null);
+  // ——— the floor's draft: what is arranged and not saved yet ———
 
-  protected readonly previewRect = computed<PlanRectangle | null>(() => {
-    const values = this.formValues();
-    if (this.editing() === null || values === null) return null;
+  private readonly planStorage = inject(PLAN_DRAFT_STORAGE);
+  /** Each floor's draft, by floor: a person may arrange two floors before saving either. */
+  private readonly drafts = signal<ReadonlyMap<string, PlanDraft>>(new Map());
+  protected readonly draft = computed(() => {
+    const floorId = this.floor()?.id ?? '';
 
-    // Read as typed, not as it will be sent: seeing 3,9 snap to 3,75 under your own fingers is not a preview.
-    return {
-      x: metres(values['x']),
-      y: metres(values['y']),
-      width: metres(values['width']),
-      depth: metres(values['depth']),
-      rotation: metres(values['rotation']),
-      height: metres(values['height']),
-    };
+    return this.drafts().get(floorId) ?? emptyDraft(floorId);
+  });
+  /** How many shapes of the floor shown are changed and not saved. */
+  protected readonly planChanges = computed(() => changeCount(this.draft()));
+  /** A draft of this floor found in the browser, offered until it is taken up or let go. */
+  protected readonly offered = signal<PlanDraft | null>(null);
+  protected readonly keptCount = computed(() => {
+    const kept = this.offered();
+
+    return kept === null ? 0 : changeCount(kept);
   });
 
-  /** What is drawn on the floor being looked at: what was saved, with the one being edited shown as it now stands. */
+  /**
+   * The rectangles of stock as the board shows them: in Aménager the draft over what was saved, in Consulter what was
+   * saved, since a reader asks where things ARE.
+   */
+  protected readonly drawnRows = computed(() =>
+    this.arranging()
+      ? shownDrawings(this.draft(), this.facade.drawings(), this.facade.locations())
+      : this.facade.drawings(),
+  );
+  protected readonly builtRows = computed(() =>
+    this.arranging()
+      ? shownStructures(this.draft(), this.facade.structures())
+      : this.facade.structures(),
+  );
+
+  /** What is drawn on the floor being looked at, as the draft has it. */
   protected readonly shapes = computed<PlanShape[]>(() => {
-    const editing = this.editing();
     const pixels = this.pixelsPerMetre();
-    const preview = this.previewRect();
-    const draft = this.groupDraft();
-    const shapes = this.facade.drawings().map((drawing) => {
-      const [saved] = planRectangles([drawing]);
-      const shown =
-        draft?.get(drawing.id) ??
-        (preview !== null && editing !== null && editing !== 'new' && editing.id === drawing.id
-          ? preview
-          : (saved ?? { x: 0, y: 0, width: 0, depth: 0, rotation: 0, height: 0 }));
 
-      return shapeOf(drawing, shown, this.labelMode(), pixels);
+    return this.drawnRows().map((drawing) => {
+      const [rect] = planRectangles([drawing]);
+
+      return shapeOf(drawing, rect, this.labelMode(), pixels);
     });
-
-    if (editing === 'new' && preview !== null)
-      shapes.push(shapeOf(this.pendingRow(), preview, this.labelMode(), pixels));
-
-    return shapes;
   });
 
   /**
@@ -428,13 +443,12 @@ export class StockMapPage implements OnInit {
    * between one step and the next]. The working margin is simply always there instead.
    */
   /** The floor's own size in metres, when it was measured (docs/SPEC.md § 7, 2026-09-22, findings E and H). */
-  protected readonly floorSize = computed<{ width: number; depth: number } | null>(() => {
-    const floor = this.floor();
-    const width = Number(floor?.widthMetres ?? Number.NaN);
-    const depth = Number(floor?.depthMetres ?? Number.NaN);
+  protected readonly floorSize = computed<{ width: number; depth: number } | null>(() =>
+    shownFloorSize(this.arranging() ? this.draft() : emptyDraft(''), this.floor()),
+  );
 
-    return width > 0 && depth > 0 ? { width, depth } : null;
-  });
+  /** The frame as it stood when the floor's edge was taken hold of: the board stays still under the pulling hand. */
+  private readonly heldFrame = signal<PlanFrame | null>(null);
 
   /**
    * The box the board frames. A measured floor is framed by itself, so saving a rack no longer moves everything on
@@ -443,6 +457,8 @@ export class StockMapPage implements OnInit {
    * used to fall off the board.
    */
   protected readonly frame = computed<PlanFrame>(() => {
+    const held = this.heldFrame();
+    if (held !== null) return held;
     const drawn = [
       ...planRectangles(this.facade.drawings()),
       ...structureRectangles(this.facade.structures()),
@@ -526,7 +542,7 @@ export class StockMapPage implements OnInit {
   });
   /** The group as it stands on this floor: a rectangle erased elsewhere drops out of it by itself. */
   protected readonly chosenDrawings = computed(() =>
-    this.facade.drawings().filter((drawing) => this.chosen().has(drawing.id)),
+    this.drawnRows().filter((drawing) => this.chosen().has(drawing.id)),
   );
   protected readonly chosenCodes = computed(() =>
     this.chosenDrawings()
@@ -534,7 +550,7 @@ export class StockMapPage implements OnInit {
       .join(', '),
   );
   protected readonly selected = computed(
-    () => this.facade.drawings().find((drawing) => drawing.id === this.selectedId()) ?? null,
+    () => this.drawnRows().find((drawing) => drawing.id === this.selectedId()) ?? null,
   );
   /**
    * The place whose contents the panel shows: the chosen rectangle's location, in Consulter only — Aménager's panel is
@@ -619,9 +635,6 @@ export class StockMapPage implements OnInit {
     }
     return hits;
   });
-  /** What the volume stands up: the floor's saved rectangles and building, never an edit in progress. */
-  protected readonly floorDrawings = this.facade.drawings;
-  protected readonly floorStructures = this.facade.structures;
   /** The same places, as the volume lights them. */
   protected readonly litIds = computed(() => new Set(this.hits().keys()));
   /** How many drawn places hold something looked for on each floor, which the list of floors says. */
@@ -767,22 +780,35 @@ export class StockMapPage implements OnInit {
     () => this.shapes().find((shape) => shape.drawing.id === this.selectedId()) ?? null,
   );
 
-  // ——— the rectangle form ———
+  // ——— the rectangle form: it reads the draft and writes into it, never to the API ———
 
-  protected readonly editing = signal<StockDrawingRow | 'new' | null>(null);
+  /** The rectangle of stock whose form is open: its id, or its key while it is not saved yet. */
+  protected readonly editing = signal<string | null>(null);
+  /** That rectangle as the board shows it. */
+  protected readonly editingRow = computed(
+    () => this.drawnRows().find((drawing) => drawing.id === this.editing()) ?? null,
+  );
+  /**
+   * Which place each rectangle on the board is drawn for, compared by that alone: a drag moves a rectangle and never
+   * changes what it is drawn for, so the form's choice of places is not rebuilt under a moving hand.
+   */
+  private readonly drawnFor = computed(() => this.drawnRows(), { equal: sameBindings });
   protected readonly drawingDescriptor = computed(() => {
-    const editing = this.editing();
-    if (editing === null) return null;
+    const id = this.editing();
+    if (id === null) return null;
+    const rows = this.drawnFor();
+    const row = rows.find((one) => one.id === id);
+    if (row === undefined) return null;
 
     return drawingForm(
       this.facade.locations(),
-      this.facade.drawings(),
-      editing === 'new' ? null : editing,
+      rows.filter((one) => one.id !== id),
+      isNewKey(id) ? null : row,
       this.floor()?.establishmentId ?? null,
     );
   });
   protected readonly drawingFormGroup = linkedSignal<
-    { editing: StockDrawingRow | 'new' | null; descriptor: FormDescriptor | null },
+    { editing: string | null; descriptor: FormDescriptor | null },
     DescriptorFormGroup | null
   >({
     source: () => ({ editing: this.editing(), descriptor: this.drawingDescriptor() }),
@@ -793,28 +819,19 @@ export class StockMapPage implements OnInit {
           ? previous.value.getRawValue()
           : null;
 
-      return buildFormGroup(
-        descriptor,
-        typed ??
-          untracked(() =>
-            editing === 'new' ? drawingValues(null, this.proposal('rack')) : drawingValues(editing),
-          ),
-      );
+      return buildFormGroup(descriptor, typed ?? untracked(() => this.drawingValuesOf(editing)));
     },
   });
 
-  /** The saved version the open rectangle's form stands on, and what another person's save changed in it. */
-  protected readonly drawingSync = listRecord({
-    kind: 'venue_spot',
-    editing: this.editing,
-    rows: this.facade.drawings,
-    form: this.drawingFormGroup,
-    reload: async () => {
-      const companyId = this.company()?.id;
-      if (companyId) await this.facade.reloadDrawings(companyId);
-    },
-    values: (row) => drawingValues(row),
-  });
+  /** What a rectangle's form opens with: the rectangle as the draft has it, and what it is drawn for. */
+  private drawingValuesOf(id: string): FormValues {
+    const row = this.drawnRows().find((one) => one.id === id) ?? null;
+    if (!isNewKey(id) || row === null) return drawingValues(row);
+    const place: DraftPlace =
+      this.draft().newDrawings.find((one) => one.key === id)?.place ?? this.newPlace('rack');
+
+    return newDrawingValues(rectOf(row), place);
+  }
 
   // ——— the floor form ———
 
@@ -911,34 +928,23 @@ export class StockMapPage implements OnInit {
       observer.observe(element);
       onCleanup(() => observer.disconnect());
     });
-    // The one wire from the form back to the plan. Both a typed measurement and a dragged one arrive here, so the
-    // drawing cannot be right for one and stale for the other.
+    // The one wire from a form to the draft. A typed measurement lands there as a dragged one does; a gesture writes
+    // the draft and then the open form's fields, quietly, so it does not come back round through here.
     effect((onCleanup) => {
       const group = this.drawingFormGroup();
-      if (group === null) {
-        this.formValues.set(null);
-
-        return;
-      }
-      this.formValues.set(group.getRawValue() as FormValues);
+      const id = untracked(() => this.editing());
+      if (group === null || id === null) return;
       const watching = group.valueChanges.subscribe(() =>
-        this.formValues.set(group.getRawValue() as FormValues),
+        this.fromDrawingForm(id, group.getRawValue() as FormValues),
       );
       onCleanup(() => watching.unsubscribe());
     });
-
-    // The same wire for the building's form. Two effects rather than one over both, so a piece being typed and a
-    // rectangle being dragged cannot end up reading each other's values.
     effect((onCleanup) => {
       const group = this.structureFormGroup();
-      if (group === null) {
-        this.structureValuesNow.set(null);
-
-        return;
-      }
-      this.structureValuesNow.set(group.getRawValue() as FormValues);
+      const id = untracked(() => this.editingStructure());
+      if (group === null || id === null) return;
       const watching = group.valueChanges.subscribe(() =>
-        this.structureValuesNow.set(group.getRawValue() as FormValues),
+        this.fromStructureForm(id, group.getRawValue() as FormValues),
       );
       onCleanup(() => watching.unsubscribe());
     });
@@ -981,34 +987,17 @@ export class StockMapPage implements OnInit {
     });
   }
 
-  /** How many things on the board are not saved: a posed shape counts once, a changed one by its fields. */
-  private readonly pendingChanges = computed(() => {
-    const piece = this.editingStructure();
-    const values = this.structureValuesNow();
-    const structureChanges =
-      piece === null || values === null
-        ? 0
-        : dirtyCount(
-            values,
-            structureValues(piece === 'new' ? null : piece, this.structureTools()),
-          );
-
-    return (
-      (this.editing() === 'new' ? 1 : 0) +
-      (piece === 'new' ? 1 : 0) +
-      (this.groupDraft() === null ? 0 : 1) +
-      this.unsaved() +
-      structureChanges
-    );
-  });
+  /** How many shapes are changed and not saved, on every floor arranged: what leaving the page asks about. */
+  private readonly pendingChanges = computed(() =>
+    [...this.drafts().values()].reduce((sum, draft) => sum + changeCount(draft), 0),
+  );
 
   /**
-   * Consulter or Aménager. Leaving Aménager with something posed and not saved asks the same question leaving a
-   * record page does, since a mode switch drops the form exactly as a navigation would.
+   * Consulter or Aménager. Leaving Aménager loses nothing: the draft stays, in the page and in this browser, and is
+   * on the board again on the way back, so the switch asks nothing.
    */
   protected async chooseMode(mode: PlanMode): Promise<void> {
     if (mode === (this.arranging() ? 'arrange' : 'read')) return;
-    if (mode === 'read' && !(await firstValueFrom(this.unsavedChanges.confirmLeave()))) return;
 
     if (mode === 'read') this.putToolsDown();
     await this.router.navigate([], {
@@ -1031,7 +1020,7 @@ export class StockMapPage implements OnInit {
   protected async goTo(row: WhereaboutRow): Promise<void> {
     if (row.floorId === null || row.locationId === null) return;
     if (row.floorId !== this.floor()?.id) await this.showFloor(row.floorId);
-    const drawing = this.facade.drawings().find((one) => one.locationId === row.locationId);
+    const drawing = this.drawnRows().find((one) => one.locationId === row.locationId);
     if (drawing) this.select(drawing);
   }
 
@@ -1058,29 +1047,6 @@ export class StockMapPage implements OnInit {
     this.repeating.set(false);
     this.tracing.set(false);
     this.drag = null;
-  }
-
-  /** A rectangle being drawn for a location not yet chosen: enough of a row for the plan to show it taking shape. */
-  private pendingRow(): StockDrawingRow {
-    const locationId = String(this.formValues()?.['locationId'] ?? '');
-    const location = this.facade.locations().find((one) => one.id === locationId);
-
-    return {
-      id: PENDING_ID,
-      floorId: this.floor()?.id ?? '',
-      locationId,
-      locationCode: location?.code ?? '—',
-      locationName: location?.name ?? '',
-      locationKind: location?.kind ?? 'zone',
-      x: '0',
-      y: '0',
-      width: '0',
-      depth: '0',
-      rotation: 0,
-      height: '0',
-      // Never saved, so it stands on no version.
-      version: 0,
-    };
   }
 
   async ngOnInit(): Promise<void> {
@@ -1112,6 +1078,280 @@ export class StockMapPage implements OnInit {
     await this.showFloor(this.floor()?.id ?? null);
   }
 
+  // ——— the draft: each floor's, written in one place and kept in this browser ———
+
+  /** Every change to the floor shown goes through here; nothing changes while a kept draft waits for an answer. */
+  private change(edit: (draft: PlanDraft) => PlanDraft): void {
+    const floorId = this.floor()?.id;
+    if (!floorId || this.offered() !== null) return;
+    this.setDraft(floorId, edit(this.drafts().get(floorId) ?? emptyDraft(floorId)));
+  }
+
+  private setDraft(floorId: string, draft: PlanDraft): void {
+    this.drafts.update((drafts) => new Map(drafts).set(floorId, draft));
+    this.keep(floorId, draft);
+  }
+
+  /** The draft written to this browser, or its key removed once there is nothing in it. */
+  private keep(floorId: string, draft: PlanDraft): void {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    const key = planDraftKey(companyId, floorId);
+    try {
+      if (changeCount(draft) === 0) this.planStorage.removeItem(key);
+      else this.planStorage.setItem(key, JSON.stringify(draft));
+    } catch {
+      // Site data blocked or full: the draft still lives in the page, it is only not kept past it.
+    }
+  }
+
+  /** A draft of this floor kept in this browser from an earlier visit, offered to take up or let go. */
+  private offerKept(floorId: string | null): void {
+    this.offered.set(null);
+    const companyId = this.company()?.id;
+    if (
+      !companyId ||
+      !floorId ||
+      changeCount(this.drafts().get(floorId) ?? emptyDraft(floorId)) > 0
+    )
+      return;
+    let text: string | null;
+    try {
+      text = this.planStorage.getItem(planDraftKey(companyId, floorId));
+    } catch {
+      return;
+    }
+    const kept = parseDraft(text, floorId);
+    if (kept !== null && changeCount(kept) > 0) this.offered.set(kept);
+  }
+
+  /** « Reprendre »: the kept draft on the board, but what someone else changed since, which is theirs now. */
+  protected resume(): void {
+    const kept = this.offered();
+    if (kept === null || kept.floorId !== this.floor()?.id) return;
+    this.offered.set(null);
+    const { draft, dropped } = rebased(
+      kept,
+      this.facade.drawings(),
+      this.facade.structures(),
+      this.facade.locations(),
+      this.floor(),
+    );
+    this.setDraft(kept.floorId, draft);
+    if (dropped > 0) this.feedback.failure('inventory.plan.draft.dropped', { count: dropped });
+    else this.feedback.success('inventory.plan.draft.resumed', { count: changeCount(draft) });
+  }
+
+  /** « Abandonner »: the kept draft let go, and gone from this browser too. */
+  protected abandon(): void {
+    const kept = this.offered();
+    if (kept === null) return;
+    this.offered.set(null);
+    this.keep(kept.floorId, emptyDraft(kept.floorId));
+    this.feedback.success('inventory.plan.draft.abandoned');
+  }
+
+  private savedDrawing(id: string): StockDrawingRow | null {
+    return this.facade.drawings().find((one) => one.id === id) ?? null;
+  }
+
+  private savedStructure(id: string): StockStructureRow | null {
+    return this.facade.structures().find((one) => one.id === id) ?? null;
+  }
+
+  /** What a rectangle's form now says, into the draft: where it stands and what it is drawn for. */
+  private fromDrawingForm(id: string, values: FormValues): void {
+    const rect = typedRect(values);
+    if (isNewKey(id)) {
+      this.change((draft) =>
+        placeFor(placeDrawing(draft, id, rect, null), id, placeOfValues(values)),
+      );
+
+      return;
+    }
+    const locationId = typeof values['locationId'] === 'string' ? values['locationId'] : '';
+    this.change((draft) =>
+      placeDrawing(
+        draft,
+        id,
+        rect,
+        this.savedDrawing(id),
+        locationId === '' ? undefined : locationId,
+      ),
+    );
+  }
+
+  private fromStructureForm(id: string, values: FormValues): void {
+    const facts = structureFacts(values);
+    this.change((draft) =>
+      placeStructure(draft, id, typedRect(values), this.savedStructure(id), facts),
+    );
+  }
+
+  /** A shape moved by a gesture or a key: into the draft, and into its form when that form is open, quietly. */
+  private place(on: 'drawing' | 'structure', id: string, rect: PlanRectangle): void {
+    if (on === 'structure') {
+      this.change((draft) => placeStructure(draft, id, rect, this.savedStructure(id)));
+      if (this.editingStructure() === id) {
+        this.structureFormGroup()?.patchValue(rectValues(rect), { emitEvent: false });
+      }
+
+      return;
+    }
+    this.change((draft) => placeDrawing(draft, id, rect, this.savedDrawing(id)));
+    if (this.editing() === id) {
+      this.drawingFormGroup()?.patchValue(rectValues(rect), { emitEvent: false });
+    }
+  }
+
+  /** Shapes off the board, into the draft: nothing is sent before « Enregistrer ». */
+  private eraseShapes(ids: readonly string[]): void {
+    if (ids.length === 0) return;
+    this.change((draft) =>
+      eraseFromDraft(draft, ids, this.facade.drawings(), this.facade.structures()),
+    );
+    const gone = new Set(ids);
+    if (gone.has(this.editing() ?? '')) this.editing.set(null);
+    if (gone.has(this.editingStructure() ?? '')) this.editingStructure.set(null);
+    if (gone.has(this.selectedStructureId() ?? '')) this.selectedStructureId.set(null);
+    this.chosen.set(new Set([...this.chosen()].filter((id) => !gone.has(id))));
+    this.repeating.set(false);
+  }
+
+  /** A new rectangle of stock on the board, chosen, its form open. */
+  private addShape(rect: PlanRectangle, place: DraftPlace): string | null {
+    let key: string | null = null;
+    this.change((draft) => {
+      const made = addDrawing(draft, rect, place);
+      key = made.key;
+
+      return made.draft;
+    });
+    if (key !== null) this.openDrawing(key);
+
+    return key;
+  }
+
+  /**
+   * « Enregistrer »: the floor's whole draft in one request, all of it or none of it. Its toast's « Annuler » takes the
+   * whole step back, the places it created included, which held nothing yet.
+   */
+  protected async savePlan(): Promise<void> {
+    const companyId = this.company()?.id;
+    const floor = this.floor();
+    const draft = this.draft();
+    const count = changeCount(draft);
+    if (!companyId || floor === null || count === 0 || this.busy()) return;
+
+    const savedDrawings = this.facade.drawings();
+    const savedStructures = this.facade.structures();
+    const { step, sources } = stepOf(draft, savedDrawings);
+    const saved = await this.facade.changePlan(companyId, floor.id, step);
+    if (saved === null) {
+      await this.planRefused(companyId, floor.id, sources);
+
+      return;
+    }
+    this.editing.set(null);
+    this.editingStructure.set(null);
+    this.chosen.set(new Set([...this.chosen()].filter((id) => !isNewKey(id))));
+    if (isNewKey(this.selectedStructureId() ?? '')) this.selectedStructureId.set(null);
+    this.setDraft(floor.id, emptyDraft(floor.id));
+    const back = inverseOf(
+      step,
+      saved.created,
+      savedDrawings,
+      savedStructures,
+      saved.drawings,
+      saved.structures,
+      saved.floorVersion === null ? null : { before: floor, version: saved.floorVersion },
+    );
+    this.feedback.success(
+      'inventory.plan.plan_saved',
+      { count },
+      { key: 'inventory.plan.undo', run: () => void this.undoPlan(companyId, floor.id, back) },
+    );
+  }
+
+  private async undoPlan(
+    companyId: string,
+    floorId: string,
+    back: { step: PlanStep; createdPlaces: string[] },
+  ): Promise<void> {
+    await this.undo(async () => {
+      if ((await this.facade.changePlan(companyId, floorId, back.step)) === null) return false;
+      for (const placeId of back.createdPlaces)
+        await this.facade.deleteLocation(companyId, placeId);
+
+      return true;
+    });
+  }
+
+  /**
+   * A step refused. Saved by someone else since: the floor is read again and only their shapes are let go, the rest
+   * of the draft kept and said. Refused for one shape: that shape is chosen with its form open, where the error is.
+   */
+  private async planRefused(
+    companyId: string,
+    floorId: string,
+    sources: PlanStepSources,
+  ): Promise<void> {
+    if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await Promise.all([
+        this.facade.loadPlanContext(companyId),
+        this.facade.reloadDrawings(companyId),
+        this.facade.reloadStructures(companyId),
+      ]);
+      const { draft, dropped } = rebased(
+        this.draft(),
+        this.facade.drawings(),
+        this.facade.structures(),
+        this.facade.locations(),
+        this.floor(),
+      );
+      this.setDraft(floorId, draft);
+      this.feedback.failure('inventory.plan.plan_changed', { count: dropped });
+
+      return;
+    }
+    const entry = this.facade.refusedEntry();
+    const id = entry === null ? null : sourceOf(sources, entry);
+    if (id === null) return;
+    const piece = this.builtRows().find((one) => one.id === id);
+    if (piece !== undefined) this.openStructure(piece);
+    else if (this.drawnRows().some((one) => one.id === id)) this.openDrawing(id);
+  }
+
+  /** « Abandonner les changements »: the board back to what is saved, with « Annuler » on the toast to undo that. */
+  protected discardPlan(): void {
+    const floorId = this.floor()?.id;
+    const draft = this.draft();
+    const count = changeCount(draft);
+    if (!floorId || count === 0) return;
+    this.putToolsDown();
+    this.letGo();
+    this.selectedStructureId.set(null);
+    this.setDraft(floorId, emptyDraft(floorId));
+    this.feedback.success(
+      'inventory.plan.plan_discarded',
+      { count },
+      {
+        key: 'inventory.plan.undo',
+        run: () => {
+          // Only onto a board left as saved: work begun since is not overwritten by what was let go.
+          if (changeCount(this.drafts().get(floorId) ?? emptyDraft(floorId)) > 0) {
+            this.feedback.failure('live.undo_refused');
+
+            return;
+          }
+          this.setDraft(floorId, draft);
+          this.feedback.success('inventory.plan.undone');
+        },
+      },
+    );
+  }
+
   protected async showFloor(floorId: string | null): Promise<void> {
     const companyId = this.company()?.id;
     this.chosenFloorId.set(floorId);
@@ -1125,6 +1365,7 @@ export class StockMapPage implements OnInit {
       await this.facade.loadDrawings(companyId, floorId);
       await this.facade.loadStructures(companyId, floorId);
     }
+    this.offerKept(floorId);
   }
 
   /**
@@ -1190,17 +1431,18 @@ export class StockMapPage implements OnInit {
     this.chooseOnly(drawing.id);
     this.selectedStructureId.set(null);
     this.editingStructure.set(null);
+    // An open form follows the choice, so the form beside the board is always the shape being worked on.
+    if (this.editing() !== null) this.editing.set(drawing.id);
   }
 
   /** A place clicked in the 3D is chosen as a click on the plan chooses it. */
   protected pickInVolume(drawingId: string): void {
-    const drawing = this.facade.drawings().find((one) => one.id === drawingId);
+    const drawing = this.drawnRows().find((one) => one.id === drawingId);
     if (drawing !== undefined) this.select(drawing);
   }
 
   private chooseOnly(id: string | null): void {
     this.chosen.set(new Set(id === null ? [] : [id]));
-    this.groupDraft.set(null);
   }
 
   /** A click on a rectangle chooses it alone; with Shift it joins the group, or leaves it if it was in it. */
@@ -1229,7 +1471,6 @@ export class StockMapPage implements OnInit {
   private chooseGroup(ids: ReadonlySet<string>): void {
     this.endMovement();
     this.chosen.set(ids);
-    this.groupDraft.set(null);
     this.selectedStructureId.set(null);
     this.editingStructure.set(null);
     if (ids.size > 1) {
@@ -1241,17 +1482,11 @@ export class StockMapPage implements OnInit {
   /** « Tout désélectionner », a press of bare floor that does not travel, and Échap with nothing under way. */
   protected letGo(): void {
     this.chosen.set(new Set());
-    this.groupDraft.set(null);
   }
 
   // ——— a group, moved, turned and undrawn together (§ 7, 2026-10-09 17:45) ———
 
-  /**
-   * Where the group stands while it is moved or turned and not saved yet, by drawing; `null` while it stands where it
-   * was saved. One request saves all of it, and one « Annuler » puts all of it back.
-   */
   protected readonly SNAP_DEGREES = SNAP_DEGREES;
-  protected readonly groupDraft = signal<ReadonlyMap<string, PlanRectangle> | null>(null);
   /** Whether a group can be acted on here: in Aménager, by whoever may draw, with several chosen. */
   protected readonly actsOnGroup = computed(
     () => this.arranging() && this.mayDraw() && this.chosenDrawings().length > 1,
@@ -1262,30 +1497,21 @@ export class StockMapPage implements OnInit {
     frame: PlanFrame;
     box: PlanBox;
     origins: ReadonlyMap<string, PlanRectangle>;
-    before: ReadonlyMap<string, PlanRectangle> | null;
+    before: PlanDraft;
     past: boolean;
     startedAt: PlanPoint;
   } | null = null;
   private draggedGroup = false;
 
-  /** The group as it stands now: the draft where there is one, else where it was saved. */
+  /** The group as the board shows it now. */
   private groupRects(): ReadonlyMap<string, PlanRectangle> {
-    return (
-      this.groupDraft() ??
-      new Map(
-        this.chosenDrawings().flatMap((drawing) => {
-          const [rect] = planRectangles([drawing]);
-
-          return rect === undefined ? [] : [[drawing.id, rect] as const];
-        }),
-      )
-    );
+    return new Map(this.chosenDrawings().map((drawing) => [drawing.id, rectOf(drawing)] as const));
   }
 
   /** A press on a rectangle of the group takes hold of all of it: they move by one step, snapped once. */
   private holdGroup(event: PointerEvent): void {
     const surface = (event.target as Element).closest('svg');
-    if (surface === null) return;
+    if (surface === null || this.offered() !== null) return;
     const box = surface.getBoundingClientRect();
     const frame = this.viewed();
     this.groupDrag = {
@@ -1294,26 +1520,32 @@ export class StockMapPage implements OnInit {
       frame,
       box,
       origins: this.groupRects(),
-      before: this.groupDraft(),
+      before: this.draft(),
       past: false,
       startedAt: { x: event.clientX, y: event.clientY },
     };
     event.preventDefault();
   }
 
+  /** Each rectangle of the group where it now stands, into the draft. */
+  private placeGroup(rects: ReadonlyMap<string, PlanRectangle>): void {
+    this.change((draft) =>
+      [...rects].reduce(
+        (next, [id, rect]) => placeDrawing(next, id, rect, this.savedDrawing(id)),
+        draft,
+      ),
+    );
+  }
+
   protected turnGroup(degrees: number): void {
-    if (this.actsOnGroup()) this.groupDraft.set(turnedGroup(this.groupRects(), degrees));
+    if (this.actsOnGroup()) this.placeGroup(turnedGroup(this.groupRects(), degrees));
   }
 
   private moveGroup(dx: number, dy: number): void {
-    if (this.actsOnGroup()) this.groupDraft.set(shiftedGroup(this.groupRects(), dx, dy));
+    if (this.actsOnGroup()) this.placeGroup(shiftedGroup(this.groupRects(), dx, dy));
   }
 
-  protected cancelGroup(): void {
-    this.groupDraft.set(null);
-  }
-
-  /** The keys of a group: the arrows move it, R turns it, Suppr undraws it — what they do to one rectangle. */
+  /** The keys of a group: the arrows move it, R turns it, Suppr takes it off — what they do to one rectangle. */
   private groupKey(event: KeyboardEvent): boolean {
     const step = event.shiftKey ? 1 : ARROW_STEP_METRES;
     const moves: Record<string, [number, number]> = {
@@ -1326,107 +1558,15 @@ export class StockMapPage implements OnInit {
     if (move !== undefined) this.moveGroup(...move);
     else if (event.key.toLowerCase() === 'r')
       this.turnGroup(event.shiftKey ? -SNAP_DEGREES : SNAP_DEGREES);
-    else if (event.key === 'Delete') void this.eraseGroup();
+    else if (event.key === 'Delete') this.eraseGroup();
     else return false;
 
     return true;
   }
 
-  protected async saveGroup(): Promise<void> {
-    const companyId = this.company()?.id;
-    const floorId = this.floor()?.id;
-    const draft = this.groupDraft();
-    if (!companyId || !floorId || draft === null || this.busy()) return;
-
-    const saved = new Map(this.chosenDrawings().map((drawing) => [drawing.id, drawing]));
-    const moves = [...draft].flatMap(([drawingId, rect]) => {
-      const drawing = saved.get(drawingId);
-
-      return drawing === undefined
-        ? []
-        : [{ drawingId, ...rectInput(rect), version: drawing.version }];
-    });
-    const after = await this.facade.changeDrawings(companyId, floorId, {
-      draws: [],
-      moves,
-      erasures: [],
-    });
-    if (after !== null) {
-      this.groupDraft.set(null);
-      // « Annuler » puts each rectangle back where it stood, on the version this step left it at.
-      const left = new Map(after.map((drawing) => [drawing.id, drawing.version]));
-      const back = moves.flatMap(({ drawingId }) => {
-        const drawing = saved.get(drawingId);
-        const version = left.get(drawingId);
-
-        return drawing === undefined || version === undefined
-          ? []
-          : [{ drawingId, ...savedRect(drawing), version }];
-      });
-      this.feedback.success(
-        'inventory.plan.group_saved',
-        { count: moves.length },
-        {
-          key: 'inventory.plan.undo',
-          run: () =>
-            void this.undoGroup(companyId, floorId, { draws: [], moves: back, erasures: [] }),
-        },
-      );
-    } else {
-      await this.groupChangedSince(companyId);
-    }
-  }
-
-  /**
-   * A rectangle of the group was changed by someone else since it was chosen, so nothing of the step was written: the
-   * floor is read again and the group stays chosen, and the move is made again on the rectangles as they now stand.
-   */
-  private async groupChangedSince(companyId: string): Promise<void> {
-    if (this.facade.error() !== 'record_changed') return;
-    this.facade.clearError();
-    this.groupDraft.set(null);
-    await this.facade.reloadDrawings(companyId);
-    this.feedback.failure('inventory.plan.group_changed');
-  }
-
-  /** Undrawn together, and drawn back together for the same places by one « Annuler ». */
-  protected async eraseGroup(): Promise<void> {
-    const companyId = this.company()?.id;
-    const floorId = this.floor()?.id;
-    const group = this.chosenDrawings();
-    if (!companyId || !floorId || !this.actsOnGroup() || this.busy()) return;
-
-    const erased = await this.facade.changeDrawings(companyId, floorId, {
-      draws: [],
-      moves: [],
-      erasures: group.map((drawing) => ({ drawingId: drawing.id, version: drawing.version })),
-    });
-    if (erased === null) {
-      await this.groupChangedSince(companyId);
-    } else {
-      this.letGo();
-      const again = group.map((drawing) => ({
-        locationId: drawing.locationId,
-        ...savedRect(drawing),
-      }));
-      this.feedback.success(
-        'inventory.plan.group_erased',
-        { count: group.length },
-        {
-          key: 'inventory.plan.undo',
-          run: () =>
-            void this.undoGroup(companyId, floorId, { draws: again, moves: [], erasures: [] }),
-        },
-      );
-    }
-  }
-
-  private async undoGroup(
-    companyId: string,
-    floorId: string,
-    inverse: StockDrawingChanges,
-  ): Promise<void> {
-    await this.undo(() => this.facade.changeDrawings(companyId, floorId, inverse));
+  /** The whole group off the board, into the draft. */
+  protected eraseGroup(): void {
+    if (this.actsOnGroup()) this.eraseShapes([...this.chosen()]);
   }
 
   /** Choosing a piece of the building to read about it, which is all a press on one does in Consulter. */
@@ -1442,20 +1582,31 @@ export class StockMapPage implements OnInit {
     else this.selectStructure(piece);
   }
 
-  protected draw(target: StockDrawingRow | 'new'): void {
+  /** A rectangle's form opened beside the board: the rectangle chosen, everything else's form closed. */
+  protected draw(drawing: StockDrawingRow): void {
+    this.openDrawing(drawing.id);
+  }
+
+  private openDrawing(id: string): void {
     this.facade.clearError();
+    this.endMovement();
     this.editingFloor.set(null);
     this.editingStructure.set(null);
     this.selectedStructureId.set(null);
-    if (target === 'new') this.chooseOnly(null);
-    else this.select(target);
-    this.editing.set(target);
+    this.repeating.set(false);
+    this.chooseOnly(id);
+    this.editing.set(id);
   }
 
-  protected cancelDrawing(): void {
+  /** « Fermer »: the form goes, what it changed stays in the draft. */
+  protected closeDrawing(): void {
     this.editing.set(null);
-    this.drag = null;
     this.facade.clearError();
+  }
+
+  /** « Effacer » on a rectangle: off the board, into the draft; its place keeps its code and its stock. */
+  protected erase(drawing: StockDrawingRow): void {
+    this.eraseShapes([drawing.id]);
   }
 
   // ——— the plan as a drawing surface ———
@@ -1480,7 +1631,7 @@ export class StockMapPage implements OnInit {
     const shape = this.shapes().find((one) => one.drawing.id === this.selectedId());
     if (shape === undefined || !this.arranging()) return [];
 
-    return handlesThatFit(shape.rect, this.handleRadius()).map((handle) => {
+    return handlesThatFit(shape.rect, this.gripRadius()).map((handle) => {
       const at = handleAt(shape.rect, handle);
 
       return { handle, x: at.x, y: at.y, key: `${handle.hx}:${handle.hy}` };
@@ -1492,7 +1643,7 @@ export class StockMapPage implements OnInit {
     const shape = this.builtShapes().find((one) => one.piece.id === this.selectedStructureId());
     if (shape === undefined || !this.arranging()) return [];
 
-    return handlesThatFit(shape.rect, this.handleRadius()).map((handle) => {
+    return handlesThatFit(shape.rect, this.gripRadius()).map((handle) => {
       const at = handleAt(shape.rect, handle);
 
       return { handle, x: at.x, y: at.y, key: `${handle.hx}:${handle.hy}` };
@@ -1510,15 +1661,19 @@ export class StockMapPage implements OnInit {
   );
 
   /**
-   * How many fields hold something other than what was last saved. Without it a drag is illegible: the rectangle
-   * moves, and nothing on the screen says the plan is now unsaved.
+   * The grips on the floor's own edges, while arranging a measured floor: pulled, the floor is wider or longer in the
+   * draft, saved with the rest by « Enregistrer ». The floor's form still takes its measures typed.
    */
-  protected readonly unsaved = computed(() => {
-    const editing = this.editing();
-    const values = this.formValues();
-    if (editing === null || values === null) return 0;
+  protected readonly floorHandles = computed(() => {
+    const size = this.floorSize();
+    if (!this.arranging() || !this.mayDraw() || size === null) return [];
 
-    return dirtyCount(values, drawingValues(editing === 'new' ? null : editing));
+    return FLOOR_HANDLES.map((handle) => ({
+      handle,
+      x: handle.hx * size.width,
+      y: handle.hy * size.depth,
+      key: `${handle.hx}:${handle.hy}`,
+    }));
   });
 
   /**
@@ -1537,23 +1692,50 @@ export class StockMapPage implements OnInit {
    * of how tall a rack stands.
    */
   protected pose(shape: StockPlanShape): void {
-    this.draw('new');
+    this.tracing.set(false);
     const kind = kindOfShape(shape.shape);
-    this.drawingFormGroup()?.patchValue({
-      ...footprintValues(centredIn(this.viewed(), shape.width, shape.depth)),
-      newLocationKind: kind,
-      newLocationCode: this.proposal(kind).code,
-    });
+    this.addShape(
+      {
+        ...centredIn(this.viewed(), shape.width, shape.depth),
+        rotation: 0,
+        height: newRect().height,
+      },
+      this.newPlace(kind),
+    );
   }
 
   /** The new place a new rectangle proposes: of this kind, with the code after the floor establishment's last one. */
   private proposal(kind: StockLocationKind): NewPlaceProposal {
     const establishmentId = this.floor()?.establishmentId;
+    // The draft's own new places count too, or two racks posed before saving would both be offered the same code.
+    const drafted = this.draft().newDrawings.flatMap((one) =>
+      'code' in one.place && establishmentId
+        ? [
+            {
+              ...one.place,
+              id: one.key,
+              establishmentId,
+              parentId: null,
+              isDefault: false,
+              childCount: 0,
+              movementCount: 0,
+              version: 0,
+            },
+          ]
+        : [],
+    );
 
     return {
       kind,
-      code: establishmentId ? proposedCode(this.facade.locations(), establishmentId, kind) : '',
+      code: establishmentId
+        ? proposedCode([...this.facade.locations(), ...drafted], establishmentId, kind)
+        : '',
     };
+  }
+
+  /** A new place for a new rectangle, as the draft holds it: of this kind, its code proposed, its name to type. */
+  private newPlace(kind: StockLocationKind): DraftPlace {
+    return { kind, code: this.proposal(kind).code, name: '' };
   }
 
   /** Whether the next gesture on bare floor traces a box. Armed by the tool beside the plan, for one box. */
@@ -1563,10 +1745,19 @@ export class StockMapPage implements OnInit {
     this.tracing.update((armed) => !armed);
   }
 
-  /** The free rectangle by its measures rather than traced: the form, empty, with no gesture needed. */
+  /** The free rectangle by its measures rather than traced: posed in the middle, its form open, no gesture needed. */
   protected typeMeasures(): void {
     this.tracing.set(false);
-    this.draw('new');
+    const fresh = newRect();
+    this.addShape(
+      {
+        ...fresh,
+        ...centredIn(this.viewed(), fresh.width, fresh.depth),
+        rotation: 0,
+        height: fresh.height,
+      },
+      this.newPlace('rack'),
+    );
   }
 
   // ——— repeating a rectangle down an aisle ———
@@ -1577,6 +1768,13 @@ export class StockMapPage implements OnInit {
    * those words before it creates anything.
    */
   protected readonly repeating = signal(false);
+  /**
+   * Repeating saves at once, places and all, so it waits for the draft to be saved: the copies would otherwise be
+   * made from where the rack stood, not where the board shows it.
+   */
+  protected readonly mayRepeat = computed(
+    () => this.planChanges() === 0 && !isNewKey(this.selectedId() ?? ''),
+  );
   protected readonly repeatCount = signal(1);
   protected readonly repeatSpacing = signal('');
   protected readonly repeatWay = signal<PlanWay>('down');
@@ -1589,6 +1787,7 @@ export class StockMapPage implements OnInit {
    * point is that the common repeat needs no typing at all.
    */
   protected openRepeat(drawing: StockDrawingRow): void {
+    if (!this.mayRepeat()) return;
     this.facade.clearError();
     this.select(drawing);
     this.editing.set(null);
@@ -1722,6 +1921,20 @@ export class StockMapPage implements OnInit {
     if (shape === undefined) return;
 
     this.hold(event, 'structure', piece.id, shape.rect, handle);
+  }
+
+  /** The floor's own edge taken hold of: the board's frame is held still while it is pulled. */
+  protected grabFloor(event: PointerEvent, handle: PlanHandle): void {
+    const size = this.floorSize();
+    if (!this.arranging() || event.button !== 0 || size === null || this.offered() !== null) return;
+    this.heldFrame.set(this.frame());
+    this.hold(
+      event,
+      'floor',
+      null,
+      { x: 0, y: 0, width: size.width, depth: size.depth, rotation: 0, height: 0 },
+      handle,
+    );
   }
 
   /**
@@ -1917,10 +2130,19 @@ export class StockMapPage implements OnInit {
     if (this.actsOnGroup()) return this.groupKey(event);
 
     const piece = this.selectedStructure();
-    const drawing = this.facade.drawings().find((one) => one.id === this.selectedId()) ?? null;
-    const onStructure =
-      this.editingStructure() !== null || (piece !== null && this.editing() === null);
-    if (!onStructure && this.editing() === null && drawing === null) return false;
+    const drawing = this.selected();
+    const shape: { on: 'drawing' | 'structure'; id: string; rect: PlanRectangle } | null =
+      piece !== null
+        ? { on: 'structure', id: piece.id, rect: rectOf(piece) }
+        : drawing !== null
+          ? { on: 'drawing', id: drawing.id, rect: rectOf(drawing) }
+          : null;
+    if (shape === null) return false;
+    if (event.key === 'Delete') {
+      this.eraseShapes([shape.id]);
+
+      return true;
+    }
 
     const step = event.shiftKey ? 1 : ARROW_STEP_METRES;
     const moves: Record<string, [number, number]> = {
@@ -1932,37 +2154,19 @@ export class StockMapPage implements OnInit {
     const move = moves[event.key];
     const turn =
       event.key.toLowerCase() === 'r' ? (event.shiftKey ? -SNAP_DEGREES : SNAP_DEGREES) : null;
-    if (event.key === 'Delete') {
-      if (onStructure) {
-        const editing = this.editingStructure();
-        if (editing !== null && editing !== 'new') void this.eraseStructure(editing);
-        else if (editing === null && piece !== null) void this.eraseStructure(piece);
-      } else {
-        const editing = this.editing();
-        if (editing === 'new') this.cancelDrawing();
-        else if (editing !== null) void this.erase(editing);
-        else if (drawing !== null) void this.erase(drawing);
-      }
-
-      return true;
-    }
-    if (move === undefined && turn === null) return false;
-
-    if (onStructure) {
-      if (this.editingStructure() === null && piece !== null) this.openStructure(piece);
-    } else if (this.editing() === null && drawing !== null) {
-      this.draw(drawing);
-    }
-    const group = onStructure ? this.structureFormGroup() : this.drawingFormGroup();
-    if (group === null) return false;
-    const values = group.getRawValue() as FormValues;
     if (move !== undefined) {
-      group.patchValue({
-        x: (Number(values['x'] ?? 0) + move[0]).toFixed(3),
-        y: (Number(values['y'] ?? 0) + move[1]).toFixed(3),
+      this.place(shape.on, shape.id, {
+        ...shape.rect,
+        x: Math.max(0, shape.rect.x + move[0]),
+        y: Math.max(0, shape.rect.y + move[1]),
       });
     } else if (turn !== null) {
-      group.patchValue({ rotation: snapAngle(Number(values['rotation'] ?? 0) + turn) });
+      this.place(shape.on, shape.id, {
+        ...shape.rect,
+        rotation: snapAngle(shape.rect.rotation + turn),
+      });
+    } else {
+      return false;
     }
 
     return true;
@@ -2003,12 +2207,16 @@ export class StockMapPage implements OnInit {
   /** What every gesture starts with: the frame and the viewport frozen, and the metre the pointer began on. */
   private hold(
     event: PointerEvent,
-    on: 'drawing' | 'structure',
+    on: 'drawing' | 'structure' | 'floor',
     drawingId: string | null,
     origin: PlanRectangle | null,
     handle: PlanHandle | null,
   ): void {
-    if (!this.arranging() || event.button !== 0) return;
+    if (!this.arranging() || event.button !== 0 || this.offered() !== null) {
+      this.heldFrame.set(null);
+
+      return;
+    }
     const surface = (event.target as Element).closest('svg');
     if (surface === null) return;
 
@@ -2023,7 +2231,7 @@ export class StockMapPage implements OnInit {
       from: pointerMetres({ x: event.clientX, y: event.clientY }, frame, box),
       frame,
       box,
-      before: {},
+      before: this.draft(),
       past: false,
       startedAt: { x: event.clientX, y: event.clientY },
     };
@@ -2060,7 +2268,7 @@ export class StockMapPage implements OnInit {
       }
       const to = pointerMetres({ x: event.clientX, y: event.clientY }, held.frame, held.box);
       // The step is snapped once, for the group, so the rectangles keep the spacing they had between them.
-      this.groupDraft.set(
+      this.placeGroup(
         shiftedGroup(held.origins, snapMetres(to.x - held.from.x), snapMetres(to.y - held.from.y)),
       );
 
@@ -2098,40 +2306,38 @@ export class StockMapPage implements OnInit {
       const far =
         Math.abs(event.clientX - drag.startedAt.x) + Math.abs(event.clientY - drag.startedAt.y);
       if (far < DRAG_THRESHOLD) return;
-
-      // Only now is it a drag: the editor opens, and what it held is kept so Échap can put it back.
+      // Only now is it a drag, and what the board held is kept so Échap can put it back exactly.
       drag.past = true;
-      // A box being traced opens the new-rectangle editor; one just traced has that editor open already and is not
-      // among what the API answered, so looking it up there would abandon the gesture before its form was kept —
-      // and Échap would then give a freshly traced rectangle nothing back.
-      if (drag.on === 'drawing') {
-        if (drag.drawingId === null) this.draw('new');
-        else if (drag.drawingId !== PENDING_ID) {
-          const drawing = this.facade.drawings().find((one) => one.id === drag.drawingId);
-          if (drawing === undefined) return;
-          if (this.editing() === null || this.editing() === 'new') this.draw(drawing);
-        }
-      }
-      drag.before = (this.editedGroup(drag)?.getRawValue() ?? {}) as FormValues;
+      drag.before = this.draft();
     }
 
     const to = pointerMetres({ x: event.clientX, y: event.clientY }, drag.frame, drag.box);
     const origin = drag.origin;
-    if (origin === null) {
-      this.editedGroup(drag)?.patchValue(footprintValues(tracedTo(drag.from, to)));
+    if (drag.on === 'floor') {
+      const floor = this.floor();
+      if (origin === null || drag.handle === null || floor === null) return;
+      const pulled = resizedTo(origin, drag.handle, to);
+      const size = {
+        width: Math.max(FLOOR_LEAST, pulled.x + pulled.width),
+        depth: Math.max(FLOOR_LEAST, pulled.y + pulled.depth),
+      };
+      this.change((draft) => sizeFloor(draft, size, floor));
 
       return;
     }
+    if (origin === null) {
+      // A box being traced: a new rectangle on its first move, which every later move reshapes.
+      const rect = { ...tracedTo(drag.from, to), rotation: 0, height: newRect().height };
+      if (drag.drawingId === null) drag.drawingId = this.addShape(rect, this.newPlace('rack'));
+      else this.place('drawing', drag.drawingId, rect);
+
+      return;
+    }
+    if (drag.drawingId === null) return;
 
     const next =
       drag.handle === null ? movedTo(origin, drag.from, to) : resizedTo(origin, drag.handle, to);
-
-    this.editedGroup(drag)?.patchValue(rectValues(next));
-  }
-
-  /** The form the gesture is writing into — the building's or the stock's, never both. */
-  private editedGroup(drag: Drag): DescriptorFormGroup | null {
-    return drag.on === 'structure' ? this.structureFormGroup() : this.drawingFormGroup();
+    this.place(drag.on, drag.drawingId, next);
   }
 
   protected drops(event: PointerEvent): void {
@@ -2153,8 +2359,11 @@ export class StockMapPage implements OnInit {
     if (this.drag?.pointerId !== event.pointerId) return;
 
     // One box per arming: the sheet goes back to being something a finger can scroll past.
-    if (this.drag.origin === null && this.drag.past) this.tracing.set(false);
+    if (this.drag.on === 'drawing' && this.drag.origin === null && this.drag.past)
+      this.tracing.set(false);
     this.drag = null;
+    // The floor framed again once its edge is let go, with whatever size the draft now gives it.
+    this.heldFrame.set(null);
   }
 
   /**
@@ -2176,7 +2385,7 @@ export class StockMapPage implements OnInit {
     if (touched.length === 0 && lasso.extend) return;
     const ids = new Set(lasso.extend ? [...this.chosen(), ...touched] : touched);
     if (ids.size === 1) {
-      const one = this.facade.drawings().find((drawing) => ids.has(drawing.id));
+      const one = this.drawnRows().find((drawing) => ids.has(drawing.id));
       if (one !== undefined) this.select(one);
 
       return;
@@ -2197,9 +2406,7 @@ export class StockMapPage implements OnInit {
       return;
     }
     if (this.volumeShown() || this.editing() !== null) return;
-    // Échap puts a moved group back first, and only then lets the choice go.
-    if (this.groupDraft() !== null) this.cancelGroup();
-    else this.letGo();
+    this.letGo();
   }
 
   /** Ends a gesture under way, its rectangle put back as it stood; true when there was one. */
@@ -2210,14 +2417,32 @@ export class StockMapPage implements OnInit {
       drag !== null || held !== null || this.pan !== null || this.lasso !== null || this.tracing();
     this.drag = null;
     this.groupDrag = null;
-    if (held?.past) this.groupDraft.set(held.before);
     this.pan = null;
     this.lasso = null;
     this.lassoRect.set(null);
     this.tracing.set(false);
-    if (drag?.past) this.editedGroup(drag)?.patchValue(drag.before);
+    this.heldFrame.set(null);
+    const before = drag?.past ? drag.before : held?.past ? held.before : null;
+    if (before !== null) this.putBack(before);
 
     return underway;
+  }
+
+  /** The floor's draft as it stood before a gesture, and the open forms with it, quietly. */
+  private putBack(before: PlanDraft): void {
+    this.setDraft(before.floorId, before);
+    if (this.editing() !== null && !this.drawnRows().some((one) => one.id === this.editing())) {
+      this.editing.set(null);
+    }
+    const drawingId = this.editing();
+    const drawing = this.drawnRows().find((one) => one.id === drawingId);
+    if (drawing !== undefined) {
+      this.drawingFormGroup()?.patchValue(rectValues(rectOf(drawing)), { emitEvent: false });
+    }
+    const piece = this.builtRows().find((one) => one.id === this.editingStructure());
+    if (piece !== undefined) {
+      this.structureFormGroup()?.patchValue(rectValues(rectOf(piece)), { emitEvent: false });
+    }
   }
 
   // ——— the map over the whole window (docs/SPEC.md § 7, 2026-10-09 23:19 and 2026-10-10 00:27) ———
@@ -2297,97 +2522,10 @@ export class StockMapPage implements OnInit {
     this.listsOpen.update((open) => !open);
   }
 
-  protected async saveDrawing(values: FormValues): Promise<void> {
-    const companyId = this.company()?.id;
-    const floorId = this.floor()?.id;
-    const editing = this.editing();
-    if (!companyId || !floorId || editing === null || this.busy()) return;
-
-    const input = drawingInput(values);
-    // What « Annuler » puts back: the rectangle as it stood, or nothing at all for one just drawn.
-    const before = editing === 'new' ? null : drawingInput(drawingValues(editing));
-    const saved = await this.facade.draw(
-      companyId,
-      floorId,
-      input,
-      editing === 'new' ? null : editing.id,
-      editing === 'new' ? null : this.drawingSync.version(),
-    );
-    if (saved) {
-      this.editing.set(null);
-      this.drag = null;
-      this.feedback.success(
-        'inventory.plan.drawing_saved',
-        {},
-        {
-          key: 'inventory.plan.undo',
-          run: () =>
-            editing === 'new'
-              ? void this.undrawNew(companyId, floorId, input)
-              : void this.undo(() =>
-                  this.facade.draw(companyId, floorId, before!, editing.id, saved.version),
-                ),
-        },
-      );
-    } else if (this.error() === 'record_changed') {
-      this.facade.clearError();
-      await this.drawingSync.savedElsewhere();
-    }
-  }
-
   /**
-   * The rectangle goes; the location it was drawn for keeps its code, its tree and its stock — which is what makes
-   * « Annuler » always possible: the same location is drawn again at the same place.
+   * « Annuler » on a plan's toast: the change taken back, and said. It never writes over another person's change:
+   * refused as saved since, it says nothing was taken back.
    */
-  protected async erase(drawing: StockDrawingRow): Promise<void> {
-    const companyId = this.company()?.id;
-    const floorId = this.floor()?.id;
-    if (!companyId || !floorId || this.busy()) return;
-
-    const erased = await this.facade.eraseDrawing(companyId, floorId, drawing.id);
-    if (erased) {
-      if (this.selectedId() === drawing.id) this.chooseOnly(null);
-      this.editing.set(null);
-      const again = drawingInput(drawingValues(drawing));
-      this.feedback.success(
-        'inventory.plan.drawing_erased',
-        {},
-        {
-          key: 'inventory.plan.undo',
-          run: () => void this.undo(() => this.facade.draw(companyId, floorId, again, null, null)),
-        },
-      );
-    }
-  }
-
-  /**
-   * A rectangle just drawn, found again by its location (one location, one rectangle) and undrawn. A place created
-   * with it is found by its code, which is unique on the floor's establishment, and deleted too: it was made a
-   * moment ago, so nothing is stored in it, and « Annuler » leaves nothing behind.
-   */
-  private async undrawNew(
-    companyId: string,
-    floorId: string,
-    input: StockDrawingInput,
-  ): Promise<void> {
-    const created = input.newLocationCode !== undefined;
-    const made = this.facade
-      .drawings()
-      .find((drawing) =>
-        created
-          ? drawing.locationCode === input.newLocationCode
-          : drawing.locationId === input.locationId,
-      );
-    if (made === undefined) return;
-    await this.undo(async () => {
-      const erased = await this.facade.eraseDrawing(companyId, floorId, made.id);
-
-      return erased && (!created || (await this.facade.deleteLocation(companyId, made.locationId)));
-    });
-  }
-
-  /** « Annuler » on a drawing toast: the change taken back, and said. */
-  /** « Annuler » never writes over another person's change: refused as saved since, it says nothing was taken back. */
   private async undo(takeBack: () => Promise<unknown>): Promise<void> {
     if (await takeBack()) this.feedback.success('inventory.plan.undone');
     else if (this.facade.error() === 'record_changed') {
@@ -2409,22 +2547,20 @@ export class StockMapPage implements OnInit {
     this.arranging() ? (this.facade.options()?.structureShapes ?? []) : [],
   );
 
-  protected readonly editingStructure = signal<StockStructureRow | 'new' | null>(null);
+  /** The piece of the building whose form is open: its id, or its key while it is not saved yet. */
+  protected readonly editingStructure = signal<string | null>(null);
   protected readonly selectedStructureId = signal<string | null>(null);
   /** The piece of the building the handles are drawn around, which is what those handles then work on. */
   protected readonly selectedStructure = computed(
-    () => this.facade.structures().find((piece) => piece.id === this.selectedStructureId()) ?? null,
+    () => this.builtRows().find((piece) => piece.id === this.selectedStructureId()) ?? null,
   );
-
-  /** What the open structure form holds, so a piece follows the keyboard exactly as a rectangle of stock does. */
-  private readonly structureValuesNow = signal<FormValues | null>(null);
 
   protected readonly structureDescriptor = computed(() =>
     this.editingStructure() === null ? null : structureForm(),
   );
 
   protected readonly structureFormGroup = linkedSignal<
-    { editing: StockStructureRow | 'new' | null; descriptor: FormDescriptor | null },
+    { editing: string | null; descriptor: FormDescriptor | null },
     DescriptorFormGroup | null
   >({
     source: () => ({ editing: this.editingStructure(), descriptor: this.structureDescriptor() }),
@@ -2439,70 +2575,20 @@ export class StockMapPage implements OnInit {
         descriptor,
         typed ??
           untracked(() =>
-            structureValues(editing === 'new' ? null : editing, this.structureTools()),
+            structureValues(
+              this.builtRows().find((piece) => piece.id === editing) ?? null,
+              this.structureTools(),
+            ),
           ),
       );
     },
   });
 
-  /** The saved version the open piece's form stands on, and what another person's save changed in it. */
-  protected readonly structureSync = listRecord({
-    kind: 'venue_structure',
-    editing: this.editingStructure,
-    rows: this.facade.structures,
-    form: this.structureFormGroup,
-    reload: async () => {
-      const companyId = this.company()?.id;
-      if (companyId) await this.facade.reloadStructures(companyId);
-    },
-    values: (row) => structureValues(row, this.structureTools()),
-  });
-
-  /**
-   * The building as the plan draws it — what was saved, with the piece being edited shown as it now stands, the
-   * same one mechanism the stock rectangles use.
-   */
+  /** The building as the plan draws it: the draft over what was saved, the same one mechanism the stock uses. */
   protected readonly builtShapes = computed<StructureShape[]>(() => {
-    const editing = this.editingStructure();
-    const values = this.structureValuesNow();
-    const preview: PlanRectangle | null =
-      editing === null || values === null
-        ? null
-        : {
-            x: metres(values['x']),
-            y: metres(values['y']),
-            width: metres(values['width']),
-            depth: metres(values['depth']),
-            rotation: metres(values['rotation']),
-            height: metres(values['height']),
-          };
-    const kindNow = String(values?.['kind'] ?? 'wall');
-
     const pixels = this.pixelsPerMetre();
-    const shapes = this.facade.structures().map((piece) => {
-      const [saved] = structureRectangles([piece]);
-      const shown =
-        preview !== null && editing !== null && editing !== 'new' && editing.id === piece.id
-          ? preview
-          : (saved ?? { x: 0, y: 0, width: 0, depth: 0, rotation: 0, height: 0 });
 
-      return builtOf(
-        editing !== null && editing !== 'new' && editing.id === piece.id
-          ? { ...piece, kind: kindOf(kindNow) }
-          : piece,
-        shown,
-        this.labelMode(),
-        pixels,
-      );
-    });
-
-    if (editing === 'new' && preview !== null) {
-      shapes.push(
-        builtOf({ ...PENDING_PIECE, kind: kindOf(kindNow) }, preview, this.labelMode(), pixels),
-      );
-    }
-
-    return shapes;
+    return this.builtRows().map((piece) => builtOf(piece, rectOf(piece), this.labelMode(), pixels));
   });
 
   /** A form is open — a rectangle of stock's or a piece of the building's — and so it stands where the tools were. */
@@ -2514,15 +2600,7 @@ export class StockMapPage implements OnInit {
    * Whether the board must say a save is owed: anything new is, and anything saved is once a field differs from
    * what the API holds. The form beside the board carries the count; the board carries the fact, where the eye is.
    */
-  protected readonly owesSave = computed(() => {
-    if (this.editing() === 'new' || this.editingStructure() === 'new') return true;
-    if (this.unsaved() > 0 || this.groupDraft() !== null) return true;
-    const piece = this.editingStructure();
-    const values = this.structureValuesNow();
-    if (piece === null || piece === 'new' || values === null) return false;
-
-    return dirtyCount(values, structureValues(piece, this.structureTools())) > 0;
-  });
+  protected readonly owesSave = computed(() => this.planChanges() > 0);
 
   /**
    * The layers panel of the board. Counts are derived and never stored: a layer showing a number nobody maintains
@@ -2533,10 +2611,10 @@ export class StockMapPage implements OnInit {
    * while only one is built.
    */
   protected readonly layers = computed<PlanLayer[]>(() => {
-    const drawings = this.facade.drawings();
+    const drawings = this.drawnRows();
 
     return [
-      { id: 'structure', count: this.facade.structures().length },
+      { id: 'structure', count: this.builtRows().length },
       { id: 'racks', count: drawings.filter((one) => one.locationKind === 'rack').length },
       { id: 'zones', count: drawings.filter((one) => one.locationKind !== 'rack').length },
     ];
@@ -2559,7 +2637,6 @@ export class StockMapPage implements OnInit {
   }
 
   protected chooseView(view: StockMapView): void {
-    if (view === 'volume' && this.arranging()) return;
     this.settings.set(PRESENTATION.stockMapView, view);
   }
 
@@ -2586,104 +2663,46 @@ export class StockMapPage implements OnInit {
    * of: a wall's height is the building's, not a fact about that one wall.
    */
   protected poseStructure(tool: StockStructureShape): void {
-    this.openStructure('new');
-    this.structureFormGroup()?.patchValue({
-      ...structureValues(null, this.structureTools(), tool.kind),
-      ...footprintValues(centredIn(this.viewed(), tool.width, tool.depth)),
+    const height = metres(structureValues(null, this.structureTools(), tool.kind)['height']);
+    let key: string | null = null;
+    this.change((draft) => {
+      const made = addStructure(
+        draft,
+        { ...centredIn(this.viewed(), tool.width, tool.depth), rotation: 0, height },
+        { kind: tool.kind, name: '' },
+      );
+      key = made.key;
+
+      return made.draft;
     });
+    const posed = this.builtRows().find((piece) => piece.id === key);
+    if (posed !== undefined) this.openStructure(posed);
   }
 
   /**
    * The building's editor. It checked nothing before 2026-09-22, so anyone who could read the plan could open a
    * form that moves a wall — the one place on this page where a permission was simply not asked for.
    */
-  protected openStructure(target: StockStructureRow | 'new'): void {
+  protected openStructure(target: StockStructureRow): void {
     if (!this.arranging()) return;
-    // The posed piece is drawn by the saved pieces' template, so a press on it arrives here too. It is already the
-    // piece being edited: opening its zeroed placeholder as a saved row reset the form and made it vanish (§ 7,
-    // 2026-09-22, finding A).
-    if (target !== 'new' && target.id === PENDING_ID) return;
     this.facade.clearError();
     this.editing.set(null);
     this.editingFloor.set(null);
     this.repeating.set(false);
     this.chooseOnly(null);
-    this.editingStructure.set(target);
-    this.selectedStructureId.set(target === 'new' ? null : target.id);
+    this.editingStructure.set(target.id);
+    this.selectedStructureId.set(target.id);
   }
 
-  protected cancelStructure(): void {
+  /** « Fermer »: the form goes, what it changed stays in the draft. */
+  protected closeStructure(): void {
     this.editingStructure.set(null);
     this.facade.clearError();
   }
 
-  protected async saveStructure(values: FormValues): Promise<void> {
-    const companyId = this.company()?.id;
-    const floorId = this.floor()?.id;
-    const editing = this.editingStructure();
-    if (!companyId || !floorId || editing === null || this.busy()) return;
-
-    const before =
-      editing === 'new' ? null : structureInput(structureValues(editing, this.structureTools()));
-    const standing = new Set(this.facade.structures().map((piece) => piece.id));
-    const saved = await this.facade.buildStructure(
-      companyId,
-      floorId,
-      structureInput(values),
-      editing === 'new' ? null : editing.id,
-      editing === 'new' ? null : this.structureSync.version(),
-    );
-    if (saved) {
-      this.editingStructure.set(null);
-      // A piece just built has no id of its own here: it is the one that was not standing before the save.
-      const made = this.facade.structures().find((piece) => !standing.has(piece.id));
-      this.feedback.success(
-        'inventory.plan.structure_saved',
-        {},
-        {
-          key: 'inventory.plan.undo',
-          run: () =>
-            void this.undo(() =>
-              editing === 'new'
-                ? made === undefined
-                  ? Promise.resolve(false)
-                  : this.facade.eraseStructure(companyId, floorId, made.id)
-                : this.facade.buildStructure(
-                    companyId,
-                    floorId,
-                    before!,
-                    editing.id,
-                    saved.version,
-                  ),
-            ),
-        },
-      );
-    } else if (this.error() === 'record_changed') {
-      this.facade.clearError();
-      await this.structureSync.savedElsewhere();
-    }
-  }
-
-  protected async eraseStructure(piece: StockStructureRow): Promise<void> {
-    const companyId = this.company()?.id;
-    const floorId = this.floor()?.id;
-    if (!companyId || !floorId || this.busy()) return;
-
-    const erased = await this.facade.eraseStructure(companyId, floorId, piece.id);
-    if (erased) {
-      if (this.selectedStructureId() === piece.id) this.selectedStructureId.set(null);
-      this.editingStructure.set(null);
-      const again = structureInput(structureValues(piece, this.structureTools()));
-      this.feedback.success(
-        'inventory.plan.structure_erased',
-        {},
-        {
-          key: 'inventory.plan.undo',
-          run: () =>
-            void this.undo(() => this.facade.buildStructure(companyId, floorId, again, null, null)),
-        },
-      );
-    }
+  /** « Effacer » on a piece of the building: off the board, into the draft. */
+  protected eraseStructure(piece: StockStructureRow): void {
+    this.eraseShapes([piece.id]);
   }
 
   protected openFloor(target: StockFloorRow | 'new'): void {
@@ -2739,26 +2758,6 @@ export class StockMapPage implements OnInit {
   }
 }
 
-/** A measurement out of a form control, as a number: what was typed, empty or half-typed reading as nothing yet. */
-/** A rectangle as the API takes it, at the three decimals it keeps. */
-function rectInput(rect: PlanRectangle): StockDrawingRect {
-  return {
-    x: rect.x.toFixed(3),
-    y: rect.y.toFixed(3),
-    width: rect.width.toFixed(3),
-    depth: rect.depth.toFixed(3),
-    rotation: rect.rotation,
-    height: rect.height.toFixed(3),
-  };
-}
-
-/** Where a rectangle stood when it was read, exactly as the API answered it. */
-function savedRect(drawing: StockDrawingRow): StockDrawingRect {
-  const { x, y, width, depth, rotation, height } = drawing;
-
-  return { x, y, width, depth, rotation, height };
-}
-
 /** A key meant for a field or a button, whose Space types or presses rather than taking hold of the plan. */
 function typed(target: EventTarget | null): boolean {
   return (
@@ -2769,11 +2768,6 @@ function typed(target: EventTarget | null): boolean {
 
 function metres(value: unknown): number {
   return Number(value ?? 0) || 0;
-}
-
-/** A kind out of a form control, falling back to the one piece of building that is always drawable. */
-function kindOf(value: string): StructureKind {
-  return STRUCTURE_KINDS.find((kind) => kind === value) ?? 'wall';
 }
 
 /** One piece of the building as the SVG needs it: where it turns about, what it is, and where its name goes. */
@@ -2850,6 +2844,14 @@ function shapeOf(
     labelTurn: along ? `rotate(90 ${labelX} ${labelY})` : null,
     font,
   };
+}
+
+/** Whether two boards draw the same rectangles for the same places, wherever each now stands. */
+function sameBindings(one: readonly StockDrawingRow[], other: readonly StockDrawingRow[]): boolean {
+  return (
+    one.length === other.length &&
+    one.every((row, at) => row.id === other[at].id && row.locationId === other[at].locationId)
+  );
 }
 
 /** Whether two lists name the same products in the same order, so an equal question is not asked again. */

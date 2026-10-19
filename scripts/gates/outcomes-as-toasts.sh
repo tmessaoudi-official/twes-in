@@ -13,13 +13,12 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # operator's decision — that one is what the subscription IS until it is answered, days after the toast that said the
 # declaration was recorded — and how much of the open record is unsaved, which is what the form IS until
 # it is saved or discarded and the only thing on the page saying it was left half-filled.
-# `stock-drawing-unsaved` is that same count for the plan's rectangle form, which does not go through `RecordBar`:
-# there a rectangle is dragged rather than typed, and nothing else on the screen says the plan was moved and not yet
-# saved. `stock-repeat-summary` is what the repeat panel WILL create — a count, a run of
-# codes, or the reason it cannot be made — which changes under the person's fingers as they type and is the state the
-# panel IS before anything is created; what the repeat DID is a toast like every other outcome.
-# `stock-map-not-saved` is the board's own word for the same state, put where the eye is while a piece is dragged,
-# since the form holding the count stands beside the board rather than under it.
+# `stock-plan-unsaved` is that same count for a floor's plan, which does not go through `RecordBar`: there shapes
+# are dragged rather than typed, every one waits for the one « Enregistrer », and nothing else on the screen says the
+# plan was moved and not yet saved. `stock-plan-kept` is a plan this browser kept from an earlier visit, waiting to be
+# taken up or let go: what the board IS until it is answered. `stock-repeat-summary` is what the repeat panel WILL
+# create — a count, a run of codes, or the reason it cannot be made — which changes under the person's fingers as they
+# type and is the state the panel IS before anything is created; what the repeat DID is a toast like every other outcome.
 # `product-scan-loading`, `product-scan-found` and `product-scan-none` are the scan card's whole content — looking the
 # code up, the product it names, or that none does: what the card IS, arriving after it opened, and never the outcome
 # of something the person did there. `phone-loading`, `phone-ended`, `phone-pair-opening` and
@@ -52,7 +51,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # the next action will act on, never the outcome of one.
 # `document-taxes-stamp-status` holds what a credit note's figures as typed leave of the stamp chosen on it: that the note
 # completing the invoice gives it back, true until the lines change again, and never the outcome of a save.
-page_states=' document-taxes-stamp-status list-loading phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner support-banner demo-banner erasure-waiting list-selection-count '
+page_states=' document-taxes-stamp-status list-loading phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-plan-unsaved stock-plan-kept stock-repeat-summary subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner support-banner demo-banner erasure-waiting list-selection-count '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {

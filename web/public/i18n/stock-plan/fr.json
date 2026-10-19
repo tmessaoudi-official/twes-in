@@ -10,9 +10,6 @@
       "group_hint": "Glissez l’un d’eux pour déplacer tout le groupe, ou utilisez les flèches et R au clavier.",
       "group_turn_left": "Tourner de {{degrees}}° à gauche",
       "group_turn_right": "Tourner de {{degrees}}° à droite",
-      "group_saved": "{{count}} {count, plural, one {rectangle déplacé} other {rectangles déplacés}}.",
-      "group_erased": "{{count}} {count, plural, one {rectangle effacé} other {rectangles effacés}}.",
-      "group_changed": "Un rectangle du groupe a été modifié entre-temps : rien n’a été changé. Le plan est relu, refaites le geste.",
       "nothing_drawn": "Aucun emplacement n’est encore dessiné sur cet étage.",
       "plan_of": "Plan de {{floor}} : {{count}} {count, plural, one {rectangle dessiné} other {rectangles dessinés}}",
       "trace": "Tracer un rectangle",
@@ -28,8 +25,6 @@
       "remove_floor": "Supprimer l’étage",
       "floor_saved": "Étage enregistré.",
       "floor_removed": "Étage supprimé.",
-      "drawing_saved": "Rectangle enregistré.",
-      "drawing_erased": "Rectangle effacé.",
       "undo": "Annuler",
       "undone": "Modification du plan annulée.",
       "floor_section": "L’étage",
@@ -83,8 +78,6 @@
         "post": "Poteau",
         "dock": "Porte de quai"
       },
-      "structure_saved": "Élément de structure enregistré.",
-      "structure_erased": "Élément de structure supprimé.",
       "labels": "Étiquettes",
       "label_modes": {
         "code": "Code",
@@ -131,7 +124,6 @@
       "zoom_in": "Voir de plus près",
       "zoom_out": "Voir de plus loin",
       "fit": "Ajuster",
-      "not_saved": "Pas encore enregistré : Enregistrer, ci-contre",
       "views": "Façon de regarder l’étage",
       "view_names": {
         "plan": "Plan",
@@ -232,8 +224,7 @@
         "closer": "Approcher",
         "further": "Reculer",
         "overview": "Vue d’ensemble",
-        "top": "Vue de dessus",
-        "read_only": "La 3D se regarde en Consulter ; en Aménager, le plan est en 2D."
+        "top": "Vue de dessus"
       },
       "first": {
         "title": "Dessinez votre dépôt",
@@ -277,6 +268,19 @@
         "menu": "Listes, étages et vues",
         "bar": "Commandes du plan",
         "close_panel": "Fermer le panneau"
+      },
+      "plan_saved": "Plan enregistré : {{count}} {count, plural, one {modification} other {modifications}}.",
+      "plan_changed": "Quelqu’un d’autre a enregistré ce plan entre-temps : rien n’a été enregistré. Les formes qu’il a changées sont relues ({{count}}) ; le reste attend « Enregistrer ».",
+      "plan_discarded": "Plan rétabli tel qu’enregistré : {{count}} {count, plural, one {modification retirée} other {modifications retirées}}.",
+      "repeat_waits": "Enregistrez le plan pour répéter cette forme.",
+      "draft": {
+        "unsaved": "{{count}} {count, plural, one {modification non enregistrée} other {modifications non enregistrées}}",
+        "kept": "Ce navigateur a gardé {{count}} {count, plural, one {modification non enregistrée} other {modifications non enregistrées}} de ce plan.",
+        "resume": "Reprendre",
+        "abandon": "Abandonner",
+        "resumed": "{{count}} {count, plural, one {modification reprise} other {modifications reprises}}.",
+        "dropped": "Modifications reprises, sauf sur {{count}} {count, plural, one {forme enregistrée} other {formes enregistrées}} entre-temps par quelqu’un d’autre.",
+        "abandoned": "Les modifications gardées dans ce navigateur sont abandonnées."
       }
     }
   }

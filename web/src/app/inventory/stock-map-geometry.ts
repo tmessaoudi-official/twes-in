@@ -97,18 +97,49 @@ export function gripRadius(
 }
 
 /**
- * The handles a rectangle can carry without its middle being covered by them. A handle keeps one size on the screen,
- * so a side of four radii or less loses its middle handle: a 0,6 m rack on a 30 m floor could otherwise not be taken
- * hold of at all. The corners always stay, and the form keeps every measurement reachable (docs/SPEC.md § 7,
- * 2026-09-22).
+ * The handles a rectangle can carry, `radius` being the GRIP's, what a pointer takes hold of. A grip keeps one size on
+ * the screen, so on a small or thin shape grips would cover its middle, where a press moves it, or each other, where a
+ * press aimed at one pulls another: both happened on a 4 × 1,5 m rack seen whole. So a handle is kept only with its
+ * grip clear of the middle and of every handle kept before it, the two ends of the long side first (a wall or a rack
+ * is lengthened far more often than thickened), then the corners, then the middles of the long sides. A shape too
+ * small for any is moved by a press anywhere on it, and the form keeps every measurement reachable.
  */
 export function handlesThatFit(rect: PlanRectangle, radius: number): PlanHandle[] {
-  const roomy = (length: number): boolean => length > radius * 4;
-
-  return PLAN_HANDLES.filter(
+  const along = rect.width >= rect.depth;
+  const ends: PlanHandle[] = along
+    ? [
+        { hx: 0, hy: 0.5 },
+        { hx: 1, hy: 0.5 },
+      ]
+    : [
+        { hx: 0.5, hy: 0 },
+        { hx: 0.5, hy: 1 },
+      ];
+  const corners = PLAN_HANDLES.filter((handle) => handle.hx !== 0.5 && handle.hy !== 0.5);
+  const sides = PLAN_HANDLES.filter(
     (handle) =>
-      (handle.hx !== 0.5 || roomy(rect.depth)) && (handle.hy !== 0.5 || roomy(rect.width)),
+      (handle.hx === 0.5 || handle.hy === 0.5) && !ends.some((end) => sameHandle(end, handle)),
   );
+  const clear = radius * 2;
+  const at = (handle: PlanHandle): PlanPoint => ({
+    x: rect.width * handle.hx,
+    y: rect.depth * handle.hy,
+  });
+  const middle = { x: rect.width / 2, y: rect.depth / 2 };
+  const kept: PlanHandle[] = [];
+  for (const handle of [...ends, ...corners, ...sides]) {
+    const point = at(handle);
+    const far = (other: PlanPoint): boolean =>
+      Math.hypot(point.x - other.x, point.y - other.y) > clear;
+    if (far(middle) && kept.every((one) => far(at(one)))) kept.push(handle);
+  }
+
+  // In the order the board has always drawn them, so a handle keeps its place among its neighbours in the DOM.
+  return PLAN_HANDLES.filter((handle) => kept.some((one) => sameHandle(one, handle)));
+}
+
+function sameHandle(one: PlanHandle, other: PlanHandle): boolean {
+  return one.hx === other.hx && one.hy === other.hy;
 }
 
 /**
