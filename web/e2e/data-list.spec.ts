@@ -132,15 +132,19 @@ test('a column moves without dragging, and the order survives a reload', async (
 
   await page.getByTestId('list-columns').click();
   await page.getByTestId('list-column-up-role').click();
+  // Read in the chooser, which lists every column in its order: on a narrow card the last may give way for width.
   const order = () =>
     page
-      .locator('[data-testid^="list-header-"]')
-      .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-testid')));
-  await expect.poll(order).toEqual(['list-header-name', 'list-header-role', 'list-header-email']);
+      .locator('[data-testid^="list-column-toggle-"]')
+      .evaluateAll((toggles) => toggles.map((toggle) => toggle.getAttribute('data-testid')));
+  const moved = ['list-column-toggle-name', 'list-column-toggle-role', 'list-column-toggle-email'];
+  await expect.poll(order).toEqual(moved);
+  await page.keyboard.press('Escape');
 
   await page.reload();
   await expect(page.getByTestId(`member-${EMAIL}`)).toBeVisible();
-  await expect.poll(order).toEqual(['list-header-name', 'list-header-role', 'list-header-email']);
+  await page.getByTestId('list-columns').click();
+  await expect.poll(order).toEqual(moved);
 });
 
 test('the dark scheme survives a reload', async ({ page }) => {
@@ -319,10 +323,13 @@ test('a list wider than its page keeps each header over its own column', async (
   await expect(headers.first()).toBeVisible();
   await expect(page.locator('th.twes-row-actions'), 'a list without row actions').toHaveCount(0);
   // The name cannot be hidden: widened from the keyboard past the card, it is what makes the table scroll.
+  // It widens from the width drawn, which its longest name sets: 30 presses add 480 px to that.
   const resize = page.getByTestId('list-resize-name');
+  const drawn = Number(await resize.getAttribute('aria-valuenow'));
+  const widened = `${Math.min(960, drawn + 480)}px`;
   await resize.focus();
   for (let step = 0; step < 30; step++) await resize.press('ArrowRight');
-  await expect(page.getByTestId('list-header-name')).toHaveCSS('width', '640px');
+  await expect(page.getByTestId('list-header-name')).toHaveCSS('width', widened);
   const boxes = await headers.evaluateAll((cells) =>
     cells.map((cell) => {
       const box = cell.getBoundingClientRect();
@@ -342,7 +349,7 @@ test('a list wider than its page keeps each header over its own column', async (
   // The width is the operator's own choice, kept for every later scenario: give it back.
   await page.getByTestId('list-columns').click();
   await page.getByTestId('list-columns-reset').click();
-  await expect(page.getByTestId('list-header-name')).not.toHaveCSS('width', '640px');
+  await expect(page.getByTestId('list-header-name')).not.toHaveCSS('width', widened);
 });
 
 test('a list says it is loading while its answer is on its way, and that it could not load when the read fails', async ({

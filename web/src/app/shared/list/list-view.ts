@@ -216,6 +216,21 @@ export interface FitColumn {
 }
 
 /**
+ * The width a column takes before fitting: as wide as its widest value shown, so `fitColumns` gives a whole column
+ * way rather than cut one, never narrower than it declares, and at most `cap`. A width a person chose is theirs, even
+ * one that cuts. `widest` is undefined until the column's cells have been measured.
+ */
+export function fittedWidth(
+  declared: number,
+  widest: number | undefined,
+  chosen: boolean,
+  cap: number,
+): number {
+  if (chosen) return declared;
+  return Math.max(declared, Math.min(widest ?? 0, cap));
+}
+
+/**
  * Every amount column's width: an amount up to ten million with three decimals, « 9 999 999,999 », takes 138 px in
  * the screen's own font, padding included, so no realistic figure is cut.
  */
