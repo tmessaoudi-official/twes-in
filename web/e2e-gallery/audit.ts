@@ -186,6 +186,7 @@ export async function auditScreen(page: Page): Promise<Finding[]> {
     }
 
     // Text cut short with nothing to read the rest by: no tooltip, no title, no accessible name carrying it.
+    const cutLeaves: Element[] = [];
     for (const element of document.querySelectorAll('body *')) {
       if (element.children.length > 0 || !visible(element)) continue;
       const text = (element.textContent ?? '').trim();
@@ -198,6 +199,16 @@ export async function auditScreen(page: Page): Promise<Finding[]> {
         '[title], [aria-label], [mattooltip], .mat-mdc-tooltip-trigger',
       );
       add('cut-text', element, `${text.slice(0, 60)}${readable === null ? '' : ' (tooltip)'}`);
+      cutLeaves.push(element);
+    }
+    // A list's cell holding more than it shows is cut too, whichever box inside it does the clipping, or none does.
+    for (const cell of document.querySelectorAll<HTMLElement>(
+      'tr.mat-mdc-row:not(.mat-mdc-no-data-row) > td[data-column]',
+    )) {
+      if (!visible(cell) || cell.scrollWidth <= cell.clientWidth + 1) continue;
+      if (cutLeaves.some((leaf) => cell.contains(leaf))) continue;
+      const text = (cell.textContent ?? '').trim();
+      add('cut-text', cell, `${cell.dataset['column']}: ${text.slice(0, 60)}`);
     }
 
     for (const image of document.querySelectorAll('img')) {
