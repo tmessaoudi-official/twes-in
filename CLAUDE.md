@@ -616,3 +616,7 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - A list gives a column way whole when the values do not fit, so an e2e reading a low-priority column must use values
   whose width does not vary per run: `Date.now().toString(36)` letters moved « Vis LOT-<run> » by 20 px, and at 1600 px
   the stock list has 8 px to spare. Use digits (`lots.spec.ts`); reproduce a width flake with the widest letters (2026-10-19).
+- Read a flake's cause from the trace's request bodies before writing a story for it: the wide-list scenario's 16 px was
+  explained as a re-measure and the test "fixed", while the saved widths read 305, 321, 321: a press lost because the
+  handler widened the `column` object the header last drew. A handler handed a template's object reads it as last
+  rendered; read the current state by its id (2026-10-19, `DataList.onResizeKey`).
