@@ -4,6 +4,7 @@ import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
 import { proveIfAsked } from './step-up';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
+import { runDigits } from './run';
 
 // G8 through the real stack: in the seeded Tunisian company, the owner adds a vendor without any registration number,
 // with its bank account and payment terms, revises it and finds it in the list. One database is shared by the whole
@@ -44,7 +45,10 @@ async function retire(page: Page, number: string): Promise<void> {
 }
 
 test('a vendor is added with its bank account and terms, then revised', async ({ page }) => {
-  const run = Date.now().toString(36).toUpperCase();
+  // Two saves behind a step-up, four accessibility scans and three filtered reads: on a loaded machine every step passed
+  // and the clean-up met the default 30 s.
+  test.setTimeout(60_000);
+  const run = runDigits();
   const number = `E2E-${run}`;
   // Long enough that the title never shares a row with the bar: beside it, the « Bientôt » button would add one and
   // folds into « ⋮ », so a short name made the check below depend on how wide the run's letters happened to be.

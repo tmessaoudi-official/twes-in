@@ -4,6 +4,7 @@ import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 import { rowAction } from './rows';
+import { runDigits } from './run';
 
 // G4 through the real stack: in the seeded Tunisian company, the owner creates a customer group, gives it its own
 // payment terms, files a business customer in it and finds the terms inherited on the customer, then adds a contact.
@@ -62,7 +63,7 @@ async function retire(page: Page, number: string, groupName: string): Promise<vo
 test("a customer in a group inherits the group's payment terms and gets a contact", async ({
   page,
 }) => {
-  const run = Date.now().toString(36).toUpperCase();
+  const run = runDigits();
   const groupName = `E2E ${run}`;
   const number = `E2E-${run}`;
   // The list is read for its group, a low column: on a laptop, with the name and city beside it, it gives way for
