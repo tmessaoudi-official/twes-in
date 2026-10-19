@@ -17,6 +17,7 @@ export const DEFAULT_BRAND_KIT: BrandKit = {
   tagline: {
     fr: 'Tout en lieu sûr. Tout tracé. Rien ne se perd.',
     en: 'All kept safe. All on record. Nothing lost.',
+    ar: 'كل شيء في أمان. كل شيء موثّق. لا شيء يضيع.',
   },
 };
 
