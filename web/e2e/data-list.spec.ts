@@ -38,23 +38,24 @@ async function openMembers(page: Page): Promise<void> {
 test('a column hidden from the chooser stays hidden after a reload, until the columns are reset', async ({
   page,
 }) => {
+  // The role, which the members list is read for: an address may give way for width on its narrow card.
   await signIn(page);
   await openMembers(page);
-  await expect(page.getByTestId('list-header-email')).toBeVisible();
+  await expect(page.getByTestId('list-header-role')).toBeVisible();
 
   await page.getByTestId('list-columns').click();
   await expectAccessible(page, 'members, column chooser open');
-  await page.getByTestId('list-column-toggle-email').click();
-  await expect(page.getByTestId('list-header-email')).toHaveCount(0);
+  await page.getByTestId('list-column-toggle-role').click();
+  await expect(page.getByTestId('list-header-role')).toHaveCount(0);
 
   await page.reload();
   await expect(page.getByTestId(`member-${EMAIL}`)).toBeVisible();
-  await expect(page.getByTestId('list-header-role')).toBeVisible();
-  await expect(page.getByTestId('list-header-email')).toHaveCount(0);
+  await expect(page.getByTestId('list-header-name')).toBeVisible();
+  await expect(page.getByTestId('list-header-role')).toHaveCount(0);
 
   await page.getByTestId('list-columns').click();
   await page.getByTestId('list-columns-reset').click();
-  await expect(page.getByTestId('list-header-email')).toBeVisible();
+  await expect(page.getByTestId('list-header-role')).toBeVisible();
 });
 
 test('a scan waits for a tooltip to arrive instead of reading it mid-fade', async ({ page }) => {
@@ -166,7 +167,7 @@ test('a saved view brings back its filters and columns after a reload', async ({
   await page.getByTestId('list-filter').fill('operator');
   await pickOption(page, 'list-facet-role', 'list-facet-role-owner');
   await page.getByTestId('list-columns').click();
-  await page.getByTestId('list-column-toggle-email').click();
+  await page.getByTestId('list-column-toggle-role').click();
   await page.getByTestId('list-views').click();
   await page.getByTestId('list-view-name').fill('Owners');
   await page.getByTestId('list-view-save').click();
@@ -179,11 +180,11 @@ test('a saved view brings back its filters and columns after a reload', async ({
   await expect(page.getByTestId('list-filter')).toHaveValue('');
   await page.getByTestId('list-columns').click();
   await page.getByTestId('list-columns-reset').click();
-  await expect(page.getByTestId('list-header-email')).toBeVisible();
+  await expect(page.getByTestId('list-header-role')).toBeVisible();
 
   await page.getByTestId('list-views').click();
   await saved.click();
-  await expect(page.getByTestId('list-header-email')).toHaveCount(0);
+  await expect(page.getByTestId('list-header-role')).toHaveCount(0);
   await expect(page.getByTestId('list-filter')).toHaveValue('operator');
   expect(await holds(page, 'list-facet-role', 'list-facet-role-owner')).toBe(true);
   await expect(page.getByTestId(`member-${EMAIL}`)).toBeVisible();

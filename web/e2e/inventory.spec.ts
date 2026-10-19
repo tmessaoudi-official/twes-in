@@ -305,6 +305,9 @@ test('stock received at a location leaves with a validated delivery note and ret
 }) => {
   // A whole delivery cycle, two accessibility scans and the history's filters: more than the default 30 s.
   test.setTimeout(60_000);
+  // The history's product reads « E2E-STK-… — Carton E2E-STK-… » whole, and on a laptop the source then gives way
+  // for width: a wide window shows it.
+  await page.setViewportSize({ width: 1600, height: 900 });
   const run = Date.now().toString(36).toUpperCase();
   const reference = `E2E-STK-${run}`;
   const customerNumber = `E2E-STK-${run}`;

@@ -47,7 +47,14 @@ export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
       sortable: true,
       filterable: true,
     },
-    { id: 'role', label: 'members.role', value: (row) => row.role, sortable: true },
+    // Who may do what is what the list is read for: an address gives way first.
+    {
+      id: 'role',
+      priority: 'high',
+      label: 'members.role',
+      value: (row) => row.role,
+      sortable: true,
+    },
   ],
   filters: [
     {
