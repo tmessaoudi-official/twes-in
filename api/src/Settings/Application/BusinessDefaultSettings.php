@@ -75,8 +75,8 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
 
         // Whether a copy or a reprint names the units and taxes as the document was issued with, or as they are named now.
         // As issued unless the company asks, so a copy reads like what was sent; the original always prints what was
-        // issued. The company's alone: names are the company's, whoever the document goes to. Last of the document
-        // switches, so it shifts none of them.
+        // issued. The company's alone: names are the company's, whoever the document goes to. Beside the savings line, so
+        // the settings page pairs the two switches.
         yield new SettingDefinition('document.names_as_issued', SettingType::Bool, true, SettingChain::Parties, [SettingLevel::Company], 'settings.document.names_as_issued', self::MODULE);
 
         // What a customer may owe before a new delivery warns, in the company's currency; zero is no limit, so a customer
