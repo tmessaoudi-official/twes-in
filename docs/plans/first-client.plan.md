@@ -221,6 +221,8 @@ was and was not certified by execution.
 | 7 | Arabic texts and printed documents | L | doing | ffb36182 | web/public/i18n/** api/translations/** api/templates/** |
 | 8 | Guides, help and README on the final screens (8a, the reading against the final screens, done 2026-10-19) | M | doing | - | docs/** web/** |
 | 9 | Document links before the tag: the module port (335f778b), a delivery note names its invoices (93004285), an invoice its delivery notes (5f73574b), a quote onto an open draft (row 259, 08ad6709) and its toast | M | done | b6c8d52e | api/src/Module/** web/src/app/** web/e2e/** |
+| 10 | Release decisions from the developer's marks: D8 the invoice status floor (b40f52e4), D7 the document language written at company creation (8bafb57f), D6 the Arabic sign-in tagline | S | done | 2baa5db1 | web/src/app/** api/src/** |
+| 11 | Release decision D2: a document reprints the unit and tax names it was issued with (bd7409ba), the company switch to keep them live, and the refusal before anything is fixed | M | done | 253f6355 | api/src/** api/templates/pdf/** api/migrations/** web/public/i18n/** |
 <!-- /progress-block -->
 ### Blocked
 - Step 1 waits on the developer: `PUBLISH_IMAGES=true`; the three GHCR packages made public after the first publish
