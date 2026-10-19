@@ -627,3 +627,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - Symfony's `Request::create`, under every BrowserKit test request, sends `Accept-Language: en-us,en;q=0.5`, and the API now
   answers in the language a request names: `ApiTestCase` sends `fr` as the web does, and a test of another language sets it
   per request. A screen word the API writes follows the request, never `User.locale`, which only mails read (2026-10-19).
+- axe decides whether a font draws icons from the first three it measures and keeps that answer for the whole scan: begun
+  before Material Symbols arrived, it failed label-content-name-mismatch on every icon button at once under load. Start
+  every scan through `axeAtRest(page)` (`web/e2e/axe.ts`), never `new AxeBuilder` in a spec (2026-10-19).

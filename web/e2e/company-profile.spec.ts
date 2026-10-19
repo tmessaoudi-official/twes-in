@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
 import { proveIfAsked, sendProving } from './step-up';
 import { toast } from './toast';
+import { axeAtRest } from './axe';
 
 // G3b through the real stack: the seeded Tunisian company's owner fills its profile, which asks for the matricule
 // fiscal its preset requires, and the profile survives a reload. One database is shared by the whole suite, so a
@@ -69,7 +69,9 @@ test("the owner fills the company's profile with the identifier its preset requi
     const legalName = page.getByTestId('field-legalName');
     await expect(legalName).toBeVisible();
 
-    const axe = await new AxeBuilder({ page })
+    const axe = await (
+      await axeAtRest(page)
+    )
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
     expect(axe.violations.map((violation) => violation.id)).toEqual([]);

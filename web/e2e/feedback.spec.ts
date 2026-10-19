@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { signIn } from './session';
+import { axeAtRest } from './axe';
 
 // docs/SPEC.md § 8 row 48: the application is never silent about what it waits for.
 
@@ -39,7 +39,7 @@ test('a slow request shows the bar and says it is taking long, then everything c
   await expect(page.getByTestId('activity-slow')).toBeVisible({ timeout: 12_000 });
   await expect(page.getByTestId('activity-slow')).toHaveAttribute('role', 'status');
   // What the bar shows sits in a landmark like the rest of the page (CI met the bar outside one, 2026-09-17).
-  const outside = await new AxeBuilder({ page }).withRules(['region']).analyze();
+  const outside = await (await axeAtRest(page)).withRules(['region']).analyze();
   expect(
     outside.violations.flatMap((violation) => violation.nodes.map((node) => node.target.join(' '))),
   ).toEqual([]);

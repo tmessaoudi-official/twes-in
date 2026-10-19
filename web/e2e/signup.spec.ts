@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { Browser, expect, Page, test } from '@playwright/test';
 import { mailTo, signupTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
 import { proveIfHeldBack } from './step-up';
+import { axeAtRest } from './axe';
 
 // G1d through the real bundle, nginx, FrankenPHP, PostgreSQL and Mailpit: an operator opens signup, somebody signs up
 // from the login page, their company waits, the operator approves it, and the owner gets in. The operator closes
@@ -37,7 +37,9 @@ async function setSwitch(page: Page, testId: string, on: boolean): Promise<void>
 
 /** Each new screen meets the design system's bar: axe's WCAG 2.1 A and AA rules. */
 async function expectAccessible(page: Page, screen: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
+  const results = await (
+    await axeAtRest(page)
+  )
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
   const violations = results.violations.map(
