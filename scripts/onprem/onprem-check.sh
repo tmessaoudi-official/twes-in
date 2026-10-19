@@ -5,7 +5,8 @@
 # GHCR:
 #   install      twes update on a machine where nothing runs deploys the one release out (A) by digest
 #   two doors    https://localhost and https://<this machine's address> answer, trusting the edge's own authority,
-#                whose root certificate plain HTTP serves for a phone, and plain HTTP sends the rest on to HTTPS
+#                whose root certificate plain HTTP serves for a phone, and plain HTTP sends the rest on to HTTPS,
+#                the authority's private keys beside it included, however their path is written
 #   signing in   the operator app:seed --without-company makes signs in at https://localhost
 #   rollback     a second release (B), with one migration more and an api that fails its deep health: twes update
 #                backs up first, deploys B, reads it unhealthy and starts A again on B's schema, where A answers; B is
@@ -133,7 +134,14 @@ for door in localhost "$lan"; do
 done
 redirect=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "http://$lan/invoices?x=1")
 [[ "$redirect" == "308 https://$lan/invoices?x=1" ]] || fail "plain HTTP answered [$redirect], wanted 308 to https://$lan/invoices?x=1"
-step "both doors answer: https://localhost and https://$lan"
+# The authority's private keys sit beside the root certificate plain HTTP serves to the shop's network: with one, anyone
+# there could stand in for the installation before every phone that trusts it. Each way of naming them is sent on.
+dc exec -T edge test -s /data/caddy/pki/authorities/local/root.key || fail "the edge's authority keeps no root.key where it was looked for"
+for path in /root.key /intermediate.key /ROOT.KEY /root.crt/../root.key /root.crt%2F..%2Froot.key /%2e/root.key //root.key; do
+  answer=$(curl -sS --path-as-is -o "$WORK/probe" -w '%{http_code}' "http://$lan$path")
+  [[ "$answer" == 308 ]] && ! grep -q 'PRIVATE KEY' "$WORK/probe" || fail "plain HTTP answered $path with $answer, wanted the redirect and no key"
+done
+step "both doors answer: https://localhost and https://$lan; no key of the authority on plain HTTP"
 
 password=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
 printf '%s\n' "$password" | dc exec -T api bin/console app:seed --no-interaction --operator-email="$OPERATOR" --operator-password-stdin --without-company >/dev/null \
