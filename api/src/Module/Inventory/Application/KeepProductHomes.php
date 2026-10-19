@@ -131,7 +131,7 @@ final readonly class KeepProductHomes
             static fn (Uuid $id): bool => !$id->equals($locationId),
         ));
 
-        foreach ($this->replace($company, $productId, $establishmentId, [$locationId, ...$others], $actorUserId) as $home) {
+        foreach ($this->write($company, $productId, $establishmentId, [$locationId, ...$others], $actorUserId, null)[0] as $home) {
             if ($home->getLocation()->getId()->equals($locationId)) {
                 return $home;
             }
@@ -146,13 +146,30 @@ final readonly class KeepProductHomes
      *
      * @param list<Uuid> $locationIds
      *
-     * @return list<ProductHomeLocation> the homes now, in order
+     * @return int the product's version the write left, which the screen's next write sends without reading it again
      *
      * @throws ProductNotInCompany
      * @throws InvalidStockLocation
      * @throws RecordChanged
      */
-    public function replace(Company $company, Uuid $productId, Uuid $establishmentId, array $locationIds, ?Uuid $actorUserId, ?int $version = null): array
+    public function replace(Company $company, Uuid $productId, Uuid $establishmentId, array $locationIds, ?Uuid $actorUserId, ?int $version = null): int
+    {
+        [, $product] = $this->write($company, $productId, $establishmentId, $locationIds, $actorUserId, $version);
+
+        // Read once the transaction is stored: the version moves as the change is written.
+        return $product->getVersion();
+    }
+
+    /**
+     * @param list<Uuid> $locationIds
+     *
+     * @return array{list<ProductHomeLocation>, Product} the homes now, in order, and the product they belong to
+     *
+     * @throws ProductNotInCompany
+     * @throws InvalidStockLocation
+     * @throws RecordChanged
+     */
+    private function write(Company $company, Uuid $productId, Uuid $establishmentId, array $locationIds, ?Uuid $actorUserId, ?int $version): array
     {
         return $this->transactions->run(function () use ($company, $productId, $establishmentId, $locationIds, $actorUserId, $version): array {
             $product = $this->held->held($company, $productId, $version) ?? throw new ProductNotInCompany();
@@ -205,7 +222,7 @@ final readonly class KeepProductHomes
                 $this->record($company, $product, $establishmentId, [] === $homes ? self::CLEARED : self::SET, $actorUserId);
             }
 
-            return $homes;
+            return [$homes, $product];
         });
     }
 

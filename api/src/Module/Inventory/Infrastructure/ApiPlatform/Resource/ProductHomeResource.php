@@ -57,7 +57,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             processor: ReplaceProductHomesProcessor::class,
             security: 'is_granted("ROLE_USER")',
             read: false,
-            output: false,
+            normalizationContext: ['groups' => [self::WRITTEN], 'skip_null_values' => false],
             denormalizationContext: ['groups' => [self::ORDER, RecordVersion::REVISE]],
             validationContext: ['groups' => [self::ORDER, RecordVersion::REVISE]],
         ),
@@ -74,6 +74,7 @@ final class ProductHomeResource
     public const string READ = 'product_home:read';
     public const string WRITE = 'product_home:write';
     public const string ORDER = 'product_home:order';
+    public const string WRITTEN = 'product_home:written';
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
@@ -132,6 +133,14 @@ final class ProductHomeResource
     #[Assert\Positive(groups: [RecordVersion::REVISE])]
     #[Groups([RecordVersion::REVISE])]
     public ?int $version = null;
+
+    /**
+     * The product's version the list written left (the answer to the PUT on the establishment): the page's next write
+     * sends it at once, rather than the one it read before, which another click a moment later would send again.
+     */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::WRITTEN])]
+    public ?int $productVersion = null;
 
     public static function of(ProductHomeLocation $home): self
     {

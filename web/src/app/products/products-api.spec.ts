@@ -162,8 +162,8 @@ describe('ProductsApi', () => {
     const put = http.expectOne('/api/companies/c1/products/p%201/home-locations/e%2F1');
     expect(put.request.method).toBe('PUT');
     expect(put.request.body).toEqual({ locationIds: ['l2', 'l1'], version: 5 });
-    put.flush(null, { status: 204, statusText: 'No Content' });
-    await expect(written).resolves.toBeUndefined();
+    put.flush({ productVersion: 6 });
+    await expect(written).resolves.toBe(6);
 
     const refused = api.replaceHomes('c1', 'p1', 'e1', ['elsewhere'], 5);
     http
@@ -212,14 +212,24 @@ describe('ProductsApi', () => {
       establishmentCode: 'SFAX',
       establishmentName: 'Sfax',
       quantity: '2.500',
+      productVersion: 4,
     });
-    expect((await set).quantity).toBe('2.500');
+    expect(await set).toBe(4);
 
-    const cleared = api.clearReorderPoint('c1', 'p1', 'e2');
-    const del = http.expectOne('/api/companies/c1/products/p1/reorder-points/e2');
-    expect(del.request.method).toBe('DELETE');
-    del.flush(null);
-    await cleared;
+    const cleared = api.setReorderPoint('c1', 'p1', 'e2', null, 4);
+    const clear = http.expectOne('/api/companies/c1/products/p1/reorder-points/e2');
+    expect([clear.request.method, clear.request.body]).toEqual([
+      'PUT',
+      { quantity: null, version: 4 },
+    ]);
+    clear.flush({
+      establishmentId: 'e2',
+      establishmentCode: 'SFAX',
+      establishmentName: 'Sfax',
+      quantity: null,
+      productVersion: 5,
+    });
+    expect(await cleared).toBe(5);
   });
 
   it('says a reorder point read before the product was saved elsewhere is refused as such', async () => {

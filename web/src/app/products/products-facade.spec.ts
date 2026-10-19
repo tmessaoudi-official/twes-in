@@ -171,6 +171,18 @@ describe('ProductsFacade', () => {
     expect(facade.product()).toEqual({ ...laptop, barcodes: codes, version: laptop.version + 1 });
   });
 
+  it('takes the version a write beside the form left, never one older than it holds, and only for that product', async () => {
+    api.product.mockResolvedValue(laptop);
+    await facade.loadProduct('c1', 'p1');
+
+    facade.versionMoved('p1', laptop.version + 2);
+    expect(facade.product()).toEqual({ ...laptop, version: laptop.version + 2 });
+
+    facade.versionMoved('p1', laptop.version + 1);
+    facade.versionMoved('p2', laptop.version + 5);
+    expect(facade.product()).toEqual({ ...laptop, version: laptop.version + 2 });
+  });
+
   it("starts a new product in the unit the company's articles chain resolves", async () => {
     settingsApi.chain.mockResolvedValue([
       { key: 'article.stock_tracking', value: false } as SettingRow,

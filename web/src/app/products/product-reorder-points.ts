@@ -150,7 +150,13 @@ export class ProductReorderPointsSection implements OnInit {
   protected async clear(row: ProductReorderPointRow): Promise<void> {
     const companyId = this.companyId();
     if (companyId === null) return;
-    const outcome = await this.points.clear(companyId, this.productId(), row.establishmentId);
+    const outcome = await this.points.set(
+      companyId,
+      this.productId(),
+      row.establishmentId,
+      null,
+      this.version(),
+    );
     if (outcome === 'saved') {
       this.forget(row);
       this.feedback.success('products.reorder.cleared');
