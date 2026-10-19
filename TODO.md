@@ -137,6 +137,15 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
 
 ## Also waiting on you
 
+- [ ] Once installed, whichever route: copy these five values off the shop's computer, into your password manager and a
+  sealed copy offline. `twes install` printed them as it began, among much else. If the computer's disk dies, no backup
+  can be read without the two passphrases, and every authenticator enrolled is lost without the MFA key. Print them in
+  PowerShell, copy them, then close the window:
+
+  ```powershell
+  wsl -d Ubuntu --cd ~ -- grep -E '^(APP_MFA_KEY|BACKUP_DATABASE_PASSPHRASE|BACKUP_FILES_PASSPHRASE|APP_SECRET|POSTGRES_PASSWORD)=' .twes-in/install.env
+  ```
+
 - [ ] The client's Excel file, under `var/claude/client-excel/`, to map its columns into the importer (plan step 4).
 - [ ] On the shop's installation, signed in as the shop's owner, « Paramètres » (the gear), « Valeurs par défaut »,
   section « Produits »: tick « Suivre le stock », then « Enregistrer ». A new company keeps no stock until it is ticked:
