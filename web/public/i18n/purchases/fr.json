@@ -7,7 +7,7 @@
     "draft": "Brouillon",
     "draft_title": "Brouillon de commande",
     "saved": "Le brouillon a été enregistré.",
-    "sent": "La commande {{number}} est envoyée.",
+    "sent": "La commande {{number}} est marquée envoyée.",
     "received_part": "La réception est enregistrée ; le reste est toujours attendu.",
     "received_all": "La réception est enregistrée ; toute la commande est reçue.",
     "closed": "La commande est clôturée.",
@@ -85,9 +85,9 @@
       }
     },
     "actions": {
-      "save": "Enregistrer",
-      "send": "Envoyer la commande",
-      "send_title": "Envoyer la commande ?",
+      "save": "Enregistrer le brouillon",
+      "send": "Marquer envoyée",
+      "send_title": "Marquer la commande envoyée ?",
       "send_message": "Elle reçoit son numéro et ne se modifie plus. Tant que rien n’est reçu, elle peut encore être annulée.",
       "receive": "Réceptionner",
       "pdf": "Télécharger le PDF",

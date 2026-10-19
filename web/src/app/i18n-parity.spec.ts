@@ -88,6 +88,15 @@ const files: Record<string, unknown> = Object.fromEntries(
     ),
   ]),
 );
+/** What each document's action of that name says in the language, in one order: invoice, quote, delivery note, order. */
+function actionsSaid(lang: string): (action: string) => string[] {
+  const texts = files[lang] as Record<string, { actions?: Record<string, string> }>;
+  return (action) =>
+    ['invoices', 'quotes', 'delivery_notes', 'purchases'].map(
+      (document) => texts[document]?.actions?.[action] ?? `${document}: none`,
+    );
+}
+
 // The sign-in page's sample invoice wears the same badge as a real one, so it reads the same.
 const paidStatus = [
   fr.invoices.statuses.paid,
@@ -373,6 +382,33 @@ describe('translation files', () => {
     );
     expect(voided.map(([key]) => key)).toEqual([]);
     expect([quoteVoided.fr, quoteVoided.en]).toEqual(['Classé sans suite', 'Not pursued']);
+  });
+
+  // One action reads one way on every document, so a shop that learnt it on an invoice finds it on an order.
+  it('saves a draft and downloads and previews a document’s PDF in the same words on every document', () => {
+    for (const lang of ['fr', 'en', 'ar']) {
+      const said = actionsSaid(lang);
+      for (const action of ['save', 'pdf', 'pdf_draft']) {
+        expect(
+          new Set(said(action)),
+          `${lang} ${action}: ${said(action).join(' | ')}`,
+        ).toHaveProperty('size', 1);
+      }
+    }
+  });
+
+  // Nothing sends a document by mail yet: sending one is the shop's own gesture, which the screen only marks.
+  it('marks a quote or an order sent, never claims to send it, and confirms a cancellation by naming it', () => {
+    const marks = { fr: /^Marquer /, en: /^Mark /, ar: /^تعليم / };
+    const confirms = { fr: /^Confirmer/, en: /^Confirm/, ar: /^تأكيد/ };
+    for (const lang of ['fr', 'en', 'ar'] as const) {
+      const said = actionsSaid(lang);
+      expect(said('send').filter((text) => !text.endsWith(': none'))).toEqual([
+        expect.stringMatching(marks[lang]),
+        expect.stringMatching(marks[lang]),
+      ]);
+      expect(said('confirm_cancel').filter((text) => confirms[lang].test(text))).toEqual([]);
+    }
   });
 
   it('an invoice with nothing left due reads settled, not paid', () => {

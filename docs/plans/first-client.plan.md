@@ -302,6 +302,18 @@ was and was not certified by execution.
   product keeps no stock. The receipt's button read « Réceptionner # ligne », ICU's `#` being no part of `PluralCompiler`
   (the parity spec now refuses it); a saved order redrew its lines, losing the field typed into (NG0956). Left: a
   refusal at issue names the customer's record and the company profile as words, not links; a customer's tax number is
-  labelled optional while its hint says a business needs it.
+  labelled optional while its hint says a business needs it. Walked again on a new company with « Suivre le stock »
+  ticked in Paramètres: the product form starts at TVA 19 %, a receipt of 20 and a sale of 3 leave 17, and the invoice
+  prints TVA 19 % (7,125 on 37,500), the stamp duty and 45,625 TTC.
+- Audit round 2 (one canon): an order's unit price read « 7,8000 » beside a total of « 156,000 », where every other
+  screen and the printed order write a price at the currency's scale, finer only when the price itself is; the order now
+  answers its `currencyScale` and the page writes its prices and totals at it. Left as it is: the order's line editor
+  shows a price as typed (« 7,8 ») where the invoice's editor writes it at the scale (« 12,500 »), since a new order
+  knows no scale before it is saved. The same action read differently from one document to the next: the invoice's
+  « Aperçu PDF » (« Aperçu du PDF » elsewhere, « PDF preview » in English), the quote's Arabic « تحميل » for download
+  (« تنزيل » everywhere else, « تحميل » being loading), the order's « Enregistrer » for « Enregistrer le brouillon », its
+  « Envoyer la commande » although nothing sends it (now « Marquer envoyée », as the quote is « Marquer envoyé » for that
+  reason), and the delivery note's « Confirmer l’annulation » where every other confirmation names its action. The parity
+  spec now holds those actions alike on the four documents.
 - Step 1 on Windows: `install.ps1` is checked by PowerShell's parser and PSScriptAnalyzer and its `$verify` line runs in
   `twes.test.sh`; the rest is untried until the developer's test.

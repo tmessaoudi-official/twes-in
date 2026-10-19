@@ -56,7 +56,7 @@ test('an order is started from its vendor, sent, received in two parts, and its 
 
     await page.getByTestId('document-action-send').click();
     await page.getByTestId('confirm-run').click();
-    await expect(toast(page)).toContainText(/La commande .+ est envoyée\./);
+    await expect(toast(page)).toContainText(/La commande .+ est marquée envoyée\./);
     await expect(page.getByTestId('purchase-order-status')).toContainText('Envoyée');
     await expect(page.getByTestId('purchase-order-lines-read')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);
