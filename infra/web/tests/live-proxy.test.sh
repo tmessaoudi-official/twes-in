@@ -14,13 +14,26 @@ check() { if [[ "$2" == "$3" ]]; then pass=$((pass+1)); echo "  ok   $1"; else f
 echo "live development: the dev server proxies what nginx proxies"
 
 # nginx: each proxied location with the server it reaches, "path host:port"; `= ` and a trailing slash dropped. A
-# proxy_pass names an upstream, whose server line gives the host and port.
+# proxy_pass names an upstream, whose server line gives the host and port. A regex location counts as its literal start,
+# and a location under another's path reaching the same server is left out: the dev server matches by prefix, so the
+# outer route already sends it there.
 nginx_routes=$(awk '
   /^upstream / { block = $2 }
   block != "" && $1 == "server" { server[block] = $2 }
   block != "" && /^}/ { block = "" }
-  /^[[:space:]]*location / { path = $2 == "=" ? $3 : $2; sub(/\/$/, "", path) }
-  /proxy_pass/ && path != "" { up = $2; sub(/;$/, "", up); sub(/^http:\/\//, "", up); sub(/\/.*/, "", up); print path, (up in server ? server[up] : up); path = "" }
+  /^[[:space:]]*location / {
+    if ($2 == "~" || $2 == "~*") { path = $3; sub(/^\^/, "", path); sub(/[][(\\.*+?$|{].*/, "", path) }
+    else path = $2 == "=" ? $3 : $2
+    sub(/\/$/, "", path)
+  }
+  /proxy_pass/ && path != "" { up = $2; sub(/;$/, "", up); sub(/^http:\/\//, "", up); sub(/\/.*/, "", up); to[path] = (up in server ? server[up] : up); path = "" }
+  END {
+    for (p in to) {
+      covered = 0
+      for (q in to) if (q != p && index(p, q "/") == 1 && to[q] == to[p]) covered = 1
+      if (!covered) print p, to[p]
+    }
+  }
 ' "$conf" | sort)
 check "nginx.conf proxies at least the four known paths" "$(($(wc -l <<<"$nginx_routes") >= 4))" 1
 

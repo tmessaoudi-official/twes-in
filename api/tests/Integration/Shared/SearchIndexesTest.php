@@ -73,4 +73,24 @@ final class SearchIndexesTest extends KernelTestCase
 
         self::assertStringContainsString($index, $plan, $plan);
     }
+
+    /**
+     * An import asks, for each new product, whether another already holds its name: with the company's whole catalogue
+     * read for every row, a file of 2000 rows into a shop of 20,000 products reads the catalogue 2000 times. The index
+     * serves the lookup only while the query repeats its expression. On a test's empty table this index and one on the
+     * company cost the planner the same, so its choice proves nothing: the index and the query are compared instead.
+     */
+    public function testAProductsNameIsFoundThroughItsIndex(): void
+    {
+        self::bootKernel();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $sql = $em->createQueryBuilder()->select('p.id')->from(Product::class, 'p')
+            ->where('p.company = :company')->andWhere(DoctrineProductRepository::NAMED)
+            ->getQuery()->getSQL();
+        self::assertIsString($sql);
+
+        $definition = $em->getConnection()->fetchOne("SELECT indexdef FROM pg_indexes WHERE tablename = 'product' AND indexname = 'idx_product_name'");
+        self::assertSame('CREATE INDEX idx_product_name ON public.product USING btree (lower((name)::text))', $definition);
+        self::assertMatchesRegularExpression('/\b(\w+)\.company_id = \? AND LOWER\(\1\.name\) = LOWER\(\?\)/', $sql);
+    }
 }

@@ -39,6 +39,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Bridge\Doctrine\Middleware\Debug\DebugDataHolder;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -99,6 +100,60 @@ final class ProductImportTest extends ApiTestCase
         self::assertNull($work->getCategory());
         self::assertTrue($work->isActive());
         self::assertSame(2, $this->numberOf("SELECT COUNT(*) FROM audit_log WHERE action = 'product.created'"));
+    }
+
+    /**
+     * What no row of a file changes (who imports and what they may see, the company's units, categories and taxes) is
+     * read once for the file: read again for each row, a file of 2000 rows ran 54,000 queries and took
+     * most of the 30 seconds a request is given.
+     */
+    public function testAFileReadsWhatNoRowChangesOnceNotOncePerRow(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $rows = static fn (int $count): string => self::HEADER.implode('', array_map(
+            static fn (int $at): string => \sprintf("\nREF-%03d,Article %d,goods,H87,Visserie,\"1,000\",\"0,500\",,TVA19,oui,A%d", $at, $at, $at),
+            range(1, $count),
+        ))."\n";
+
+        $this->import($rows(2), dryRun: true);
+        self::assertResponseIsSuccessful();
+        $few = $this->tablesRead();
+        $this->import($rows(12), dryRun: true);
+        self::assertResponseIsSuccessful();
+        $many = $this->tablesRead();
+
+        // The custom fields are read once by the import; the product form's use case reads their rules again for each
+        // product it writes, its own rule and one query.
+        $once = ['membership', 'subscription', 'unit', 'product_category', 'tax_component'];
+        self::assertSame(
+            array_map(static fn (string $table): int => $few[$table] ?? 0, $once),
+            array_map(static fn (string $table): int => $many[$table] ?? 0, $once),
+            'ten rows more read these tables no more often',
+        );
+    }
+
+    /**
+     * The largest file allowed takes about 15 seconds on a developer's machine and may take a few times that on a shop's
+     * small computer, past PHP's 30: an import alone is given app.import.max_seconds, and the web server in front waits
+     * as long for its answer.
+     */
+    public function testAnImportIsGivenTheTimeTheLargestFileTakes(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $allowed = static::getContainer()->getParameter('app.import.max_seconds');
+
+        set_time_limit(30);
+        try {
+            $this->import($this->twoProducts(), dryRun: true);
+            $given = \ini_get('max_execution_time');
+        } finally {
+            set_time_limit(0);
+        }
+
+        self::assertResponseIsSuccessful();
+        self::assertSame((string) $allowed, $given);
+        $nginx = (string) file_get_contents(\dirname(__DIR__, 3).'/infra/web/nginx.conf');
+        self::assertMatchesRegularExpression('#location ~ \^/api/companies/\[\^/\]\+/imports/\[a-z-\]\+\$ \{\s+proxy_pass http://api;\s+proxy_read_timeout '.$allowed.'s;#', $nginx, 'nginx waits as long as the import is given');
     }
 
     /** Every flush walks every managed entity, so a written row must leave the unit of work (row 59, customers). */
@@ -1080,6 +1135,24 @@ Cheville 10 mm,6191234567897
     private function companyPath(): string
     {
         return '/api/companies/'.$this->company->getId()->toRfc4122();
+    }
+
+    /** @return array<string, int> how many times the last request read each table, from Doctrine's own record of it */
+    private function tablesRead(): array
+    {
+        $holder = $this->client->getContainer()->get('doctrine.debug_data_holder');
+        self::assertInstanceOf(DebugDataHolder::class, $holder);
+        $read = [];
+        foreach ($holder->getData() as $queries) {
+            foreach ($queries as $query) {
+                self::assertIsString($query['sql']);
+                if (1 === preg_match('/^\s*SELECT\b.*?\bFROM\s+(\w+)/is', $query['sql'], $from)) {
+                    $read[$from[1]] = ($read[$from[1]] ?? 0) + 1;
+                }
+            }
+        }
+
+        return $read;
     }
 
     private function products(): int

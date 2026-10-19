@@ -39,6 +39,8 @@ final readonly class DoctrineProductRepository implements ProductRepository
      * LIKE over the codes would read every row.
      */
     public const string MATCHES_WORDS = "SEARCH_TEXT(p.reference, p.name) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    /** A name whatever its case, found through idx_product_name, which is built on this very LOWER expression. */
+    public const string NAMED = 'LOWER(p.name) = LOWER(:name)';
     private const array SORTED_BY = ['reference' => 'p.reference', 'name' => 'p.name', 'kind' => 'p.kind', 'category' => 'c.name', 'isActive' => 'p.isActive'];
 
     public function __construct(private EntityManagerInterface $entityManager)
@@ -193,7 +195,7 @@ final readonly class DoctrineProductRepository implements ProductRepository
         $product = $this->entityManager->createQueryBuilder()
             ->select('p')->from(Product::class, 'p')
             ->where('p.company = :company')->setParameter('company', $companyId, 'uuid')
-            ->andWhere('LOWER(p.name) = LOWER(:name)')->setParameter('name', $name)
+            ->andWhere(self::NAMED)->setParameter('name', $name)
             ->orderBy('p.reference', 'ASC')
             ->setMaxResults(1)
             ->getQuery()
