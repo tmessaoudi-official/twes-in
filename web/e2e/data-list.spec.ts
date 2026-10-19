@@ -330,14 +330,12 @@ test('a list wider than its page keeps each header over its own column', async (
   await expect(headers.first()).toBeVisible();
   await expect(page.locator('th.twes-row-actions'), 'a list without row actions').toHaveCount(0);
   // The name cannot be hidden: widened from the keyboard past the card, it is what makes the table scroll.
-  // It widens from the width drawn, which its longest name sets and another scenario's customers may move until the
-  // first press makes the width a choice: the 29 presses after it add 464 px to what that press chose.
+  // It widens from the width drawn, which its longest name sets: 30 presses add 480 px to that.
   const resize = page.getByTestId('list-resize-name');
+  const drawn = Number(await resize.getAttribute('aria-valuenow'));
+  const widened = `${Math.min(960, drawn + 480)}px`;
   await resize.focus();
-  await resize.press('ArrowRight');
-  const chosen = Number(await resize.getAttribute('aria-valuenow'));
-  const widened = `${Math.min(960, chosen + 464)}px`;
-  for (let step = 0; step < 29; step++) await resize.press('ArrowRight');
+  for (let step = 0; step < 30; step++) await resize.press('ArrowRight');
   await expect(page.getByTestId('list-header-name')).toHaveCSS('width', widened);
   const boxes = await headers.evaluateAll((cells) =>
     cells.map((cell) => {
