@@ -16,7 +16,6 @@ use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Fiscal\Infrastructure\ApiPlatform\Resource\CustomerTaxRegimeResource;
 use App\Fiscal\Infrastructure\ApiPlatform\Security\FiscalPermission;
-use App\Identity\Domain\Repository\UserRepository;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -27,7 +26,6 @@ final readonly class CustomerTaxRegimeCollectionProvider implements ProviderInte
     public function __construct(
         private ListCustomerTaxRegimes $regimes,
         private CompanyGuard $guard,
-        private UserRepository $users,
         private TranslatorInterface $translator,
     ) {
     }
@@ -36,12 +34,11 @@ final readonly class CustomerTaxRegimeCollectionProvider implements ProviderInte
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): array
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), FiscalPermission::READ);
-        $locale = $this->users->ofId($this->guard->account()->getId())?->getLocale() ?? $company->getLocale();
 
-        return array_map(function (CustomerTaxRegime $regime) use ($locale): CustomerTaxRegimeResource {
+        return array_map(function (CustomerTaxRegime $regime): CustomerTaxRegimeResource {
             $resource = new CustomerTaxRegimeResource();
             $resource->code = $regime->getCode();
-            $resource->label = $this->translator->trans($regime->getLabelKey(), [], 'fiscal', $locale);
+            $resource->label = $this->translator->trans($regime->getLabelKey(), [], 'fiscal');
             $resource->excludedFamilies = array_map(static fn (TaxFamily $family) => $family->value, $regime->getExcludedFamilies());
             $resource->hasMention = null !== $regime->getMentionKey();
             $resource->sortOrder = $regime->getSortOrder();

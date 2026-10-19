@@ -18,7 +18,7 @@ use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
 use Symfony\Component\HttpFoundation\Response;
 
-/** The regimes a company's customers may be under: its preset's, read-only, labelled in the caller's language. */
+/** The regimes a company's customers may be under: its preset's, read-only, labelled in the language the screen asks for. */
 final class CustomerTaxRegimesTest extends ApiTestCase
 {
     private Company $company;
@@ -45,11 +45,11 @@ final class CustomerTaxRegimesTest extends ApiTestCase
         self::assertSame('Exonéré de TVA', $rows[1]['label']);
     }
 
-    public function testTheLabelsFollowTheCallersLanguage(): void
+    public function testTheLabelsFollowTheLanguageTheScreenAsksFor(): void
     {
-        $this->signedIn($this->company, 'en');
+        $this->signedIn($this->company, 'fr');
 
-        $this->getJson($this->path($this->company));
+        $this->client->request('GET', $this->path($this->company), [], [], ['HTTP_ACCEPT' => 'application/json', 'HTTP_ACCEPT_LANGUAGE' => 'en']);
 
         self::assertResponseIsSuccessful();
         self::assertSame('VAT exempt', $this->jsonList()[1]['label']);

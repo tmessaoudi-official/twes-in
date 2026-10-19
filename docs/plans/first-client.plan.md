@@ -175,6 +175,8 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-19 12:01] AGREED: release decision D8 (11:53): the invoice list's status column floor is lowered to its widest label, so the status stays beside longer customer names on a 1280 px laptop (developer).
 - [2026-10-19 12:01] AGREED: release decision D9 (11:53): an imported new product whose row names no tax is created without one, as built, each such row pointed out in the preview and the report (developer).
 - [2026-10-19 12:01] AGREED: release decision D10 (11:54): « Suivre le stock » stays off on a new company and is ticked by hand on each shop's installation (TODO.md) until the trade chosen at sign-up is built (developer).
+- [2026-10-19 12:14] ASSUMED (review): the words the API puts on a screen (a preset's identifier and regime labels: customer and vendor options, company profile, customer tax regimes, the import guide) follow the language the request names, Accept-Language through Symfony's set_locale_from_accept_language over enabled_locales, which the web sends from the document's lang on every /api/ call; no longer User.locale, which KeepAccountLanguage leaves on the last language chosen when a person goes back to the company's, so a French screen read Arabic labels after Arabic was once tried (the developer's report, 2026-10-19). User.locale stays the mails' language — because the screen's language is a per-request fact only the browser holds, and Symfony documents this path. Alternatives: resolve the presentation.language chain server-side per provider (a guess that holds only while web and chain agree); reset User.locale when the choice goes back to the company's (fixes one road in, not the class).
+- [2026-10-19 12:14] ASSUMED (review): known gap kept past the release: a language switched while a customer, vendor, company-profile, tax or import page is open leaves that page's API-worded labels (« Matricule fiscal », the regimes) in the old language until the page is next opened; every other text switches at once — because each of those pages fetches the labels when it opens and no page re-reads on a language change today. Alternatives: re-read the five label sets on every language change (a hook in five facades).
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -227,6 +229,7 @@ was and was not certified by execution.
   only once that review is done, before the release is tagged. The amount in words is written in Arabic (dinar and
   dollar), every form for that same review.
 ### Needs input
+- The mails' language once someone goes back to the company's language: the account keeps the last language chosen (`KeepAccountLanguage`), so a person who tried Arabic and returned to French still gets Arabic mail. The screens no longer read it (2026-10-19 12:14). Should going back to the company's language also move the account's mail language to it?
 - The product choices parked as kind D (D1–D7: the invoice list's six columns, copies of issued documents reprinting
   names, the « Nom — Français » field, names on screens, the euro in Arabic words, the tagline per language, an
   operator-created company's document language) wait on the marking page https://claude.ai/artifact/NJZfSiA12yTinre4nQxwwt,
