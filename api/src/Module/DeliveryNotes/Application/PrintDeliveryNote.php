@@ -12,6 +12,7 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
+use App\Fiscal\Application\TaxComponent\TaxNames;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
@@ -41,6 +42,7 @@ final readonly class PrintDeliveryNote
         private PdfRenderer $renderer,
         private Files $files,
         private ReadSetting $settings,
+        private TaxNames $taxNames,
         private Transactions $transactions,
     ) {
     }
@@ -120,6 +122,7 @@ final readonly class PrintDeliveryNote
             $printing->print->design,
             QuantityTotals::ofUnits(array_map(static fn (DeliveryNoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $note->getLines()), $printing->language),
             $printing->print->exemptionReference,
+            $this->taxNames->in($note->getCompany(), $printing->language),
         )));
     }
 

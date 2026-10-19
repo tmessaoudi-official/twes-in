@@ -3,6 +3,8 @@ format:
     date: 'd/m/Y'
     decimal_point: '.'
     thousands_separator: ','
+    # Between the items of a list on one line, a line's taxes.
+    list_separator: ', '
 company:
     phone: 'Phone'
     email: 'Email'

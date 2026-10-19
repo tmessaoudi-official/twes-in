@@ -86,6 +86,44 @@ final class TwigQuoteTemplateTest extends KernelTestCase
         self::assertMatchesRegularExpression('#data-testid="quantities">Quantités\x{00A0}: 3 pièce</p>#u', $html);
     }
 
+    /** A tax prints as the quote's language names it, with the rate the quote froze where the name does not say it. */
+    public function testATaxPrintsItsNameWithTheRateItFroze(): void
+    {
+        self::bootKernel();
+        $now = new \DateTimeImmutable('2026-10-07 09:00:00');
+        $units = new InMemoryUnits();
+        $taxes = new InMemoryTaxComponents();
+        $establishments = new InMemoryEstablishments();
+        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new MockClock($now))->handle($company);
+        $customer = Customer::create($company, 'CLI-0007', new CustomerProfile(CustomerKind::Company, 'Garage Martin'), null, new CustomerTaxRegime('FR', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
+        $unit = $units->ofCodeInCompany('C62', $company->getId());
+        $vat = $taxes->ofCodeInCompany('TVA20', $company->getId());
+        self::assertNotNull($unit);
+        self::assertNotNull($vat);
+        $quote = Quote::create($company, $establishments->ofCompany($company->getId())[0], $customer, new QuoteHeader(), [
+            new QuoteLineDetails(null, 'Réglage', '2', $unit, '150', null, [$vat]),
+        ], $now);
+        $totals = new QuoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
+        $html = static fn (?string $name): string => static::getContainer()->get(QuoteTemplate::class)->html(new QuotePage(
+            $quote,
+            $totals->of($quote),
+            CustomerSnapshot::of($customer),
+            SellerSnapshot::of($company, $quote->getEstablishment()),
+            QuotePage::DRAFT,
+            'fr',
+            '',
+            false,
+            taxNames: null === $name ? [] : ['TVA20' => $name],
+        ));
+
+        $named = $html('TVA 20 %');
+        self::assertStringContainsString('<td><bdi>TVA 20 %</bdi></td>', $named, 'the line');
+        self::assertStringContainsString('<td><bdi>TVA 20 %</bdi> <span class="muted">', $named, 'the summary');
+        self::assertStringContainsString("<td><bdi>TVA normale (20\u{a0}%)</bdi></td>", $html('TVA normale'));
+        self::assertStringContainsString("<td><bdi>TVA20 (20\u{a0}%)</bdi></td>", $html(null), 'a code where no name is known');
+    }
+
     /** The customer's exemption is stated with the article the company gives, and not at all while it gives none. */
     public function testTheCustomersExemptionMentionPrintsWithItsReference(): void
     {
