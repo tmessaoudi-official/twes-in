@@ -11,6 +11,7 @@ namespace App\Tests\Integration\Invoices;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Fiscal\Application\TaxComponent\TaxNames;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Domain\Model\Customer;
@@ -130,6 +131,65 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         self::assertDoesNotMatchRegularExpression('/%[a-z_]+%/', $arabic);
         self::assertStringContainsString('<td>Unité</td>', $french);
         self::assertStringContainsString('<td>وحدة</td>', $arabic, 'a unit prints its name in the document\'s language');
+    }
+
+    /**
+     * A rated tax prints its name in the document's language with the rate the document froze, which its name may already
+     * say; a name saying another rate (a tax renamed since) never hides the rate charged.
+     */
+    public function testARatedTaxPrintsItsNameInTheDocumentsLanguageWithTheRateItFroze(): void
+    {
+        self::bootKernel();
+        $space = "\u{a0}";
+
+        $named = $this->html(new DocumentDesign(), [], [], language: 'ar', taxNames: ['TVA20' => 'أ.ق.م 20 %']);
+        self::assertStringContainsString('<td><bdi>أ.ق.م 20 %</bdi></td>', $named, 'the line names its tax');
+        self::assertStringContainsString('<td><bdi>أ.ق.م 20 %</bdi> <span class="muted">', $named, 'the summary row names its tax');
+        self::assertStringNotContainsString('TVA20', $named);
+
+        $renamed = $this->html(new DocumentDesign(), [], [], taxNames: ['TVA20' => 'TVA 13 %']);
+        self::assertStringContainsString("<bdi>TVA 13 % (20{$space}%)</bdi>", $renamed);
+
+        $unnamed = $this->html(new DocumentDesign(), [], []);
+        self::assertStringContainsString("<bdi>TVA20 (20{$space}%)</bdi>", $unnamed, 'a code where no name is known');
+    }
+
+    /**
+     * A line's taxes are each named in the document's language, set apart as the language lists them, and the
+     * withholding is named with the rate it froze; with no name known, the withholding still says what it is.
+     */
+    public function testALinesTaxesAndTheWithholdingPrintTheirNamesInTheDocumentsLanguage(): void
+    {
+        self::bootKernel();
+        $space = "\u{a0}";
+        $now = new \DateTimeImmutable('2026-10-19 09:00:00');
+        $units = new InMemoryUnits();
+        $taxes = new InMemoryTaxComponents();
+        $establishments = new InMemoryEstablishments();
+        $company = new Company('Quincaillerie Ben Salah', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new \Symfony\Component\Clock\MockClock($now))->handle($company);
+        $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Société Mansour'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
+        $unit = $units->ofCodeInCompany('C62', $company->getId());
+        $levy = $taxes->ofCodeInCompany('FODEC', $company->getId());
+        $vat = $taxes->ofCodeInCompany('TVA19', $company->getId());
+        $withholding = $taxes->ofCodeInCompany('RS1', $company->getId());
+        self::assertNotNull($unit);
+        self::assertNotNull($levy);
+        self::assertNotNull($vat);
+        self::assertNotNull($withholding);
+        $invoice = Invoice::create($company, $establishments->ofCompany($company->getId())[0], $customer, new InvoiceHeader(), [new InvoiceLineDetails(null, 'Perceuse', '1', $unit, '2000', null, [$levy, $vat])], [$withholding], $now);
+        $figures = $this->totals->figures($invoice);
+        self::assertNotSame([], $figures->withholdings, 'the invoice withholds something');
+        $template = static::getContainer()->get(InvoiceTemplate::class);
+        $page = static fn (string $language, bool $named): string => $template->html(new InvoicePage($invoice, $figures, CustomerSnapshot::of($customer), SellerSnapshot::of($company, $invoice->getEstablishment()), InvoicePage::DRAFT, $language, '', [], null, null, taxNames: $named ? new TaxNames($taxes)->in($company, $language) : []));
+
+        $arabic = $page('ar', true);
+        self::assertStringContainsString('<td><bdi>FODEC 1 %</bdi>، <bdi>أ.ق.م 19 %</bdi></td>', $arabic, 'the line, listed as Arabic lists');
+        self::assertStringContainsString('<td><bdi>الخصم من المورد 1 %</bdi> <span class="muted">', $arabic, 'the withholding');
+
+        $french = $page('fr', false);
+        self::assertStringContainsString("<td><bdi>FODEC (1{$space}%)</bdi>, <bdi>TVA19 (19{$space}%)</bdi></td>", $french);
+        self::assertStringContainsString("<td>Retenue à la source <bdi>RS1 (1{$space}%)</bdi> <span class=\"muted\">", $french, 'a withholding with no name known');
     }
 
     public function testAStampPrintsItsNameInTheDocumentsLanguageAndItsCodeWhenItHasNone(): void
@@ -295,8 +355,9 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
      * @param array<string, array<string, string>> $parameters
      * @param list<QuantityTotal>                  $quantities
      * @param InvoicePage::DRAFT|null              $watermark
+     * @param array<string, string>                $taxNames
      */
-    private function html(DocumentDesign $design, array $keys, array $parameters, ?string $savings = null, array $quantities = [], ?string $watermark = InvoicePage::DRAFT, string $language = 'fr'): string
+    private function html(DocumentDesign $design, array $keys, array $parameters, ?string $savings = null, array $quantities = [], ?string $watermark = InvoicePage::DRAFT, string $language = 'fr', array $taxNames = []): string
     {
         $template = static::getContainer()->get(InvoiceTemplate::class);
         $company = $this->invoice->getCompany();
@@ -316,6 +377,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
             design: $design,
             savings: $savings,
             quantities: $quantities,
+            taxNames: $taxNames,
         ));
     }
 }

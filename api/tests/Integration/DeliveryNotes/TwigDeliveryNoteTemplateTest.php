@@ -162,10 +162,27 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
     }
 
     /**
+     * A tax prints as the note's language names it, with the rate the note froze where the name does not say it: on
+     * its line and in the summary.
+     */
+    public function testATaxPrintsItsNameInTheNotesLanguageWithTheRateItFroze(): void
+    {
+        $space = "\u{a0}";
+        $named = $this->html(null, true, 'ar', '', taxNames: ['FODEC' => 'فوداك 1 %']);
+        self::assertStringContainsString('<td><bdi>فوداك 1 %</bdi></td>', $named, 'the line');
+        self::assertStringContainsString('<td><bdi>فوداك 1 %</bdi> <span class="muted">', $named, 'the summary');
+
+        $renamed = $this->html(null, true, 'fr', '', taxNames: ['FODEC' => 'Fodec']);
+        self::assertStringContainsString("<td><bdi>Fodec (1{$space}%)</bdi></td>", $renamed);
+        self::assertStringContainsString("<bdi>FODEC (1{$space}%)</bdi>", $this->html(null, true, 'fr', ''), 'a code where no name is known');
+    }
+
+    /**
      * @param DeliveryNotePage::DRAFT|DeliveryNotePage::CANCELLED|null $watermark
      * @param list<QuantityTotal>                                      $quantities
+     * @param array<string, string>                                    $taxNames
      */
-    private function html(?string $watermark, bool $showPrices, string $language, string $printedNotes, bool $receptionBlock = true, string $dateFormat = 'auto', string $numberFormat = 'auto', array $quantities = [], ?CustomerSnapshot $customer = null, ?string $exemptionReference = null): string
+    private function html(?string $watermark, bool $showPrices, string $language, string $printedNotes, bool $receptionBlock = true, string $dateFormat = 'auto', string $numberFormat = 'auto', array $quantities = [], ?CustomerSnapshot $customer = null, ?string $exemptionReference = null, array $taxNames = []): string
     {
         self::bootKernel();
         $template = static::getContainer()->get(DeliveryNoteTemplate::class);
@@ -175,6 +192,6 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         $seller = $this->note->getSellerSnapshot();
         self::assertInstanceOf(SellerSnapshot::class, $seller);
 
-        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $customer ?? $snapshot, $seller, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat, quantities: $quantities, exemptionReference: $exemptionReference));
+        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $customer ?? $snapshot, $seller, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat, quantities: $quantities, exemptionReference: $exemptionReference, taxNames: $taxNames));
     }
 }

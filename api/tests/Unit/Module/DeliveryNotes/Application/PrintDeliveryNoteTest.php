@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Module\DeliveryNotes\Application;
 
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\TaxComponent\TaxNames;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Domain\Model\Customer;
@@ -74,7 +75,7 @@ final class PrintDeliveryNoteTest extends TestCase
         $this->clock = new MockClock('2026-09-15 09:00:00');
         $this->units = new InMemoryUnits();
         $this->establishments = new InMemoryEstablishments();
-        new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock)
+        new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes = new InMemoryTaxComponents(), $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock)
             ->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
         $this->notes = new InMemoryDeliveryNotes();
         $this->storage = new InMemoryFileStorage();
@@ -92,6 +93,7 @@ final class PrintDeliveryNoteTest extends TestCase
             $this->renderer,
             new Files($this->storage, $this->records, $this->clock),
             new ReadSetting($resolve),
+            new TaxNames($taxes),
             new FakeTransactions(),
         );
         $now = $this->clock->now();
@@ -183,13 +185,14 @@ final class PrintDeliveryNoteTest extends TestCase
         self::assertFalse($this->template->pages[1]->receptionBlock);
     }
 
-    public function testItsUnitsAreNamedInItsLanguage(): void
+    public function testItsUnitsAndTaxesAreNamedInItsLanguage(): void
     {
         $this->change->change(new SettingContext($this->company, customerId: $this->customer->getId()), 'document.language', SettingLevel::Customer, 'ar', null);
 
         $this->print->pdf($this->company, $this->draft(lineCount: 2)->getId());
 
         self::assertSame(['وحدة'], array_map(static fn (QuantityTotal $each): string => $each->unitName, $this->template->pages[0]->quantities));
+        self::assertSame('معلوم الطابع الجبائي', $this->template->pages[0]->taxNames['TIMBRE'] ?? null);
     }
 
     /** The article an exemption mention names comes from the customer's chain, as an invoice's does; blank names none. */

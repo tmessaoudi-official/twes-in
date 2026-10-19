@@ -157,6 +157,7 @@ The first installation: a hardware shop (quincaillerie), on its own computer, fr
 - [2026-10-19 02:09] ASSUMED (review): Rated taxes (a document's VAT rows, a line's tax code) still print their code in the first #61 commit: their preset names carry a rate (« TVA 19 % ») a renamed tax might not have, while a fixed charge prints its name and a withholding its name alone. The second commit takes the rate out of the preset names and composes « name rate % » from the rate frozen on the document. Alternatives: print the names with their rate now.
 - [2026-10-19 02:09] ASSUMED (review): D parked: a duplicate or an up-to-date copy of an issued document prints the unit's and tax's names as they are now, not as at issue (the unit's name was already read live before #61). Pick: snapshot the printed labels on the document at issue, so a copy reprints exactly; until ruled, live. Alternatives: keep live names; snapshot only on invoices.
 - [2026-10-19 02:34] ASSUMED (review): Arabic amount in words (ruled in scope 2026-10-18 21:20): written in the nominative after « قدره: », the counted noun following the number's last part (one: « دينار واحد »; two: the dual; 3–10: the plural; 11–99: the accusative singular; a round hundred, thousand or million: the singular, the number losing its nunation, « مائتا دينار », « أحد عشر ألف دينار »); one or two after a hundred said with the noun again, « مائة دينار ودينار », as classical grammar has it; « مائة » spelled with its alif as Tunisian documents write it; TND and USD only, the euro left wordless (« يورو » does not decline and nothing settles how an invoice counts it). Every form is for the developer's review before the pilot, as all Arabic is. Alternatives: ICU's Arabic spellout (no counted noun, a spaced « و »); « مئة »; « مائة وواحد دينارا ».
+- [2026-10-19 02:59] ASSUMED (review): A printed tax (each tax on a line, each tax in the summary, the withholding) is its name in the document's language with the rate the document froze, as the expense screens already write it: a name that already says that rate (« TVA 19 % », as the presets name them) prints as it is, any other gains it, « TVA (19 %) » with a no-break space before the sign, so a renamed tax or a rate changed since still shows what this document charged; a line's taxes are listed with the language's separator (« ، » in Arabic). Basis: the 2026-10-18 21:20 ruling (a document prints the name of its language) and the frozen rates every document keeps; no preset or data changes. Alternatives: strip the rates from the preset names (changes data the companies already copied), print the name alone (hides what a renamed tax charged). It replaces the second commit planned at 02:09.
 
 ## Formal Plan
 Deadline: Wednesday 2026-10-21 10:00 Tunisia time (09:00 UTC, 11:00 Paris). Whatever is not 100% then is switched off
@@ -206,8 +207,13 @@ was and was not certified by execution.
 - Step 7 waits on the developer, a native speaker: the Arabic wording, read in the running app (« Mon compte » or the
   account menu, « العربية ») and in the source (`web/public/i18n/**/ar.json`, `api/translations/*.ar.yaml`, the presets'
   `ar` names), against `docs/i18n/ar-glossary.md`, whose `[Unverified]` terms come first. Arabic is offered to the shop
-  only once that review is done, before the release is tagged. The amount in words prints nothing in Arabic yet.
+  only once that review is done, before the release is tagged. The amount in words is written in Arabic (dinar and
+  dollar), every form for that same review.
 ### Needs input
+- The product choices parked as kind D (D1–D7: the invoice list's six columns, copies of issued documents reprinting
+  names, the « Nom — Français » field, names on screens, the euro in Arabic words, the tagline per language, an
+  operator-created company's document language) wait on the marking page https://claude.ai/artifact/NJZfSiA12yTinre4nQxwwt,
+  option A the pick on each; an absent mark is undecided.
 - Their Excel file, to map its columns into the importer (expected tonight or tomorrow). When it arrives, check first which row holds the headings and how many sheets it has: the importer reads the first sheet, headings on its first row.
 - Which six columns an invoice list shows on the widest page (D, parked 2026-10-19): seven need 1128 px of the 1086 the
   page gives, so one waits in the chooser. Shown now: number, customer, issue date, left to pay, status; the total on

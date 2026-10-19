@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Quotes\Application;
 
+use App\Fiscal\Application\TaxComponent\TaxNames;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\Quotes\Domain\Model\Quote;
@@ -35,6 +36,7 @@ final readonly class PrintQuote
         private QuoteTemplate $template,
         private PdfRenderer $renderer,
         private ReadSetting $settings,
+        private TaxNames $taxNames,
     ) {
     }
 
@@ -68,6 +70,7 @@ final readonly class PrintQuote
             $printing->print->savingsPrinted($totals->savings()),
             QuantityTotals::ofUnits(array_map(static fn (QuoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $quote->getLines()), $printing->language),
             $printing->print->exemptionReference,
+            $this->taxNames->in($quote->getCompany(), $printing->language),
         ))));
     }
 

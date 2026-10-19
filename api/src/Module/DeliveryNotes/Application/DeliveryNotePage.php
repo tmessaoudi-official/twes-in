@@ -31,6 +31,7 @@ final readonly class DeliveryNotePage
      * @param self::DRAFT|self::CANCELLED|null $watermark
      * @param string                           $language   a language the catalogue prints documents in
      * @param list<QuantityTotal>              $quantities what the lines come to in each unit, empty for a single line
+     * @param array<string, string>            $taxNames   each of the company's taxes named in the document's language, by code
      */
     public function __construct(
         public DeliveryNote $note,
@@ -51,6 +52,7 @@ final readonly class DeliveryNotePage
         public array $quantities = [],
         /** What fills the customer's exemption mention, `%reference%`; null leaves a mention that needs it unprinted. */
         public ?string $exemptionReference = null,
+        public array $taxNames = [],
     ) {
     }
 }

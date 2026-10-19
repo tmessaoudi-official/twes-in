@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Module\DeliveryNotes\Infrastructure;
 
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\TaxComponent\TaxNames;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
@@ -67,6 +68,7 @@ final class StoreIssuedDeliveryNotePdfTest extends TestCase
             $renderer,
             new Files(new InMemoryFileStorage(), $records, $clock),
             new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new DeliveryNoteSettings(), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), new InMemorySettings())),
+            new TaxNames(new InMemoryTaxComponents()),
             new FakeTransactions(),
         );
         $logger = new class extends AbstractLogger {

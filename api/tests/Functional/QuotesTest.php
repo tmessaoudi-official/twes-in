@@ -435,12 +435,15 @@ final class QuotesTest extends ApiTestCase
         $this->getJson($this->path($id).'/attachments/'.$attachment.'/content');
         self::assertResponseIsSuccessful();
 
+        // Its tax renamed since: the quote prints the company's name for it in the quote's language, with the rate it froze.
+        $this->em()->getConnection()->executeStatement("UPDATE tax_component SET name = 'Autre nom', names = CAST(? AS jsonb) WHERE id IN (SELECT t.tax_component_id FROM quote_line_tax t JOIN quote_line l ON l.id = t.line_id WHERE l.quote_id = ?)", ['{"fr": "Taxe du devis"}', $id]);
         $this->client->request('GET', $this->path($id).'/pdf');
         self::assertResponseIsSuccessful();
         self::assertResponseHeaderSame('Content-Type', 'application/pdf');
         $html = (string) end(static::getContainer()->get(FakePdfRenderer::class)->rendered);
         self::assertStringContainsString('Bon pour accord', $html);
         self::assertStringContainsString('jusqu’au', $html);
+        self::assertMatchesRegularExpression('#<bdi>Taxe du devis \(\d+(,\d+)?\x{a0}%\)</bdi>#u', $html);
 
         $this->sendJson('DELETE', $this->path($id).'/attachments/'.$attachment);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'a file attached by mistake comes off');
