@@ -15,6 +15,9 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -25,6 +28,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class CustomerSettingsTest extends ApiTestCase
 {
     private const string TERMS = 'document.payment_terms_days';
+    private const string LANGUAGE = 'document.language';
 
     private Company $company;
     private CustomerGroup $group;
@@ -121,6 +125,48 @@ final class CustomerSettingsTest extends ApiTestCase
         $this->sendJson('PUT', $this->path(self::TERMS), ['level' => 'customer', 'value' => 10]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('customerId', (string) $this->client->getResponse()->getContent());
+    }
+
+    public function testTheValuesInUseAreTheCompanysAndThoseItsOwnPartiesHold(): void
+    {
+        $globex = $this->createCompany('Globex');
+        $theirs = $this->customerOf($globex, null);
+        $this->em()->flush();
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($globex, customerId: $theirs->getId()), self::LANGUAGE, SettingLevel::Customer, 'en', null);
+        $this->signedIn(['company.read', 'customer.read', 'customer.write']);
+        $this->sendJson('PUT', $this->path(self::LANGUAGE), ['level' => 'customer_group', 'customerGroupId' => $this->groupId(), 'value' => 'ar']);
+        self::assertResponseIsSuccessful();
+
+        $this->getJson($this->path(self::LANGUAGE).'/in-use');
+
+        self::assertResponseIsSuccessful();
+        // Another company's customer writing in English is not this company's to know.
+        self::assertSame(['key' => self::LANGUAGE, 'company' => 'fr', 'parties' => ['ar']], $this->json());
+    }
+
+    public function testWithoutCustomerReadThePartiesValuesAreNotTold(): void
+    {
+        // Made before any request: the test client reboots the kernel between requests, which detaches the company.
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['company.read'], 'reader');
+        $this->signedIn(['company.read', 'customer.read', 'customer.write']);
+        $this->sendJson('PUT', $this->path(self::LANGUAGE), ['level' => 'customer', 'customerId' => $this->customerId(), 'value' => 'ar']);
+        self::assertResponseIsSuccessful();
+        $this->login('reader@twes.local', 'password-1234');
+
+        $this->getJson($this->path(self::LANGUAGE).'/in-use');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['key' => self::LANGUAGE, 'company' => 'fr', 'parties' => null], $this->json());
+    }
+
+    public function testOnlyAPartiesSettingTellsTheValuesInUse(): void
+    {
+        $this->signedIn(['company.read', 'customer.read']);
+
+        $this->getJson($this->path('presentation.scheme').'/in-use');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson($this->path('no.such.setting').'/in-use');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
     public function testDeletingAGroupForgetsItsSettings(): void

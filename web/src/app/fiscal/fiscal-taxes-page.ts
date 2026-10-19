@@ -32,6 +32,8 @@ import {
 } from './fiscal-forms';
 import type { CustomerTaxRegimeRow, TaxComponentRow } from './fiscal-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { NameLanguageAdd } from './name-language-add';
+import { NameLanguages } from './name-languages';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 
 /** A company's taxes, which it copied from its fiscal preset and now edits, and the regimes its customers may be under. */
@@ -45,6 +47,7 @@ import { AmountPipe } from '../shared/i18n/format-pipes';
     DataList,
     DataListCell,
     DescriptorForm,
+    NameLanguageAdd,
     RecordChanged,
   ],
   templateUrl: './fiscal-taxes-page.html',
@@ -82,6 +85,8 @@ export class FiscalTaxesPage implements OnInit {
   protected readonly regimeTestId = (row: CustomerTaxRegimeRow): string => `regime-${row.code}`;
 
   /** The tax being revised, "new" while one is being added, null when no form is open. */
+  /** Which languages the names section shows: the company's own, its customers', and those a record names. */
+  protected readonly nameLanguages = new NameLanguages();
   protected readonly editing = signal<TaxComponentRow | 'new' | null>(null);
   protected readonly descriptor = computed(() => {
     const editing = this.editing();
@@ -116,7 +121,7 @@ export class FiscalTaxesPage implements OnInit {
         () => this.fiscal.loadTaxes(companyId),
         this.destroyRef,
       );
-      await this.fiscal.loadTaxes(companyId);
+      await Promise.all([this.fiscal.loadTaxes(companyId), this.nameLanguages.load(companyId)]);
     }
   }
 
@@ -157,6 +162,7 @@ export class FiscalTaxesPage implements OnInit {
 
   private open(target: TaxComponentRow | 'new'): void {
     this.fiscal.clearError();
+    this.nameLanguages.open(target === 'new' ? {} : target.names);
     this.editing.set(target);
   }
 }

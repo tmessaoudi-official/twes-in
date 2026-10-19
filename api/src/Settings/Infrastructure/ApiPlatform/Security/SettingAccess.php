@@ -77,6 +77,11 @@ final readonly class SettingAccess
         return $this->guard->may($company, self::SHARE);
     }
 
+    public function mayReadParties(Company $company): bool
+    {
+        return $this->guard->may($company, self::PARTIES_READ);
+    }
+
     public function mayWriteParties(Company $company): bool
     {
         return $this->guard->may($company, self::PARTIES_WRITE);

@@ -103,3 +103,52 @@ test('a unit carries its name in each language documents print in, as a person w
   }
   expect((await kilogramNames(page))[language] ?? '').toBe(original);
 });
+
+test('a name in a language let go leaves the unit, and comes back through « Ajouter une langue »', async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto('/fiscal/units');
+  await rowAction(page, 'unit-KGM', 'edit').click();
+
+  // The documents' own language is noted and never let go; any other shown may be.
+  const note = page.locator('[data-testid^="field-note-name-"]');
+  await expect(note).toHaveCount(1);
+  const documents = ((await note.getAttribute('data-testid')) ?? '').replace(
+    'field-note-name-',
+    '',
+  );
+  await expect(page.getByTestId(`field-remove-name-${documents}`)).toHaveCount(0);
+  // A language the kilogram is named in, so its field is shown whatever the customers print in.
+  const names = await kilogramNames(page);
+  const language = Object.keys(names).find((tag) => tag !== documents && names[tag] !== '') ?? '';
+  expect(language).not.toBe('');
+  const original = names[language] ?? '';
+  const remove = page.getByTestId(`field-remove-name-${language}`);
+  await expect(remove).toBeVisible();
+
+  await remove.click();
+  await expect(page.getByTestId(`field-name-${language}`)).toHaveCount(0);
+  const saved = page.waitForRequest(
+    (request) => request.method() === 'PUT' && /\/units\/[^/]+$/.test(request.url()),
+  );
+  await page.getByTestId('unit-save').click();
+  try {
+    const body = (await saved).postDataJSON() as { names: Record<string, string> };
+    expect(Object.keys(body.names)).not.toContain(language);
+    await expect(toast(page)).toContainText('L’unité a été enregistrée.');
+    expect((await kilogramNames(page))[language]).toBeUndefined();
+  } finally {
+    await rowAction(page, 'unit-KGM', 'edit').click();
+    // Asked for again once the save let it go; still there when the save did not happen.
+    if ((await page.getByTestId(`field-name-${language}`).count()) === 0) {
+      await page.getByTestId('names-add').click();
+      await page.getByTestId(`names-add-${language}`).click();
+      await expect(page.getByTestId(`field-name-${language}`)).toBeFocused();
+    }
+    await page.getByTestId(`field-name-${language}`).fill(original);
+    await page.getByTestId('unit-save').click();
+    await expect(toast(page)).toContainText('L’unité a été enregistrée.');
+  }
+  expect((await kilogramNames(page))[language]).toBe(original);
+});

@@ -37,9 +37,15 @@
             [updated]="sync.updated()"
             [conflicts]="sync.conflicts()"
             (resolved)="sync.resolve(form, $event)"
+            [withheld]="nameLanguages.withheld()"
+            [removable]="nameLanguages.removable()"
+            [notes]="nameLanguages.notes()"
+            trailIn="names"
+            (removed)="nameLanguages.remove($event)"
             testId="tax-form"
             (submitted)="save($event)"
           >
+            <app-name-language-add formTrail [languages]="nameLanguages" />
             <div class="flex flex-wrap justify-end gap-2">
               <button mat-button type="button" (click)="cancel()" data-testid="tax-cancel">
                 {{ 'fiscal.cancel' | translate }}

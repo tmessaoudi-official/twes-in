@@ -70,6 +70,20 @@ describe('SettingsApi', () => {
     ]);
   });
 
+  it('reads what a parties setting holds across the company, the parties untold to who may not read customers', async () => {
+    const told = api.valuesInUse('c1', 'document.language');
+    http
+      .expectOne('/api/companies/c1/settings/document.language/in-use')
+      .flush({ key: 'document.language', company: 'fr', parties: ['ar', 'en'] });
+    await expect(told).resolves.toEqual({ company: 'fr', parties: ['ar', 'en'] });
+
+    const untold = api.valuesInUse('c1', 'document.language');
+    http
+      .expectOne('/api/companies/c1/settings/document.language/in-use')
+      .flush({ key: 'document.language', company: 'fr', parties: null });
+    await expect(untold).resolves.toEqual({ company: 'fr', parties: null });
+  });
+
   it('stores a value at one level', async () => {
     const changed = api.change('c1', 'presentation.density', 'user', 'compact');
     const request = http.expectOne('/api/companies/c1/settings/presentation.density');

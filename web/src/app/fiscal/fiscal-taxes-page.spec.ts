@@ -15,6 +15,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { SettingsApi } from '../shared/settings/settings-api';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
@@ -148,6 +149,11 @@ describe('FiscalTaxesPage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+        // The company prints in French, and one of its customers in Arabic.
+        {
+          provide: SettingsApi,
+          useValue: { valuesInUse: async () => ({ company: 'fr', parties: ['ar'] }) },
+        },
       ],
     });
     fixture = TestBed.createComponent(FiscalTaxesPage);

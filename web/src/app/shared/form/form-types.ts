@@ -50,6 +50,11 @@ export interface FormField {
   label: string;
   /** What fills the label's placeholders, such as the language a name is written in. */
   labelParams?: Record<string, string>;
+  /**
+   * The name of the button emptying a field the screen lets go (`DescriptorForm.removable`), read with `labelParams`:
+   * « Retirer le nom en arabe ». Only a text, number or decimal field shows it.
+   */
+  removeLabel?: string;
   kind: FieldKind;
   /** For a checkbox, required means it must be ticked. */
   required?: boolean;

@@ -32,7 +32,7 @@ const TAX_NAME_MAX = 120;
 const UNIT_NAME_MAX = 60;
 
 /** The field holding the name in one language documents print in. */
-const nameField = (language: Language): string => `name-${language}`;
+export const nameField = (language: Language): string => `name-${language}`;
 
 /** One field per language documents print in, each labelled with the language's own name: blank, the name prints. */
 function namesSection(maxLength: number): FormSection {
@@ -44,6 +44,7 @@ function namesSection(maxLength: number): FormSection {
       id: nameField(language),
       label: 'fiscal.names.in',
       labelParams: { language: nameOf(language) },
+      removeLabel: 'fiscal.names.remove',
       kind: 'text',
       maxLength,
     })),

@@ -945,7 +945,10 @@
     "names": {
       "section": "Nom sur les documents",
       "description": "Le nom imprimé dans chaque langue ; laissé vide, le document imprime le nom ci-dessus.",
-      "in": "Nom — {{language}}"
+      "in": "Nom — {{language}}",
+      "documents_language": "langue des documents",
+      "add": "Ajouter une langue",
+      "remove": "Retirer le nom — {{language}}"
     }
   },
   "settings": {

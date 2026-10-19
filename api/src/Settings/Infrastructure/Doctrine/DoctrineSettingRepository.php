@@ -12,7 +12,9 @@ namespace App\Settings\Infrastructure\Doctrine;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\Repository\SettingRepository;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\RecordChanged;
+use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -38,6 +40,28 @@ final readonly class DoctrineSettingRepository implements SettingRepository
 
         /** @var list<Setting> $settings */
         $settings = $query->where($any)->getQuery()->getResult();
+
+        return $settings;
+    }
+
+    public function heldBy(Company $company, string $key, array $levels): array
+    {
+        if ([] === $levels) {
+            return [];
+        }
+        /** @var list<Setting> $settings */
+        $settings = $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Setting::class, 's')
+            // Named here rather than left to the company filter, which a read outside a company's request lacks.
+            ->where('s.company = :company')
+            ->andWhere('s.key = :key')
+            ->andWhere('s.level IN (:levels)')
+            ->setParameter('company', $company->getId(), 'uuid')
+            ->setParameter('key', $key)
+            ->setParameter('levels', array_map(static fn (SettingLevel $level): string => $level->value, $levels))
+            ->getQuery()
+            ->getResult();
 
         return $settings;
     }

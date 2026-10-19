@@ -91,6 +91,12 @@ class Setting
         return $this->level === $address->level && $this->levelId === $address->levelId;
     }
 
+    /** Whether one of the company's own subjects holds this value: the company itself, or a party or article of it. */
+    public function isHeldBy(Company $company): bool
+    {
+        return null !== $this->company && $this->company->getId()->equals($company->getId());
+    }
+
     /** @return bool whether anything changed */
     public function change(mixed $value, \DateTimeImmutable $now): bool
     {
