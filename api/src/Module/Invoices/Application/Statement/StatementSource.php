@@ -14,7 +14,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * What one customer's account is made of, read where the documents are kept. An amount is signed from the customer's
  * side: positive when it adds to what they owe (an invoice), negative when it takes from it (a credit note, a
- * payment). Drafts and withdrawn documents are not on the account: nothing was owed by them.
+ * payment). Drafts and withdrawn documents are not on the account: nothing was owed by them. The customer asked is the
+ * customer kept, whose account takes in what was made out to every customer merged into it.
  */
 interface StatementSource
 {

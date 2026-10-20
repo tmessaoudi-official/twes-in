@@ -12,7 +12,11 @@ namespace App\Module\Invoices\Domain\Repository;
 use App\Module\Invoices\Domain\Model\CustomerCreditEntry;
 use Symfony\Component\Uid\Uuid;
 
-/** A customer's credit balance, kept as entries (docs/SPEC.md § 7). */
+/**
+ * A customer's credit balance, kept as entries (docs/SPEC.md § 7). A customer merged into another keeps its entries,
+ * and the customer kept holds them: asked for either, every reading below takes in the entries of the customer kept
+ * and of every customer merged into it, and the lock is the row of the customer kept.
+ */
 interface CustomerCreditRepository
 {
     public function save(CustomerCreditEntry $entry): void;

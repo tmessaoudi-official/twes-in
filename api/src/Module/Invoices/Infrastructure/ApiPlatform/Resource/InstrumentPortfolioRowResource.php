@@ -107,7 +107,7 @@ final class InstrumentPortfolioRowResource
         $row->id = $instrument->getId()->toRfc4122();
         $row->invoiceId = $invoice->getId()->toRfc4122();
         $row->invoiceNumber = $invoice->getNumber();
-        $row->customerName = $invoice->getCustomer()->getProfile()->name;
+        $row->customerName = $invoice->getCustomer()->standingFor()->getProfile()->name;
         $row->currency = $instrument->getCompany()->getCurrency();
         $row->kind = $instrument->getKind()->value;
         $row->amount = $instrument->getAmount();

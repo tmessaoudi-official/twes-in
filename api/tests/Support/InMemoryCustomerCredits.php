@@ -44,7 +44,14 @@ final class InMemoryCustomerCredits implements CustomerCreditRepository
 
     public function entries(Uuid $companyId, Uuid $customerId): array
     {
-        $mine = array_values(array_filter($this->entries, static fn (CustomerCreditEntry $entry): bool => $entry->getCompany()->getId()->equals($companyId) && $entry->getCustomer()->getId()->equals($customerId)));
+        // The customer kept holds the entries of every customer merged into it, as the port says.
+        $kept = $customerId;
+        foreach ($this->entries as $entry) {
+            if ($entry->getCustomer()->getId()->equals($customerId)) {
+                $kept = $entry->getCustomer()->standingFor()->getId();
+            }
+        }
+        $mine = array_values(array_filter($this->entries, static fn (CustomerCreditEntry $entry): bool => $entry->getCompany()->getId()->equals($companyId) && $entry->getCustomer()->standingFor()->getId()->equals($kept)));
         usort($mine, static fn (CustomerCreditEntry $a, CustomerCreditEntry $b): int => [$b->getDate(), $b->getCreatedAt()] <=> [$a->getDate(), $a->getCreatedAt()]);
 
         return $mine;

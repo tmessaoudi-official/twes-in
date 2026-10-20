@@ -20,6 +20,9 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineCustomerCreditRepository implements CustomerCreditRepository
 {
+    /** The entries of the customer kept and of every customer merged into it, merges being one level deep. */
+    private const string HELD_BY = '(ec.id = :kept OR IDENTITY(ec.mergedInto) = :kept)';
+
     public function __construct(private EntityManagerInterface $entityManager)
     {
     }
@@ -35,10 +38,11 @@ final readonly class DoctrineCustomerCreditRepository implements CustomerCreditR
         $sum = $this->entityManager->createQueryBuilder()
             ->select('COALESCE(SUM(e.amount), 0)')
             ->from(CustomerCreditEntry::class, 'e')
+            ->join('e.customer', 'ec')
             ->where('e.company = :company')
-            ->andWhere('e.customer = :customer')
+            ->andWhere(self::HELD_BY)
             ->setParameter('company', $companyId, 'uuid')
-            ->setParameter('customer', $customerId, 'uuid')
+            ->setParameter('kept', $this->kept($customerId), 'uuid')
             ->getQuery()
             ->getSingleScalarResult();
 
@@ -56,7 +60,7 @@ final readonly class DoctrineCustomerCreditRepository implements CustomerCreditR
             ->from(Customer::class, 'c')
             ->where('c.id = :customer')
             ->andWhere('c.company = :company')
-            ->setParameter('customer', $customerId, 'uuid')
+            ->setParameter('customer', $this->kept($customerId), 'uuid')
             ->setParameter('company', $companyId, 'uuid')
             ->getQuery()
             ->setLockMode(LockMode::PESSIMISTIC_WRITE)
@@ -70,13 +74,14 @@ final readonly class DoctrineCustomerCreditRepository implements CustomerCreditR
         $entries = $this->entityManager->createQueryBuilder()
             ->select('e')
             ->from(CustomerCreditEntry::class, 'e')
+            ->join('e.customer', 'ec')
             ->where('e.company = :company')
-            ->andWhere('e.customer = :customer')
+            ->andWhere(self::HELD_BY)
             ->orderBy('e.date', 'DESC')
             ->addOrderBy('e.createdAt', 'DESC')
             ->addOrderBy('e.id', 'DESC')
             ->setParameter('company', $companyId, 'uuid')
-            ->setParameter('customer', $customerId, 'uuid')
+            ->setParameter('kept', $this->kept($customerId), 'uuid')
             ->getQuery()
             ->getResult();
 
@@ -99,6 +104,14 @@ final readonly class DoctrineCustomerCreditRepository implements CustomerCreditR
     {
         $this->entityManager->remove($entry);
         $this->entityManager->flush();
+    }
+
+    /** The customer kept for the one asked: the one it was merged into, or itself. */
+    private function kept(Uuid $customerId): Uuid
+    {
+        $customer = $this->entityManager->find(Customer::class, $customerId);
+
+        return $customer instanceof Customer ? $customer->standingFor()->getId() : $customerId;
     }
 
     private static function decimal(mixed $value): string
