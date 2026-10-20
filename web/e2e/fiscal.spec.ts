@@ -75,7 +75,19 @@ async function kilogramNames(page: Page): Promise<Record<string, string>> {
 async function nameKilogram(page: Page, field: string, name: string): Promise<void> {
   await rowAction(page, 'unit-KGM', 'edit').click();
   await page.getByTestId(field).fill(name);
+  await saveUnit(page);
+}
+
+/**
+ * Saves the open unit and waits for the API's own answer: the toast of a save just before says the same words and is
+ * still on screen, so it cannot tell this save happened, and a read straight after would see the unit before it.
+ */
+async function saveUnit(page: Page): Promise<void> {
+  const answered = page.waitForResponse(
+    (response) => response.request().method() === 'PUT' && /\/units\/[^/]+$/.test(response.url()),
+  );
   await page.getByTestId('unit-save').click();
+  expect((await answered).ok()).toBe(true);
   await expect(toast(page)).toContainText('L’unité a été enregistrée.');
 }
 
@@ -147,8 +159,7 @@ test('a name in a language let go leaves the unit, and comes back through « Ajo
       await expect(page.getByTestId(`field-name-${language}`)).toBeFocused();
     }
     await page.getByTestId(`field-name-${language}`).fill(original);
-    await page.getByTestId('unit-save').click();
-    await expect(toast(page)).toContainText('L’unité a été enregistrée.');
+    await saveUnit(page);
   }
   expect((await kilogramNames(page))[language]).toBe(original);
 });

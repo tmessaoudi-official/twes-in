@@ -206,6 +206,8 @@ const ARABIC_WALK: readonly string[] = [
 ];
 
 test('the screens a shop opens first pass WCAG in Arabic', async ({ page }) => {
+  // One page and one scan per route: about 2.5 s each alone, twice that beside the other workers.
+  test.setTimeout(ARABIC_WALK.length * 8_000);
   await chooseArabic(page);
   let fieldsRead = 0;
   for (const route of ARABIC_WALK) {
