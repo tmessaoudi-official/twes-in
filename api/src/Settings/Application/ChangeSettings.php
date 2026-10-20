@@ -129,19 +129,22 @@ final readonly class ChangeSettings
     public function reset(SettingContext $context, string $key, SettingLevel $level, ?Uuid $actorUserId): ResolvedSetting
     {
         [, $address] = $this->locate($context, $key, $level);
-        $told = $this->transactions->run(function () use ($address, $key, $actorUserId): array {
+        $removed = $this->transactions->run(function () use ($address, $key, $actorUserId): bool {
             $setting = $this->settings->lockedFind($address, $key);
             if (null === $setting) {
-                return [];
+                return false;
             }
             $this->settings->remove($setting);
             $this->record(self::RESET, $setting, $address, $actorUserId);
 
-            return self::personal($address, $key, null);
+            return true;
         });
-        $this->events->publish(...$told);
+        $resolved = $this->resolve->one($context, $key);
+        if ($removed) {
+            $this->events->publish(...self::personal($address, $key, null, $resolved->value));
+        }
 
-        return $this->resolve->one($context, $key);
+        return $resolved;
     }
 
     /** @return array{SettingDefinition, SettingAddress} */
@@ -157,9 +160,9 @@ final readonly class ChangeSettings
     }
 
     /** @return list<PersonalSettingChanged> */
-    private static function personal(SettingAddress $address, string $key, mixed $value): array
+    private static function personal(SettingAddress $address, string $key, mixed $value, mixed $inForce = null): array
     {
-        return SettingLevel::User === $address->level ? [new PersonalSettingChanged(Uuid::fromString($address->levelId), $key, $value)] : [];
+        return SettingLevel::User === $address->level ? [new PersonalSettingChanged(Uuid::fromString($address->levelId), $key, $value, $inForce)] : [];
     }
 
     /**

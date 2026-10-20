@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Identity\Domain\Model\User;
+use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
 use Symfony\Component\HttpFoundation\Response;
@@ -99,6 +101,20 @@ final class SettingsTest extends ApiTestCase
         $this->getJson($this->path().'?chain=presentation');
         self::assertSame('compact', $this->row('presentation.density')['value']);
         self::assertSame('company', $this->row('presentation.density')['source']);
+    }
+
+    /** Going back to the company's language moves the account's mails to the language the screens now show. */
+    public function testGoingBackToTheCompanysLanguageMovesTheMailsToIt(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->sendJson('PUT', $this->path().'/presentation.language', ['level' => 'company', 'value' => 'en']);
+        $this->sendJson('PUT', $this->path().'/presentation.language', ['level' => 'user', 'value' => 'ar']);
+        self::assertSame('ar', $this->accountLanguage());
+
+        $this->sendJson('DELETE', $this->path().'/presentation.language?level=user');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame('en', $this->accountLanguage());
     }
 
     public function testAMemberKeepsTheirOwnPreferenceButMayNotChangeTheCompanyDefault(): void
@@ -343,6 +359,13 @@ final class SettingsTest extends ApiTestCase
             }
         }
         self::fail("No setting $key in the response.");
+    }
+
+    private function accountLanguage(): ?string
+    {
+        $this->em()->clear();
+
+        return $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('accountant@twes.local')])?->getLocale();
     }
 
     private function path(): string

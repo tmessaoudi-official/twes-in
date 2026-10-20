@@ -106,8 +106,8 @@ final class PasswordResetTest extends ApiTestCase
         }
     }
 
-    /** The page asking for a link may be in any language; the account's own is the one its person chose for the screens. */
-    public function testAPersonWhoChoseEnglishIsMailedInEnglishAndGoingBackToTheCompanysChoiceKeepsIt(): void
+    /** The page asking for a link may be in any language; the account's own is the one its person's screens show. */
+    public function testAPersonWhoChoseEnglishAndWentBackToTheCompanysChoiceIsMailedInTheCompanysLanguage(): void
     {
         $company = $this->createCompany('Acme');
         $user = $this->createUser('someone@twes.local', self::PASSWORD, $company);
@@ -116,16 +116,17 @@ final class PasswordResetTest extends ApiTestCase
 
         $this->sendJson('PUT', $settings, ['level' => 'user', 'value' => 'en']);
         self::assertResponseIsSuccessful();
+        self::assertSame('en', $this->localeOf($user->getId()->toRfc4122()));
         $this->sendJson('DELETE', $settings.'?level=user');
         self::assertResponseIsSuccessful();
-        self::assertSame('en', $this->localeOf($user->getId()->toRfc4122()), 'no choice names no language to follow');
+        self::assertSame('fr', $this->localeOf($user->getId()->toRfc4122()), 'the screens show the company\'s language again');
 
         $this->postJson(self::FORGOT, ['email' => 'someone@twes.local']);
         $this->deliverQueued();
 
         $message = self::getMailerMessage();
         self::assertInstanceOf(Email::class, $message);
-        self::assertStringContainsString('<html lang="en" dir="ltr">', (string) $message->getHtmlBody());
+        self::assertStringContainsString('<html lang="fr" dir="ltr">', (string) $message->getHtmlBody());
     }
 
     public function testAMalformedAddressIsRefusedAndASecondAskInTheQuarterHourSendsNothing(): void

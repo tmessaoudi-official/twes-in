@@ -14,11 +14,16 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A person changed one of their own preferences, or went back to what their company chose (a null value). Told so a
- * context keeping its own copy of a preference, such as the language an account's mails are written in, can follow.
+ * context keeping its own copy of a preference, such as the language an account's mails are written in, can follow:
+ * what is in force for them where they chose is their own value, or after going back what their company, role or the
+ * platform gives them there.
  */
 final readonly class PersonalSettingChanged implements DomainEvent
 {
-    public function __construct(public Uuid $userId, public string $key, public mixed $value)
+    public mixed $inForce;
+
+    public function __construct(public Uuid $userId, public string $key, public mixed $value, mixed $inForce = null)
     {
+        $this->inForce = $value ?? $inForce;
     }
 }

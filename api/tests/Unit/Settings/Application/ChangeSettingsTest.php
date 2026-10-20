@@ -73,7 +73,7 @@ final class ChangeSettingsTest extends TestCase
         self::assertEquals([
             new PersonalSettingChanged($this->userId, 'presentation.language', 'en'),
             new PersonalSettingChanged($this->userId, 'presentation.density', 'compact'),
-            new PersonalSettingChanged($this->userId, 'presentation.language', null),
+            new PersonalSettingChanged($this->userId, 'presentation.language', null, 'fr'),
         ], $this->events->published, 'the same value again changes nothing, and a company default is no person\'s');
         self::assertSame([false, false, false], $this->events->whileInTransaction);
     }

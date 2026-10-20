@@ -36,4 +36,17 @@ final class KeepAccountLanguageOnSettingsTest extends TestCase
         $listener->onChanged(new PersonalSettingChanged($user->getId(), 'presentation.language', 'en'));
         self::assertSame('en', $user->getLocale());
     }
+
+    /** Going back to the company's language moves the account to the language now in force there. */
+    public function testGoingBackTakesTheLanguageInForce(): void
+    {
+        $users = new InMemoryUsers();
+        $user = new User(Email::fromString('someone@twes.local'), 'Someone', 'ar');
+        $users->save($user);
+        $listener = new KeepAccountLanguageOnSettings(new KeepAccountLanguage($users, new FakeTransactions(), ShippedLanguages::catalogue()), new NullLogger());
+
+        $listener->onChanged(new PersonalSettingChanged($user->getId(), 'presentation.language', null, 'fr'));
+
+        self::assertSame('fr', $user->getLocale());
+    }
 }

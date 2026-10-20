@@ -15,9 +15,8 @@ use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Keeps an account's language on the one its person chose for the screens, which mails sent while nobody is signed in
- * can read. Going back to the company's choice names no language, so the account keeps the last one chosen; a
- * language the screens do not speak is never an account's.
+ * Keeps an account's language on the one its person's screens show, which mails sent while nobody is signed in can
+ * read. No language named leaves the account as it is; a language the screens do not speak is never an account's.
  */
 final readonly class KeepAccountLanguage
 {
