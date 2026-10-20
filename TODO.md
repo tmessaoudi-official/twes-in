@@ -147,6 +147,23 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
   ```
 
 - [ ] The client's Excel file, under `var/claude/client-excel/`, to map its columns into the importer (plan step 4).
+- [ ] Read `var/claude/client-excel/out/report.md` (on this machine only, never committed): how each sheet of the
+  workbook was read and every doubt left, then answer the questions Claude asks about it. The five files beside it are
+  what the shop will import; nothing there is imported until you say so.
+- [ ] Answer « does a configuration link make a record used? » (`docs/plans/first-client.plan.md`, § Needs input): it
+  decides whether an imported vendor can be deleted or only merged.
+- [ ] Read the Arabic screen texts on a running screen, or have a native reader do it: every Arabic word was written by
+  Claude from `docs/i18n/ar-glossary.md` and none has been read by an Arabic speaker yet.
+- [ ] Ask the shop: its opening hours, and whether its computer stays on at night. `twes install` asks them to place the
+  nightly update window (02:00 to 05:00 when it stays on, otherwise an hour after closing).
+- [ ] The shop's Gmail account with two-step verification on, and an app password made for twes-in
+  (Google Account › Security › App passwords): `twes install` asks for both; mail, documents to customers and the alerts
+  sent to you leave from that address.
+- [ ] A USB disk or second disk left plugged into the shop's computer for its local backups, and, if you want the off-site
+  copy, a bucket with its key (`docs/START.md` § 16).
+- [ ] Your monitor at home: a VM or device of its own, on a network segment that cannot reach the machine holding your
+  release-signing key and GitHub credentials; a DDNS name pointing at it, ports 80 and 443 forwarded to it; then
+  `scripts/monitor/new-monitor.sh` and `docs/START.md` § 15. Until it runs, problems reach you only by the shop's mail.
 - [ ] On the shop's installation, signed in as the shop's owner, « Paramètres » (the gear), « Valeurs par défaut »,
   section « Produits »: tick « Suivre le stock », then « Enregistrer ». A new company keeps no stock until it is ticked:
   an order received and an invoice issued move nothing (the trade chosen at sign-up, which would tick it for a shop, is
