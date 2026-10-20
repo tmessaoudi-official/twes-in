@@ -240,6 +240,59 @@ final class ProductTest extends TestCase
         $product->replaceBarcodes([new BarcodeLine(BarcodeRole::Supplier, new Barcode('SOT-4471'), 6, Vendor::create($globex, 'F-001', new VendorProfile('Sotupa'), $this->now))], $this->now);
     }
 
+    /**
+     * A product is bought from several vendors, with or without a code of theirs (docs/SPEC.md § 7, 2026-10-20 01:52):
+     * a supplier's code links its vendor, and the link outlives the code.
+     */
+    public function testASupplierCodeLinksItsVendorAndTheLinkOutlivesTheCode(): void
+    {
+        $product = Product::create($this->company, 'ART-001', self::details(), $this->piece, null, [], $this->now);
+        $sotupa = Vendor::create($this->company, 'F-001', new VendorProfile('Sotupa'), $this->now);
+
+        $product->replaceBarcodes([new BarcodeLine(BarcodeRole::Supplier, new Barcode('SOT-4471'), 1, $sotupa)], $this->now);
+        self::assertSame([$sotupa], $product->getVendors());
+
+        self::assertTrue($product->replaceBarcodes([], $this->now));
+        self::assertSame([$sotupa], $product->getVendors());
+    }
+
+    public function testTheVendorsBecomeExactlyThoseAskedEachOnceInNumberOrder(): void
+    {
+        $product = Product::create($this->company, 'ART-001', self::details(), $this->piece, null, [], $this->now);
+        $sotupa = Vendor::create($this->company, 'F-002', new VendorProfile('Sotupa'), $this->now);
+        $quincaillerie = Vendor::create($this->company, 'F-001', new VendorProfile('Comptoir du Sud'), $this->now);
+
+        self::assertTrue($product->replaceVendors([$sotupa, $quincaillerie, $sotupa], $this->now));
+        self::assertSame([$quincaillerie, $sotupa], $product->getVendors());
+        self::assertFalse($product->replaceVendors([$quincaillerie, $sotupa], $this->now));
+        self::assertTrue($product->replaceVendors([$sotupa], $this->now));
+        self::assertSame([$sotupa], $product->getVendors());
+    }
+
+    public function testAVendorASupplierCodeStillNamesCannotBeUnlinked(): void
+    {
+        $product = Product::create($this->company, 'ART-001', self::details(), $this->piece, null, [], $this->now);
+        $sotupa = Vendor::create($this->company, 'F-001', new VendorProfile('Sotupa'), $this->now);
+        $product->replaceBarcodes([new BarcodeLine(BarcodeRole::Supplier, new Barcode('SOT-4471'), 1, $sotupa)], $this->now);
+
+        try {
+            $product->replaceVendors([], $this->now);
+            self::fail('a vendor its code names was unlinked');
+        } catch (InvalidProduct $refused) {
+            self::assertSame('vendors', $refused->field);
+        }
+        self::assertSame([$sotupa], $product->getVendors());
+    }
+
+    public function testAVendorOfAnotherCompanyIsNotLinked(): void
+    {
+        $product = Product::create($this->company, 'ART-001', self::details(), $this->piece, null, [], $this->now);
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+
+        $this->expectExceptionObject(new InvalidProduct('vendors.0', 'A product\'s vendor is a vendor of its own company.'));
+        $product->replaceVendors([Vendor::create($globex, 'F-001', new VendorProfile('Sotupa'), $this->now)], $this->now);
+    }
+
     private static function details(
         string $name = 'Portable 14"',
         ?string $description = 'Processeur 8 cœurs',

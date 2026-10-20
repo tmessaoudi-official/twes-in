@@ -704,6 +704,53 @@ Cheville 10 mm,6191234567897
         self::assertSame([[], [2]], [$this->json()['updated'], $this->json()['unchanged']], 'a pack named without its quantity keeps the one it has');
     }
 
+    /**
+     * A product is bought from several vendors, with or without a code of theirs (docs/SPEC.md § 7, 2026-10-20 01:52): a
+     * row naming a vendor alone links it, a vendor already linked is no change, and a link the row does not name stays.
+     */
+    public function testAVendorNamedWithoutACodeLinksTheProductToIt(): void
+    {
+        $this->aVendor('F-001', 'Sotumag');
+        $this->aVendor('F-002', 'Quincaillerie Sfax');
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import("reference,name,unit_code,unit_price_net,supplier_number\nVIS-1,Vis 1,H87,1,F-001\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['created'], json_encode($this->json()['rejected']) ?: '');
+        $this->em()->clear();
+        self::assertSame(['F-001'], self::vendorNumbers($this->product('VIS-1')));
+        self::assertSame([], self::codesAndSuppliers($this->product('VIS-1')));
+
+        $this->import("reference,name,supplier_number\nVIS-1,Vis 1,F-001\n", mode: 'upsert', dryRun: true);
+        self::assertSame([[], [2]], [$this->json()['updated'], $this->json()['unchanged']], 'a vendor already linked is no change');
+
+        $this->import("reference,name,supplier_number\nVIS-1,Vis 1,F-002\n", mode: 'upsert');
+        self::assertSame([2], $this->json()['updated'], json_encode($this->json()['rejected']) ?: '');
+        self::assertSame([['line' => 2, 'column' => 'supplier_number', 'before' => '', 'after' => 'F-002']], $this->json()['changes']);
+        $this->em()->clear();
+        self::assertSame(['F-001', 'F-002'], self::vendorNumbers($this->product('VIS-1')));
+    }
+
+    /** Who a product is bought from is read and written with costs: somebody who sees none cannot name a vendor. */
+    public function testWhoSeesNoCostCannotNameAVendor(): void
+    {
+        $this->aVendor('F-001', 'Sotumag');
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import("reference,name,unit_code,unit_price_net,supplier_number\nVIS-1,Vis 1,H87,1,F-001\n");
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['unknown_columns', ['supplier_number']], [$this->json()['error'] ?? null, $this->json()['columns'] ?? null], 'the column is not theirs to fill');
+        self::assertSame(0, $this->products());
+    }
+
+    /** @return list<string> */
+    private static function vendorNumbers(Product $product): array
+    {
+        return array_map(static fn (Vendor $vendor): string => $vendor->getNumber(), $product->getVendors());
+    }
+
     /** @return iterable<string, array{string, string, string, array<string, int|string>}> */
     public static function refusedCodeCells(): iterable
     {
@@ -712,7 +759,6 @@ Cheville 10 mm,6191234567897
         yield 'a pack of one piece' => ['16191234567894,1,,', 'pack_quantity', 'invalid_pack_quantity', ['min' => 2, 'max' => 1000000]];
         yield 'a pack that is no whole number' => ['16191234567894,"2,5",,', 'pack_quantity', 'invalid_pack_quantity', ['min' => 2, 'max' => 1000000]];
         yield 'a supplier code without its supplier' => [',,,SF-883', 'supplier_number', 'value_required', []];
-        yield 'a supplier without its code' => [',,F-001,', 'supplier_code', 'value_required', []];
         yield 'a supplier the company does not have' => [',,F-404,SF-883', 'supplier_number', 'unknown_vendor', ['number' => 'F-404']];
         yield 'a pack code with a wrong check digit' => ['16191234567895,12,,', 'pack_barcode', 'invalid_barcode', []];
     }

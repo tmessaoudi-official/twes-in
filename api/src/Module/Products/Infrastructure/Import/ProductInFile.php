@@ -25,10 +25,12 @@ final class ProductInFile
      * A product has several packs and several suppliers' codes, and a row of a file names one of each: the cells of a
      * pack and of a supplier's code are those of the code `$pack` and `$supplierCode` name, blank when the product does
      * not hold it, so a code a row adds shows as a change. Named by nothing, as an export is, they are the first held.
+     * A supplier named without a code is one the product is bought from: its number when the product is linked to it,
+     * blank when not; an export with no supplier's code writes the first such supplier.
      *
      * @param array<string, string> $taxCodes by tax id
      */
-    public static function cell(Product $product, string $column, array $taxCodes, ?string $pack = null, ?string $supplierCode = null): string
+    public static function cell(Product $product, string $column, array $taxCodes, ?string $pack = null, ?string $supplierCode = null, ?string $supplierNumber = null): string
     {
         $details = $product->getDetails();
 
@@ -46,7 +48,7 @@ final class ProductInFile
             'barcode' === $column => self::unitBarcode($product),
             'pack_barcode' === $column => self::held($product, BarcodeRole::Pack, $pack)?->getCode() ?? '',
             'pack_quantity' === $column => (string) (self::held($product, BarcodeRole::Pack, $pack)?->getQuantity() ?? ''),
-            'supplier_number' === $column => self::held($product, BarcodeRole::Supplier, $supplierCode)?->getSupplier()?->getNumber() ?? '',
+            'supplier_number' === $column => self::supplierNumber($product, $supplierCode, $supplierNumber),
             'supplier_code' === $column => self::held($product, BarcodeRole::Supplier, $supplierCode)?->getCode() ?? '',
             'default_tax_codes' === $column => implode(',', array_map(static fn (string $id): string => $taxCodes[$id] ?? '', $product->getDefaultTaxComponentIds())),
             'active' === $column => $product->isActive() ? 'yes' : 'no',
@@ -60,6 +62,21 @@ final class ProductInFile
         foreach ($product->getBarcodes() as $barcode) {
             if (BarcodeRole::Unit === $barcode->getRole()) {
                 return $barcode->getCode();
+            }
+        }
+
+        return '';
+    }
+
+    private static function supplierNumber(Product $product, ?string $supplierCode, ?string $supplierNumber): string
+    {
+        $code = self::held($product, BarcodeRole::Supplier, $supplierCode);
+        if (null !== $supplierCode || null !== $code && null === $supplierNumber) {
+            return $code?->getSupplier()?->getNumber() ?? '';
+        }
+        foreach ($product->getVendors() as $vendor) {
+            if (null === $supplierNumber || $supplierNumber === $vendor->getNumber()) {
+                return $vendor->getNumber();
             }
         }
 

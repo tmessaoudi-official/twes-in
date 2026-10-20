@@ -35,6 +35,7 @@ use App\Module\Products\Domain\ValueObject\CostChangeSource;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductSearch;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
+use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
@@ -175,6 +176,10 @@ final readonly class ManageProducts
             $product->track($tracking, $now);
             $product->reviseCustomFields($values, $now);
             $product->replaceBarcodes($lines, $now);
+            $vendors = $this->vendorsNamed($company, $input);
+            if (null !== $vendors) {
+                $product->replaceVendors($vendors, $now);
+            }
             if (!$input->isActive) {
                 $product->revise($reference, $details, $unit, $category, $input->defaultTaxComponentIds, false, $now);
             }
@@ -213,6 +218,7 @@ final readonly class ManageProducts
             $this->assertStockKeepsItsMeaning($company, $product, $unit, $input->details->kind);
             $tracking = $this->trackingKeptByStock($company, $product, Product::trackingFor($input->tracking ?? $product->getTracking(), $input->details->kind));
             $values = $this->customFieldValues($company, $input, $product);
+            $vendors = $this->vendorsNamed($company, $input);
 
             $now = $this->clock->now();
             $costBefore = $product->getDetails()->costPrice;
@@ -223,6 +229,10 @@ final readonly class ManageProducts
             $changed = [...$changed, ...$product->reviseCustomFields($values, $now)];
             if (null !== $lines && $product->replaceBarcodes($lines, $now)) {
                 $changed[] = 'barcodes';
+            }
+            // After the codes, which link their own vendors: a vendor a code still names stays linked.
+            if (null !== $vendors && $product->replaceVendors($vendors, $now)) {
+                $changed[] = 'vendors';
             }
             if ([] !== $changed) {
                 $this->products->save($product);
@@ -289,6 +299,31 @@ final readonly class ManageProducts
         }
 
         return $rows;
+    }
+
+    /**
+     * The vendors the input names, found in the company; null when it names none, which keeps them.
+     *
+     * @return list<Vendor>|null
+     *
+     * @throws InvalidProduct
+     */
+    private function vendorsNamed(Company $company, ProductInput $input): ?array
+    {
+        if (null === $input->vendorIds) {
+            return null;
+        }
+        // Who a product is bought from is purchasing knowledge, read and written with costs.
+        if (!$input->seesCosts) {
+            throw new InvalidProduct('vendors', 'A product\'s vendors are written by someone who may read costs.');
+        }
+        $vendors = [];
+        foreach ($input->vendorIds as $index => $id) {
+            $vendors[] = $this->vendors->ofIdInCompany($id, $company->getId())
+                ?? throw new InvalidProduct("vendors.$index", 'No vendor of this company has this id.');
+        }
+
+        return $vendors;
     }
 
     /**

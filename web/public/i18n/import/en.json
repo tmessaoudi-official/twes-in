@@ -71,7 +71,7 @@
       "pack_quantity": "Pieces per pack",
       "pack_quantity_note": "From 2 to 1,000,000. Left blank, a pack already there keeps its own.",
       "supplier_number": "Supplier",
-      "supplier_number_note": "The number of one of the company’s suppliers, the one printing the code in supplier_code.",
+      "supplier_number_note": "The number of one of the company’s suppliers the product is bought from, added to its suppliers; with supplier_code, the one printing that code.",
       "supplier_code": "Supplier code",
       "supplier_code_note": "The code this supplier prints on its carton: added, or updated when already there; the others stay.",
       "default_taxes": "Default taxes",
