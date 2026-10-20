@@ -216,6 +216,26 @@ final class VendorMergeTest extends ApiTestCase
         self::assertSame(['Sotumag Sfax', false], [$connection->fetchOne('SELECT name FROM vendor WHERE id = ?', [$merged]), $connection->fetchOne('SELECT is_active FROM vendor WHERE id = ?', [$merged])]);
     }
 
+    /** An order sent before the merge is the vendor merged away's: its goods are still received, naming it as the order does. */
+    public function testAnOrderSentBeforeTheMergeIsStillReceived(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->vendorId('F-001'), $this->vendorId('F-002')];
+        $order = $this->anOrder($merged);
+        $this->postJson($this->path("purchase-orders/$order/send"), null);
+        self::assertResponseIsSuccessful();
+        $line = $this->em()->getConnection()->fetchOne('SELECT id::text FROM purchase_order_line WHERE purchase_order_id = ?', [$order]);
+        self::assertIsString($line);
+        $this->merged($kept, [$merged]);
+        $this->getJson($this->path('stock-locations'));
+        $site = $this->stringAt($this->jsonList()[0], 'id');
+
+        $this->postJson($this->path("purchase-orders/$order/receipts"), ['receivedOn' => new \DateTimeImmutable()->format('Y-m-d'), 'lines' => [['orderLineId' => $line, 'locationId' => $site, 'quantity' => '4']]]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([$merged], $this->em()->getConnection()->fetchFirstColumn('SELECT vendor_id::text FROM stock_movement WHERE company_id = ?', [$this->companyId()]));
+    }
+
     /**
      * A file written before the merge still names the vendor merged away: a product's supplier is taken as the vendor
      * kept, and said so on the row, while a row of the vendors' own file is refused, as it would rewrite what was merged.
@@ -436,7 +456,7 @@ final class VendorMergeTest extends ApiTestCase
 
     private function signedIn(bool $prove = true): void
     {
-        $permissions = ['company.read', 'vendor.read', 'vendor.write', 'expense.read', 'expense.write', 'purchase.read', 'purchase.write', 'stock.read', 'stock.write', 'product.read', 'product.write', 'product.cost.read'];
+        $permissions = ['company.read', 'vendor.read', 'vendor.write', 'expense.read', 'expense.write', 'purchase.read', 'purchase.write', 'purchase.receive', 'stock.read', 'stock.write', 'product.read', 'product.write', 'product.cost.read'];
         $this->createUser('shop@twes.local', self::PASSWORD, $this->company, $permissions, 'member');
         $this->login('shop@twes.local', self::PASSWORD);
         self::assertResponseIsSuccessful();

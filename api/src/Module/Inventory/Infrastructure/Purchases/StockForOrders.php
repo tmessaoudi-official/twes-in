@@ -44,7 +44,7 @@ final readonly class StockForOrders implements StockIntake
     public function receive(Company $company, IntakeDocument $document, array $lines, ?IntakeCost $apply, ?Uuid $actorUserId): void
     {
         try {
-            $named = $this->documents->named($company, $document->vendorId->toRfc4122(), $document->supplierReference, $document->receivedOn->format('Y-m-d'));
+            $named = $this->documents->named($company, $document->vendorId->toRfc4122(), $document->supplierReference, $document->receivedOn->format('Y-m-d'), ofASentOrder: true);
         } catch (InvalidStockMovement $refused) {
             throw new IntakeRefused(null, $refused->field, $refused->getMessage(), $refused);
         }
