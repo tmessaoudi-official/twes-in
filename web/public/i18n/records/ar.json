@@ -14,6 +14,12 @@
       "expense": "{count, plural, zero {لا مصاريف} one {مصروف واحد} two {مصروفين} few {{{count}} مصاريف} many {{{count}} مصروفًا} other {{{count}} مصروف}}",
       "product_vendor": "{count, plural, zero {لا منتجات مرتبطة} one {منتج مرتبط واحد} two {منتجين مرتبطين} few {{{count}} منتجات مرتبطة} many {{{count}} منتجًا مرتبطًا} other {{{count}} منتج مرتبط}}",
       "product_barcode": "{count, plural, zero {لا رموز مزوّد} one {رمز مزوّد واحد} two {رمزي مزوّد} few {{{count}} رموز مزوّد} many {{{count}} رمز مزوّد} other {{{count}} رمز مزوّد}}",
+      "invoice_line": "{count, plural, zero {لا أسطر فواتير} one {سطر فاتورة واحد} two {سطري فاتورة} few {{{count}} أسطر فواتير} many {{{count}} سطر فاتورة} other {{{count}} سطر فاتورة}}",
+      "quote_line": "{count, plural, zero {لا أسطر عروض أسعار} one {سطر عرض سعر واحد} two {سطري عرض سعر} few {{{count}} أسطر عروض أسعار} many {{{count}} سطر عرض سعر} other {{{count}} سطر عرض سعر}}",
+      "delivery_note_line": "{count, plural, zero {لا أسطر وصولات تسليم} one {سطر وصل تسليم واحد} two {سطري وصل تسليم} few {{{count}} أسطر وصولات تسليم} many {{{count}} سطر وصل تسليم} other {{{count}} سطر وصل تسليم}}",
+      "purchase_order_line": "{count, plural, zero {لا أسطر طلبيات لدى مزوّد} one {سطر طلبية لدى مزوّد واحد} two {سطري طلبية لدى مزوّد} few {{{count}} أسطر طلبيات لدى مزوّد} many {{{count}} سطر طلبية لدى مزوّد} other {{{count}} سطر طلبية لدى مزوّد}}",
+      "stock_lot": "{count, plural, zero {لا دفعات} one {دفعة واحدة} two {دفعتين} few {{{count}} دفعات} many {{{count}} دفعةً} other {{{count}} دفعة}}",
+      "price_list_item": "{count, plural, zero {لا أسعار في قوائم الأسعار} one {سعر واحد في قائمة أسعار} two {سعرين في قوائم الأسعار} few {{{count}} أسعار في قوائم الأسعار} many {{{count}} سعرًا في قوائم الأسعار} other {{{count}} سعر في قوائم الأسعار}}",
       "other": "{count, plural, zero {لا بطاقات أخرى} one {بطاقة أخرى واحدة} two {بطاقتين أخريين} few {{{count}} بطاقات أخرى} many {{{count}} بطاقة أخرى} other {{{count}} بطاقة أخرى}}"
     },
     "errors": {
@@ -21,7 +27,7 @@
       "not_found": "هذا الحذف لم يعد موجودًا، أو لا يمكنك إرجاعه.",
       "no_record": "اختر بطاقة واحدة على الأقل لحذفها.",
       "record_used": "لم يُحذف شيء، لأن إحدى البطاقات ما تزال مستعملة.",
-      "restore_conflict": "لم يُرجَع شيء، لأن بطاقة أُنشئت بعد ذلك تشغل مكانها (الرقم نفسه مثلًا).",
+      "restore_conflict": "لم يُرجَع شيء، لأن بطاقة أُنشئت بعد ذلك تشغل مكانها (الرقم نفسه مثلًا)، أو لأن بطاقة تذكرها حُذفت بعد ذلك.",
       "removal_final": "انقضت الساعات الأربع والعشرون. أصبح الحذف نهائيًا."
     },
     "recent": {
@@ -32,7 +38,8 @@
       "removed_at": "حُذف في {{moment}}",
       "until": "يمكن إرجاعه حتى {{moment}}",
       "subjects": {
-        "vendor": "{count, plural, zero {لا مزوّدين} one {مزوّد واحد} two {مزوّدان} few {{{count}} مزوّدين} many {{{count}} مزوّدًا} other {{{count}} مزوّد}}"
+        "vendor": "{count, plural, zero {لا مزوّدين} one {مزوّد واحد} two {مزوّدان} few {{{count}} مزوّدين} many {{{count}} مزوّدًا} other {{{count}} مزوّد}}",
+        "product": "{count, plural, zero {لا منتجات} one {منتج واحد} two {منتجان} few {{{count}} منتجات} many {{{count}} منتجًا} other {{{count}} منتج}}"
       }
     }
   }

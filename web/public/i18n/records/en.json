@@ -14,6 +14,12 @@
       "expense": "{{count}} {count, plural, one {expense} other {expenses}}",
       "product_vendor": "{{count}} {count, plural, one {linked product} other {linked products}}",
       "product_barcode": "{{count}} {count, plural, one {vendor code} other {vendor codes}}",
+      "invoice_line": "{{count}} {count, plural, one {invoice line} other {invoice lines}}",
+      "quote_line": "{{count}} {count, plural, one {quote line} other {quote lines}}",
+      "delivery_note_line": "{{count}} {count, plural, one {delivery note line} other {delivery note lines}}",
+      "purchase_order_line": "{{count}} {count, plural, one {purchase order line} other {purchase order lines}}",
+      "stock_lot": "{{count}} {count, plural, one {lot} other {lots}}",
+      "price_list_item": "{{count}} {count, plural, one {price list price} other {price list prices}}",
       "other": "{{count}} {count, plural, one {other record} other {other records}}"
     },
     "errors": {
@@ -21,7 +27,7 @@
       "not_found": "This delete no longer exists, or you may not put it back.",
       "no_record": "Choose at least one record to delete.",
       "record_used": "Nothing is deleted, because a record is still in use.",
-      "restore_conflict": "Nothing is put back, because a record made since takes its place (the same number, for instance).",
+      "restore_conflict": "Nothing is put back, because a record made since takes its place (the same number, for instance), or a record it names has been deleted since.",
       "removal_final": "The 24 hours are over. The delete is final."
     },
     "recent": {
@@ -32,7 +38,8 @@
       "removed_at": "Deleted on {{moment}}",
       "until": "Can be put back until {{moment}}",
       "subjects": {
-        "vendor": "{{count}} {count, plural, one {vendor} other {vendors}}"
+        "vendor": "{{count}} {count, plural, one {vendor} other {vendors}}",
+        "product": "{{count}} {count, plural, one {product} other {products}}"
       }
     }
   }

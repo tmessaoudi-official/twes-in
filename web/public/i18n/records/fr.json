@@ -14,6 +14,12 @@
       "expense": "{{count}} {count, plural, one {dépense} other {dépenses}}",
       "product_vendor": "{{count}} {count, plural, one {produit lié} other {produits liés}}",
       "product_barcode": "{{count}} {count, plural, one {code fournisseur} other {codes fournisseur}}",
+      "invoice_line": "{{count}} {count, plural, one {ligne de facture} other {lignes de facture}}",
+      "quote_line": "{{count}} {count, plural, one {ligne de devis} other {lignes de devis}}",
+      "delivery_note_line": "{{count}} {count, plural, one {ligne de bon de livraison} other {lignes de bons de livraison}}",
+      "purchase_order_line": "{{count}} {count, plural, one {ligne de commande fournisseur} other {lignes de commandes fournisseur}}",
+      "stock_lot": "{{count}} {count, plural, one {lot} other {lots}}",
+      "price_list_item": "{{count}} {count, plural, one {prix d’une liste de prix} other {prix de listes de prix}}",
       "other": "{{count}} {count, plural, one {autre fiche} other {autres fiches}}"
     },
     "errors": {
@@ -21,7 +27,7 @@
       "not_found": "Cette suppression n’existe plus, ou vous ne pouvez pas la remettre.",
       "no_record": "Choisissez au moins une fiche à supprimer.",
       "record_used": "Rien n’est supprimé, car une fiche sert encore.",
-      "restore_conflict": "Rien n’est remis, car une fiche créée depuis prend sa place (le même numéro, par exemple).",
+      "restore_conflict": "Rien n’est remis, car une fiche créée depuis prend sa place (le même numéro, par exemple), ou une fiche qu’elle nomme a été supprimée depuis.",
       "removal_final": "Les 24 heures sont passées. La suppression est définitive."
     },
     "recent": {
@@ -32,7 +38,8 @@
       "removed_at": "Supprimé le {{moment}}",
       "until": "Peut être remis jusqu’au {{moment}}",
       "subjects": {
-        "vendor": "{{count}} {count, plural, one {fournisseur} other {fournisseurs}}"
+        "vendor": "{{count}} {count, plural, one {fournisseur} other {fournisseurs}}",
+        "product": "{{count}} {count, plural, one {produit} other {produits}}"
       }
     }
   }

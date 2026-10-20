@@ -249,7 +249,7 @@ export const routes: Routes = [
       {
         path: 'products/:productId',
         title: 'titles.product',
-        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        canActivate: [moduleGuard(PRODUCTS_MODULE), textsOpened(RECORDS_TEXTS)],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
       {

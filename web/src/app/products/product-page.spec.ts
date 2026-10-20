@@ -30,6 +30,7 @@ import { ProductReorderPointsSection } from './product-reorder-points';
 import { ProductPage } from './product-page';
 import { ProductOnView } from './product-on-view';
 import type { SettingRow } from '../shared/settings/settings-types';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { ArticleSettings } from './article-settings-facade';
 import { PRICE_PREVIEW_DELAY } from './price-calculator';
 import { ProductsFacade } from './products-facade';
@@ -113,6 +114,7 @@ describe('ProductPage', () => {
     hasPermission: vi.fn(),
     hasModule: vi.fn(),
   };
+  const deletes = { remove: vi.fn() };
   const articleSettings = {
     rows: signal<readonly SettingRow[]>([]).asReadonly(),
     busy: signal(false).asReadonly(),
@@ -171,6 +173,7 @@ describe('ProductPage', () => {
     categories.set([]);
     auth.hasPermission.mockReset().mockReturnValue(true);
     auth.hasModule.mockReset().mockReturnValue(true);
+    deletes.remove.mockReset().mockResolvedValue(true);
     articleSettings.load.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       imports: [ProductPage],
@@ -190,6 +193,7 @@ describe('ProductPage', () => {
         { provide: ArticleSettings, useValue: articleSettings },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         // Customer view is remembered per tab: on the real session storage it outlives this spec and hides columns in others.
@@ -220,6 +224,51 @@ describe('ProductPage', () => {
     // Its error is shown and is what is said with it.
     expect(focused.classList).toContain('ng-invalid');
     expect(focused.getAttribute('aria-describedby')).toMatch(/mat-mdc-error/);
+  });
+
+  /** The entry « ⋮ » lists for an action, the menu opened first. */
+  async function menuEntry(id: string): Promise<HTMLElement | null> {
+    q('record-more')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return document.body.querySelector<HTMLElement>(`[data-testid="record-menu-${id}"]`);
+  }
+
+  it('deletes the product without asking, said annulable, and goes back to the list once it is gone', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    product.set(laptop);
+    await open(laptop.id);
+
+    const entry = await menuEntry('delete');
+    expect(entry?.getAttribute('data-kind')).toBe('annulable');
+    entry!.click();
+    await settle();
+
+    expect(auth.hasPermission).toHaveBeenCalledWith('product.write');
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'product', [
+      { id: 'p1', label: 'ART-001 Portable 14"' },
+    ]);
+    expect(navigate).toHaveBeenCalledWith(['/products']);
+  });
+
+  it('stays on the product when the delete is refused, and offers none to whoever may not write products', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    deletes.remove.mockResolvedValue(false);
+    product.set(laptop);
+    await open(laptop.id);
+    (await menuEntry('delete'))!.click();
+    await settle();
+    expect(navigate).not.toHaveBeenCalled();
+
+    fixture.destroy();
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'product.write');
+    await open(laptop.id);
+    expect(await menuEntry('delete')).toBeNull();
+  });
+
+  it('offers no delete while a new product is filled in', async () => {
+    await open(undefined);
+    expect(await menuEntry('delete')).toBeNull();
   });
 
   it("offers a saved product's labels, opened in a new tab", async () => {

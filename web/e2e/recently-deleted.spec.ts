@@ -103,3 +103,50 @@ test('a vendor is deleted, taken back from its toast, and put back from « Réce
   await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
   await deleteIt();
 });
+
+test('a product is deleted with its page, taken back from its toast, and put back from « Récemment supprimés »', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const reference = `E2E-DEL-${runDigits()}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+
+  await page.goto('/products/new');
+  await page.getByTestId('field-reference').fill(reference);
+  await page.getByTestId('field-name').fill('Cheville 8 mm');
+  await page.getByTestId('field-unitPriceNet').fill('0,2');
+  await page.getByTestId('record-save').click();
+  await expect(page).toHaveURL(/\/products\/[0-9a-f-]{36}/);
+  const address = new URL(page.url()).pathname;
+  await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
+
+  async function deleteIt(): Promise<void> {
+    await page.getByTestId('record-more').click();
+    const entry = page.getByTestId('record-menu-delete');
+    await expect(entry).toHaveAttribute('data-kind', 'annulable');
+    await entry.click();
+    await expect(page).toHaveURL(/\/products$/);
+    await expect(toast(page)).toContainText(reference);
+  }
+
+  await deleteIt();
+  await toast(page).getByTestId('toast-action').click();
+  await expect(toast(page)).toContainText('remis');
+  await page.goto(address);
+  await expect(page.getByTestId('field-reference')).toHaveValue(reference);
+  await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
+
+  await deleteIt();
+  await page.goto('/company/recently-deleted');
+  const removal = page.locator('li[data-testid^="removal-"]', { hasText: reference });
+  await expect(removal).toContainText('1 produit');
+  await removal.getByRole('button').click();
+  await expect(toast(page)).toContainText('remis');
+  await expect(removal).toHaveCount(0);
+
+  await page.goto(address);
+  await expect(page.getByTestId('field-reference')).toHaveValue(reference);
+  await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
+  await deleteIt();
+});
