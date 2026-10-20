@@ -191,7 +191,7 @@ describe('ProductsPage', () => {
     expect(q('product-categories-link')).not.toBeNull();
   });
 
-  it('offers the file of who sells each product beside the products one, to a cost reader while vendors are kept', async () => {
+  it('offers the file of who sells each product beside the products one, while vendors are kept', async () => {
     q('products-import')?.click();
     await settle();
     const entry = (id: string): string | null | undefined =>
@@ -201,17 +201,17 @@ describe('ProductsPage', () => {
       '/imports/product-vendors',
     ]);
 
-    for (const [permission, module] of [
-      [(name: string) => name !== 'product.cost.read', true],
-      [() => true, false],
-    ] as const) {
-      fixture.destroy();
-      auth.hasPermission.mockImplementation(permission);
-      auth.hasModule.mockReturnValue(module);
-      fixture = TestBed.createComponent(ProductsPage);
-      await settle();
-      expect(q('products-import')?.getAttribute('href')).toBe('/imports/products');
-    }
+    fixture.destroy();
+    auth.hasPermission.mockImplementation((name: string) => name !== 'product.cost.read');
+    fixture = TestBed.createComponent(ProductsPage);
+    await settle();
+    expect(q('products-import')?.getAttribute('href')).toBeNull();
+
+    fixture.destroy();
+    auth.hasModule.mockReturnValue(false);
+    fixture = TestBed.createComponent(ProductsPage);
+    await settle();
+    expect(q('products-import')?.getAttribute('href')).toBe('/imports/products');
   });
 
   it('leads to the categories through the tabs of the products screens', () => {

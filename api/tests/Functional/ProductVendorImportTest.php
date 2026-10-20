@@ -142,21 +142,25 @@ final class ProductVendorImportTest extends ApiTestCase
     }
 
     /**
-     * Who a product is bought from is read with costs: to somebody who may write products but not read costs, the
-     * subject is as unknown as one nobody declares, its guide, its template and its import alike.
+     * Who a product is bought from is read with the product, so whoever writes products links them; a vendor's own code
+     * is read with costs, so its column is not offered to anybody else.
      */
-    public function testWhoSeesNoCostIsAnsweredAsIfThereWereNothingToImport(): void
+    public function testWhoSeesNoCostLinksVendorsButIsOfferedNoCodeColumn(): void
     {
         $this->signedIn(['product.read', 'product.write']);
 
         $this->client->request('GET', $this->companyPath().'/imports/product-vendors', server: ['HTTP_ACCEPT' => 'application/json']);
-        self::assertResponseStatusCodeSame(404);
-        $this->client->request('GET', $this->companyPath().'/import-templates/product-vendors.csv');
-        self::assertResponseStatusCodeSame(404);
-        $this->import(self::HEADER."P-1,F-001,\n");
-        self::assertResponseStatusCodeSame(404);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['product_reference', 'vendor_number'], array_map(static fn (mixed $column): mixed => \is_array($column) ? $column['key'] ?? null : null, $this->arrayAt($this->json(), 'columns')));
+
+        $this->import("product_reference,vendor_number\nP-1,F-001\n");
+        self::assertSame([2], $this->json()['created'] ?? null, json_encode($this->json()) ?: '');
         $this->em()->clear();
-        self::assertSame([], $this->vendorsOf('P-1'));
+        self::assertSame(['F-001'], $this->vendorsOf('P-1'));
+
+        $this->import(self::HEADER."P-2,F-001,SF-1\n");
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['unknown_columns', ['vendor_code']], [$this->json()['error'] ?? null, $this->json()['columns'] ?? null]);
     }
 
     /** A company that keeps no vendors has none to name. */
