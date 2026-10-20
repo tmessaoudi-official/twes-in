@@ -188,6 +188,15 @@ final class VendorResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $defaultExpenseCategoryId = null;
 
+    /**
+     * The vendor kept when this one was merged away: lists, reports and pickers show that one wherever this one is named.
+     *
+     * @var array{id: string, number: string, name: string}|null
+     */
+    #[ApiProperty(schema: ['anyOf' => [['type' => 'object', 'required' => ['id', 'number', 'name'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'number' => ['type' => 'string'], 'name' => ['type' => 'string']]], ['type' => 'null']]])]
+    #[Groups([self::READ])]
+    public ?array $mergedInto = null;
+
     public static function of(Vendor $vendor): self
     {
         $profile = $vendor->getProfile();
@@ -208,6 +217,8 @@ final class VendorResource
         $resource->notes = $profile->notes;
         $resource->isActive = $vendor->isActive();
         $resource->defaultExpenseCategoryId = $profile->defaultExpenseCategoryId?->toRfc4122();
+        $kept = $vendor->getMergedInto();
+        $resource->mergedInto = null === $kept ? null : ['id' => $kept->getId()->toRfc4122(), 'number' => $kept->getNumber(), 'name' => $kept->getProfile()->name];
 
         return $resource;
     }

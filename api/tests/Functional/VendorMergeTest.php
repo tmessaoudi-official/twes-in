@@ -216,6 +216,62 @@ final class VendorMergeTest extends ApiTestCase
         self::assertSame(['Sotumag Sfax', false], [$connection->fetchOne('SELECT name FROM vendor WHERE id = ?', [$merged]), $connection->fetchOne('SELECT is_active FROM vendor WHERE id = ?', [$merged])]);
     }
 
+    /**
+     * Lists, reports and pickers show the vendor kept wherever the one merged away is named; the books keep the vendor
+     * an expense was recorded with, as the accountant's journal and the withholding certificates are the record.
+     */
+    public function testListsAndReportsShowTheVendorKeptWhileTheBooksKeepTheVendorRecorded(): void
+    {
+        $this->signedIn();
+        [$kept, $merged, $other] = [$this->vendorId('F-001'), $this->vendorId('F-002'), $this->vendorId('F-003')];
+        $recorded = $this->anExpense($merged, record: true);
+        $elsewhere = $this->anExpense($other, record: true);
+        $order = $this->anOrder($merged);
+        $this->postJson($this->path("purchase-orders/$order/send"), null);
+        self::assertResponseIsSuccessful();
+        $this->aReceipt($merged);
+        $this->merged($kept, [$merged]);
+
+        $this->getJson($this->path('vendors'));
+        self::assertSame(['F-001', 'F-003', 'F-004'], array_column($this->jsonList(), 'number'));
+        $this->getJson($this->path('vendors?isActive=false'));
+        self::assertSame([], $this->jsonList());
+        $this->getJson($this->path("vendors/$merged"));
+        self::assertSame(['id' => $kept, 'number' => 'F-001', 'name' => 'Sotumag'], $this->json()['mergedInto'] ?? null);
+        $this->getJson($this->path("vendors/$kept"));
+        self::assertArrayNotHasKey('mergedInto', $this->json());
+
+        $this->getJson($this->path('expenses?vendorId='.$kept));
+        self::assertSame([[$recorded, $merged, 'Sotumag']], array_map(static fn (array $row): array => [$row['id'] ?? null, $row['vendorId'] ?? null, $row['vendorName'] ?? null], $this->jsonList()));
+        // Sorted by the name shown: « Sotumag » before « Sotumag Gabès », where the name recorded, « Sotumag Sfax », comes after.
+        $this->getJson($this->path('expenses?order[vendor]=asc'));
+        self::assertSame([$recorded, $elsewhere], array_column($this->jsonList(), 'id'));
+        $this->getJson($this->path('purchase-orders?vendorId='.$kept));
+        self::assertSame([[$order, 'Sotumag']], array_map(static fn (array $row): array => [$row['id'] ?? null, $row['vendorName'] ?? null], $this->jsonList()));
+        $this->getJson($this->path('stock-movements'));
+        self::assertSame(['Sotumag'], array_values(array_filter(array_column($this->jsonList(), 'vendorName'))));
+
+        // The day every expense here is written on.
+        $today = '2026-10-20';
+        $this->getJson($this->path("reports/expenses-by-supplier?from=$today&to=$today"));
+        self::assertResponseIsSuccessful();
+        $rows = [];
+        foreach ($this->arrayAt($this->json(), 'rows') as $row) {
+            self::assertIsArray($row);
+            $cells = $row['cells'] ?? null;
+            self::assertIsArray($cells);
+            $rows[] = [$row['key'] ?? null, $cells['supplier'] ?? null, $cells['expenses'] ?? null];
+        }
+        self::assertSame([[$kept, 'Sotumag', 1], [$other, 'Sotumag Gabès', 1]], $rows);
+        $this->getJson($this->path("reports/expenses-by-supplier/documents?from=$today&to=$today&row=$kept"));
+        self::assertResponseIsSuccessful();
+        self::assertSame([$recorded], array_column($this->arrayAt($this->json(), 'documents'), 'id'));
+
+        $this->client->request('GET', $this->path("exports/purchases-journal.csv?from=$today&to=$today"));
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('Sotumag Sfax', (string) $this->client->getInternalResponse()->getContent());
+    }
+
     /** An order sent before the merge is the vendor merged away's: its goods are still received, naming it as the order does. */
     public function testAnOrderSentBeforeTheMergeIsStillReceived(): void
     {
@@ -456,7 +512,7 @@ final class VendorMergeTest extends ApiTestCase
 
     private function signedIn(bool $prove = true): void
     {
-        $permissions = ['company.read', 'vendor.read', 'vendor.write', 'expense.read', 'expense.write', 'purchase.read', 'purchase.write', 'purchase.receive', 'stock.read', 'stock.write', 'product.read', 'product.write', 'product.cost.read'];
+        $permissions = ['company.read', 'vendor.read', 'vendor.write', 'expense.read', 'expense.write', 'purchase.read', 'purchase.write', 'purchase.receive', 'stock.read', 'stock.write', 'product.read', 'product.write', 'product.cost.read', 'accounting.export'];
         $this->createUser('shop@twes.local', self::PASSWORD, $this->company, $permissions, 'member');
         $this->login('shop@twes.local', self::PASSWORD);
         self::assertResponseIsSuccessful();

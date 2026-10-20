@@ -44,7 +44,9 @@ final readonly class DoctrineVendorRepository implements VendorRepository
     {
         $query = $this->entityManager->createQueryBuilder()
             ->select('v')->from(Vendor::class, 'v')
-            ->where('v.company = :company')->setParameter('company', $companyId, 'uuid');
+            ->where('v.company = :company')->setParameter('company', $companyId, 'uuid')
+            // A vendor merged away is listed as the vendor kept, which is listed already.
+            ->andWhere('v.mergedInto IS NULL');
         $words = trim($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
@@ -100,6 +102,14 @@ final readonly class DoctrineVendorRepository implements VendorRepository
         $vendor = $this->entityManager->find(Vendor::class, $id);
 
         return null !== $vendor && $vendor->getCompany()->getId()->equals($companyId) ? $vendor : null;
+    }
+
+    public function mergedInto(array $ids, Uuid $companyId): array
+    {
+        /** @var list<Vendor> $vendors */
+        $vendors = [] === $ids ? [] : $this->entityManager->getRepository(Vendor::class)->findBy(['mergedInto' => $ids, 'company' => $companyId]);
+
+        return $vendors;
     }
 
     public function ofNumberInCompany(string $number, Uuid $companyId): ?Vendor

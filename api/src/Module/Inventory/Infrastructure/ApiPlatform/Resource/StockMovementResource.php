@@ -290,7 +290,8 @@ final class StockMovementResource
         $resource->reason = $movement->getReason()?->value;
         $resource->note = $movement->getNote();
         $resource->vendorId = $movement->getVendor()?->getId()->toRfc4122();
-        $resource->vendorName = $movement->getVendor()?->getProfile()->name;
+        // Shown as the vendor kept when it was merged away; the movement still names the vendor the goods came from.
+        $resource->vendorName = $movement->getVendor()?->standingFor()->getProfile()->name;
         $resource->supplierReference = $movement->getSupplierReference();
         $resource->receivedOn = $movement->getReceivedOn()?->format('Y-m-d');
         $resource->sourceId = $movement->getSourceId()?->toRfc4122();

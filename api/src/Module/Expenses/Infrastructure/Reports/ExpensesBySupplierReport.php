@@ -35,6 +35,9 @@ final readonly class ExpensesBySupplierReport implements DeclaresReport
 {
     private const string RECORDED = 'e.company_id = :company AND e.status IN (:recorded, :paid) AND e.expense_date BETWEEN :from AND :to';
 
+    /** The vendor an expense is counted under: the one it names, or the one kept when that one was merged away. */
+    private const string STANDING = 'LEFT JOIN vendor named ON named.id = e.vendor_id LEFT JOIN vendor v ON v.id = COALESCE(named.merged_into_id, named.id)';
+
     /** The same name whatever its case and spaces: « Société  X » and « société x » are one payee. */
     private const string PAYEE = 'lower(regexp_replace(btrim(e.payee), \'\s+\', \' \', \'g\'))';
 
@@ -85,11 +88,11 @@ final readonly class ExpensesBySupplierReport implements DeclaresReport
         $rows = $this->connection->fetchAllAssociative(
             'SELECT vendor_id, payee_key, COALESCE(MIN(vendor_name), MIN(payee)) AS name,
                     SUM(amount_net) AS net, SUM(taxes) AS taxes, SUM(amount_gross) AS gross, COUNT(*) AS expenses
-               FROM (SELECT e.vendor_id, v.name AS vendor_name, btrim(e.payee) AS payee,
+               FROM (SELECT v.id AS vendor_id, v.name AS vendor_name, btrim(e.payee) AS payee,
                             CASE WHEN e.vendor_id IS NULL AND btrim(e.payee) <> \'\' THEN md5('.self::PAYEE.') END AS payee_key,
                             e.amount_net, e.tax_amount + e.fixed_amount AS taxes, e.amount_gross
                        FROM expense e
-                       LEFT JOIN vendor v ON v.id = e.vendor_id
+                       '.self::STANDING.'
                       WHERE '.self::RECORDED.') spent
               GROUP BY vendor_id, payee_key
               ORDER BY (vendor_id IS NULL AND payee_key IS NULL), SUM(amount_gross) DESC, name, vendor_id, payee_key',
@@ -130,14 +133,14 @@ final readonly class ExpensesBySupplierReport implements DeclaresReport
             $which = 'e.vendor_id IS NULL AND e.payee IS NOT NULL AND md5('.self::PAYEE.') = :payee';
             $params += ['payee' => $match[1]];
         } elseif (Uuid::isValid($rowKey)) {
-            $which = 'e.vendor_id = :vendor';
+            $which = 'v.id = :vendor';
             $params += ['vendor' => $rowKey];
         } else {
             return [];
         }
         $rows = $this->connection->fetchAllAssociative(
             'SELECT e.id, e.reference, COALESCE(v.name, e.payee) AS party, e.expense_date, e.amount_gross
-               FROM expense e LEFT JOIN vendor v ON v.id = e.vendor_id
+               FROM expense e '.self::STANDING.'
               WHERE '.self::RECORDED.' AND '.$which.'
               ORDER BY e.expense_date, e.reference, e.id
               LIMIT :limit',

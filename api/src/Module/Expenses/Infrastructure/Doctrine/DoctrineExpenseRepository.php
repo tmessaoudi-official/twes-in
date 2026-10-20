@@ -34,8 +34,9 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
     private const array SORTED_BY = [
         'date' => 'e.date',
         'description' => 'e.description',
-        // Who was paid, as the list's column reads it: the vendor, else the payee written on the expense.
-        'vendor' => ['CASE WHEN v.id IS NULL THEN e.payee ELSE v.name END', 'COALESCE(v.name, e.payee) IS NULL'],
+        // Who was paid, as the list's column reads it: the vendor, the one kept for a vendor merged away, else the
+        // payee written on the expense.
+        'vendor' => ['CASE WHEN v.id IS NULL THEN e.payee ELSE COALESCE(vk.name, v.name) END', 'COALESCE(v.name, e.payee) IS NULL'],
         'category' => 'k.name',
         'amountGross' => 'e.amountGross',
         'status' => 'e.status',
@@ -85,7 +86,7 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
 
     public function search(Uuid $companyId, ExpenseSearch $search, PageRequest $page): Page
     {
-        $query = $this->filtered($companyId, $search)->select('e', 'v', 'k');
+        $query = $this->filtered($companyId, $search)->select('e', 'v', 'vk', 'k');
         // Asked for nothing, the list reads the latest day first, as it always has; the day is a sort key of its own,
         // so it is the default rather than the tie-break, which would name the same column twice. An expense carries
         // no number, so what settles a tie is when it was filed, then its id, which is unique and never empty.
@@ -148,7 +149,7 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
         // without it, never the join itself.
         $query = $this->entityManager->createQueryBuilder()
             ->from(Expense::class, 'e')
-            ->leftJoin('e.vendor', 'v')->leftJoin('e.category', 'k')
+            ->leftJoin('e.vendor', 'v')->leftJoin('v.mergedInto', 'vk')->leftJoin('e.category', 'k')
             ->where('e.company = :company')->setParameter('company', $companyId, 'uuid');
         $words = trim($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
@@ -161,7 +162,8 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
                 ->setParameter('statuses', array_map(static fn (ExpenseStatus $each): string => $each->value, $search->statuses), ArrayParameterType::STRING);
         }
         if ([] !== $search->vendors) {
-            $query->andWhere('e.vendor IN (:vendorIds)')->setParameter('vendorIds', self::ids($search->vendors), ArrayParameterType::STRING);
+            // A vendor's expenses are also those recorded with a vendor merged into it.
+            $query->andWhere('e.vendor IN (:vendorIds) OR vk.id IN (:vendorIds)')->setParameter('vendorIds', self::ids($search->vendors), ArrayParameterType::STRING);
         }
         if ([] !== $search->categories) {
             $query->andWhere('e.category IN (:categoryIds)')->setParameter('categoryIds', self::ids($search->categories), ArrayParameterType::STRING);
