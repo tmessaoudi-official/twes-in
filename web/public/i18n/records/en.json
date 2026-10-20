@@ -20,7 +20,11 @@
       "settings": "Defaults move too, except those the record kept already sets.",
       "undo_hint": "The merge can be undone for 24 hours, from the message that follows or from “Recently deleted”.",
       "cancel": "Merge nothing",
-      "confirm": "Merge"
+      "confirm": "Merge",
+      "alias": "“{{name}}” stays, switched off, and points to the record kept. What moves to the record kept: {{moves}}.",
+      "alias_empty": "“{{name}}” stays, switched off, and points to the record kept. Nothing moves to the record kept.",
+      "alias_stays": "What stays under “{{name}}”, as the books and the stock recorded it: {{stays}}.",
+      "undo_hint_alias": "The merge can be undone for 24 hours, from the message that follows or from “Recently deleted”, as long as nothing has been received or recorded under the record kept."
     },
     "tables": {
       "stock_movement": "{{count}} {count, plural, one {stock movement} other {stock movements}}",
@@ -50,7 +54,10 @@
       "merge_into_itself": "Nothing is merged, because the record kept is among those to merge.",
       "merge_cycle": "Nothing is merged, because the record kept sits under one to merge. Keep the one above instead.",
       "merge_conflict": "Nothing is merged, because a row moved clashes with one of the record kept.",
-      "step_up_required": "Nothing changed, because who you are was not confirmed."
+      "step_up_required": "Nothing changed, because who you are was not confirmed.",
+      "merge_alias": "Nothing is merged, because one of these records was already merged into another. Choose that one instead.",
+      "merge_mismatch": "Nothing is merged, because these records do not describe the same thing.",
+      "merge_transacted": "The merge is no longer undone, because the record kept has been used since."
     },
     "recent": {
       "title": "Recently deleted",
@@ -69,6 +76,14 @@
         "product_category": "{{count}} {count, plural, one {product category} other {product categories}}",
         "expense_category": "{{count}} {count, plural, one {expense category} other {expense categories}}"
       }
+    },
+    "mismatch": {
+      "identifiers": "Nothing is merged, because these records carry different registration numbers (the tax number, for instance): they are not the same."
+    },
+    "traded_since": "The merge is no longer undone, because the record kept appears since in {{uses}}.",
+    "merged_away": {
+      "banner": "This record was merged into “{{kept}}”. It stays for what already names it and is no longer changed; lists show “{{kept}}” in its place.",
+      "open": "Open “{{kept}}”"
     }
   }
 }

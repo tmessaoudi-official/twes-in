@@ -73,6 +73,7 @@ const sotumag: VendorRow = {
   notes: null,
   isActive: true,
   defaultExpenseCategoryId: null,
+  mergedInto: null,
 };
 
 describe('VendorPage', () => {
@@ -493,6 +494,25 @@ describe('VendorPage', () => {
     // The archived choice leaves the list, and the form is not rebuilt over what was being typed.
     expect((q('field-name') as HTMLInputElement).value).toBe('Sotumag & fils');
     expect(q('record-changed')).not.toBeNull();
+  });
+
+  it('shows a vendor merged away as such, opening the one kept, with no way to save or delete it', async () => {
+    vendor.set({
+      ...sotumag,
+      id: 'v2',
+      number: 'FRN-0002',
+      name: 'Sotumag Sfax',
+      isActive: false,
+      mergedInto: { id: 'v1', number: 'FRN-0001', name: 'Sotumag' },
+    });
+    await open('v2');
+
+    expect(q('vendor-merged-away')).not.toBeNull();
+    expect(q('vendor-merged-away-open')?.getAttribute('href')).toBe('/vendors/v1');
+    expect(q('record-save')).toBeNull();
+    expect(await menuEntry('delete')).toBeNull();
+    // Nobody lacks the right to change it: it is the merge that keeps it as it was.
+    expect(q('vendor-read-only')).toBeNull();
   });
 
   it('shows a reader the vendor without a way to save it', async () => {

@@ -385,7 +385,7 @@ export const routes: Routes = [
       {
         path: 'vendors',
         title: 'nav.vendors',
-        canActivate: [moduleGuard(VENDORS_MODULE)],
+        canActivate: [moduleGuard(VENDORS_MODULE), textsOpened(RECORDS_TEXTS)],
         loadComponent: () => import('./vendors/vendors-page').then((m) => m.VendorsPage),
       },
       {

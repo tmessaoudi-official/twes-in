@@ -25,6 +25,23 @@
   @if (!mayWrite()) {
     <p data-testid="vendor-read-only">{{ 'vendors.read_only' | translate }}</p>
   }
+  @if (mergedAway(); as kept) {
+    <div
+      data-testid="vendor-merged-away"
+      class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant p-3"
+    >
+      <p>
+        {{ 'records.merged_away.banner' | translate: { kept: kept.number + ' · ' + kept.name } }}
+      </p>
+      <a
+        mat-stroked-button
+        [routerLink]="['/vendors', kept.id]"
+        data-testid="vendor-merged-away-open"
+      >
+        {{ 'records.merged_away.open' | translate: { kept: kept.number + ' · ' + kept.name } }}
+      </a>
+    </div>
+  }
   @if (error(); as code) {
     <p role="alert" data-testid="vendor-error" class="text-error">
       {{ 'vendors.errors.' + code | translate }}
@@ -50,7 +67,7 @@
             (resolved)="sync.resolve(form, $event)"
             testId="vendor-form"
             #mainForm
-            [readOnly]="!mayWrite()"
+            [readOnly]="!editable()"
             (submitted)="save($event)"
           >
           </app-descriptor-form>

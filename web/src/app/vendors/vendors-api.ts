@@ -174,6 +174,7 @@ function toVendor(raw: VendorVendorRead | VendorJsonldVendorRead): VendorRow {
     notes: raw.notes ?? null,
     isActive: raw.isActive ?? true,
     defaultExpenseCategoryId: raw.defaultExpenseCategoryId ?? null,
+    mergedInto: raw.mergedInto ?? null,
   };
 }
 

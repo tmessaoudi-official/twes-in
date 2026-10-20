@@ -49,7 +49,13 @@ const REMOVAL: RecordRemoval = {
 };
 
 describe('RecordDeletes', () => {
-  const api = { remove: vi.fn(), restore: vi.fn(), pending: vi.fn(), merge: vi.fn() };
+  const api = {
+    remove: vi.fn(),
+    restore: vi.fn(),
+    pending: vi.fn(),
+    merge: vi.fn(),
+    previewMerge: vi.fn(),
+  };
   // The real retry over a faked dialog: what is under test is when the proof is asked, not the dialog.
   const dialog = { open: vi.fn() };
   const stepUp = { request: vi.fn(), retrying: StepUp.prototype.retrying };
@@ -60,6 +66,7 @@ describe('RecordDeletes', () => {
     api.remove.mockReset();
     api.restore.mockReset();
     api.merge.mockReset();
+    api.previewMerge.mockReset();
     stepUp.request.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       providers: [
@@ -211,6 +218,33 @@ describe('RecordDeletes', () => {
     expect(stepUp.request).not.toHaveBeenCalled();
   });
 
+  it('names what the records disagree on when it says it, and the plain refusal otherwise', async () => {
+    api.merge.mockRejectedValueOnce(new RemovalRefused('merge_mismatch', [], 'identifiers'));
+    expect(await deletes.merge('c1', 'vendor', KEPT, MERGE.items)).toBe(false);
+    api.merge.mockRejectedValueOnce(new RemovalRefused('merge_mismatch', [], 'colour'));
+    expect(await deletes.merge('c1', 'vendor', KEPT, MERGE.items)).toBe(false);
+
+    expect(failureToasts()).toEqual([
+      'records.mismatch.identifiers',
+      'records.errors.merge_mismatch',
+    ]);
+  });
+
+  it('says what the record kept did since, when its merge is no longer undone', async () => {
+    api.restore.mockRejectedValue(
+      new RemovalRefused('merge_transacted', [], null, [
+        { table: 'stock_movement', count: 2 },
+        { table: 'purchase_order', count: 1 },
+      ]),
+    );
+
+    expect(await deletes.restore('c1', MERGE)).toBe(false);
+
+    expect(failureToasts()).toEqual(['records.traded_since']);
+    expect(lastParams()).toEqual({ uses: '2 mouvements de stock et 1 commande fournisseur' });
+    expect(heard).not.toHaveBeenCalled();
+  });
+
   it('merges the records but the one the dialog kept, and nothing when it is closed', async () => {
     api.merge.mockResolvedValue(MERGE);
     const candidates = [
@@ -232,5 +266,44 @@ describe('RecordDeletes', () => {
       await deletes.offerMerge('c1', { subject: 'product_category', candidates, settings: true }),
     ).toBe(false);
     expect(api.merge).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks the API what a merge of aliases moves and leaves, offers it, and merges into the one kept', async () => {
+    const preview = [
+      { id: 'v1', label: 'F-001 Sotumag', moves: [], stays: [] },
+      {
+        id: 'v2',
+        label: 'F-002 Sotumag Sfax',
+        moves: [{ table: 'purchase_order', count: 1 }],
+        stays: [{ table: 'expense', count: 3 }],
+      },
+    ];
+    api.previewMerge.mockResolvedValue(preview);
+    api.merge.mockResolvedValue({ ...MERGE, subject: 'vendor' });
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () => of({ id: 'v1', label: 'F-001 Sotumag' }),
+    });
+
+    expect(
+      await deletes.offerMergeOf('c1', 'vendor', ['v1', 'v2'], { settings: false, aliased: true }),
+    ).toBe(true);
+
+    expect(api.previewMerge).toHaveBeenCalledWith('c1', 'vendor', ['v1', 'v2']);
+    expect(dialog.open.mock.calls.at(-1)?.[1]).toMatchObject({
+      data: { subject: 'vendor', candidates: preview, settings: false, aliased: true },
+    });
+    expect(api.merge).toHaveBeenCalledWith('c1', 'vendor', 'v1', ['v2']);
+  });
+
+  it('opens nothing when the preview is refused, and says why', async () => {
+    api.previewMerge.mockRejectedValue(new RemovalRefused('not_found'));
+    dialog.open.mockClear();
+
+    expect(
+      await deletes.offerMergeOf('c1', 'vendor', ['v1', 'v2'], { settings: false, aliased: true }),
+    ).toBe(false);
+
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(failureToasts()).toEqual(['records.errors.not_found']);
   });
 });

@@ -2609,6 +2609,7 @@
     "title": "Vendors",
     "add": "New vendor",
     "none": "No vendors yet.",
+    "selected": "{count, plural, =0 {No vendor selected} one {{{count}} vendor selected} other {{{count}} vendors selected}}",
     "no_company": "Choose a company first.",
     "new_title": "New vendor",
     "back": "Back to vendors",

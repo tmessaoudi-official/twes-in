@@ -52,9 +52,19 @@ export interface VendorRow {
   isActive: boolean;
   /** The expense category this vendor's expenses usually go to, archived since or not. */
   defaultExpenseCategoryId: string | null;
+  /** The vendor kept when this one was merged into it: this one then stays only for what already names it. */
+  mergedInto: VendorMergedInto | null;
 }
 
-export type VendorInput = Omit<VendorRow, 'id' | 'version'>;
+/** The vendor a vendor merged away points at, which lists show in its place. */
+export interface VendorMergedInto {
+  id: string;
+  number: string;
+  name: string;
+}
+
+/** What a form writes: never the merge, which only « Fusionner… » does. */
+export type VendorInput = Omit<VendorRow, 'id' | 'version' | 'mergedInto'>;
 
 export interface VendorIdentifierOption {
   key: string;

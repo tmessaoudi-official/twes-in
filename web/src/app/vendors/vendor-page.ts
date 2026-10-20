@@ -71,6 +71,10 @@ export class VendorPage {
     const vendor = this.facade.vendor();
     return vendor?.id === id ? vendor : undefined;
   });
+  /** The vendor kept when this one was merged into it: this one stays only for what already names it. */
+  protected readonly mergedAway = computed(() => this.current()?.mergedInto ?? null);
+  /** A vendor merged away is kept as it was, whoever looks at it. */
+  protected readonly editable = computed(() => this.mayWrite() && this.mergedAway() === null);
   protected readonly descriptor = computed(() => {
     const options = this.facade.options();
     return options === null
@@ -147,7 +151,7 @@ export class VendorPage {
   protected readonly recordActions = computed<ScreenAction[]>(() => {
     const busy = this.busy();
     const changes = this.changes();
-    const may = this.mayWrite();
+    const may = this.editable();
     return [
       {
         id: 'save',

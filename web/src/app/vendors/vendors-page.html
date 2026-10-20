@@ -26,7 +26,7 @@
   }
 
   <app-data-list
-    [descriptor]="list"
+    [descriptor]="list()"
     [rows]="rows()"
     [loading]="facade.busy()"
     [failed]="facade.error() !== null"
@@ -36,7 +36,22 @@
     [rowTestId]="rowTestId"
     emptyKey="vendors.none"
     emptyTestId="vendors-empty"
+    [(selected)]="selected"
   >
+    <ng-template appDataListSelection>
+      @if (selected().length > 1) {
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="merging()"
+          (click)="merge()"
+          data-testid="vendors-merge"
+        >
+          <mat-icon aria-hidden="true">merge</mat-icon>
+          {{ 'records.merge.action' | translate }}
+        </button>
+      }
+    </ng-template>
     <ng-template appDataListCell="status" let-row>
       <app-status-badge [tone]="row.isActive ? 'success' : 'neutral'">
         {{ 'vendors.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}

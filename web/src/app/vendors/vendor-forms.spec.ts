@@ -47,6 +47,7 @@ const sotumag: VendorRow = {
   notes: null,
   isActive: false,
   defaultExpenseCategoryId: 'k2',
+  mergedInto: null,
 };
 
 const categoryField = (descriptor: ReturnType<typeof vendorForm>) =>

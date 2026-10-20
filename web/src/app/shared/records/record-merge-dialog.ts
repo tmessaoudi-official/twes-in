@@ -5,11 +5,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatRadioModule } from '@angular/material/radio';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import type { RemovedItem } from './record-removals-api';
+import type { RemovedItem, TableCount } from './record-removals-api';
 
-/** A record offered for a merge, with what names it that a merge moves to the record kept, by table. */
+/**
+ * A record offered for a merge, with what names it that a merge moves to the record kept, by table, and what names it
+ * and stays, for a subject whose records stay as aliases.
+ */
 export interface MergeCandidate extends RemovedItem {
-  readonly moves: readonly { readonly table: string; readonly count: number }[];
+  readonly moves: readonly TableCount[];
+  readonly stays?: readonly TableCount[];
 }
 
 export interface RecordMergeDialogData {
@@ -19,6 +23,8 @@ export interface RecordMergeDialogData {
   readonly candidates: readonly MergeCandidate[];
   /** Whether the records carry defaults of their own, which move too unless the record kept sets them. */
   readonly settings: boolean;
+  /** Whether a record merged away stays, switched off and pointing at the one kept, rather than going. */
+  readonly aliased?: boolean;
 }
 
 /**
@@ -63,7 +69,9 @@ export interface RecordMergeDialogData {
           <p class="m-0">{{ 'records.merge.settings' | translate }}</p>
         }
         <p class="m-0 text-sm text-on-surface-variant">
-          {{ 'records.merge.undo_hint' | translate }}
+          {{
+            (data.aliased ? 'records.merge.undo_hint_alias' : 'records.merge.undo_hint') | translate
+          }}
         </p>
       </div>
     </mat-dialog-content>
@@ -102,26 +110,38 @@ export class RecordMergeDialog {
   protected readonly preview = computed(() =>
     this.data.candidates
       .filter((candidate) => candidate.id !== this.keptId())
-      .map((candidate) => {
-        const moves = candidate.moves.filter((move) => move.count > 0);
-        return {
-          id: candidate.id,
-          text:
-            moves.length === 0
-              ? this.translate.instant('records.merge.goes_empty', { name: candidate.label })
-              : this.translate.instant('records.merge.goes', {
-                  name: candidate.label,
-                  moves: this.list(
-                    moves.map((move) =>
-                      this.translate.instant(`records.tables.${move.table}`, {
-                        count: move.count,
-                      }),
-                    ),
-                  ),
-                }),
-        };
-      }),
+      .map((candidate) => ({ id: candidate.id, text: this.said(candidate) })),
   );
+
+  /**
+   * One record's fate: it goes, or it stays switched off as an alias of the one kept; what names it moves; and, for an
+   * alias, what names it stays as the books and the stock recorded it.
+   */
+  private said(candidate: MergeCandidate): string {
+    const name = candidate.label;
+    const moves = this.counted(candidate.moves);
+    const [moved, still] = this.data.aliased ? ['alias', 'alias_empty'] : ['goes', 'goes_empty'];
+    const fate =
+      moves === null
+        ? this.translate.instant(`records.merge.${still}`, { name })
+        : this.translate.instant(`records.merge.${moved}`, { name, moves });
+    const stays = this.data.aliased ? this.counted(candidate.stays ?? []) : null;
+    return stays === null
+      ? fate
+      : `${fate} ${this.translate.instant('records.merge.alias_stays', { name, stays })}`;
+  }
+
+  /** « 2 produits et 1 sous-catégorie », or null when no table counts a row. */
+  private counted(tables: readonly TableCount[]): string | null {
+    const counted = tables.filter((table) => table.count > 0);
+    return counted.length === 0
+      ? null
+      : this.list(
+          counted.map((table) =>
+            this.translate.instant(`records.tables.${table.table}`, { count: table.count }),
+          ),
+        );
+  }
 
   /** « a, b et c » as the screen's language joins a list. */
   private list(parts: readonly string[]): string {

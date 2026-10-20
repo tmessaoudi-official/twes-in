@@ -2609,6 +2609,7 @@
     "title": "Fournisseurs",
     "add": "Nouveau fournisseur",
     "none": "Aucun fournisseur pour l’instant.",
+    "selected": "{count, plural, =0 {Aucun fournisseur sélectionné} one {{{count}} fournisseur sélectionné} other {{{count}} fournisseurs sélectionnés}}",
     "no_company": "Choisissez d’abord une entreprise.",
     "new_title": "Nouveau fournisseur",
     "back": "Retour aux fournisseurs",
