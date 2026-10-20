@@ -199,6 +199,15 @@ final class ProductResource
     #[Groups([self::READ])]
     public ?string $mainPhotoId = null;
 
+    /**
+     * The product kept when this one was merged away: lists and pickers show that one wherever this one is named.
+     *
+     * @var array{id: string, reference: string, name: string}|null
+     */
+    #[ApiProperty(schema: ['anyOf' => [['type' => 'object', 'required' => ['id', 'reference', 'name'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'reference' => ['type' => 'string'], 'name' => ['type' => 'string']]], ['type' => 'null']]])]
+    #[Groups([self::READ])]
+    public ?array $mergedInto = null;
+
     public static function of(Product $product, bool $withCosts, ?string $mainPhotoId = null): self
     {
         $details = $product->getDetails();
@@ -220,6 +229,8 @@ final class ProductResource
         $resource->customFields = $product->getCustomFields();
         $resource->isActive = $product->isActive();
         $resource->mainPhotoId = $mainPhotoId;
+        $kept = $product->getMergedInto();
+        $resource->mergedInto = null === $kept ? null : ['id' => $kept->getId()->toRfc4122(), 'reference' => $kept->getReference(), 'name' => $kept->getDetails()->name];
 
         return $resource;
     }

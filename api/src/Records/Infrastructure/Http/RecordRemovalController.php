@@ -17,6 +17,7 @@ use App\Records\Application\Merge\MergeCycle;
 use App\Records\Application\Merge\MergeIntoItself;
 use App\Records\Application\Merge\MergeMismatch;
 use App\Records\Application\Merge\MergeRecords;
+use App\Records\Application\Merge\MergeRefused;
 use App\Records\Application\Merge\MergeTransacted;
 use App\Records\Application\Merge\PreviewMerge;
 use App\Records\Application\NoRecordChosen;
@@ -183,6 +184,8 @@ final readonly class RecordRemovalController
             return new JsonResponse(['error' => 'merge_alias'], Response::HTTP_CONFLICT);
         } catch (MergeMismatch $mismatch) {
             return new JsonResponse(['error' => 'merge_mismatch', 'column' => $mismatch->column], Response::HTTP_CONFLICT);
+        } catch (MergeRefused $refused) {
+            return new JsonResponse(['error' => 'merge_refused', 'reason' => $refused->reason, ...$refused->params], Response::HTTP_CONFLICT);
         } catch (MergeTransacted $traded) {
             return new JsonResponse(['error' => 'merge_transacted', 'uses' => $traded->uses], Response::HTTP_CONFLICT);
         } catch (StepUpRequired) {

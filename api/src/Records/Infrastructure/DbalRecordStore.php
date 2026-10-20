@@ -196,6 +196,7 @@ final readonly class DbalRecordStore implements RecordStore
                     \sprintf('WITH moved AS (UPDATE %1$s SET %2$s = CAST(:kept AS %3$s)%4$s WHERE %5$s RETURNING id) INSERT INTO record_merge_move (id, removal_id, company_id, table_name, column_name, row_id, from_value, to_value) SELECT gen_random_uuid(), :merge, :company, :table, :column, id, :from, :kept FROM moved', $name, $column, $type, $this->versioned($reference->table, ''), $naming),
                     [...$parameters, 'kept' => $kept, 'merge' => $mergeId->toRfc4122(), 'table' => $reference->table, 'column' => $reference->column, 'from' => $this->value($reference, $companyId, $mergedId)],
                 );
+                $this->documentsChanged($companyId, $mergeId, $reference->table, $reference->column, $reference, $this->value($reference, $companyId, $mergedId));
             }
             $this->connection->commit();
         } catch (UniqueConstraintViolationException $twice) {
@@ -256,9 +257,13 @@ final readonly class DbalRecordStore implements RecordStore
                 [$moving, $parameters['moving']] = $this->moving($reference);
                 $naming .= ' AND NOT ('.$moving.')';
             }
+            $dated = \sprintf("%s >= date_trunc('second', CAST(:since AS timestamp))", $this->name($reference->transactingAt));
+            if (null !== $reference->parentTable && null !== $reference->parentKey) {
+                $dated = \sprintf('%s IN (SELECT p.id FROM %s p WHERE p.company_id = :company AND p.%s)', $this->name($reference->parentKey), $this->name($reference->parentTable), $dated);
+            }
             // From the merge's second: a row dated within it, before or after, is taken as after, which only refuses more.
             $count = $this->connection->fetchOne(
-                \sprintf("SELECT count(*)::int FROM %s WHERE %s AND %s >= date_trunc('second', CAST(:since AS timestamp))", $this->name($reference->table), $naming, $this->name($reference->transactingAt)),
+                \sprintf('SELECT count(*)::int FROM %s WHERE %s AND %s', $this->name($reference->table), $naming, $dated),
                 [...$parameters, 'since' => $since->format('Y-m-d H:i:s.u')],
             );
             if (!\is_int($count)) {
@@ -309,7 +314,7 @@ final readonly class DbalRecordStore implements RecordStore
         return $merging;
     }
 
-    public function moveBack(Uuid $companyId, Uuid $mergeId): void
+    public function moveBack(Uuid $companyId, Uuid $mergeId, array $naming): void
     {
         $parameters = ['company' => $companyId->toRfc4122(), 'merge' => $mergeId->toRfc4122()];
         $table = null;
@@ -318,6 +323,11 @@ final readonly class DbalRecordStore implements RecordStore
             foreach ($this->connection->fetchAllAssociative('SELECT DISTINCT table_name, column_name FROM record_merge_move WHERE removal_id = :merge AND company_id = :company ORDER BY 1, 2', $parameters) as $moved) {
                 $table = self::text($moved['table_name']);
                 $column = self::text($moved['column_name']);
+                foreach ($naming as $reference) {
+                    if ($reference->table === $table && $reference->column === $column) {
+                        $this->documentsChanged($companyId, $mergeId, $table, $column, $reference, null);
+                    }
+                }
                 // Only a row that still names the record kept: one someone filed elsewhere since stays as they set it.
                 $this->connection->executeStatement(
                     \sprintf('UPDATE %1$s AS t SET %2$s = CAST(m.from_value AS %3$s)%4$s FROM record_merge_move m WHERE m.removal_id = :merge AND m.company_id = :company AND m.table_name = :table AND m.column_name = :column AND t.id = m.row_id AND t.company_id = :company AND t.%2$s::text = m.to_value', $this->name($table), $this->name($column), $this->columnType($table, $column), $this->versioned($table, 't.')),
@@ -407,6 +417,21 @@ final readonly class DbalRecordStore implements RecordStore
         return true === $versioned ? \sprintf(', version = %sversion + 1', $alias) : '';
     }
 
+    /**
+     * A document whose lines a merge pointed elsewhere, or back, is another version of it, so an editor that had it open
+     * saves over it only knowingly.
+     */
+    private function documentsChanged(Uuid $companyId, Uuid $mergeId, string $table, string $column, RecordReference $reference, ?string $from): void
+    {
+        if (null === $reference->parentTable || null === $reference->parentKey || '' === $this->versioned($reference->parentTable, '')) {
+            return;
+        }
+        $this->connection->executeStatement(
+            \sprintf('UPDATE %1$s AS p SET version = p.version + 1 WHERE p.company_id = :company AND p.id IN (SELECT t.%3$s FROM %2$s t JOIN record_merge_move m ON m.row_id = t.id WHERE m.removal_id = :merge AND m.company_id = :company AND m.table_name = :table AND m.column_name = :column AND (CAST(:from AS text) IS NULL OR m.from_value = :from))', $this->name($reference->parentTable), $this->name($table), $this->name($reference->parentKey)),
+            ['company' => $companyId->toRfc4122(), 'merge' => $mergeId->toRfc4122(), 'table' => $table, 'column' => $column, 'from' => $from],
+        );
+    }
+
     private function name(string $identifier): string
     {
         return $this->connection->quoteSingleIdentifier($identifier);
@@ -428,8 +453,14 @@ final readonly class DbalRecordStore implements RecordStore
             throw new \LogicException(\sprintf('%s.%s moves every row naming the record.', $reference->table, $reference->column));
         }
 
+        $condition = \sprintf('%s::text = ANY(CAST(:moving AS text[]))', $this->name($reference->movesWhereColumn));
+        if (null !== $reference->parentTable && null !== $reference->parentKey) {
+            // The column is the document's: the row moves when the document it belongs to meets it.
+            $condition = \sprintf('%s IN (SELECT p.id FROM %s p WHERE p.company_id = :company AND p.%s)', $this->name($reference->parentKey), $this->name($reference->parentTable), $condition);
+        }
+
         return [
-            \sprintf('%s::text = ANY(CAST(:moving AS text[]))', $this->name($reference->movesWhereColumn)),
+            $condition,
             '{'.implode(',', array_map(static fn (string $value): string => '"'.addcslashes($value, '"\\').'"', $reference->movesWhereValues)).'}',
         ];
     }

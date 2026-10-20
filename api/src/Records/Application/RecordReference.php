@@ -43,8 +43,10 @@ final readonly class RecordReference
         public ?string $whereValue = null,
         public array $twinColumns = [],
         public ?string $transactingAt = null,
+        public ?string $parentTable = null,
+        public ?string $parentKey = null,
     ) {
-        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none', $transactingAt ?? 'none', ...$twinColumns] as $name) {
+        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none', $transactingAt ?? 'none', $parentTable ?? 'none', $parentKey ?? 'none', ...$twinColumns] as $name) {
             if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
                 throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $name));
             }
@@ -92,7 +94,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that moves in a merge moves some rows, named by at least one value.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey);
     }
 
     /**
@@ -105,7 +107,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that drops its twins in a merge says what makes one, by at least one column.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, array_values($columns), $this->transactingAt);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, array_values($columns), $this->transactingAt, $this->parentTable, $this->parentKey);
     }
 
     /** The column names the subject only on the rows whose other column holds the value: the rest name other tables. */
@@ -115,7 +117,20 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: a column said of every subject names none of them on some rows only.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value, $this->twinColumns, $this->transactingAt);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey);
+    }
+
+    /**
+     * The row belongs to a document whose own row says what it is and when it was made (a line and its invoice): the
+     * columns `movingOnlyWhere` and `transactingAt` then name are the document's, found by its key on this row.
+     */
+    public function through(string $parentTable, string $parentKey): self
+    {
+        if (null !== $this->movesWhereColumn || null !== $this->transactingAt) {
+            throw new \InvalidArgumentException(\sprintf('%s.%s: say the document a row belongs to before its columns.', $this->table, $this->column));
+        }
+
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $parentTable, $parentKey);
     }
 
     /** Rows naming the record kept and dated by the column at or after a merge, outside what a merge moves, mean it traded since. */
@@ -125,6 +140,6 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: a column that names no record says no trade of one.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $column);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $column, $this->parentTable, $this->parentKey);
     }
 }

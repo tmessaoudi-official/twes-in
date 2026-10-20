@@ -76,9 +76,11 @@ interface RecordStore
      * Points back at the record merged away every row the merge moved that still names the record kept; one changed
      * since stays as it was set.
      *
+     * @param list<RecordReference> $naming what names the subject, which says the documents whose lines move back
+     *
      * @throws RemovalConflict when something made since stands in a row's way
      */
-    public function moveBack(Uuid $companyId, Uuid $mergeId): void;
+    public function moveBack(Uuid $companyId, Uuid $mergeId, array $naming): void;
 
     /**
      * Puts every copied row back, all or nothing, and lets the copy go.

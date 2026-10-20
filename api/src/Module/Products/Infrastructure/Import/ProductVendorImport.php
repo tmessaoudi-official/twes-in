@@ -146,8 +146,11 @@ final readonly class ProductVendorImport implements DeclaresImport
         $reference = $record->value('product_reference')
             ?? throw new RowRejected('product_reference', 'Every row names a product by its reference.', 'value_required');
 
-        return $this->products->ofReferenceInCompany($reference, $company->getId())
+        $product = $this->products->ofReferenceInCompany($reference, $company->getId())
             ?? throw new RowRejected('product_reference', \sprintf('The company has no product referenced "%s". Import the products first.', $reference), 'unknown_product', ['reference' => $reference]);
+
+        // A product merged away is bought as the product kept, which holds its codes and vendors now.
+        return $product->standingFor();
     }
 
     /** @throws RowRejected */

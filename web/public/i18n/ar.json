@@ -3096,6 +3096,7 @@
       "percent_sign": "اكتب 5 لـ 5 %.",
       "unknown_vendor": "ليس للشركة أي مزوّد بالرقم « {{number}} ».",
       "vendor_merged": "دُمج المزوّد « {{number}} » في « {{kept}} »: عدّل « {{kept}} » بدلًا منه.",
+      "product_merged": "دُمج المنتج « {{reference}} » في « {{kept}} »: عدّل « {{kept}} » بدلًا منه.",
       "vendor_has_code": "لا يزال للمزوّد « {{number}} » رمز لهذا المنتج: احذف الرمز أولًا.",
       "invalid_pack_quantity": "الحزمة تعدّ من 2 إلى 1 000 000 قطعة، بعدد صحيح."
     },

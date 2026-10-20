@@ -120,21 +120,6 @@ final class ProductRemovalTest extends ApiTestCase
         self::assertSame(1, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM product WHERE id = ?', [$product]));
     }
 
-    /** Products say nothing about how they merge yet: a merge of them, or its preview, is answered as a stranger is. */
-    public function testProductsAreNotMergedUntilTheySayHow(): void
-    {
-        $this->signedIn(['product.read', 'product.write']);
-        $kept = $this->aProduct('VIS-10', 'Vis 10 mm');
-        $other = $this->aProduct('VIS-10B', 'Vis de 10');
-        $this->stepUp('password-1234');
-
-        $this->getJson($this->path('record-merges/preview?subject=product&ids[]='.$kept.'&ids[]='.$other));
-        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        $this->postJson($this->path('record-merges'), ['subject' => 'product', 'keptId' => $kept, 'ids' => [$other]]);
-        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        self::assertSame(2, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM product WHERE id IN (?, ?)', [$kept, $other]));
-    }
-
     /**
      * Deleting the product took its vendor link with it, so the vendor became deletable and went too: putting the
      * product back would name a vendor that is gone. The restore refuses whole, and says so; restoring the vendor
