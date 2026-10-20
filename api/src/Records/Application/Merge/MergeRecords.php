@@ -69,6 +69,9 @@ final readonly class MergeRecords
      */
     public function handle(Company $company, RecordSubject $subject, mixed $keptId, mixed $ids, Uuid $actorUserId): RecordRemoval
     {
+        if (null === $subject->mergedAway) {
+            throw new UnknownRecords(\sprintf('A %s is not merged.', $subject->table));
+        }
         $kept = RemoveRecords::chosen([$keptId])[0];
         $merged = RemoveRecords::chosen($ids);
         if (\in_array($kept->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $merged), true)) {

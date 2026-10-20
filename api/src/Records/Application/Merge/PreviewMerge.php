@@ -35,6 +35,9 @@ final readonly class PreviewMerge
      */
     public function handle(Company $company, RecordSubject $subject, mixed $ids): array
     {
+        if (null === $subject->mergedAway) {
+            throw new UnknownRecords(\sprintf('A %s is not merged.', $subject->table));
+        }
         $chosen = RemoveRecords::chosen($ids);
 
         $labels = $this->store->labels($company->getId(), $subject, $chosen);
