@@ -1621,7 +1621,7 @@ final class InvoicesTest extends ApiTestCase
 
         $pages = $this->printedFrom($ids.'&cancelled=1');
         self::assertCount(3, $pages);
-        self::assertStringContainsString('ANNULÉ', $pages[2]);
+        self::assertStringContainsString('ANNULÉE', $pages[2]);
         self::assertStringNotContainsString('BROUILLON', $pages[2]);
 
         self::assertCount(4, $this->printedFrom($ids.'&drafts=1&cancelled=1'));

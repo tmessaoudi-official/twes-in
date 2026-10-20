@@ -24,7 +24,8 @@
 <body class="{{ 'layout-' ~ page.design.layout.value }}">
   {%- include 'pdf/_demo_band.html.twig' with {demo: demo, t: t, locale: locale} only %}
   {%- if page.watermark %}
-    <div class="watermark">{{ ('watermark.' ~ page.watermark)|trans({}, t, locale) }}</div>
+    {#- « Cancelled » agrees with the document it stamps, so an invoice says it in its own words. #}
+    <div class="watermark">{{ ('watermark.' ~ ({cancelled: 'cancelled_invoice'}[page.watermark] ?? page.watermark))|trans({}, t, locale) }}</div>
   {%- endif %}
 
   {#- The copy's day is a moment in the company's zone: `false` keeps that zone, where the document's own days below

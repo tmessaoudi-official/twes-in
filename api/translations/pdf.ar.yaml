@@ -102,6 +102,8 @@ payment:
 watermark:
     draft: 'مسودة'
     cancelled: 'ملغى'
+    cancelled_invoice: 'ملغاة'
+    cancelled_order: 'ملغاة'
     duplicate: 'نظير'
     copy: 'نسخة'
     preview: 'معاينة'

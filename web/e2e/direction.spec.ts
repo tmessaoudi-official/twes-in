@@ -251,3 +251,44 @@ test('Arabic letters are drawn in the self-hosted Arabic face', async ({ page },
   );
   await page.screenshot({ path: testInfo.outputPath('arabic-face.png'), fullPage: false });
 });
+
+// The screen speaks the person's language and the documents the company's: an operator reading Arabic prints Demo's
+// invoice in French, its « Langue des documents ». The PDF's title is its page's `<title>`, written plain in the file.
+test('a person reading Arabic prints the company documents in their own language', async ({
+  page,
+}) => {
+  const customer = await aCustomer(page, `RTL-PDF-${Date.now()}`);
+  const draft = await page.evaluate(
+    async ([csrf, customerId]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const created = await fetch(`/api/companies/${me.company.id}/invoices`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ customerId, lines: [] }),
+      });
+      if (!created.ok) throw new Error(`drafting the invoice answered ${created.status}`);
+      return ((await created.json()) as { id: string }).id;
+    },
+    [CSRF, customer] as const,
+  );
+  try {
+    await chooseArabic(page);
+    await page.goto(`/invoices/${draft}`);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+    await page.getByTestId('document-more').click();
+    const href = (await page.getByTestId('document-menu-pdf').getAttribute('href')) ?? '';
+    await page.keyboard.press('Escape');
+    const printed = await page.evaluate(async (url) => {
+      const response = await fetch(url);
+      const text = new TextDecoder('latin1').decode(await response.arrayBuffer());
+      return {
+        status: response.status,
+        title: /\/Title (\([^)]*\)|<[0-9A-Fa-f]*>)/.exec(text)?.[1] ?? '',
+      };
+    }, href);
+    expect(printed).toEqual({ status: 200, title: expect.stringMatching(/^\(Facture\b/) });
+  } finally {
+    await removed(page, 'invoice', draft);
+    await removed(page, 'customer', customer);
+  }
+});

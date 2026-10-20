@@ -101,6 +101,8 @@ payment:
 watermark:
     draft: 'BROUILLON'
     cancelled: 'ANNULÉ'
+    cancelled_invoice: 'ANNULÉE'
+    cancelled_order: 'ANNULÉ'
     duplicate: 'DUPLICATA'
     copy: 'COPIE'
     preview: 'APERÇU'
