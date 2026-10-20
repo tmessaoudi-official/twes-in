@@ -57,7 +57,9 @@
       "step_up_required": "Nothing changed, because who you are was not confirmed.",
       "merge_alias": "Nothing is merged, because one of these records was already merged into another. Choose that one instead.",
       "merge_mismatch": "Nothing is merged, because these records do not describe the same thing.",
-      "merge_transacted": "The merge is no longer undone, because the record kept has been used since."
+      "merge_transacted": "The merge is no longer undone, because the record kept has been used since.",
+      "merge_refused": "Nothing is merged, because part of these records cannot go to the record kept.",
+      "merge_alias_undo": "The merge is not undone, because the record kept was merged into another since. Undo that merge first."
     },
     "recent": {
       "title": "Recently deleted",
@@ -84,6 +86,12 @@
     "merged_away": {
       "banner": "This record was merged into “{{kept}}”. It stays for what already names it and is no longer changed; lists show “{{kept}}” in its place.",
       "open": "Open “{{kept}}”"
+    },
+    "merge_refused": {
+      "cost_pending": "Nothing is merged, because a receipt of “{{reference}}” is waiting for its cost. Enter it first.",
+      "costs_unseen": "Nothing is merged, because stock goes to the record kept at its value, and only someone who sees costs can merge it.",
+      "serial_held": "Nothing is merged, because the record kept already has the serial number “{{code}}”.",
+      "lot_dated_otherwise": "Nothing is merged, because the lot “{{code}}” has another date in the record kept, and a lot has one date."
     }
   }
 }

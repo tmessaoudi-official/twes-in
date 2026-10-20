@@ -81,6 +81,7 @@ const laptop: ProductRow = {
   tracking: 'none',
   substitutionGroup: null,
   mainPhotoId: null,
+  mergedInto: null,
 };
 
 describe('ProductPage', () => {
@@ -976,6 +977,31 @@ describe('ProductPage', () => {
     await open(undefined);
 
     expect(q('product-error')?.textContent).toContain('porte déjà cette référence');
+  });
+
+  it('shows a product merged away as such, opening the one kept, with no way to save, delete, label or add it', async () => {
+    addTo.kinds.mockReturnValue(['invoice']);
+    product.set({
+      ...laptop,
+      id: 'p2',
+      reference: 'ART-001B',
+      isActive: false,
+      mergedInto: { id: 'p1', reference: 'ART-001', name: 'Portable 14"' },
+    });
+    await open('p2');
+
+    expect(q('product-merged-away')).not.toBeNull();
+    expect(q('product-merged-away-open')?.getAttribute('href')).toBe('/products/p1');
+    expect(q('record-save')).toBeNull();
+    expect(await menuEntry('delete')).toBeNull();
+    // Labels and « Ajouter à… » may sit in the bar rather than its menu: the declaration is what says either way.
+    const declared = TestBed.inject(ScreenActions)
+      .actions()
+      .map((each) => each.id);
+    expect(declared).not.toContain('labels');
+    expect(declared).not.toContain('add_to');
+    // Nobody lacks the right to change it: it is the merge that keeps it as it was.
+    expect(q('product-read-only')).toBeNull();
   });
 
   it('shows a reader the product without a way to change it', async () => {

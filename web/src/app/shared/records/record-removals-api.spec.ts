@@ -142,6 +142,22 @@ describe('RecordRemovalsApi', () => {
     expect([traded.code, traded.uses]).toEqual(['merge_transacted', uses]);
   });
 
+  it('reads why a module refused a merge, and what it named', async () => {
+    const merged = api.merge('c1', 'product', 'k1', ['m1']);
+    http
+      .expectOne('/api/companies/c1/record-merges')
+      .flush(
+        { error: 'merge_refused', reason: 'cost_pending', reference: 'VIS-6', ignored: 3 },
+        { status: 409, statusText: 'Refused' },
+      );
+    const refused = await refusalOf(merged);
+    expect([refused.code, refused.reason, refused.params]).toEqual([
+      'merge_refused',
+      'cost_pending',
+      { reference: 'VIS-6' },
+    ]);
+  });
+
   it('previews a merge: what moves to the record kept and what stays naming each record, by table', async () => {
     const preview = [
       {

@@ -230,6 +230,29 @@ describe('RecordDeletes', () => {
     ]);
   });
 
+  it('says why a module refused a merge, naming what it named, and the plain refusal for a reason it does not know', async () => {
+    api.merge.mockRejectedValueOnce(
+      new RemovalRefused('merge_refused', [], null, [], 'cost_pending', { reference: 'VIS-6' }),
+    );
+    expect(await deletes.merge('c1', 'product', KEPT, MERGE.items)).toBe(false);
+    expect(lastParams()).toEqual({ reference: 'VIS-6' });
+    api.merge.mockRejectedValueOnce(new RemovalRefused('merge_refused', [], null, [], 'weather'));
+    expect(await deletes.merge('c1', 'product', KEPT, MERGE.items)).toBe(false);
+
+    expect(failureToasts()).toEqual([
+      'records.merge_refused.cost_pending',
+      'records.errors.merge_refused',
+    ]);
+  });
+
+  it('says a merge waits for the one made since into another, when its record kept was merged in turn', async () => {
+    api.restore.mockRejectedValue(new RemovalRefused('merge_alias'));
+
+    expect(await deletes.restore('c1', MERGE)).toBe(false);
+
+    expect(failureToasts()).toEqual(['records.errors.merge_alias_undo']);
+  });
+
   it('says what the record kept did since, when its merge is no longer undone', async () => {
     api.restore.mockRejectedValue(
       new RemovalRefused('merge_transacted', [], null, [

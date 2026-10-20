@@ -307,7 +307,18 @@ describe('ProductsApi', () => {
       tracking: 'none',
       substitutionGroup: null,
       mainPhotoId: null,
+      mergedInto: null,
     });
+  });
+
+  it('reads the product a product merged away points at', async () => {
+    const kept = { id: 'p1', reference: 'ART-001', name: 'Portable 14"' };
+    const pending = api.product('c1', 'p2');
+    http
+      .expectOne('/api/companies/c1/products/p2')
+      .flush({ ...laptop, id: 'p2', reference: 'ART-001B', mergedInto: kept });
+
+    expect((await pending).mergedInto).toEqual(kept);
   });
 
   it('reads how a product is tracked, and an unknown answer as none', async () => {

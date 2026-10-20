@@ -72,6 +72,7 @@ const laptop: ProductRow = {
   tracking: 'lot',
   substitutionGroup: null,
   mainPhotoId: null,
+  mergedInto: null,
 };
 const warranty: CustomFieldDefinition = {
   id: 'f1',

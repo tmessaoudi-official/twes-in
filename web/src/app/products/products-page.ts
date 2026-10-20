@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -21,6 +22,7 @@ import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { ListPickSource, ListQuery } from '../shared/list/list-types';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import {
   categoryLabels,
   type ProductListRow,
@@ -41,6 +43,7 @@ import type { ProductSearch } from './products-types';
   imports: [
     PageTabs,
     MatButtonModule,
+    MatIconModule,
     MatMenuModule,
     RouterLink,
     TranslatePipe,
@@ -62,14 +65,16 @@ export class ProductsPage implements OnInit {
   protected readonly tabs = PRODUCTS_TABS;
   private readonly facade = inject(ProductsFacade);
   private readonly auth = inject(AuthFacade);
+  private readonly deletes = inject(RecordDeletes);
 
-  /** Rows are selected for what the selection bar offers on them: their labels on one sheet. */
+  /** Rows are selected for what the selection bar offers on them: their labels on one sheet, and a merge. */
   protected readonly list = computed(() => ({
     ...productsList(this.facade.customFields()),
     selection: { countKey: 'products.selected' },
   }));
   /** The rows ticked on the page shown, by id: what the selection bar's actions act on. */
   protected readonly selected = signal<readonly string[]>([]);
+  protected readonly merging = signal(false);
   protected readonly rows = computed(() =>
     productListRows(this.facade.products(), this.facade.categories(), this.facade.options()),
   );
@@ -122,6 +127,29 @@ export class ProductsPage implements OnInit {
         this.destroyRef,
       );
       await this.facade.loadListContext(companyId);
+    }
+  }
+
+  /**
+   * Merges the products ticked into the one the person keeps; the others stay, switched off and pointing at it, for
+   * what already names them, their stock going to it. The dialog first says, from the API, what moves and what stays.
+   */
+  protected async merge(): Promise<void> {
+    const companyId = this.company()?.id;
+    const ids = this.selected();
+    if (!companyId || ids.length < 2 || this.merging()) return;
+    this.merging.set(true);
+    try {
+      if (
+        await this.deletes.offerMergeOf(companyId, 'product', ids, {
+          settings: true,
+          aliased: true,
+        })
+      ) {
+        this.selected.set([]);
+      }
+    } finally {
+      this.merging.set(false);
     }
   }
 

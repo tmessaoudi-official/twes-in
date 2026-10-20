@@ -125,6 +125,10 @@ export class ProductPage {
     const product = this.facade.product();
     return product?.id === id ? product : undefined;
   });
+  /** The product kept when this one was merged into it: this one stays only for what already names it. */
+  protected readonly mergedAway = computed(() => this.current()?.mergedInto ?? null);
+  /** A product merged away is kept as it was, whoever looks at it. */
+  protected readonly editable = computed(() => this.mayWrite() && this.mergedAway() === null);
   /** How many units each of the product's packs holds, for the calculator's price per pack; none before it is saved. */
   protected readonly packCounts = computed(
     () =>
@@ -374,7 +378,9 @@ export class ProductPage {
   protected readonly recordActions = computed<ScreenAction[]>(() => {
     const busy = this.busy();
     const changes = this.changes();
-    const may = this.mayWrite();
+    const may = this.editable();
+    // Its codes went to the product kept, and nothing new names it: no labels, no document line.
+    const standing = this.mergedAway() === null;
     return [
       {
         id: 'save',
@@ -403,7 +409,7 @@ export class ProductPage {
           const id = this.id();
           if (id !== null) void this.addTo.open([id]);
         },
-        shown: this.id() !== null && this.addTo.kinds().length > 0,
+        shown: standing && this.id() !== null && this.addTo.kinds().length > 0,
       },
       {
         // Printed labels, in a tab of their own to print.
@@ -412,7 +418,7 @@ export class ProductPage {
         icon: 'label',
         rare: true,
         run: () => this.openLabels(),
-        shown: this.id() !== null,
+        shown: standing && this.id() !== null,
       },
       {
         id: 'delete',

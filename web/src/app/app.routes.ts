@@ -229,7 +229,7 @@ export const routes: Routes = [
       {
         path: 'products',
         title: 'nav.products',
-        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        canActivate: [moduleGuard(PRODUCTS_MODULE), textsOpened(RECORDS_TEXTS)],
         loadComponent: () => import('./products/products-page').then((m) => m.ProductsPage),
       },
       {
