@@ -68,6 +68,7 @@ final class MoveStockOnInvoicesTest extends TestCase
     private Establishment $establishment;
     private Product $laptop;
     private Product $fitting;
+    private Product $oldLaptop;
     private Unit $piece;
 
     public function testAnInvoiceTakesWhatItSoldOutOfTheEstablishmentsStockOnceNamingItself(): void
@@ -162,6 +163,25 @@ final class MoveStockOnInvoicesTest extends TestCase
         self::assertSame([], $this->notifications->published);
     }
 
+    /**
+     * Goods sold under a product merged away since come back to the product kept, and count against what that sale left
+     * to return: a second credit note of the invoice cannot take back the same goods again.
+     */
+    public function testCreditNotesOfAProductMergedAwayReturnToTheProductKeptWhatTheSaleLeftOnce(): void
+    {
+        $invoiceId = Uuid::v7();
+        [$listener] = $this->listener(new FakeTransactions());
+        $listener($this->issued([new InvoicedQuantity($this->oldLaptop->getId(), '5.000', $this->piece->getId())], $invoiceId));
+        $sold = \count($this->movements->movements);
+        new \ReflectionProperty(Product::class, 'mergedInto')->setValue($this->oldLaptop, $this->laptop);
+
+        $listener($this->issued([], type: InvoiceType::CreditNote, corrects: $invoiceId, returned: [new InvoicedQuantity($this->oldLaptop->getId(), '3.000', $this->piece->getId())]));
+        $listener($this->issued([], type: InvoiceType::CreditNote, corrects: $invoiceId, returned: [new InvoicedQuantity($this->oldLaptop->getId(), '3.000', $this->piece->getId())]));
+
+        $back = \array_slice($this->movements->movements, $sold);
+        self::assertSame([['ART-001', '3.000'], ['ART-001', '2.000']], array_map(static fn (StockMovement $movement): array => [$movement->getProduct()->getReference(), $movement->getQuantity()], $back), 'the second note takes back only the two the first one left');
+    }
+
     public function testACreditNoteWithNoReturnedLineOrNoInvoiceItCorrectsMovesNothing(): void
     {
         [$listener] = $this->listener(new FakeTransactions());
@@ -215,6 +235,7 @@ final class MoveStockOnInvoicesTest extends TestCase
         $this->piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, $now);
         $this->laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '1250'), $this->piece, null, [], $now);
         $this->fitting = Product::create($this->company, 'ART-002', new ProductDetails('Pose', null, ProductKind::Service, '40'), $this->piece, null, [], $now);
+        $this->oldLaptop = Product::create($this->company, 'ART-001B', new ProductDetails('Portable (ancien)', null, ProductKind::Goods, '1250'), $this->piece, null, [], $now);
     }
 
     /** @return array{MoveStockOnInvoices, object{logged: list<array{string, string}>}} */
@@ -226,6 +247,7 @@ final class MoveStockOnInvoicesTest extends TestCase
         $products = new InMemoryProducts();
         $products->save($this->laptop);
         $products->save($this->fitting);
+        $products->save($this->oldLaptop);
         $settings = new InMemorySettings();
         $settings->save(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $clock->now()));
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), $settings));
@@ -233,7 +255,7 @@ final class MoveStockOnInvoicesTest extends TestCase
         $manage = new ManageStockLocations($locations, $this->movements, $establishments, new InMemoryAuditTrail($transactions), $clock, $transactions, new InMemoryRecordVersions());
         $keep = new KeepStock($this->movements, new InMemoryStockLots(), $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges());
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), new InMemoryModuleStates());
-        $move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $transactions, $clock, new InMemoryProductHomeLocations());
+        $move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $transactions, $clock, new InMemoryProductHomeLocations(), new InMemoryStockLots());
         $memberships = new InMemoryMemberships();
         $memberships->save(new Membership(new User(Email::fromString('keeper@acme.test'), 'Keeper', 'fr'), $this->company, new Role(Role::MEMBER, ['stock.write'], $this->company)));
         $logger = new class extends AbstractLogger {

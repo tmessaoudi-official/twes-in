@@ -54,6 +54,8 @@ class StockMovement implements CompanyOwned
     public const string SOURCE_LOSS = 'loss';
     /** The share of a late receipt cost that went with the goods already gone: no quantity, only a value. */
     public const string SOURCE_COST_CORRECTION = 'cost_correction';
+    /** Goods a product merged away held, carried to the product kept, or back when the merge is undone. */
+    public const string SOURCE_MERGE = 'merge';
     public const int NOTE_MAX = 500;
     public const int QUANTITY_DECIMALS = 3;
     private const string QUANTITY = '/^(-?)(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,3}))?$/';
@@ -131,9 +133,9 @@ class StockMovement implements CompanyOwned
     private bool $costToComplete = false;
 
     /**
-     * The half of a move that left, for the half that arrives: the goods are the same, so they arrive at the cost they
-     * left at. Valued by the average instead, the arriving half found the stock the leaving half had just emptied and
-     * took the cost price, or nothing. Only ever set on a move being written, never stored.
+     * The half of a move or a carry that left, for the half that arrives: the goods are the same, so they arrive at the
+     * cost they left at. Valued by the average instead, the arriving half found the stock the leaving half had just
+     * emptied and took the cost price, or nothing. Only ever set on a move or a carry being written, never stored.
      */
     private ?self $leftAs = null;
 
@@ -307,16 +309,52 @@ class StockMovement implements CompanyOwned
         return $loss;
     }
 
-    /** The goods a delivery took out, back where they were: its note was cancelled. */
-    public static function returnOf(self $delivery, \DateTimeImmutable $now): self
+    /**
+     * What one product held at one place and lot, carried to another as ONE operation: a merge, or its undo. The first
+     * half takes the quantity off the one, the second gives it to the other at the cost it left at, as a move's halves
+     * do, and both are saved in that order. A shortage is carried as goods are, the halves then reversed in sign.
+     *
+     * @param numeric-string      $quantity signed, what reaches `$to`
+     * @param numeric-string|null $unitCost what the leaving half is worth a unit, when it must be that rather than the average
+     *
+     * @return array{self, self} what left `$from`, then what reached `$to`
+     *
+     * @throws InvalidStockMovement
+     */
+    public static function carried(Product $from, ?StockLot $fromLot, Product $to, ?StockLot $toLot, StockLocation $location, string $quantity, Uuid $sourceId, ?Uuid $recordedBy, \DateTimeImmutable $now, ?string $unitCost = null): array
+    {
+        $carried = new Number('0.000')->add($quantity);
+        if (0 === $carried->compare(0)) {
+            throw new \LogicException('Nothing held is nothing carried.');
+        }
+        $arrives = 1 === $carried->compare(0);
+
+        $leaving = new self($from, $location, $fromLot, $arrives ? StockMovementKind::Out : StockMovementKind::In, $carried->mul(-1)->value, self::SOURCE_MERGE, $sourceId, $recordedBy, $now);
+        $arriving = new self($to, $location, $toLot, $arrives ? StockMovementKind::In : StockMovementKind::Out, $carried->value, self::SOURCE_MERGE, $sourceId, $recordedBy, $now);
+        if (null !== $unitCost) {
+            $leaving->unitCost = self::cost($unitCost);
+        }
+        $arriving->leftAs = $leaving;
+
+        return [$leaving, $arriving];
+    }
+
+    /**
+     * The goods a delivery took out, back where they were: its note was cancelled. A product merged away since holds
+     * nothing any more: they come back to the product kept, in its lot of the same code.
+     *
+     * @throws InvalidStockMovement
+     */
+    public static function returnOf(self $delivery, \DateTimeImmutable $now, ?StockLot $lotKept = null): self
     {
         if (StockMovementKind::Out !== $delivery->kind || self::SOURCE_DELIVERY_NOTE !== $delivery->sourceType || null === $delivery->sourceId) {
             throw new \LogicException('Only what a delivery note took out is returned.');
         }
 
         $back = new Number($delivery->quantity)->mul(-1)->value;
+        [$product, $lot] = self::standing($delivery->product, $delivery->lot, $lotKept);
 
-        $return = new self($delivery->product, $delivery->location, $delivery->lot, StockMovementKind::In, $back, self::SOURCE_DELIVERY_NOTE, $delivery->sourceId, null, $now);
+        $return = new self($product, $delivery->location, $lot, StockMovementKind::In, $back, self::SOURCE_DELIVERY_NOTE, $delivery->sourceId, null, $now);
         // The goods come back worth what they left at, whatever the average has become since.
         $return->unitCost = $delivery->unitCost;
 
@@ -330,11 +368,12 @@ class StockMovement implements CompanyOwned
      * quantity, and name the invoice so what was already returned is counted against it. A credit note returns a product
      * at most once per location and lot, which the unique source key holds.
      *
-     * @param non-empty-list<self> $sales what the invoice, or a delivery note it was built from, took out of one product at one place and lot
+     * @param non-empty-list<self> $sales what the invoice, or a delivery note it was built from, took out of one product at one place and lot,
+     *                                    the product merged away since or the one kept: the goods come back to the product kept, in its lot of the code
      *
      * @throws InvalidStockMovement when the quantity is not a positive number the unit counts, or is more than the sales took
      */
-    public static function returnOfSales(array $sales, string $quantity, Uuid $creditNoteId, Uuid $invoiceId, \DateTimeImmutable $now): self
+    public static function returnOfSales(array $sales, string $quantity, Uuid $creditNoteId, Uuid $invoiceId, \DateTimeImmutable $now, ?StockLot $lotKept = null): self
     {
         $first = $sales[0];
         $taken = new Number(0);
@@ -344,7 +383,7 @@ class StockMovement implements CompanyOwned
             if (StockMovementKind::Out !== $sale->kind || !\in_array($sale->sourceType, [self::SOURCE_INVOICE, self::SOURCE_DELIVERY_NOTE], true) || null === $sale->sourceId) {
                 throw new \LogicException('Only what an invoice or its delivery notes took out is returned by a credit note.');
             }
-            if ($sale->product !== $first->product || $sale->location !== $first->location || $sale->lot !== $first->lot) {
+            if ($sale->product->standingFor() !== $first->product->standingFor() || $sale->location !== $first->location || $sale->lot?->getCode() !== $first->lot?->getCode()) {
                 throw new \LogicException('A return comes back to one product at one place and lot.');
             }
             $out = new Number($sale->quantity)->mul(-1);
@@ -359,11 +398,31 @@ class StockMovement implements CompanyOwned
             throw new InvalidStockMovement('quantity', 'A sale is returned for no more than it took out.');
         }
 
-        $return = new self($first->product, $first->location, $first->lot, StockMovementKind::In, $back, self::SOURCE_CREDIT_NOTE, $creditNoteId, null, $now);
+        [$product, $lot] = self::standing($first->product, $first->lot, $lotKept);
+        $return = new self($product, $first->location, $lot, StockMovementKind::In, $back, self::SOURCE_CREDIT_NOTE, $creditNoteId, null, $now);
         $return->unitCost = 1 === $valued->compare(0) ? $amount->div($valued, 10)->round(4)->value : null;
         $return->reversesSourceId = $invoiceId;
 
         return $return;
+    }
+
+    /**
+     * The product goods of `$product` come back to, and the lot: itself and its own lot, or the product it was merged
+     * into and that product's lot of the same code, which the caller found.
+     *
+     * @return array{Product, ?StockLot}
+     */
+    private static function standing(Product $product, ?StockLot $lot, ?StockLot $lotKept): array
+    {
+        $standing = $product->standingFor();
+        if ($standing === $product || null === $lot) {
+            return [$standing, $lot];
+        }
+        if (null === $lotKept || $lotKept->getCode() !== $lot->getCode()) {
+            throw new \LogicException(\sprintf('The lot %s of %s comes back in the lot of that code of %s.', $lot->getCode(), $product->getReference(), $standing->getReference()));
+        }
+
+        return [$standing, $lotKept];
     }
 
     /**

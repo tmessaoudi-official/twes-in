@@ -2488,7 +2488,8 @@
       "delivery_note": "Bon de livraison",
       "invoice": "Facture",
       "credit_note": "Avoir",
-      "cost_correction": "Correction du coût des ventes"
+      "cost_correction": "Correction du coût des ventes",
+      "merge": "Fusion d’articles"
     },
     "kinds": {
       "site": "Site",

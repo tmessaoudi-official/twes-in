@@ -11,6 +11,7 @@ namespace App\Records\Infrastructure\Http;
 
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Records\Application\Merge\MergeActor;
 use App\Records\Application\Merge\MergeAlias;
 use App\Records\Application\Merge\MergeConflict;
 use App\Records\Application\Merge\MergeCycle;
@@ -100,7 +101,7 @@ final readonly class RecordRemovalController
         $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $subject->writePermission);
         $this->moduleOn($company, $subject);
 
-        return $this->answer(fn (): Response => new JsonResponse($this->described($this->merge->handle($company, $subject, $body['keptId'] ?? null, $body['ids'] ?? null, $this->guard->account()->getId())), Response::HTTP_CREATED));
+        return $this->answer(fn (): Response => new JsonResponse($this->described($this->merge->handle($company, $subject, $body['keptId'] ?? null, $body['ids'] ?? null, new MergeActor($this->guard->account()->getId(), fn (string $permission): bool => $this->guard->may($company, $permission)))), Response::HTTP_CREATED));
     }
 
     /** What merging the records would move and leave, asked of the subject's writer as merging is. */

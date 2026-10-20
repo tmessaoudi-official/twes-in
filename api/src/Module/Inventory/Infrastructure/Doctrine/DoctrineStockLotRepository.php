@@ -36,6 +36,11 @@ final readonly class DoctrineStockLotRepository implements StockLotRepository
         return $this->entityManager->getRepository(StockLot::class)->findOneBy(['product' => $productId, 'code' => $code]);
     }
 
+    public function ofProduct(Uuid $productId): array
+    {
+        return $this->entityManager->getRepository(StockLot::class)->findBy(['product' => $productId], ['code' => 'ASC']);
+    }
+
     /** A transaction-scoped advisory lock, as for stock: the lot's row may not exist yet, so there is no row to lock. */
     public function lock(Uuid $productId, string $code): void
     {

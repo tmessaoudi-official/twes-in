@@ -53,6 +53,14 @@ final class InMemoryStockLots implements StockLotRepository
         return null;
     }
 
+    public function ofProduct(Uuid $productId): array
+    {
+        $lots = array_values(array_filter($this->lots, static fn (StockLot $lot): bool => $lot->getProduct()->getId()->equals($productId)));
+        usort($lots, static fn (StockLot $a, StockLot $b): int => strcmp($a->getCode(), $b->getCode()));
+
+        return $lots;
+    }
+
     public function lock(Uuid $productId, string $code): void
     {
         $this->calls[] = \sprintf('lock-lot %s %s%s', $productId->toRfc4122(), $code, true === $this->transactions?->active() ? ' in transaction' : '');

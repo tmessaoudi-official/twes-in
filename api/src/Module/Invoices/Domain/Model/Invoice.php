@@ -355,7 +355,8 @@ class Invoice implements CompanyOwned
                 continue;
             }
             $lines[] = new InvoiceLineDetails(
-                $line->getProduct(),
+                // A new sale names the product the original's stands for now, should it have been merged away since.
+                $line->getProduct()?->standingFor(),
                 $line->getDescription(),
                 $line->getQuantity(),
                 $line->getUnit(),

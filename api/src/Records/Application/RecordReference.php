@@ -21,13 +21,15 @@ namespace App\Records\Application;
  * `$whereValue`: a setting's `level_id` names a product where its `level` is `product`.
  *
  * A row naming the record kept, dated by `$transactingAt` at or after a merge and no longer one a merge would move,
- * is the record kept trading since (goods received, an expense in the books): the merge is then no longer undone.
+ * is the record kept trading since (goods received, an expense in the books): the merge is then no longer undone. Rows
+ * whose `$notTradingColumn` holds one of `$notTradingValues` are the merge's own doing (the goods it carried), not a trade.
  */
 final readonly class RecordReference
 {
     /**
      * @param list<string> $movesWhereValues
      * @param list<string> $twinColumns
+     * @param list<string> $notTradingValues
      */
     private function __construct(
         public string $table,
@@ -45,8 +47,10 @@ final readonly class RecordReference
         public ?string $transactingAt = null,
         public ?string $parentTable = null,
         public ?string $parentKey = null,
+        public ?string $notTradingColumn = null,
+        public array $notTradingValues = [],
     ) {
-        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none', $transactingAt ?? 'none', $parentTable ?? 'none', $parentKey ?? 'none', ...$twinColumns] as $name) {
+        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none', $transactingAt ?? 'none', $parentTable ?? 'none', $parentKey ?? 'none', $notTradingColumn ?? 'none', ...$twinColumns] as $name) {
             if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
                 throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $name));
             }
@@ -94,7 +98,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that moves in a merge moves some rows, named by at least one value.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues);
     }
 
     /**
@@ -107,7 +111,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that drops its twins in a merge says what makes one, by at least one column.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, array_values($columns), $this->transactingAt, $this->parentTable, $this->parentKey);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, array_values($columns), $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues);
     }
 
     /** The column names the subject only on the rows whose other column holds the value: the rest name other tables. */
@@ -117,7 +121,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: a column said of every subject names none of them on some rows only.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues);
     }
 
     /**
@@ -130,16 +134,24 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: say the document a row belongs to before its columns.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $parentTable, $parentKey);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $parentTable, $parentKey, $this->notTradingColumn, $this->notTradingValues);
     }
 
-    /** Rows naming the record kept and dated by the column at or after a merge, outside what a merge moves, mean it traded since. */
-    public function transactingAt(string $column): self
+    /**
+     * Rows naming the record kept and dated by the column at or after a merge, outside what a merge moves, mean it traded
+     * since; those whose `$unlessColumn` holds one of `$unlessValues` do not.
+     *
+     * @param list<string> $unlessValues
+     */
+    public function transactingAt(string $column, ?string $unlessColumn = null, array $unlessValues = []): self
     {
         if (RecordUse::Ignored === $this->onDelete) {
             throw new \InvalidArgumentException(\sprintf('%s.%s: a column that names no record says no trade of one.', $this->table, $this->column));
         }
+        if ((null === $unlessColumn) !== ([] === $unlessValues)) {
+            throw new \InvalidArgumentException(\sprintf('%s.%s: rows that are no trade are named by a column and at least one of its values.', $this->table, $this->column));
+        }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $column, $this->parentTable, $this->parentKey);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $column, $this->parentTable, $this->parentKey, $unlessColumn, $unlessValues);
     }
 }

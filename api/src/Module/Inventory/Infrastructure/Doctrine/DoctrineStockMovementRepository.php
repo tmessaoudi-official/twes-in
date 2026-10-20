@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Doctrine;
 
+use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\Model\StockLot;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\Repository\StockMovementRepository;
@@ -67,6 +68,16 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         // A product's worth runs across all its places, so it is read and moved under the product's own lock.
         foreach ($products as $productId) {
             $this->lockValueOf($productId);
+        }
+        // Read under the locks, from the table: a merge holds them while it carries the stock away and aliases the product.
+        $merged = $this->entityManager->getConnection()->fetchFirstColumn(
+            'SELECT id::text FROM product WHERE id = ANY(CAST(:ids AS uuid[])) AND merged_into_id IS NOT NULL',
+            ['ids' => '{'.implode(',', array_keys($products)).'}'],
+        );
+        foreach ($movements as $movement) {
+            if (\in_array($movement->getProduct()->getId()->toRfc4122(), $merged, true)) {
+                throw new InvalidStockMovement('productId', \sprintf('The product %s was merged into another: its stock is that product\'s now.', $movement->getProduct()->getReference()), reason: 'product_merged');
+            }
         }
         $running = [];
         foreach ($movements as $movement) {
@@ -247,7 +258,8 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->join('m.product', 'p')->join('m.location', 'l')->leftJoin('m.lot', 'lt')->leftJoin('m.vendor', 'v')->leftJoin('v.mergedInto', 'vk')
             ->where('m.company = :company')->setParameter('company', $companyId, 'uuid');
         if ([] !== $search->products) {
-            $query->andWhere('m.product IN (:products)')->setParameter('products', self::ids($search->products), ArrayParameterType::STRING);
+            // A product's movements are also those of the products merged into it, each still naming the product it moved.
+            $query->andWhere('m.product IN (:products) OR p.mergedInto IN (:products)')->setParameter('products', self::ids($search->products), ArrayParameterType::STRING);
         }
         if ([] !== $search->locations) {
             $query->andWhere('m.location IN (:locations)')->setParameter('locations', self::ids($search->locations), ArrayParameterType::STRING);
@@ -308,7 +320,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         );
     }
 
-    private function lockValueOf(Uuid $productId): void
+    public function lockValueOf(Uuid $productId): void
     {
         $this->entityManager->getConnection()->executeQuery(
             'SELECT pg_advisory_xact_lock(hashtextextended(?, 0))',
@@ -481,6 +493,14 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         }
 
         return $levels;
+    }
+
+    public function awaitsCost(Uuid $companyId, Uuid $productId): bool
+    {
+        return (bool) $this->entityManager->getConnection()->fetchOne(
+            'SELECT EXISTS (SELECT 1 FROM stock_movement WHERE company_id = ? AND product_id = ? AND cost_to_complete)',
+            [$companyId->toRfc4122(), $productId->toRfc4122()],
+        );
     }
 
     public function searchLevels(Uuid $companyId, StockLevelSearch $search, PageRequest $page): Page

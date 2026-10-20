@@ -265,15 +265,17 @@ final readonly class InvoiceDeliveryNotes
                 if (null === $quantity || (null === $quantities && $left[$key]->compare(0) <= 0)) {
                     continue;
                 }
+                // The note keeps the product it delivered; the invoice drafted from it names the one that product stands for now.
+                $product = $line->getProduct()?->standingFor();
                 $lines[] = new InvoiceLineOfNote(
-                    $line->getProduct(),
+                    $product,
                     $line->getDescription(),
                     $quantity,
                     $line->getUnit(),
                     $line->getUnitPriceNet(),
                     array_map(static fn (DeliveryNoteLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
                     $line->getId(),
-                    LotCode::carried($line->getProduct(), $line->getLotCode()),
+                    LotCode::carried($product, $line->getLotCode()),
                 );
             }
         }

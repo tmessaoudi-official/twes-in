@@ -38,6 +38,9 @@ use Doctrine\DBAL\ParameterType;
  * Its value is a column only for a role holding product.cost.read, the one way to cost: what is on hand at the product's
  * average cost, as the stock valuation counts it; a product with nothing valued shows none. Narrowed to an establishment,
  * its locations alone count, valued at the same average, which is the company's for the product wherever it lies.
+ *
+ * A product merged into another is that product here, with what it held, sold and received: a merge brings no goods in,
+ * so the day it carried them is no first day in.
  */
 final readonly class DeadStockReport implements DeclaresReport
 {
@@ -96,6 +99,7 @@ final readonly class DeadStockReport implements DeclaresReport
             'quiet' => $this->quietDays($context),
             'invoice' => StockMovement::SOURCE_INVOICE,
             'delivery' => StockMovement::SOURCE_DELIVERY_NOTE,
+            'merge' => StockMovement::SOURCE_MERGE,
             'out' => StockMovementKind::Out->value,
             'in' => StockMovementKind::In->value,
         ];
@@ -108,21 +112,25 @@ final readonly class DeadStockReport implements DeclaresReport
         }
         // A moment stored in UTC, read as the company's own day.
         $day = '(m.at AT TIME ZONE \'UTC\' AT TIME ZONE :zone)::date';
-        // A delivery note cancelled put its goods back under its own source: they were never sold.
+        // A delivery note cancelled put its goods back under its own source: they were never sold. Goods of a product
+        // merged away since come back to the product kept, in its lot of the same code.
         $sold = 'm.kind = :out AND m.source_type IN (:invoice, :delivery) AND NOT EXISTS (
                     SELECT 1 FROM stock_movement back
-                     WHERE back.source_type = m.source_type AND back.source_id = m.source_id AND back.product_id = m.product_id
-                       AND back.location_id = m.location_id AND back.lot_id IS NOT DISTINCT FROM m.lot_id AND back.kind = :in)';
+                      JOIN product bp ON bp.id = back.product_id
+                      LEFT JOIN stock_lot bl ON bl.id = back.lot_id
+                     WHERE back.source_type = m.source_type AND back.source_id = m.source_id
+                       AND COALESCE(bp.merged_into_id, bp.id) = COALESCE(mp.merged_into_id, mp.id)
+                       AND back.location_id = m.location_id AND bl.code IS NOT DISTINCT FROM ml.code AND back.kind = :in)';
         $rows = $this->connection->fetchAllAssociative(
             'SELECT g.product_id, p.name, p.reference, u.code AS unit, g.on_hand, g.last_sold,
                     CAST(:today AS date) - COALESCE(g.last_sold, g.first_in) AS quiet_days
                FROM (
-                    SELECT m.product_id, SUM(m.quantity) AS on_hand,
+                    SELECT COALESCE(mp.merged_into_id, mp.id) AS product_id, SUM(m.quantity) AS on_hand,
                            MAX('.$day.') FILTER (WHERE '.$sold.') AS last_sold,
-                           MIN('.$day.') FILTER (WHERE m.quantity > 0) AS first_in
-                      FROM stock_movement m '.$join.'
+                           MIN('.$day.') FILTER (WHERE m.quantity > 0 AND m.source_type <> :merge) AS first_in
+                      FROM stock_movement m JOIN product mp ON mp.id = m.product_id LEFT JOIN stock_lot ml ON ml.id = m.lot_id '.$join.'
                      WHERE '.$where.'
-                     GROUP BY m.product_id
+                     GROUP BY COALESCE(mp.merged_into_id, mp.id)
                     HAVING SUM(m.quantity) > 0
                ) g
                JOIN product p ON p.id = g.product_id

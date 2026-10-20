@@ -72,8 +72,9 @@ final readonly class MergeRecords
      * @throws MergeRefused
      * @throws StepUpRequired
      */
-    public function handle(Company $company, RecordSubject $subject, mixed $keptId, mixed $ids, Uuid $actorUserId): RecordRemoval
+    public function handle(Company $company, RecordSubject $subject, mixed $keptId, mixed $ids, MergeActor $actor): RecordRemoval
     {
+        $actorUserId = $actor->id;
         if (null === $subject->mergedAway) {
             throw new UnknownRecords(\sprintf('A %s is not merged.', $subject->table));
         }
@@ -86,7 +87,7 @@ final readonly class MergeRecords
             throw new StepUpRequired('Merging takes a proof given again in the last few minutes.');
         }
 
-        return $this->transactions->run(function () use ($company, $subject, $kept, $merged, $actorUserId): RecordRemoval {
+        return $this->transactions->run(function () use ($company, $subject, $kept, $merged, $actor, $actorUserId): RecordRemoval {
             $all = [$kept, ...$merged];
             $labels = $this->store->lockedLabels($company->getId(), $subject, $all);
             if (\count($labels) !== \count($all)) {
@@ -127,7 +128,7 @@ final readonly class MergeRecords
             // Before anything is pointed elsewhere, while what is merged away still stands as itself.
             foreach ($this->effects as $effects) {
                 if ($effects->subject() === $subject->table) {
-                    $effects->merging($company->getId(), $merge->getId(), $kept, $merged, $actorUserId, $this->clock->now());
+                    $effects->merging($company->getId(), $merge->getId(), $kept, $merged, $actor, $this->clock->now());
                 }
             }
             // One at a time, so that a row two of them both hold is moved once and dropped as a twin the second time.

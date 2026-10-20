@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
+use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use App\Module\Inventory\Domain\ValueObject\LotOnHand;
@@ -37,6 +38,11 @@ final class InMemoryStockMovements implements StockMovementRepository
 
     public function save(StockMovement ...$movements): void
     {
+        foreach ($movements as $movement) {
+            if ($movement->getProduct()->standingFor() !== $movement->getProduct()) {
+                throw new InvalidStockMovement('productId', 'The product was merged into another.', reason: 'product_merged');
+            }
+        }
         foreach ($movements as $movement) {
             if (!\in_array($movement, $this->movements, true)) {
                 RunningValue::of($this->valuedTotalsOf($movement->getProduct()))->take($movement);
@@ -164,6 +170,10 @@ final class InMemoryStockMovements implements StockMovementRepository
 
     /** What another run does while this one waits for its first lock, once. */
     public ?\Closure $whileWaitingForALock = null;
+
+    public function lockValueOf(Uuid $productId): void
+    {
+    }
 
     public function lockStockOf(Uuid $productId, Uuid $locationId): void
     {
@@ -321,6 +331,11 @@ final class InMemoryStockMovements implements StockMovementRepository
     public function levelsOf(Uuid $companyId, Uuid $productId): array
     {
         return array_values(array_filter($this->levels($companyId), static fn (StockLevel $level): bool => $level->productId->equals($productId)));
+    }
+
+    public function awaitsCost(Uuid $companyId, Uuid $productId): bool
+    {
+        return array_any($this->movements, static fn (StockMovement $movement): bool => $movement->getProduct()->getId()->equals($productId) && $movement->isCostToComplete());
     }
 
     /**

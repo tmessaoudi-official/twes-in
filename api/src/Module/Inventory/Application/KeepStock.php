@@ -227,7 +227,7 @@ final readonly class KeepStock
         $typed = $movement->getUnitCost();
         $this->inStockOnce($movement);
         $this->save($movement);
-        $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.received', $actorUserId, $company->getId()));
+        $this->liveChanges->stage(new LiveChange('stock', $product->getId(), 'stock.received', $actorUserId, $company->getId()));
 
         return [$movement, $typed];
     }
@@ -370,13 +370,13 @@ final readonly class KeepStock
         [$product, $location] = $this->trackedAt($company, $productId, $locationId);
         $lot = $this->lotFor($product, $named, true);
         $this->movements->lockStockOf($product->getId(), $location->getId());
-        $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($productId, $locationId, $lot?->getId()), $actorUserId, $this->clock->now(), $lot);
+        $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($product->getId(), $locationId, $lot?->getId()), $actorUserId, $this->clock->now(), $lot);
         if (null !== $importRunId) {
             $movement->importedBy($importRunId);
         }
         $this->inStockOnce($movement);
         $this->save($movement);
-        $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.counted', $actorUserId, $company->getId()));
+        $this->liveChanges->stage(new LiveChange('stock', $product->getId(), 'stock.counted', $actorUserId, $company->getId()));
 
         return $movement;
     }
@@ -402,7 +402,7 @@ final readonly class KeepStock
             [$out, $in] = StockMovement::move($product, $from, $to, $quantity, $actorUserId, $this->clock->now(), $lot);
             // What arrives is the amount asked for, positive; what leaves is its negative. Read the source AFTER the
             // lock, so what is compared is what no other transaction can be taking at the same time.
-            $onHand = $this->movements->onHand($productId, $fromLocationId, $lot?->getId());
+            $onHand = $this->movements->onHand($product->getId(), $fromLocationId, $lot?->getId());
             if (1 === new Number($in->getQuantity())->compare(new Number($onHand))) {
                 throw new InvalidStockMovement('quantity', \sprintf('Only %s is at that location.', $onHand));
             }
@@ -410,7 +410,7 @@ final readonly class KeepStock
             // Inside one establishment a move changes no total, but one into quarantine takes goods off what can be sold.
             $this->alerts?->raise([$out, $in]);
             // One move is one change: the stock of this product moved, once.
-            $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.moved', $actorUserId, $company->getId()));
+            $this->liveChanges->stage(new LiveChange('stock', $product->getId(), 'stock.moved', $actorUserId, $company->getId()));
 
             return [$out, $in];
         });
@@ -430,13 +430,13 @@ final readonly class KeepStock
             $lot = $this->lotFor($product, $named, false);
             $this->movements->lockStockOf($product->getId(), $location->getId());
             $movement = StockMovement::loss($product, $location, $quantity, $reason, $note, $actorUserId, $this->clock->now(), $lot);
-            $onHand = $this->movements->onHand($productId, $locationId, $lot?->getId());
+            $onHand = $this->movements->onHand($product->getId(), $locationId, $lot?->getId());
             if (1 === new Number(new Number($movement->getQuantity())->mul(-1)->value)->compare(new Number($onHand))) {
                 throw new InvalidStockMovement('quantity', \sprintf('Only %s is at that location.', $onHand));
             }
             $this->movements->save($movement);
             $this->alerts?->raise([$movement]);
-            $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.written_off', $actorUserId, $company->getId()));
+            $this->liveChanges->stage(new LiveChange('stock', $product->getId(), 'stock.written_off', $actorUserId, $company->getId()));
 
             return $movement;
         });
@@ -624,10 +624,15 @@ final readonly class KeepStock
         $this->movements->save($movement);
     }
 
-    /** @return array{Product, StockLocation} */
+    /**
+     * The product goods of `$productId` are kept under, and the location: a product merged away holds nothing, what
+     * arrives, is counted or moves for it is the product kept's.
+     *
+     * @return array{Product, StockLocation}
+     */
     private function trackedAt(Company $company, Uuid $productId, Uuid $locationId): array
     {
-        $product = $this->products->ofIdInCompany($productId, $company->getId())
+        $product = $this->products->ofIdInCompany($productId, $company->getId())?->standingFor()
             ?? throw new InvalidStockMovement('productId', 'No product of this company has this id.');
         if (!$this->tracked($product)) {
             throw new InvalidStockMovement('productId', \sprintf('No stock is kept of %s: only goods whose stock tracking is on are kept.', $product->getReference()));

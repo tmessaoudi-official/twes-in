@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Domain\Repository;
 
+use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\LotOnHand;
 use App\Module\Inventory\Domain\ValueObject\StockLevel;
@@ -25,9 +26,19 @@ interface StockMovementRepository
 {
     /**
      * Stores the movements together. A movement that came with no cost is valued here, at the weighted average of what
-     * its product's stock was valued at (its cost price when none is), so no writer of stock can forget to value it.
+     * its product's stock was valued at (its cost price when none is), so no writer of stock can forget to value it. A
+     * product merged away holds nothing from its merge on, which is checked here under its lock: a writer that found it
+     * before the merge was saved is refused rather than leave goods on it.
+     *
+     * @throws InvalidStockMovement
      */
     public function save(StockMovement ...$movements): void;
+
+    /**
+     * Holds every stock of a product, wherever it is, until the current transaction ends: the lock saving a movement of
+     * it takes first, so nothing of it moves while a merge carries what it holds.
+     */
+    public function lockValueOf(Uuid $productId): void;
 
     /**
      * What the stock of each product of the company is worth, those holding nothing left out.
@@ -150,6 +161,9 @@ interface StockMovementRepository
 
     /** @return list<StockLevel> every location and lot one product of the company moved in, by location then lot */
     public function levelsOf(Uuid $companyId, Uuid $productId): array;
+
+    /** Whether one of the product's receipts still waits for the cost its receiver could not give. */
+    public function awaitsCost(Uuid $companyId, Uuid $productId): bool;
 
     /**
      * One page of the same, searched, narrowed and sorted by the database. The page is bounded; the grouping behind

@@ -33,6 +33,7 @@ final class StockMovementSearchReader
         StockMovement::SOURCE_INVOICE,
         StockMovement::SOURCE_CREDIT_NOTE,
         StockMovement::SOURCE_COST_CORRECTION,
+        StockMovement::SOURCE_MERGE,
     ];
 
     /**

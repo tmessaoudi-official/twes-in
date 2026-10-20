@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
+use App\Records\Application\Merge\MergeAlias;
 use App\Records\Application\Merge\MergeEffects;
 use App\Records\Application\Merge\MergeRefused;
 use App\Records\Application\Merge\MergeTransacted;
@@ -55,6 +56,7 @@ final readonly class RestoreRecords
      * @throws RemovalNoLongerPending
      * @throws RemovalConflict
      * @throws StepUpRequired         when it undoes a merge without a proof given again in the last few minutes
+     * @throws MergeAlias             when the record a merge kept was merged into another since
      * @throws MergeTransacted        when the record a merge kept traded since
      * @throws MergeRefused           when a module refuses to undo what it did for the merge
      */
@@ -73,6 +75,12 @@ final readonly class RestoreRecords
             $naming = $this->catalogue->naming($removal->getSubject());
             $kept = $removal->kept();
             if ($merge && null !== $kept) {
+                // Merged into another since, the record kept holds what this merge gave it under that one: that merge is
+                // undone first, or this one would hand back what is no longer the record kept's.
+                $subject = $this->catalogue->subject($removal->getSubject());
+                if (MergedAway::Aliased === $subject->mergedAway && [] !== $this->store->mergedAwayAmong($company->getId(), $subject, [Uuid::fromString($kept['id'])])) {
+                    throw new MergeAlias(\sprintf('The %s this merge kept was merged into another since: that merge is undone first.', $removal->getSubject()));
+                }
                 $traded = $this->store->tradedSince($company->getId(), Uuid::fromString($kept['id']), $naming, $removal->getRemovedAt());
                 if ([] !== $traded) {
                     throw new MergeTransacted($traded);

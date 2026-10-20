@@ -38,7 +38,10 @@ export const DRAWABLE_STOCK_LOCATION_KINDS: readonly StockLocationKind[] =
 export type StockMovementKind = 'in' | 'out' | 'adjustment';
 export const STOCK_MOVEMENT_KINDS: readonly StockMovementKind[] = ['in', 'out', 'adjustment'];
 
-/** `cost_correction`: the share of a late receipt cost booked against the sales since (no quantity, a value). */
+/**
+ * `cost_correction`: the share of a late receipt cost booked against the sales since (no quantity, a value). `merge`:
+ * goods a product merged into another handed to the product kept, or took back when the merge was undone.
+ */
 export type StockSourceType =
   | 'receipt'
   | 'count'
@@ -47,7 +50,8 @@ export type StockSourceType =
   | 'delivery_note'
   | 'invoice'
   | 'credit_note'
-  | 'cost_correction';
+  | 'cost_correction'
+  | 'merge';
 export const STOCK_SOURCE_TYPES: readonly StockSourceType[] = [
   'receipt',
   'count',
@@ -57,6 +61,7 @@ export const STOCK_SOURCE_TYPES: readonly StockSourceType[] = [
   'invoice',
   'credit_note',
   'cost_correction',
+  'merge',
 ];
 
 /** What a person records: goods received, what a count found on the shelf, goods moved, or goods written off. */

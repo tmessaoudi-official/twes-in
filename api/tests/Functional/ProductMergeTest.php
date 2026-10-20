@@ -17,6 +17,10 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
+use App\Module\Inventory\Domain\Model\StockLocation;
+use App\Module\Inventory\Domain\Model\StockMovement;
+use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
@@ -60,6 +64,9 @@ final class ProductMergeTest extends ApiTestCase
         $this->aProduct('VIS-P', 'H87', ProductKind::Goods, ProductTracking::None, $now);
         $this->aProduct('POSE', 'C62', ProductKind::Service, ProductTracking::None, $now);
         $this->aProduct('VIS-L', 'C62', ProductKind::Goods, ProductTracking::Lot, $now);
+        $this->aProduct('VIS-L2', 'C62', ProductKind::Goods, ProductTracking::Lot, $now);
+        $this->aProduct('PC-S', 'C62', ProductKind::Goods, ProductTracking::Serial, $now);
+        $this->aProduct('PC-S2', 'C62', ProductKind::Goods, ProductTracking::Serial, $now);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
@@ -166,19 +173,335 @@ final class ProductMergeTest extends ApiTestCase
         self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM product WHERE merged_into_id IS NOT NULL'));
     }
 
-    /** Until a merge carries the stock across, a product with goods on hand is not merged away. */
-    public function testAProductHoldingStockIsNotMergedAway(): void
+    /**
+     * The goods a product merged away holds go to the product kept where they stand, worth what they were worth there:
+     * the stock is one product's from then on, and its worth the two products' together. The undo takes them back.
+     */
+    public function testGoodsOnHandMoveToTheProductKeptAtWhatTheyWereWorth(): void
+    {
+        $this->signedIn();
+        [$kept, $merged, $other] = [$this->products['VIS-6'], $this->products['VIS-6B'], $this->products['VIS-6C']];
+        $this->received($kept, '3', '4.000');
+        $this->received($merged, '5', '2.000');
+        $this->received($other, '2', '2.000');
+        $this->receivedEarlier();
+
+        $merge = $this->merged($kept, [$merged, $other]);
+
+        self::assertSame(['10.000', '0.000', '0.000'], [$this->onHand($kept), $this->onHand($merged), $this->onHand($other)]);
+        // (3 × 4 + 5 × 2 + 2 × 2) / 10
+        self::assertSame('2.6000', $this->worthOf($kept));
+        self::assertSame(4, $this->em()->getConnection()->fetchOne("SELECT count(*)::int FROM stock_movement WHERE source_type = 'merge'"));
+
+        $this->postJson($this->path('record-removals/'.$this->stringAt($merge, 'id').'/restore'), null);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['3.000', '5.000', '2.000'], [$this->onHand($kept), $this->onHand($merged), $this->onHand($other)]);
+        self::assertSame('4.0000', $this->worthOf($kept));
+    }
+
+    /** A shortage is the shelf's as much as goods are: what a product merged away sold beyond its stock is the product kept's to make up. */
+    public function testAShortageMovesToTheProductKeptToo(): void
     {
         $this->signedIn();
         [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
-        $this->aReceipt($merged);
+        $this->received($kept, '3', '4.000');
+        $this->em()->getConnection()->executeStatement("INSERT INTO stock_movement (id, company_id, product_id, location_id, kind, quantity, source_type, reason, at, cost_typed, cost_to_complete) VALUES (?, ?, ?, ?, 'out', -2, 'loss', 'broken', now() - interval '1 hour', false, false)", [Uuid::v7()->toRfc4122(), $this->companyId(), $merged, $this->site()]);
+
+        $this->merged($kept, [$merged]);
+
+        self::assertSame(['1.000', '0.000'], [$this->onHand($kept), $this->onHand($merged)]);
+    }
+
+    public function testALotGoesToTheProductKeptUnderItsCodeAndDate(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-L'], $this->products['VIS-L2']];
+        $this->received($merged, '4', '1.000', 'L-1', '2027-01-31');
+        $this->receivedEarlier();
+
+        $merge = $this->merged($kept, [$merged]);
+
+        self::assertSame(['4.000', '2027-01-31'], $this->lotOf($kept, 'L-1'));
+        self::assertSame(['0.000', '2027-01-31'], $this->lotOf($merged, 'L-1'));
+        $this->postJson($this->path('record-removals/'.$this->stringAt($merge, 'id').'/restore'), null);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['0.000', '2027-01-31'], $this->lotOf($kept, 'L-1'));
+        self::assertSame(['4.000', '2027-01-31'], $this->lotOf($merged, 'L-1'));
+    }
+
+    /** A serial number is one piece: the product kept holding it already, the two pieces are the shop's to sort out. */
+    public function testASerialNumberTheProductKeptAlreadyHoldsRefusesTheMerge(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['PC-S'], $this->products['PC-S2']];
+        $this->received($kept, '1', '900.000', 'SN-1');
+        $this->received($merged, '1', '900.000', 'SN-1');
 
         $this->postJson($this->path('record-merges'), ['subject' => 'product', 'keptId' => $kept, 'ids' => [$merged]]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
-        self::assertSame(['error' => 'merge_refused', 'reason' => 'stock_on_hand'], $this->json());
-        self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM product WHERE merged_into_id IS NOT NULL'));
-        self::assertSame(0, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM record_removal WHERE subject = 'product'"));
+        self::assertSame(['merge_refused', 'serial_held', 'SN-1'], [$this->json()['error'] ?? null, $this->json()['reason'] ?? null, $this->json()['code'] ?? null]);
+        self::assertSame(['1.000', '1.000'], [$this->onHand($kept), $this->onHand($merged)]);
+    }
+
+    public function testSerialNumbersOfTheProductMergedAwayGoToTheProductKept(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['PC-S'], $this->products['PC-S2']];
+        $this->received($kept, '1', '900.000', 'SN-1');
+        $this->received($merged, '1', '900.000', 'SN-2');
+        $this->receivedEarlier();
+
+        $this->merged($kept, [$merged]);
+
+        self::assertSame(['1.000', '1.000', '0.000'], [$this->lotOf($kept, 'SN-1')[0], $this->lotOf($kept, 'SN-2')[0], $this->lotOf($merged, 'SN-2')[0]]);
+    }
+
+    /** One lot has one date: two lots of one code dated differently are two things the shop must sort out first. */
+    public function testALotOfTheSameCodeDatedOtherwiseRefusesTheMerge(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-L'], $this->products['VIS-L2']];
+        $this->received($kept, '1', '1.000', 'L-1', '2027-01-31');
+        $this->received($merged, '1', '1.000', 'L-1', '2027-03-31');
+
+        $this->postJson($this->path('record-merges'), ['subject' => 'product', 'keptId' => $kept, 'ids' => [$merged]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['merge_refused', 'lot_dated_otherwise', 'L-1'], [$this->json()['error'] ?? null, $this->json()['reason'] ?? null, $this->json()['code'] ?? null]);
+        self::assertSame(['1.000', '2027-03-31'], $this->lotOf($merged, 'L-1'));
+        self::assertNull($this->em()->getConnection()->fetchOne('SELECT merged_into_id FROM product WHERE id = ?', [$merged]));
+    }
+
+    /** Carrying goods moves what the product kept is worth: a cost, which only whoever reads costs moves. Nothing to carry, nothing asked. */
+    /**
+     * Goods whose receipt still waits for its cost are worth nothing known yet: carried, they would reach the product
+     * kept at a provisional worth the cost entered later could no longer correct, so the cost comes first.
+     */
+    public function testGoodsWhoseReceiptAwaitsItsCostRefuseTheMerge(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $this->received($merged, '3', '2.000');
+        $this->em()->getConnection()->executeStatement('UPDATE stock_movement SET unit_cost = NULL, cost_to_complete = true WHERE product_id = ?', [$merged]);
+
+        $this->postJson($this->path('record-merges'), ['subject' => 'product', 'keptId' => $kept, 'ids' => [$merged]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['merge_refused', 'cost_pending', 'VIS-6B'], [$this->json()['error'] ?? null, $this->json()['reason'] ?? null, $this->json()['reference'] ?? null]);
+        self::assertSame(['3.000', '0.000'], [$this->onHand($merged), $this->onHand($kept)]);
+    }
+
+    public function testGoodsOfTheProductKeptWhoseReceiptAwaitsItsCostRefuseTheMerge(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $this->received($kept, '3', '2.000');
+        $this->received($merged, '2', '2.000');
+        $this->em()->getConnection()->executeStatement('UPDATE stock_movement SET unit_cost = NULL, cost_to_complete = true WHERE product_id = ?', [$kept]);
+
+        $this->postJson($this->path('record-merges'), ['subject' => 'product', 'keptId' => $kept, 'ids' => [$merged]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['merge_refused', 'cost_pending', 'VIS-6'], [$this->json()['error'] ?? null, $this->json()['reason'] ?? null, $this->json()['reference'] ?? null]);
+        self::assertSame(['2.000', '3.000'], [$this->onHand($merged), $this->onHand($kept)]);
+    }
+
+    public function testCarryingGoodsTakesSeeingCosts(): void
+    {
+        $this->signedIn();
+        [$kept, $merged, $other] = [$this->products['VIS-6'], $this->products['VIS-6B'], $this->products['VIS-6C']];
+        $this->received($merged, '5', '2.000');
+        $this->signedIn(email: 'stock@twes.local', costs: false);
+
+        $this->postJson($this->path('record-merges'), ['subject' => 'product', 'keptId' => $kept, 'ids' => [$merged]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['merge_refused', 'costs_unseen'], [$this->json()['error'] ?? null, $this->json()['reason'] ?? null]);
+        self::assertSame('5.000', $this->onHand($merged));
+
+        $this->merged($kept, [$other]);
+    }
+
+    /** What arrives or comes back for a product merged away arrives for the product kept: the alias holds nothing again. */
+    public function testGoodsArrivingForTheProductMergedAwayGoToTheProductKept(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $order = $this->anOrder($merged, sent: true);
+        $this->merged($kept, [$merged]);
+
+        $line = $this->em()->getConnection()->fetchOne('SELECT id::text FROM purchase_order_line WHERE purchase_order_id = ?', [$order]);
+        $this->postJson($this->path("purchase-orders/$order/receipts"), ['receivedOn' => (new \DateTimeImmutable())->format('Y-m-d'), 'lines' => [['orderLineId' => $line, 'locationId' => $this->site(), 'quantity' => '4']]]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['4.000', '0.000'], [$this->onHand($kept), $this->onHand($merged)]);
+        // The order keeps the product it was sent for.
+        self::assertSame($merged, $this->productOf('purchase_order_line', 'purchase_order_id', $order));
+    }
+
+    /** The goods a delivery handed over come back for the product kept when the note is cancelled after the merge. */
+    public function testGoodsComingBackForTheProductMergedAwayGoToTheProductKept(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $this->received($merged, '5', '2.000');
+        $note = $this->aDeliveryNote($merged);
+        $this->postJson($this->path("delivery-notes/$note/validate"), null);
+        self::assertResponseIsSuccessful();
+        $this->merged($kept, [$merged]);
+        self::assertSame(['4.000', '0.000'], [$this->onHand($kept), $this->onHand($merged)]);
+
+        $this->postJson($this->path("delivery-notes/$note/cancel"), null);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['5.000', '0.000'], [$this->onHand($kept), $this->onHand($merged)]);
+    }
+
+    /**
+     * Whatever writes stock, the store refuses a movement of a product merged away, read under the stock's locks: a
+     * writer that read the product before the merge cannot put goods back on it once the merge carried them away.
+     */
+    public function testTheStoreRefusesAMovementOfAProductMergedAway(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $this->merged($kept, [$merged]);
+        // The place is read through a request first, which starts the kernel afresh and would let go of what was read before.
+        $site = $this->site();
+        $product = $this->em()->find(Product::class, Uuid::fromString($merged));
+        $location = $this->em()->find(StockLocation::class, Uuid::fromString($site));
+        self::assertNotNull($product);
+        self::assertNotNull($location);
+
+        try {
+            static::getContainer()->get(StockMovementRepository::class)->save(StockMovement::receipt($product, $location, '1.000', null, new \DateTimeImmutable(), unitCost: '2.000'));
+            self::fail('A movement of a product merged away is refused.');
+        } catch (InvalidStockMovement $refused) {
+            self::assertSame('product_merged', $refused->reason);
+        }
+    }
+
+    /**
+     * A product kept and later merged into a third takes the products merged into it along: they stand for the third
+     * from then on, so goods coming back for any of them reach the one product still standing.
+     */
+    public function testAProductMergedIntoOneMergedSinceStandsForTheLastOneKept(): void
+    {
+        $this->signedIn();
+        [$first, $second, $last] = [$this->products['VIS-6B'], $this->products['VIS-6'], $this->products['VIS-6C']];
+        $this->received($first, '5', '2.000');
+        $note = $this->aDeliveryNote($first);
+        $this->postJson($this->path("delivery-notes/$note/validate"), null);
+        self::assertResponseIsSuccessful();
+        $this->merged($second, [$first]);
+        $this->merged($last, [$second]);
+        self::assertSame($last, $this->em()->getConnection()->fetchOne('SELECT merged_into_id::text FROM product WHERE id = ?', [$first]));
+        self::assertSame(['4.000', '0.000', '0.000'], [$this->onHand($last), $this->onHand($second), $this->onHand($first)]);
+
+        $this->postJson($this->path("delivery-notes/$note/cancel"), null);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['5.000', '0.000', '0.000'], [$this->onHand($last), $this->onHand($second), $this->onHand($first)]);
+    }
+
+    /** Merges are undone last first: the earlier one waits while the product it kept is merged into another. */
+    public function testAMergeWhoseProductKeptWasMergedSinceIsUndoneOnlyAfterThatOne(): void
+    {
+        $this->signedIn();
+        [$first, $second, $last] = [$this->products['VIS-6B'], $this->products['VIS-6'], $this->products['VIS-6C']];
+        $this->received($first, '5', '2.000');
+        $this->receivedEarlier();
+        $earlier = $this->stringAt($this->merged($second, [$first]), 'id');
+        $later = $this->stringAt($this->merged($last, [$second]), 'id');
+
+        $this->postJson($this->path("record-removals/$earlier/restore"), null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('merge_alias', $this->json()['error'] ?? null);
+        $this->postJson($this->path("record-removals/$later/restore"), null);
+        self::assertResponseIsSuccessful();
+
+        $pointing = fn (string $id): mixed => $this->em()->getConnection()->fetchOne('SELECT merged_into_id::text FROM product WHERE id = ?', [$id]);
+        self::assertSame([$second, null], [$pointing($first), $pointing($second)]);
+        self::assertSame(['5.000', '0.000', '0.000'], [$this->onHand($second), $this->onHand($last), $this->onHand($first)]);
+        $this->postJson($this->path("record-removals/$earlier/restore"), null);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['0.000', '5.000'], [$this->onHand($second), $this->onHand($first)]);
+    }
+
+    /** Goods of a lot come back to the lot of that code the merge gave the product kept, never to the other's. */
+    public function testGoodsOfALotComingBackForTheProductMergedAwayGoToTheLotOfTheProductKept(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-L'], $this->products['VIS-L2']];
+        $this->received($merged, '5', '2.000', 'L-1', '2027-01-31');
+        $this->postJson($this->path('delivery-notes'), ['customerId' => $this->customerId, 'establishmentId' => null, 'deliveryDate' => null, 'deliveryAddressLine1' => null, 'deliveryAddressLine2' => null, 'deliveryPostalCode' => null, 'deliveryCity' => null, 'deliveryCountryCode' => null, 'customerReference' => null, 'remarksPrinted' => null, 'notesInternal' => null, 'lines' => [['productId' => $merged, 'quantity' => '2', 'lotCode' => 'L-1']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $note = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path("delivery-notes/$note/validate"), null);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['3.000', '2027-01-31'], $this->lotOf($merged, 'L-1'));
+        $this->merged($kept, [$merged]);
+
+        $this->postJson($this->path("delivery-notes/$note/cancel"), null);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['5.000', '2027-01-31'], $this->lotOf($kept, 'L-1'));
+        self::assertSame(['0.000', '2027-01-31'], $this->lotOf($merged, 'L-1'));
+    }
+
+    /** A draft made from a document sent before the merge is a new draft: it names the product kept, as every draft does. */
+    public function testADraftMadeFromADocumentOfTheProductMergedAwayNamesTheProductKept(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $this->received($merged, '5', '2.000');
+        $note = $this->aDeliveryNote($merged);
+        $this->postJson($this->path("delivery-notes/$note/validate"), null);
+        self::assertResponseIsSuccessful();
+        $quote = $this->aQuote($merged);
+        $this->postJson($this->path("quotes/$quote/send"), null);
+        self::assertResponseIsSuccessful();
+        $this->merged($kept, [$merged]);
+
+        $this->postJson($this->path('invoices/from-delivery-notes'), ['deliveryNoteIds' => [$note]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame($kept, $this->productOf('invoice_line', 'invoice_id', $this->stringAt($this->json(), 'id')));
+
+        $this->postJson($this->path("quotes/$quote/accept"), ['answeredOn' => null]);
+        $this->postJson($this->path("quotes/$quote/invoice"), null);
+        self::assertResponseIsSuccessful();
+        self::assertSame($kept, $this->productOf('invoice_line', 'invoice_id', $this->stringAt($this->json(), 'invoiceId')));
+        // The documents themselves keep the product they were made for.
+        self::assertSame([$merged, $merged], [$this->productOf('delivery_note_line', 'delivery_note_id', $note), $this->productOf('quote_line', 'quote_id', $quote)]);
+    }
+
+    /** A copy of an invoice issued before the merge is a new sale: it names the product kept, the original the one it sold. */
+    public function testACopyOfAnInvoiceOfTheProductMergedAwayNamesTheProductKept(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $invoice = $this->anInvoice($merged, issued: true);
+        $this->merged($kept, [$merged]);
+
+        $this->postJson($this->path("invoices/$invoice/duplicate"), null);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([$kept, $merged], [$this->productOf('invoice_line', 'invoice_id', $this->stringAt($this->json(), 'id')), $this->productOf('invoice_line', 'invoice_id', $invoice)]);
+    }
+
+    /** Goods the product kept received since the merge are part of what happened: the merge is no longer undone. */
+    public function testTheMergeIsNotUndoneOnceTheProductKeptReceivedGoods(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $merge = $this->merged($kept, [$merged]);
+        $this->received($kept, '1', '1.000');
+
+        $this->postJson($this->path('record-removals/'.$this->stringAt($merge, 'id').'/restore'), null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('merge_transacted', $this->json()['error'] ?? null);
     }
 
     public function testThePreviewSaysWhatMovesAndWhatStays(): void
@@ -250,6 +573,60 @@ final class ProductMergeTest extends ApiTestCase
         self::assertSame(['VIS-6'], array_map(static fn (mixed $cells): mixed => \is_array($cells) ? ($cells['product'] ?? null) : null, $rows));
         // The books keep the product the line named.
         self::assertSame($merged, $this->productOf('invoice_line', 'invoice_id', $invoice));
+    }
+
+    /**
+     * The stock reports read the product kept as one product with the goods merged into it: the goods carried move in
+     * no column, as a move between places does, and what the product merged away sold counts as the product kept's
+     * sale. The movements list narrowed to the product kept shows what was moved under the product merged away too,
+     * each movement naming the product it moved.
+     */
+    public function testTheStockReportsAndMovementsReadTheProductKeptWithWhatWasMergedIntoIt(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $this->received($merged, '5', '2.000');
+        $note = $this->aDeliveryNote($merged);
+        $this->postJson($this->path("delivery-notes/$note/validate"), null);
+        self::assertResponseIsSuccessful();
+        // Received and sold a hundred days ago: quiet for longer than the company's ninety days.
+        $connection = $this->em()->getConnection();
+        $connection->executeStatement("UPDATE stock_movement SET at = at - interval '100 days'");
+        $this->merged($kept, [$merged]);
+        $from = $connection->fetchOne('SELECT (CURRENT_DATE - 1)::text');
+        $to = $connection->fetchOne('SELECT (CURRENT_DATE + 1)::text');
+        self::assertIsString($from);
+        self::assertIsString($to);
+
+        $this->getJson($this->path("reports/stock-movements?from=$from&to=$to"));
+        self::assertResponseIsSuccessful();
+        self::assertSame([['VIS-6', '4.000', '0.000', '0.000', '4.000']], $this->reportRows(['reference', 'opening', 'received', 'sold', 'closing']));
+
+        $this->getJson($this->path('reports/dead-stock'));
+        self::assertResponseIsSuccessful();
+        self::assertSame([['VIS-6', '4.000', $connection->fetchOne("SELECT ((now() - interval '100 days') AT TIME ZONE 'Africa/Tunis')::date::text")]], $this->reportRows(['reference', 'on_hand', 'last_sold']));
+
+        $this->getJson($this->path("stock-movements?productId[]=$kept"));
+        self::assertResponseIsSuccessful();
+        self::assertSame(4, $this->jsonPage()['totalItems'], 'the receipt, the sale and the merge’s two halves');
+    }
+
+    public function testWhatIsRunningOutReadsTheProductKeptAtThePaceOfWhatWasMergedIntoIt(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $this->received($merged, '2', '2.000');
+        $note = $this->aDeliveryNote($merged);
+        $this->postJson($this->path("delivery-notes/$note/validate"), null);
+        self::assertResponseIsSuccessful();
+        $this->em()->persist(new Setting(SettingAddress::company($this->em()->find(Company::class, $this->company->getId()) ?? $this->company), 'watch.lead_days', 40, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->merged($kept, [$merged]);
+
+        $this->getJson($this->path('watch/stock.running_out'));
+        self::assertResponseIsSuccessful();
+        // One sold in thirty days and one left: thirty days, the carry's leaving half being no sale.
+        self::assertSame([[$kept, '1.000', 30]], array_map(static fn (array $row): array => [$row['subjectId'] ?? null, \is_array($row['params'] ?? null) ? $row['params']['onHand'] ?? null : null, \is_array($row['params'] ?? null) ? $row['params']['days'] ?? null : null], $this->jsonList()));
     }
 
     public function testMergingProductsTakesWritingThemAndAProofGivenAgain(): void
@@ -338,19 +715,78 @@ final class ProductMergeTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
         if ($sent) {
-            $this->em()->getConnection()->executeStatement("UPDATE purchase_order SET status = 'sent' WHERE id = ?", [$id]);
+            $this->postJson($this->path("purchase-orders/$id/send"), null);
+            self::assertResponseIsSuccessful();
         }
 
         return $id;
     }
 
-    private function aReceipt(string $product): void
+    /** Goods received at the company's first place, at a cost, in a lot when the product is tracked by lot. */
+    private function received(string $product, string $quantity, string $cost, ?string $lot = null, ?string $expiresOn = null): void
     {
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $product, 'locationId' => $this->site(), 'quantity' => $quantity, 'unitCost' => $cost, 'lotCode' => $lot, 'lotExpiresOn' => $expiresOn]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
+    /**
+     * The goods arrived a minute before the merge: a movement of the product kept dated in the merge's own second is
+     * taken as one after it, which would leave the merge no longer undone.
+     */
+    private function receivedEarlier(): void
+    {
+        $this->em()->getConnection()->executeStatement("UPDATE stock_movement SET at = at - interval '1 minute'");
+    }
+
+    /**
+     * @param list<string> $columns
+     *
+     * @return list<list<mixed>> the report's rows, each the cells of these columns
+     */
+    private function reportRows(array $columns): array
+    {
+        return array_values(array_map(static function (mixed $row) use ($columns): array {
+            $cells = \is_array($row) && \is_array($row['cells'] ?? null) ? $row['cells'] : [];
+
+            return array_map(static fn (string $column): mixed => $cells[$column] ?? null, $columns);
+        }, $this->arrayAt($this->json(), 'rows')));
+    }
+
+    private function site(): string
+    {
+        // The company's first place is made the first time its places are read.
         $this->getJson($this->path('stock-locations'));
         self::assertResponseIsSuccessful();
-        $site = $this->stringAt($this->jsonList()[0], 'id');
-        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $product, 'locationId' => $site, 'quantity' => '3']);
-        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        return $this->stringAt($this->jsonList()[0], 'id');
+    }
+
+    private function onHand(string $product): string
+    {
+        $quantity = $this->em()->getConnection()->fetchOne('SELECT COALESCE(sum(quantity), 0)::numeric(14, 3)::text FROM stock_movement WHERE product_id = ?', [$product]);
+        self::assertIsString($quantity);
+
+        return $quantity;
+    }
+
+    /** What one unit of the product's stock is worth: its movements' value over its quantity. */
+    private function worthOf(string $product): string
+    {
+        $worth = $this->em()->getConnection()->fetchOne('SELECT round(sum(quantity * unit_cost + COALESCE(revaluation, 0)) / sum(quantity), 4)::text FROM stock_movement WHERE product_id = ?', [$product]);
+        self::assertIsString($worth);
+
+        return $worth;
+    }
+
+    /** @return array{string, ?string} what the product's lot of this code holds, and its date */
+    private function lotOf(string $product, string $code): array
+    {
+        $lot = $this->em()->getConnection()->fetchAssociative('SELECT (SELECT COALESCE(sum(m.quantity), 0)::numeric(14, 3)::text FROM stock_movement m WHERE m.lot_id = l.id) AS held, l.expires_on::text AS expires_on FROM stock_lot l WHERE l.product_id = ? AND l.code = ?', [$product, $code]);
+        self::assertIsArray($lot, "$code is a lot of the product");
+        self::assertIsString($lot['held']);
+        self::assertTrue(null === $lot['expires_on'] || \is_string($lot['expires_on']));
+
+        return [$lot['held'], $lot['expires_on']];
     }
 
     private function aCode(string $product, string $code): void
@@ -392,11 +828,11 @@ final class ProductMergeTest extends ApiTestCase
         return $id;
     }
 
-    private function signedIn(bool $prove = true): void
+    private function signedIn(bool $prove = true, string $email = 'shop@twes.local', bool $costs = true): void
     {
-        $permissions = ['company.read', 'customer.read', 'invoice.read', 'invoice.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'vendor.read', 'purchase.read', 'purchase.write', 'stock.read', 'stock.write', 'product.read', 'product.write', 'product.cost.read'];
-        $this->createUser('shop@twes.local', self::PASSWORD, $this->company, $permissions, 'member');
-        $this->login('shop@twes.local', self::PASSWORD);
+        $permissions = ['company.read', 'customer.read', 'invoice.read', 'invoice.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'vendor.read', 'purchase.read', 'purchase.write', 'purchase.receive', 'stock.read', 'stock.write', 'product.read', 'product.write', ...($costs ? ['product.cost.read'] : [])];
+        $this->createUser($email, self::PASSWORD, $this->em()->find(Company::class, $this->company->getId()) ?? $this->company, $permissions, $costs ? 'member' : 'stock keeper');
+        $this->login($email, self::PASSWORD);
         self::assertResponseIsSuccessful();
         if ($prove) {
             $this->stepUp(self::PASSWORD);

@@ -17,6 +17,7 @@ use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\Model\StockLot;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\Repository\ProductHomeLocationRepository;
+use App\Module\Inventory\Domain\Repository\StockLotRepository;
 use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use App\Module\Inventory\Domain\ValueObject\LotOnHand;
 use App\Module\Inventory\Domain\ValueObject\LotPicking;
@@ -59,6 +60,7 @@ final readonly class MoveStockForDeliveryNotes
         private Transactions $transactions,
         private ClockInterface $clock,
         private ProductHomeLocationRepository $homes,
+        private StockLotRepository $lots,
         private ?RaiseStockAlerts $alerts = null,
     ) {
     }
@@ -100,7 +102,8 @@ final readonly class MoveStockForDeliveryNotes
         $skipped = [];
         $out = [];
         foreach ($lines as $line) {
-            $product = null === $line->productId ? null : $this->products->ofIdInCompany($line->productId, $companyId);
+            // A document issued for a product merged away since takes the goods from the product kept, which holds them.
+            $product = null === $line->productId ? null : $this->products->ofIdInCompany($line->productId, $companyId)?->standingFor();
             if (null === $product || !$this->stock->tracked($product)) {
                 continue;
             }
@@ -329,7 +332,8 @@ final readonly class MoveStockForDeliveryNotes
         $skipped = [];
         $asked = [];
         foreach ($lines as $line) {
-            $product = null === $line->productId ? null : $this->products->ofIdInCompany($line->productId, $companyId);
+            // Goods coming back for a product merged away since come back to the product kept.
+            $product = null === $line->productId ? null : $this->products->ofIdInCompany($line->productId, $companyId)?->standingFor();
             if (null === $product) {
                 continue;
             }
@@ -355,8 +359,8 @@ final readonly class MoveStockForDeliveryNotes
             $locks = [];
             foreach ($sales as $sale) {
                 foreach ($asked as [$product]) {
-                    if ($sale->getProduct()->getId()->equals($product->getId())) {
-                        $locks[$sale->getProduct()->getId()->toRfc4122().' '.$sale->getLocation()->getId()->toRfc4122()] = [$sale->getProduct()->getId(), $sale->getLocation()->getId()];
+                    if ($sale->getProduct()->standingFor()->getId()->equals($product->getId())) {
+                        $locks[$product->getId()->toRfc4122().' '.$sale->getLocation()->getId()->toRfc4122()] = [$product->getId(), $sale->getLocation()->getId()];
                     }
                 }
             }
@@ -389,7 +393,7 @@ final readonly class MoveStockForDeliveryNotes
                 $want = $quantity;
                 $named = null === $lot ? '' : ' lot '.$lot;
                 foreach ($soldAt as $key => [$sale]) {
-                    if (!$sale->getProduct()->getId()->equals($product->getId()) || (null !== $lot && 0 !== strcasecmp((string) $sale->getLot()?->getCode(), $lot))) {
+                    if (!$sale->getProduct()->standingFor()->getId()->equals($product->getId()) || (null !== $lot && 0 !== strcasecmp((string) $sale->getLot()?->getCode(), $lot))) {
                         continue;
                     }
                     $take = 1 === $left[$key]->compare($want) ? $want : $left[$key];
@@ -407,7 +411,7 @@ final readonly class MoveStockForDeliveryNotes
 
             if ([] !== $give) {
                 $this->movements->save(...array_map(
-                    static fn (string $key): StockMovement => StockMovement::returnOfSales($soldAt[$key], new Number('0.000')->add($give[$key])->value, $creditNoteId, $invoiceId, $now),
+                    fn (string $key): StockMovement => StockMovement::returnOfSales($soldAt[$key], new Number('0.000')->add($give[$key])->value, $creditNoteId, $invoiceId, $now, $this->lotKept($soldAt[$key][0])),
                     array_keys($give),
                 ));
             }
@@ -416,10 +420,29 @@ final readonly class MoveStockForDeliveryNotes
         });
     }
 
-    /** What a sale and its returns share: the product, the place and the lot its goods are counted under. */
+    /**
+     * What a sale and its returns share: the product, the place and the lot its goods are counted under. A sale of a
+     * product merged away since and its return to the product kept share the product kept and the lot's code.
+     */
     private static function stockKey(StockMovement $movement): string
     {
-        return $movement->getProduct()->getId()->toRfc4122().' '.$movement->getLocation()->getId()->toRfc4122().' '.($movement->getLot()?->getId()->toRfc4122() ?? '-');
+        return $movement->getProduct()->standingFor()->getId()->toRfc4122().' '.$movement->getLocation()->getId()->toRfc4122().' '.(null === $movement->getLot() ? '-' : '"'.$movement->getLot()->getCode());
+    }
+
+    /**
+     * The lot of the product kept that the goods of a sale come back to, when the sale's product was merged away since:
+     * the merge gave the product kept a lot of each code the other had.
+     */
+    private function lotKept(StockMovement $sale): ?StockLot
+    {
+        $lot = $sale->getLot();
+        $standing = $sale->getProduct()->standingFor();
+        if (null === $lot || $standing === $sale->getProduct()) {
+            return null;
+        }
+
+        return $this->lots->ofCode($standing->getId(), $lot->getCode())
+            ?? throw new \LogicException(\sprintf('%s was merged into %s, which was given no lot %s.', $sale->getProduct()->getReference(), $standing->getReference(), $lot->getCode()));
     }
 
     public function cancelled(Uuid $deliveryNoteId, Uuid $companyId): void
@@ -435,7 +458,7 @@ final readonly class MoveStockForDeliveryNotes
 
         $now = $this->clock->now();
         $this->transactions->run(function () use ($taken, $now): void {
-            $this->movements->save(...array_map(static fn (StockMovement $delivery): StockMovement => StockMovement::returnOf($delivery, $now), $taken));
+            $this->movements->save(...array_map(fn (StockMovement $delivery): StockMovement => StockMovement::returnOf($delivery, $now, $this->lotKept($delivery)), $taken));
         });
     }
 }

@@ -21,6 +21,9 @@ interface StockLotRepository
     /** The product's lot under that code, exactly as written. */
     public function ofCode(Uuid $productId, string $code): ?StockLot;
 
+    /** @return list<StockLot> every lot of the product, by code */
+    public function ofProduct(Uuid $productId): array;
+
     /**
      * Holds a lot of a product until the current transaction ends, by its code, so the lot need not exist yet: two
      * receipts of one new serial number at two sites then run one after the other, and the second finds the first's
