@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Records;
 
 use App\Records\Application\DeclaresRecordReferences;
 use App\Records\Application\RecordCatalogue;
+use App\Records\Application\RecordLink;
 use App\Records\Application\RecordMerge;
 use App\Records\Application\RecordReference;
 use App\Records\Application\RecordSubject;
@@ -70,6 +71,23 @@ final class RecordCatalogueTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         RecordReference::uses('stock_movement', 'vendor_id', 'vendor', RecordMerge::Stays, 'A movement.')->movingOnlyWhere('status', ['draft']);
+    }
+
+    public function testAColumnSaidOfEverySubjectNamesNoneOnSomeRowsOnly(): void
+    {
+        $owned = RecordReference::owned('setting', 'level_id', 'product', RecordMerge::MovesOrDrops, 'A product setting.', RecordLink::TextId)->where('level', 'product');
+        self::assertSame(['level', 'product'], [$owned->whereColumn, $owned->whereValue]);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        RecordReference::ignored('audit_log', 'entity_id', null, 'History.')->where('entity_type', 'product');
+    }
+
+    public function testAScopeColumnThatIsNotAPlainIdentifierIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        RecordReference::owned('setting', 'level_id', 'product', RecordMerge::Stays, 'A product setting.')->where('level = level OR 1', 'product');
     }
 
     /**

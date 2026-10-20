@@ -16,6 +16,9 @@ namespace App\Records\Application;
  *
  * A merge may move only some of the rows naming the record that goes: those whose `$movesWhereColumn` holds one of
  * `$movesWhereValues` (a draft), while the others stay with it, sealed (an issued document, a movement).
+ *
+ * A column naming rows of several tables names this subject's only on the rows whose `$whereColumn` holds
+ * `$whereValue`: a setting's `level_id` names a product where its `level` is `product`.
  */
 final readonly class RecordReference
 {
@@ -30,8 +33,10 @@ final readonly class RecordReference
         public string $why,
         public ?string $movesWhereColumn = null,
         public array $movesWhereValues = [],
+        public ?string $whereColumn = null,
+        public ?string $whereValue = null,
     ) {
-        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none'] as $name) {
+        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none'] as $name) {
             if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
                 throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $name));
             }
@@ -79,6 +84,16 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that moves in a merge moves some rows, named by at least one value.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue);
+    }
+
+    /** The column names the subject only on the rows whose other column holds the value: the rest name other tables. */
+    public function where(string $column, string $value): self
+    {
+        if (null === $this->subject) {
+            throw new \InvalidArgumentException(\sprintf('%s.%s: a column said of every subject names none of them on some rows only.', $this->table, $this->column));
+        }
+
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value);
     }
 }

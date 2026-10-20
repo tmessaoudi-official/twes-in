@@ -11,13 +11,14 @@ namespace App\Records\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Files\Application\Files;
 use App\Records\Domain\Repository\RecordRemovalRepository;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Ends every delete whose day is over: it becomes final and its copy goes. Running it again ends nothing twice. A
+ * Ends every delete whose day is over: it becomes final, its copy goes, and the files only the copy named go with it. Running it again ends nothing twice. A
  * restore never waits on it: the removal refuses one past its day by itself.
  */
 final readonly class EndDueRemovals
@@ -28,6 +29,7 @@ final readonly class EndDueRemovals
     public function __construct(
         private RecordRemovalRepository $removals,
         private RecordStore $store,
+        private Files $files,
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
@@ -40,19 +42,24 @@ final readonly class EndDueRemovals
         $now = $this->clock->now();
         $ended = 0;
         foreach ($this->removals->due($now, $companyId) as ['company' => $company, 'id' => $id]) {
-            $ended += $this->transactions->run(function () use ($company, $id, $now): int {
+            $keys = $this->transactions->run(function () use ($company, $id, $now): ?array {
                 $removal = $this->removals->lockedOfId($company, $id);
                 if (null === $removal || $removal->getEffectiveAt() > $now) {
-                    return 0;
+                    return null;
                 }
                 $removal->end($now);
-                $this->store->forget($company, $id);
+                $unnamed = $this->store->forget($company, $id);
                 $this->removals->save($removal);
                 // Also what tells an open « Récemment supprimés » to drop it.
                 $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $id, self::ENDED, null, ['subject' => $removal->getSubject(), 'records' => \count($removal->getItems())], $company));
 
-                return 1;
+                return $this->files->forget($company, $unnamed);
             });
+            if (null !== $keys) {
+                // The bytes once their records are gone for good: bytes without a record are only unused.
+                $this->files->deleteContents($keys);
+                ++$ended;
+            }
         }
 
         return $ended;
