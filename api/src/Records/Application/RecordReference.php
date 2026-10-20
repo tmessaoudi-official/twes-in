@@ -22,7 +22,10 @@ namespace App\Records\Application;
  */
 final readonly class RecordReference
 {
-    /** @param list<string> $movesWhereValues */
+    /**
+     * @param list<string> $movesWhereValues
+     * @param list<string> $twinColumns
+     */
     private function __construct(
         public string $table,
         public string $column,
@@ -35,8 +38,9 @@ final readonly class RecordReference
         public array $movesWhereValues = [],
         public ?string $whereColumn = null,
         public ?string $whereValue = null,
+        public array $twinColumns = [],
     ) {
-        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none'] as $name) {
+        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none', ...$twinColumns] as $name) {
             if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
                 throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $name));
             }
@@ -84,7 +88,20 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that moves in a merge moves some rows, named by at least one value.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue, $this->twinColumns);
+    }
+
+    /**
+     * The other columns that, with this one, make a row the record kept may already have a twin of: a merge drops the
+     * merged-away record's twin instead of moving it.
+     */
+    public function droppingTwinsBy(string ...$columns): self
+    {
+        if (RecordMerge::MovesOrDrops !== $this->onMerge || [] === $columns) {
+            throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that drops its twins in a merge says what makes one, by at least one column.', $this->table, $this->column));
+        }
+
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, array_values($columns));
     }
 
     /** The column names the subject only on the rows whose other column holds the value: the rest name other tables. */
@@ -94,6 +111,6 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: a column said of every subject names none of them on some rows only.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value, $this->twinColumns);
     }
 }

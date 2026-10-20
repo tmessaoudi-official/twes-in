@@ -54,6 +54,30 @@ final class RecordReferenceCoverageTest extends KernelTestCase
         self::assertContains($said, RecordReferenceCoverage::unaccounted($this->connection(), $without));
     }
 
+    /**
+     * A merge drops the row the record kept already has a twin of; the twin is what the table's unique index says, or the
+     * merge either drops a row it should have moved or moves one the index then refuses.
+     */
+    public function testTwinsSaidOtherwiseThanByAUniqueIndexAreNamed(): void
+    {
+        $vendorLinks = static fn (RecordReference $reference): bool => 'product_vendor' === $reference->table && 'product_id' === $reference->column;
+        $twinsOff = new readonly class implements DeclaresRecordReferences {
+            public function subjects(): array
+            {
+                return [];
+            }
+
+            public function references(): array
+            {
+                return [RecordReference::owned('product_vendor', 'product_id', 'product', RecordMerge::MovesOrDrops, 'Twins said wrong.')->droppingTwinsBy('vendor_code')];
+            }
+        };
+
+        $unaccounted = RecordReferenceCoverage::unaccounted($this->connection(), new RecordCatalogue([...$this->catalogueWithout($vendorLinks)->declarations(), $twinsOff]));
+
+        self::assertContains('product_vendor.product_id drops its twins by vendor_code, which no unique index of product_vendor holds with it', $unaccounted);
+    }
+
     public function testADeclaredColumnThatNoLongerExistsIsNamed(): void
     {
         $gone = new readonly class implements DeclaresRecordReferences {

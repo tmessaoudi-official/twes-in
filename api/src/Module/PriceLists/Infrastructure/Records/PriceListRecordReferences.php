@@ -24,7 +24,7 @@ final readonly class PriceListRecordReferences implements DeclaresRecordReferenc
     public function references(): array
     {
         return [
-            RecordReference::uses('price_list_item', 'product_id', 'product', RecordMerge::MovesOrDrops, 'A price list item prices the product; merged, the list prices the product kept, once.'),
+            RecordReference::uses('price_list_item', 'product_id', 'product', RecordMerge::MovesOrDrops, 'A price list item prices the product; merged, the list prices the product kept, once.')->droppingTwinsBy('price_list_id', 'min_quantity'),
         ];
     }
 }

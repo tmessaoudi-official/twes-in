@@ -107,6 +107,42 @@ final class RecordReferenceCoverage
             }
         }
 
+        // A merge drops the merged-away record's twin of a row the kept record has; what makes a twin is what the unique
+        // index refuses twice, the company's own column aside.
+        foreach ($catalogue->references() as $reference) {
+            if ([] === $reference->twinColumns) {
+                continue;
+            }
+            $twin = [$reference->column, ...$reference->twinColumns, ...(null === $reference->whereColumn ? [] : [$reference->whereColumn])];
+            sort($twin);
+            $held = false;
+            foreach (self::uniqueIndexes($connection, $reference->table) as $columns) {
+                $columns = array_values(array_diff($columns, ['company_id']));
+                sort($columns);
+                $held = $held || $columns === array_values(array_unique($twin));
+            }
+            if (!$held) {
+                $out[] = \sprintf('%s.%s drops its twins by %s, which no unique index of %s holds with it', $reference->table, $reference->column, implode(', ', $reference->twinColumns), $reference->table);
+            }
+        }
+
         return array_values(array_unique($out));
+    }
+
+    /** @return list<list<string>> the columns of each unique index of the table, its primary key left out */
+    private static function uniqueIndexes(Connection $connection, string $table): array
+    {
+        $indexes = [];
+        foreach ($connection->fetchAllAssociative(
+            'SELECT i.indexrelid::text AS index, a.attname AS name FROM pg_index i JOIN pg_class t ON t.oid = i.indrelid JOIN pg_namespace n ON n.oid = t.relnamespace JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(i.indkey) WHERE n.nspname = current_schema() AND t.relname = :table AND i.indisunique AND NOT i.indisprimary',
+            ['table' => $table],
+        ) as $row) {
+            if (!\is_string($row['index']) || !\is_string($row['name'])) {
+                throw new \LogicException('An index and its columns read as names.');
+            }
+            $indexes[$row['index']][] = $row['name'];
+        }
+
+        return array_values($indexes);
     }
 }

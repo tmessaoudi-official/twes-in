@@ -87,8 +87,22 @@
       [rowTestId]="rowTestId"
       emptyKey="products.categories.none"
       emptyTestId="product-categories-empty"
+      [(selected)]="selected"
     >
-      @if (mayWrite()) {}
+      <ng-template appDataListSelection>
+        @if (selected().length > 1) {
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="busy()"
+            (click)="merge()"
+            data-testid="product-categories-merge"
+          >
+            <mat-icon aria-hidden="true">merge</mat-icon>
+            {{ 'records.merge.action' | translate }}
+          </button>
+        }
+      </ng-template>
     </app-data-list>
   </section>
 </app-page-tabs>

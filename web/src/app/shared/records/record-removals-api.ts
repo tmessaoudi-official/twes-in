@@ -10,8 +10,18 @@ export interface RemovedItem {
   readonly label: string;
 }
 
-/** Records of one subject deleted at once, restorable together until `effectiveAt`. */
-export interface RecordRemoval {
+/**
+ * Records of one subject deleted, or merged into another, at once, restorable together until `effectiveAt`: a merge's
+ * undo also points back at them whatever it moved.
+ */
+export type RecordRemoval = RemovalCommon &
+  (
+    | { readonly kind: 'delete'; readonly kept: null }
+    /** `kept` is the record the others were merged into. */
+    | { readonly kind: 'merge'; readonly kept: RemovedItem }
+  );
+
+interface RemovalCommon {
   readonly id: string;
   /** The subject's table, `vendor` first. */
   readonly subject: string;
@@ -37,7 +47,16 @@ export interface RecordInUse {
 
 /** Why the API refused, as the screens translate it. */
 export type RemovalError =
-  'network' | 'not_found' | 'no_record' | 'record_used' | 'restore_conflict' | 'removal_final';
+  | 'network'
+  | 'not_found'
+  | 'no_record'
+  | 'record_used'
+  | 'restore_conflict'
+  | 'removal_final'
+  | 'merge_into_itself'
+  | 'merge_cycle'
+  | 'merge_conflict'
+  | 'step_up_required';
 
 /** Thrown when the API refuses; a record in use carries what names each record. */
 export class RemovalRefused extends Error {
@@ -65,10 +84,26 @@ export class RecordRemovalsApi {
   }
 
   /** The deletes still restorable, of the subjects the person may write, the newest first. */
+  /**
+   * Merges the records into the one kept, all of them or none. The API holds it back as `step_up_required` until the
+   * person proved who they are in the last few minutes.
+   */
+  async merge(
+    companyId: string,
+    subject: string,
+    keptId: string,
+    ids: readonly string[],
+  ): Promise<RecordRemoval> {
+    return this.call(() =>
+      this.http.post<RecordRemoval>(`${base(companyId)}/record-merges`, { subject, keptId, ids }),
+    );
+  }
+
   async pending(companyId: string): Promise<RecordRemoval[]> {
     return this.call(() => this.http.get<RecordRemoval[]>(`${base(companyId)}/record-removals`));
   }
 
+  /** Puts a delete back, or undoes a merge, which also takes a recent proof. */
   async restore(companyId: string, removalId: string): Promise<RecordRemoval> {
     return this.call(() =>
       this.http.post<RecordRemoval>(
@@ -94,6 +129,10 @@ const CODES: readonly RemovalError[] = [
   'record_used',
   'restore_conflict',
   'removal_final',
+  'merge_into_itself',
+  'merge_cycle',
+  'merge_conflict',
+  'step_up_required',
 ];
 
 function refusal(error: unknown): RemovalRefused {

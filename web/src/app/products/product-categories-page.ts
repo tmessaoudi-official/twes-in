@@ -13,12 +13,13 @@ import {
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
-import { DataList } from '../shared/list/data-list';
+import { DataList, DataListSelection } from '../shared/list/data-list';
 import { ArticleDefaults } from './article-defaults';
 import {
   CATEGORIES_LIST,
@@ -46,8 +47,10 @@ import { RecordDeletes } from '../shared/records/record-deletes';
     RecordChanged,
     MatButtonModule,
     MatCardModule,
+    MatIconModule,
     TranslatePipe,
     DataList,
+    DataListSelection,
     DescriptorForm,
     ArticleDefaults,
   ],
@@ -93,7 +96,11 @@ export class ProductCategoriesPage implements OnInit {
         shown: (row) => this.mayWrite() && row.productCount === 0 && row.childCount === 0,
       },
     ],
+    // Categories are selected to be merged, which only a person who may change them can do.
+    ...(this.mayWrite() ? { selection: { countKey: 'products.categories.selected' } } : {}),
   }));
+  /** The categories ticked on the page shown, by id, in the order they were ticked. */
+  protected readonly selected = signal<readonly string[]>([]);
   protected readonly rows = computed(() => categoryListRows(this.facade.categories()));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
@@ -189,6 +196,41 @@ export class ProductCategoriesPage implements OnInit {
     } else if (this.facade.error() === 'record_changed') {
       this.facade.clearError();
       await this.sync.savedElsewhere();
+    }
+  }
+
+  /**
+   * Merges the categories ticked into the one the person keeps: what they hold moves to it, as the dialog says first
+   * from the counts the list already shows.
+   */
+  protected async merge(): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!companyId || this.busy()) return;
+    const byId = new Map(this.rows().map((row) => [row.id, row]));
+    const candidates = this.selected().flatMap((id) => {
+      const row = byId.get(id);
+      return row === undefined
+        ? []
+        : [
+            {
+              id: row.id,
+              label: row.name,
+              moves: [
+                { table: 'product', count: row.productCount },
+                { table: 'product_category', count: row.childCount },
+              ],
+            },
+          ];
+    });
+    if (candidates.length < 2) return;
+    if (
+      await this.deletes.offerMerge(companyId, {
+        subject: 'product_category',
+        candidates,
+        settings: true,
+      })
+    ) {
+      this.selected.set([]);
     }
   }
 

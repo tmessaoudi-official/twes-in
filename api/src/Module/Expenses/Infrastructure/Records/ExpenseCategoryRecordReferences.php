@@ -12,6 +12,7 @@ namespace App\Module\Expenses\Infrastructure\Records;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\Module\Expenses\Infrastructure\Module\ExpensesModule;
 use App\Records\Application\DeclaresRecordReferences;
+use App\Records\Application\MergedAway;
 use App\Records\Application\RecordMerge;
 use App\Records\Application\RecordReference;
 use App\Records\Application\RecordSubject;
@@ -25,7 +26,7 @@ final readonly class ExpenseCategoryRecordReferences implements DeclaresRecordRe
 {
     public function subjects(): array
     {
-        return [new RecordSubject('expense_category', ExpensePermission::WRITE, ExpensesModule::KEY, ['name'])];
+        return [new RecordSubject('expense_category', ExpensePermission::WRITE, ExpensesModule::KEY, ['name'], MergedAway::Removed)];
     }
 
     public function references(): array

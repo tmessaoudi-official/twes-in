@@ -79,7 +79,7 @@ describe('ProductCategoriesPage', () => {
     reviseCategory: vi.fn(),
     clearError: vi.fn(),
   };
-  const deletes = { remove: vi.fn() };
+  const deletes = { remove: vi.fn(), offerMerge: vi.fn() };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
@@ -126,6 +126,7 @@ describe('ProductCategoriesPage', () => {
     facade.createCategory.mockReset().mockResolvedValue(true);
     facade.reviseCategory.mockReset().mockResolvedValue(true);
     deletes.remove.mockReset().mockResolvedValue(true);
+    deletes.offerMerge.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
     articleSettings.load.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
@@ -156,6 +157,51 @@ describe('ProductCategoriesPage', () => {
 
   afterEach(() => {
     document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
+  const tick = async (id: string): Promise<void> => {
+    (q(`list-select-row-${id}`)!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+  };
+
+  it('offers to merge once two categories are ticked, saying what each holds, and clears the ticks after', async () => {
+    await tick('k2');
+    expect(q('product-categories-merge')).toBeNull();
+    await tick('k1');
+
+    q('product-categories-merge')!.click();
+    await settle();
+
+    expect(deletes.offerMerge).toHaveBeenCalledWith('c1', {
+      subject: 'product_category',
+      candidates: [
+        {
+          id: 'k2',
+          label: 'Portables',
+          moves: [
+            { table: 'product', count: 4 },
+            { table: 'product_category', count: 0 },
+          ],
+        },
+        {
+          id: 'k1',
+          label: 'Matériel',
+          moves: [
+            { table: 'product', count: 0 },
+            { table: 'product_category', count: 1 },
+          ],
+        },
+      ],
+      settings: true,
+    });
+    expect(q('product-categories-merge')).toBeNull();
+  });
+
+  it('lets nobody but a person who may change categories tick them', async () => {
+    auth.hasPermission.mockReturnValue(false);
+    fixture = TestBed.createComponent(ProductCategoriesPage);
+    await settle();
+    expect(q('list-select-row-k1')).toBeNull();
   });
 
   it('lists the categories by their path with what each holds', () => {

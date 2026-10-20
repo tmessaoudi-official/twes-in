@@ -31,9 +31,9 @@ final readonly class SettingRecordReferences implements DeclaresRecordReferences
         return [
             RecordReference::ignored('setting', 'level_id', 'vendor', 'No setting is kept at a vendor\'s level.'),
             RecordReference::owned('setting', 'level_id', 'product', RecordMerge::MovesOrDrops, 'A setting kept at a product\'s level is the product\'s own; merged, the product kept keeps its own where it has one.', RecordLink::CompanyPath)
-                ->where('level', SettingLevel::Product->value),
+                ->droppingTwinsBy('level', 'key')->where('level', SettingLevel::Product->value),
             RecordReference::owned('setting', 'level_id', 'product_category', RecordMerge::MovesOrDrops, 'A setting kept at a product category\'s level is the category\'s own; merged, the category kept keeps its own where it has one.', RecordLink::CompanyPath)
-                ->where('level', SettingLevel::ProductCategory->value),
+                ->droppingTwinsBy('level', 'key')->where('level', SettingLevel::ProductCategory->value),
             RecordReference::ignored('setting', 'level_id', 'expense_category', 'No setting is kept at an expense category\'s level.'),
         ];
     }

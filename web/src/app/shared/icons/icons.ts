@@ -93,6 +93,7 @@ export const ICONS = [
   'manage_accounts',
   'menu',
   'menu_book',
+  'merge',
   'mobile_friendly',
   'more_horiz',
   'more_vert',

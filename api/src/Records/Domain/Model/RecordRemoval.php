@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Records\Domain\Model;
 
 use App\Records\Domain\Exception\RemovalNoLongerPending;
+use App\Records\Domain\ValueObject\RemovalKind;
 use App\Records\Domain\ValueObject\RemovalState;
 use App\Shared\Domain\Service\CompanyOwned;
 use App\Tenancy\Domain\Model\Company;
@@ -21,6 +22,9 @@ use Symfony\Component\Uid\Uuid;
  * Records of one subject a person deleted at once, kept as a copy for a day on « Récemment supprimés », from where they
  * all come back together; at its end the copy goes and the delete is final. Any number may wait at once. The records
  * are named as they read when they went, the only thing the page shows of them.
+ *
+ * A merge is kept the same way: the records merged into the one kept, what of theirs went, and each row it pointed at
+ * the one kept, all put back by « Annuler la fusion » within the day.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'record_removal')]
@@ -59,6 +63,16 @@ class RecordRemoval implements CompanyOwned
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $endedAt = null;
 
+    #[ORM\Column(length: 8, enumType: RemovalKind::class, options: ['default' => 'delete'])]
+    private RemovalKind $kind = RemovalKind::Delete;
+
+    /** The record a merge kept, named as it read then; none for a delete. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $keptId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $keptLabel = null;
+
     /** @param non-empty-list<array{id: string, label: string}> $items */
     public function __construct(Uuid $id, Company $company, string $subject, array $items, ?Uuid $removedBy, \DateTimeImmutable $now, \DateInterval $undoableFor)
     {
@@ -69,6 +83,22 @@ class RecordRemoval implements CompanyOwned
         $this->removedBy = $removedBy;
         $this->removedAt = $now;
         $this->effectiveAt = $now->add($undoableFor);
+    }
+
+    /**
+     * Records merged into the one kept, kept a day for « Annuler la fusion ».
+     *
+     * @param non-empty-list<array{id: string, label: string}> $items the records merged away
+     * @param array{id: string, label: string}                 $kept
+     */
+    public static function merge(Uuid $id, Company $company, string $subject, array $kept, array $items, ?Uuid $mergedBy, \DateTimeImmutable $now, \DateInterval $undoableFor): self
+    {
+        $merge = new self($id, $company, $subject, $items, $mergedBy, $now, $undoableFor);
+        $merge->kind = RemovalKind::Merge;
+        $merge->keptId = Uuid::fromString($kept['id']);
+        $merge->keptLabel = $kept['label'];
+
+        return $merge;
     }
 
     /** Pending and within its day, even when the worker has not yet ended it. */
@@ -145,5 +175,16 @@ class RecordRemoval implements CompanyOwned
     public function getEndedAt(): ?\DateTimeImmutable
     {
         return $this->endedAt;
+    }
+
+    public function getKind(): RemovalKind
+    {
+        return $this->kind;
+    }
+
+    /** @return array{id: string, label: string}|null the record a merge kept */
+    public function kept(): ?array
+    {
+        return null === $this->keptId ? null : ['id' => $this->keptId->toRfc4122(), 'label' => $this->keptLabel ?? ''];
     }
 }
