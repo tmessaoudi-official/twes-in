@@ -1895,7 +1895,7 @@ final class InvoicesTest extends ApiTestCase
 
     private function today(): string
     {
-        return new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        return self::dayOf($this->company);
     }
 
     /** @return list<string> each page the fake renderer merged, in order */

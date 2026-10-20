@@ -208,7 +208,7 @@ final class CreditNoteOnPaidInvoiceTest extends ApiTestCase
 
     private function today(): string
     {
-        return new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        return self::dayOf($this->company);
     }
 
     private function path(?string $id = null): string

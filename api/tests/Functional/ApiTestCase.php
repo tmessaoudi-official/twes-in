@@ -115,6 +115,16 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
+     * The day it is for the company, or that day shifted (`-100 days`), which is how the API reads a day it is sent or
+     * counts days to: in UTC it is still yesterday for the hour after midnight in Tunis, and a receipt dated so is refused
+     * as before its order was sent.
+     */
+    protected static function dayOf(Company $company, string $shift = 'today'): string
+    {
+        return new \DateTimeImmutable($shift, new \DateTimeZone($company->getTimezone()))->format('Y-m-d');
+    }
+
+    /**
      * A Tunisian company, named as an invoice must name its seller unless `$named` is false: issuing refuses a company
      * without its legal name, address and matricule fiscal, and the tests that are not about that issue all the same.
      */

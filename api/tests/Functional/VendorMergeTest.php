@@ -294,7 +294,7 @@ final class VendorMergeTest extends ApiTestCase
         $this->getJson($this->path('stock-locations'));
         $site = $this->stringAt($this->jsonList()[0], 'id');
 
-        $this->postJson($this->path("purchase-orders/$order/receipts"), ['receivedOn' => new \DateTimeImmutable()->format('Y-m-d'), 'lines' => [['orderLineId' => $line, 'locationId' => $site, 'quantity' => '4']]]);
+        $this->postJson($this->path("purchase-orders/$order/receipts"), ['receivedOn' => self::dayOf($this->company), 'lines' => [['orderLineId' => $line, 'locationId' => $site, 'quantity' => '4']]]);
 
         self::assertResponseIsSuccessful();
         self::assertSame([$merged], $this->em()->getConnection()->fetchFirstColumn('SELECT vendor_id::text FROM stock_movement WHERE company_id = ?', [$this->companyId()]));
