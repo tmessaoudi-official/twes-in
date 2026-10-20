@@ -23,6 +23,11 @@
                 'records.recent.subjects.' + removal.subject
                   | translate: { count: removal.items.length }
               }}</span>
+              @if (removal.kind === 'merge') {
+                <span>{{
+                  'records.recent.merged_into' | translate: { kept: removal.kept.label }
+                }}</span>
+              }
               <ul class="m-0 flex list-none flex-col gap-0.5 p-0">
                 @for (item of removal.items; track item.id) {
                   <li>
@@ -30,12 +35,22 @@
                   </li>
                 }
               </ul>
-              <span class="text-sm text-on-surface-variant">{{
-                'records.recent.removed_at' | translate: { moment: (removal.removedAt | moment) }
-              }}</span>
-              <span class="text-sm text-on-surface-variant">{{
-                'records.recent.until' | translate: { moment: (removal.effectiveAt | moment) }
-              }}</span>
+              @if (removal.kind === 'merge') {
+                <span class="text-sm text-on-surface-variant">{{
+                  'records.recent.merged_at' | translate: { moment: (removal.removedAt | moment) }
+                }}</span>
+                <span class="text-sm text-on-surface-variant">{{
+                  'records.recent.merge_until'
+                    | translate: { moment: (removal.effectiveAt | moment) }
+                }}</span>
+              } @else {
+                <span class="text-sm text-on-surface-variant">{{
+                  'records.recent.removed_at' | translate: { moment: (removal.removedAt | moment) }
+                }}</span>
+                <span class="text-sm text-on-surface-variant">{{
+                  'records.recent.until' | translate: { moment: (removal.effectiveAt | moment) }
+                }}</span>
+              }
             </div>
             <button
               mat-stroked-button
@@ -45,7 +60,10 @@
               [attr.data-testid]="'removal-restore-' + removal.id"
             >
               <mat-icon aria-hidden="true">undo</mat-icon>
-              {{ 'records.recent.restore' | translate }}
+              {{
+                (removal.kind === 'merge' ? 'records.recent.undo_merge' : 'records.recent.restore')
+                  | translate
+              }}
             </button>
           </li>
         }

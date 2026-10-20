@@ -45,6 +45,32 @@ interface RecordStore
     public function remove(Uuid $companyId, Uuid $removalId, RecordSubject $subject, array $ids, array $owned): void;
 
     /**
+     * Whether the record to keep sits, through the reference that holds a subject's records under one another, under
+     * one of those merged into it.
+     *
+     * @param list<Uuid> $mergedIds
+     */
+    public function descendsFrom(Uuid $companyId, Uuid $keptId, array $mergedIds, RecordReference $holding): bool;
+
+    /**
+     * Points every row the references move from the merged record at the record kept, noting each under the merge for
+     * its undo; a row the record kept already has a twin of is copied under the merge and deleted instead.
+     *
+     * @param list<RecordReference> $moving the references a merge moves
+     *
+     * @throws MergeConflict when a unique index refuses a row moved
+     */
+    public function moveTo(Uuid $companyId, Uuid $mergeId, Uuid $keptId, Uuid $mergedId, array $moving): void;
+
+    /**
+     * Points back at the record merged away every row the merge moved that still names the record kept; one changed
+     * since stays as it was set.
+     *
+     * @throws RemovalConflict when something made since stands in a row's way
+     */
+    public function moveBack(Uuid $companyId, Uuid $mergeId): void;
+
+    /**
      * Puts every copied row back, all or nothing, and lets the copy go.
      *
      * @throws RemovalConflict when something made since stands in a row's way

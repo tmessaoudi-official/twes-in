@@ -9,7 +9,12 @@ declare(strict_types=1);
 
 namespace App\Records\Infrastructure\Http;
 
+use App\Identity\Application\StepUp\StepUpRequired;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Records\Application\MergeConflict;
+use App\Records\Application\MergeCycle;
+use App\Records\Application\MergeIntoItself;
+use App\Records\Application\MergeRecords;
 use App\Records\Application\NoRecordChosen;
 use App\Records\Application\ReadRemovals;
 use App\Records\Application\RecordCatalogue;
@@ -33,8 +38,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Deleting records nothing names, « Récemment supprimés » and its restore. Each refusal answers a code the page
- * translates. A subject no module declares, a module switched off and a missing write permission all answer the 404 a
+ * Deleting records nothing names, merging records into one, « Récemment supprimés » and its restore, which undoes a
+ * merge too. Each refusal answers a code the page translates. A subject no module declares, a module switched off and a missing write permission all answer the 404 a
  * stranger meets, as the subject's own resources do.
  */
 #[AsController]
@@ -48,6 +53,7 @@ final readonly class RecordRemovalController
         private RecordCatalogue $catalogue,
         private ModuleStates $modules,
         private RemoveRecords $remove,
+        private MergeRecords $merge,
         private RestoreRecords $restore,
         private ReadRemovals $read,
     ) {
@@ -70,6 +76,25 @@ final readonly class RecordRemovalController
         $this->moduleOn($company, $subject);
 
         return $this->answer(fn (): Response => new JsonResponse($this->described($this->remove->handle($company, $subject, $body['ids'] ?? null, $this->guard->account()->getId())), Response::HTTP_CREATED));
+    }
+
+    #[Route('/api/companies/{companyId}/record-merges', name: 'api_record_removal_merge', methods: ['POST'])]
+    public function merge(Request $request, string $companyId): Response
+    {
+        try {
+            $body = $request->toArray();
+        } catch (\Throwable $unreadable) {
+            throw new BadRequestHttpException('The body is a JSON object naming the subject, the record kept and the ids merged into it.', $unreadable);
+        }
+        try {
+            $subject = $this->catalogue->subject(\is_string($body['subject'] ?? null) ? $body['subject'] : '');
+        } catch (UnknownRecords $unknown) {
+            throw new NotFoundHttpException($unknown->getMessage(), $unknown);
+        }
+        $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $subject->writePermission);
+        $this->moduleOn($company, $subject);
+
+        return $this->answer(fn (): Response => new JsonResponse($this->described($this->merge->handle($company, $subject, $body['keptId'] ?? null, $body['ids'] ?? null, $this->guard->account()->getId())), Response::HTTP_CREATED));
     }
 
     #[Route('/api/companies/{companyId}/record-removals', name: 'api_record_removal_list', methods: ['GET'])]
@@ -127,17 +152,27 @@ final readonly class RecordRemovalController
             return new JsonResponse(['error' => 'removal_final'], Response::HTTP_CONFLICT);
         } catch (RemovalConflict $conflict) {
             return new JsonResponse(['error' => 'restore_conflict', 'table' => $conflict->table], Response::HTTP_CONFLICT);
+        } catch (MergeIntoItself) {
+            return new JsonResponse(['error' => 'merge_into_itself'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (MergeCycle) {
+            return new JsonResponse(['error' => 'merge_cycle'], Response::HTTP_CONFLICT);
+        } catch (MergeConflict $conflict) {
+            return new JsonResponse(['error' => 'merge_conflict', 'table' => $conflict->table], Response::HTTP_CONFLICT);
+        } catch (StepUpRequired) {
+            return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         } catch (UnknownRecords $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         }
     }
 
-    /** @return array{id: string, subject: string, items: list<array{id: string, label: string}>, removedAt: string, effectiveAt: string, state: string} */
+    /** @return array{id: string, kind: string, subject: string, kept: array{id: string, label: string}|null, items: list<array{id: string, label: string}>, removedAt: string, effectiveAt: string, state: string} */
     private function described(RecordRemoval $removal): array
     {
         return [
             'id' => $removal->getId()->toRfc4122(),
+            'kind' => $removal->getKind()->value,
             'subject' => $removal->getSubject(),
+            'kept' => $removal->kept(),
             'items' => $removal->getItems(),
             'removedAt' => $removal->getRemovedAt()->format(\DateTimeInterface::ATOM),
             'effectiveAt' => $removal->getEffectiveAt()->format(\DateTimeInterface::ATOM),

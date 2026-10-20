@@ -49,6 +49,12 @@ final readonly class RecordCatalogue
                 throw new \LogicException(\sprintf('%s is declared twice.', $key));
             }
             $said[$key] = true;
+            if (RecordMerge::MovesOrDrops === $reference->onMerge && [] === $reference->twinColumns) {
+                throw new \LogicException(\sprintf('%s.%s drops its twins in a merge and says no column that makes one.', $reference->table, $reference->column));
+            }
+            if (null !== $reference->subject && RecordMerge::Stays === $reference->onMerge && MergedAway::Removed === $subjects[$reference->subject]->mergedAway) {
+                throw new \LogicException(\sprintf('%s is removed by a merge, and %s.%s keeps naming the record merged away.', $reference->subject, $reference->table, $reference->column));
+            }
         }
 
         $this->subjects = $subjects;

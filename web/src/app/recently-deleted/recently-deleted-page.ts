@@ -21,8 +21,9 @@ import { RecordRemovalsApi, type RecordRemoval } from '../shared/records/record-
 const REMOVAL_KIND = 'record_removal';
 
 /**
- * « Récemment supprimés »: every delete still restorable, of what the person may write, the newest first. A delete is
- * put back whole, as it was, until its day is out; the API keeps the rest from the person, so this only lists.
+ * « Récemment supprimés »: every delete and merge still restorable, of what the person may write, the newest first. A
+ * delete is put back whole, as it was, and a merge undone, until its day is out; the API keeps the rest from the
+ * person, so this only lists.
  */
 @Component({
   selector: 'app-recently-deleted-page',

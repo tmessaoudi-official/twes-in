@@ -98,12 +98,14 @@ final readonly class RemoveRecords
     }
 
     /**
+     * The records a request names, each once, read the same way by a delete and a merge.
+     *
      * @return non-empty-list<Uuid>
      *
      * @throws NoRecordChosen
      * @throws UnknownRecords
      */
-    private static function chosen(mixed $ids): array
+    public static function chosen(mixed $ids): array
     {
         if (!\is_array($ids) || [] === $ids || !array_is_list($ids)) {
             throw new NoRecordChosen('Choose at least one record to delete.');

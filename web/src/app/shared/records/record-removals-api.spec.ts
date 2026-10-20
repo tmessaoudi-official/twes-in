@@ -8,6 +8,8 @@ import { RecordRemovalsApi, RemovalRefused, type RecordRemoval } from './record-
 const REMOVAL: RecordRemoval = {
   id: 'r1',
   subject: 'vendor',
+  kind: 'delete',
+  kept: null,
   items: [{ id: 'v1', label: 'F-001 Sotumag' }],
   removedAt: '2026-10-20T04:00:00+00:00',
   effectiveAt: '2026-10-21T04:00:00+00:00',
@@ -80,6 +82,37 @@ describe('RecordRemovalsApi', () => {
       const refused = api.restore('c1', 'r1');
       http
         .expectOne('/api/companies/c1/record-removals/r1/restore')
+        .flush(body, { status, statusText: 'Refused' });
+      expect(await refused.catch((error: unknown) => (error as RemovalRefused).code)).toBe(code);
+    }
+  });
+
+  it('merges into the record kept and reads a merge refusal by its code', async () => {
+    const merge: RecordRemoval = {
+      ...REMOVAL,
+      subject: 'product_category',
+      kind: 'merge',
+      kept: { id: 'k1', label: 'Visserie' },
+      items: [{ id: 'm1', label: 'Vis' }],
+    };
+    const merged = api.merge('c/1', 'product_category', 'k1', ['m1']);
+    const post = http.expectOne('/api/companies/c%2F1/record-merges');
+    expect([post.request.method, post.request.body]).toEqual([
+      'POST',
+      { subject: 'product_category', keptId: 'k1', ids: ['m1'] },
+    ]);
+    post.flush(merge, { status: 201, statusText: 'Created' });
+    expect(await merged).toEqual(merge);
+
+    for (const [status, body, code] of [
+      [403, { error: 'step_up_required' }, 'step_up_required'],
+      [409, { error: 'merge_cycle' }, 'merge_cycle'],
+      [409, { error: 'merge_conflict', table: 'product_vendor' }, 'merge_conflict'],
+      [422, { error: 'merge_into_itself' }, 'merge_into_itself'],
+    ] as const) {
+      const refused = api.merge('c1', 'product_category', 'k1', ['m1']);
+      http
+        .expectOne('/api/companies/c1/record-merges')
         .flush(body, { status, statusText: 'Refused' });
       expect(await refused.catch((error: unknown) => (error as RemovalRefused).code)).toBe(code);
     }

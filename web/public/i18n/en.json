@@ -2119,6 +2119,7 @@
       "intro": "Categories file products in a tree. A category that still holds subcategories or products cannot be deleted.",
       "add": "Add a category",
       "delete_named": "Delete {{name}}",
+      "selected": "{count, plural, =0 {No category selected} one {{{count}} category selected} other {{{count}} categories selected}}",
       "saved": "The category was saved.",
       "none": "No category yet.",
       "section": "Category",
@@ -3998,13 +3999,17 @@
         "photos_reordered": "reordered the photos of the product",
         "main_photo_changed": "changed the main photo of the product",
         "deleted": "deleted the product",
-        "restored": "restored the product"
+        "restored": "restored the product",
+        "merged": "merged the product",
+        "merge_undone": "undid the merge of the product"
       },
       "product_category": {
         "created": "created the product category",
         "revised": "changed the product category",
         "deleted": "deleted the product category",
-        "restored": "restored the product category"
+        "restored": "restored the product category",
+        "merged": "merged the product category",
+        "merge_undone": "undid the merge of the product category"
       },
       "price_list": {
         "created": "created the price list",
@@ -4015,7 +4020,9 @@
         "created": "created the vendor",
         "revised": "changed the vendor",
         "deleted": "deleted the vendor",
-        "restored": "restored the vendor"
+        "restored": "restored the vendor",
+        "merged": "merged the vendor",
+        "merge_undone": "undid the merge of the vendor"
       },
       "quote": {
         "created": "created the quote",
@@ -4056,7 +4063,9 @@
         "created": "created the expense category",
         "revised": "changed the expense category",
         "deleted": "deleted the expense category",
-        "restored": "restored the expense category"
+        "restored": "restored the expense category",
+        "merged": "merged the expense category",
+        "merge_undone": "undid the merge of the expense category"
       },
       "stock_location": {
         "created": "created the location",

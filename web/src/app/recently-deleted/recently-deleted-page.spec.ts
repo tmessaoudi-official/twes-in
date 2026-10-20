@@ -26,7 +26,14 @@ class StaticLoader implements TranslateLoader {
           restore: 'Remettre',
           removed_at: 'Supprimé le {{moment}}',
           until: 'Jusqu’au {{moment}}',
-          subjects: { vendor: 'Fournisseurs : {{count}}' },
+          merged_into: 'Fusionnés dans {{kept}} :',
+          merged_at: 'Fusionné le {{moment}}',
+          merge_until: 'Annulable jusqu’au {{moment}}',
+          undo_merge: 'Annuler la fusion',
+          subjects: {
+            vendor: 'Fournisseurs : {{count}}',
+            product_category: 'Catégories : {{count}}',
+          },
         },
         errors: { network: 'Le serveur ne répond pas.' },
       },
@@ -37,6 +44,8 @@ class StaticLoader implements TranslateLoader {
 const two: RecordRemoval = {
   id: 'r2',
   subject: 'vendor',
+  kind: 'delete',
+  kept: null,
   items: [
     { id: 'v2', label: 'F-002 Visserie' },
     { id: 'v3', label: 'F-003 Quincaillerie du Sud' },
@@ -48,9 +57,22 @@ const two: RecordRemoval = {
 const one: RecordRemoval = {
   id: 'r1',
   subject: 'vendor',
+  kind: 'delete',
+  kept: null,
   items: [{ id: 'v1', label: 'F-001 Sotumag' }],
   removedAt: '2026-10-20T04:00:00+00:00',
   effectiveAt: '2026-10-21T04:00:00+00:00',
+  state: 'pending',
+};
+
+const merge: RecordRemoval = {
+  id: 'm1',
+  subject: 'product_category',
+  kind: 'merge',
+  kept: { id: 'k1', label: 'Visserie' },
+  items: [{ id: 'k2', label: 'Vis' }],
+  removedAt: '2026-10-20T06:00:00+00:00',
+  effectiveAt: '2026-10-21T06:00:00+00:00',
   state: 'pending',
 };
 
@@ -190,5 +212,22 @@ describe('RecentlyDeletedPage', () => {
 
     expect(q('removals-error')?.getAttribute('role')).toBe('alert');
     expect(q('removals-empty')).toBeNull();
+  });
+
+  it('shows a merge with the record kept, and undoes it from its own button', async () => {
+    api.pending.mockResolvedValue([merge, one]);
+    await open();
+
+    const shown = q('removal-m1')!;
+    expect(shown.textContent).toContain('Catégories : 1');
+    expect(shown.textContent).toContain('Fusionnés dans Visserie :');
+    expect(shown.textContent).toContain('Fusionné le 2026-10-20T06:00:00+00:00');
+    expect(shown.textContent).toContain('Annulable jusqu’au 2026-10-21T06:00:00+00:00');
+    expect(shown.textContent).not.toContain('Supprimé le');
+    expect(q('removal-restore-m1')?.textContent).toContain('Annuler la fusion');
+    expect(q('removal-restore-r1')?.textContent).toContain('Remettre');
+
+    q('removal-restore-m1')!.click();
+    await until(() => expect(deletes.restore).toHaveBeenCalledWith('c1', merge));
   });
 });

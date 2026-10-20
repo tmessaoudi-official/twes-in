@@ -2119,6 +2119,7 @@
       "intro": "Les catégories rangent les produits en arborescence. Une catégorie qui contient encore des sous-catégories ou des produits ne peut pas être supprimée.",
       "add": "Ajouter une catégorie",
       "delete_named": "Supprimer {{name}}",
+      "selected": "{count, plural, =0 {Aucune catégorie sélectionnée} one {{{count}} catégorie sélectionnée} other {{{count}} catégories sélectionnées}}",
       "saved": "La catégorie a été enregistrée.",
       "none": "Aucune catégorie pour l’instant.",
       "section": "Catégorie",
@@ -3998,13 +3999,17 @@
         "photos_reordered": "a réordonné les photos de l’article",
         "main_photo_changed": "a changé la photo principale de l’article",
         "deleted": "a supprimé l’article",
-        "restored": "a remis l’article"
+        "restored": "a remis l’article",
+        "merged": "a fusionné l’article",
+        "merge_undone": "a défait la fusion de l’article"
       },
       "product_category": {
         "created": "a créé la catégorie d’articles",
         "revised": "a modifié la catégorie d’articles",
         "deleted": "a supprimé la catégorie d’articles",
-        "restored": "a remis la catégorie d’articles"
+        "restored": "a remis la catégorie d’articles",
+        "merged": "a fusionné la catégorie d’articles",
+        "merge_undone": "a défait la fusion de la catégorie d’articles"
       },
       "price_list": {
         "created": "a créé la liste de prix",
@@ -4015,7 +4020,9 @@
         "created": "a créé le fournisseur",
         "revised": "a modifié le fournisseur",
         "deleted": "a supprimé le fournisseur",
-        "restored": "a remis le fournisseur"
+        "restored": "a remis le fournisseur",
+        "merged": "a fusionné le fournisseur",
+        "merge_undone": "a défait la fusion du fournisseur"
       },
       "quote": {
         "created": "a créé le devis",
@@ -4056,7 +4063,9 @@
         "created": "a créé la catégorie de dépenses",
         "revised": "a modifié la catégorie de dépenses",
         "deleted": "a supprimé la catégorie de dépenses",
-        "restored": "a remis la catégorie de dépenses"
+        "restored": "a remis la catégorie de dépenses",
+        "merged": "a fusionné la catégorie de dépenses",
+        "merge_undone": "a défait la fusion de la catégorie de dépenses"
       },
       "stock_location": {
         "created": "a créé l’emplacement",

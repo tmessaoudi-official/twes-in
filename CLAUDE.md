@@ -636,3 +636,5 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - axe decides whether a font draws icons from the first three it measures and keeps that answer for the whole scan: begun
   before Material Symbols arrived, it failed label-content-name-mismatch on every icon button at once under load. Start
   every scan through `axeAtRest(page)` (`web/e2e/axe.ts`), never `new AxeBuilder` in a spec (2026-10-19).
+- `make web-tools CMD='…'` already starts in `web/`: a `cd web &&` before the command fails with exit 2, which a sabotage
+  harness reading only the exit takes for a red suite. Run the unmutated command first and read the tally (2026-10-20).

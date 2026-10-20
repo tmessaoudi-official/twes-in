@@ -12,6 +12,7 @@ namespace App\Module\Products\Infrastructure\Records;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\Records\Application\DeclaresRecordReferences;
+use App\Records\Application\MergedAway;
 use App\Records\Application\RecordMerge;
 use App\Records\Application\RecordReference;
 use App\Records\Application\RecordSubject;
@@ -24,7 +25,7 @@ final readonly class ProductCategoryRecordReferences implements DeclaresRecordRe
 {
     public function subjects(): array
     {
-        return [new RecordSubject('product_category', ProductPermission::WRITE, ProductsModule::KEY, ['name'])];
+        return [new RecordSubject('product_category', ProductPermission::WRITE, ProductsModule::KEY, ['name'], MergedAway::Removed)];
     }
 
     public function references(): array

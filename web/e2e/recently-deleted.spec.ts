@@ -2,7 +2,8 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { runDigits } from './run';
-import { inACompany, signIn } from './session';
+import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
+import { proveIfHeldBack } from './step-up';
 import { toast } from './toast';
 
 // A vendor nothing names is deleted without a question, taken back from the toast's « Annuler », deleted again and put
@@ -240,4 +241,61 @@ test('an empty product category is deleted from its list without a question', as
 
   await expect(toast(page)).toContainText(name);
   await expect(page.getByTestId(`product-category-${name}`)).toHaveCount(0);
+});
+
+test('product categories ticked are merged into the one kept, what they hold moving, and the merge undone', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const run = runDigits();
+  const merged = `E2E-MRG ${run} A`;
+  const kept = `E2E-MRG ${run} K`;
+  const child = `E2E-MRG ${run} A1`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await categories(page, 'product-categories', merged, child);
+  await categories(page, 'product-categories', kept, null);
+
+  await page.goto('/products/categories');
+  await page.getByTestId('list-filter').fill(`E2E-MRG ${run}`);
+  const row = (name: string) => page.getByTestId(`product-category-${name}`);
+  await expect(row(child)).toContainText(`${merged} › ${child}`);
+  await row(merged).locator('[data-testid^="list-select-row-"] input').check();
+  await row(kept).locator('[data-testid^="list-select-row-"] input').check();
+  await page.getByTestId('product-categories-merge').click();
+
+  // The first ticked is offered as the one kept; the person keeps the other, and reads what the merge does first.
+  await page
+    .locator('[data-testid^="record-merge-keep-"]', { hasText: kept })
+    .locator('input')
+    .check();
+  const preview = page.getByTestId('record-merge-preview');
+  await expect(preview).toContainText(merged);
+  await expect(preview).toContainText('1 sous-catégorie');
+  expect(await wcagViolations(page)).toEqual([]);
+  const answered = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/record-merges') && response.request().method() === 'POST',
+  );
+  await page.getByTestId('record-merge-confirm').click();
+  expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, answered)).status()).toBe(201);
+
+  await expect(toast(page)).toContainText(kept);
+  await expect(row(merged)).toHaveCount(0);
+  await expect(row(child)).toContainText(`${kept} › ${child}`);
+
+  await page.goto('/company/recently-deleted');
+  const removal = page.locator('li[data-testid^="removal-"]', { hasText: merged });
+  await expect(removal).toContainText(kept);
+  const undone = page.waitForResponse(
+    (response) => response.url().endsWith('/restore') && response.request().method() === 'POST',
+  );
+  await removal.getByRole('button', { name: 'Annuler la fusion' }).click();
+  expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, undone)).status()).toBe(200);
+  await expect(toast(page)).toContainText('annulée');
+  await expect(removal).toHaveCount(0);
+
+  await page.goto('/products/categories');
+  await page.getByTestId('list-filter').fill(`E2E-MRG ${run}`);
+  await expect(row(child)).toContainText(`${merged} › ${child}`);
 });

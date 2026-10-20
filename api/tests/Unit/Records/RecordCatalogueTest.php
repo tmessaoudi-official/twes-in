@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Records;
 
 use App\Records\Application\DeclaresRecordReferences;
+use App\Records\Application\MergedAway;
 use App\Records\Application\RecordCatalogue;
 use App\Records\Application\RecordLink;
 use App\Records\Application\RecordMerge;
@@ -88,6 +89,44 @@ final class RecordCatalogueTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         RecordReference::owned('setting', 'level_id', 'product', RecordMerge::Stays, 'A product setting.')->where('level = level OR 1', 'product');
+    }
+
+    /** A merge drops the row the record kept already has a twin of: what makes a twin must be said, or the unique index refuses. */
+    public function testAReferenceDroppingTwinsSaysWhatMakesOne(): void
+    {
+        $this->expectExceptionMessage('product_vendor.product_id drops its twins in a merge and says no column that makes one.');
+
+        new RecordCatalogue([$this->declaring([new RecordSubject('product', 'product.write', 'products', ['reference'])], [RecordReference::owned('product_vendor', 'product_id', 'product', RecordMerge::MovesOrDrops, 'A vendor link.')])]);
+    }
+
+    public function testOnlyAReferenceDroppingTwinsSaysWhatMakesOne(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        RecordReference::uses('product', 'category_id', 'product_category', RecordMerge::Moves, 'Filed.')->droppingTwinsBy('reference');
+    }
+
+    public function testATwinIsNamedByPlainIdentifiers(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        RecordReference::owned('product_vendor', 'product_id', 'product', RecordMerge::MovesOrDrops, 'A vendor link.')->droppingTwinsBy('vendor_id = vendor_id OR 1');
+    }
+
+    /** A record a merge deletes cannot leave a row naming it: such a subject's merged-away record stays, an alias. */
+    public function testASubjectAMergeRemovesHasNoRowThatStaysWithIt(): void
+    {
+        $this->expectExceptionMessage('product_category is removed by a merge, and invoice_line.category_id keeps naming the record merged away.');
+
+        new RecordCatalogue([$this->declaring(
+            [new RecordSubject('product_category', 'product.write', 'products', ['name'], MergedAway::Removed)],
+            [RecordReference::uses('invoice_line', 'category_id', 'product_category', RecordMerge::Stays, 'Printed.')],
+        )]);
+    }
+
+    public function testASubjectIsAliasedByAMergeUnlessItSaysOtherwise(): void
+    {
+        self::assertSame(MergedAway::Aliased, new RecordSubject('vendor', 'vendor.write', 'vendors', ['name'])->mergedAway);
     }
 
     /**

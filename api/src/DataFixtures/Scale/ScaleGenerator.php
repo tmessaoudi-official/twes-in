@@ -90,6 +90,7 @@ final class ScaleGenerator
         'quote_line_tax' => 'quotes: a follow-up slice',
         'record_removal' => 'the records a company deleted, waiting a day for their restore: a clone deleted none',
         'record_removal_row' => 'what a delete keeps for its restore: a clone deleted none',
+        'record_merge_move' => 'the rows a merge pointed at the record kept, for its undo: a clone merged none',
         'recurring_expense' => 'a schedule copying a model expense: expenses are not cloned, so it has none to copy',
         'recurring_invoice' => 'a schedule copying a model invoice: a clone drafts nothing by itself',
         'stock_movement' => 'stock movements: a follow-up slice',
