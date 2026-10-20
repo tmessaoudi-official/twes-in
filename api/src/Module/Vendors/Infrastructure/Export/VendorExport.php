@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Vendors\Infrastructure\Export;
 
-use App\ImportExport\Application\DeclaresExport;
-use App\ImportExport\Application\ExportQuery;
+use App\ImportExport\Application\Export\DeclaresExport;
+use App\ImportExport\Application\Export\ExportQuery;
 use App\Module\Vendors\Application\ExpenseCategoryDirectory;
 use App\Module\Vendors\Application\ManageVendors;
 use App\Module\Vendors\Domain\Model\Vendor;

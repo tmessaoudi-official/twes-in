@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\ImportExport\Application;
+namespace App\ImportExport\Application\Export;
 
 /**
  * A file an accountant's software takes in as the company's books, a journal or a tax summary, rather than a list a

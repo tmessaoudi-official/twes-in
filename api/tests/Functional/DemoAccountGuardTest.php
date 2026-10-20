@@ -11,7 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Audit\Infrastructure\Export\ActivityExport;
 use App\Demo\Infrastructure\Http\DemoAccountGuard;
-use App\ImportExport\Application\ExportForTheBooks;
+use App\ImportExport\Application\Export\ExportForTheBooks;
 use App\Module\AccountingExport\Infrastructure\Export\PaymentsJournalExport;
 use App\Module\AccountingExport\Infrastructure\Export\PurchasesJournalExport;
 use App\Module\AccountingExport\Infrastructure\Export\SalesJournalExport;

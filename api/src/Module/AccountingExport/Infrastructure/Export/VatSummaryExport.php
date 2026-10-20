@@ -11,8 +11,8 @@ namespace App\Module\AccountingExport\Infrastructure\Export;
 
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\ImportExport\Application\ExportForTheBooks;
-use App\ImportExport\Application\ExportQuery;
+use App\ImportExport\Application\Export\ExportForTheBooks;
+use App\ImportExport\Application\Export\ExportQuery;
 use App\Module\AccountingExport\Application\PurchaseEntries;
 use App\Module\AccountingExport\Application\SalesDocuments;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportModule;

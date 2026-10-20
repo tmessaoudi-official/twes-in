@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Products\Infrastructure\Export;
 
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
-use App\ImportExport\Application\DeclaresExport;
-use App\ImportExport\Application\ExportQuery;
+use App\ImportExport\Application\Export\DeclaresExport;
+use App\ImportExport\Application\Export\ExportQuery;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductSearch;
