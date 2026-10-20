@@ -360,6 +360,24 @@ final class VendorMergeTest extends ApiTestCase
         self::assertSame($middle, $this->em()->getConnection()->fetchOne('SELECT merged_into_id::text FROM vendor WHERE id = ?', [$first]));
     }
 
+    public function testAMergeWhoseVendorKeptWasMergedSinceIsUndoneOnlyAfterThatOne(): void
+    {
+        $this->signedIn();
+        [$kept, $middle, $first] = [$this->vendorId('F-001'), $this->vendorId('F-002'), $this->vendorId('F-003')];
+        $earlier = $this->merged($middle, [$first]);
+        $later = $this->merged($kept, [$middle]);
+
+        $this->postJson($this->path('record-removals/'.$this->stringAt($earlier, 'id').'/restore'), null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['error' => 'merge_alias'], $this->json());
+        $this->postJson($this->path('record-removals/'.$this->stringAt($later, 'id').'/restore'), null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path('record-removals/'.$this->stringAt($earlier, 'id').'/restore'), null);
+        self::assertResponseIsSuccessful();
+        self::assertSame([null, null], array_map(fn (string $id): mixed => $this->em()->getConnection()->fetchOne('SELECT merged_into_id::text FROM vendor WHERE id = ?', [$id]), [$middle, $first]));
+    }
+
     /** Before anything runs, the screen says what each vendor would hand over and what would stay with it. */
     public function testThePreviewSaysWhatMovesAndWhatStays(): void
     {
