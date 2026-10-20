@@ -82,7 +82,7 @@ final class ImportColumnsTest extends ApiTestCase
     }
 
     /** Every subject's columns, so a column added to any importer without its words is caught here. */
-    public function testEveryColumnsHeadingAndNoteExistsInBothLanguages(): void
+    public function testEveryColumnAndSwitchIsWordedInEveryLanguage(): void
     {
         // An owner, who may do everything, is offered every column: the ones some callers are not (cost_price).
         $account = SecurityUser::of($this->createUser('owner@twes.local', 'password-1234', $this->company));
@@ -90,6 +90,7 @@ final class ImportColumnsTest extends ApiTestCase
         $catalogue = static::getContainer()->get(ImportCatalogue::class);
         self::assertInstanceOf(ImportCatalogue::class, $catalogue);
         $checked = 0;
+        $switches = 0;
         foreach ($catalogue->keys() as $subject) {
             foreach ($catalogue->declaration($subject)->subjectFor($this->company)->columns as $column) {
                 if (ImportHeading::ScreenText === $column->headingIs) {
@@ -101,8 +102,16 @@ final class ImportColumnsTest extends ApiTestCase
                     ++$checked;
                 }
             }
+            // A switch is worded by the screen alone, so it has nothing but these keys to show.
+            foreach ($catalogue->declaration($subject)->subjectFor($this->company)->switches as $switch) {
+                foreach (array_filter([$switch->label, $switch->note]) as $key) {
+                    $this->assertScreenKeyTranslated($key);
+                    ++$switches;
+                }
+            }
         }
         self::assertGreaterThan(40, $checked, 'the subjects were enumerated, not skipped');
+        self::assertGreaterThanOrEqual(4, $switches, 'the products file offers two switches with a note each, whatever its modules');
     }
 
     /** A registration number is shown as the preset writes one, to whoever fills in a customer or a supplier file. */

@@ -83,7 +83,13 @@
       "reorder_point_note": "La quantité à partir de laquelle l’article est à racheter, dans l’établissement de son emplacement habituel (ou le seul établissement).",
       "reference_optional_note": "Facultative. Laissée vide, le produit reçoit la suivante du format de l’entreprise, et une seconde importation le retrouve par son code-barres.",
       "location": "Emplacement du stock",
-      "location_note": "Le code de l’emplacement où va la quantité. Laissé vide : l’emplacement habituel de la ligne ou du produit, sinon l’emplacement par défaut de l’établissement s’il n’y en a qu’un."
+      "location_note": "Le code de l’emplacement où va la quantité. Laissé vide : l’emplacement habituel de la ligne ou du produit, sinon l’emplacement par défaut de l’établissement s’il n’y en a qu’un.",
+      "cost_price_gross": "Prix de revient TTC",
+      "cost_price_gross_note": "Le coût d’une unité TVA comprise, tel que le fournisseur le facture, au plus à 4 décimales : il est ramené hors TVA au taux du produit. Une entreprise au régime forfaitaire, qui ne récupère pas la TVA, le garde tel quel.",
+      "default_taxes_switch": "Donner les taxes par défaut aux nouveaux produits qui n’en nomment pas",
+      "default_taxes_switch_note": "Les taxes marquées « par défaut » dans Taxes, comme dans la fiche d’un nouveau produit. Un produit déjà enregistré garde les siennes.",
+      "unpriced_inactive": "Importer désactivés les nouveaux produits sans prix de vente",
+      "unpriced_inactive_note": "Ils sont créés au prix 0 et désactivés : aucun document ne les vend avant que leur prix soit saisi, et leur stock peut être compté."
     },
     "vendors": {
       "number": "Numéro fournisseur",
@@ -214,7 +220,10 @@
       "vendor_followed": "Le fournisseur « {{number}} » a été fusionné dans « {{kept}} » : la ligne est prise pour « {{kept}} ».",
       "name_held": "Un autre produit porte déjà ce nom ({{reference}}).",
       "identifier_missing": "Sans ce numéro d’immatriculation, ce client ne pourra recevoir aucune facture : ajoutez-le avant d’en émettre une.",
-      "no_taxes": "Sans taxe : chaque document le vendra sans TVA. Donnez son taux dans le fichier, ou dans sa fiche."
+      "no_taxes": "Sans taxe : chaque document le vendra sans TVA. Donnez son taux dans le fichier, ou dans sa fiche.",
+      "default_taxes_given": "Taxes par défaut données : {{codes}}.",
+      "price_to_enter": "Sans prix de vente : créé au prix 0 et désactivé. Saisissez son prix dans sa fiche, puis activez-le.",
+      "below_cost": "Vendu sous son prix de revient ({{cost}})."
     },
     "stock": {
       "stock_add": "Quantité à ajouter",
