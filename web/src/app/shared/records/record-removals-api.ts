@@ -74,11 +74,13 @@ export type RemovalError =
   | 'merge_alias'
   | 'merge_mismatch'
   | 'merge_transacted'
+  | 'merge_refused'
   | 'step_up_required';
 
 /**
  * Thrown when the API refuses. A record in use carries what names each record; a mismatch, the column the records
- * disagree on; an undo refused, what names the record kept since the merge.
+ * disagree on; an undo refused, what names the record kept since the merge; a merge a module refused, its reason and
+ * the words it named (a reference, a serial number).
  */
 export class RemovalRefused extends Error {
   constructor(
@@ -86,6 +88,8 @@ export class RemovalRefused extends Error {
     readonly records: readonly RecordInUse[] = [],
     readonly column: string | null = null,
     readonly uses: readonly TableCount[] = [],
+    readonly reason: string | null = null,
+    readonly params: Readonly<Record<string, string>> = {},
   ) {
     super(code);
   }
@@ -171,6 +175,7 @@ const CODES: readonly RemovalError[] = [
   'merge_alias',
   'merge_mismatch',
   'merge_transacted',
+  'merge_refused',
   'step_up_required',
 ];
 
@@ -185,10 +190,23 @@ function refusal(error: unknown): RemovalRefused {
   const records = Array.isArray(fields['records']) ? (fields['records'] as RecordInUse[]) : [];
   const column = typeof fields['column'] === 'string' ? fields['column'] : null;
   const uses = Array.isArray(fields['uses']) ? (fields['uses'] as TableCount[]) : [];
+  const reason = typeof fields['reason'] === 'string' ? fields['reason'] : null;
   return new RemovalRefused(
     known ?? 'network',
     known === 'record_used' ? records : [],
     known === 'merge_mismatch' ? column : null,
     known === 'merge_transacted' ? uses : [],
+    known === 'merge_refused' ? reason : null,
+    known === 'merge_refused' ? namedWords(fields) : {},
+  );
+}
+
+/** What a module's refusal named beside its reason, its words alone: a count or a list is no word a sentence takes. */
+function namedWords(fields: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(fields).filter(
+      (entry): entry is [string, string] =>
+        entry[0] !== 'error' && entry[0] !== 'reason' && typeof entry[1] === 'string',
+    ),
   );
 }

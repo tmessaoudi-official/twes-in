@@ -2,7 +2,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { runDigits } from './run';
-import { aVendor } from './catalogue';
+import { aProduct, aVendor } from './catalogue';
 import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
 import { proveIfHeldBack } from './step-up';
 import { toast } from './toast';
@@ -369,6 +369,70 @@ test('vendors ticked are merged into the one kept, the other staying as its alia
   await expect(page.getByTestId('vendor-merged-away')).toHaveCount(0);
   await expect(page.getByTestId('record-save')).toHaveCount(1);
   for (const id of [mergedId, keptId]) await removed(page, 'vendor', id);
+});
+
+test('products ticked are merged into the one kept, the other staying as its alias, and the merge undone', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const run = runDigits();
+  const kept = `E2E-MRG-${run}-K`;
+  const merged = `E2E-MRG-${run}-A`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const keptId = await aProduct(page, kept);
+  const mergedId = await aProduct(page, merged);
+
+  await page.goto('/products');
+  await page.getByTestId('list-filter').fill(`E2E-MRG-${run}`);
+  const row = (reference: string) => page.getByTestId(`product-${reference}`);
+  await row(kept).locator('[data-testid^="list-select-row-"] input').check();
+  await row(merged).locator('[data-testid^="list-select-row-"] input').check();
+  await page.getByTestId('products-merge').click();
+
+  await page
+    .locator('[data-testid^="record-merge-keep-"]', { hasText: kept })
+    .locator('input')
+    .check();
+  const preview = page.getByTestId('record-merge-preview');
+  await expect(preview).toContainText(merged);
+  await expect(preview).toContainText('reste, désactivée');
+  expect(await wcagViolations(page)).toEqual([]);
+  const answered = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/record-merges') && response.request().method() === 'POST',
+  );
+  await page.getByTestId('record-merge-confirm').click();
+  expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, answered)).status()).toBe(201);
+  await expect(toast(page)).toContainText(kept);
+  await expect(row(merged)).toHaveCount(0);
+  await expect(row(kept)).toHaveCount(1);
+
+  // Its page says what became of it, opens the one kept, and offers no way to change it.
+  await page.goto(`/products/${mergedId}`);
+  const banner = page.getByTestId('product-merged-away');
+  await expect(banner).toContainText(kept);
+  await expect(page.getByTestId('record-save')).toHaveCount(0);
+  expect(await wcagViolations(page)).toEqual([]);
+  await page.getByTestId('product-merged-away-open').click();
+  await expect(page).toHaveURL(new RegExp(`/products/${keptId}$`));
+  await expect(page.getByTestId('product-title')).toContainText(kept);
+
+  await page.goto('/company/recently-deleted');
+  const removal = page.locator('li[data-testid^="removal-"]', { hasText: merged });
+  await expect(removal).toContainText(kept);
+  const undone = page.waitForResponse(
+    (response) => response.url().endsWith('/restore') && response.request().method() === 'POST',
+  );
+  await removal.getByRole('button', { name: 'Annuler la fusion' }).click();
+  expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, undone)).status()).toBe(200);
+  await expect(toast(page)).toContainText('annulée');
+
+  await page.goto(`/products/${mergedId}`);
+  await expect(page.getByTestId('product-title')).toContainText(merged);
+  await expect(page.getByTestId('product-merged-away')).toHaveCount(0);
+  await expect(page.getByTestId('record-save')).toHaveCount(1);
+  for (const id of [mergedId, keptId]) await removed(page, 'product', id);
 });
 
 /** Deletes a record the run made, through the API, once nothing names it. */

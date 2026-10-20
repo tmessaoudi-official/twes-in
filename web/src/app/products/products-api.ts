@@ -593,6 +593,7 @@ function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductR
     tracking: PRODUCT_TRACKINGS.find((tracking) => tracking === raw.tracking) ?? 'none',
     substitutionGroup: raw.substitutionGroup ?? null,
     mainPhotoId: raw.mainPhotoId ?? null,
+    mergedInto: raw.mergedInto ?? null,
   };
 }
 

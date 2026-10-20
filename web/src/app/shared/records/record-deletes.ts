@@ -49,6 +49,17 @@ const NAMED_TABLES = [
 const MISMATCH_COLUMNS = ['identifiers'] as const;
 
 /**
+ * What a module refuses a merge for, each said in words: a receipt waiting for its cost, goods only whoever reads
+ * costs carries, a serial number the record kept already holds, a lot of one code dated otherwise.
+ */
+const MERGE_REFUSALS = [
+  'cost_pending',
+  'costs_unseen',
+  'serial_held',
+  'lot_dated_otherwise',
+] as const;
+
+/**
  * Deleting or merging records and putting them back, the same on every screen that does either: nothing asks first, since the toast
  * offers « Annuler » and « Récemment supprimés » keeps the delete a day (undo first, preview the rest); a record still
  * in use refuses the whole delete, the toast naming what uses each. The tab hears its own change, which the API tells
@@ -191,7 +202,7 @@ export class RecordDeletes {
       );
       return true;
     } catch (error) {
-      this.refused(error);
+      this.refused(error, true);
       return false;
     }
   }
@@ -219,7 +230,8 @@ export class RecordDeletes {
     return one === null ? { count: removal.items.length } : { name: one.label };
   }
 
-  private refused(error: unknown): void {
+  /** Says why the API refused; `undoing` when it refused to put back what a delete or a merge took. */
+  private refused(error: unknown, undoing = false): void {
     const refusal = error instanceof RemovalRefused ? error : new RemovalRefused('network');
     const column = MISMATCH_COLUMNS.find((known) => known === refusal.column);
     if (refusal.code === 'record_used' && refusal.records.length > 0) {
@@ -230,6 +242,13 @@ export class RecordDeletes {
       this.feedback.failure(`records.mismatch.${column}`);
     } else if (refusal.code === 'merge_transacted' && refusal.uses.length > 0) {
       this.feedback.failure('records.traded_since', { uses: this.counted(refusal.uses) });
+    } else if (refusal.code === 'merge_alias' && undoing) {
+      this.feedback.failure('records.errors.merge_alias_undo');
+    } else if (
+      refusal.code === 'merge_refused' &&
+      MERGE_REFUSALS.some((known) => known === refusal.reason)
+    ) {
+      this.feedback.failure(`records.merge_refused.${refusal.reason}`, { ...refusal.params });
     } else {
       this.feedback.failure(`records.errors.${refusal.code}`);
     }

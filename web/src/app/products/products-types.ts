@@ -64,6 +64,15 @@ export interface ProductRow {
   substitutionGroup: string | null;
   /** The photo shown wherever it is picked or seen (`ProductPhotosApi.url`); null when it has none. */
   mainPhotoId: string | null;
+  /** The product kept when this one was merged into it: this one then stays only for what already names it. */
+  mergedInto: ProductMergedInto | null;
+}
+
+/** The product a product merged away points at, which lists show in its place. */
+export interface ProductMergedInto {
+  id: string;
+  reference: string;
+  name: string;
 }
 
 /** What moved a product's cost price: its creation, a person's edit, or a stock receipt that applied one. */
@@ -106,8 +115,11 @@ export function trackingOf(value: string): ProductTracking {
 /** A lot or serial as a label carries it: printable characters without space or accent, 40 at most, as the API keeps it. */
 export const LOT_CODE_PATTERN = /^[\x21-\x7E]{1,40}$/;
 
-/** What a save sends: the main photo is the gallery's to say, never the form's. */
-export type ProductInput = Omit<ProductRow, 'id' | 'version' | 'barcodes' | 'mainPhotoId'>;
+/** What a save sends: the main photo is the gallery's to say, never the form's, and the merge only « Fusionner… »'s. */
+export type ProductInput = Omit<
+  ProductRow,
+  'id' | 'version' | 'barcodes' | 'mainPhotoId' | 'mergedInto'
+>;
 
 /**
  * What a code stands for (docs/SPEC.md § 7, 2026-09-22 11:05): the piece it is sold by, a pack entering several at

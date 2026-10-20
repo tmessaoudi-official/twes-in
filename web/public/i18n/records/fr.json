@@ -57,7 +57,9 @@
       "step_up_required": "Rien n’a changé, car votre identité n’a pas été confirmée.",
       "merge_alias": "Rien n’est fusionné, car une de ces fiches a déjà été fusionnée dans une autre. Choisissez plutôt celle-là.",
       "merge_mismatch": "Rien n’est fusionné, car ces fiches ne décrivent pas la même chose.",
-      "merge_transacted": "La fusion n’est plus annulée, car la fiche gardée a servi depuis."
+      "merge_transacted": "La fusion n’est plus annulée, car la fiche gardée a servi depuis.",
+      "merge_refused": "Rien n’est fusionné, car une partie de ces fiches ne peut pas passer dans la fiche gardée.",
+      "merge_alias_undo": "La fusion n’est pas annulée, car la fiche gardée a été fusionnée depuis dans une autre. Annulez d’abord cette fusion-là."
     },
     "recent": {
       "title": "Récemment supprimés",
@@ -84,6 +86,12 @@
     "merged_away": {
       "banner": "Cette fiche a été fusionnée dans « {{kept}} ». Elle reste pour ce qui la nomme déjà et n’est plus modifiée ; les listes montrent « {{kept}} » à sa place.",
       "open": "Ouvrir « {{kept}} »"
+    },
+    "merge_refused": {
+      "cost_pending": "Rien n’est fusionné, car une réception de « {{reference}} » attend son coût. Saisissez-le d’abord.",
+      "costs_unseen": "Rien n’est fusionné, car du stock passe dans la fiche gardée à sa valeur, et seule une personne qui voit les coûts peut le fusionner.",
+      "serial_held": "Rien n’est fusionné, car la fiche gardée a déjà le numéro de série « {{code}} ».",
+      "lot_dated_otherwise": "Rien n’est fusionné, car le lot « {{code}} » a une autre date dans la fiche gardée, et un lot n’a qu’une date."
     }
   }
 }

@@ -68,6 +68,18 @@
     >
       <ng-template appDataListSelection>
         <app-product-bulk [ids]="selected()" />
+        @if (mayWrite() && selected().length > 1) {
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="merging()"
+            (click)="merge()"
+            data-testid="products-merge"
+          >
+            <mat-icon aria-hidden="true">merge</mat-icon>
+            {{ 'records.merge.action' | translate }}
+          </button>
+        }
       </ng-template>
       <ng-template appDataListCell="photo" let-row>
         <app-product-thumbnail [productId]="row.id" [photoId]="row.mainPhotoId" [side]="40" />

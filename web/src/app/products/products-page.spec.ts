@@ -23,6 +23,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { ProductsFacade } from './products-facade';
 import { ProductsPage } from './products-page';
 import type {
@@ -63,13 +64,17 @@ const laptop: ProductRow = {
   tracking: 'none',
   substitutionGroup: null,
   mainPhotoId: null,
+  mergedInto: null,
 };
+
+const oldLaptop: ProductRow = { ...laptop, id: 'p2', reference: 'ART-001B', name: 'Portable' };
 
 describe('ProductsPage', () => {
   const error = signal<ProductsError | null>(null);
+  const products = signal<readonly ProductRow[]>([laptop]);
   const facade = {
     busy: signal(false).asReadonly(),
-    products: signal<readonly ProductRow[]>([laptop]).asReadonly(),
+    products: products.asReadonly(),
     categories: signal<readonly ProductCategoryRow[]>([
       { id: 'k1', name: 'Matériel', parentId: null, productCount: 1, childCount: 0, version: 1 },
     ]).asReadonly(),
@@ -96,6 +101,7 @@ describe('ProductsPage', () => {
     hasPermission: vi.fn(),
     hasModule: vi.fn(() => true),
   };
+  const deletes = { offerMergeOf: vi.fn() };
   let fixture: ComponentFixture<ProductsPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -109,6 +115,8 @@ describe('ProductsPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    products.set([laptop]);
+    deletes.offerMergeOf.mockReset().mockResolvedValue(true);
     facade.loadListContext.mockReset().mockResolvedValue(undefined);
     facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -128,6 +136,7 @@ describe('ProductsPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ProductsFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -231,6 +240,40 @@ describe('ProductsPage', () => {
     q('products-bulk-labels')!.click();
 
     expect(opened).toHaveBeenCalledExactlyOnceWith('/print/product-labels?id=p1', '_blank');
+  });
+
+  const tick = async (id: string): Promise<void> => {
+    (q(`list-select-row-${id}`)!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+  };
+
+  it('offers to merge once two products are ticked, the ones merged away staying as aliases, and clears the ticks after', async () => {
+    products.set([laptop, oldLaptop]);
+    await settle();
+    await tick('p2');
+    expect(q('products-merge')).toBeNull();
+    await tick('p1');
+
+    q('products-merge')!.click();
+    await settle();
+
+    expect(deletes.offerMergeOf).toHaveBeenCalledWith('c1', 'product', ['p2', 'p1'], {
+      settings: true,
+      aliased: true,
+    });
+    expect(q('products-merge')).toBeNull();
+  });
+
+  it('offers no merge to whoever may not change products, who still ticks them for their labels', async () => {
+    auth.hasPermission.mockReturnValue(false);
+    products.set([laptop, oldLaptop]);
+    fixture = TestBed.createComponent(ProductsPage);
+    await settle();
+    await tick('p1');
+    await tick('p2');
+
+    expect(q('products-bulk-labels')).not.toBeNull();
+    expect(q('products-merge')).toBeNull();
   });
 
   it('says why the list could not be read', async () => {

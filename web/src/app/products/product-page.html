@@ -37,6 +37,23 @@
   @if (!mayWrite()) {
     <p data-testid="product-read-only">{{ 'products.read_only' | translate }}</p>
   }
+  @if (mergedAway(); as kept) {
+    <div
+      data-testid="product-merged-away"
+      class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant p-3"
+    >
+      <p>
+        {{ 'records.merged_away.banner' | translate: { kept: kept.reference + ' · ' + kept.name } }}
+      </p>
+      <a
+        mat-stroked-button
+        [routerLink]="['/products', kept.id]"
+        data-testid="product-merged-away-open"
+      >
+        {{ 'records.merged_away.open' | translate: { kept: kept.reference + ' · ' + kept.name } }}
+      </a>
+    </div>
+  }
   @if (error(); as code) {
     <p role="alert" data-testid="product-error" class="text-error">
       {{ 'products.errors.' + code | translate }}
@@ -72,7 +89,7 @@
                   (resolved)="sync.resolve(form, $event)"
                   testId="product-form"
                   #mainForm
-                  [readOnly]="!mayWrite()"
+                  [readOnly]="!editable()"
                   (submitted)="save($event)"
                 >
                 </app-descriptor-form>
@@ -86,7 +103,7 @@
                   [form]="form"
                   [scale]="currencyScale()"
                   [currency]="currency()"
-                  [readOnly]="!mayWrite()"
+                  [readOnly]="!editable()"
                   [companyId]="company()?.id ?? null"
                   [packs]="packCounts()"
                 />
@@ -115,7 +132,7 @@
                 [productId]="product.id"
                 [saved]="product.barcodes"
                 [version]="product.version"
-                [readOnly]="!mayWrite()"
+                [readOnly]="!editable()"
                 [adding]="add()"
                 (moved)="productMoved($event)"
               />
@@ -131,7 +148,7 @@
             <mat-card-content>
               <app-product-photos
                 [productId]="product.id"
-                [readOnly]="!mayWrite()"
+                [readOnly]="!editable()"
                 [maxPhotos]="photosPerProduct()"
                 [maxBytes]="photoMaxBytes()"
                 [productName]="product.name"
@@ -149,7 +166,7 @@
               <app-product-homes
                 [productId]="product.id"
                 [version]="product.version"
-                [readOnly]="!mayWrite()"
+                [readOnly]="!editable()"
                 (moved)="productMoved($event)"
               />
             </mat-card-content>
@@ -159,7 +176,7 @@
               <app-product-reorder-points
                 [productId]="product.id"
                 [version]="product.version"
-                [readOnly]="!mayWrite()"
+                [readOnly]="!editable()"
                 (moved)="productMoved($event)"
               />
             </mat-card-content>
