@@ -67,6 +67,14 @@ export interface PlatformDemo {
   readonly most: PlatformNumber | null;
 }
 
+/**
+ * How many rows one imported file may hold, which the operators set within what one request was measured to bear;
+ * null where the API declares no such count.
+ */
+export interface PlatformImports {
+  readonly rows: PlatformNumber | null;
+}
+
 /** A way companies reach the platform's operators, which the help panel offers (`SupportSettings` in the API). */
 export type SupportChannel = 'phone' | 'whatsapp' | 'email' | 'status_url';
 
@@ -79,12 +87,13 @@ export interface PlatformSettings {
   readonly support: PlatformSupport;
   readonly delays: readonly PlatformNumber[];
   readonly demo: PlatformDemo;
+  readonly imports: PlatformImports;
   readonly versions: Readonly<Record<string, number>>;
 }
 
 /**
  * A whole number the platform sets, drawn from its declaration (label, bounds), so a new one has its field without a
- * line written here: every such setting but the demo's count is a number of days, shown as the delays. `value` is what
+ * line written here: every such setting but the demo's count and the import's rows is a number of days, shown as the delays. `value` is what
  * is in effect, the default where nothing was set.
  */
 export interface PlatformNumber {

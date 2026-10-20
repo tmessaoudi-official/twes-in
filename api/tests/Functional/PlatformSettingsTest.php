@@ -36,6 +36,8 @@ final class PlatformSettingsTest extends ApiTestCase
             'company.reopen_days',
             // Whether visitors may try the demo, and how many sandboxes may exist at once (Demo\Application\DemoSettings).
             'demo.enabled', 'demo.sandboxes_max',
+            // The rows one imported file may hold (ImportExport\Application\ImportSettings).
+            'import.max_rows',
             // The publisher's and host's identity the legal pages name (Legal\Application\LegalSettings), empty until filled in.
             'legal.backup.provider', 'legal.commercial.email', 'legal.host.address', 'legal.host.country', 'legal.host.name', 'legal.host.phone', 'legal.jurisdiction',
             'legal.mail.provider', 'legal.monitor.provider', 'legal.privacy.email', 'legal.publisher.address', 'legal.publisher.director',
@@ -49,6 +51,7 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertSame('', $rows['legal.publisher.name']['value']);
         self::assertSame(7, $rows['account.deletion_days']['value']);
         self::assertSame(7, $rows['company.reopen_days']['value']);
+        self::assertSame([5000, 1, 5000], [$rows['import.max_rows']['value'], $rows['import.max_rows']['min'] ?? null, $rows['import.max_rows']['max'] ?? null]);
         self::assertSame(7, $rows['licensing.grace_days']['value']);
         self::assertSame(7, $rows['licensing.hold_days']['value']);
         self::assertSame('read_only', $rows['licensing.unpaid_mode']['value']);
@@ -59,6 +62,21 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertSame('platform', $rows[0]['chain']);
         self::assertSame('bool', $rows[0]['type']);
         self::assertSame(['platform'], $rows[0]['writableLevels']);
+    }
+
+    /** At least one row, and no more than one request was measured to bear. */
+    public function testTheImportRowCapStaysWithinItsBounds(): void
+    {
+        $this->signedInAsOperator();
+
+        $this->sendJson('PUT', self::PATH.'/import.max_rows', ['value' => 0]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->sendJson('PUT', self::PATH.'/import.max_rows', ['value' => 5001]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->sendJson('PUT', self::PATH.'/import.max_rows', ['value' => 1200]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(1200, $this->json()['value']);
     }
 
     public function testAnOperatorChangesAPlatformSettingAndItHolds(): void

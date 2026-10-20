@@ -15,6 +15,7 @@ use App\ImportExport\Application\ImportContext;
 use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportReport;
+use App\ImportExport\Application\ImportSettings;
 use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\ImportSwitch;
 use App\ImportExport\Application\RowIdentity;
@@ -25,8 +26,14 @@ use App\ImportExport\Application\RunImport;
 use App\ImportExport\Application\UnreadableImport;
 use App\ImportExport\Domain\Model\ImportRun;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\ResolveSettings;
+use App\Settings\Application\SettingCatalog;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
+use App\Tests\Support\InMemorySettings;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -40,6 +47,7 @@ final class RunImportTest extends TestCase
     private Company $company;
     private InMemoryImportRuns $runs;
     private MockClock $clock;
+    private ReadSetting $settings;
 
     protected function setUp(): void
     {
@@ -48,6 +56,10 @@ final class RunImportTest extends TestCase
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->runs = new InMemoryImportRuns();
         $this->clock = new MockClock('2026-10-09 10:00:00');
+        // The platform's cap, set low so a file passes it in a few lines.
+        $settings = new InMemorySettings();
+        $settings->save(new Setting(SettingAddress::platform(), ImportSettings::MAX_ROWS, 3, $this->clock->now()));
+        $this->settings = new ReadSetting(new ResolveSettings(new SettingCatalog([new ImportSettings()]), $settings));
     }
 
     public function testRowsAreReadUnderTheirHeaderKeysAndCommittedOnce(): void
@@ -274,7 +286,7 @@ final class RunImportTest extends TestCase
     {
         $subject = $this->declaration->subjectFor($this->company);
 
-        return (new RunImport($this->transactions, 3, $this->runs, $this->clock))->run($this->declaration, $subject, $this->company, $rows, $mode, $dryRun, Uuid::v7(), $hash ?? self::hashOf('file'), $ticked, $pairing);
+        return (new RunImport($this->transactions, $this->settings, $this->runs, $this->clock))->run($this->declaration, $subject, $this->company, $rows, $mode, $dryRun, Uuid::v7(), $hash ?? self::hashOf('file'), $ticked, $pairing);
     }
 
     private static function hashOf(string $contents): string

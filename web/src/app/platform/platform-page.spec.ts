@@ -25,6 +25,7 @@ import type {
   PlatformError,
   PlatformSignup,
   PlatformDemo,
+  PlatformImports,
   PlatformNumber,
   PlatformSupport,
   ModuleDemandRow,
@@ -47,10 +48,12 @@ class StaticLoader implements TranslateLoader {
           company_reopen_days: 'Jours pour rouvrir une entreprise fermée',
           demo_enabled: 'Démo ouverte aux visiteurs (« Essayer la démo »)',
           demo_sandboxes_max: 'Démos au plus en même temps',
+          import_max_rows: 'Lignes au plus par fichier importé',
         },
       },
       platform: {
         demo: { title: 'Démo', bounds: 'De {{min}} à {{max}} démos', save: 'Enregistrer' },
+        imports: { title: 'Imports', bounds: 'De {{min}} à {{max}} lignes', save: 'Enregistrer' },
         failed: {
           title: 'Messages non partis',
           total: 'Non partis : {{count}}',
@@ -225,6 +228,16 @@ describe('PlatformPage', () => {
     },
   };
   const demo = signal<PlatformDemo | null>(demoState);
+  const importsState: PlatformImports = {
+    rows: {
+      key: 'import.max_rows',
+      labelKey: 'settings.platform.import_max_rows',
+      value: 5000,
+      min: 1,
+      max: 5000,
+    },
+  };
+  const imports = signal<PlatformImports | null>(importsState);
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
@@ -259,6 +272,8 @@ describe('PlatformPage', () => {
     saveDelays: vi.fn(async () => true),
     demo: demo.asReadonly(),
     saveDemoMost: vi.fn(async () => true),
+    imports: imports.asReadonly(),
+    saveImportRows: vi.fn(async () => true),
     busy,
     error,
     load: vi.fn(),
@@ -290,6 +305,7 @@ describe('PlatformPage', () => {
     support.set({ phone: '', whatsapp: '', email: '', status_url: '' });
     delays.set(delayRows);
     demo.set(demoState);
+    imports.set(importsState);
     error.set(null);
     accounts.set([account]);
     companies.set([row]);
@@ -563,6 +579,33 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.saveDemoMost).toHaveBeenCalledWith(20);
+  });
+
+  it('saves how many rows an imported file may hold, within its bounds, and leaves it out of the delays', async () => {
+    const { fixture, query } = await render();
+    expect(
+      query('platform-delays')?.querySelector('[data-testid="platform-delay-import.max_rows"]'),
+    ).toBeNull();
+    const rows = query<HTMLInputElement>('platform-import-rows')!;
+    const save = query<HTMLButtonElement>('platform-import-save')!;
+    expect(query('platform-imports')?.textContent).toContain('Lignes au plus par fichier importé');
+    expect(rows.value).toBe('5000');
+    expect(query('platform-imports')?.textContent).toContain('De 1 à 5000 lignes');
+    expect(save.disabled).toBe(true);
+
+    rows.value = '5001';
+    rows.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(save.disabled).toBe(true);
+
+    rows.value = '1200';
+    rows.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(save.disabled).toBe(false);
+    save.click();
+    await fixture.whenStable();
+
+    expect(facade.saveImportRows).toHaveBeenCalledWith(1200);
   });
 
   it('saves only the support channels typed, and only once one differs from what the platform holds', async () => {

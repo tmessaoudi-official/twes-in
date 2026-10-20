@@ -50,6 +50,19 @@ import {
 import { subscriptionForm, subscriptionTerms, subscriptionValues } from './subscription-form';
 
 /** What a list keeps in the address besides the tab: switching tabs must not carry one list's words into the next. */
+/** A typed whole number differing from what the platform holds, and within its bounds. */
+function numberReady(held: PlatformNumber | null | undefined, typed: number | null): boolean {
+  return (
+    held !== null &&
+    held !== undefined &&
+    typed !== null &&
+    typed !== held.value &&
+    Number.isInteger(typed) &&
+    (held.min === null || typed >= held.min) &&
+    (held.max === null || typed <= held.max)
+  );
+}
+
 const LIST_PARAMS = ['q', 'status', 'country', 'state', 'sort', 'page', 'size', 'company'] as const;
 const COMPANY_TONES: Readonly<Record<string, StatusTone>> = {
   pending: 'warning',
@@ -227,19 +240,19 @@ export class PlatformPage implements OnInit {
     computation: () => null,
   });
   /** A typed count differing from the platform's, whole and within its bounds. */
-  protected readonly demoMostReady = computed(() => {
-    const most = this.platform.demo()?.most;
-    const typed = this.demoMostDraft();
-    return (
-      most !== null &&
-      most !== undefined &&
-      typed !== null &&
-      typed !== most.value &&
-      Number.isInteger(typed) &&
-      (most.min === null || typed >= most.min) &&
-      (most.max === null || typed <= most.max)
-    );
+  protected readonly demoMostReady = computed(() =>
+    numberReady(this.platform.demo()?.most, this.demoMostDraft()),
+  );
+  protected readonly imports = this.platform.imports;
+  private readonly importRowsHeld = computed(() => this.platform.imports()?.rows?.value ?? null);
+  /** The rows as typed until saved, null when untouched. */
+  protected readonly importRowsDraft = linkedSignal<number | null, number | null>({
+    source: this.importRowsHeld,
+    computation: () => null,
   });
+  protected readonly importRowsReady = computed(() =>
+    numberReady(this.platform.imports()?.rows, this.importRowsDraft()),
+  );
   protected readonly busy = this.platform.busy;
   protected readonly error = this.platform.error;
   protected readonly accounts = this.platform.accounts;
@@ -392,6 +405,21 @@ export class PlatformPage implements OnInit {
     if (!this.demoMostReady() || typed === null) return;
     if (await this.platform.saveDemoMost(typed)) {
       this.feedback.success('platform.demo.saved');
+    } else {
+      this.savedSince();
+    }
+  }
+
+  protected typedImportRows(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value.trim();
+    this.importRowsDraft.set(raw === '' ? Number.NaN : Number(raw));
+  }
+
+  protected async saveImportRows(): Promise<void> {
+    const typed = this.importRowsDraft();
+    if (!this.importRowsReady() || typed === null) return;
+    if (await this.platform.saveImportRows(typed)) {
+      this.feedback.success('platform.imports.saved');
     } else {
       this.savedSince();
     }

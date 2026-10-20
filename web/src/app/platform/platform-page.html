@@ -179,6 +179,46 @@
               </div>
             </mat-card-content>
           </mat-card>
+          <mat-card appearance="outlined" data-testid="platform-imports">
+            <mat-card-header>
+              <mat-card-title>{{ 'platform.imports.title' | translate }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="mt-4 flex flex-col items-start gap-3">
+                <p class="max-w-prose text-sm">{{ 'platform.imports.intro' | translate }}</p>
+                @if (imports()?.rows; as rows) {
+                  <mat-form-field>
+                    <mat-label>{{ rows.labelKey | translate }}</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      inputmode="numeric"
+                      step="1"
+                      [min]="rows.min"
+                      [max]="rows.max"
+                      [value]="importRowsDraft() ?? rows.value"
+                      (input)="typedImportRows($event)"
+                      data-testid="platform-import-rows"
+                    />
+                    @if (rows.min !== null && rows.max !== null) {
+                      <mat-hint>{{
+                        'platform.imports.bounds' | translate: { min: rows.min, max: rows.max }
+                      }}</mat-hint>
+                    }
+                  </mat-form-field>
+                  <button
+                    mat-flat-button
+                    type="button"
+                    [disabled]="!importRowsReady() || busy()"
+                    (click)="saveImportRows()"
+                    data-testid="platform-import-save"
+                  >
+                    {{ 'platform.imports.save' | translate }}
+                  </button>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
           <mat-card appearance="outlined" data-testid="platform-support">
             <mat-card-header>
               <mat-card-title>{{ 'platform.support.title' | translate }}</mat-card-title>

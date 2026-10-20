@@ -26,6 +26,22 @@ final readonly class ReadSetting
     }
 
     /**
+     * A setting declared as a whole number, which always holds one: its declared default when nobody chose one.
+     *
+     * @throws UnknownSetting
+     * @throws \UnexpectedValueException when the key is not a whole-number setting, which is a bug in the caller
+     */
+    public function integer(SettingContext $context, string $key): int
+    {
+        $value = $this->value($context, $key);
+        if (!\is_int($value)) {
+            throw new \UnexpectedValueException(\sprintf('%s holds %s, not a whole number.', $key, get_debug_type($value)));
+        }
+
+        return $value;
+    }
+
+    /**
      * A setting declared as text, which always holds text: its declared default when nobody chose one.
      *
      * @throws UnknownSetting

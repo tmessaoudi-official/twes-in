@@ -133,9 +133,9 @@ final class ProductImportTest extends ApiTestCase
     }
 
     /**
-     * The largest file allowed takes about 15 seconds on a developer's machine and may take a few times that on a shop's
-     * small computer, past PHP's 30: an import alone is given app.import.max_seconds, and the web server in front waits
-     * as long for its answer.
+     * The largest file allowed takes about 35 seconds on a developer's machine and may take several times that on a
+     * shop's small computer, past PHP's 30: an import alone is given app.import.max_seconds, and the web server in front
+     * waits as long for its answer.
      */
     public function testAnImportIsGivenTheTimeTheLargestFileTakes(): void
     {
