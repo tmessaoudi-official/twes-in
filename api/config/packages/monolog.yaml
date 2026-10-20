@@ -75,7 +75,8 @@ when@dev:
 when@test:
     monolog:
         handlers:
-            # Errors only, with what led to them.
+            # Errors only, with the warnings that led to them. Every refusal a test asks for is logged as an error, so
+            # what led to it is kept at warning and the file at two days: at debug it grew past 4 GB.
             main:
                 type: fingers_crossed
                 action_level: error
@@ -83,9 +84,10 @@ when@test:
                 excluded_http_codes: [404, 405]
                 channels: ["!event"]
             nested:
-                type: stream
+                type: rotating_file
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
-                level: debug
+                max_files: 2
+                level: warning
             # What a browser's error became, read back by ClientErrorsTest.
             client_errors:
                 type: service
