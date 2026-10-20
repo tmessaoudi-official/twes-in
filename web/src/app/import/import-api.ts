@@ -3,7 +3,11 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { ImportGuideImportGuideRead } from '../api/types.gen';
+import type {
+  ImportGuideImportGuideRead,
+  ImportRunsResponse,
+  UndoImportResponse,
+} from '../api/types.gen';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import {
   TEXT_ENCODINGS,
@@ -13,6 +17,8 @@ import {
   type ImportPairing,
   type ImportRefusal,
   type ImportReport,
+  type ImportRunSummary,
+  type ImportUndone,
   type TextEncoding,
 } from './import-types';
 
@@ -91,6 +97,58 @@ export class ImportApi {
     );
   }
 
+  /** « Imports récents »: the imports of the last day into the subjects the person may write, the latest first. */
+  async recent(companyId: string): Promise<ImportRunSummary[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<ImportRunsResponse>(`${companyPath(companyId)}/import-runs`),
+        )
+      ).map((run) => ({
+        id: run.id,
+        subject: run.subject,
+        at: run.at,
+        by: run.by,
+        created: run.created,
+        updated: run.updated,
+        undoableUntil: run.undoableUntil,
+        undoneAt: run.undoneAt,
+      })),
+    );
+  }
+
+  /**
+   * « Annuler cet import ». The API holds it back as `step_up_required` until the person proved who they are in the
+   * last few minutes, and refuses one taken back already (`import_undone`) or past its day (`import_final`).
+   */
+  async undo(companyId: string, runId: string): Promise<ImportUndone> {
+    return this.guard(async () => {
+      const answer = await firstValueFrom(
+        this.http.post<UndoImportResponse>(
+          `${companyPath(companyId)}/import-runs/${encodeURIComponent(runId)}/undo`,
+          null,
+        ),
+      );
+      return {
+        removal: answer.removal,
+        removed: answer.removed.map((item) => ({ id: item.id, label: item.label })),
+        kept: answer.kept.map((item) => ({ id: item.id, label: item.label, uses: item.uses })),
+        rowsKept: answer.rowsKept.map((row) => ({ label: row.label, reason: row.reason })),
+        stockTakenBack: answer.stockTakenBack.map((stock) => ({
+          reference: stock.reference,
+          location: stock.location,
+          quantity: stock.quantity,
+        })),
+        stockKept: answer.stockKept.map((stock) => ({
+          reference: stock.reference,
+          location: stock.location,
+          reason: stock.reason,
+        })),
+        updated: answer.updated,
+      };
+    });
+  }
+
   /** Where the browser opens the empty file to fill in: a same-origin address the session cookie reaches. */
   templateUrl(companyId: string, subject: string, format: 'csv' | 'xlsx'): string {
     return `${path(companyId, 'import-templates', subject)}.${format}`;
@@ -115,6 +173,8 @@ function refusalOf(error: unknown): Error {
   switch (error.status) {
     case 404:
       return new ImportRefused('not_found');
+    case 409:
+      return conflictOf(error.error);
     case 413:
       return new ImportRefused('file_too_large');
     case 422:
@@ -122,6 +182,14 @@ function refusalOf(error: unknown): Error {
     default:
       return new ImportRefused('invalid');
   }
+}
+
+/** An undo refused names why: taken back already, or past its day. */
+function conflictOf(body: unknown): ImportRefused {
+  const reason = (body as Record<string, unknown> | null)?.['error'];
+  return new ImportRefused(
+    reason === 'import_undone' || reason === 'import_final' ? reason : 'invalid',
+  );
 }
 
 /** A 422 carries either the report of a run that was rolled back, or the reason the file was refused whole. */
@@ -176,6 +244,7 @@ function toReport(answer: unknown): ImportReport {
 
   return {
     committed: body['committed'] === true,
+    run: typeof body['run'] === 'string' ? body['run'] : null,
     created: lines(body['created']),
     updated: lines(body['updated']),
     unchanged: lines(body['unchanged']),
@@ -210,5 +279,8 @@ function toReport(answer: unknown): ImportReport {
   };
 }
 
+const companyPath = (companyId: string): string =>
+  `/api/companies/${encodeURIComponent(companyId)}`;
+
 const path = (companyId: string, collection: string, subject: string): string =>
-  `/api/companies/${encodeURIComponent(companyId)}/${collection}/${encodeURIComponent(subject)}`;
+  `${companyPath(companyId)}/${collection}/${encodeURIComponent(subject)}`;

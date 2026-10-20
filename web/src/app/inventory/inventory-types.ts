@@ -41,6 +41,7 @@ export const STOCK_MOVEMENT_KINDS: readonly StockMovementKind[] = ['in', 'out', 
 /**
  * `cost_correction`: the share of a late receipt cost booked against the sales since (no quantity, a value). `merge`:
  * goods a product merged into another handed to the product kept, or took back when the merge was undone.
+ * `import_undo`: what an import brought, taken back by « Annuler cet import »; `import_redo`: given again by the bin.
  */
 export type StockSourceType =
   | 'receipt'
@@ -51,7 +52,9 @@ export type StockSourceType =
   | 'invoice'
   | 'credit_note'
   | 'cost_correction'
-  | 'merge';
+  | 'merge'
+  | 'import_undo'
+  | 'import_redo';
 export const STOCK_SOURCE_TYPES: readonly StockSourceType[] = [
   'receipt',
   'count',
@@ -62,6 +65,8 @@ export const STOCK_SOURCE_TYPES: readonly StockSourceType[] = [
   'credit_note',
   'cost_correction',
   'merge',
+  'import_undo',
+  'import_redo',
 ];
 
 /** What a person records: goods received, what a count found on the shelf, goods moved, or goods written off. */

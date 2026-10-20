@@ -67,8 +67,9 @@ final readonly class RunImport
                 }
                 $declaration->finished($company, $context, $actorUserId);
                 $this->runs->save(new ImportRun($context->runId, $company, $declaration->key(), $contentHash, $mode->value, $actorUserId, \count($report->created), \count($report->updated), $this->clock->now(), $paired));
+                $this->runs->saveCreated($company->getId(), $context->runId, $context->createdRecords());
 
-                return new ImportReport(true, $report->created, $report->updated, [], $report->notes, $already, $report->changes, $report->unchanged);
+                return new ImportReport(true, $report->created, $report->updated, [], $report->notes, $already, $report->changes, $report->unchanged, $context->runId);
             });
         } catch (ImportRolledBack $rolledBack) {
             return $rolledBack->report;

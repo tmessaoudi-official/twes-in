@@ -34,6 +34,8 @@ final class StockMovementSearchReader
         StockMovement::SOURCE_CREDIT_NOTE,
         StockMovement::SOURCE_COST_CORRECTION,
         StockMovement::SOURCE_MERGE,
+        StockMovement::SOURCE_IMPORT_UNDO,
+        StockMovement::SOURCE_IMPORT_REDO,
     ];
 
     /**

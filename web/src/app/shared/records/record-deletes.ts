@@ -180,8 +180,11 @@ export class RecordDeletes {
     }
   }
 
-  /** Puts back what a delete took, as it was, or undoes a merge; answers whether it came back. */
-  async restore(companyId: string, removal: RecordRemoval): Promise<boolean> {
+  /**
+   * Puts back what a delete took, as it was, undoes a merge, or stands an import taken back again; answers whether it
+   * came back.
+   */
+  async restore(companyId: string, removal: Pick<RecordRemoval, 'id'>): Promise<boolean> {
     try {
       await this.words();
       const restored = await this.proved(() => this.api.restore(companyId, removal.id));
@@ -191,6 +194,11 @@ export class RecordDeletes {
           `${restored.subject}.merge_undone`,
         );
         this.feedback.success('records.merge_undone', { kept: restored.kept.label });
+        return true;
+      }
+      if (restored.kind === 'import') {
+        this.live.changedHere([restored.subject, 'record_removal', 'stock'], 'import.restored');
+        this.feedback.success('records.import_restored');
         return true;
       }
       this.live.changedHere([restored.subject, 'record_removal'], `${restored.subject}.restored`);

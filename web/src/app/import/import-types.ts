@@ -2,7 +2,13 @@
 
 /** Why the API refused a request outright, as the import screen translates it under `import.errors.*`. */
 export type ImportError =
-  'network' | 'not_found' | 'file_too_large' | 'step_up_required' | 'invalid';
+  | 'network'
+  | 'not_found'
+  | 'file_too_large'
+  | 'step_up_required'
+  | 'invalid'
+  | 'import_undone'
+  | 'import_final';
 
 /** How a file is read: only new things, or new things and the ones already there. */
 export type ImportMode = 'create' | 'upsert';
@@ -112,6 +118,8 @@ export interface ImportChange {
 /** What a run did, or would do: a preview is the same run rolled back. */
 export interface ImportReport {
   committed: boolean;
+  /** The import kept, which « Annuler cet import » takes back; null for a preview or a file not kept. */
+  run: string | null;
   /** The file's own line numbers, its empty lines counted. */
   created: readonly number[];
   /** The lines found again whose record changes. */
@@ -126,4 +134,44 @@ export interface ImportReport {
   alreadyImportedAt: string | null;
   /** What a CSV was read as, found on the file or chosen; null for a workbook. */
   encoding: TextEncoding | null;
+}
+
+/** One import of the last day into a subject the person may write, as « Imports récents » lists it. */
+export interface ImportRunSummary {
+  id: string;
+  /** The subject as its path writes it: `customers`, `opening-stock`. */
+  subject: string;
+  /** ISO moments. */
+  at: string;
+  /** Who ran it; null for an account gone since. */
+  by: string | null;
+  created: number;
+  updated: number;
+  undoableUntil: string;
+  /** When it was taken back; null while it stands. */
+  undoneAt: string | null;
+}
+
+/** A record an import created and its undo left, with what names it now. */
+export interface ImportKeptRecord {
+  id: string;
+  label: string;
+  uses: readonly { table: string; column: string; count: number }[];
+}
+
+/**
+ * What « Annuler cet import » did. The records nothing used went to « Récemment supprimés » under `removal`; the stock
+ * the file brought was taken back where nothing moved since; what the file only changed stays as changed.
+ */
+export interface ImportUndone {
+  /** The bin's entry, which puts it all back; null when the file created no record that could go. */
+  removal: string | null;
+  removed: readonly { id: string; label: string }[];
+  kept: readonly ImportKeptRecord[];
+  /** Rows that are no record of their own (a product's link to a vendor) left with why, `vendor_has_code`. */
+  rowsKept: readonly { label: string; reason: string }[];
+  stockTakenBack: readonly { reference: string; location: string; quantity: string }[];
+  /** Why stock stayed: `counted_since` or `below_zero`. */
+  stockKept: readonly { reference: string; location: string; reason: string }[];
+  updated: number;
 }

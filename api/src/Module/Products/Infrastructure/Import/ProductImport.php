@@ -247,6 +247,7 @@ final readonly class ProductImport implements DeclaresImport
             $before = null === $existing ? [] : $this->inFile($company, $existing, $context, $record);
             if (null === $existing) {
                 $written = $this->manage->create($company, $input, $actorUserId);
+                $context->created('product', $written->getId());
                 $this->settleHome($company, $written, $home, $actorUserId);
                 $this->settleReorderPoint($company, $written, $reorderPoint, $actorUserId);
                 if (null === $reference) {

@@ -133,7 +133,7 @@ final readonly class ImportController
         }
 
         return new JsonResponse(
-            ['committed' => $report->committed, 'created' => $report->created, 'updated' => $report->updated, 'unchanged' => $report->unchanged, 'rejected' => $report->rejected, 'changes' => $report->changes, 'notes' => $report->notes, 'alreadyImportedAt' => $report->alreadyImportedAt?->format(\DATE_ATOM), 'encoding' => $encoding?->value],
+            ['committed' => $report->committed, 'created' => $report->created, 'updated' => $report->updated, 'unchanged' => $report->unchanged, 'rejected' => $report->rejected, 'changes' => $report->changes, 'notes' => $report->notes, 'alreadyImportedAt' => $report->alreadyImportedAt?->format(\DATE_ATOM), 'encoding' => $encoding?->value, 'run' => $report->run?->toRfc4122()],
             // A preview that finds rejected rows has done its job; an import that stopped on them has not.
             $dryRun || $report->committed ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY,
         );

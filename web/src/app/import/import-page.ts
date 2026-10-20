@@ -24,11 +24,13 @@ import { ImportFacade } from './import-facade';
 import {
   TEXT_ENCODINGS,
   type ImportColumn,
+  type ImportKeptRecord,
   type ImportMode,
   type ImportNote,
   type ImportPairing,
   type ImportRefusal,
   type ImportRejection,
+  type ImportRunSummary,
   type TextEncoding,
 } from './import-types';
 import { Label } from '../shared/a11y/label';
@@ -41,6 +43,7 @@ import { MomentPipe } from '../shared/i18n/format-pipes';
 import type { ActionConfirm } from '../shared/actions/screen-action';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { firstValueFrom } from 'rxjs';
+import { tableCounts } from '../shared/records/record-tables';
 
 /** How many of a preview's changes the table lists; the count by column says them all. */
 export const CHANGES_SHOWN = 200;
@@ -113,6 +116,8 @@ export class ImportPage {
   protected readonly refusal = this.facade.refusal;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly recent = this.facade.recent;
+  protected readonly undone = this.facade.undone;
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   /** The chosen file, if any: its name is shown back so a person knows which one is about to run. */
@@ -243,6 +248,7 @@ export class ImportPage {
       this.previewed.set(false);
       this.ticked.set([]);
       void this.facade.load(companyId, subject);
+      void this.facade.loadRecent(companyId);
     });
     // Each subject's guide brings the pairing its last import kept.
     effect(() => {
@@ -292,6 +298,57 @@ export class ImportPage {
     const companyId = this.company()?.id;
 
     return companyId === undefined ? '' : this.api.templateUrl(companyId, this.subject(), format);
+  }
+
+  /** A subject's words, from the path an import names it by. */
+  protected subjectOf(run: ImportRunSummary): string {
+    return this.translate.instant(`import.subjects.${run.subject.replace(/-/g, '_')}`) as string;
+  }
+
+  /** « 2 lignes de devis et 1 facture », as the bin's refusals count what names a record. */
+  protected usesOf(record: ImportKeptRecord): string {
+    const language =
+      this.translate.getCurrentLang() ?? this.translate.getFallbackLang() ?? undefined;
+    return new Intl.ListFormat(language, { type: 'conjunction' }).format(
+      tableCounts(record.uses).map(
+        ({ key, count }) => this.translate.instant(key, { count }) as string,
+      ),
+    );
+  }
+
+  /** A quantity the undo took back, as the screen writes a decimal. */
+  protected quantity(value: string): string {
+    return this.format.decimal(value);
+  }
+
+  /**
+   * « Annuler cet import », once its consequences are read: what went is put back from « Récemment supprimés » for a
+   * day, but what the file changed stays changed and an opening stock's undo makes no delete to put back, so the
+   * person is told before rather than offered an « Annuler » that cannot cover it all.
+   */
+  protected async undo(run: string): Promise<void> {
+    const companyId = this.company()?.id;
+    if (companyId === undefined) return;
+    const confirm: ActionConfirm = {
+      kind: 'corrigeable',
+      title: 'import.undo.confirm_title',
+      message: 'import.undo.confirm_message',
+      confirmLabel: 'import.undo.confirm',
+      keepLabel: 'import.undo.keep',
+    };
+    const answer = await firstValueFrom(
+      this.dialog
+        .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+          data: confirm,
+          autoFocus: 'dialog',
+        })
+        .afterClosed(),
+    );
+    if (answer !== true) return;
+    if (await this.facade.undo(companyId, run)) {
+      this.file.set(null);
+      this.previewed.set(false);
+    }
   }
 
   protected chooseFile(file: File): void {
@@ -385,9 +442,8 @@ export class ImportPage {
   }
 
   /**
-   * An upsert that changes records says how many and which columns before it runs (docs/SPEC.md § 7, 2026-10-09
-   * 10:40, ruling 5): no import is undone, and the values it replaces are kept nowhere. A file that only adds asks
-   * nothing.
+   * An upsert that changes records says how many and which columns before it runs: the values it replaces are kept
+   * nowhere, and « Annuler cet import » leaves what it changed as changed. A file that only adds asks nothing.
    */
   private async changesConfirmed(): Promise<boolean> {
     const report = this.report();

@@ -101,6 +101,19 @@ class RecordRemoval implements CompanyOwned
         return $merge;
     }
 
+    /**
+     * The records an import created that nothing used, taken back by « Annuler cet import », kept a day for the bin.
+     *
+     * @param non-empty-list<array{id: string, label: string}> $items
+     */
+    public static function import(Uuid $id, Company $company, string $subject, array $items, ?Uuid $undoneBy, \DateTimeImmutable $now, \DateInterval $undoableFor): self
+    {
+        $import = new self($id, $company, $subject, $items, $undoneBy, $now, $undoableFor);
+        $import->kind = RemovalKind::Import;
+
+        return $import;
+    }
+
     /** Pending and within its day, even when the worker has not yet ended it. */
     public function isRestorableAt(\DateTimeImmutable $now): bool
     {

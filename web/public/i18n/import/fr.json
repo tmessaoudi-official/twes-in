@@ -191,7 +191,9 @@
       "not_found": "Rien de tel ne peut être importé ici, ou vous n’avez pas le droit de l’écrire.",
       "file_too_large": "Le fichier est trop lourd.",
       "invalid": "Le fichier n’a pas pu être lu.",
-      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement.",
+      "import_undone": "Cet import est déjà annulé.",
+      "import_final": "Cet import ne s’annule plus : ses 24 heures sont passées."
     },
     "refusals": {
       "invalid_request": "La demande n’a pas été comprise.",
@@ -232,6 +234,38 @@
       "from_last": "Repris de votre dernier import : vérifiez-les avant de prévisualiser.",
       "ignored": "Ne pas importer",
       "forget": "Oublier l’association de {{heading}}"
+    },
+    "undo": {
+      "action": "Annuler cet import",
+      "confirm_title": "Annuler cet import ?",
+      "confirm_message": "Les fiches que ce fichier a créées et que rien n’utilise encore vont dans « Récemment supprimés », d’où elles peuvent être remises pendant 24 heures. Celles qui servent déjà restent. Le stock qu’il a apporté est repris, sauf là où il a été compté depuis ou ne suffirait plus. Ce qu’il a modifié reste modifié.",
+      "confirm": "Annuler l’import",
+      "keep": "Garder l’import",
+      "done": "L’import est annulé.",
+      "title": "Ce que l’annulation a fait",
+      "removed": "{{count}} {count, plural, one {fiche retirée} other {fiches retirées}}, à retrouver dans « Récemment supprimés »",
+      "updated": "{{count}} {count, plural, one {fiche modifiée reste modifiée} other {fiches modifiées restent modifiées}}",
+      "kept_title": "Gardé, car déjà utilisé",
+      "kept": "« {{name}} » figure dans {{uses}}.",
+      "rows_kept": {
+        "vendor_has_code": "{{label}} : le fournisseur tient encore un code de ce produit.",
+        "product_merged": "{{label}} : le produit a été fusionné depuis."
+      },
+      "stock_title": "Stock",
+      "stock_back": "{{reference}} à {{location}} : {{quantity}} repris.",
+      "stock_kept": {
+        "counted_since": "{{reference}} à {{location}} : compté depuis, le stock reste tel quel.",
+        "below_zero": "{{reference}} à {{location}} : des articles sont sortis depuis, le reprendre laisserait moins que rien."
+      }
+    },
+    "recent": {
+      "title": "Imports récents",
+      "intro": "Les imports des dernières 24 heures dans ce que vous pouvez modifier, le plus récent d’abord.",
+      "by": "Le {{moment}}, par {{name}}",
+      "at": "Le {{moment}}",
+      "counts": "{{created}} {created, plural, one {créée} other {créées}}, {{updated}} {updated, plural, one {modifiée} other {modifiées}}",
+      "until": "Annulable jusqu’au {{moment}}",
+      "undone": "Annulé le {{moment}}"
     }
   }
 }

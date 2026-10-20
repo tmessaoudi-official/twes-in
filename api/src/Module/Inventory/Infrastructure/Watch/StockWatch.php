@@ -147,7 +147,7 @@ final readonly class StockWatch implements DeclaresWatch
              ), pace AS (
                   SELECT '.KeptRecords::id('mp').' AS product_id, -SUM(m.quantity) AS gone
                     FROM stock_movement m JOIN product mp ON mp.id = m.product_id
-                   WHERE m.company_id = :company AND m.kind = :out AND m.source_type NOT IN (:move, :merge) AND m.at >= :since
+                   WHERE m.company_id = :company AND m.kind = :out AND m.source_type NOT IN (:move, :merge, :import_undo, :import_redo) AND m.at >= :since
                    GROUP BY '.KeptRecords::id('mp').'
              )
              SELECT p.id, p.name, p.reference, h.on_hand::numeric(14, 3) AS on_hand, FLOOR(h.on_hand * :window / pace.gone)::int AS days_left, h.on_hand * :window / pace.gone AS ratio
@@ -159,6 +159,8 @@ final readonly class StockWatch implements DeclaresWatch
                 'quarantine' => StockLocationKind::Quarantine->value,
                 'move' => StockMovement::SOURCE_MOVE,
                 'merge' => StockMovement::SOURCE_MERGE,
+                'import_undo' => StockMovement::SOURCE_IMPORT_UNDO,
+                'import_redo' => StockMovement::SOURCE_IMPORT_REDO,
                 'since' => $today->modify('-'.self::PACE_DAYS.' days')->format('Y-m-d'),
                 'window' => self::PACE_DAYS,
                 'lead' => $this->days($company, StockWatchSettings::LEAD_DAYS),

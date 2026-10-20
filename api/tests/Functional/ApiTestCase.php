@@ -36,6 +36,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\ReceivedStamp;
 use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Functional tests talk to the API the way the SPA does: JSON bodies, a random csrf-token header on every
@@ -388,6 +389,27 @@ abstract class ApiTestCase extends WebTestCase
         self::assertIsArray($body);
 
         return self::stringKeyed($body);
+    }
+
+    /**
+     * An import's answer without the id of the import it kept, which is new on every run: an id once committed, none
+     * for a preview or a file that stopped.
+     *
+     * @return array<string, mixed>
+     */
+    protected function importReport(): array
+    {
+        $report = $this->json();
+        self::assertArrayHasKey('run', $report);
+        if (true === $report['committed']) {
+            self::assertIsString($report['run']);
+            self::assertTrue(Uuid::isValid($report['run']));
+        } else {
+            self::assertNull($report['run']);
+        }
+        unset($report['run']);
+
+        return $report;
     }
 
     /**

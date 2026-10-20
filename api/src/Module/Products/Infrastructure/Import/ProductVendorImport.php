@@ -25,7 +25,9 @@ use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Model\ProductBarcode;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Module\Products\Domain\ValueObject\Barcode;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\Module\Vendors\Domain\Model\Vendor;
@@ -116,7 +118,22 @@ final readonly class ProductVendorImport implements DeclaresImport
                 throw new RowRejected('vendor_number', 'This product is already bought from this vendor. Import in "create and update" mode to change it.', 'already_exists');
             }
             $seesCosts = $context->once('sees-costs', fn (): bool => $this->guard->may($company, ProductPermission::COST_READ));
-            $changed = $this->manage->addVendor($company, $product->getId(), $vendor->getId(), $record->value('vendor_code'), $actorUserId, $seesCosts);
+            $code = $record->value('vendor_code');
+            $codeHeld = null !== $code && array_any($product->getBarcodes(), static fn (ProductBarcode $held): bool => Barcode::keyOf($code) === $held->getMatchKey());
+            $changed = $this->manage->addVendor($company, $product->getId(), $vendor->getId(), $code, $actorUserId, $seesCosts);
+            // What the row made, for « Annuler cet import »: the link, and the vendor's code when the product held none like it.
+            $written = $this->products->ofIdInCompany($product->getId(), $company->getId()) ?? $product;
+            $link = $linked ? null : $written->vendorLinkOf($vendor->getId());
+            if (null !== $link) {
+                $context->created('product_vendor', $link->getId());
+            }
+            if (null !== $code && !$codeHeld) {
+                foreach ($written->getBarcodes() as $held) {
+                    if (Barcode::keyOf($code) === $held->getMatchKey() && $vendor->getId()->equals($held->getSupplier()?->getId())) {
+                        $context->created('product_barcode', $held->getId());
+                    }
+                }
+            }
 
             return match (true) {
                 !$linked => RowImported::Created,

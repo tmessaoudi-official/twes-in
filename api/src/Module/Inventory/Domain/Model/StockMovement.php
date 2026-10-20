@@ -56,6 +56,10 @@ class StockMovement implements CompanyOwned
     public const string SOURCE_COST_CORRECTION = 'cost_correction';
     /** Goods a product merged away held, carried to the product kept, or back when the merge is undone. */
     public const string SOURCE_MERGE = 'merge';
+    /** What an import wrote, taken back by « Annuler cet import »: the movement stands, this one goes the other way. */
+    public const string SOURCE_IMPORT_UNDO = 'import_undo';
+    /** What an import's undo took back, given again when « Récemment supprimés » restores it. */
+    public const string SOURCE_IMPORT_REDO = 'import_redo';
     public const int NOTE_MAX = 500;
     public const int QUANTITY_DECIMALS = 3;
     private const string QUANTITY = '/^(-?)(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,3}))?$/';
@@ -337,6 +341,34 @@ class StockMovement implements CompanyOwned
         $arriving->leftAs = $leaving;
 
         return [$leaving, $arriving];
+    }
+
+    /**
+     * A movement taken back exactly: the same goods the other way, worth what they moved at, any revaluation they made
+     * undone with them, so the stock and its worth read as before. An import's undo writes one, and the bin's restore
+     * one of that one.
+     *
+     * @throws InvalidStockMovement
+     */
+    public static function reversal(self $movement, string $sourceType, Uuid $sourceId, ?Uuid $recordedBy, \DateTimeImmutable $now): self
+    {
+        if (!\in_array($sourceType, [self::SOURCE_IMPORT_UNDO, self::SOURCE_IMPORT_REDO], true)) {
+            throw new \LogicException(\sprintf('A movement is taken back by an import\'s undo or its restore, not by %s.', $sourceType));
+        }
+        $back = new Number($movement->quantity)->mul(-1);
+        if (0 === $back->compare(0)) {
+            throw new \LogicException('A movement of nothing has nothing to take back.');
+        }
+        $kind = match ($movement->kind) {
+            StockMovementKind::In => StockMovementKind::Out,
+            StockMovementKind::Out => StockMovementKind::In,
+            StockMovementKind::Adjustment => StockMovementKind::Adjustment,
+        };
+        $reversal = new self($movement->product, $movement->location, $movement->lot, $kind, $back->round(self::QUANTITY_DECIMALS)->value, $sourceType, $sourceId, $recordedBy, $now);
+        $reversal->unitCost = $movement->unitCost;
+        $reversal->revaluation = null === $movement->revaluation ? null : new Number('0.0000000')->sub(new Number($movement->revaluation))->value;
+
+        return $reversal;
     }
 
     /**

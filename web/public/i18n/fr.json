@@ -2490,7 +2490,9 @@
       "invoice": "Facture",
       "credit_note": "Avoir",
       "cost_correction": "Correction du coût des ventes",
-      "merge": "Fusion d’articles"
+      "merge": "Fusion d’articles",
+      "import_undo": "Import annulé",
+      "import_redo": "Import rétabli"
     },
     "kinds": {
       "site": "Site",

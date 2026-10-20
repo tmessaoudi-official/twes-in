@@ -39,6 +39,8 @@ final readonly class InventoryRecordReferences implements DeclaresRecordReferenc
             RecordReference::uses('stock_movement', 'source_id', 'delivery_note', RecordMerge::Ignored, 'A movement names the delivery note that took the goods out.')
                 ->where('source_type', StockMovement::SOURCE_DELIVERY_NOTE),
             RecordReference::uses('stock_movement', 'product_id', 'product', RecordMerge::Stays, 'A movement names the product it moved; the goods a merge carried are no trade of the product kept.')
+                // The goods a file brought with the products it created go with them when the import is taken back.
+                ->importedBy('import_run_id')
                 ->transactingAt('at', 'source_type', [StockMovement::SOURCE_MERGE]),
             RecordReference::uses('stock_lot', 'product_id', 'product', RecordMerge::Stays, 'A lot is a batch of one product.'),
             RecordReference::owned('product_home_location', 'product_id', 'product', RecordMerge::MovesOrDrops, 'Where a product is kept is its own; merged, the product kept is kept there too, once.')->droppingTwinsBy('location_id'),

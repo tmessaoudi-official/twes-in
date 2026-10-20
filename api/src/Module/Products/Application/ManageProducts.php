@@ -23,8 +23,10 @@ use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Products\Application\Stock\ProductStockHistory;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Model\ProductBarcode;
 use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Domain\Model\ProductCostChange;
+use App\Module\Products\Domain\Model\ProductVendor;
 use App\Module\Products\Domain\Repository\ProductCategoryRepository;
 use App\Module\Products\Domain\Repository\ProductCostChangeRepository;
 use App\Module\Products\Domain\Repository\ProductRepository;
@@ -325,6 +327,69 @@ final readonly class ManageProducts
             }
 
             return $changed;
+        });
+    }
+
+    /**
+     * « Annuler cet import » for a file of who sells what: the vendors' own codes the file wrote go, then the links it
+     * added, but a link whose vendor still holds a code on the product, which the file did not write, stays and is said:
+     * the product is still bought from them under it. Audited as a revision of the fields it changed. A product merged
+     * into another since keeps what it holds: its codes and vendors are the merge's to account for.
+     *
+     * @param list<Uuid> $linkIds    the product's links to vendors the file added
+     * @param list<Uuid> $barcodeIds the product's vendors' codes the file wrote
+     *
+     * @return list<array{label: string, reason: string}> the links kept
+     *
+     * @throws ProductNotFound
+     * @throws InvalidProduct
+     */
+    public function takeBackImported(Company $company, Uuid $id, array $linkIds, array $barcodeIds, ?Uuid $actorUserId): array
+    {
+        return $this->transactions->run(function () use ($company, $id, $linkIds, $barcodeIds, $actorUserId): array {
+            $product = $this->locked($company, $id);
+            $wanted = array_map(static fn (Uuid $link): string => $link->toRfc4122(), $linkIds);
+            $links = [];
+            foreach ($product->getVendors() as $vendor) {
+                $link = $product->vendorLinkOf($vendor->getId());
+                if (null !== $link && \in_array($link->getId()->toRfc4122(), $wanted, true)) {
+                    $links[] = $link;
+                }
+            }
+            if ($product->isMergedAway()) {
+                return array_map(static fn (ProductVendor $link): array => ['label' => $product->getReference().' '.$link->getVendor()->getNumber(), 'reason' => 'product_merged'], $links);
+            }
+            $now = $this->clock->now();
+            $taken = array_map(static fn (Uuid $barcode): string => $barcode->toRfc4122(), $barcodeIds);
+            $rows = [];
+            foreach ($product->getBarcodes() as $held) {
+                if (!\in_array($held->getId()->toRfc4122(), $taken, true)) {
+                    $rows[] = new BarcodeInput($held->getRole()->value, $held->getCode(), $held->getQuantity(), $held->getSupplier()?->getId());
+                }
+            }
+            $changed = [];
+            if ($product->replaceBarcodes($this->barcodeLines($company, $rows, $product), $now)) {
+                $changed[] = 'barcodes';
+            }
+            $kept = [];
+            $going = [];
+            foreach ($links as $link) {
+                $vendorId = $link->getVendor()->getId();
+                if (array_any($product->getBarcodes(), static fn (ProductBarcode $held): bool => $vendorId->equals($held->getSupplier()?->getId()))) {
+                    $kept[] = ['label' => $product->getReference().' '.$link->getVendor()->getNumber(), 'reason' => 'vendor_has_code'];
+                    continue;
+                }
+                $going[] = $vendorId->toRfc4122();
+            }
+            if ([] !== $going && $product->replaceVendors(array_values(array_filter($product->getVendors(), static fn (Vendor $vendor): bool => !\in_array($vendor->getId()->toRfc4122(), $going, true))), $now)) {
+                $changed[] = 'vendors';
+            }
+            if ([] !== $changed) {
+                $this->products->save($product);
+                $this->record($company, $product->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
+
+            return $kept;
         });
     }
 

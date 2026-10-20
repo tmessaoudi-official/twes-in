@@ -191,7 +191,9 @@
       "not_found": "Nothing of the sort can be imported here, or you may not write it.",
       "file_too_large": "The file is too large.",
       "invalid": "The file could not be read.",
-      "step_up_required": "Nothing changed: confirm it is you to make this change."
+      "step_up_required": "Nothing changed: confirm it is you to make this change.",
+      "import_undone": "This import is undone already.",
+      "import_final": "This import can no longer be undone: its 24 hours are over."
     },
     "refusals": {
       "invalid_request": "The request was not understood.",
@@ -232,6 +234,38 @@
       "from_last": "Taken from your last import: check them before you preview.",
       "ignored": "Do not import",
       "forget": "Forget how {{heading}} is paired"
+    },
+    "undo": {
+      "action": "Undo this import",
+      "confirm_title": "Undo this import?",
+      "confirm_message": "The records this file created that nothing uses yet go to “Recently deleted”, where they can be put back for 24 hours. Those already in use stay. The stock it brought is taken back, except where it was counted since or would no longer be enough. What it changed stays changed.",
+      "confirm": "Undo the import",
+      "keep": "Keep the import",
+      "done": "The import is undone.",
+      "title": "What the undo did",
+      "removed": "{{count}} {count, plural, one {record taken away} other {records taken away}}, to be found in “Recently deleted”",
+      "updated": "{{count}} {count, plural, one {changed record stays changed} other {changed records stay changed}}",
+      "kept_title": "Kept, as already in use",
+      "kept": "“{{name}}” appears in {{uses}}.",
+      "rows_kept": {
+        "vendor_has_code": "{{label}}: the vendor still holds a code for this product.",
+        "product_merged": "{{label}}: the product was merged since."
+      },
+      "stock_title": "Stock",
+      "stock_back": "{{reference}} at {{location}}: {{quantity}} taken back.",
+      "stock_kept": {
+        "counted_since": "{{reference}} at {{location}}: counted since, the stock stays as it is.",
+        "below_zero": "{{reference}} at {{location}}: goods went out since, taking it back would leave less than nothing."
+      }
+    },
+    "recent": {
+      "title": "Recent imports",
+      "intro": "The imports of the last 24 hours into what you may change, the latest first.",
+      "by": "On {{moment}}, by {{name}}",
+      "at": "On {{moment}}",
+      "counts": "{{created}} created, {{updated}} changed",
+      "until": "Can be undone until {{moment}}",
+      "undone": "Undone on {{moment}}"
     }
   }
 }

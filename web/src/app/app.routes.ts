@@ -379,7 +379,8 @@ export const routes: Routes = [
         // this company cannot import, or may not write, so no static module guard could say it here.
         path: 'imports/:subject',
         title: 'titles.import',
-        ...textsPart('import'),
+        // The records' words name what an import's undo kept and why, and its toast offers their « Annuler ».
+        ...textsPart('import', textsOpened(RECORDS_TEXTS)),
         loadComponent: () => import('./import/import-page').then((m) => m.ImportPage),
       },
       {

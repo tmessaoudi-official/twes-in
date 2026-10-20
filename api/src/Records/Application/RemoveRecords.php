@@ -94,6 +94,87 @@ final readonly class RemoveRecords
     }
 
     /**
+     * Takes back the records of one subject an import created, all those nothing uses and none of the others: the rows
+     * that import wrote naming one (the goods it brought) belong to it for this, and go with it. One deleted or merged
+     * away since stays as it is. Runs inside the undo's transaction, which locks the records first.
+     *
+     * @param list<Uuid> $ids
+     */
+    public function removeImported(Company $company, RecordSubject $subject, array $ids, Uuid $runId, ?Uuid $actorUserId): ImportedRecordsTaken
+    {
+        return $this->transactions->run(function () use ($company, $subject, $ids, $runId, $actorUserId): ImportedRecordsTaken {
+            $labels = [] === $ids ? [] : $this->store->lockedLabels($company->getId(), $subject, $ids);
+            $present = array_values(array_filter($ids, static fn (Uuid $id): bool => isset($labels[$id->toRfc4122()])));
+            if ([] === $present) {
+                return new ImportedRecordsTaken(null, [], []);
+            }
+            $naming = $this->catalogue->naming($subject->table);
+            foreach ($naming as $reference) {
+                if (RecordUse::Cleared === $reference->onDelete) {
+                    throw new \LogicException(\sprintf('%s.%s is %s, which deleting a %s does not handle yet.', $reference->table, $reference->column, $reference->onDelete->value, $subject->table));
+                }
+            }
+            $byImport = array_map(static fn (RecordReference $reference): RecordReference => $reference->rowsOfImport($runId->toRfc4122()), array_values(array_filter($naming, static fn (RecordReference $reference): bool => null !== $reference->importRunColumn)));
+            $used = $this->store->uses($company->getId(), $present, self::of($naming, RecordUse::Uses));
+            $own = [] === $byImport ? [] : $this->store->uses($company->getId(), $present, $byImport);
+            $merged = MergedAway::Aliased === $subject->mergedAway ? $this->store->mergedAwayAmong($company->getId(), $subject, $present) : [];
+
+            $removable = $removed = $kept = [];
+            foreach ($present as $id) {
+                $key = $id->toRfc4122();
+                $uses = self::lessOwn($used[$key] ?? [], $own[$key] ?? []);
+                // An alias stands for what the books and the stock still name: it goes only with the merge's undo.
+                if (\in_array($key, $merged, true)) {
+                    $uses[] = ['table' => $subject->table, 'column' => 'merged_into_id', 'count' => 1];
+                }
+                if ([] !== $uses) {
+                    $kept[] = ['id' => $key, 'label' => $labels[$key], 'uses' => $uses];
+                    continue;
+                }
+                $removable[] = $id;
+                $removed[] = ['id' => $key, 'label' => $labels[$key]];
+            }
+            if ([] === $removed) {
+                return new ImportedRecordsTaken(null, [], $kept);
+            }
+
+            $removal = RecordRemoval::import(Uuid::v7(), $company, $subject->table, $removed, $actorUserId, $this->clock->now(), new \DateInterval($this->undoableFor));
+            $this->removals->save($removal);
+            $this->store->remove($company->getId(), $removal->getId(), $subject, $removable, [...self::of($naming, RecordUse::Owned), ...$byImport]);
+            foreach ($removable as $id) {
+                $this->audit->record(new AuditEntry($subject->table, $id, $subject->table.'.deleted', $actorUserId, [], $company->getId()));
+            }
+
+            return new ImportedRecordsTaken($removal, $removed, $kept);
+        });
+    }
+
+    /**
+     * What names a record once the rows its own import wrote are left out.
+     *
+     * @param list<array{table: string, column: string, count: int}> $uses
+     * @param list<array{table: string, column: string, count: int}> $own
+     *
+     * @return list<array{table: string, column: string, count: int}>
+     */
+    private static function lessOwn(array $uses, array $own): array
+    {
+        $left = [];
+        foreach ($uses as $use) {
+            foreach ($own as $mine) {
+                if ($mine['table'] === $use['table'] && $mine['column'] === $use['column']) {
+                    $use['count'] -= $mine['count'];
+                }
+            }
+            if ($use['count'] > 0) {
+                $left[] = $use;
+            }
+        }
+
+        return $left;
+    }
+
+    /**
      * @param list<RecordReference> $references
      *
      * @return list<RecordReference>

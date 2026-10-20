@@ -30,7 +30,8 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Puts back every record a delete took, as they were, until its day ends; all of them or none. A merge is undone the
+ * Puts back every record a delete took, as they were, until its day ends; all of them or none, with what the context
+ * that made the removal puts back beside them (an import's undo, the stock it took back). A merge is undone the
  * same way, and every row it pointed at the record kept that still names it is pointed back; undoing one takes the
  * proof merging took, and is refused once the record kept traded since (goods received, an expense in the books).
  */
@@ -48,6 +49,9 @@ final readonly class RestoreRecords
         /** @var iterable<MergeEffects> */
         #[AutowireIterator('app.record.merge_effects')]
         private iterable $effects = [],
+        /** @var iterable<RemovalRestored> */
+        #[AutowireIterator('app.record.removal_restored')]
+        private iterable $restored = [],
     ) {
     }
 
@@ -99,6 +103,9 @@ final readonly class RestoreRecords
                         }
                     }
                 }
+            }
+            foreach ($this->restored as $restored) {
+                $restored->restored($company, $removal, $actorUserId);
             }
             $removal->restore($now);
             $this->removals->save($removal);

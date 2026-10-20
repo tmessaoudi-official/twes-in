@@ -64,6 +64,21 @@ class ImportRun implements CompanyOwned
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $pairing;
 
+    /** When « Annuler cet import » took back what it did; null while it stands, and again once the bin puts it back. */
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $undoneAt = null;
+
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $undoneBy = null;
+
+    /** Names what its undo did beside the records (the stock it took back), so the bin's restore finds it again. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $undoId = null;
+
+    /** The removal its undo made of the records it created, which « Récemment supprimés » restores; null when it made none. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $undoRemovalId = null;
+
     /** @param array<string, string> $pairing */
     public function __construct(Uuid $id, Company $company, string $subject, string $contentHash, string $mode, ?Uuid $importedBy, int $created, int $updated, \DateTimeImmutable $at, array $pairing = [])
     {
@@ -131,5 +146,51 @@ class ImportRun implements CompanyOwned
     public function getAt(): \DateTimeImmutable
     {
         return $this->at;
+    }
+
+    /** Whether « Annuler cet import » may still take it back: within its day, and not already taken back. */
+    public function isUndoableAt(\DateTimeImmutable $now, \DateInterval $undoableFor): bool
+    {
+        return null === $this->undoneAt && $now < $this->at->add($undoableFor);
+    }
+
+    public function undo(Uuid $undoId, ?Uuid $by, \DateTimeImmutable $now, ?Uuid $removalId): void
+    {
+        if (null !== $this->undoneAt) {
+            throw new \LogicException('An import is taken back once.');
+        }
+        $this->undoId = $undoId;
+        $this->undoneAt = $now;
+        $this->undoneBy = $by;
+        $this->undoRemovalId = $removalId;
+    }
+
+    /** The bin put back what its undo took: it stands again, and may be taken back again within its day. */
+    public function restored(): void
+    {
+        $this->undoId = null;
+        $this->undoneAt = null;
+        $this->undoneBy = null;
+        $this->undoRemovalId = null;
+    }
+
+    public function getUndoId(): ?Uuid
+    {
+        return $this->undoId;
+    }
+
+    public function getUndoneAt(): ?\DateTimeImmutable
+    {
+        return $this->undoneAt;
+    }
+
+    public function getUndoneBy(): ?Uuid
+    {
+        return $this->undoneBy;
+    }
+
+    public function getUndoRemovalId(): ?Uuid
+    {
+        return $this->undoRemovalId;
     }
 }

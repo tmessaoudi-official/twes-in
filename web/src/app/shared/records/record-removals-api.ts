@@ -19,6 +19,8 @@ export type RecordRemoval = RemovalCommon &
     | { readonly kind: 'delete'; readonly kept: null }
     /** `kept` is the record the others were merged into. */
     | { readonly kind: 'merge'; readonly kept: RemovedItem }
+    /** What « Annuler cet import » took: putting it back stands the import again, its stock with it. */
+    | { readonly kind: 'import'; readonly kept: null }
   );
 
 interface RemovalCommon {

@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Application;
 
+use Symfony\Component\Uid\Uuid;
+
 /**
  * What an import did, or would do: the lines created, updated, found unchanged and rejected, by the file's own line
  * numbers, what each line updated changes, old and new, what the rows imported were noted for, and whether this very
@@ -34,6 +36,8 @@ final readonly class ImportReport
         public ?\DateTimeImmutable $alreadyImportedAt = null,
         public array $changes = [],
         public array $unchanged = [],
+        /** The import kept, which « Annuler cet import » names; null for a preview or a file refused. */
+        public ?Uuid $run = null,
     ) {
     }
 }
