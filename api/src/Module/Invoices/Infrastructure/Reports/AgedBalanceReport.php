@@ -24,6 +24,7 @@ use App\Module\Reports\Application\ReportPeriod;
 use App\Module\Reports\Application\ReportRow;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
@@ -98,11 +99,11 @@ final readonly class AgedBalanceReport implements DeclaresReport
         $params['today'] = $context->today->format('Y-m-d');
 
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT i.customer_id, c.name, '.implode(', ', $sums).', SUM(i.amount_due) AS total, COUNT(*) AS invoices
-               FROM invoice i JOIN customer c ON c.id = i.customer_id
+            'SELECT c.id AS customer_id, c.name, '.implode(', ', $sums).', SUM(i.amount_due) AS total, COUNT(*) AS invoices
+               FROM invoice i '.KeptRecords::join('customer', 'i.customer_id', 'c', 'cn', required: true).'
               WHERE '.$where.'
-              GROUP BY i.customer_id, c.name
-              ORDER BY SUM(i.amount_due) DESC, c.name, i.customer_id',
+              GROUP BY c.id, c.name
+              ORDER BY SUM(i.amount_due) DESC, c.name, c.id',
             $params,
             ['open' => ArrayParameterType::STRING],
         );
@@ -139,7 +140,7 @@ final readonly class AgedBalanceReport implements DeclaresReport
         $rows = $this->connection->fetchAllAssociative(
             'SELECT i.id, i.number, i.customer_snapshot ->> \'name\' AS party, i.due_date, i.amount_due
                FROM invoice i
-              WHERE '.$where.' AND i.customer_id = :customer
+              WHERE '.$where.' AND '.KeptRecords::among('i.customer_id', 'customer', ':customer').'
               ORDER BY i.due_date, i.number, i.id
               LIMIT :limit',
             $params + ['customer' => $rowKey, 'limit' => self::DOCUMENTS_SHOWN + 1],

@@ -629,6 +629,35 @@ final class ProductMergeTest extends ApiTestCase
         self::assertSame([[$kept, '1.000', 30]], array_map(static fn (array $row): array => [$row['subjectId'] ?? null, \is_array($row['params'] ?? null) ? $row['params']['onHand'] ?? null : null, \is_array($row['params'] ?? null) ? $row['params']['days'] ?? null : null], $this->jsonList()));
     }
 
+    /** « Pas vendu » reads the product kept with what was sold under the product merged into it, as the dead stock does. */
+    public function testWhatTheProductMergedAwaySoldKeepsTheProductKeptOffTheUnsold(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $this->soldDaysAgo($merged, 10);
+        $this->merged($kept, [$merged]);
+
+        $this->getJson($this->path('watch/invoices.unsold_products'));
+        self::assertResponseIsSuccessful();
+        self::assertNotContains($kept, array_column($this->jsonList(), 'subjectId'), 'sold ten days ago under the product merged into it');
+    }
+
+    public function testTheProductKeptHasGoneUnsoldSinceTheLastSaleOfWhatWasMergedIntoIt(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
+        $this->soldDaysAgo($merged, 100);
+        $this->merged($kept, [$merged]);
+
+        $this->getJson($this->path('watch/invoices.unsold_products'));
+        self::assertResponseIsSuccessful();
+        $days = [];
+        foreach ($this->jsonList() as $row) {
+            $days[$this->stringAt($row, 'subjectId')] = \is_array($row['params'] ?? null) ? $row['params']['days'] ?? null : null;
+        }
+        self::assertSame(100, $days[$kept] ?? null, 'unsold since the sale under the product merged into it, not since it was created 120 days ago');
+    }
+
     /** A sale of the product merged away whose goods came back to the product kept, in its lot, was never a sale. */
     public function testASaleComingBackToTheProductKeptIsNoSaleForTheDeadStock(): void
     {
@@ -689,6 +718,15 @@ final class ProductMergeTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
         return $this->json();
+    }
+
+    /** Every product created 120 days ago, and an invoice of `$product` issued `$days` days ago. */
+    private function soldDaysAgo(string $product, int $days): void
+    {
+        $invoice = $this->anInvoice($product, issued: true);
+        $connection = $this->em()->getConnection();
+        $connection->executeStatement("UPDATE product SET created_at = now() - interval '120 days' WHERE company_id = ?", [$this->companyId()]);
+        $connection->executeStatement('UPDATE invoice SET issue_date = CAST(? AS date) WHERE id = ?', [(new \DateTimeImmutable("-$days days"))->format('Y-m-d'), $invoice]);
     }
 
     /** @return array<string, mixed> */

@@ -266,6 +266,71 @@ final class CustomerMergeTest extends ApiTestCase
         self::assertSame(['Carthage Conseil Sfax', false], [$this->em()->getConnection()->fetchOne('SELECT name FROM customer WHERE id = ?', [$merged]), $this->em()->getConnection()->fetchOne('SELECT is_active FROM customer WHERE id = ?', [$merged])]);
     }
 
+    /**
+     * What was issued to a customer merged away is read under the customer kept, in every customer report and in
+     * « À surveiller », while the invoice itself keeps naming the customer it was issued to.
+     */
+    public function testTheReportsAndTheWatchReadTheCustomerKeptWithWhatWasMergedIntoIt(): void
+    {
+        $this->signedIn();
+        [$kept, $merged, $other] = [$this->customerId('C-001'), $this->customerId('C-002'), $this->customerId('C-003')];
+        $issued = [$this->anIssuedLateInvoice($kept), $this->anIssuedLateInvoice($merged), $this->anIssuedLateInvoice($other)];
+        $this->merged($kept, [$merged]);
+        $today = $this->em()->getConnection()->fetchOne('SELECT CURRENT_DATE::text');
+        self::assertIsString($today);
+
+        $expected = [[$kept, 'Carthage Conseil', 2], [$other, 'Carthage', 1]];
+        foreach (['sales-by-customer' => 'documents', 'aged-balance' => 'invoices', 'credit-notes-and-discounts' => 'discounted_invoices', 'withholding-suffered' => 'documents'] as $report => $count) {
+            // The aged balance reads today and takes no period.
+            $period = 'aged-balance' === $report ? '' : "from=$today&to=$today";
+            $this->getJson($this->path("reports/$report?$period"));
+            self::assertResponseIsSuccessful();
+            $rows = [];
+            foreach ($this->arrayAt($this->json(), 'rows') as $row) {
+                self::assertIsArray($row);
+                $cells = \is_array($row['cells'] ?? null) ? $row['cells'] : [];
+                $rows[] = [$row['key'] ?? null, $cells['customer'] ?? null, $cells[$count] ?? null];
+            }
+            usort($rows, static fn (array $a, array $b): int => $b[2] <=> $a[2]);
+            self::assertSame($expected, $rows, "$report reads the customer kept");
+
+            $this->getJson($this->path("reports/$report/documents?$period&row=$kept"));
+            self::assertResponseIsSuccessful();
+            $documents = array_column($this->arrayAt($this->json(), 'documents'), 'id');
+            sort($documents);
+            $both = [$issued[0], $issued[1]];
+            sort($both);
+            self::assertSame($both, $documents, "$report opens what was issued to both");
+        }
+
+        $this->getJson($this->path('watch/invoices.late_customer'));
+        self::assertResponseIsSuccessful();
+        $late = array_map(static fn (array $row): array => [$row['subjectId'] ?? null, \is_array($row['params'] ?? null) ? [$row['params']['customer'] ?? null, $row['params']['invoices'] ?? null] : null], $this->jsonList());
+        // Due the same day, the two customers late read by name.
+        self::assertSame([[$other, ['Carthage', 1]], [$kept, ['Carthage Conseil', 2]]], $late);
+        $this->getJson($this->path('watch'));
+        self::assertResponseIsSuccessful();
+        $counts = array_column($this->arrayAt($this->json(), 'subjects'), 'count', 'kind');
+        self::assertSame(2, $counts['invoices.late_customer'] ?? null, 'two customers late, not three');
+        self::assertSame($merged, $this->em()->getConnection()->fetchOne('SELECT customer_id::text FROM invoice WHERE id = ?', [$issued[1]]), 'the invoice keeps the customer it was issued to');
+
+        // A cheque handed for an invoice of the customer merged away falls due as the customer kept's.
+        $this->em()->getConnection()->executeStatement(
+            "INSERT INTO payment_instrument (id, invoice_id, company_id, kind, amount, due_on, bank, number, status, created_at, updated_at)
+             VALUES (?, ?, ?, 'check', '1.000', CURRENT_DATE, '', 'CHQ-1', 'held', now(), now())",
+            [Uuid::v7()->toRfc4122(), $issued[1], $this->companyId()],
+        );
+        $this->getJson($this->path('watch/invoices.instruments_due'));
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$issued[1], 'Carthage Conseil']], array_map(static fn (array $row): array => [$row['subjectId'] ?? null, \is_array($row['params'] ?? null) ? $row['params']['customer'] ?? null : null], $this->jsonList()));
+
+        // What was paid beyond an invoice of the customer merged away is taken from the customer kept.
+        $this->em()->getConnection()->executeStatement('UPDATE customer_credit_entry SET invoice_id = ? WHERE id = ?', [$issued[1], $this->aCreditEntry($merged)]);
+        $this->getJson($this->path("reports/takings/documents?from=$today&to=$today&row=d0"));
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$issued[1], 'Carthage Conseil']], array_map(static fn (mixed $document): array => \is_array($document) ? [$document['id'] ?? null, $document['party'] ?? null] : [], $this->arrayAt($this->json(), 'documents')));
+    }
+
     /** Before anything runs, the screen says what each customer would hand over and what would stay with it. */
     public function testThePreviewSaysWhatMovesAndWhatStays(): void
     {
@@ -350,6 +415,18 @@ final class CustomerMergeTest extends ApiTestCase
             // The engine reads the document's state, not how it got there: issuing for real is the invoices' own tests.
             $this->em()->getConnection()->executeStatement("UPDATE invoice SET status = 'issued', issued_at = now(), updated_at = now() + interval '1 second' WHERE id = ?", [$id]);
         }
+
+        return $id;
+    }
+
+    /** An invoice issued today, due forty days ago and unpaid, with a discount and a withholding: in every customer report. */
+    private function anIssuedLateInvoice(string $customer): string
+    {
+        $id = $this->anInvoice($customer, issued: true);
+        $this->em()->getConnection()->executeStatement(
+            'UPDATE invoice SET number = ?, issue_date = current_date, due_date = current_date - 40, total_net = 12, total_gross = 12, amount_due = 12, savings = 1.000, withholding_amount = 1.000 WHERE id = ?',
+            ['FAC-'.substr($id, -12), $id],
+        );
 
         return $id;
     }

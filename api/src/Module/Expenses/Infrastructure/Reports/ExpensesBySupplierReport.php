@@ -20,6 +20,7 @@ use App\Module\Reports\Application\ReportDocument;
 use App\Module\Reports\Application\ReportDrill;
 use App\Module\Reports\Application\ReportPeriod;
 use App\Module\Reports\Application\ReportRow;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Symfony\Component\Uid\Uuid;
@@ -34,9 +35,6 @@ use Symfony\Component\Uid\Uuid;
 final readonly class ExpensesBySupplierReport implements DeclaresReport
 {
     private const string RECORDED = 'e.company_id = :company AND e.status IN (:recorded, :paid) AND e.expense_date BETWEEN :from AND :to';
-
-    /** The vendor an expense is counted under: the one it names, or the one kept when that one was merged away. */
-    private const string STANDING = 'LEFT JOIN vendor named ON named.id = e.vendor_id LEFT JOIN vendor v ON v.id = COALESCE(named.merged_into_id, named.id)';
 
     /** The same name whatever its case and spaces: « Société  X » and « société x » are one payee. */
     private const string PAYEE = 'lower(regexp_replace(btrim(e.payee), \'\s+\', \' \', \'g\'))';
@@ -92,7 +90,7 @@ final readonly class ExpensesBySupplierReport implements DeclaresReport
                             CASE WHEN e.vendor_id IS NULL AND btrim(e.payee) <> \'\' THEN md5('.self::PAYEE.') END AS payee_key,
                             e.amount_net, e.tax_amount + e.fixed_amount AS taxes, e.amount_gross
                        FROM expense e
-                       '.self::STANDING.'
+                       '.self::standing().'
                       WHERE '.self::RECORDED.') spent
               GROUP BY vendor_id, payee_key
               ORDER BY (vendor_id IS NULL AND payee_key IS NULL), SUM(amount_gross) DESC, name, vendor_id, payee_key',
@@ -140,7 +138,7 @@ final readonly class ExpensesBySupplierReport implements DeclaresReport
         }
         $rows = $this->connection->fetchAllAssociative(
             'SELECT e.id, e.reference, COALESCE(v.name, e.payee) AS party, e.expense_date, e.amount_gross
-               FROM expense e '.self::STANDING.'
+               FROM expense e '.self::standing().'
               WHERE '.self::RECORDED.' AND '.$which.'
               ORDER BY e.expense_date, e.reference, e.id
               LIMIT :limit',
@@ -168,6 +166,12 @@ final readonly class ExpensesBySupplierReport implements DeclaresReport
             'from' => $period->from->format('Y-m-d'),
             'to' => $period->to->format('Y-m-d'),
         ];
+    }
+
+    /** The vendor an expense is counted under: the one it names, or the one kept when that one was merged away. */
+    private static function standing(): string
+    {
+        return KeptRecords::join('vendor', 'e.vendor_id', 'v');
     }
 
     private static function text(mixed $value): string

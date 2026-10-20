@@ -27,6 +27,7 @@ use App\Module\Products\Domain\Model\Product;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use BcMath\Number;
@@ -71,7 +72,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         }
         // Read under the locks, from the table: a merge holds them while it carries the stock away and aliases the product.
         $merged = $this->entityManager->getConnection()->fetchFirstColumn(
-            'SELECT id::text FROM product WHERE id = ANY(CAST(:ids AS uuid[])) AND merged_into_id IS NOT NULL',
+            'SELECT p.id::text FROM product p WHERE p.id = ANY(CAST(:ids AS uuid[])) AND '.KeptRecords::mergedAway('p'),
             ['ids' => '{'.implode(',', array_keys($products)).'}'],
         );
         foreach ($movements as $movement) {

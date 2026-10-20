@@ -12,6 +12,7 @@ namespace App\Tests\Integration\Watch;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Infrastructure\Watch\InvoiceWatch;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -48,7 +49,7 @@ final class OpenInvoiceIndexTest extends KernelTestCase
             }
             $plan = '';
             foreach ($connection->fetchFirstColumn(
-                'EXPLAIN SELECT i.customer_id FROM invoice i WHERE '.InvoiceWatch::LATE_WHERE.' GROUP BY i.customer_id',
+                'EXPLAIN SELECT 1 FROM invoice i JOIN customer cn ON cn.id = i.customer_id WHERE '.InvoiceWatch::LATE_WHERE.' GROUP BY '.KeptRecords::id('cn'),
                 [
                     'company' => '01a0ecf8-8931-7d54-9164-5792991ac309',
                     'type' => InvoiceType::Invoice->value,

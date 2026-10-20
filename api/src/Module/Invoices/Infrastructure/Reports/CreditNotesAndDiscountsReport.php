@@ -21,6 +21,7 @@ use App\Module\Reports\Application\ReportDocument;
 use App\Module\Reports\Application\ReportDrill;
 use App\Module\Reports\Application\ReportPeriod;
 use App\Module\Reports\Application\ReportRow;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Symfony\Component\Uid\Uuid;
@@ -81,16 +82,16 @@ final readonly class CreditNotesAndDiscountsReport implements DeclaresReport
     {
         [$where, $params] = $this->given($context, $period);
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT i.customer_id, c.name,
+            'SELECT c.id AS customer_id, c.name,
                     -SUM(i.total_net) FILTER (WHERE i.document_type = :credit) AS credited,
                     COUNT(*) FILTER (WHERE i.document_type = :credit) AS credit_notes,
                     SUM(i.savings) FILTER (WHERE i.document_type <> :credit) AS discounted,
                     COUNT(*) FILTER (WHERE i.document_type <> :credit) AS discounted_invoices
-               FROM invoice i JOIN customer c ON c.id = i.customer_id
+               FROM invoice i '.KeptRecords::join('customer', 'i.customer_id', 'c', 'cn', required: true).'
               WHERE '.$where.'
-              GROUP BY i.customer_id, c.name
+              GROUP BY c.id, c.name
               ORDER BY COALESCE(-SUM(i.total_net) FILTER (WHERE i.document_type = :credit), 0)
-                     + COALESCE(SUM(i.savings) FILTER (WHERE i.document_type <> :credit), 0) DESC, c.name, i.customer_id',
+                     + COALESCE(SUM(i.savings) FILTER (WHERE i.document_type <> :credit), 0) DESC, c.name, c.id',
             $params,
         );
 
@@ -119,7 +120,7 @@ final readonly class CreditNotesAndDiscountsReport implements DeclaresReport
             'SELECT i.id, i.number, i.customer_snapshot ->> \'name\' AS party, i.issue_date,
                     CASE WHEN i.document_type = :credit THEN -i.total_net ELSE i.savings END AS given
                FROM invoice i
-              WHERE '.$where.' AND i.customer_id = :customer
+              WHERE '.$where.' AND '.KeptRecords::among('i.customer_id', 'customer', ':customer').'
               ORDER BY i.issue_date, i.number, i.id
               LIMIT :limit',
             $params + ['customer' => $rowKey, 'limit' => self::DOCUMENTS_SHOWN + 1],

@@ -23,6 +23,7 @@ use App\Module\Reports\Application\ReportDrill;
 use App\Module\Reports\Application\ReportPeriod;
 use App\Module\Reports\Application\ReportRow;
 use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
@@ -37,7 +38,11 @@ use Doctrine\DBAL\ParameterType;
  */
 final readonly class TakingsReport implements DeclaresReport
 {
-    /** The money taken, one row per payment or credit entry, with its means: what every figure and document reads. */
+    /**
+     * The money taken, one row per payment or credit entry, with its means: what every figure and document reads. An
+     * invoice's party is the name it was issued to; a credit entry's is the customer kept, as a merge leaves the entry
+     * naming the customer merged away.
+     */
     private const string MONEY = 'SELECT p.payment_date AS day, p.method AS means, p.amount, i.id AS document, i.number, i.customer_snapshot ->> \'name\' AS party
            FROM payment p JOIN invoice i ON i.id = p.invoice_id
           WHERE i.company_id = :company AND i.document_type = :invoice AND i.status <> :cancelled AND i.amount_due IS NOT NULL
@@ -46,7 +51,7 @@ final readonly class TakingsReport implements DeclaresReport
          UNION ALL
          SELECT e.entry_date, CASE WHEN e.kind = :overpayment THEN \'overpaid\' ELSE \'refunded\' END, e.amount, e.invoice_id, i.number, c.name
            FROM customer_credit_entry e
-           JOIN customer c ON c.id = e.customer_id
+           %2$s
            LEFT JOIN invoice i ON i.id = e.invoice_id
           WHERE e.company_id = :company AND e.kind IN (:overpayment, :refunded) AND e.entry_date BETWEEN :from AND :to %1$s';
 
@@ -158,10 +163,15 @@ final readonly class TakingsReport implements DeclaresReport
             'to' => $period->to->format('Y-m-d'),
         ];
         if (null === $context->establishmentId) {
-            return [\sprintf(self::MONEY, ''), $params];
+            return [\sprintf(self::MONEY, '', self::party()), $params];
         }
 
-        return [\sprintf(self::MONEY, 'AND i.establishment_id = :establishment'), $params + ['establishment' => $context->establishmentId]];
+        return [\sprintf(self::MONEY, 'AND i.establishment_id = :establishment', self::party()), $params + ['establishment' => $context->establishmentId]];
+    }
+
+    private static function party(): string
+    {
+        return KeptRecords::join('customer', 'e.customer_id', 'c', 'cn', required: true);
     }
 
     private static function text(mixed $value): string

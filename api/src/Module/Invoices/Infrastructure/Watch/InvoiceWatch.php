@@ -19,6 +19,7 @@ use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use App\Tenancy\Domain\Model\Company;
 use App\Watch\Application\DeclaresWatch;
 use App\Watch\Application\WatchItem;
@@ -79,9 +80,9 @@ final readonly class InvoiceWatch implements DeclaresWatch
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
     {
         [$sql, $params, $types] = match ($kind) {
-            // The customers alone: the join to their names is the page's business, and counting without it reads an
-            // index of the open invoices and nothing else.
-            self::LATE_CUSTOMER => ['SELECT COUNT(*) FROM (SELECT 1 FROM invoice i WHERE '.self::LATE_WHERE.' GROUP BY i.customer_id) late', ...$this->lateBindings($company, $today)],
+            // The customers kept: a customer merged into another counts as the one kept, so only the customer each
+            // invoice names is joined, by its key, for the one it points at; the names are the page's business.
+            self::LATE_CUSTOMER => ['SELECT COUNT(*) FROM (SELECT 1 FROM invoice i JOIN customer cn ON cn.id = i.customer_id WHERE '.self::LATE_WHERE.' GROUP BY '.KeptRecords::id('cn').') late', ...$this->lateBindings($company, $today)],
             self::UNSOLD_PRODUCTS => ['SELECT COUNT(*) FROM ('.$this->unsoldFrom().') unsold', ...$this->unsoldBindings($company, $today)],
             self::INSTRUMENTS_DUE => ['SELECT COUNT(*) FROM payment_instrument pi WHERE '.self::INSTRUMENTS_WHERE, ...$this->dueBindings($company, $today)],
             default => throw new \LogicException(\sprintf('The invoices watch has no %s.', $kind)),
@@ -115,11 +116,11 @@ final readonly class InvoiceWatch implements DeclaresWatch
     {
         [$params, $types] = $this->lateBindings($company, $today);
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT i.customer_id, c.name, COUNT(*) AS invoices, SUM(i.amount_due) AS amount, MIN(i.due_date) AS oldest
-               FROM invoice i JOIN customer c ON c.id = i.customer_id
+            'SELECT c.id AS customer_id, c.name, COUNT(*) AS invoices, SUM(i.amount_due) AS amount, MIN(i.due_date) AS oldest
+               FROM invoice i '.KeptRecords::join('customer', 'i.customer_id', 'c', 'cn', required: true).'
               WHERE '.self::LATE_WHERE.'
-              GROUP BY i.customer_id, c.name
-              ORDER BY MIN(i.due_date), c.name, i.customer_id
+              GROUP BY c.id, c.name
+              ORDER BY MIN(i.due_date), c.name, c.id
               LIMIT :limit OFFSET :offset',
             $params + $paging,
             $types,
@@ -153,11 +154,12 @@ final readonly class InvoiceWatch implements DeclaresWatch
             $types,
         );
         $lastSold = [] === $rows ? [] : $this->connection->fetchAllKeyValue(
-            'SELECT l.product_id, MAX(i.issue_date)
-               FROM invoice_line l JOIN invoice i ON i.id = l.invoice_id
-              WHERE l.product_id IN (:products) AND i.document_type = :type AND i.status IN (:sold)
-              GROUP BY l.product_id',
-            ['products' => array_column($rows, 'id'), 'type' => $params['type'], 'sold' => $params['sold']],
+            'SELECT '.KeptRecords::id('sold').', MAX(i.issue_date)
+               FROM invoice_line l JOIN invoice i ON i.id = l.invoice_id JOIN product sold ON sold.id = l.product_id
+              WHERE i.company_id = :company AND '.KeptRecords::among('l.product_id', 'product', ':products', list: true).'
+                AND i.document_type = :type AND i.status IN (:sold)
+              GROUP BY '.KeptRecords::id('sold'),
+            ['company' => $params['company'], 'products' => array_column($rows, 'id'), 'type' => $params['type'], 'sold' => $params['sold']],
             ['products' => ArrayParameterType::STRING, 'sold' => ArrayParameterType::STRING],
         );
 
@@ -188,7 +190,7 @@ final readonly class InvoiceWatch implements DeclaresWatch
             'SELECT pi.id, pi.invoice_id, pi.kind, pi.number, pi.bank, pi.amount, pi.due_on, i.number AS invoice, c.name
                FROM payment_instrument pi
                JOIN invoice i ON i.id = pi.invoice_id
-               JOIN customer c ON c.id = i.customer_id
+               '.KeptRecords::join('customer', 'i.customer_id', 'c', 'cn', required: true).'
               WHERE '.self::INSTRUMENTS_WHERE.'
               ORDER BY pi.due_on, pi.id
               LIMIT :limit OFFSET :offset',
@@ -256,8 +258,8 @@ final readonly class InvoiceWatch implements DeclaresWatch
                  WHERE p.company_id = :company AND p.is_active AND p.kind = 'goods' AND p.created_at < :since
                    AND NOT EXISTS (
                        SELECT 1 FROM invoice_line l JOIN invoice i ON i.id = l.invoice_id
-                        WHERE l.product_id = p.id AND i.document_type = :type AND i.status IN (:sold) AND i.issue_date >= :since
-                   )";
+                        WHERE ".KeptRecords::among('l.product_id', 'product', 'p.id').' AND i.document_type = :type AND i.status IN (:sold) AND i.issue_date >= :since
+                   )';
     }
 
     /** @return array{array<string, mixed>, array<string, ArrayParameterType>} */

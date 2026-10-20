@@ -19,6 +19,7 @@ use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use App\Tenancy\Domain\Model\Company;
 use App\Watch\Application\DeclaresWatch;
 use App\Watch\Application\WatchItem;
@@ -140,14 +141,14 @@ final readonly class StockWatch implements DeclaresWatch
     {
         return [
             'WITH hand AS (
-                  SELECT COALESCE(mp.merged_into_id, mp.id) AS product_id, SUM(m.quantity) AS on_hand
+                  SELECT '.KeptRecords::id('mp').' AS product_id, SUM(m.quantity) AS on_hand
                     FROM stock_movement m JOIN stock_location l ON l.id = m.location_id JOIN product mp ON mp.id = m.product_id
-                   WHERE m.company_id = :company AND l.kind <> :quarantine GROUP BY COALESCE(mp.merged_into_id, mp.id)
+                   WHERE m.company_id = :company AND l.kind <> :quarantine GROUP BY '.KeptRecords::id('mp').'
              ), pace AS (
-                  SELECT COALESCE(mp.merged_into_id, mp.id) AS product_id, -SUM(m.quantity) AS gone
+                  SELECT '.KeptRecords::id('mp').' AS product_id, -SUM(m.quantity) AS gone
                     FROM stock_movement m JOIN product mp ON mp.id = m.product_id
                    WHERE m.company_id = :company AND m.kind = :out AND m.source_type NOT IN (:move, :merge) AND m.at >= :since
-                   GROUP BY COALESCE(mp.merged_into_id, mp.id)
+                   GROUP BY '.KeptRecords::id('mp').'
              )
              SELECT p.id, p.name, p.reference, h.on_hand::numeric(14, 3) AS on_hand, FLOOR(h.on_hand * :window / pace.gone)::int AS days_left, h.on_hand * :window / pace.gone AS ratio
                FROM pace JOIN hand h ON h.product_id = pace.product_id JOIN product p ON p.id = pace.product_id

@@ -20,6 +20,7 @@ use App\Module\Reports\Application\ReportDocument;
 use App\Module\Reports\Application\ReportDrill;
 use App\Module\Reports\Application\ReportPeriod;
 use App\Module\Reports\Application\ReportRow;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Symfony\Component\Uid\Uuid;
@@ -79,11 +80,11 @@ final readonly class SalesByCustomerReport implements DeclaresReport
     {
         [$where, $params] = $this->issued($context, $period);
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT i.customer_id, c.name, SUM(i.total_net) AS net, SUM(i.total_gross) AS gross, COUNT(*) AS documents
-               FROM invoice i JOIN customer c ON c.id = i.customer_id
+            'SELECT c.id AS customer_id, c.name, SUM(i.total_net) AS net, SUM(i.total_gross) AS gross, COUNT(*) AS documents
+               FROM invoice i '.KeptRecords::join('customer', 'i.customer_id', 'c', 'cn', required: true).'
               WHERE '.$where.'
-              GROUP BY i.customer_id, c.name
-              ORDER BY SUM(i.total_net) DESC, c.name, i.customer_id',
+              GROUP BY c.id, c.name
+              ORDER BY SUM(i.total_net) DESC, c.name, c.id',
             $params,
         );
         $narrowed = null !== $context->establishmentId;
@@ -120,7 +121,7 @@ final readonly class SalesByCustomerReport implements DeclaresReport
         $rows = $this->connection->fetchAllAssociative(
             'SELECT i.id, i.number, i.customer_snapshot ->> \'name\' AS party, i.issue_date, i.total_net
                FROM invoice i
-              WHERE '.$where.' AND i.customer_id = :customer
+              WHERE '.$where.' AND '.KeptRecords::among('i.customer_id', 'customer', ':customer').'
               ORDER BY i.issue_date, i.number, i.id
               LIMIT :limit',
             $params + ['customer' => $rowKey, 'limit' => self::DOCUMENTS_SHOWN + 1],
