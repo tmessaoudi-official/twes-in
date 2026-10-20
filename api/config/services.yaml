@@ -66,6 +66,8 @@ parameters:
     app.step_up.attempts: 5
     # How long « Effacer des données » keeps what it took, for its undo; then the copy and the files only it named go.
     app.erasure.undoable_for: 'PT24H'
+    # How long « Récemment supprimés » keeps a deleted record, for its restore; then the copy goes and the delete is final.
+    app.records.undoable_for: 'PT24H'
     # How long a demo sandbox may stay half built before it is taken away, its company and owner with it, so its country
     # is queued again: a build takes under a minute, and a stuck one would keep that country's demo closed.
     app.demo.build_gives_up_after: 'PT1H'
@@ -157,10 +159,6 @@ when@test:
         App\Shared\Application\FacturXPdf: '@App\Tests\Support\FakeFacturXPdf'
         # A module only the tests declare, needing customers: the dependency refusals go through the API with it.
         App\Tests\Support\RecordedLogs: ~
-        # Read by its coverage test before any use case reads it, which the container would otherwise remove.
-        App\Records\Application\RecordCatalogue:
-            autowire: true
-            public: true
         App\Tests\Support\Module\LedgerFixtureModule:
             tags: ['app.modules.declarations']
         # FrameworkBundle hardcodes MOCKSESSID for the mock file session storage; the functional tests assert the

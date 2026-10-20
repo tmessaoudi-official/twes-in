@@ -73,6 +73,12 @@ final readonly class RecordCatalogue
         return $this->references;
     }
 
+    /** @throws UnknownRecords when no module declares the subject */
+    public function subject(string $table): RecordSubject
+    {
+        return $this->subjects[$table] ?? throw new UnknownRecords(\sprintf('No module declares %s as a subject.', $table));
+    }
+
     /**
      * The references naming one subject's records, those said of every subject left out.
      *

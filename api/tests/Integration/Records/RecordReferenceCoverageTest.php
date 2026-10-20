@@ -76,7 +76,7 @@ final class RecordReferenceCoverageTest extends KernelTestCase
         $gone = new readonly class implements DeclaresRecordReferences {
             public function subjects(): array
             {
-                return [new RecordSubject('old_supplier', 'vendor.write')];
+                return [new RecordSubject('old_supplier', 'vendor.write', null, ['name'])];
             }
 
             public function references(): array

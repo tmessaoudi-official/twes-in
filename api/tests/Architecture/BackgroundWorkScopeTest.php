@@ -21,6 +21,7 @@ use App\Module\Invoices\Infrastructure\Scheduler\RemindLateInvoicesEveryHour;
 use App\Module\Recurring\Infrastructure\Scheduler\RunRecurringInvoicesEveryHour;
 use App\Module\RecurringExpenses\Infrastructure\Scheduler\RunRecurringExpensesEveryHour;
 use App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos;
+use App\Records\Infrastructure\Scheduler\EndRemovalsEveryQuarterHour;
 use App\Tenancy\Infrastructure\Invitation\InvitationToMailHandler;
 use App\Tenancy\Infrastructure\Scheduler\RemoveClosedCompaniesEveryNight;
 use App\Tenancy\Infrastructure\Signup\SignupAskedHandler;
@@ -43,6 +44,7 @@ final class BackgroundWorkScopeTest extends TestCase
         TendDemoSandboxesEveryFiveMinutes::class => 'each sandbox done with, locked by its own id, removed with the one company and the one owner it names; then no company: it counts the sandboxes, read across companies, and queues new ones, which have none yet',
         SandboxToBuildHandler::class => 'the sandbox by its id, and the company it opens for that sandbox alone, named by id in every step',
         EndErasuresEveryQuarterHour::class => 'each due erasure, locked by its own id, ends the company or account it names',
+        EndRemovalsEveryQuarterHour::class => 'each due delete, locked by its own id and its company, ends in that company',
         FinalizeAccountDeletionsEveryNight::class => 'each due account, locked by its own id, no company: an account belongs to none, and its memberships go with it',
         InvitationToMailHandler::class => 'the invitation by its id, and the company that invitation names',
         NotificationToMailHandler::class => 'the person and the company the message names, both by id',

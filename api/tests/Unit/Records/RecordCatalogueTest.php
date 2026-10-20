@@ -32,14 +32,14 @@ final class RecordCatalogueTest extends TestCase
 
         $this->expectExceptionMessage('purchase_order.vendor_id>vendor is declared twice.');
 
-        new RecordCatalogue([$this->declaring([new RecordSubject('vendor', 'vendor.write')], [$order]), $this->declaring([], [$order])]);
+        new RecordCatalogue([$this->declaring([new RecordSubject('vendor', 'vendor.write', 'vendors', ['number', 'name'])], [$order]), $this->declaring([], [$order])]);
     }
 
     public function testASubjectDeclaredTwiceStopsTheCatalogue(): void
     {
         $this->expectExceptionMessageMatches('/declares the subject vendor, which another module already declared/');
 
-        new RecordCatalogue([$this->declaring([new RecordSubject('vendor', 'vendor.write')], []), $this->declaring([new RecordSubject('vendor', 'vendor.write')], [])]);
+        new RecordCatalogue([$this->declaring([new RecordSubject('vendor', 'vendor.write', 'vendors', ['number', 'name'])], []), $this->declaring([new RecordSubject('vendor', 'vendor.write', 'vendors', ['number', 'name'])], [])]);
     }
 
     public function testTheReferencesNamingASubjectLeaveOutThoseSaidOfEverySubject(): void
@@ -47,7 +47,7 @@ final class RecordCatalogueTest extends TestCase
         $order = RecordReference::uses('purchase_order', 'vendor_id', 'vendor', RecordMerge::Moves, 'An order.');
         $journal = RecordReference::ignored('audit_log', 'entity_id', null, 'History.');
 
-        $catalogue = new RecordCatalogue([$this->declaring([new RecordSubject('vendor', 'vendor.write')], [$order, $journal])]);
+        $catalogue = new RecordCatalogue([$this->declaring([new RecordSubject('vendor', 'vendor.write', 'vendors', ['number', 'name'])], [$order, $journal])]);
 
         self::assertSame([$order], $catalogue->naming('vendor'));
     }
