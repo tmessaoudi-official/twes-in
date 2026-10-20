@@ -630,7 +630,17 @@ final class InvoicesTest extends ApiTestCase
         $this->client->request('GET', $preview.'?logoHeight=25');
         self::assertStringContainsString('width: 70mm; height: 25mm; object-fit: contain;', (string) $this->client->getResponse()->getContent());
 
-        foreach (['?layout=fancy', '?accent=red', '?accent=%231f6feb;}body{display:none', '?logoWidth=9', '?logoWidth=106', '?logoHeight=71', '?logoWidth=4.5', '?logoHeight=big', '?logoProportions=maybe'] as $refused) {
+        // So is the watermark: how strongly, how many times and how its copies sit.
+        $this->client->request('GET', $preview.'?watermarkIntensity=marked&watermarkCopies=6&watermarkSpread=spread');
+        $tried = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('color: rgba(207, 34, 46, .22);', $tried);
+        self::assertStringContainsString('<div class="watermark watermark-many watermark-spread">'.str_repeat('<span>APERÇU</span>', 6).'</div>', $tried);
+        $this->sendJson('PUT', $this->companyPath().'/settings/document.watermark_copies', ['level' => 'company', 'value' => '3']);
+        self::assertResponseIsSuccessful();
+        $this->client->request('GET', $preview);
+        self::assertStringContainsString('<div class="watermark watermark-many watermark-grouped">'.str_repeat('<span>APERÇU</span>', 3).'</div>', (string) $this->client->getResponse()->getContent());
+
+        foreach (['?layout=fancy', '?accent=red', '?accent=%231f6feb;}body{display:none', '?logoWidth=9', '?logoWidth=106', '?logoHeight=71', '?logoWidth=4.5', '?logoHeight=big', '?logoProportions=maybe', '?watermarkIntensity=loud', '?watermarkCopies=2', '?watermarkCopies=three', '?watermarkSpread=everywhere'] as $refused) {
             $this->client->request('GET', $preview.$refused);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
         }

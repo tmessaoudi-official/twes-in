@@ -35,6 +35,7 @@ import type {
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import { Feedback } from '../shared/feedback/feedback';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
@@ -386,8 +387,10 @@ describe('PlatformPage', () => {
       await fixture.whenStable();
       fixture.detectChanges();
     }
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(3);
     query('subscription-save')!.click();
     await fixture.whenStable();
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(0);
 
     expect(facade.saveSubscription).toHaveBeenCalledWith(
       'c1',
@@ -623,6 +626,48 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.saveSupport).toHaveBeenCalledWith({ whatsapp: '+216 20 123 456' });
+  });
+
+  it('counts what is typed in every card and not saved, holding the page until the platform holds it', async () => {
+    const { fixture, query } = await render();
+    const unsaved = TestBed.inject(UnsavedChanges);
+    expect(unsaved.count()).toBe(0);
+    const type = (id: string, value: string) => {
+      const input = query<HTMLInputElement>(id)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+
+    type('platform-support-whatsapp', '+216 20 123 456');
+    type('platform-delay-company.reopen_days', '0');
+    type('platform-demo-most', '20');
+    type('platform-import-rows', '1200');
+    expect(unsaved.count()).toBe(4);
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+
+    type('platform-demo-most', '10');
+    expect(unsaved.count()).toBe(3);
+    support.set({ phone: '', whatsapp: '+216 20 123 456', email: '', status_url: '' });
+    delays.set([...delayRows]);
+    imports.set({ rows: { ...importsState.rows!, value: 1200 } });
+    fixture.detectChanges();
+    expect(unsaved.count()).toBe(0);
+  });
+
+  it('counts a company being opened or an owner being invited until it goes', async () => {
+    const { fixture, query } = await render('/?tab=companies');
+    const unsaved = TestBed.inject(UnsavedChanges);
+    query<HTMLButtonElement>('platform-company-new')!.click();
+    fixture.detectChanges();
+    const name = query<HTMLInputElement>('platform-company-name')!;
+    name.value = 'Quincaillerie';
+    name.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(unsaved.count()).toBe(1);
   });
 
   it('draws a field per delay the platform declares, labelled and bounded as declared', async () => {

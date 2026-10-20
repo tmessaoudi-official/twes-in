@@ -10,10 +10,11 @@ declare(strict_types=1);
 namespace App\Shared\Domain\ValueObject;
 
 /**
- * How a printed document looks: one of the built-in layouts, the company's accent colour and its logo's printed size.
- * The colours printed beside the accent are derived from it here, so that no accent a company picks prints text that
- * cannot be read: text on a band of the accent, and the accent as text on paper, keep WCAG's 4.5:1. The font, the paper
- * and the watermark are not part of a design.
+ * How a printed document looks: one of the built-in layouts, the company's accent colour, its logo's printed size and
+ * how its state prints across it. The colours printed beside the accent are derived from it here, so that no accent a
+ * company picks prints text that cannot be read: text on a band of the accent, and the accent as text on paper, keep
+ * WCAG's 4.5:1. The font and the paper are not part of a design; the watermark's word and colour are the document's
+ * state, and only how strongly, how often and where it prints is.
  */
 final readonly class DocumentDesign
 {
@@ -47,6 +48,7 @@ final readonly class DocumentDesign
         public int $logoWidthMm = self::DEFAULT_LOGO_WIDTH_MM,
         public int $logoHeightMm = self::DEFAULT_LOGO_HEIGHT_MM,
         public bool $logoKeepsProportions = true,
+        public DocumentWatermark $watermark = new DocumentWatermark(),
     ) {
         // Written into the document's stylesheet: anything but a colour is refused, never escaped.
         if (1 !== preg_match('/^#[0-9a-fA-F]{6}$/', $accent)) {
@@ -92,10 +94,10 @@ final readonly class DocumentDesign
         return (max($light, $dark) + 0.05) / (min($light, $dark) + 0.05);
     }
 
-    /** @return array{layout: string, accent: string, logoWidthMm: int, logoHeightMm: int, logoKeepsProportions: bool} */
+    /** @return array{layout: string, accent: string, logoWidthMm: int, logoHeightMm: int, logoKeepsProportions: bool, watermark: array{intensity: string, copies: int, spread: string}} */
     public function toArray(): array
     {
-        return ['layout' => $this->layout->value, 'accent' => $this->accent, 'logoWidthMm' => $this->logoWidthMm, 'logoHeightMm' => $this->logoHeightMm, 'logoKeepsProportions' => $this->logoKeepsProportions];
+        return ['layout' => $this->layout->value, 'accent' => $this->accent, 'logoWidthMm' => $this->logoWidthMm, 'logoHeightMm' => $this->logoHeightMm, 'logoKeepsProportions' => $this->logoKeepsProportions, 'watermark' => $this->watermark->toArray()];
     }
 
     /**
@@ -110,6 +112,7 @@ final readonly class DocumentDesign
         $width = $data['logoWidthMm'] ?? null;
         $height = $data['logoHeightMm'] ?? null;
         $keeps = $data['logoKeepsProportions'] ?? null;
+        $watermark = $data['watermark'] ?? null;
 
         return new self(
             DocumentLayout::tryFrom(\is_string($layout) ? $layout : '') ?? DocumentLayout::Classic,
@@ -117,6 +120,7 @@ final readonly class DocumentDesign
             \is_int($width) ? $width : self::DEFAULT_LOGO_WIDTH_MM,
             \is_int($height) ? $height : self::DEFAULT_LOGO_HEIGHT_MM,
             !\is_bool($keeps) || $keeps,
+            DocumentWatermark::fromArray(\is_array($watermark) ? $watermark : []),
         );
     }
 

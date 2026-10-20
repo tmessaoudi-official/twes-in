@@ -18,6 +18,9 @@ use App\Settings\Infrastructure\ApiPlatform\Security\SettingAccess;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Shared\Domain\ValueObject\DocumentLayout;
+use App\Shared\Domain\ValueObject\DocumentWatermark;
+use App\Shared\Domain\ValueObject\WatermarkIntensity;
+use App\Shared\Domain\ValueObject\WatermarkSpread;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\Request;
@@ -32,7 +35,8 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * The company's latest invoice in a design, its first page as a PNG picture (docs/SPEC.md § 7, 2026-10-06 10:19), for
  * the screen where the design is chosen: `layout`, `accent`, `logoWidth` and `logoHeight` (millimetres) and
- * `logoProportions` (keep or free) in the query try a design before it is saved, and the company's own design stands for
+ * `logoProportions` (keep or free) and the watermark's `watermarkIntensity`, `watermarkCopies` and `watermarkSpread` in
+ * the query try a design before it is saved, and the company's own design stands for
  * what is left out. It is the settings page's, so it asks company.settings, and it
  * shows an invoice, so it asks invoice.read as well. Documented in InvoicesOpenApi.
  */
@@ -67,6 +71,7 @@ final readonly class InvoiceDesignPreviewController
                 'free' => false,
                 default => throw new UnprocessableEntityHttpException('logoProportions: keep or free.'),
             },
+            self::watermark($request, $saved->watermark),
         );
 
         try {
@@ -78,6 +83,21 @@ final readonly class InvoiceDesignPreviewController
         }
 
         return new Response($picture, Response::HTTP_OK, ['Content-Type' => 'image/png', 'Cache-Control' => 'private, no-store']);
+    }
+
+    /** The watermark the query tries, each part the company's own where the query leaves it out. */
+    private static function watermark(Request $request, DocumentWatermark $saved): DocumentWatermark
+    {
+        $intensity = $request->query->get('watermarkIntensity');
+        $copies = $request->query->get('watermarkCopies');
+        $spread = $request->query->get('watermarkSpread');
+        $counts = array_map(strval(...), DocumentWatermark::COPIES);
+
+        return new DocumentWatermark(
+            null === $intensity ? $saved->intensity : (WatermarkIntensity::tryFrom($intensity) ?? throw new UnprocessableEntityHttpException('watermarkIntensity: One of '.implode(', ', array_map(static fn (WatermarkIntensity $each): string => $each->value, WatermarkIntensity::cases())).'.')),
+            null === $copies ? $saved->copies : (\in_array($copies, $counts, true) ? (int) $copies : throw new UnprocessableEntityHttpException('watermarkCopies: One of '.implode(', ', $counts).'.')),
+            null === $spread ? $saved->spread : (WatermarkSpread::tryFrom($spread) ?? throw new UnprocessableEntityHttpException('watermarkSpread: One of '.implode(', ', array_map(static fn (WatermarkSpread $each): string => $each->value, WatermarkSpread::cases())).'.')),
+        );
     }
 
     /** A whole number of millimetres within what a page holds, or the company's own when the query leaves it out. */

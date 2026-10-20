@@ -11,7 +11,10 @@ namespace App\Settings\Application;
 
 use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Shared\Domain\ValueObject\DocumentLayout;
+use App\Shared\Domain\ValueObject\DocumentWatermark;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\WatermarkIntensity;
+use App\Shared\Domain\ValueObject\WatermarkSpread;
 use App\Tenancy\Domain\Model\Company;
 
 /**
@@ -45,7 +48,7 @@ final readonly class DocumentFormats
         return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat'], true === $settings->value($atCustomer, 'document.amount_in_words'), true === $settings->value($atCustomer, 'document.how_to_pay'), self::design($settings, $company), true === $settings->value($atCustomer, 'document.savings_line'), '' === $reference ? null : $reference);
     }
 
-    /** The company's layout, accent and logo size, which every document it prints takes. */
+    /** The company's layout, accent, logo size and watermark, which every document it prints takes. */
     public static function design(ReadSetting $settings, Company $company): DocumentDesign
     {
         $context = new SettingContext($company);
@@ -54,6 +57,9 @@ final readonly class DocumentFormats
         $width = $settings->value($context, 'document.logo_width');
         $height = $settings->value($context, 'document.logo_height');
         $keeps = $settings->value($context, 'document.logo_keep_proportions');
+        $intensity = $settings->value($context, 'document.watermark_intensity');
+        $copies = $settings->value($context, 'document.watermark_copies');
+        $spread = $settings->value($context, 'document.watermark_spread');
 
         return new DocumentDesign(
             DocumentLayout::tryFrom(\is_string($layout) ? $layout : '') ?? DocumentLayout::Classic,
@@ -61,6 +67,11 @@ final readonly class DocumentFormats
             \is_int($width) ? $width : DocumentDesign::DEFAULT_LOGO_WIDTH_MM,
             \is_int($height) ? $height : DocumentDesign::DEFAULT_LOGO_HEIGHT_MM,
             false !== $keeps,
+            new DocumentWatermark(
+                WatermarkIntensity::tryFrom(\is_string($intensity) ? $intensity : '') ?? WatermarkIntensity::Normal,
+                \is_string($copies) && \in_array((int) $copies, DocumentWatermark::COPIES, true) ? (int) $copies : 1,
+                WatermarkSpread::tryFrom(\is_string($spread) ? $spread : '') ?? WatermarkSpread::Grouped,
+            ),
         );
     }
 }

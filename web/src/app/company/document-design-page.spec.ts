@@ -13,6 +13,13 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanySettings } from '../settings/company-settings-facade';
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import { Session } from '../shared/session/session';
 import { failureToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { DocumentDesignFacade } from './document-design-facade';
@@ -34,6 +41,20 @@ class StaticLoader implements TranslateLoader {
     });
   }
 }
+
+const CHOICES: Readonly<Record<string, readonly string[]>> = {
+  'document.layout': ['classic', 'modern', 'compact'],
+  'document.watermark_intensity': ['discreet', 'normal', 'marked'],
+  'document.watermark_copies': ['1', '3', '6', '12'],
+  'document.watermark_spread': ['grouped', 'spread'],
+};
+
+/** The watermark as documents always printed it, which every design here keeps unless a case changes it. */
+const LOOK = {
+  watermarkIntensity: 'normal',
+  watermarkCopies: '1',
+  watermarkSpread: 'grouped',
+} as const;
 
 function row(
   key: string,
@@ -64,13 +85,19 @@ function row(
     overridableLevels: ['company'],
     versions: company === undefined ? {} : { company: 1 },
     writableLevels: ['company'],
-    choices: key === 'document.layout' ? ['classic', 'modern', 'compact'] : [],
+    choices: [...(CHOICES[key] ?? [])],
     min: bounds[key]?.[0] ?? null,
     max: bounds[key]?.[1] ?? null,
     maxLength: null,
     pattern: null,
   };
 }
+
+const LOOK_ROWS = [
+  row('document.watermark_intensity', 'normal'),
+  row('document.watermark_copies', '1'),
+  row('document.watermark_spread', 'grouped'),
+];
 
 describe('DocumentDesignPage', () => {
   const rows = signal<readonly SettingRow[]>([]);
@@ -132,6 +159,7 @@ describe('DocumentDesignPage', () => {
         row('document.logo_width', 48),
         row('document.logo_height', 17),
         row('document.logo_keep_proportions', true),
+        ...LOOK_ROWS,
       ]);
     });
     settings.save.mockReset().mockImplementation(async () => {
@@ -141,6 +169,7 @@ describe('DocumentDesignPage', () => {
         row('document.logo_width', 48),
         row('document.logo_height', 17),
         row('document.logo_keep_proportions', true),
+        ...LOOK_ROWS,
       ]);
       return true;
     });
@@ -161,6 +190,8 @@ describe('DocumentDesignPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CompanySettings, useValue: settings },
         { provide: DocumentDesignFacade, useValue: design },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
       ],
@@ -183,13 +214,42 @@ describe('DocumentDesignPage', () => {
       logoWidth: 48,
       logoHeight: 17,
       logoKeepsProportions: true,
+      ...LOOK,
     });
     expect(q('documents-preview-image')?.getAttribute('src')).toBe('data:image/png;base64,UE5H');
     expect(q('documents-logo-link')?.getAttribute('href')).toBe('/company/profile');
-    expect([button('documents-save').disabled, button('documents-cancel').disabled]).toEqual([
-      true,
-      true,
+    expect(button('record-save').disabled).toBe(true);
+    expect(q('record-revert')).toBeNull();
+  });
+
+  it('counts what is chosen beside the title, holds the page while it is unsaved, and saves it from the bar', async () => {
+    await open();
+    const unsaved = TestBed.inject(UnsavedChanges);
+    expect(
+      q('documents-header')?.querySelector('[data-testid="record-bar"]') ?? null,
+    ).not.toBeNull();
+    expect(q('record-changes')).toBeNull();
+    expect(unsaved.count()).toBe(0);
+    expect(button('record-save').disabled).toBe(true);
+    expect(q('documents-save')).toBeNull();
+
+    (q('documents-layout-compact')?.querySelector('input') as HTMLInputElement).click();
+    await settle();
+
+    expect(q('record-changes')?.dataset['count']).toBe('1');
+    expect(unsaved.count()).toBe(1);
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+
+    button('record-save').click();
+    await settle();
+
+    expect(settings.save).toHaveBeenCalledWith('c1', [
+      { key: 'document.layout', value: 'compact', version: 1 },
     ]);
+    expect(unsaved.count()).toBe(0);
+    expect(q('record-changes')).toBeNull();
   });
 
   it('tries a layout once the choice rests, and saves only what changed', async () => {
@@ -207,10 +267,11 @@ describe('DocumentDesignPage', () => {
       logoWidth: 48,
       logoHeight: 17,
       logoKeepsProportions: true,
+      ...LOOK,
     });
-    expect(button('documents-save').disabled).toBe(false);
+    expect(button('record-save').disabled).toBe(false);
 
-    button('documents-save').click();
+    button('record-save').click();
     await settle();
 
     expect(settings.save).toHaveBeenCalledWith('c1', [
@@ -218,7 +279,7 @@ describe('DocumentDesignPage', () => {
     ]);
     expect(successToasts()).toEqual(['documents.saved']);
     expect(layoutChecked()).toBe('documents-layout-compact');
-    expect(button('documents-save').disabled).toBe(true);
+    expect(button('record-save').disabled).toBe(true);
   });
 
   it('after a save refused as made since, shows the design as now saved, says nothing was, and saves on it next', async () => {
@@ -234,12 +295,13 @@ describe('DocumentDesignPage', () => {
         row('document.logo_width', 48),
         row('document.logo_height', 17),
         row('document.logo_keep_proportions', true),
+        ...LOOK_ROWS,
       ]);
     });
     (q('documents-layout-compact')?.querySelector('input') as HTMLInputElement).click();
     await settle();
 
-    button('documents-save').click();
+    button('record-save').click();
     await settle();
 
     expect(layoutChecked()).toBe('documents-layout-classic');
@@ -249,7 +311,7 @@ describe('DocumentDesignPage', () => {
 
     (q('documents-layout-compact')?.querySelector('input') as HTMLInputElement).click();
     await settle();
-    button('documents-save').click();
+    button('record-save').click();
     await settle();
     expect(settings.save).toHaveBeenLastCalledWith('c1', [
       { key: 'document.layout', value: 'compact', version: 2 },
@@ -262,7 +324,7 @@ describe('DocumentDesignPage', () => {
     await settle();
     design.preview.mockClear();
 
-    button('documents-cancel').click();
+    button('record-revert').click();
     await settle(PREVIEW_DELAY_MS + 50);
 
     expect(layoutChecked()).toBe('documents-layout-modern');
@@ -272,8 +334,47 @@ describe('DocumentDesignPage', () => {
       logoWidth: 48,
       logoHeight: 17,
       logoKeepsProportions: true,
+      ...LOOK,
     });
     expect(settings.save).not.toHaveBeenCalled();
+  });
+
+  it('tries the watermark, offers its spread only once it prints more than once, and saves what changed', async () => {
+    await open();
+    expect(q('documents-watermark-spread')).toBeNull();
+    design.preview.mockClear();
+
+    (q('documents-watermark-intensity-marked')?.querySelector('input') as HTMLInputElement).click();
+    (q('documents-watermark-copies-6')?.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    expect(q('documents-watermark-spread')).not.toBeNull();
+    // Back to one copy, the spread has nothing to say and leaves the page; it comes back with the copies.
+    (q('documents-watermark-copies-1')?.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    expect(q('documents-watermark-spread')).toBeNull();
+    (q('documents-watermark-copies-6')?.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    (q('documents-watermark-spread-spread')?.querySelector('input') as HTMLInputElement).click();
+    await settle(PREVIEW_DELAY_MS + 50);
+
+    expect(design.preview).toHaveBeenLastCalledWith('c1', {
+      layout: 'modern',
+      accent: '#1f6feb',
+      logoWidth: 48,
+      logoHeight: 17,
+      logoKeepsProportions: true,
+      watermarkIntensity: 'marked',
+      watermarkCopies: '6',
+      watermarkSpread: 'spread',
+    });
+    expect(layoutChecked()).toBe('documents-layout-modern');
+    button('record-save').click();
+    await settle();
+    expect(settings.save).toHaveBeenCalledWith('c1', [
+      { key: 'document.watermark_intensity', value: 'marked', version: 0 },
+      { key: 'document.watermark_copies', value: '6', version: 0 },
+      { key: 'document.watermark_spread', value: 'spread', version: 0 },
+    ]);
   });
 
   it("sets the height from the logo's proportions while locked, refuses a size no page holds, and saves both", async () => {
@@ -292,7 +393,11 @@ describe('DocumentDesignPage', () => {
       width.dispatchEvent(new Event('input'));
       await settle(PREVIEW_DELAY_MS + 50);
       expect(design.preview).not.toHaveBeenCalled();
-      expect(button('documents-save').disabled).toBe(true);
+      // The bar's save stays offered while something changed; pressing it shows why instead of saving.
+      button('record-save').click();
+      await settle();
+      expect(settings.save).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.querySelector('.mat-form-field-invalid')).not.toBeNull();
     }
 
     width.value = '60';
@@ -305,9 +410,10 @@ describe('DocumentDesignPage', () => {
       logoWidth: 60,
       logoHeight: 20,
       logoKeepsProportions: true,
+      ...LOOK,
     });
 
-    button('documents-save').click();
+    button('record-save').click();
     await settle();
     expect(settings.save).toHaveBeenCalledWith('c1', [
       { key: 'document.logo_width', value: 60, version: 0 },
@@ -335,9 +441,10 @@ describe('DocumentDesignPage', () => {
       logoWidth: 48,
       logoHeight: 30,
       logoKeepsProportions: false,
+      ...LOOK,
     });
 
-    button('documents-save').click();
+    button('record-save').click();
     await settle();
     expect(settings.save).toHaveBeenCalledWith('c1', [
       { key: 'document.logo_height', value: 30, version: 0 },

@@ -166,6 +166,7 @@ describe('StockLocationsPage', () => {
     await settle();
     type('field-code', 'R1');
     type('field-name', 'Rayonnage 1');
+    fixture.detectChanges();
     q('stock-location-save')!.click();
     await settle();
 
@@ -186,6 +187,7 @@ describe('StockLocationsPage', () => {
     type('field-name', 'Rayonnage 1');
     locations.set([site, zone, { ...zone, id: 'l3', code: 'Z2', name: 'Zone sèche' }]);
     await settle();
+    fixture.detectChanges();
     q('stock-location-save')!.click();
     await settle();
 
@@ -199,6 +201,7 @@ describe('StockLocationsPage', () => {
     q('row-action-edit-l2')!.click();
     await settle();
     type('field-name', 'Chambre froide');
+    fixture.detectChanges();
     q('stock-location-save')!.click();
     await settle();
     expect(facade.reviseLocation).toHaveBeenCalledWith(
@@ -242,6 +245,7 @@ describe('StockLocationsPage', () => {
     );
 
     type('field-name', 'Chambre froide');
+    fixture.detectChanges();
     q('stock-location-save')!.click();
     await settle();
     await vi.waitFor(() => expect((q('field-code') as HTMLInputElement).value).toBe('Z9'));
@@ -253,6 +257,8 @@ describe('StockLocationsPage', () => {
       key: 'live.saved_since',
       params: undefined,
     });
+
+    fixture.detectChanges();
 
     q('stock-location-save')!.click();
     await settle();

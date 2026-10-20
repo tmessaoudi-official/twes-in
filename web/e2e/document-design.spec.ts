@@ -15,6 +15,9 @@ const DESIGN = [
   'document.logo_width',
   'document.logo_height',
   'document.logo_keep_proportions',
+  'document.watermark_intensity',
+  'document.watermark_copies',
+  'document.watermark_spread',
 ] as const;
 
 interface Held {
@@ -176,7 +179,7 @@ test('the owner tries a layout on the latest invoice and saves it', async ({ pag
 
     // Chosen with the keyboard as well as the pointer: a radio group moves with its arrows.
     await page.getByTestId('documents-layout-modern').locator('input').check();
-    await expect(page.getByTestId('documents-save')).toBeEnabled();
+    await expect(page.getByTestId('record-save')).toBeEnabled();
     await expect(picture).not.toHaveAttribute('src', before ?? '', { timeout: 15_000 });
     await expect(picture).not.toHaveAttribute('aria-busy', 'true');
     expect(await wcagViolations(page)).toEqual([]);
@@ -201,9 +204,9 @@ test('the owner tries a layout on the latest invoice and saves it', async ({ pag
     expect((await tried).status()).toBe(200);
     await expect(picture).not.toHaveAttribute('aria-busy', 'true');
 
-    await page.getByTestId('documents-save').click();
+    await page.getByTestId('record-save').click();
     await expect(toast(page)).toContainText('Présentation des documents enregistrée.');
-    await expect(page.getByTestId('documents-save')).toBeDisabled();
+    await expect(page.getByTestId('record-save')).toBeDisabled();
 
     await page.reload();
     await expect(page.getByTestId('documents-layout-modern').locator('input')).toBeChecked();

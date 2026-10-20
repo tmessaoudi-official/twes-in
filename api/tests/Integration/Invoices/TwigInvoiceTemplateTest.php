@@ -30,7 +30,10 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceIssue;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Shared\Domain\ValueObject\DocumentLayout;
+use App\Shared\Domain\ValueObject\DocumentWatermark;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\WatermarkIntensity;
+use App\Shared\Domain\ValueObject\WatermarkSpread;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
@@ -95,6 +98,59 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
                 self::assertDoesNotMatchRegularExpression('/%[a-z_]+%/', $html);
             }
         }
+    }
+
+    /**
+     * Every look the company may give the watermark: one copy keeps the markup documents always printed, several are
+     * one word each, grouped on the diagonal or one to a cell of a grid over the page, the word smaller as they grow.
+     */
+    public function testTheWatermarkPrintsInEachLookTheCompanyMayGiveIt(): void
+    {
+        self::bootKernel();
+        $looks = 0;
+        foreach (WatermarkIntensity::cases() as $intensity) {
+            foreach (DocumentWatermark::COPIES as $copies) {
+                foreach (WatermarkSpread::cases() as $spread) {
+                    $look = new DocumentWatermark($intensity, $copies, $spread);
+                    $html = $this->html(new DocumentDesign(watermark: $look), [], []);
+                    $label = "$intensity->value $copies $spread->value";
+                    ++$looks;
+
+                    self::assertStringContainsString('font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, '.$look->opacity().'); letter-spacing: .1em; }', $html, $label);
+                    if (1 === $copies) {
+                        self::assertStringContainsString('<div class="watermark">BROUILLON</div>', $html, $label);
+                        self::assertStringNotContainsString('watermark-many', $html, $label);
+                        continue;
+                    }
+                    self::assertStringContainsString('<div class="watermark watermark-many watermark-'.$spread->value.'">'.str_repeat('<span>BROUILLON</span>', $copies).'</div>', $html, $label);
+                    self::assertStringContainsString('.watermark-many { font-size: '.$look->wordSizePt().'pt; }', $html, $label);
+                    [$columns, $rows] = $look->grid();
+                    if (WatermarkSpread::Spread === $spread) {
+                        self::assertStringContainsString(".watermark-spread { top: 0; bottom: 0; transform: none; display: grid; grid-template-columns: repeat($columns, 1fr); grid-template-rows: repeat($rows, 1fr); }", $html, $label);
+                        self::assertStringNotContainsString('.watermark-grouped', $html, $label);
+                    } else {
+                        self::assertStringContainsString('.watermark-grouped { top: 50%; line-height: 1.4;', $html, $label);
+                        self::assertStringNotContainsString('.watermark-spread', $html, $label);
+                    }
+                }
+            }
+        }
+        self::assertSame(24, $looks);
+    }
+
+    /** One partial draws every document's watermark, so no document can print it otherwise than the company set it. */
+    public function testEveryDocumentDrawsItsWatermarkThroughTheOnePartial(): void
+    {
+        $drawn = 0;
+        foreach (glob(self::TEMPLATES.'/*.twig') ?: [] as $template) {
+            $source = (string) file_get_contents($template);
+            if ('_watermark.html.twig' === basename($template)) {
+                continue;
+            }
+            self::assertStringNotContainsString('class="watermark', $source, basename($template));
+            $drawn += substr_count($source, "include 'pdf/_watermark.html.twig'");
+        }
+        self::assertSame(4, $drawn, 'the invoice, the quote, the delivery note and the order to a vendor');
     }
 
     public function testAChainedDocumentPrintsTheStartOfItsHashThoughItHasNoFooterAndADraftNone(): void

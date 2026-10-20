@@ -1,0 +1,8 @@
+{#- A document's state across its pages, in the look the company gave it (DocumentWatermark): one copy is the markup
+    documents always printed; several are one word each, sized and placed by _document.css.twig, which no layout may
+    touch. `text` is the word, already in the document's language; `look` is a DocumentWatermark. -#}
+{%- if look.copies == 1 -%}
+<div class="watermark">{{ text }}</div>
+{%- else -%}
+<div class="watermark watermark-many {{ 'watermark-' ~ look.spread.value }}">{% for copy in 1..look.copies %}<span>{{ text }}</span>{% endfor %}</div>
+{%- endif -%}

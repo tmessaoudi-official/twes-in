@@ -45,23 +45,12 @@
             testId="expense-category-form"
             (submitted)="save($event)"
           >
-            <div class="flex flex-wrap justify-end gap-2">
-              <button
-                mat-button
-                type="button"
-                (click)="cancel()"
-                data-testid="expense-category-cancel"
-              >
-                {{ 'expenses.cancel' | translate }}
-              </button>
-              <button
-                mat-flat-button
-                type="submit"
-                [disabled]="busy()"
-                data-testid="expense-category-save"
-              >
-                {{ 'expenses.save' | translate }}
-              </button>
+            <div class="flex justify-end">
+              <app-record-bar
+                [changes]="sync.changes()"
+                [actions]="editorActions()"
+                testId="expense-category"
+              />
             </div>
           </app-descriptor-form>
         </mat-card-content>

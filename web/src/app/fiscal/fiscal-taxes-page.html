@@ -46,13 +46,8 @@
             (submitted)="save($event)"
           >
             <app-name-language-add formTrail [languages]="nameLanguages" />
-            <div class="flex flex-wrap justify-end gap-2">
-              <button mat-button type="button" (click)="cancel()" data-testid="tax-cancel">
-                {{ 'fiscal.cancel' | translate }}
-              </button>
-              <button mat-flat-button type="submit" [disabled]="busy()" data-testid="tax-save">
-                {{ 'fiscal.save' | translate }}
-              </button>
+            <div class="flex justify-end">
+              <app-record-bar [changes]="sync.changes()" [actions]="editorActions()" testId="tax" />
             </div>
           </app-descriptor-form>
         </mat-card-content>

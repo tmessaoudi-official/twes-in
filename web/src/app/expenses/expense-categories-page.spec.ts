@@ -155,6 +155,7 @@ describe('ExpenseCategoriesPage', () => {
       { id: 'k3', name: 'Bureau', parentId: null, isActive: true, version: 1 },
     ]);
     await settle();
+    fixture.detectChanges();
     q('expense-category-save')!.click();
     await settle();
 
@@ -172,6 +173,7 @@ describe('ExpenseCategoriesPage', () => {
     q('row-action-edit-k2')!.click();
     await settle();
     (q('field-isActive')!.querySelector('input') as HTMLInputElement).click();
+    fixture.detectChanges();
     q('expense-category-save')!.click();
     await settle();
 
@@ -200,6 +202,7 @@ describe('ExpenseCategoriesPage', () => {
     );
 
     (q('field-isActive')!.querySelector('input') as HTMLInputElement).click();
+    fixture.detectChanges();
     q('expense-category-save')!.click();
     await settle();
     await vi.waitFor(() => expect((q('field-name') as HTMLInputElement).value).toBe('Gazole'));
@@ -210,6 +213,8 @@ describe('ExpenseCategoriesPage', () => {
       key: 'live.saved_since',
       params: undefined,
     });
+
+    fixture.detectChanges();
 
     q('expense-category-save')!.click();
     await settle();
@@ -242,6 +247,7 @@ describe('ExpenseCategoriesPage', () => {
     await settle();
     type('field-name', 'Carburant');
     error.set('name_taken');
+    fixture.detectChanges();
     q('expense-category-save')!.click();
     await settle();
 

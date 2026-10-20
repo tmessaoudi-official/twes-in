@@ -191,6 +191,7 @@ describe('FiscalTaxesPage', () => {
     const name = q('field-name') as HTMLInputElement;
     name.value = 'Timbre fiscal';
     name.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
     q('tax-save')!.click();
     await settle();
 
@@ -224,6 +225,7 @@ describe('FiscalTaxesPage', () => {
     const name = q('field-name') as HTMLInputElement;
     name.value = 'Timbre fiscal';
     name.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
     q('tax-save')!.click();
     await settle();
     // The decimal field shows the screen's separator; the control keeps the API's point.
@@ -236,6 +238,8 @@ describe('FiscalTaxesPage', () => {
       key: 'live.saved_since',
       params: undefined,
     });
+
+    fixture.detectChanges();
 
     q('tax-save')!.click();
     await settle();
@@ -273,6 +277,7 @@ describe('FiscalTaxesPage', () => {
       input.value = value;
       input.dispatchEvent(new Event('input'));
     }
+    fixture.detectChanges();
     q('tax-save')!.click();
     await settle();
 

@@ -1,7 +1,17 @@
 <section class="flex max-w-6xl flex-col gap-6">
-  <h1 class="text-3xl font-semibold" data-testid="settings-title">
-    {{ 'nav.settings' | translate }}
-  </h1>
+  <!-- The bar stays in view while the page scrolls, as on every page that saves: the save sat below every section,
+       and nothing said a field was left changed. -->
+  <div
+    class="twes-document-header flex flex-wrap items-center justify-between gap-4"
+    data-testid="settings-header"
+  >
+    <h1 class="text-3xl font-semibold" data-testid="settings-title">
+      {{ 'nav.settings' | translate }}
+    </h1>
+    @if (company() && mayManage()) {
+      <app-record-bar [changes]="changes()" [actions]="recordActions()" />
+    }
+  </div>
 
   @if (!company()) {
     <p data-testid="settings-no-company">{{ 'settings.no_company' | translate }}</p>
@@ -34,13 +44,7 @@
             [conflicts]="sync.conflicts()"
             (resolved)="sync.resolve(form(), $event)"
             (submitted)="save($event)"
-          >
-            <div class="flex justify-end">
-              <button mat-flat-button type="submit" [disabled]="busy()" data-testid="settings-save">
-                {{ 'settings.save' | translate }}
-              </button>
-            </div>
-          </app-descriptor-form>
+          />
         </mat-card-content>
       </mat-card>
     }

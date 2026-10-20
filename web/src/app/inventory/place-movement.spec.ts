@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component, signal } from '@angular/core';
@@ -295,9 +296,13 @@ describe('PlaceMovement', () => {
   /** A count is what was found, typed by the person: the quantity on record is not proposed as the answer. */
   it('counts the line where it is, with the quantity left to type', async () => {
     await open({ operation: 'count', line });
+    const unsaved = TestBed.inject(UnsavedChanges);
     expect(input('quantity').value).toBe('');
+    expect(unsaved.count()).toBe(0);
     input('quantity').value = '170';
     input('quantity').dispatchEvent(new Event('input'));
+    // A count typed and not recorded holds the page until it is, or the panel goes back.
+    expect(unsaved.count()).toBe(1);
     await submit();
 
     expect(recorded()).toEqual([

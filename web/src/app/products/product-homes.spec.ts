@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
@@ -160,9 +161,12 @@ describe('ProductHomesSection', () => {
     await open();
     fixture.componentInstance['chosen'].set('l1');
     fixture.detectChanges();
+    // A place chosen and not added holds the page until it is.
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(1);
 
     q('product-home-add')!.click();
     await fixture.whenStable();
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(0);
 
     // The product's version the homes were read at: they are shown beside the product form.
     expect(facade.add).toHaveBeenCalledWith('c1', 'p1', 'l1', 7);

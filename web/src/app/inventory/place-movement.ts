@@ -8,6 +8,7 @@ import {
   inject,
   input,
   linkedSignal,
+  OnInit,
   output,
   signal,
   untracked,
@@ -19,6 +20,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import { unsavedChanges } from '../shared/form/dirty-count';
 import type { FormValues } from '../shared/form/form-types';
 import type { PickOption } from '../shared/form/pick-field';
 import { InventoryFacade } from './inventory-facade';
@@ -52,7 +54,7 @@ export function quantityOf(quantity: string, decimals: number): string {
   templateUrl: './place-movement.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PlaceMovement {
+export class PlaceMovement implements OnInit {
   private readonly facade = inject(InventoryFacade);
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
@@ -116,7 +118,32 @@ export class PlaceMovement {
     },
   });
 
+  /** Whether the movement asked has its form yet: the measure below is taken once it has, never on a rebuild. */
+  private readonly opening = computed(
+    () => ({ asked: this.asked(), ready: this.form() !== null }),
+    { equal: (a, b) => a.asked === b.asked && a.ready === b.ready },
+  );
+  /** What the form opened with for the movement asked: what was picked or typed since is unsaved. */
+  private readonly opened = linkedSignal<
+    { asked: MovementAsked; ready: boolean },
+    FormValues | null
+  >({
+    source: this.opening,
+    computation: ({ ready }) =>
+      ready ? untracked(() => this.form()?.getRawValue() ?? null) : null,
+  });
+
+  /**
+   * Set once the panel has its inputs: the page's count is read from outside the panel, possibly before its first
+   * check, and the form derives from the movement asked, which is not there yet.
+   */
+  private readonly inputsSet = signal(false);
+
   constructor() {
+    unsavedChanges(
+      computed(() => (this.inputsSet() ? this.form() : null)),
+      this.opened,
+    );
     effect(() => {
       const companyId = this.companyId();
       const productId = this.asked().line.productId;
@@ -149,6 +176,10 @@ export class PlaceMovement {
     if (product === undefined || this.asked().line.productId !== productId) return;
     this.known.set(product.id, product);
     this.product.set(product);
+  }
+
+  ngOnInit(): void {
+    this.inputsSet.set(true);
   }
 
   private startingValues({ operation, line }: MovementAsked): FormValues {

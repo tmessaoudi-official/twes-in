@@ -23,6 +23,8 @@ import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
 import { PartConflict } from '../shared/form/part-conflict';
 import { Select } from '../shared/form/select';
+import { dirtyCount } from '../shared/form/dirty-count';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { addScanned, BARCODE_QUANTITY_MAX, rowProblem, sameCodes, withRole } from './barcode-rows';
 import { ProductBarcodes } from './product-barcodes-facade';
 import { BARCODE_ROLES, type BarcodeRole, type ProductBarcode } from './products-types';
@@ -138,6 +140,12 @@ export class ProductBarcodesSection implements OnInit {
   );
   protected readonly problems = computed(() => this.rows().map(rowProblem));
   protected readonly changed = computed(() => !sameCodes(this.rows(), this.saved()));
+  /** A code scanned and not added, and every field of the rows that differs from what is saved. */
+  private readonly unsaved = computed(
+    () =>
+      (this.pending().trim() === '' ? 0 : 1) +
+      (this.changed() ? dirtyCount(this.rows(), this.saved()) : 0),
+  );
   protected readonly savable = computed(
     () =>
       (this.changed() || this.pending().trim() !== '') &&
@@ -155,6 +163,10 @@ export class ProductBarcodesSection implements OnInit {
       this.auth.hasPermission('vendor.read') &&
       this.auth.hasPermission('product.cost.read'),
   );
+
+  constructor() {
+    inject(UnsavedChanges).declare(this.unsaved);
+  }
 
   async ngOnInit(): Promise<void> {
     const companyId = this.companyId();

@@ -23,6 +23,7 @@ import {
 import { effectToasts, provideQuietFeedback } from '../shared/testing/feedback';
 import { ClosingApi, ClosingRefused, type CompanyClosing } from './closing-api';
 import { ClosingPage } from './closing-page';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -121,6 +122,7 @@ describe('ClosingPage', () => {
     expect(api.closeThrough).toHaveBeenCalledWith('c1', '2026-09-30');
     expect(q('closing-state')?.textContent).toContain('company.closing.closed_through');
     expect(effectToasts()).toEqual(['company.closing.closed:definitif']);
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(0);
   });
 
   it('closes nothing when the question is answered no', async () => {
@@ -130,6 +132,8 @@ describe('ClosingPage', () => {
     await closeThrough('2026-09-30');
 
     expect(api.closeThrough).not.toHaveBeenCalled();
+    // The day typed stays, and leaving or reloading the page is held until it is closed or emptied.
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(1);
   });
 
   it('says why a day was refused', async () => {

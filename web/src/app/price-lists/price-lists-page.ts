@@ -9,6 +9,7 @@ import {
   type OnInit,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormArray,
   FormControl,
@@ -27,7 +28,11 @@ import { AuthFacade } from '../auth/auth-facade';
 import type { DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FieldValue } from '../shared/form/form-types';
 import type { FieldConflict } from '../shared/form/form-merge';
+import { dirtyCount } from '../shared/form/dirty-count';
+import { editorActions } from '../shared/form/editor-actions';
 import { liveRecord } from '../shared/form/live-record';
+import { RecordBar } from '../shared/form/record-bar';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { PartConflict } from '../shared/form/part-conflict';
 import { RecordChanged } from '../shared/form/record-changed';
 import { Select, type SelectOption } from '../shared/form/select';
@@ -72,6 +77,28 @@ function itemGroup(item: PriceListItem | null): ItemGroup {
   });
 }
 
+/** A price list's editor as one comparable value: each field, whom it is for, and its prices as one text. */
+interface EditorState {
+  readonly name: string;
+  readonly validFrom: string;
+  readonly validTo: string;
+  readonly isActive: boolean;
+  readonly scope: string;
+  readonly items: string;
+}
+
+/** A saved list as its editor would show it. */
+function savedState(row: PriceListRow): EditorState {
+  return {
+    name: row.name,
+    validFrom: row.validFrom ?? '',
+    validTo: row.validTo ?? '',
+    isActive: row.isActive,
+    scope: `${scopeOf(row)}|${row.customerGroupId ?? ''}|${row.customerId ?? ''}`,
+    items: pricesKey(row.items ?? []),
+  };
+}
+
 /** The prices as one comparable text: equal texts are the same prices, in the same order. */
 function pricesKey(
   items: readonly Pick<PriceListItem, 'productId' | 'minQuantity' | 'unitPriceNet'>[],
@@ -104,6 +131,7 @@ function pricesKey(
     DayCalendarButton,
     PickField,
     StatusBadge,
+    RecordBar,
     RecordChanged,
     PartConflict,
     NgTemplateOutlet,
@@ -221,6 +249,26 @@ export class PriceListsPage implements OnInit {
       },
     ],
   });
+  /** Bumped by every change typed in the list's fields or its prices, which are forms, not signals. */
+  private readonly typed = signal(0);
+  /** What a new list opened as, which what is typed in it is measured against. */
+  private readonly opened = signal<EditorState | null>(null);
+  /** What is changed and not saved: each field, whom the list is for, and its prices as one. */
+  protected readonly changes = computed(() => {
+    this.typed();
+    if (this.editing() === null) return 0;
+    const row = this.saved();
+    return dirtyCount(this.shownState(), row === null ? this.opened() : savedState(row));
+  });
+  /** The editor's bar, stuck at its top: a list's prices run below the first screen. */
+  protected readonly editorActions = editorActions({
+    changes: this.changes,
+    busy: this.busy,
+    save: () => void this.save(),
+    close: () => this.cancel(),
+    closeLabel: 'customers.cancel',
+    saveLabel: 'customers.save',
+  });
   protected readonly isScopeConflict = (conflict: FieldConflict): boolean =>
     conflict.field === 'scope';
   protected readonly isPricesConflict = (conflict: FieldConflict): boolean =>
@@ -258,6 +306,30 @@ export class PriceListsPage implements OnInit {
     ],
   }));
 
+  constructor() {
+    inject(UnsavedChanges).declare(this.changes);
+    this.form.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.typed.update((count) => count + 1));
+    this.prices.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.typed.update((count) => count + 1));
+  }
+
+  /** The editor as shown, as one value its saved state compares with. */
+  private shownState(): EditorState {
+    const scope = this.scope();
+    const group = scope === 'group' ? this.fields.customerGroupId.value : '';
+    return {
+      name: this.fields.name.value,
+      validFrom: this.fields.validFrom.value,
+      validTo: this.fields.validTo.value,
+      isActive: this.fields.isActive.value,
+      scope: `${scope}|${group}|${scope === 'customer' ? (this.customer()?.id ?? '') : ''}`,
+      items: pricesKey(this.prices.controls.items.getRawValue()),
+    };
+  }
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId) return;
@@ -293,6 +365,7 @@ export class PriceListsPage implements OnInit {
     if (row?.customerId) await this.nameCustomer(row);
     // Before the list counts as open: the form it is tracked from stands on this version.
     this.saved.set(row);
+    this.opened.set(this.shownState());
     this.editing.set(target === 'new' ? 'new' : row);
   }
 

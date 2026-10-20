@@ -15,5 +15,9 @@ d=$(repo); printf '<p role="status" data-testid="login-expired">x</p>\n<p role="
 out=$(bash "$GATE" --root "$d" 2>&1); check "a status naming the page's own state is allowed, and specs are not read" $? 0 "$out" "OK — 2 status lines, all page states"
 d=$(repo); printf '<p role="status">x</p>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a status without a test id cannot claim to be a page state" $? 1 "$out" "web/src/app/x/a.html:1 (no test id)"
+d=$(repo); printf "<span role=\"status\" [attr.data-testid]=\"testId() + '-changes'\">x</span>\n" > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a test id bound from a prefix is read by its fixed end, and a page state named so passes" $? 0 "$out" "OK — 1 status lines"
+d=$(repo); printf "<span role=\"status\" [attr.data-testid]=\"testId() + '-saved'\">x</span>\n" > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a bound test id whose end is no page state is caught" $? 1 "$out" "web/src/app/x/a.html:1 *-saved"
 d=$(repo); out=$(bash "$GATE" --root "$d" 2>&1); check "an empty tree is reported, not read as a pass over nothing" $? 0 "$out" "OK — 0 status lines"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

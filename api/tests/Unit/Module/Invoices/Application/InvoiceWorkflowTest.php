@@ -50,7 +50,10 @@ use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Shared\Domain\ValueObject\DocumentLayout;
+use App\Shared\Domain\ValueObject\DocumentWatermark;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\WatermarkIntensity;
+use App\Shared\Domain\ValueObject\WatermarkSpread;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
@@ -176,11 +179,16 @@ final class InvoiceWorkflowTest extends TestCase
         $this->change->change(new SettingContext($this->company), 'presentation.date-format', SettingLevel::Company, 'ymd', null);
         $this->change->change(new SettingContext($this->company), 'document.layout', SettingLevel::Company, 'modern', null);
         $this->change->change(new SettingContext($this->company), 'document.accent', SettingLevel::Company, '#1F6FEB', null);
+        $this->change->change(new SettingContext($this->company), 'document.watermark_intensity', SettingLevel::Company, 'marked', null);
+        $this->change->change(new SettingContext($this->company), 'document.watermark_copies', SettingLevel::Company, '6', null);
+        $this->change->change(new SettingContext($this->company), 'document.watermark_spread', SettingLevel::Company, 'spread', null);
 
         $invoice = $this->workflow->issue($this->company, $this->draft($customer)->getId(), null);
         $this->change->change(new SettingContext($this->company), 'document.layout', SettingLevel::Company, 'compact', null);
+        $this->change->change(new SettingContext($this->company), 'document.watermark_copies', SettingLevel::Company, '12', null);
 
-        self::assertEquals(new PrintSettings('Virement à 30 jours.', 'ymd', 'auto', true, true, new DocumentDesign(DocumentLayout::Modern, '#1f6feb')), $invoice->getPrintSettings(), 'the words and how to pay are on by default, and the design is frozen with the rest');
+        $watermark = new DocumentWatermark(WatermarkIntensity::Marked, 6, WatermarkSpread::Spread);
+        self::assertEquals(new PrintSettings('Virement à 30 jours.', 'ymd', 'auto', true, true, new DocumentDesign(DocumentLayout::Modern, '#1f6feb', watermark: $watermark)), $invoice->getPrintSettings(), 'the words and how to pay are on by default, and the design is frozen with the rest');
     }
 
     /**

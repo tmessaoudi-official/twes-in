@@ -127,6 +127,7 @@ describe('FiscalUnitsPage', () => {
     type('field-code', 'TNE');
     type('field-name', 'Tonne');
     type('field-decimals', '3');
+    fixture.detectChanges();
     q('unit-save')!.click();
     await settle();
 
@@ -146,6 +147,7 @@ describe('FiscalUnitsPage', () => {
 
     expect(q('field-code')).toBeNull();
     type('field-name', 'Heure de travail');
+    fixture.detectChanges();
     q('unit-save')!.click();
     await settle();
 
@@ -169,6 +171,7 @@ describe('FiscalUnitsPage', () => {
     );
 
     type('field-name', 'Heure de travail');
+    fixture.detectChanges();
     q('unit-save')!.click();
     await settle();
     await vi.waitFor(() => expect((q('field-sortOrder') as HTMLInputElement).value).toBe('70'));
@@ -180,6 +183,8 @@ describe('FiscalUnitsPage', () => {
       key: 'live.saved_since',
       params: undefined,
     });
+
+    fixture.detectChanges();
 
     q('unit-save')!.click();
     await settle();
@@ -211,6 +216,7 @@ describe('FiscalUnitsPage', () => {
     await settle();
     expect(document.activeElement).toBe(q('field-name-en'));
     type('field-name-en', 'Hour');
+    fixture.detectChanges();
     q('unit-save')!.click();
     await settle();
 

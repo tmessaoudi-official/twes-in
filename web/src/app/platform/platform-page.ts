@@ -21,6 +21,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { unsavedChanges } from '../shared/form/dirty-count';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import { mergeSavedVersion, type FieldConflict } from '../shared/form/form-merge';
 import type { FormValues } from '../shared/form/form-types';
@@ -61,6 +63,16 @@ function numberReady(held: PlatformNumber | null | undefined, typed: number | nu
     (held.min === null || typed >= held.min) &&
     (held.max === null || typed <= held.max)
   );
+}
+
+/** One unsaved change where something other than the held number is typed, a field emptied or out of bounds included. */
+function numberTyped(held: PlatformNumber | null | undefined, typed: number | null): number {
+  return typed !== null && typed !== (held?.value ?? null) ? 1 : 0;
+}
+
+/** How many of these typed texts hold something. */
+function filled(texts: readonly string[]): number {
+  return texts.filter((text) => text.trim() !== '').length;
 }
 
 const LIST_PARAMS = ['q', 'status', 'country', 'state', 'sort', 'page', 'size', 'company'] as const;
@@ -280,6 +292,33 @@ export class PlatformPage implements OnInit {
   private readonly readTerms = signal<FormValues>(subscriptionValues(null));
   /** The terms both this operator and another changed since the panel read them, each offered both ways. */
   protected readonly subscriptionConflicts = signal<readonly FieldConflict[]>([]);
+  /**
+   * What is typed in the cards and not saved: each card saves on its own, beside its fields, but leaving the page or
+   * reloading it loses all of them alike, so the page is held while any holds something.
+   */
+  private readonly cardChanges = computed(() => {
+    const delayDraft = this.delayDraft();
+    const delaysTyped = (this.platform.delays() ?? []).filter(
+      (delay) => delay.key in delayDraft && !Object.is(delayDraft[delay.key], delay.value),
+    ).length;
+    return (
+      Object.keys(this.supportChanges()).length +
+      delaysTyped +
+      numberTyped(this.platform.demo()?.most, this.demoMostDraft()) +
+      numberTyped(this.platform.imports()?.rows, this.importRowsDraft()) +
+      (this.creating() ? filled([this.companyName(), this.ownerEmail()]) : 0) +
+      filled(Object.values(this.ownerEmails()))
+    );
+  });
+
+  constructor() {
+    inject(UnsavedChanges).declare(this.cardChanges);
+    // The terms typed in the open panel and not saved, against what the panel last read; counted where it counts.
+    unsavedChanges(
+      computed(() => (this.openedSubscription() === null ? null : this.subscriptionGroup())),
+      this.readTerms,
+    );
+  }
 
   async ngOnInit(): Promise<void> {
     await this.platform.load();

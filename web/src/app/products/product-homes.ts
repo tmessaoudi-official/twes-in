@@ -19,6 +19,7 @@ import { locationLabels } from '../inventory/inventory-forms';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
 import { Select } from '../shared/form/select';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { type HomesWrite, ProductHomes } from './product-homes-facade';
 import type { ProductHomeRow } from './products-types';
@@ -56,6 +57,8 @@ export class ProductHomesSection implements OnInit {
   protected readonly busy = this.homes.busy;
   protected readonly error = this.homes.error;
   protected readonly chosen = signal('');
+  /** A place chosen and not added yet. */
+  private readonly unsaved = computed(() => (this.chosen() === '' ? 0 : 1));
 
   /** Every location of the company, read as a person reads a shelf: its path, then its name. */
   protected readonly choices = computed(() =>
@@ -63,6 +66,10 @@ export class ProductHomesSection implements OnInit {
   );
 
   private readonly companyId = computed(() => this.auth.me()?.company?.id ?? null);
+
+  constructor() {
+    inject(UnsavedChanges).declare(this.unsaved);
+  }
 
   async ngOnInit(): Promise<void> {
     const companyId = this.companyId();

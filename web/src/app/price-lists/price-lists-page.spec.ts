@@ -19,6 +19,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { Session } from '../shared/session/session';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 import { PriceListsFacade } from './price-lists-facade';
@@ -71,6 +72,11 @@ const wholesale: PriceListRow = {
   itemCount: 1,
   version: 4,
 };
+
+/** A change to save: the bar offers its save once something differs from what is saved. */
+function switchActive(query: <T extends HTMLElement>(id: string) => T | null): void {
+  query('price-list-active')!.querySelector<HTMLButtonElement>('button')!.click();
+}
 
 describe('PriceListsPage', () => {
   const lists = signal<readonly PriceListRow[]>([everyone, wholesale]);
@@ -191,6 +197,7 @@ describe('PriceListsPage', () => {
     const price = query<HTMLInputElement>('price-row-0-price')!;
     price.value = '9.5';
     price.dispatchEvent(new Event('input'));
+    await settle();
     query<HTMLButtonElement>('price-list-save')!.click();
     await settle();
 
@@ -264,6 +271,7 @@ describe('PriceListsPage', () => {
     const price = query<HTMLInputElement>('price-row-0-price')!;
     price.value = '8';
     price.dispatchEvent(new Event('input'));
+    await settle();
     query<HTMLButtonElement>('price-list-save')!.click();
     await settle();
 
@@ -294,6 +302,8 @@ describe('PriceListsPage', () => {
     expect(facade.open).toHaveBeenCalledWith('c1', 'l2');
     expect(query<HTMLInputElement>('price-list-name')!.value).toBe('Gros');
     expect(query('price-row-0')).not.toBeNull();
+    switchActive(query);
+    await settle();
     query<HTMLButtonElement>('price-list-save')!.click();
     await settle();
 
@@ -353,6 +363,10 @@ describe('PriceListsPage', () => {
 
       expect(facade.open).toHaveBeenCalledWith('c1', 'l2');
       expect(query<HTMLInputElement>('price-list-name')!.value).toBe('Gros 2027');
+      // Taken in, their save is what the editor stands on: nothing here is unsaved.
+      expect(query('price-list-changes')).toBeNull();
+      switchActive(query);
+      await settle();
       query<HTMLButtonElement>('price-list-save')!.click();
       await settle();
       expect(facade.revise).toHaveBeenLastCalledWith(
@@ -415,6 +429,8 @@ describe('PriceListsPage', () => {
       await theySave({ ...opened, version: 5, customerGroupId: null }, settle);
 
       expect(query('price-list-group')).toBeNull();
+      switchActive(query);
+      await settle();
       query<HTMLButtonElement>('price-list-save')!.click();
       await settle();
       expect(facade.revise).toHaveBeenLastCalledWith(
@@ -442,6 +458,8 @@ describe('PriceListsPage', () => {
       await settle();
       expect(query('price-list-group')).not.toBeNull();
       expect(query('field-conflict-scope')).toBeNull();
+      switchActive(query);
+      await settle();
       query<HTMLButtonElement>('price-list-save')!.click();
       await settle();
       expect(facade.revise).toHaveBeenLastCalledWith(
@@ -457,6 +475,8 @@ describe('PriceListsPage', () => {
       facade.revise.mockResolvedValue('changed');
       facade.open.mockResolvedValue({ ...opened, name: 'Gros 2027', version: 5 });
 
+      switchActive(query);
+      await settle();
       query<HTMLButtonElement>('price-list-save')!.click();
       await settle();
 
@@ -470,6 +490,35 @@ describe('PriceListsPage', () => {
         params: undefined,
       });
     });
+  });
+
+  it('counts what changed beside the editor, holds the page while unsaved, and closes without asking', async () => {
+    facade.open.mockResolvedValue({ ...wholesale, items: [] });
+    const { query, settle } = await render();
+    const unsaved = TestBed.inject(UnsavedChanges);
+    query<HTMLButtonElement>('row-action-edit-l2')!.click();
+    await settle();
+    expect(query('price-list-bar')).not.toBeNull();
+    expect(query<HTMLButtonElement>('price-list-save')!.disabled).toBe(true);
+    expect(unsaved.count()).toBe(0);
+
+    const name = query<HTMLInputElement>('price-list-name')!;
+    name.value = 'Gros 2027';
+    name.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('price-row-add')!.click();
+    await settle();
+
+    expect(query('price-list-changes')?.dataset['count']).toBe('2');
+    expect(unsaved.count()).toBe(2);
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+
+    query<HTMLButtonElement>('price-list-cancel')!.click();
+    await settle();
+    expect(query('price-list-form')).toBeNull();
+    expect(unsaved.count()).toBe(0);
+    expect(facade.revise).not.toHaveBeenCalled();
   });
 
   it('removes a price row and says when none is left', async () => {
@@ -492,6 +541,8 @@ describe('PriceListsPage', () => {
     const { query, settle } = await render();
 
     query<HTMLButtonElement>('price-list-add')!.click();
+    await settle();
+    switchActive(query);
     await settle();
     query<HTMLButtonElement>('price-list-save')!.click();
     await settle();

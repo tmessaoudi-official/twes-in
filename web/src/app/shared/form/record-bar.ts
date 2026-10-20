@@ -42,13 +42,17 @@ import { WINDOW_CLASS } from '../ui/window-class';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex flex-wrap items-center gap-2" data-testid="record-bar" data-tour="record-bar">
+    <div
+      class="flex flex-wrap items-center gap-2"
+      [attr.data-testid]="testId() + '-bar'"
+      data-tour="record-bar"
+    >
       @if (changes() > 0) {
         <!-- Announced, because nothing else on the page says a form was left half-filled. -->
         <span
           role="status"
           class="text-sm text-on-surface-variant"
-          data-testid="record-changes"
+          [attr.data-testid]="testId() + '-changes'"
           [attr.data-count]="changes()"
         >
           {{
@@ -63,7 +67,7 @@ import { WINDOW_CLASS } from '../ui/window-class';
           type="button"
           [disabled]="action.disabled === true"
           (click)="run(action)"
-          [attr.data-testid]="'record-' + action.id"
+          [attr.data-testid]="testId() + '-' + action.id"
         >
           @if (action.icon) {
             <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
@@ -94,7 +98,7 @@ import { WINDOW_CLASS } from '../ui/window-class';
           type="button"
           [matMenuTriggerFor]="moreMenu"
           [appLabel]="'document.more_actions' | translate"
-          data-testid="record-more"
+          [attr.data-testid]="testId() + '-more'"
           data-bar-more
         >
           <mat-icon aria-hidden="true">more_vert</mat-icon>
@@ -107,7 +111,7 @@ import { WINDOW_CLASS } from '../ui/window-class';
               [disabled]="action.disabled === true"
               [class.text-error]="action.destructive"
               (click)="run(action)"
-              [attr.data-testid]="'record-menu-' + action.id"
+              [attr.data-testid]="testId() + '-menu-' + action.id"
               [attr.data-kind]="kind(action)"
             >
               @if (action.icon) {
@@ -124,7 +128,7 @@ import { WINDOW_CLASS } from '../ui/window-class';
             }
             <div
               class="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
-              data-testid="record-planned-heading"
+              [attr.data-testid]="testId() + '-planned-heading'"
             >
               {{ 'actions.coming' | translate }}
             </div>
@@ -133,7 +137,7 @@ import { WINDOW_CLASS } from '../ui/window-class';
                 mat-menu-item
                 type="button"
                 (click)="openComing(action)"
-                [attr.data-testid]="'record-planned-' + action.module"
+                [attr.data-testid]="testId() + '-planned-' + action.module"
               >
                 <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
                 <span class="twes-rail-title">
@@ -151,7 +155,7 @@ import { WINDOW_CLASS } from '../ui/window-class';
           type="button"
           [disabled]="action.disabled === true"
           (click)="run(action)"
-          [attr.data-testid]="'record-' + action.id"
+          [attr.data-testid]="testId() + '-' + action.id"
         >
           @if (action.icon) {
             <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
@@ -178,6 +182,11 @@ export class RecordBar {
    * has room for them, else last in the « ⋮ » under their own heading.
    */
   readonly planned = input<readonly PlannedAction[]>([]);
+  /**
+   * What the bar's test ids start with. A tab that saves its own form beside the record's draws a second bar on the
+   * same page, which needs ids of its own.
+   */
+  readonly testId = input('record');
 
   private readonly offered = computed(() =>
     this.actions().filter((action) => action.shown !== false),

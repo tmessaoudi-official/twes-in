@@ -1,7 +1,16 @@
 <section class="flex max-w-6xl flex-col gap-6">
-  <h1 class="text-3xl font-semibold" data-testid="documents-title">
-    {{ 'documents.title' | translate }}
-  </h1>
+  <div
+    class="twes-document-header flex flex-wrap items-center justify-between gap-4"
+    data-testid="documents-header"
+  >
+    <h1 class="text-3xl font-semibold" data-testid="documents-title">
+      {{ 'documents.title' | translate }}
+    </h1>
+    <!-- The save sits beside the title, as on every record page: the form runs below the first screen. -->
+    @if (company() && mayManage()) {
+      <app-record-bar [changes]="changes()" [actions]="recordActions()" />
+    }
+  </div>
 
   @if (!company()) {
     <p data-testid="documents-no-company">{{ 'settings.no_company' | translate }}</p>
@@ -133,25 +142,74 @@
           >
         </fieldset>
 
-        <div class="flex flex-wrap gap-2">
-          <button
-            mat-flat-button
-            type="submit"
-            [disabled]="changes() === 0 || busy() || form.invalid"
-            data-testid="documents-save"
-          >
-            {{ 'documents.save' | translate }}
-          </button>
-          <button
-            mat-button
-            type="button"
-            [disabled]="changes() === 0 || busy()"
-            (click)="cancel()"
-            data-testid="documents-cancel"
-          >
-            {{ 'form.revert' | translate }}
-          </button>
-        </div>
+        <fieldset class="flex flex-col gap-3" aria-describedby="documents-watermark-hint">
+          <legend class="mb-1 font-medium">{{ 'documents.watermark' | translate }}</legend>
+          <span class="text-sm text-on-surface-variant" id="documents-watermark-hint">{{
+            'documents.watermark_hint' | translate
+          }}</span>
+          <div class="flex flex-col gap-1">
+            <span class="text-sm font-medium" id="documents-watermark-intensity-label">{{
+              'settings.document.watermark_intensity' | translate
+            }}</span>
+            <mat-radio-group
+              formControlName="watermarkIntensity"
+              class="flex flex-col gap-1"
+              aria-labelledby="documents-watermark-intensity-label"
+            >
+              @for (choice of intensities; track choice) {
+                <mat-radio-button
+                  [value]="choice"
+                  [attr.data-testid]="'documents-watermark-intensity-' + choice"
+                  >{{
+                    'settings.choices.document.watermark_intensity.' + choice | translate
+                  }}</mat-radio-button
+                >
+              }
+            </mat-radio-group>
+          </div>
+          <div class="flex flex-col gap-1">
+            <span class="text-sm font-medium" id="documents-watermark-copies-label">{{
+              'settings.document.watermark_copies' | translate
+            }}</span>
+            <mat-radio-group
+              formControlName="watermarkCopies"
+              class="flex flex-col gap-1"
+              aria-labelledby="documents-watermark-copies-label"
+            >
+              @for (choice of copies; track choice) {
+                <mat-radio-button
+                  [value]="choice"
+                  [attr.data-testid]="'documents-watermark-copies-' + choice"
+                  >{{
+                    'settings.choices.document.watermark_copies.' + choice | translate
+                  }}</mat-radio-button
+                >
+              }
+            </mat-radio-group>
+          </div>
+          @if (manyCopies()) {
+            <div class="flex flex-col gap-1" data-testid="documents-watermark-spread">
+              <span class="text-sm font-medium" id="documents-watermark-spread-label">{{
+                'settings.document.watermark_spread' | translate
+              }}</span>
+              <mat-radio-group
+                formControlName="watermarkSpread"
+                class="flex flex-col gap-1"
+                aria-labelledby="documents-watermark-spread-label"
+              >
+                @for (choice of spreads; track choice) {
+                  <mat-radio-button
+                    [value]="choice"
+                    [attr.data-testid]="'documents-watermark-spread-' + choice"
+                    >{{
+                      'settings.choices.document.watermark_spread.' + choice | translate
+                    }}</mat-radio-button
+                  >
+                }
+              </mat-radio-group>
+            </div>
+          }
+        </fieldset>
       </form>
 
       <figure class="m-0 flex flex-col gap-2" data-testid="documents-preview">

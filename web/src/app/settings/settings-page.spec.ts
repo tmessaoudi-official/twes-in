@@ -26,6 +26,7 @@ import type { UnitRow } from '../fiscal/fiscal-types';
 import { SettingsPage } from './settings-page';
 import { failureToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -222,12 +223,52 @@ describe('SettingsPage', () => {
     expect((q('field-venue__shape__rack__width') as HTMLInputElement).value).toBe('2,400');
   });
 
+  it('counts what is typed beside the title, holds the page while it is unsaved, and saves it from the bar', async () => {
+    // A decimal field beside the integer: the opened page must count nothing, whatever form each value is held in.
+    rows.set([terms, rackWidth]);
+    await open();
+    const unsaved = TestBed.inject(UnsavedChanges);
+    expect(
+      q('settings-header')?.querySelector('[data-testid="record-bar"]') ?? null,
+    ).not.toBeNull();
+    expect(q('record-changes')).toBeNull();
+    expect(unsaved.count()).toBe(0);
+    expect((q('record-save') as HTMLButtonElement).disabled).toBe(true);
+
+    const input = q('field-document__payment_terms_days') as HTMLInputElement;
+    input.value = '60';
+    input.dispatchEvent(new Event('input'));
+    await settle();
+
+    expect(q('record-changes')?.dataset['count']).toBe('1');
+    expect(unsaved.count()).toBe(1);
+    // A reload or a closed tab is held by the browser's own question while something is unsaved.
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+
+    // The facade holds the chain as the API answers it once saved.
+    settings.save.mockImplementationOnce(async () => {
+      rows.set([{ ...terms, value: 60, levels: [{ level: 'company', value: 60 }] }, rackWidth]);
+      return true;
+    });
+    q('record-save')!.click();
+    await settle();
+    expect(settings.save).toHaveBeenCalledWith('c1', [
+      { key: 'document.payment_terms_days', value: 60, version: 1 },
+    ]);
+    expect(unsaved.count()).toBe(0);
+    expect(q('record-changes')).toBeNull();
+  });
+
   it('saves only what changed, at the company level', async () => {
     await open();
     const input = q('field-document__payment_terms_days') as HTMLInputElement;
     input.value = '60';
     input.dispatchEvent(new Event('input'));
-    q('settings-save')!.click();
+    // The bar's save is offered once the change is drawn.
+    await settle();
+    q('record-save')!.click();
     await settle();
 
     expect(settings.save).toHaveBeenCalledWith('c1', [
@@ -259,7 +300,9 @@ describe('SettingsPage', () => {
     const input = q('field-document__payment_terms_days') as HTMLInputElement;
     input.value = '60';
     input.dispatchEvent(new Event('input'));
-    q('settings-save')!.click();
+    // The bar's save is offered once the change is drawn.
+    await settle();
+    q('record-save')!.click();
     await settle();
     await vi.waitFor(() =>
       expect((q('field-venue__shape__rack__width') as HTMLInputElement).value).toBe('2,500'),
@@ -271,7 +314,7 @@ describe('SettingsPage', () => {
     expect(successToasts()).not.toContain('settings.saved');
 
     settings.save.mockResolvedValueOnce(true);
-    q('settings-save')!.click();
+    q('record-save')!.click();
     await settle();
     expect(settings.save).toHaveBeenLastCalledWith('c1', [
       { key: 'document.payment_terms_days', value: 60, version: 2 },

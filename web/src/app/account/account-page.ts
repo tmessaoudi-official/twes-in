@@ -33,6 +33,7 @@ import {
   shellKeyRefusal,
 } from '../shared/actions/shortcuts';
 import { Select, type SelectOption } from '../shared/form/select';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { keyName } from '../shared/actions/shortcuts-sheet';
 import {
   DATE_FORMATS,
@@ -106,6 +107,13 @@ export class AccountPage implements OnInit {
   protected readonly passwordProblem = signal<PasswordChangeOutcome | 'mismatch' | null>(null);
   protected readonly passwordReady = computed(
     () => this.passwordCurrent() !== '' && this.passwordNew() !== '' && this.passwordAgain() !== '',
+  );
+  /** The password fields typed in: leaving or reloading would lose them, so the page is held while any holds something. */
+  private readonly passwordTyped = computed(
+    () =>
+      [this.passwordCurrent(), this.passwordNew(), this.passwordAgain()].filter(
+        (typed) => typed !== '',
+      ).length,
   );
 
   /** The tab from the address; an unknown one opens the first. */
@@ -213,6 +221,10 @@ export class AccountPage implements OnInit {
     () => this.companies().find((company) => company.pinned) ?? null,
   );
 
+  constructor() {
+    inject(UnsavedChanges).declare(this.passwordTyped);
+  }
+
   ngOnInit(): void {
     void this.company.load();
   }
@@ -232,6 +244,9 @@ export class AccountPage implements OnInit {
     const outcome = await this.auth.changePassword(this.passwordCurrent(), this.passwordNew());
     this.passwordBusy.set(false);
     if (outcome === 'changed') {
+      this.passwordCurrent.set('');
+      this.passwordNew.set('');
+      this.passwordAgain.set('');
       this.feedback.success('account.password.changed');
       await this.router.navigateByUrl('/login');
       return;

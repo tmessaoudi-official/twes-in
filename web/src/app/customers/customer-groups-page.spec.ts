@@ -13,6 +13,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -154,10 +155,35 @@ describe('CustomerGroupsPage', () => {
     q('customer-group-add')!.click();
     await settle();
     type('field-name', 'Export');
+    fixture.detectChanges();
     q('customer-group-save')!.click();
     await settle();
 
     expect(facade.createGroup).toHaveBeenCalledWith('c1', { name: 'Export', description: null });
+  });
+
+  it('counts what is typed in the open editor, holds the page while it is unsaved, and closes without asking', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
+    q('row-action-edit-g1')!.click();
+    await settle();
+    expect(q('customer-group-bar')).not.toBeNull();
+    expect((q('customer-group-save') as HTMLButtonElement).disabled).toBe(true);
+    expect(unsaved.count()).toBe(0);
+
+    type('field-name', 'Grossistes TN');
+    await settle();
+
+    expect(q('customer-group-changes')?.dataset['count']).toBe('1');
+    expect(unsaved.count()).toBe(1);
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+
+    q('customer-group-cancel')!.click();
+    await settle();
+    expect(q('customer-group-form')).toBeNull();
+    expect(unsaved.count()).toBe(0);
+    expect(facade.reviseGroup).not.toHaveBeenCalled();
   });
 
   it('renames a group and deletes one by its identifier', async () => {
@@ -165,6 +191,7 @@ describe('CustomerGroupsPage', () => {
     await settle();
     expect(partySettings.load).toHaveBeenCalledWith('c1', { customerGroupId: 'g1' });
     type('field-name', 'Grossistes TN');
+    fixture.detectChanges();
     q('customer-group-save')!.click();
     await settle();
     expect(facade.reviseGroup).toHaveBeenCalledWith(
@@ -203,6 +230,7 @@ describe('CustomerGroupsPage', () => {
     );
 
     type('field-name', 'Grossistes TN');
+    fixture.detectChanges();
     q('customer-group-save')!.click();
     await settle();
     await vi.waitFor(() =>
@@ -216,6 +244,8 @@ describe('CustomerGroupsPage', () => {
       key: 'live.saved_since',
       params: undefined,
     });
+
+    fixture.detectChanges();
 
     q('customer-group-save')!.click();
     await settle();

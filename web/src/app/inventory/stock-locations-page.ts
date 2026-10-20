@@ -10,6 +10,7 @@ import {
   OnInit,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,6 +20,8 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { editorActions } from '../shared/form/editor-actions';
+import { RecordBar } from '../shared/form/record-bar';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
@@ -53,6 +56,7 @@ import { PlaceContentsDialog, type PlaceContentsDialogData } from './place-conte
     DataList,
     DataListCell,
     DescriptorForm,
+    RecordBar,
     RecordChanged,
     StatusBadge,
   ],
@@ -174,6 +178,16 @@ export class StockLocationsPage implements OnInit {
         row,
         this.facade.options() ?? { establishments: [], planShapes: [], structureShapes: [] },
       ),
+  });
+  private readonly editor = viewChild(DescriptorForm);
+  /** The open editor's bar: what is unsaved, its close and its save, which goes through the form's own submit. */
+  protected readonly editorActions = editorActions({
+    changes: this.sync.changes,
+    busy: this.busy,
+    save: () => this.editor()?.submit(),
+    close: () => this.cancel(),
+    closeLabel: 'inventory.cancel',
+    saveLabel: 'inventory.save',
   });
 
   async ngOnInit(): Promise<void> {

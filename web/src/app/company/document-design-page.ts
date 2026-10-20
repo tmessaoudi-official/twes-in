@@ -30,7 +30,11 @@ import { CompanySettings } from '../settings/company-settings-facade';
 import { type SettingVersions, versioned, versionsAt } from '../shared/settings/setting-forms';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
+import type { ScreenAction } from '../shared/actions/screen-action';
+import { ScreenActions } from '../shared/actions/screen-actions';
 import { ColourField } from '../shared/form/colour-field';
+import { RecordBar } from '../shared/form/record-bar';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { DocumentDesignFacade } from './document-design-facade';
 import { DEFAULT_DESIGN, designChanges, logoRoom, savedDesign } from './document-design-forms';
@@ -38,13 +42,19 @@ import {
   DOCUMENT_LAYOUTS,
   type DocumentDesign,
   type DocumentLayout,
+  WATERMARK_COPIES,
+  WATERMARK_INTENSITIES,
+  WATERMARK_SPREADS,
+  type WatermarkCopies,
+  type WatermarkIntensity,
+  type WatermarkSpread,
 } from './document-design-types';
 
 /** How long the choice rests before its preview is asked for: a picture per keystroke would be wasted. */
 export const PREVIEW_DELAY_MS = 300;
 
 /**
- * How the company's documents print: a built-in layout, the accent and the room the logo may take, tried on the
+ * How the company's documents print: a built-in layout, the accent, the room the logo may take and the watermark, tried on the
  * company's latest invoice before they are saved. Saving writes the company settings; an invoice issued after keeps
  * them. The logo itself is the profile's, which this page leads to.
  */
@@ -61,6 +71,7 @@ export const PREVIEW_DELAY_MS = 300;
     TranslatePipe,
     ColourField,
     Label,
+    RecordBar,
   ],
   templateUrl: './document-design-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -74,6 +85,9 @@ export class DocumentDesignPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly layouts = DOCUMENT_LAYOUTS;
+  protected readonly intensities = WATERMARK_INTENSITIES;
+  protected readonly copies = WATERMARK_COPIES;
+  protected readonly spreads = WATERMARK_SPREADS;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly busy = this.settings.busy;
@@ -99,15 +113,49 @@ export class DocumentDesignPage implements OnInit {
     logoKeepsProportions: new FormControl<boolean>(DEFAULT_DESIGN.logoKeepsProportions, {
       nonNullable: true,
     }),
+    watermarkIntensity: new FormControl<WatermarkIntensity>(DEFAULT_DESIGN.watermarkIntensity, {
+      nonNullable: true,
+    }),
+    watermarkCopies: new FormControl<WatermarkCopies>(DEFAULT_DESIGN.watermarkCopies, {
+      nonNullable: true,
+    }),
+    watermarkSpread: new FormControl<WatermarkSpread>(DEFAULT_DESIGN.watermarkSpread, {
+      nonNullable: true,
+    }),
   });
   /** The logo's width over its height, which a locked size keeps; null while unread or without a logo. */
   protected readonly logoRatio = this.design.logoRatio;
   /** Whether the logo keeps its proportions, which the lock button shows and the warning follows. */
   protected readonly locked = signal(DEFAULT_DESIGN.logoKeepsProportions);
+  /** Whether the watermark prints more than once a page, the only time its spread has anything to say. */
+  protected readonly manyCopies = signal(DEFAULT_DESIGN.watermarkCopies !== '1');
   /** The design as the API holds it, which the form starts from and returns to. */
   private readonly saved = signal<DocumentDesign>(DEFAULT_DESIGN);
   /** What saving would change, which the save and cancel buttons follow. */
   protected readonly changes = signal(0);
+  /** Saving and going back from the bar beside the title, the same as on every record page. */
+  protected readonly recordActions = computed<ScreenAction[]>(() => {
+    const busy = this.busy();
+    const changes = this.changes();
+    return [
+      {
+        id: 'save',
+        label: 'form.save',
+        icon: 'save',
+        primary: true,
+        shortcut: 's',
+        disabled: busy || changes === 0,
+        run: () => this.saveFromBar(),
+      },
+      {
+        id: 'revert',
+        label: 'form.revert',
+        disabled: busy,
+        run: () => this.cancel(),
+        shown: changes > 0,
+      },
+    ];
+  });
   /**
    * The version of each setting the form was last set from, which a save sends back: a design saved elsewhere while
    * something is chosen here moves the saved design, not this, so the save is refused instead of writing over it.
@@ -115,6 +163,8 @@ export class DocumentDesignPage implements OnInit {
   private versions: SettingVersions = {};
 
   constructor() {
+    inject(UnsavedChanges).declare(this.changes);
+    inject(ScreenActions).declare(this.recordActions);
     this.form.valueChanges
       .pipe(debounceTime(PREVIEW_DELAY_MS), takeUntilDestroyed())
       .subscribe(() => void this.showPreview());
@@ -140,6 +190,9 @@ export class DocumentDesignPage implements OnInit {
     logoKeepsProportions.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe((keeps) => this.locked.set(keeps));
+    this.form.controls.watermarkCopies.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((copies) => this.manyCopies.set(copies !== '1'));
   }
 
   /** Locks or frees the logo's proportions; locking sets the height from the width again. */
@@ -181,12 +234,23 @@ export class DocumentDesignPage implements OnInit {
     }
   }
 
+  /** A choice the API would refuse shows why rather than going nowhere. */
+  private saveFromBar(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    void this.save();
+  }
+
   /** Back to the saved design, through the form's own change: its preview comes once the choice rests, as any other. */
   protected cancel(): void {
     this.form.setValue({ ...this.saved() }, { emitEvent: false });
     this.form.updateValueAndValidity();
     this.locked.set(this.saved().logoKeepsProportions);
+    this.manyCopies.set(this.saved().watermarkCopies !== '1');
     this.form.markAsPristine();
+    this.changes.set(0);
   }
 
   private async load(companyId: string): Promise<void> {
@@ -207,6 +271,7 @@ export class DocumentDesignPage implements OnInit {
     this.versions = versionsAt(this.settings.rows(), 'company');
     this.form.setValue({ ...design }, { emitEvent: false });
     this.locked.set(design.logoKeepsProportions);
+    this.manyCopies.set(design.watermarkCopies !== '1');
     this.form.markAsPristine();
     this.changes.set(0);
   }

@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { unsavedChanges } from '../shared/form/dirty-count';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -67,6 +68,8 @@ export class ClosingPage implements OnInit {
   protected readonly form = new FormGroup({
     day: new FormControl('', { nonNullable: true, validators: Validators.required }),
   });
+  /** A day typed and not closed through: leaving or reloading would lose it, so the page is held while it is there. */
+  protected readonly changes = unsavedChanges(signal(this.form), signal(null));
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
