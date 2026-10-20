@@ -11,13 +11,11 @@ namespace App\Module\Products\Infrastructure\ApiPlatform\Resource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\CreateProductCategoryProcessor;
-use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\DeleteProductCategoryProcessor;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\ReviseProductCategoryProcessor;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Provider\ProductCategoryCollectionProvider;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
@@ -26,8 +24,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * A company's product categories, a tree listed flat by name: each row names its parent and says how many
- * subcategories and products it holds. Read with product.read, changed with product.write; a category still holding
- * either answers 409 to a DELETE, and a parent that would make a cycle answers 422.
+ * subcategories and products it holds. Read with product.read, changed with product.write; a parent that would make a
+ * cycle answers 422. A category is deleted through the records engine, which refuses one anything still names.
  */
 #[ApiResource(
     shortName: 'ProductCategory',
@@ -54,12 +52,6 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: ['groups' => [self::READ]],
             denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
             validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
-        ),
-        new Delete(
-            uriTemplate: '/companies/{companyId}/product-categories/{categoryId}',
-            processor: DeleteProductCategoryProcessor::class,
-            security: 'is_granted("ROLE_USER")',
-            read: false,
         ),
     ],
 )]

@@ -47,10 +47,4 @@ final readonly class DoctrineProductCategoryRepository implements ProductCategor
         $this->entityManager->persist($category);
         $this->entityManager->flush();
     }
-
-    public function remove(ProductCategory $category): void
-    {
-        $this->entityManager->remove($category);
-        $this->entityManager->flush();
-    }
 }

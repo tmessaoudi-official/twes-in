@@ -36,8 +36,9 @@ import type { ListDescriptor } from '../shared/list/list-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
+import { RecordDeletes } from '../shared/records/record-deletes';
 
-/** The tree products are filed in: a category sits under another or at the top, and goes only once empty. */
+/** The tree products are filed in: a category sits under another or at the top, and is deleted only once empty. */
 @Component({
   selector: 'app-product-categories-page',
   imports: [
@@ -60,11 +61,12 @@ export class ProductCategoriesPage implements OnInit {
   private readonly facade = inject(ProductsFacade);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
+  private readonly deletes = inject(RecordDeletes);
 
   /**
    * The list with its own actions (design review finding 1): editing is what a person came for, so it is a button;
-   * deleting is destructive, so it sits behind "⋮" whatever its frequency. Both wait on a save in flight rather
-   * than disappearing during one.
+   * deleting is destructive, so it sits behind "⋮" whatever its frequency, and is taken back from its toast. Both
+   * wait on a save in flight rather than disappearing during one.
    */
   protected readonly list = computed<ListDescriptor<ProductCategoryListRow>>(() => ({
     ...CATEGORIES_LIST,
@@ -83,18 +85,12 @@ export class ProductCategoriesPage implements OnInit {
         labelParams: (row) => ({ name: row.name }),
         icon: 'delete',
         destructive: true,
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps it a day with its defaults.
+        undoable: true,
         run: (row) => void this.remove(row),
         disabled: () => this.busy(),
         // A category still holding products or sub-categories cannot go, as the page says: it is not offered.
         shown: (row) => this.mayWrite() && row.productCount === 0 && row.childCount === 0,
-        confirm: (row) => ({
-          kind: 'definitif',
-          title: 'products.categories.delete_title',
-          message: 'products.categories.delete_message',
-          messageParams: { name: row.name },
-          confirmLabel: 'products.categories.delete_confirm',
-          keepLabel: 'products.categories.keep',
-        }),
       },
     ],
   }));
@@ -199,6 +195,6 @@ export class ProductCategoriesPage implements OnInit {
   protected async remove(row: ProductCategoryRow): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    await this.facade.deleteCategory(companyId, row.id);
+    await this.deletes.remove(companyId, 'product_category', [{ id: row.id, label: row.name }]);
   }
 }

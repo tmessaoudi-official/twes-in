@@ -14,8 +14,8 @@ enum RecordLink: string
 {
     /** A uuid column, with or without a foreign key. */
     case Id = 'id';
-    /** A text column holding the record's id (a setting's level). */
-    case TextId = 'text_id';
+    /** A text column holding `<company id>/<record id>`, as a setting's level names its record. */
+    case CompanyPath = 'company_path';
     /** A JSON array of ids (a customer's default taxes). */
     case IdList = 'id_list';
 }

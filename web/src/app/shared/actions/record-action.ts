@@ -127,6 +127,7 @@ export function onRows<R>(actions: readonly RecordAction<R>[]): RowAction<R>[] {
       next: (row: R) => frequencyOf(action, row) === 'next',
       rare: (row: R) => frequencyOf(action, row) === 'rare',
       destructive: action.effect.kind === 'definitif',
+      undoable: action.effect.kind === 'annulable',
       shown: (row: R) => action.shown(row) && (href === undefined || href(row) !== null),
       disabled: action.disabled,
       href: href === undefined ? undefined : (row: R) => href(row) ?? '',

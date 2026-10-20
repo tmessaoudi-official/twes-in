@@ -9,25 +9,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Products\Application;
 
-use App\Fiscal\Domain\Model\Unit;
 use App\Module\Products\Application\Category\ManageProductCategories;
-use App\Module\Products\Application\Category\ProductCategoryInUse;
 use App\Module\Products\Application\Category\ProductCategoryNameTaken;
 use App\Module\Products\Application\Category\ProductCategoryNotFound;
 use App\Module\Products\Domain\Exception\InvalidProductCategory;
-use App\Module\Products\Domain\Model\Product;
-use App\Module\Products\Domain\ValueObject\ProductDetails;
-use App\Module\Products\Domain\ValueObject\ProductKind;
-use App\Settings\Application\ForgetSettings;
-use App\Settings\Domain\Model\Setting;
-use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryProductCategories;
 use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemoryRecordVersions;
-use App\Tests\Support\InMemorySettings;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -36,7 +27,6 @@ final class ManageProductCategoriesTest extends TestCase
 {
     private InMemoryProductCategories $categories;
     private InMemoryProducts $products;
-    private InMemorySettings $settings;
     private InMemoryAuditTrail $audit;
     private ManageProductCategories $manage;
     private Company $company;
@@ -45,10 +35,9 @@ final class ManageProductCategoriesTest extends TestCase
     {
         $this->categories = new InMemoryProductCategories();
         $this->products = new InMemoryProducts();
-        $this->settings = new InMemorySettings();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManageProductCategories($this->categories, $this->products, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions());
+        $this->manage = new ManageProductCategories($this->categories, $this->products, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 
@@ -115,53 +104,11 @@ final class ManageProductCategoriesTest extends TestCase
         $this->manage->revise($this->company, $hardware->getId(), 'Matériel', $laptops->getId(), null);
     }
 
-    public function testACategoryWithASubcategoryOrAProductIsKept(): void
-    {
-        $hardware = $this->manage->create($this->company, 'Matériel', null, null);
-        $laptops = $this->manage->create($this->company, 'Portables', $hardware->getId(), null);
-        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '1250'), Unit::create($this->company, 'C62', 'pièce', 0, 0, new \DateTimeImmutable()), $laptops, [], new \DateTimeImmutable());
-        $this->products->save($product);
-
-        foreach ([$hardware, $laptops] as $kept) {
-            try {
-                $this->manage->delete($this->company, $kept->getId(), null);
-                self::fail($kept->getName().' was deleted.');
-            } catch (ProductCategoryInUse) {
-            }
-        }
-        self::assertCount(2, $this->manage->list($this->company));
-        self::assertSame(1, $this->manage->productCount($laptops));
-
-        $product->revise('ART-001', $product->getDetails(), $product->getUnit(), null, [], true, new \DateTimeImmutable());
-        $this->manage->delete($this->company, $laptops->getId(), null);
-        $this->manage->delete($this->company, $hardware->getId(), null);
-
-        self::assertSame([], $this->manage->list($this->company));
-        self::assertSame([ManageProductCategories::DELETED, ManageProductCategories::DELETED], [$this->audit->entries[2]->action, $this->audit->entries[3]->action]);
-    }
-
-    public function testDeletingACategoryForgetsWhatItsSettingsSaid(): void
-    {
-        $hardware = $this->manage->create($this->company, 'Matériel', null, null);
-        $this->settings->save(new Setting(SettingAddress::productCategory($this->company, $hardware->getId()), 'article.stock_tracking', true, new \DateTimeImmutable()));
-        $this->settings->save(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', false, new \DateTimeImmutable()));
-
-        $this->manage->delete($this->company, $hardware->getId(), null);
-
-        self::assertCount(1, $this->settings->settings);
-        self::assertFalse($this->settings->settings[0]->getValue());
-    }
-
     public function testAnotherCompanysCategoryIsNotFound(): void
     {
         $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'Matériel', null, null);
 
-        try {
-            $this->manage->revise($this->company, $theirs->getId(), 'Mine now', null, null);
-            self::fail("Another company's category was revised.");
-        } catch (ProductCategoryNotFound) {
-        }
         $this->expectException(ProductCategoryNotFound::class);
-        $this->manage->delete($this->company, $theirs->getId(), null);
+        $this->manage->revise($this->company, $theirs->getId(), 'Mine now', null, null);
     }
 }

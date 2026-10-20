@@ -20,6 +20,10 @@
       "purchase_order_line": "{count, plural, zero {لا أسطر طلبيات لدى مزوّد} one {سطر طلبية لدى مزوّد واحد} two {سطري طلبية لدى مزوّد} few {{{count}} أسطر طلبيات لدى مزوّد} many {{{count}} سطر طلبية لدى مزوّد} other {{{count}} سطر طلبية لدى مزوّد}}",
       "stock_lot": "{count, plural, zero {لا دفعات} one {دفعة واحدة} two {دفعتين} few {{{count}} دفعات} many {{{count}} دفعةً} other {{{count}} دفعة}}",
       "price_list_item": "{count, plural, zero {لا أسعار في قوائم الأسعار} one {سعر واحد في قائمة أسعار} two {سعرين في قوائم الأسعار} few {{{count}} أسعار في قوائم الأسعار} many {{{count}} سعرًا في قوائم الأسعار} other {{{count}} سعر في قوائم الأسعار}}",
+      "product": "{count, plural, zero {لا منتجات} one {منتج واحد} two {منتجين} few {{{count}} منتجات} many {{{count}} منتجًا} other {{{count}} منتج}}",
+      "product_category": "{count, plural, zero {لا أصناف فرعية} one {صنف فرعي واحد} two {صنفين فرعيين} few {{{count}} أصناف فرعية} many {{{count}} صنفًا فرعيًا} other {{{count}} صنف فرعي}}",
+      "expense_category": "{count, plural, zero {لا أصناف فرعية} one {صنف فرعي واحد} two {صنفين فرعيين} few {{{count}} أصناف فرعية} many {{{count}} صنفًا فرعيًا} other {{{count}} صنف فرعي}}",
+      "vendor": "{count, plural, zero {لا مزوّدين} one {مزوّد واحد} two {مزوّدين} few {{{count}} مزوّدين} many {{{count}} مزوّدًا} other {{{count}} مزوّد}}",
       "other": "{count, plural, zero {لا بطاقات أخرى} one {بطاقة أخرى واحدة} two {بطاقتين أخريين} few {{{count}} بطاقات أخرى} many {{{count}} بطاقة أخرى} other {{{count}} بطاقة أخرى}}"
     },
     "errors": {
@@ -39,7 +43,9 @@
       "until": "يمكن إرجاعه حتى {{moment}}",
       "subjects": {
         "vendor": "{count, plural, zero {لا مزوّدين} one {مزوّد واحد} two {مزوّدان} few {{{count}} مزوّدين} many {{{count}} مزوّدًا} other {{{count}} مزوّد}}",
-        "product": "{count, plural, zero {لا منتجات} one {منتج واحد} two {منتجان} few {{{count}} منتجات} many {{{count}} منتجًا} other {{{count}} منتج}}"
+        "product": "{count, plural, zero {لا منتجات} one {منتج واحد} two {منتجان} few {{{count}} منتجات} many {{{count}} منتجًا} other {{{count}} منتج}}",
+        "product_category": "{count, plural, zero {لا أصناف منتجات} one {صنف منتجات واحد} two {صنفا منتجات} few {{{count}} أصناف منتجات} many {{{count}} صنف منتجات} other {{{count}} صنف منتجات}}",
+        "expense_category": "{count, plural, zero {لا أصناف مصاريف} one {صنف مصاريف واحد} two {صنفا مصاريف} few {{{count}} أصناف مصاريف} many {{{count}} صنف مصاريف} other {{{count}} صنف مصاريف}}"
       }
     }
   }

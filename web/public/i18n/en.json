@@ -2111,7 +2111,6 @@
       "not_found": "Product not found.",
       "reference_taken": "Another product already has this reference.",
       "name_taken": "Another category already has this name.",
-      "in_use": "The category still holds subcategories or products.",
       "invalid": "The change was refused. Check the unit, the prices and the taxes.",
       "barcode_taken": "This code already belongs to another article."
     },
@@ -2134,13 +2133,8 @@
         "network": "The server could not be reached.",
         "not_found": "Category not found.",
         "name_taken": "Another category already has this name.",
-        "in_use": "This category still holds subcategories or products. Move them first.",
         "invalid": "The category was refused. A category cannot sit under itself or one of its subcategories."
-      },
-      "delete_title": "Delete this category?",
-      "delete_message": "{{name}} will be deleted. Its products are kept.",
-      "delete_confirm": "Delete",
-      "keep": "Keep"
+      }
     },
     "defaults": {
       "title": "Defaults",
@@ -2763,12 +2757,13 @@
     "categories": {
       "title": "Expense categories",
       "add": "Add a category",
-      "intro": "Expenses are filed in a tree of categories. A category is deactivated rather than deleted, so the expenses already filed under it keep it.",
+      "intro": "Expenses are filed in a tree of categories. A category that still files expenses is deactivated rather than deleted, so they keep it. A category nothing names can be deleted.",
       "saved": "The category was saved.",
       "section": "Category",
       "top_level": "At the top",
       "active_hint": "An inactive category stays on its expenses but is no longer offered for new ones.",
       "edit": "Edit {{name}}",
+      "delete_named": "Delete {{name}}",
       "none": "No categories yet.",
       "statuses": {
         "active": "Active",
@@ -3954,7 +3949,8 @@
       "module": "Module",
       "export": "Export",
       "support_grant": "Support access",
-      "purchase_order": "Purchase order"
+      "purchase_order": "Purchase order",
+      "record_removal": "Delete"
     },
     "actions": {
       "auth": {
@@ -4000,12 +3996,15 @@
         "photo_removed": "removed a photo of the product",
         "photo_restored": "put back a photo of the product",
         "photos_reordered": "reordered the photos of the product",
-        "main_photo_changed": "changed the main photo of the product"
+        "main_photo_changed": "changed the main photo of the product",
+        "deleted": "deleted the product",
+        "restored": "restored the product"
       },
       "product_category": {
         "created": "created the product category",
         "revised": "changed the product category",
-        "deleted": "deleted the product category"
+        "deleted": "deleted the product category",
+        "restored": "restored the product category"
       },
       "price_list": {
         "created": "created the price list",
@@ -4014,7 +4013,9 @@
       },
       "vendor": {
         "created": "created the vendor",
-        "revised": "changed the vendor"
+        "revised": "changed the vendor",
+        "deleted": "deleted the vendor",
+        "restored": "restored the vendor"
       },
       "quote": {
         "created": "created the quote",
@@ -4053,7 +4054,9 @@
       },
       "expense_category": {
         "created": "created the expense category",
-        "revised": "changed the expense category"
+        "revised": "changed the expense category",
+        "deleted": "deleted the expense category",
+        "restored": "restored the expense category"
       },
       "stock_location": {
         "created": "created the location",
@@ -4117,6 +4120,9 @@
         "received": "received goods on the purchase order",
         "closed": "closed the purchase order",
         "cancelled": "cancelled the purchase order"
+      },
+      "record_removal": {
+        "ended": "made a delete final"
       }
     },
     "history": {

@@ -13,10 +13,19 @@ import {
 } from './record-removals-api';
 
 /** The subjects the API lets a person delete, each also the kind its live changes carry. */
-export const DELETABLE_SUBJECTS = ['vendor', 'product'] as const;
+export const DELETABLE_SUBJECTS = [
+  'vendor',
+  'product',
+  'product_category',
+  'expense_category',
+] as const;
 
 /** The tables a refusal says in words; any other is counted as « other records ». */
 const NAMED_TABLES = [
+  'product',
+  'product_category',
+  'expense_category',
+  'vendor',
   'stock_movement',
   'purchase_order',
   'expense',

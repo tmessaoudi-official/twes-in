@@ -36,8 +36,12 @@ import type { ExpenseCategoryRow } from './expenses-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
+import { RecordDeletes } from '../shared/records/record-deletes';
 
-/** The tree expenses are filed in: a category sits under another or at the top, and is deactivated, never deleted. */
+/**
+ * The tree expenses are filed in: a category sits under another or at the top. One still in use is deactivated; one
+ * nothing names is deleted, and « Récemment supprimés » keeps it a day.
+ */
 @Component({
   selector: 'app-expense-categories-page',
   imports: [
@@ -64,8 +68,13 @@ export class ExpenseCategoriesPage implements OnInit {
   private readonly facade = inject(ExpensesFacade);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
+  private readonly deletes = inject(RecordDeletes);
 
-  /** A category is retired through its form rather than deleted, so editing is its one action. */
+  /**
+   * Editing is what a person came for, so it is a button; deleting is destructive, so it sits behind « ⋮ », asks
+   * nothing and is taken back from its toast. A category an expense, a subcategory or a vendor's default still names
+   * is refused, the toast saying what names it.
+   */
   protected readonly list = computed<ListDescriptor<ExpenseCategoryListRow>>(() => ({
     ...EXPENSE_CATEGORIES_LIST,
     actions: [
@@ -75,6 +84,17 @@ export class ExpenseCategoriesPage implements OnInit {
         labelParams: (row) => ({ name: row.name }),
         icon: 'edit',
         run: (row) => this.open(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayWrite(),
+      },
+      {
+        id: 'delete',
+        label: 'expenses.categories.delete_named',
+        labelParams: (row) => ({ name: row.name }),
+        icon: 'delete',
+        destructive: true,
+        undoable: true,
+        run: (row) => void this.remove(row),
         disabled: () => this.busy(),
         shown: () => this.mayWrite(),
       },
@@ -166,5 +186,11 @@ export class ExpenseCategoriesPage implements OnInit {
       this.facade.clearError();
       await this.sync.savedElsewhere();
     }
+  }
+
+  protected async remove(row: ExpenseCategoryRow): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!companyId || this.busy()) return;
+    await this.deletes.remove(companyId, 'expense_category', [{ id: row.id, label: row.name }]);
   }
 }

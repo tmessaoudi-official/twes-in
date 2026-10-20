@@ -75,7 +75,7 @@ final class RecordCatalogueTest extends TestCase
 
     public function testAColumnSaidOfEverySubjectNamesNoneOnSomeRowsOnly(): void
     {
-        $owned = RecordReference::owned('setting', 'level_id', 'product', RecordMerge::MovesOrDrops, 'A product setting.', RecordLink::TextId)->where('level', 'product');
+        $owned = RecordReference::owned('setting', 'level_id', 'product', RecordMerge::MovesOrDrops, 'A product setting.', RecordLink::CompanyPath)->where('level', 'product');
         self::assertSame(['level', 'product'], [$owned->whereColumn, $owned->whereValue]);
 
         $this->expectException(\InvalidArgumentException::class);

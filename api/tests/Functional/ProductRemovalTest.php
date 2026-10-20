@@ -206,11 +206,11 @@ final class ProductRemovalTest extends ApiTestCase
     {
         $this->signedIn(['product.read', 'product.write']);
         $product = $this->aProduct('VIS-20', 'Vis 20 mm');
-        $this->em()->getConnection()->insert('setting', ['id' => Uuid::v7()->toRfc4122(), 'company_id' => $this->companyId(), 'level' => 'customer', 'level_id' => $product, 'key' => 'article.stock_tracking', 'value' => 'false', 'updated_at' => '2026-10-20 08:00:00']);
+        $this->em()->getConnection()->insert('setting', ['id' => Uuid::v7()->toRfc4122(), 'company_id' => $this->companyId(), 'level' => 'customer', 'level_id' => SettingAddress::customer($this->company, Uuid::fromString($product))->levelId, 'key' => 'article.stock_tracking', 'value' => 'false', 'updated_at' => '2026-10-20 08:00:00']);
 
         $this->removed('product', $product);
 
-        self::assertSame(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM setting WHERE level = 'customer' AND level_id = ?", [$product]));
+        self::assertSame(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM setting WHERE level = 'customer' AND level_id = ?", [SettingAddress::customer($this->company, Uuid::fromString($product))->levelId]));
     }
 
     /**
@@ -229,7 +229,7 @@ final class ProductRemovalTest extends ApiTestCase
         $connection->insert('product_home_location', ['id' => Uuid::v7()->toRfc4122(), 'company_id' => $company, 'product_id' => $product, 'establishment_id' => $establishment, 'location_id' => $this->siteId(), 'position' => 0, 'created_at' => $at, 'updated_at' => $at]);
         $connection->insert('product_reorder_point', ['id' => Uuid::v7()->toRfc4122(), 'company_id' => $company, 'product_id' => $product, 'establishment_id' => $establishment, 'quantity' => '5.000', 'created_at' => $at, 'updated_at' => $at]);
         $connection->insert('product_cost_change', ['id' => Uuid::v7()->toRfc4122(), 'company_id' => $company, 'product_id' => $product, 'old_cost' => null, 'new_cost' => '0.300', 'source' => 'edit', 'at' => $at]);
-        $connection->insert('setting', ['id' => Uuid::v7()->toRfc4122(), 'company_id' => $company, 'level' => 'product', 'level_id' => $product, 'key' => 'article.stock_tracking', 'value' => 'false', 'updated_at' => $at]);
+        $connection->insert('setting', ['id' => Uuid::v7()->toRfc4122(), 'company_id' => $company, 'level' => 'product', 'level_id' => SettingAddress::product($this->company, Uuid::fromString($product))->levelId, 'key' => 'article.stock_tracking', 'value' => 'false', 'updated_at' => $at]);
     }
 
     /**
@@ -244,7 +244,7 @@ final class ProductRemovalTest extends ApiTestCase
         foreach (self::OWNED as $table) {
             $rows[$table] = $connection->fetchAllAssociative("SELECT * FROM $table WHERE product_id = ? ORDER BY id", [$product]);
         }
-        $rows['setting'] = $connection->fetchAllAssociative("SELECT * FROM setting WHERE level = 'product' AND level_id = ? ORDER BY id", [$product]);
+        $rows['setting'] = $connection->fetchAllAssociative("SELECT * FROM setting WHERE level = 'product' AND level_id = ? ORDER BY id", [SettingAddress::product($this->company, Uuid::fromString($product))->levelId]);
 
         return $rows;
     }

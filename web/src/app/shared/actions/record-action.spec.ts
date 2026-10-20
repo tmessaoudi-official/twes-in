@@ -189,4 +189,23 @@ describe('RecordAction', () => {
     expect(kindOf({ undoable: true })).toBe('annulable');
     expect(kindOf({})).toBeUndefined();
   });
+
+  it('marks an annulable effect on every row as it does on the record', () => {
+    const remove: RecordAction<Doc> = {
+      id: 'remove',
+      label: 'remove',
+      icon: 'delete',
+      group: 'correct',
+      frequency: 'rare',
+      effect: { kind: 'annulable' },
+      shown: () => true,
+      run: vi.fn(),
+    };
+    const plain: RecordAction<Doc> = { ...remove, id: 'open', effect: { kind: 'plain' } };
+
+    expect(onRows([remove, plain]).map((row) => [row.undoable, row.confirm])).toEqual([
+      [true, undefined],
+      [false, undefined],
+    ]);
+  });
 });

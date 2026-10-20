@@ -714,6 +714,7 @@
               (click)="runAction(action, row)"
               [disabled]="action.disabled?.(row) ?? false"
               [class.text-error]="action.destructive"
+              [attr.data-kind]="kindOn(action, row)"
               [attr.data-testid]="testId"
             >
               <mat-icon aria-hidden="true" [class.text-error]="action.destructive">{{

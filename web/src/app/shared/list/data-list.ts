@@ -379,6 +379,10 @@ export class DataList<Row> implements OnInit {
   protected rowMenu(row: Row): readonly RowAction<Row>[] {
     return this.rowOffered(row).menu;
   }
+  /** What a « ⋮ » entry does to the row's record, as the record bar says it: what it asks, or annulable, or nothing. */
+  protected kindOn(action: RowAction<Row>, row: Row): string | null {
+    return action.confirm?.(row).kind ?? (action.undoable === true ? 'annulable' : null);
+  }
   private rowOffered(row: Row): { buttons: RowAction<Row>[]; menu: RowAction<Row>[] } {
     const shown = this.shownActions(this.descriptor().actions ?? [], row);
     const visible = shown.filter((action) => !rareOn(action, row));

@@ -12,9 +12,14 @@ namespace App\Module\Vendors\Infrastructure\Records;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Security\VendorPermission;
 use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\Records\Application\DeclaresRecordReferences;
+use App\Records\Application\RecordMerge;
+use App\Records\Application\RecordReference;
 use App\Records\Application\RecordSubject;
 
-/** A vendor is deleted while nothing names it, restored, and merged into another; whoever writes vendors does it. */
+/**
+ * A vendor is deleted while nothing names it, restored, and merged into another; whoever writes vendors does it. A
+ * vendor's default expense category is said here, the column being the vendors'.
+ */
 final readonly class VendorRecords implements DeclaresRecordReferences
 {
     public function subjects(): array
@@ -24,6 +29,8 @@ final readonly class VendorRecords implements DeclaresRecordReferences
 
     public function references(): array
     {
-        return [];
+        return [
+            RecordReference::uses('vendor', 'default_expense_category_id', 'expense_category', RecordMerge::Moves, 'A vendor\'s expenses are filed under its default category; merged, under the category kept.'),
+        ];
     }
 }

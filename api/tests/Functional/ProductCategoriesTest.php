@@ -49,8 +49,8 @@ final class ProductCategoriesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertNull($this->json()['parentId']);
 
-        $this->sendJson('DELETE', $this->path($laptopsId));
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->postJson($this->removalsPath(), ['subject' => 'product_category', 'ids' => [$laptopsId]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->getJson($this->path());
         self::assertSame(['Matériel'], array_column($this->jsonList(), 'name'));
 
@@ -127,10 +127,10 @@ final class ProductCategoriesTest extends ApiTestCase
         $this->signedIn(['product.read', 'product.write']);
 
         foreach ([$hardware, $laptops] as $kept) {
-            $this->sendJson('DELETE', $this->path($kept->getId()->toRfc4122()));
+            $this->postJson($this->removalsPath(), ['subject' => 'product_category', 'ids' => [$kept->getId()->toRfc4122()]]);
             self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, $kept->getName());
+            self::assertSame('record_used', $this->json()['error']);
         }
-        self::assertStringContainsString('1 products', (string) $this->client->getResponse()->getContent());
         $this->getJson($this->path());
         self::assertSame([1, 0], array_column($this->jsonList(), 'childCount'));
         self::assertSame([0, 1], array_column($this->jsonList(), 'productCount'));
@@ -155,7 +155,7 @@ final class ProductCategoriesTest extends ApiTestCase
         $this->login('writer@twes.local', 'password-1234');
         $this->sendJson('PUT', $this->path($theirs->getId()->toRfc4122()), ['name' => 'Mine now', 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        $this->sendJson('DELETE', $this->path($theirs->getId()->toRfc4122()));
+        $this->postJson($this->removalsPath(), ['subject' => 'product_category', 'ids' => [$theirs->getId()->toRfc4122()]]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson($this->path(), ['name' => 'Portables', 'parentId' => $theirs->getId()->toRfc4122()]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -174,5 +174,10 @@ final class ProductCategoriesTest extends ApiTestCase
     private function path(?string $categoryId = null): string
     {
         return '/api/companies/'.$this->company->getId()->toRfc4122().'/product-categories'.(null === $categoryId ? '' : '/'.$categoryId);
+    }
+
+    private function removalsPath(): string
+    {
+        return '/api/companies/'.$this->company->getId()->toRfc4122().'/record-removals';
     }
 }

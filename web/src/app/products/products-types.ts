@@ -8,7 +8,6 @@ export type ProductsError =
   | 'not_found'
   | 'reference_taken'
   | 'name_taken'
-  | 'in_use'
   | 'invalid'
   | 'barcode_taken'
   | 'record_changed';

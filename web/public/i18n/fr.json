@@ -2111,7 +2111,6 @@
       "not_found": "Produit introuvable.",
       "reference_taken": "Un autre produit porte déjà cette référence.",
       "name_taken": "Une autre catégorie porte déjà ce nom.",
-      "in_use": "La catégorie contient encore des sous-catégories ou des produits.",
       "invalid": "La modification a été refusée. Vérifiez l’unité, les prix et les taxes.",
       "barcode_taken": "Ce code est déjà celui d’un autre article."
     },
@@ -2134,13 +2133,8 @@
         "network": "Le serveur est injoignable.",
         "not_found": "Catégorie introuvable.",
         "name_taken": "Une autre catégorie porte déjà ce nom.",
-        "in_use": "Cette catégorie contient encore des sous-catégories ou des produits. Déplacez-les d’abord.",
         "invalid": "La catégorie a été refusée. Une catégorie ne peut pas se ranger sous elle-même ni sous l’une de ses sous-catégories."
-      },
-      "delete_title": "Supprimer cette catégorie ?",
-      "delete_message": "{{name}} sera supprimée. Les articles de la catégorie sont conservés.",
-      "delete_confirm": "Supprimer",
-      "keep": "Garder"
+      }
     },
     "defaults": {
       "title": "Valeurs par défaut",
@@ -2763,12 +2757,13 @@
     "categories": {
       "title": "Catégories de dépenses",
       "add": "Ajouter une catégorie",
-      "intro": "Les dépenses sont classées dans une arborescence de catégories. Une catégorie est désactivée plutôt que supprimée, pour que les dépenses déjà classées la conservent.",
+      "intro": "Les dépenses sont classées dans une arborescence de catégories. Une catégorie qui classe encore des dépenses est désactivée plutôt que supprimée, pour qu’elles la conservent. Une catégorie que rien ne nomme peut être supprimée.",
       "saved": "La catégorie a été enregistrée.",
       "section": "Catégorie",
       "top_level": "Au premier niveau",
       "active_hint": "Une catégorie inactive reste sur ses dépenses mais n’est plus proposée pour les nouvelles.",
       "edit": "Modifier {{name}}",
+      "delete_named": "Supprimer {{name}}",
       "none": "Aucune catégorie pour l’instant.",
       "statuses": {
         "active": "Active",
@@ -3954,7 +3949,8 @@
       "module": "Module",
       "export": "Export",
       "support_grant": "Accès du support",
-      "purchase_order": "Commande fournisseur"
+      "purchase_order": "Commande fournisseur",
+      "record_removal": "Suppression"
     },
     "actions": {
       "auth": {
@@ -4000,12 +3996,15 @@
         "photo_removed": "a retiré une photo de l’article",
         "photo_restored": "a remis une photo de l’article",
         "photos_reordered": "a réordonné les photos de l’article",
-        "main_photo_changed": "a changé la photo principale de l’article"
+        "main_photo_changed": "a changé la photo principale de l’article",
+        "deleted": "a supprimé l’article",
+        "restored": "a remis l’article"
       },
       "product_category": {
         "created": "a créé la catégorie d’articles",
         "revised": "a modifié la catégorie d’articles",
-        "deleted": "a supprimé la catégorie d’articles"
+        "deleted": "a supprimé la catégorie d’articles",
+        "restored": "a remis la catégorie d’articles"
       },
       "price_list": {
         "created": "a créé la liste de prix",
@@ -4014,7 +4013,9 @@
       },
       "vendor": {
         "created": "a créé le fournisseur",
-        "revised": "a modifié le fournisseur"
+        "revised": "a modifié le fournisseur",
+        "deleted": "a supprimé le fournisseur",
+        "restored": "a remis le fournisseur"
       },
       "quote": {
         "created": "a créé le devis",
@@ -4053,7 +4054,9 @@
       },
       "expense_category": {
         "created": "a créé la catégorie de dépenses",
-        "revised": "a modifié la catégorie de dépenses"
+        "revised": "a modifié la catégorie de dépenses",
+        "deleted": "a supprimé la catégorie de dépenses",
+        "restored": "a remis la catégorie de dépenses"
       },
       "stock_location": {
         "created": "a créé l’emplacement",
@@ -4117,6 +4120,9 @@
         "received": "a réceptionné de la marchandise de la commande fournisseur",
         "closed": "a clos la commande fournisseur",
         "cancelled": "a annulé la commande fournisseur"
+      },
+      "record_removal": {
+        "ended": "a rendu une suppression définitive"
       }
     },
     "history": {
