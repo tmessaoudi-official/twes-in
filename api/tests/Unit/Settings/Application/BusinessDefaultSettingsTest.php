@@ -16,6 +16,9 @@ use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Shared\Domain\ValueObject\DocumentLayout;
+use App\Shared\Domain\ValueObject\DocumentWatermark;
+use App\Shared\Domain\ValueObject\WatermarkIntensity;
+use App\Shared\Domain\ValueObject\WatermarkSpread;
 use PHPUnit\Framework\TestCase;
 
 final class BusinessDefaultSettingsTest extends TestCase
@@ -30,7 +33,7 @@ final class BusinessDefaultSettingsTest extends TestCase
     public function testThePartiesChainCarriesTheDocumentDefaults(): void
     {
         self::assertSame(
-            ['document.payment_terms_days', 'document.language', 'document.printed_notes', 'document.how_to_pay', 'document.amount_in_words', 'document.late_payment_rate', 'document.exemption_reference', 'document.layout', 'document.accent', 'document.logo_width', 'document.logo_height', 'document.logo_keep_proportions', 'document.paid_stamp', 'document.savings_line', 'document.names_as_issued', 'credit.limit'],
+            ['document.payment_terms_days', 'document.language', 'document.printed_notes', 'document.how_to_pay', 'document.amount_in_words', 'document.late_payment_rate', 'document.exemption_reference', 'document.layout', 'document.accent', 'document.watermark_intensity', 'document.watermark_copies', 'document.watermark_spread', 'document.logo_width', 'document.logo_height', 'document.logo_keep_proportions', 'document.paid_stamp', 'document.savings_line', 'document.names_as_issued', 'credit.limit'],
             array_map(static fn (SettingDefinition $definition) => $definition->key, $this->catalog->ofChain(SettingChain::Parties)),
         );
         $terms = $this->definition('document.payment_terms_days');
@@ -50,6 +53,24 @@ final class BusinessDefaultSettingsTest extends TestCase
         self::assertSame([DocumentLayout::Classic->value, DocumentDesign::DEFAULT_ACCENT], [$layout->default, $accent->default]);
         self::assertSame([[SettingLevel::Company], [SettingLevel::Company]], [$layout->overridableAt, $accent->overridableAt]);
         self::assertNotNull($accent->refusal('red;}body{display:none'));
+    }
+
+    /** Written out for the labels gate; held here to the watermark's own cases, its defaults today's look. */
+    public function testTheWatermarkIsTheCompanysInTheCasesItPrintsInDefaultingToTheLookDocumentsAlwaysHad(): void
+    {
+        $intensity = $this->definition('document.watermark_intensity');
+        $copies = $this->definition('document.watermark_copies');
+        $spread = $this->definition('document.watermark_spread');
+        $default = new DocumentWatermark();
+
+        self::assertSame(array_map(static fn (WatermarkIntensity $each): string => $each->value, WatermarkIntensity::cases()), $intensity->choices);
+        self::assertSame(array_map(strval(...), DocumentWatermark::COPIES), $copies->choices);
+        self::assertSame(array_map(static fn (WatermarkSpread $each): string => $each->value, WatermarkSpread::cases()), $spread->choices);
+        self::assertSame([$default->intensity->value, (string) $default->copies, $default->spread->value], [$intensity->default, $copies->default, $spread->default]);
+        foreach ([$intensity, $copies, $spread] as $each) {
+            self::assertSame([SettingLevel::Company], $each->overridableAt, $each->key);
+        }
+        self::assertNotNull($copies->refusal('2'));
     }
 
     public function testTheLogosRoomIsTheCompanysInMillimetresWithinWhatAPageHolds(): void

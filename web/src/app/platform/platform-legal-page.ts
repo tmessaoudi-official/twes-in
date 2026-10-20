@@ -17,6 +17,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Feedback } from '../shared/feedback/feedback';
 import { Select, type SelectOption } from '../shared/form/select';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { languageChoices } from '../shared/i18n/language-options';
 import { directionOf } from '../shared/i18n/languages';
@@ -85,7 +86,7 @@ export class PlatformLegalPage implements OnInit {
   protected readonly loading = signal(false);
   protected readonly previewing = signal(false);
   /** The texts typed and not published, by page and language. */
-  private readonly drafts = new Map<string, string>();
+  private readonly drafts = signal<ReadonlyMap<string, string>>(new Map());
 
   protected readonly statuses = computed(
     () => new Map(this.facade.overview().map((row) => [key(row.page, row.language), row])),
@@ -163,12 +164,27 @@ export class PlatformLegalPage implements OnInit {
   protected readonly identityChanged = computed(
     () => Object.keys(this.identityChanges()).length > 0,
   );
+  /**
+   * What is typed and not saved: the identity's fields changed, the open text, and the texts kept for pages opened
+   * before. Leaving the screen or reloading it loses them all, so the page is held while any is there.
+   */
+  private readonly unsaved = computed(() => {
+    const opened = this.opened();
+    const open = opened === null ? null : key(opened.page, opened.language);
+    const others = [...this.drafts().keys()].filter((each) => each !== open).length;
+    return Object.keys(this.identityChanges()).length + (this.changed() ? 1 : 0) + others;
+  });
+
   /** What the preview fills the placeholders with: the saved identity, as the public page will. */
   protected readonly filled = computed(() =>
     Object.fromEntries(
       Object.entries(this.facade.identity()).filter(([, value]) => value.trim() !== ''),
     ),
   );
+
+  constructor() {
+    inject(UnsavedChanges).declare(this.unsaved);
+  }
 
   ngOnInit(): void {
     void this.facade.load();
@@ -191,11 +207,8 @@ export class PlatformLegalPage implements OnInit {
   protected async open(page: LegalPage, language: LegalLanguage): Promise<void> {
     const leaving = this.opened();
     if (leaving !== null) {
-      if (this.changed()) {
-        this.drafts.set(key(leaving.page, leaving.language), this.text());
-      } else {
-        this.drafts.delete(key(leaving.page, leaving.language));
-      }
+      const leftText = this.changed() ? this.text() : null;
+      this.drafts.update((drafts) => kept(drafts, key(leaving.page, leaving.language), leftText));
     }
     this.opened.set({ page, language });
     this.previewing.set(false);
@@ -203,7 +216,7 @@ export class PlatformLegalPage implements OnInit {
     this.loading.set(true);
     await this.facade.open(page, language);
     if (!this.isOpen(page, language)) return;
-    this.text.set(this.drafts.get(key(page, language)) ?? this.latest()?.body ?? '');
+    this.text.set(this.drafts().get(key(page, language)) ?? this.latest()?.body ?? '');
     this.loading.set(false);
   }
 
@@ -235,7 +248,7 @@ export class PlatformLegalPage implements OnInit {
   protected async publish(): Promise<void> {
     const opened = this.opened();
     if (opened === null || !(await this.facade.write(this.text()))) return;
-    this.drafts.delete(key(opened.page, opened.language));
+    this.drafts.update((drafts) => kept(drafts, key(opened.page, opened.language), null));
     this.text.set(this.latest()?.body ?? this.text());
     this.feedback.success('platform.legal.published');
   }
@@ -245,6 +258,18 @@ export class PlatformLegalPage implements OnInit {
       this.feedback.success('platform.legal.validated_toast');
     }
   }
+}
+
+/** The drafts with this page's text kept, or let go when null. */
+function kept(
+  drafts: ReadonlyMap<string, string>,
+  page: string,
+  text: string | null,
+): ReadonlyMap<string, string> {
+  const next = new Map(drafts);
+  if (text === null) next.delete(page);
+  else next.set(page, text);
+  return next;
 }
 
 function key(page: LegalPage, language: LegalLanguage): string {

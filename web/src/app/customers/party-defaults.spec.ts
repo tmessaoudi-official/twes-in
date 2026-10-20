@@ -10,7 +10,14 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Session } from '../shared/session/session';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
 import { PartyDefaults } from './party-defaults';
 import { PartySettings } from './party-settings-facade';
@@ -88,6 +95,8 @@ describe('PartyDefaults', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: PartySettings, useValue: facade },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
       ],
@@ -106,12 +115,40 @@ describe('PartyDefaults', () => {
     const input = q('field-document__payment_terms_days') as HTMLInputElement;
     input.value = '10';
     input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
     q('party-defaults-save')!.click();
     await fixture.whenStable();
 
     expect(facade.save).toHaveBeenCalledWith('c1', { customerId: 'k1' }, [
       { key: 'document.payment_terms_days', value: 10, version: 0 },
     ]);
+  });
+
+  it('counts what is typed beside its title, holds the page while it is unsaved, and goes back from the bar', async () => {
+    await open();
+    const unsaved = TestBed.inject(UnsavedChanges);
+    expect(
+      q('party-defaults-header')?.querySelector('[data-testid="party-defaults-bar"]') ?? null,
+    ).not.toBeNull();
+    expect((q('party-defaults-save') as HTMLButtonElement).disabled).toBe(true);
+    expect(unsaved.count()).toBe(0);
+
+    const input = q('field-document__payment_terms_days') as HTMLInputElement;
+    input.value = '10';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(q('party-defaults-changes')?.dataset['count']).toBe('1');
+    expect(unsaved.count()).toBe(1);
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+
+    q('party-defaults-revert')!.click();
+    fixture.detectChanges();
+    expect(input.value).toBe('45');
+    expect(unsaved.count()).toBe(0);
+    expect(facade.save).not.toHaveBeenCalled();
   });
 
   it('keeps what is typed when the chain is read again with the same content', async () => {
@@ -178,7 +215,7 @@ describe('PartyDefaults', () => {
     await open();
 
     expect((q('field-document__payment_terms_days') as HTMLInputElement).disabled).toBe(true);
-    expect(q('party-defaults-save')).toBeNull();
+    expect(q('party-defaults-bar')).toBeNull();
     expect(q('party-defaults-reset-document.payment_terms_days')).toBeNull();
   });
 });

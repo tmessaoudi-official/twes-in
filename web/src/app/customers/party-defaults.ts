@@ -9,11 +9,15 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import type { ScreenAction } from '../shared/actions/screen-action';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
+import { RecordBar } from '../shared/form/record-bar';
 import { liveRecord } from '../shared/form/live-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
@@ -38,7 +42,7 @@ const PARTY_CHAINS: readonly SettingChain[] = ['parties'];
  */
 @Component({
   selector: 'app-party-defaults',
-  imports: [MatButtonModule, TranslatePipe, DescriptorForm, RecordChanged],
+  imports: [MatButtonModule, TranslatePipe, DescriptorForm, RecordBar, RecordChanged],
   templateUrl: './party-defaults.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -96,6 +100,35 @@ export class PartyDefaults {
     saved: () => this.values(),
     version: () => versionsAt(this.settings.rows(), this.level()),
   });
+  private readonly savedValues = computed(() => this.values());
+  /** What is typed and not saved, which the bar shows and leaving the page asks about. */
+  protected readonly changes = unsavedChanges(this.form, this.savedValues);
+  private readonly shownForm = viewChild(DescriptorForm);
+  /**
+   * Saving and going back from the bar beside the tab's title. Handed to the bar alone, not declared to the page:
+   * the record's own save already answers the page's shortcut, and one key cannot save two forms.
+   */
+  protected readonly recordActions = computed<ScreenAction[]>(() => {
+    const busy = this.busy();
+    const changes = this.changes();
+    return [
+      {
+        id: 'save',
+        label: 'form.save',
+        icon: 'save',
+        primary: true,
+        disabled: busy || changes === 0,
+        run: () => this.saveFromBar(),
+      },
+      {
+        id: 'revert',
+        label: 'form.revert',
+        disabled: busy,
+        run: () => revertToSaved(this.form(), this.savedValues()),
+        shown: changes > 0,
+      },
+    ];
+  });
   protected readonly overrides = computed(() =>
     overridesAt(this.settings.rows(), this.level(), !this.writable()),
   );
@@ -121,6 +154,11 @@ export class PartyDefaults {
     const shown = new Set(descriptor.sections.flatMap((s) => s.fields.map((field) => field.id)));
     const values = Object.entries(settingsValues(this.settings.rows(), this.level()));
     return Object.fromEntries(values.filter(([id]) => shown.has(id)));
+  }
+
+  /** The bar's save goes through the form's own submit: an invalid field is shown where it is. */
+  private saveFromBar(): void {
+    this.shownForm()?.submit();
   }
 
   protected async save(values: FormValues): Promise<void> {

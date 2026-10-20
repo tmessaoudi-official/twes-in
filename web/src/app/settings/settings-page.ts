@@ -8,6 +8,7 @@ import {
   OnInit,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -15,6 +16,10 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
+import { RecordBar } from '../shared/form/record-bar';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import type { ScreenAction } from '../shared/actions/screen-action';
 import { liveRecord } from '../shared/form/live-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
@@ -65,6 +70,7 @@ export const PLANNED_SETTINGS: readonly PlannedSetting[] = [
     RouterLink,
     TranslatePipe,
     DescriptorForm,
+    RecordBar,
     RecordChanged,
   ],
   templateUrl: './settings-page.html',
@@ -111,6 +117,39 @@ export class SettingsPage implements OnInit {
     saved: () => this.values(),
     version: () => versionsAt(this.settings.rows(), 'company'),
   });
+  /** The chain's values as last saved, which what is typed is counted against. */
+  private readonly savedValues = computed(() => companySettingsValues(this.settings.rows()));
+  /**
+   * What is typed and not saved, counted beside the title where the eye is: the save sat below every section of a
+   * long page, and a reload took what was typed with no question asked.
+   */
+  protected readonly changes = unsavedChanges(this.form, this.savedValues);
+  private readonly shownForm = viewChild(DescriptorForm);
+  /** What the bar beside the title offers, which the keyboard and the Ctrl K palette read too. */
+  protected readonly recordActions = computed<ScreenAction[]>(() => {
+    const busy = this.busy();
+    const changes = this.changes();
+    return [
+      {
+        id: 'save',
+        label: 'form.save',
+        icon: 'save',
+        primary: true,
+        shortcut: 's',
+        // A save that is always available teaches nothing about whether there is anything to save.
+        disabled: busy || changes === 0,
+        run: () => this.saveFromBar(),
+        shown: this.mayManage(),
+      },
+      {
+        id: 'revert',
+        label: 'form.revert',
+        disabled: busy,
+        run: () => revertToSaved(this.form(), this.savedValues()),
+        shown: this.mayManage() && changes > 0,
+      },
+    ];
+  });
   protected readonly overrides = computed(() => companyOverrides(this.settings.rows()));
   /** The planned modules' settings the API still lists as planned, while the person shows what is coming. */
   protected readonly comingSettings = computed(() => {
@@ -118,6 +157,10 @@ export class SettingsPage implements OnInit {
     const planned = new Set((this.auth.me()?.plannedModules ?? []).map((each) => each.key));
     return PLANNED_SETTINGS.filter((setting) => planned.has(setting.module));
   });
+
+  constructor() {
+    inject(ScreenActions).declare(this.recordActions);
+  }
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
@@ -133,6 +176,11 @@ export class SettingsPage implements OnInit {
   /** The chain's values at this form's level, for the fields it shows. */
   private values(): FormValues {
     return companySettingsValues(this.settings.rows());
+  }
+
+  /** The bar's save: an invalid field is shown where it is, as the form's own submit does. */
+  private saveFromBar(): void {
+    this.shownForm()?.submit();
   }
 
   protected async save(values: FormValues): Promise<void> {

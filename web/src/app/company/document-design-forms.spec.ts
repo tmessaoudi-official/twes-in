@@ -3,6 +3,13 @@
 import type { SettingRow } from '../shared/settings/settings-types';
 import { DEFAULT_DESIGN, designChanges, logoRoom, savedDesign } from './document-design-forms';
 
+const CHOICES: Readonly<Record<string, readonly string[]>> = {
+  'document.layout': ['classic', 'modern', 'compact'],
+  'document.watermark_intensity': ['discreet', 'normal', 'marked'],
+  'document.watermark_copies': ['1', '3', '6', '12'],
+  'document.watermark_spread': ['grouped', 'spread'],
+};
+
 function designRow(
   key: string,
   defaultValue: string | number | boolean,
@@ -29,7 +36,7 @@ function designRow(
     overridableLevels: ['company'],
     versions: company === undefined ? {} : { company: 1 },
     writableLevels: ['company'],
-    choices: key === 'document.layout' ? ['classic', 'modern', 'compact'] : [],
+    choices: [...(CHOICES[key] ?? [])],
     min: bounds?.[0] ?? null,
     max: bounds?.[1] ?? null,
     maxLength: null,
@@ -46,6 +53,9 @@ describe('document design forms', () => {
         designRow('document.logo_width', 48, 60),
         designRow('document.logo_height', 17),
         designRow('document.logo_keep_proportions', true, false),
+        designRow('document.watermark_intensity', 'normal', 'marked'),
+        designRow('document.watermark_copies', '1', '6'),
+        designRow('document.watermark_spread', 'grouped', 'spread'),
       ]),
     ).toEqual({
       layout: 'modern',
@@ -53,6 +63,9 @@ describe('document design forms', () => {
       logoWidth: 60,
       logoHeight: 17,
       logoKeepsProportions: false,
+      watermarkIntensity: 'marked',
+      watermarkCopies: '6',
+      watermarkSpread: 'spread',
     });
     expect(
       savedDesign([
@@ -61,6 +74,9 @@ describe('document design forms', () => {
         designRow('document.logo_width', 48),
         designRow('document.logo_height', 17),
         designRow('document.logo_keep_proportions', true),
+        designRow('document.watermark_intensity', 'normal'),
+        designRow('document.watermark_copies', '1'),
+        designRow('document.watermark_spread', 'grouped'),
       ]),
     ).toEqual({
       layout: 'classic',
@@ -68,7 +84,14 @@ describe('document design forms', () => {
       logoWidth: 48,
       logoHeight: 17,
       logoKeepsProportions: true,
+      watermarkIntensity: 'normal',
+      watermarkCopies: '1',
+      watermarkSpread: 'grouped',
     });
+    // A value the page does not know is read as the look documents always printed in.
+    expect(savedDesign([designRow('document.watermark_copies', '1', '5')]).watermarkCopies).toBe(
+      '1',
+    );
     expect(savedDesign([])).toEqual(DEFAULT_DESIGN);
   });
 
@@ -79,6 +102,9 @@ describe('document design forms', () => {
       logoWidth: 48,
       logoHeight: 17,
       logoKeepsProportions: true,
+      watermarkIntensity: 'normal',
+      watermarkCopies: '1',
+      watermarkSpread: 'grouped',
     } as const;
 
     expect(designChanges(saved, { ...saved, accent: '#1F6FEB' })).toEqual([]);
@@ -89,12 +115,18 @@ describe('document design forms', () => {
         logoWidth: 60,
         logoHeight: 17,
         logoKeepsProportions: false,
+        watermarkIntensity: 'discreet',
+        watermarkCopies: '12',
+        watermarkSpread: 'spread',
       }),
     ).toEqual([
       { key: 'document.layout', value: 'compact' },
       { key: 'document.accent', value: '#2da44e' },
       { key: 'document.logo_width', value: 60 },
       { key: 'document.logo_keep_proportions', value: false },
+      { key: 'document.watermark_intensity', value: 'discreet' },
+      { key: 'document.watermark_copies', value: '12' },
+      { key: 'document.watermark_spread', value: 'spread' },
     ]);
   });
 

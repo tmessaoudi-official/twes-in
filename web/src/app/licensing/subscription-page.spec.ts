@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
@@ -188,9 +189,12 @@ describe('SubscriptionPage', () => {
     fixture.detectChanges();
     fill('amount', '600.000');
     fill('paidOn', '2026-09-16');
+    // A payment typed and not declared holds the page until it is.
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(2);
     q('payment-submit')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(0);
 
     expect(facade.declare).toHaveBeenCalledWith('c1', {
       amount: '600.000',

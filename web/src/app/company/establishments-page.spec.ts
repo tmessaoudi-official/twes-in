@@ -146,6 +146,7 @@ describe('EstablishmentsPage', () => {
     await settle();
     type('field-code', '001');
     type('field-name', 'Agence de Sfax');
+    fixture.detectChanges();
     q('establishment-save')!.click();
     await settle();
 
@@ -160,6 +161,7 @@ describe('EstablishmentsPage', () => {
     await settle();
     type('field-code', '12');
     type('field-name', 'Agence');
+    fixture.detectChanges();
     q('establishment-save')!.click();
     await settle();
 
@@ -170,6 +172,7 @@ describe('EstablishmentsPage', () => {
     q('row-action-edit-e1')!.click();
     await settle();
     type('field-name', 'Siège social');
+    fixture.detectChanges();
     q('establishment-save')!.click();
     await settle();
 
@@ -193,6 +196,7 @@ describe('EstablishmentsPage', () => {
     );
 
     type('field-name', 'Siège social');
+    fixture.detectChanges();
     q('establishment-save')!.click();
     await settle();
     await vi.waitFor(() => expect((q('field-city') as HTMLInputElement).value).toBe('Sfax'));
@@ -204,6 +208,8 @@ describe('EstablishmentsPage', () => {
       key: 'live.saved_since',
       params: undefined,
     });
+
+    fixture.detectChanges();
 
     q('establishment-save')!.click();
     await settle();
@@ -237,6 +243,7 @@ describe('EstablishmentsPage', () => {
     expect((q('field-code') as HTMLInputElement).disabled).toBe(true);
 
     type('field-name', 'Siège social');
+    fixture.detectChanges();
     q('establishment-save')!.click();
     await settle();
 

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -381,6 +382,28 @@ describe('PlatformLegalPage', () => {
     q('legal-cell-mentions-fr')!.click();
     await settle();
     expect(body().value).toBe('pas encore publié');
+  });
+
+  it('counts the texts typed and not published, and the identity changed, holding the page while they are there', async () => {
+    await render();
+    const unsaved = TestBed.inject(UnsavedChanges);
+    q('legal-cell-mentions-fr')!.click();
+    await settle();
+    expect(unsaved.count()).toBe(0);
+    await type('pas encore publié');
+    expect(unsaved.count()).toBe(1);
+    q('legal-cell-cookies-fr')!.click();
+    await settle();
+    // Kept for its page while another is open: still unsaved.
+    expect(unsaved.count()).toBe(1);
+    const host = q('legal-identity-host.name') as HTMLInputElement;
+    host.value = 'OVH SAS';
+    host.dispatchEvent(new Event('input'));
+    await settle();
+    expect(unsaved.count()).toBe(2);
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
   });
 
   it('fills in the publisher and host the legal texts name, and saves only what changed', async () => {

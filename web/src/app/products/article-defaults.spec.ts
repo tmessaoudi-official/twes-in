@@ -10,7 +10,14 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Session } from '../shared/session/session';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
 import { FiscalFacade } from '../fiscal/fiscal-facade';
 import type { UnitRow } from '../fiscal/fiscal-types';
@@ -105,6 +112,8 @@ describe('ArticleDefaults', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ArticleSettings, useValue: facade },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: FiscalFacade, useValue: fiscal },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
@@ -124,6 +133,7 @@ describe('ArticleDefaults', () => {
     const input = q('field-article__default_unit') as HTMLInputElement;
     input.value = 'KGM';
     input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
     q('article-defaults-save')!.click();
     await fixture.whenStable();
 
@@ -147,12 +157,40 @@ describe('ArticleDefaults', () => {
     const input = q('field-article__default_unit') as HTMLInputElement;
     input.value = 'HUR';
     input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
     q('article-defaults-save')!.click();
     await fixture.whenStable();
 
     expect(facade.save).toHaveBeenCalledWith('c1', { productCategoryId: 'k1' }, [
       { key: 'article.default_unit', value: 'HUR', version: 3 },
     ]);
+  });
+
+  it('counts what is typed beside its title, holds the page while it is unsaved, and goes back from the bar', async () => {
+    await open({ productId: 'p1' });
+    const unsaved = TestBed.inject(UnsavedChanges);
+    expect(
+      q('article-defaults-header')?.querySelector('[data-testid="article-defaults-bar"]') ?? null,
+    ).not.toBeNull();
+    expect((q('article-defaults-save') as HTMLButtonElement).disabled).toBe(true);
+    expect(unsaved.count()).toBe(0);
+
+    const input = q('field-article__default_unit') as HTMLInputElement;
+    input.value = 'KGM';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(q('article-defaults-changes')?.dataset['count']).toBe('1');
+    expect(unsaved.count()).toBe(1);
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+
+    q('article-defaults-revert')!.click();
+    fixture.detectChanges();
+    expect(input.value).toBe('HUR');
+    expect(unsaved.count()).toBe(0);
+    expect(facade.save).not.toHaveBeenCalled();
   });
 
   it('keeps what is typed when the chain is read again with the same content', async () => {
@@ -214,7 +252,7 @@ describe('ArticleDefaults', () => {
     await open({ productId: 'p1' });
 
     expect((q('field-article__default_unit') as HTMLInputElement).disabled).toBe(true);
-    expect(q('article-defaults-save')).toBeNull();
+    expect(q('article-defaults-bar')).toBeNull();
     expect(q('article-defaults-reset-article.default_unit')).toBeNull();
   });
   it("offers a category's default unit as the company's units by name, once they are read", async () => {

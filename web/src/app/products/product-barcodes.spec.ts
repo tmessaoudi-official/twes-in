@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
@@ -238,6 +239,8 @@ describe('ProductBarcodesSection', () => {
 
     const save = q('product-barcodes-save') as HTMLButtonElement;
     expect(save.disabled).toBe(false);
+    // A code scanned and not saved holds the page until it is.
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(1);
     save.click();
     await fixture.whenStable();
     fixture.detectChanges();

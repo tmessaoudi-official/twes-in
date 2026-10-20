@@ -18,6 +18,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { runAction } from '../shared/actions/run-action';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import { unsavedChanges } from '../shared/form/dirty-count';
 import { Feedback } from '../shared/feedback/feedback';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
@@ -91,6 +92,8 @@ export class InvoiceInstruments {
   protected readonly mayReceive = computed(() => this.mayPay() && this.free() > 0n);
 
   constructor() {
+    // An instrument typed and not received, against what its form opened with.
+    unsavedChanges(this.group, signal(null));
     effect(() => {
       const companyId = this.companyId();
       const invoiceId = this.invoiceId();

@@ -151,6 +151,7 @@ describe('NumberingPage', () => {
     expect((q('field-nextNumber') as HTMLInputElement).disabled).toBe(true);
 
     type('field-format', 'BL-{EST}-{SEQ:4}');
+    fixture.detectChanges();
     q('series-save')!.click();
     await settle();
 
@@ -171,6 +172,7 @@ describe('NumberingPage', () => {
     await settle();
     type('field-format', 'BL-{EST}-{SEQ:4}');
     type('field-nextNumber', '12');
+    fixture.detectChanges();
     q('series-save')!.click();
     await settle();
 
@@ -200,6 +202,7 @@ describe('NumberingPage', () => {
     );
 
     type('field-format', 'BL-{EST}-{SEQ:4}');
+    fixture.detectChanges();
     q('series-save')!.click();
     await settle();
     await vi.waitFor(() => expect((q('field-nextNumber') as HTMLInputElement).value).toBe('2'));
@@ -211,6 +214,8 @@ describe('NumberingPage', () => {
       key: 'live.saved_since',
       params: undefined,
     });
+
+    fixture.detectChanges();
 
     q('series-save')!.click();
     await settle();

@@ -20,6 +20,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { debounceTime, startWith } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { unsavedChanges } from '../shared/form/dirty-count';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import type { PickOption } from '../shared/form/pick-field';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
@@ -268,6 +270,21 @@ export class StockPage implements OnInit {
     },
   });
 
+  /**
+   * What the open movement held when it opened, or once the last one was recorded and the next began from the product
+   * and place it kept: what was picked or typed since is unsaved. Options arriving rebuild the form over what was
+   * typed, so the measure is taken when the movement opens, never again on a rebuild.
+   */
+  private readonly started = linkedSignal<StockOperation | null, FormValues | null>({
+    source: this.operation,
+    computation: (operation) =>
+      operation === null ? null : untracked(() => this.form()?.getRawValue() ?? null),
+  });
+  /** A place's share typed in a delivery shared over several places, unsaved like the form's own fields. */
+  private readonly partsTyped = computed(() =>
+    this.split() ? this.parts().filter((part) => part.quantity.trim() !== '').length : 0,
+  );
+
   /** A person looked at the goods and let the lot leave: it is taken by delivery notes again. */
   protected async release(row: StockListRow): Promise<void> {
     const companyId = this.company()?.id;
@@ -278,6 +295,8 @@ export class StockPage implements OnInit {
   }
 
   constructor() {
+    unsavedChanges(this.form, this.started);
+    inject(UnsavedChanges).declare(this.partsTyped);
     inject(ScanBus).handle((scan) => this.scanned(scan));
     // The picker shows what the form names: the form carries the id, and only this page knows how that id reads.
     effect((onCleanup) => {
@@ -637,5 +656,6 @@ export class StockPage implements OnInit {
     for (const [id, control] of Object.entries(form.controls)) {
       if (!kept.includes(id)) control.reset(id === 'quantity' && serial ? '1' : '');
     }
+    this.started.set(form.getRawValue());
   }
 }

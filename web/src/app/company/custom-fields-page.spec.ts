@@ -133,6 +133,7 @@ describe('CustomFieldsPage', () => {
     await settle();
     type('field-key', 'warranty');
     type('field-label', 'Garantie');
+    fixture.detectChanges();
     q('custom-field-save')!.click();
     await vi.waitFor(() =>
       expect(facade.create).toHaveBeenCalledWith(
@@ -153,6 +154,7 @@ describe('CustomFieldsPage', () => {
     await settle();
     type('field-key', 'account_manager');
     type('field-label', 'Chargé de compte');
+    fixture.detectChanges();
     q('custom-field-save')!.click();
     await vi.waitFor(() =>
       expect(facade.create).toHaveBeenCalledWith(
@@ -172,6 +174,7 @@ describe('CustomFieldsPage', () => {
     await settle();
     type('field-key', 'Account Manager');
     type('field-label', 'Chargé');
+    fixture.detectChanges();
     q('custom-field-save')!.click();
     await settle();
 
@@ -182,6 +185,7 @@ describe('CustomFieldsPage', () => {
     q('row-action-edit-f1')!.click();
     await settle();
     type('field-label', 'Activité');
+    fixture.detectChanges();
     q('custom-field-save')!.click();
     await vi.waitFor(() =>
       expect(facade.revise).toHaveBeenCalledWith(
@@ -205,6 +209,7 @@ describe('CustomFieldsPage', () => {
     );
 
     type('field-label', 'Activité');
+    fixture.detectChanges();
     q('custom-field-save')!.click();
     await settle();
     await vi.waitFor(() => expect((q('field-sortOrder') as HTMLInputElement).value).toBe('7'));
@@ -216,6 +221,8 @@ describe('CustomFieldsPage', () => {
       key: 'live.saved_since',
       params: undefined,
     });
+
+    fixture.detectChanges();
 
     q('custom-field-save')!.click();
     await settle();

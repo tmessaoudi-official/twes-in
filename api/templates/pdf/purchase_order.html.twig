@@ -19,7 +19,7 @@
   {%- include 'pdf/_demo_band.html.twig' with {demo: demo, t: t, locale: locale} only %}
   {%- if page.watermark %}
     {#- « Cancelled » agrees with the document it stamps, so an order says it in its own words. #}
-    <div class="watermark">{{ ('watermark.' ~ ({cancelled: 'cancelled_order'}[page.watermark] ?? page.watermark))|trans({}, t, locale) }}</div>
+    {% include 'pdf/_watermark.html.twig' with {text: ('watermark.' ~ ({cancelled: 'cancelled_order'}[page.watermark] ?? page.watermark))|trans({}, t, locale), look: page.design.watermark} only %}
   {%- endif %}
 
   <div class="parties">

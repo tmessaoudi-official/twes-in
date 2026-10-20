@@ -160,12 +160,21 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'reminders.hour': 'settings.reminders.hour_hint',
   'late_fees.enabled': 'settings.late_fees.enabled_hint',
   'late_fees.tiers': 'settings.late_fees.tiers_hint',
+  'document.watermark_spread': 'settings.document.watermark_spread_hint',
 };
+
+/**
+ * Settings that take a whole row of the two-column grid: one declared alone among pairs, which would otherwise move
+ * every field after it into the other column. The watermark's spread follows its strength and copies, a pair, and
+ * leaves the logo's width and height side by side.
+ */
+const WHOLE_ROW_SETTINGS: ReadonlySet<string> = new Set(['document.watermark_spread']);
 
 function fieldOf(row: SettingRow): FormField {
   const hint = SETTING_HINTS[row.key];
   const field = fieldOfType(row);
-  return hint === undefined ? field : { ...field, hint };
+  const placed: FormField = WHOLE_ROW_SETTINGS.has(row.key) ? { ...field, span: 2 } : field;
+  return hint === undefined ? placed : { ...placed, hint };
 }
 
 function fieldOfType(row: SettingRow): FormField {

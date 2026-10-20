@@ -37,7 +37,23 @@
     .totals .grand td { border-top: 2px solid var(--accent-text); font-weight: 700; padding-top: 6px; }
     .mention, .remarks { margin-top: 16px; }
     .muted { color: #57606a; }
-    .watermark { position: fixed; top: 45%; inset-inline: 0; text-align: center; transform: rotate(-30deg); font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, .14); letter-spacing: .1em; }
+{# The watermark's share of red, its size and its grid come from DocumentWatermark's fixed cases alone: escaped, `.14`
+   would print as `\2E 14`, which is no number. Several copies are smaller: grouped, lines of one block on the
+   diagonal; spread, one to a cell of a grid over the page. #}
+{% autoescape false %}
+    .watermark { position: fixed; top: 45%; inset-inline: 0; text-align: center; transform: rotate(-30deg); font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, {{ design.watermark.opacity }}); letter-spacing: .1em; }
+{% if design.watermark.copies > 1 %}
+    .watermark-many { font-size: {{ design.watermark.wordSizePt }}pt; }
+    .watermark-many span { display: block; white-space: nowrap; }
+{% if design.watermark.spread.value == 'spread' %}
+{% set grid = design.watermark.grid %}
+    .watermark-spread { top: 0; bottom: 0; transform: none; display: grid; grid-template-columns: repeat({{ grid[0] }}, 1fr); grid-template-rows: repeat({{ grid[1] }}, 1fr); }
+    .watermark-spread span { display: flex; align-items: center; justify-content: center; transform: rotate(-30deg); }
+{% else %}
+    .watermark-grouped { top: 50%; line-height: {{ constant('App\\Shared\\Domain\\ValueObject\\DocumentWatermark::GROUPED_LINE_HEIGHT') }}; transform: translateY(-50%) rotate(-30deg); }
+{% endif %}
+{% endif %}
+{% endautoescape %}
 
     {# Modern: the title, the table's head and the total on bands of the accent. #}
     .layout-modern .party h2 { color: var(--accent-text); }

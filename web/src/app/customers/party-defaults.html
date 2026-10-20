@@ -3,9 +3,18 @@
   data-testid="party-defaults"
   aria-labelledby="party-defaults-title"
 >
-  <h2 id="party-defaults-title" class="text-xl font-semibold">
-    {{ 'customers.defaults.title' | translate }}
-  </h2>
+  <div
+    class="flex flex-wrap items-center justify-between gap-4"
+    data-testid="party-defaults-header"
+  >
+    <h2 id="party-defaults-title" class="text-xl font-semibold">
+      {{ 'customers.defaults.title' | translate }}
+    </h2>
+    <!-- The tab's save sits beside its title, as the record's does beside the page's: the fields run below. -->
+    @if (writable() && descriptor().sections.length > 0) {
+      <app-record-bar [changes]="changes()" [actions]="recordActions()" testId="party-defaults" />
+    }
+  </div>
   <p class="max-w-prose">{{ intro() | translate }}</p>
 
   @if (error(); as code) {
@@ -31,20 +40,7 @@
       (resolved)="sync.resolve(form(), $event)"
       [readOnly]="!writable()"
       (submitted)="save($event)"
-    >
-      @if (writable()) {
-        <div class="flex justify-end">
-          <button
-            mat-flat-button
-            type="submit"
-            [disabled]="busy()"
-            data-testid="party-defaults-save"
-          >
-            {{ 'customers.defaults.save' | translate }}
-          </button>
-        </div>
-      }
-    </app-descriptor-form>
+    />
   }
 
   @if (overrides().length > 0) {

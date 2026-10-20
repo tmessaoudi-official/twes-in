@@ -219,6 +219,7 @@ describe('ProductCategoriesPage', () => {
     // What a slow first read gives: the list, and so the parents offered, arrive once the form is open.
     categories.set([hardware, laptops, { ...laptops, id: 'k3', name: 'Écrans' }]);
     await settle();
+    fixture.detectChanges();
     q('product-category-save')!.click();
     await settle();
 
@@ -234,6 +235,7 @@ describe('ProductCategoriesPage', () => {
     q('product-category-add')!.click();
     await settle();
     type('field-name', 'Services');
+    fixture.detectChanges();
     q('product-category-save')!.click();
     await settle();
 
@@ -244,6 +246,7 @@ describe('ProductCategoriesPage', () => {
     q('row-action-edit-k2')!.click();
     await settle();
     type('field-name', 'Ordinateurs portables');
+    fixture.detectChanges();
     q('product-category-save')!.click();
     await settle();
     expect(facade.reviseCategory).toHaveBeenCalledWith(
@@ -283,6 +286,7 @@ describe('ProductCategoriesPage', () => {
     );
 
     type('field-name', 'Ordinateurs portables');
+    fixture.detectChanges();
     q('product-category-save')!.click();
     await settle();
     await vi.waitFor(() =>
@@ -295,6 +299,8 @@ describe('ProductCategoriesPage', () => {
 
     expect((q('field-name') as HTMLInputElement).value).toBe('Ordinateurs portables');
     expect(q('product-categories-error')).toBeNull();
+
+    fixture.detectChanges();
 
     q('product-category-save')!.click();
     await settle();

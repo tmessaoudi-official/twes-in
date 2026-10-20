@@ -25,6 +25,9 @@ import type { DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FieldValue } from '../shared/form/form-types';
 import { liveRecord } from '../shared/form/live-record';
 import { PartConflict } from '../shared/form/part-conflict';
+import type { ScreenAction } from '../shared/actions/screen-action';
+import { RecordBar } from '../shared/form/record-bar';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { RecordChanged } from '../shared/form/record-changed';
 import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
@@ -49,6 +52,7 @@ import type { RoleRow } from './roles-types';
     MatIconModule,
     MatInputModule,
     PartConflict,
+    RecordBar,
     RecordChanged,
     TranslatePipe,
   ],
@@ -146,10 +150,42 @@ export class RolesPage implements OnInit {
       },
     ],
   });
+  /**
+   * What is changed and not saved: the name and the ticks, one each, as liveRecord merges them. A new role counts from
+   * an empty name and no tick.
+   */
+  protected readonly changes = computed(() => {
+    if (!this.editorOpen()) return 0;
+    const role = this.open();
+    const savedName = role === null ? '' : this.openName();
+    const savedTicks = role === null ? '' : tickText(role.permissions);
+    const name = this.draftName().trim() === savedName.trim() ? 0 : 1;
+    return name + (tickText([...this.ticks()]) === savedTicks ? 0 : 1);
+  });
+  /** The editor's bar, beside its title: the matrix runs well below the first screen. */
+  protected readonly editorActions = computed<ScreenAction[]>(() => {
+    const busy = this.busy();
+    return [
+      { id: 'close', label: 'company.roles.close', run: () => this.close() },
+      {
+        id: 'save',
+        label: 'company.roles.save',
+        icon: 'save',
+        primary: true,
+        disabled: busy || this.changes() === 0 || this.draftName().trim() === '',
+        run: () => void this.save(),
+        shown: this.editable(),
+      },
+    ];
+  });
   protected readonly isNameConflict = (conflict: { field: string }): boolean =>
     conflict.field === 'name';
   protected readonly isPermissionsConflict = (conflict: { field: string }): boolean =>
     conflict.field === 'permissions';
+
+  constructor() {
+    inject(UnsavedChanges).declare(this.changes);
+  }
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;

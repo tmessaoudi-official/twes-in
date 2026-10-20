@@ -13,6 +13,13 @@ import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import { Session } from '../shared/session/session';
 import type { RolesError } from './roles-api';
 import { RolesFacade } from './roles-facade';
@@ -143,6 +150,8 @@ describe('RolesPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: RolesFacade, useValue: facade },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         provideQuietFeedback(),
@@ -187,6 +196,37 @@ describe('RolesPage', () => {
     expect(tickOf('stock.read').checked).toBe(true);
     expect(tickOf('user.read').checked).toBe(false);
     expect(tickOf('user.read').disabled).toBe(false);
+  });
+
+  it('counts the name and the ticks changed beside the editor title, holds the page while unsaved, and closes without asking', async () => {
+    await open();
+    const unsaved = TestBed.inject(UnsavedChanges);
+    q('role-open-barista')!.click();
+    await settle();
+    expect(
+      q('role-editor-header')?.querySelector('[data-testid="role-bar"]') ?? null,
+    ).not.toBeNull();
+    expect((q('role-save') as HTMLButtonElement).disabled).toBe(true);
+    expect(unsaved.count()).toBe(0);
+
+    tickOf('user.read').click();
+    tickOf('stock.read').click();
+    const name = q('role-name') as HTMLInputElement;
+    name.value = 'serveur';
+    name.dispatchEvent(new Event('input'));
+    await settle();
+
+    expect(q('role-changes')?.dataset['count']).toBe('2');
+    expect(unsaved.count()).toBe(2);
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+
+    q('role-close')!.click();
+    await settle();
+    expect(q('role-editor')).toBeNull();
+    expect(unsaved.count()).toBe(0);
+    expect(facade.revise).not.toHaveBeenCalled();
   });
 
   it('saves the whole set of ticks, so unticking is the same request as ticking', async () => {

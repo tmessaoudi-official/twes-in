@@ -25,6 +25,7 @@ import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
 import { MEMBERS_LIST, MembersPage } from './members-page';
 import { provideQuietFeedback } from '../shared/testing/feedback';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -208,6 +209,22 @@ describe('MembersPage', () => {
     await component.add();
 
     expect(members.add).toHaveBeenCalledWith('c1', 'joiner@example.test', 'admin');
+  });
+
+  it('counts an invitation being typed, holding the page until it goes', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
+    const component = fixture.componentInstance as unknown as {
+      form: { setValue: (v: { email: string; role: string }) => void };
+      add: () => Promise<void>;
+    };
+    expect(unsaved.count()).toBe(0);
+    component.form.setValue({ email: 'joiner@example.test', role: 'admin' });
+    expect(unsaved.count()).toBe(2);
+
+    members.add.mockResolvedValueOnce({ email: 'joiner@example.test' });
+    await component.add();
+
+    expect(unsaved.count()).toBe(0);
   });
 
   it('lists an open invitation as waiting, with nothing to remove', () => {

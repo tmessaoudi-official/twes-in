@@ -33,6 +33,9 @@ describe('DocumentDesignFacade', () => {
       logoWidth: null,
       logoHeight: null,
       logoKeepsProportions: true,
+      watermarkIntensity: 'normal',
+      watermarkCopies: '1',
+      watermarkSpread: 'grouped',
     });
     const second = facade.preview('c1', {
       layout: 'modern',
@@ -40,6 +43,9 @@ describe('DocumentDesignFacade', () => {
       logoWidth: null,
       logoHeight: null,
       logoKeepsProportions: true,
+      watermarkIntensity: 'normal',
+      watermarkCopies: '1',
+      watermarkSpread: 'grouped',
     });
     expect(facade.state()).toBe('loading');
 
@@ -58,6 +64,9 @@ describe('DocumentDesignFacade', () => {
       logoWidth: null,
       logoHeight: null,
       logoKeepsProportions: true,
+      watermarkIntensity: 'normal',
+      watermarkCopies: '1',
+      watermarkSpread: 'grouped',
     });
     answers[0]!.settle('data:classic');
     await shown;
@@ -68,6 +77,9 @@ describe('DocumentDesignFacade', () => {
       logoWidth: null,
       logoHeight: null,
       logoKeepsProportions: true,
+      watermarkIntensity: 'normal',
+      watermarkCopies: '1',
+      watermarkSpread: 'grouped',
     });
     expect(facade.picture()).toBe('data:classic');
     answers[1]!.refuse(new PreviewRefused('nothing'));
@@ -83,6 +95,9 @@ describe('DocumentDesignFacade', () => {
       logoWidth: null,
       logoHeight: null,
       logoKeepsProportions: true,
+      watermarkIntensity: 'normal',
+      watermarkCopies: '1',
+      watermarkSpread: 'grouped',
     });
     facade.without('failed');
     answers[0]!.settle('data:classic');

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -349,6 +350,8 @@ describe('AccountPage', () => {
 
       expect(auth.changePassword).not.toHaveBeenCalled();
       expect(byTestId(root, 'account-password-problem')?.textContent).toContain('mismatch');
+      // What was typed stays, and leaving or reloading the page is held while it is there.
+      expect(TestBed.inject(UnsavedChanges).count()).toBe(3);
     });
 
     it('changes it, says so and goes to the sign-in page, since every session ended', async () => {
@@ -366,6 +369,8 @@ describe('AccountPage', () => {
         { kind: 'success', key: 'account.password.changed', params: undefined },
       ]);
       expect(navigate).toHaveBeenCalledWith('/login');
+      // Emptied before going, so the way to the sign-in page asks nothing.
+      expect(TestBed.inject(UnsavedChanges).count()).toBe(0);
     });
 
     it('says why a change was refused and stays on the page', async () => {

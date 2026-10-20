@@ -16,6 +16,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { unsavedChanges } from '../shared/form/dirty-count';
 import type { FormValues } from '../shared/form/form-types';
 import { dayKey } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
@@ -51,7 +52,11 @@ export class SubscriptionPage implements OnInit {
   /** Keyed on nothing the API answers, so what is typed survives a reload that changes the standing. */
   protected readonly form = computed(() => (this.declaring() ? this.group : null));
 
-  private readonly group = buildFormGroup(paymentForm(), paymentFormValues());
+  /** What the form holds before anything is typed: its day is today's, taken again once a payment is declared. */
+  private readonly blank = signal(paymentFormValues());
+  private readonly group = buildFormGroup(paymentForm(), this.blank());
+  /** A payment typed and not declared: leaving or reloading would lose it, so the page is held while it is there. */
+  protected readonly changes = unsavedChanges(this.form, this.blank);
 
   /** What the payment is in: the subscription's currency where the terms name one, else the company's own. */
   protected readonly currency = computed(
@@ -89,7 +94,8 @@ export class SubscriptionPage implements OnInit {
     if (!companyId || this.busy()) return;
     if (await this.facade.declare(companyId, declaredPayment(values, this.currency()))) {
       this.declaring.set(false);
-      this.group.reset(paymentFormValues());
+      this.blank.set(paymentFormValues());
+      this.group.reset(this.blank());
       this.feedback.success('licensing.payment.declared');
     }
   }

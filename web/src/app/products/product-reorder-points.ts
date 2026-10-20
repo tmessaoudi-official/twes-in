@@ -21,6 +21,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
 import { DecimalInput } from '../shared/form/decimal-input';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { PartConflict } from '../shared/form/part-conflict';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { ProductReorderPoints, type ReorderPointWrite } from './product-reorder-points-facade';
@@ -79,10 +80,19 @@ export class ProductReorderPointsSection implements OnInit {
   private readonly typed = signal<Record<string, string>>({});
   /** The point each typed value was typed over: one saved since by someone else is a conflict to resolve. */
   private readonly bases = signal<Record<string, string | null>>({});
+  /** The points typed that differ from what is kept. */
+  private readonly unsaved = computed(() => {
+    const typed = this.typed();
+    return this.rows().filter(
+      (row) =>
+        row.establishmentId in typed && typed[row.establishmentId].trim() !== plain(row.quantity),
+    ).length;
+  });
 
   private readonly companyId = computed(() => this.auth.me()?.company?.id ?? null);
 
   constructor() {
+    inject(UnsavedChanges).declare(this.unsaved);
     inject(LiveChanges).reloadOn(['product_reorder_point'], () => this.load(), inject(DestroyRef));
   }
 

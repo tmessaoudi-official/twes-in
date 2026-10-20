@@ -47,7 +47,7 @@ test("the owner sets the company's payment terms, which survive a reload until r
     expect(axe.violations.map((violation) => violation.id)).toEqual([]);
 
     await terms.fill('45');
-    await page.getByTestId('settings-save').click();
+    await page.getByTestId('record-save').click();
     await expect(toast(page)).toContainText('Les paramètres ont été enregistrés.');
 
     await page.reload();
@@ -84,6 +84,11 @@ test('the fields of one row line up, whatever the length of their labels', async
   );
   expect(await top('field-document__how_to_pay', '.mdc-checkbox__background')).toBe(
     await top('field-document__amount_in_words', '.mdc-checkbox__background'),
+  );
+  // The watermark's strength and copies share a row; its spread takes the next one whole, which keeps the logo's two
+  // sizes side by side after it.
+  expect(await top('field-document__watermark_intensity', self)).toBe(
+    await top('field-document__watermark_copies', self),
   );
   expect(await top('field-document__logo_width', self)).toBe(
     await top('field-document__logo_height', self),

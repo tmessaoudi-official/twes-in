@@ -19,6 +19,9 @@ use ApiPlatform\OpenApi\OpenApi;
 use App\Module\Invoices\Application\Bulk\CheckInvoicesInBulk;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
 use App\Shared\Domain\ValueObject\DocumentDesign;
+use App\Shared\Domain\ValueObject\DocumentWatermark;
+use App\Shared\Domain\ValueObject\WatermarkIntensity;
+use App\Shared\Domain\ValueObject\WatermarkSpread;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
 /** Documents the PDF and Factur-X downloads, plain controllers API Platform does not describe (InvoicePdfController, InvoiceSelectionPdfController, FacturXController). */
@@ -55,6 +58,9 @@ final readonly class InvoicesOpenApi implements OpenApiFactoryInterface
                 new Parameter('accent', 'query', 'A colour written #rrggbb; the company\'s own when left out', false, schema: ['type' => 'string', 'pattern' => '^#[0-9a-fA-F]{6}$']),
                 new Parameter('logoWidth', 'query', 'The logo\'s printed width, in millimetres; the company\'s own when left out', false, schema: ['type' => 'integer', 'minimum' => DocumentDesign::LOGO_WIDTH_MM_MIN, 'maximum' => DocumentDesign::LOGO_WIDTH_MM_MAX]),
                 new Parameter('logoHeight', 'query', 'The logo\'s printed height, in millimetres; the company\'s own when left out', false, schema: ['type' => 'integer', 'minimum' => DocumentDesign::LOGO_HEIGHT_MM_MIN, 'maximum' => DocumentDesign::LOGO_HEIGHT_MM_MAX]),
+                new Parameter('watermarkIntensity', 'query', 'How strongly the state prints across the page; the company\'s own when left out', false, schema: ['type' => 'string', 'enum' => array_map(static fn (WatermarkIntensity $each): string => $each->value, WatermarkIntensity::cases())]),
+                new Parameter('watermarkCopies', 'query', 'How many times a page the state prints; the company\'s own when left out', false, schema: ['type' => 'string', 'enum' => array_map(strval(...), DocumentWatermark::COPIES)]),
+                new Parameter('watermarkSpread', 'query', 'Whether several copies are grouped on the diagonal or spread over the page; the company\'s own when left out', false, schema: ['type' => 'string', 'enum' => array_map(static fn (WatermarkSpread $each): string => $each->value, WatermarkSpread::cases())]),
                 new Parameter('logoProportions', 'query', 'keep: the logo fits that size in its own proportions; free: it is stretched to it; the company\'s own when left out', false, schema: ['type' => 'string', 'enum' => ['keep', 'free']]),
             ],
         )));

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { provideHttpClient } from '@angular/common/http';
 import type { FormGroup } from '@angular/forms';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -339,12 +340,18 @@ describe('StockPage', () => {
 
   /** ART-1 lives at the rack, so that is what the receipt offers (docs/SPEC.md row 101). */
   it('records goods received where the product picked normally lives', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
     q('stock-receive')!.click();
     await settle();
+    expect(unsaved.count()).toBe(0);
     await pick('field-productId', 'ART-1 · Portable');
     type('field-quantity', '10');
+    // What is picked and typed for this movement holds the page until it is recorded.
+    expect(unsaved.count()).toBeGreaterThan(1);
     q('stock-movement-save')!.click();
     await settle();
+    // The next one starts from the product and place kept: nothing of it is typed yet.
+    expect(unsaved.count()).toBe(0);
 
     expect(facade.record).toHaveBeenCalledWith('c1', {
       operation: 'receive',
@@ -358,9 +365,12 @@ describe('StockPage', () => {
     expect(form().get('productId')!.value).toBe('p1');
     expect(form().get('locationId')!.value).toBe('l2');
     expect(form().get('quantity')!.value).toBe('');
+    type('field-quantity', '3');
+    expect(unsaved.count()).toBe(1);
     q('stock-movement-cancel')!.click();
     await settle();
     expect(q('stock-movement-save')).toBeNull();
+    expect(unsaved.count()).toBe(0);
   });
 
   describe('a receipt shared over several places', () => {
@@ -395,6 +405,11 @@ describe('StockPage', () => {
       expect(q('placement-0-quantity')).not.toBeNull();
       expect(q('placement-1-quantity')).not.toBeNull();
       expect(q('placement-status')!.textContent).toContain('inventory.placement.short');
+      const unsaved = TestBed.inject(UnsavedChanges).count();
+      type('placement-1-quantity', '4');
+      await settle();
+      // A place's share typed is unsaved too.
+      expect(TestBed.inject(UnsavedChanges).count()).toBe(unsaved + 1);
     });
 
     it('records one request for the whole delivery once every unit is placed', async () => {

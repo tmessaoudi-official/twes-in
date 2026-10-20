@@ -51,13 +51,17 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # the next action will act on, never the outcome of one.
 # `document-taxes-stamp-status` holds what a credit note's figures as typed leave of the stamp chosen on it: that the note
 # completing the invoice gives it back, true until the lines change again, and never the outcome of a save.
-page_states=' document-taxes-stamp-status list-loading phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-plan-unsaved stock-plan-kept stock-repeat-summary subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner support-banner demo-banner erasure-waiting list-selection-count '
+# `*-changes` is the record bar's count of what is typed and not saved, its test id bound from the page's own prefix
+# (`testId() + '-changes'`): a bound id is read by its fixed end.
+page_states=' document-taxes-stamp-status list-loading phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed *-changes stock-plan-unsaved stock-plan-kept stock-repeat-summary subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner support-banner demo-banner erasure-waiting list-selection-count '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {
     my ($tag, $at) = ($&, $-[0]);
     my $line = 1 + (substr($_, 0, $at) =~ tr/\n//);
-    my $id = $tag =~ /\bdata-testid="([^"]+)"/ ? $1 : "(no test id)";
+    my $id = $tag =~ /\bdata-testid="([^"]+)"/ ? $1
+      : $tag =~ /\[attr\.data-testid\]="[^"]*'"'"'(-[a-z0-9-]+)'"'"'"/ ? "*$1"
+      : "(no test id)";
     print "STATUS $ARGV:$line $id\n";
   }
 ' "${files[@]}" /dev/null)

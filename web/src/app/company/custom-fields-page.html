@@ -71,18 +71,12 @@
           testId="custom-field-form"
           (submitted)="save($event)"
         >
-          <div class="flex flex-wrap justify-end gap-2">
-            <button mat-button type="button" (click)="cancel()" data-testid="custom-field-cancel">
-              {{ 'company.custom_fields.cancel' | translate }}
-            </button>
-            <button
-              mat-flat-button
-              type="submit"
-              [disabled]="busy()"
-              data-testid="custom-field-save"
-            >
-              {{ 'company.custom_fields.save' | translate }}
-            </button>
+          <div class="flex justify-end">
+            <app-record-bar
+              [changes]="sync.changes()"
+              [actions]="editorActions()"
+              testId="custom-field"
+            />
           </div>
         </app-descriptor-form>
       </mat-card-content>

@@ -8,6 +8,7 @@ import {
   inject,
   OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,6 +16,8 @@ import { MatCardModule } from '@angular/material/card';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { editorActions } from '../shared/form/editor-actions';
+import { RecordBar } from '../shared/form/record-bar';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
@@ -44,6 +47,7 @@ import type { ArticleSubject } from '../shared/settings/settings-types';
     DataList,
     DataListCell,
     DescriptorForm,
+    RecordBar,
     RecordChanged,
   ],
   templateUrl: './establishments-page.html',
@@ -118,6 +122,16 @@ export class EstablishmentsPage implements OnInit {
       if (companyId) await this.facade.loadEstablishments(companyId);
     },
     values: establishmentFormValues,
+  });
+  private readonly editor = viewChild(DescriptorForm);
+  /** The open editor's bar: what is unsaved, its close and its save, which goes through the form's own submit. */
+  protected readonly editorActions = editorActions({
+    changes: this.sync.changes,
+    busy: this.busy,
+    save: () => this.editor()?.submit(),
+    close: () => this.cancel(),
+    closeLabel: 'company.establishments.cancel',
+    saveLabel: 'company.establishments.save',
   });
 
   async ngOnInit(): Promise<void> {

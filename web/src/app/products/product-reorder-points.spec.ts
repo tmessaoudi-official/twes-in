@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
@@ -113,8 +114,11 @@ describe('ProductReorderPointsSection', () => {
     expect((q('product-reorder-save-SFAX') as HTMLButtonElement).disabled).toBe(true);
 
     await typeInto('SFAX', '2,5');
+    // A point typed and not saved holds the page until it is.
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(1);
     q('product-reorder-save-SFAX')!.click();
     await fixture.whenStable();
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(0);
 
     expect(facade.set).toHaveBeenCalledWith('c1', 'p1', 'e-SFAX', '2.5', 7);
     expect(successToasts()).toContain('products.reorder.saved');

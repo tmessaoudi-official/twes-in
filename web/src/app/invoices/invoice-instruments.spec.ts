@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import {
@@ -217,8 +218,11 @@ describe('InvoiceInstruments', () => {
     amount.dispatchEvent(new Event('input'));
     (q('field-number') as HTMLInputElement).value = 'CHQ-78';
     (q('field-number') as HTMLInputElement).dispatchEvent(new Event('input'));
+    // An instrument typed and not received holds the page until it is.
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(2);
     q('instrument-save')!.click();
     await settle();
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(0);
 
     expect(api.receive).toHaveBeenCalledWith('c1', 'f1', {
       kind: 'check',

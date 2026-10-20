@@ -94,7 +94,7 @@ test("the company's default colour takes effect at once, with no refresh", async
   const before = await primary(page);
 
   await accent.fill(wanted);
-  await page.getByTestId('settings-save').click();
+  await page.getByTestId('record-save').click();
   await expect(toast(page)).toBeVisible();
 
   // The page was never reloaded: the colour tokens on the document changed under it.

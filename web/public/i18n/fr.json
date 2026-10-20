@@ -965,7 +965,6 @@
     "intro": "Les valeurs par défaut de la société. Un client, un produit ou un document peut encore en décider autrement.",
     "no_company": "Choisissez d’abord une société.",
     "forbidden": "Modifier les paramètres de la société demande la permission des paramètres.",
-    "save": "Enregistrer",
     "saved": "Les paramètres ont été enregistrés.",
     "chains": {
       "parties": "Clients et documents",
@@ -990,7 +989,11 @@
       "accent": "Couleur d’accent des documents",
       "logo_width": "Largeur du logo (mm)",
       "logo_height": "Hauteur du logo (mm)",
-      "logo_keep_proportions": "Le logo garde ses proportions"
+      "logo_keep_proportions": "Le logo garde ses proportions",
+      "watermark_intensity": "Intensité du filigrane",
+      "watermark_copies": "Densité du filigrane",
+      "watermark_spread": "Répartition du filigrane",
+      "watermark_spread_hint": "Sans effet quand il est imprimé une seule fois."
     },
     "credit": {
       "limit": "Plafond de crédit du client",
@@ -1067,6 +1070,21 @@
           "classic": "Classique",
           "modern": "Moderne",
           "compact": "Compacte"
+        },
+        "watermark_intensity": {
+          "discreet": "Discret (10 %)",
+          "normal": "Normal (14 %)",
+          "marked": "Marqué (22 %)"
+        },
+        "watermark_copies": {
+          "1": "Une fois par page",
+          "3": "3 fois par page",
+          "6": "6 fois par page",
+          "12": "12 fois par page"
+        },
+        "watermark_spread": {
+          "grouped": "Groupé sur la diagonale",
+          "spread": "Réparti sur toute la page"
         }
       },
       "presentation": {
@@ -1328,7 +1346,6 @@
       "title": "Valeurs par défaut",
       "intro_customer": "Ce que disent les documents de ce client, sauf si un document dit autre chose. Une valeur non réglée ici vient du groupe du client, sinon de l’entreprise.",
       "intro_group": "Ce que disent les documents des clients de ce groupe, sauf si un client dit autre chose. Une valeur non réglée ici vient de l’entreprise.",
-      "save": "Enregistrer les valeurs par défaut",
       "saved": "Les valeurs par défaut ont été enregistrées.",
       "overrides": "Valeurs réglées ici",
       "reset": "Réinitialiser",
@@ -2143,7 +2160,6 @@
       "intro_product": "Ce qu’une nouvelle ligne de document pour ce produit reprend, sauf si la ligne dit autre chose. Une valeur non réglée ici vient de la catégorie du produit, sinon de l’entreprise.",
       "intro_category": "Ce que reprennent les produits rangés dans cette catégorie, sauf si un produit dit autre chose. Une valeur non réglée ici vient de l’entreprise ; une sous-catégorie a ses propres valeurs.",
       "intro_establishment": "Ce que cet établissement règle pour lui seul, comme ce que son écran client dit du stock. Une valeur non réglée ici vient de l’entreprise.",
-      "save": "Enregistrer les valeurs par défaut",
       "saved": "Les valeurs par défaut ont été enregistrées.",
       "overrides": "Valeurs réglées ici",
       "reset": "Réinitialiser",
@@ -3667,7 +3683,8 @@
     "logo_lock": "Verrouiller les proportions du logo",
     "logo_unlock": "Libérer les proportions du logo",
     "logo_stretched": "Proportions libérées : le logo sera étiré à exactement cette taille.",
-    "save": "Enregistrer",
+    "watermark": "Filigrane",
+    "watermark_hint": "L’état du document (« BROUILLON », « DUPLICATA ») imprimé en travers de ses pages.",
     "saved": "Présentation des documents enregistrée.",
     "preview": "Aperçu",
     "preview_hint": "Votre dernière facture, telle qu’elle s’imprimerait.",

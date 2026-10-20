@@ -7,6 +7,7 @@ import {
   DestroyRef,
   inject,
   OnInit,
+  signal,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -15,6 +16,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Select } from '../shared/form/select';
+import { unsavedChanges } from '../shared/form/dirty-count';
 import { AuthFacade } from '../auth/auth-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
@@ -182,6 +184,8 @@ export class MembersPage implements OnInit {
     }),
     role: new FormControl<string>('member', { nonNullable: true }),
   });
+  /** An invitation typed and not sent: leaving or reloading would lose it, so the page is held while it is there. */
+  protected readonly changes = unsavedChanges(signal(this.form), signal(null));
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;

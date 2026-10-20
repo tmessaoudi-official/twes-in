@@ -241,7 +241,11 @@ export class DescriptorForm {
     return field.span === 2 ? '@min-[30rem]:col-span-2' : '';
   }
 
-  protected submit(): void {
+  /**
+   * The form's own submit, which a bar outside it calls too: the fields shown apply, an error is shown rather than
+   * saved, and only what the descriptor says applies is handed on.
+   */
+  submit(): void {
     const form = this.form();
     if (this.readOnly()) return;
     applyVisibility(this.descriptor(), form);

@@ -78,12 +78,19 @@
 
   @if (editorOpen()) {
     <form class="flex flex-col gap-5" (ngSubmit)="save()" data-testid="role-editor">
-      <h2 class="text-xl font-semibold">
-        {{
-          (creating() ? 'company.roles.new' : 'company.roles.editing')
-            | translate: { name: openName() }
-        }}
-      </h2>
+      <!-- The editor's save stays beside its title while the matrix scrolls under it. -->
+      <div
+        class="twes-document-header flex flex-wrap items-center justify-between gap-4"
+        data-testid="role-editor-header"
+      >
+        <h2 class="text-xl font-semibold">
+          {{
+            (creating() ? 'company.roles.new' : 'company.roles.editing')
+              | translate: { name: openName() }
+          }}
+        </h2>
+        <app-record-bar [changes]="changes()" [actions]="editorActions()" testId="role" />
+      </div>
 
       @if (form(); as form) {
         @if (sync.changedBy(); as changedBy) {
@@ -153,22 +160,6 @@
           }
         </div>
       }
-
-      <div class="flex flex-wrap gap-3">
-        @if (editable()) {
-          <button
-            mat-flat-button
-            type="submit"
-            [disabled]="busy() || draftName().trim() === ''"
-            data-testid="role-save"
-          >
-            {{ 'company.roles.save' | translate }}
-          </button>
-        }
-        <button mat-stroked-button type="button" (click)="close()" data-testid="role-close">
-          {{ 'company.roles.close' | translate }}
-        </button>
-      </div>
     </form>
   }
 </section>

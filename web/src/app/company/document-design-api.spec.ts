@@ -26,14 +26,24 @@ describe('DocumentDesignApi', () => {
       logoWidth: 60,
       logoHeight: 25,
       logoKeepsProportions: false,
+      watermarkIntensity: 'marked',
+      watermarkCopies: '6',
+      watermarkSpread: 'spread',
     });
     const request = http.expectOne((req) => req.url === '/api/companies/c1/invoice-design-preview');
     const params = request.request.params;
     expect(
-      ['layout', 'accent', 'logoWidth', 'logoHeight', 'logoProportions'].map((name) =>
-        params.get(name),
-      ),
-    ).toEqual(['modern', '#1f6feb', '60', '25', 'free']);
+      [
+        'layout',
+        'accent',
+        'logoWidth',
+        'logoHeight',
+        'logoProportions',
+        'watermarkIntensity',
+        'watermarkCopies',
+        'watermarkSpread',
+      ].map((name) => params.get(name)),
+    ).toEqual(['modern', '#1f6feb', '60', '25', 'free', 'marked', '6', 'spread']);
     expect(request.request.responseType).toBe('blob');
     request.flush(new Blob(['PNG'], { type: 'image/png' }));
 
@@ -53,6 +63,9 @@ describe('DocumentDesignApi', () => {
         logoWidth: null,
         logoHeight: null,
         logoKeepsProportions: true,
+        watermarkIntensity: 'normal',
+        watermarkCopies: '1',
+        watermarkSpread: 'grouped',
       });
       http
         // A room not read yet is left to the API, which takes the company's own.

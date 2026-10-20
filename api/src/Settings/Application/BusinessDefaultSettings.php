@@ -58,6 +58,12 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         // Written out, so the labels gate can read them; a test keeps them DocumentLayout's cases.
         yield new SettingDefinition('document.layout', SettingType::Enum, 'classic', SettingChain::Parties, [SettingLevel::Company], 'settings.document.layout', self::MODULE, choices: ['classic', 'modern', 'compact']);
         yield new SettingDefinition('document.accent', SettingType::Colour, DocumentDesign::DEFAULT_ACCENT, SettingChain::Parties, [SettingLevel::Company], 'settings.document.accent', self::MODULE);
+        // How the state of a draft, a duplicate or a cancelled document prints across it: how strongly, how many times a
+        // page and how the copies sit, which the settings page shows on a row of its own since it follows the count.
+        // Written out for the labels gate; a test keeps them DocumentWatermark's cases.
+        yield new SettingDefinition('document.watermark_intensity', SettingType::Enum, 'normal', SettingChain::Parties, [SettingLevel::Company], 'settings.document.watermark_intensity', self::MODULE, choices: ['discreet', 'normal', 'marked']);
+        yield new SettingDefinition('document.watermark_copies', SettingType::Enum, '1', SettingChain::Parties, [SettingLevel::Company], 'settings.document.watermark_copies', self::MODULE, choices: ['1', '3', '6', '12']);
+        yield new SettingDefinition('document.watermark_spread', SettingType::Enum, 'grouped', SettingChain::Parties, [SettingLevel::Company], 'settings.document.watermark_spread', self::MODULE, choices: ['grouped', 'spread']);
         // The logo's printed size, in millimetres since it is printed, and whether it keeps its own proportions in it or
         // is stretched to it.
         yield new SettingDefinition('document.logo_width', SettingType::Int, DocumentDesign::DEFAULT_LOGO_WIDTH_MM, SettingChain::Parties, [SettingLevel::Company], 'settings.document.logo_width', self::MODULE, min: DocumentDesign::LOGO_WIDTH_MM_MIN, max: DocumentDesign::LOGO_WIDTH_MM_MAX);
