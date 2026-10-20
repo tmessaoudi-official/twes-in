@@ -672,3 +672,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   shows the app, work in a worktree (`.claude/worktrees/<name>`), run only `make check`, unit suites and host gates there,
   and leave the stack alone. A count that reads a component's required inputs is read by the root `UnsavedChanges` before
   they are set (NG0950): gate it behind a signal set in `ngOnInit` (`PlaceMovement`, 2026-10-20).
+- A toast check after a second save that says the same words passes on the first save's toast, still on screen: the
+  read that follows sees the record before the second save (`fiscal.spec.ts`'s restore, red only beside other workers).
+  Wait for the write's own response (`waitForResponse`, then `ok()`), then the toast (2026-10-21).
