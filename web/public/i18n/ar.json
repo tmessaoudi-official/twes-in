@@ -2488,7 +2488,8 @@
       "delivery_note": "وصل تسليم",
       "invoice": "فاتورة",
       "credit_note": "فاتورة تعديلية",
-      "cost_correction": "تصحيح كلفة المبيعات"
+      "cost_correction": "تصحيح كلفة المبيعات",
+      "merge": "دمج المنتجات"
     },
     "kinds": {
       "site": "مقرّ",

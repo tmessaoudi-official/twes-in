@@ -229,6 +229,22 @@ final class OpeningStockImportTest extends ApiTestCase
     }
 
     /**
+     * The goods counted for a product merged away are not those of the product kept: a row naming it is refused, and
+     * says which product to count instead.
+     */
+    public function testARowNamingAProductMergedAwayIsRefusedNamingTheProductKept(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $kept = $this->productId('VIS-6X40')->toRfc4122();
+        $this->em()->getConnection()->executeStatement('UPDATE product SET merged_into_id = ?, is_active = false WHERE id = ?', [$kept, $this->productId('FIL-2')->toRfc4122()]);
+
+        $this->import(self::HEADER."\nFIL-2,,000,,4\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[2, 'reference', 'product_merged', ['reference' => 'FIL-2', 'kept' => 'VIS-6X40']]], $this->rejected());
+    }
+
+    /**
      * A refused row says every fault it holds at once, in the template's column order (docs/SPEC.md § 7, 2026-10-09
      * 10:40, ruling 9). A product the company has not is not followed by its place, which is found through the
      * product; a quantity refused is not followed by a « fill one in ».

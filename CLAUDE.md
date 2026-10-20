@@ -168,7 +168,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `UnnamedFiles`, which the erasure shares; `Merge/MergeRecords` merges records of a subject that says how, its
   `MergedAway`: an alias stays switched off pointing at the record kept (`merged_into_id`, which `RecordReferenceCoverage`
   requires of its table), a removed one goes as a delete does; a subject that says nothing is not merged; `PreviewMerge`
-  says what moves and what stays, and the undo is the removal's restore),
+  says what moves and what stays, and the undo is the removal's restore; what no row carries a module does through
+  `MergeEffects`, asking `MergeActor` for a right the merge needs, such as the stock a product held, which
+  `Inventory/Application/Merge/CarryMergedStock` carries to the product kept as `merge` movements and back on an undo,
+  after which the stock store refuses any movement of the product merged away),
   `Demo` (« Essayer la démo »: a visitor with no account claims a `demo_sandbox`, a whole company written by
   `Dataset/DemoDataset` and owned by a throwaway account; the pool is topped up by `KeepSandboxPool`, its builds on the
   `demo` transport, which the `demo-worker` container alone consumes, so no mail waits behind one; `DemoAccountGuard`

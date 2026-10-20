@@ -2488,7 +2488,8 @@
       "delivery_note": "Delivery note",
       "invoice": "Invoice",
       "credit_note": "Credit note",
-      "cost_correction": "Cost of sales correction"
+      "cost_correction": "Cost of sales correction",
+      "merge": "Product merge"
     },
     "kinds": {
       "site": "Site",

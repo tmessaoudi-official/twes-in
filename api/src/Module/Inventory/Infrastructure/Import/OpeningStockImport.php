@@ -238,6 +238,11 @@ final readonly class OpeningStockImport implements DeclaresImport
         }
         $product = $this->products->ofReferenceInCompany($reference, $company->getId())
             ?? throw new RowRejected('reference', \sprintf('The company has no product referenced "%s". Import the products first.', $reference), 'unknown_product', ['reference' => $reference]);
+        // What a row counts was counted for that product alone, never for the one kept, whose stock it would replace.
+        if ($product->isMergedAway()) {
+            $kept = $product->standingFor()->getReference();
+            throw new RowRejected('reference', \sprintf('The product %s was merged into %s: count %s instead.', $reference, $kept, $kept), 'product_merged', ['reference' => $product->getReference(), 'kept' => $kept]);
+        }
         if (null !== $code && (null === $byCode || !$byCode->getId()->equals($product->getId()))) {
             throw new RowRejected('barcode', \sprintf('The unit code "%s" is not the one of %s.', $code, $reference), 'barcode_not_the_reference', ['code' => $code, 'reference' => $reference]);
         }

@@ -228,7 +228,7 @@ final class StockMovementResource
     #[Groups([self::READ, self::WRITE])]
     public string $quantity = '';
 
-    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_LOSS, StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE, StockMovement::SOURCE_CREDIT_NOTE, StockMovement::SOURCE_COST_CORRECTION]])]
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_LOSS, StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE, StockMovement::SOURCE_CREDIT_NOTE, StockMovement::SOURCE_COST_CORRECTION, StockMovement::SOURCE_MERGE]])]
     #[Groups([self::READ])]
     public string $sourceType = '';
 

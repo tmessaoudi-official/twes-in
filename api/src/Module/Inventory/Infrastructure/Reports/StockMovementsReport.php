@@ -32,6 +32,9 @@ use Doctrine\DBAL\Connection;
  * locations alone count. A move between two places stays inside one establishment, so it is in no column and leaves the
  * closing as it was; goods sent to another establishment will need a column once they can be, with their transport
  * document.
+ *
+ * A product merged into another is that product here: its goods are counted under the product kept, so what the merge
+ * carried between them moves in no column, as a move between places does, and what it sold before is the kept one's.
  */
 final readonly class StockMovementsReport implements DeclaresReport
 {
@@ -107,7 +110,7 @@ final readonly class StockMovementsReport implements DeclaresReport
             'SELECT g.product_id, p.name, p.reference, u.code AS unit, g.opening, g.received, g.sold, g.returned, g.lost,
                     g.counted, g.opening + g.moved AS closing
                FROM (
-                    SELECT m.product_id,
+                    SELECT COALESCE(mp.merged_into_id, mp.id) AS product_id,
                            COALESCE(SUM(m.quantity) FILTER (WHERE m.at < :start), 0.000) AS opening,
                            COALESCE(SUM(m.quantity) FILTER (WHERE '.$in.' AND m.source_type = :receipt), 0.000) AS received,
                            COALESCE(-SUM(m.quantity) FILTER (WHERE '.$in.' AND m.source_type IN (:invoice, :delivery)), 0.000) AS sold,
@@ -116,9 +119,9 @@ final readonly class StockMovementsReport implements DeclaresReport
                            COALESCE(SUM(m.quantity) FILTER (WHERE '.$in.' AND m.source_type = :count), 0.000) AS counted,
                            COALESCE(SUM(m.quantity) FILTER (WHERE '.$in.'), 0.000) AS moved,
                            COUNT(*) FILTER (WHERE '.$in.') AS movements
-                      FROM stock_movement m '.$join.'
+                      FROM stock_movement m JOIN product mp ON mp.id = m.product_id '.$join.'
                      WHERE '.$where.'
-                     GROUP BY m.product_id
+                     GROUP BY COALESCE(mp.merged_into_id, mp.id)
                ) g
                JOIN product p ON p.id = g.product_id
                JOIN unit u ON u.id = p.unit_id

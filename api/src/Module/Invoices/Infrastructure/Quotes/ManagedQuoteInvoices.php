@@ -249,8 +249,9 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
      */
     private function linesOf(Quote $quote): array
     {
+        // The quote keeps the product it offered; the invoice drafted from it names the one that product stands for now.
         return array_map(static fn (QuoteLine $line): InvoiceLineDetails => new InvoiceLineDetails(
-            $line->getProduct(),
+            $line->getProduct()?->standingFor(),
             $line->getDescription(),
             $line->getQuantity(),
             $line->getUnit(),

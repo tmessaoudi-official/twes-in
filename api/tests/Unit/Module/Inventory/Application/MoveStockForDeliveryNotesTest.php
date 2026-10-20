@@ -106,7 +106,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $keep = $this->keep = new KeepStock($this->movements, new InMemoryStockLots(), $this->locations, $products, $read, $this->transactions, $this->clock, new RecordingLiveChanges());
         $this->manage = $manage;
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), $this->states);
-        $this->move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $this->transactions, $this->clock, $this->homes);
+        $this->move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $this->transactions, $this->clock, $this->homes, new InMemoryStockLots());
     }
 
     public function testAValidatedNoteTakesEachTrackedProductOutOfItsEstablishmentsDefaultLocationOnce(): void

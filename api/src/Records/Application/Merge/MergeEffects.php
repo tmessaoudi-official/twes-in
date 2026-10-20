@@ -24,13 +24,14 @@ interface MergeEffects
     public function subject(): string;
 
     /**
-     * Before the records merged away are aliased, while they still stand as themselves.
+     * Before the records merged away are aliased, while they still stand as themselves; what the merge writes beyond
+     * merging, the actor must hold the right to.
      *
      * @param non-empty-list<Uuid> $mergedIds
      *
      * @throws MergeRefused
      */
-    public function merging(Uuid $companyId, Uuid $mergeId, Uuid $keptId, array $mergedIds, Uuid $actorUserId, \DateTimeImmutable $at): void;
+    public function merging(Uuid $companyId, Uuid $mergeId, Uuid $keptId, array $mergedIds, MergeActor $actor, \DateTimeImmutable $at): void;
 
     /**
      * Once every link is pointed back, so the records merged away stand as themselves again.

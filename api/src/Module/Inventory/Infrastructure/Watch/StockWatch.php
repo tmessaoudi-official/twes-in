@@ -129,7 +129,8 @@ final readonly class StockWatch implements DeclaresWatch
     }
 
     /**
-     * Days left is on-hand over the average daily quantity out, a move's half that leaves being no quantity gone: a
+     * Days left is on-hand over the average daily quantity out, a move's or a merge's half that leaves being no quantity
+     * gone; what a product merged away sold and holds is read under the product kept, as the reports read it: a
      * product nothing left in the last 30 days is not
      * running out, and one with nothing left on hand is its reorder point's business.
      *
@@ -139,11 +140,14 @@ final readonly class StockWatch implements DeclaresWatch
     {
         return [
             'WITH hand AS (
-                  SELECT m.product_id, SUM(m.quantity) AS on_hand FROM stock_movement m JOIN stock_location l ON l.id = m.location_id
-                   WHERE m.company_id = :company AND l.kind <> :quarantine GROUP BY m.product_id
+                  SELECT COALESCE(mp.merged_into_id, mp.id) AS product_id, SUM(m.quantity) AS on_hand
+                    FROM stock_movement m JOIN stock_location l ON l.id = m.location_id JOIN product mp ON mp.id = m.product_id
+                   WHERE m.company_id = :company AND l.kind <> :quarantine GROUP BY COALESCE(mp.merged_into_id, mp.id)
              ), pace AS (
-                  SELECT product_id, -SUM(quantity) AS gone FROM stock_movement
-                   WHERE company_id = :company AND kind = :out AND source_type <> :move AND at >= :since GROUP BY product_id
+                  SELECT COALESCE(mp.merged_into_id, mp.id) AS product_id, -SUM(m.quantity) AS gone
+                    FROM stock_movement m JOIN product mp ON mp.id = m.product_id
+                   WHERE m.company_id = :company AND m.kind = :out AND m.source_type NOT IN (:move, :merge) AND m.at >= :since
+                   GROUP BY COALESCE(mp.merged_into_id, mp.id)
              )
              SELECT p.id, p.name, p.reference, h.on_hand::numeric(14, 3) AS on_hand, FLOOR(h.on_hand * :window / pace.gone)::int AS days_left, h.on_hand * :window / pace.gone AS ratio
                FROM pace JOIN hand h ON h.product_id = pace.product_id JOIN product p ON p.id = pace.product_id
@@ -153,6 +157,7 @@ final readonly class StockWatch implements DeclaresWatch
                 'out' => StockMovementKind::Out->value,
                 'quarantine' => StockLocationKind::Quarantine->value,
                 'move' => StockMovement::SOURCE_MOVE,
+                'merge' => StockMovement::SOURCE_MERGE,
                 'since' => $today->modify('-'.self::PACE_DAYS.' days')->format('Y-m-d'),
                 'window' => self::PACE_DAYS,
                 'lead' => $this->days($company, StockWatchSettings::LEAD_DAYS),

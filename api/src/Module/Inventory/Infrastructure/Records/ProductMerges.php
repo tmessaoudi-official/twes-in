@@ -9,18 +9,21 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Records;
 
+use App\Module\Inventory\Application\Merge\CarryMergedStock;
+use App\Module\Inventory\Application\Merge\StockNotCarried;
+use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Records\Application\Merge\MergeActor;
 use App\Records\Application\Merge\MergeEffects;
 use App\Records\Application\Merge\MergeRefused;
-use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A product's stock is what its movements add up to, which no row a merge points elsewhere carries: until a merge moves
- * goods on hand across, a product holding any is not merged away.
+ * A product's stock is what its movements add up to, which no row a merge points elsewhere carries: the goods a product
+ * merged away holds go to the product kept by movements of their own, and come back when the merge is undone.
  */
 final readonly class ProductMerges implements MergeEffects
 {
-    public function __construct(private Connection $connection)
+    public function __construct(private CarryMergedStock $stock)
     {
     }
 
@@ -29,18 +32,17 @@ final readonly class ProductMerges implements MergeEffects
         return 'product';
     }
 
-    public function merging(Uuid $companyId, Uuid $mergeId, Uuid $keptId, array $mergedIds, Uuid $actorUserId, \DateTimeImmutable $at): void
+    public function merging(Uuid $companyId, Uuid $mergeId, Uuid $keptId, array $mergedIds, MergeActor $actor, \DateTimeImmutable $at): void
     {
-        $holding = $this->connection->fetchOne(
-            'SELECT EXISTS (SELECT 1 FROM stock_movement WHERE company_id = :company AND product_id = ANY(CAST(:ids AS uuid[])) GROUP BY product_id, location_id, lot_id HAVING sum(quantity) <> 0)',
-            ['company' => $companyId->toRfc4122(), 'ids' => '{'.implode(',', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $mergedIds)).'}'],
-        );
-        if (true === $holding) {
-            throw new MergeRefused('stock_on_hand', 'A product merged away holds goods: count them out, or move them, first.');
+        try {
+            $this->stock->carry($companyId, $mergeId, $keptId, $mergedIds, $actor->may(ProductPermission::COST_READ), $actor->id);
+        } catch (StockNotCarried $refused) {
+            throw new MergeRefused($refused->reason, $refused->getMessage(), $refused->params);
         }
     }
 
     public function unmerging(Uuid $companyId, Uuid $mergeId, Uuid $keptId, array $mergedIds, ?Uuid $actorUserId, \DateTimeImmutable $at): void
     {
+        $this->stock->carryBack($companyId, $mergeId, $keptId, $mergedIds, $actorUserId);
     }
 }

@@ -258,6 +258,11 @@ final readonly class DbalRecordStore implements RecordStore
                 $naming .= ' AND NOT ('.$moving.')';
             }
             $dated = \sprintf("%s >= date_trunc('second', CAST(:since AS timestamp))", $this->name($reference->transactingAt));
+            if (null !== $reference->notTradingColumn) {
+                // What the merge itself wrote under the record kept, such as the goods it carried, is no trade.
+                $naming .= \sprintf(' AND %s::text <> ALL(CAST(:not_trading AS text[]))', $this->name($reference->notTradingColumn));
+                $parameters['not_trading'] = self::texts($reference->notTradingValues);
+            }
             if (null !== $reference->parentTable && null !== $reference->parentKey) {
                 $dated = \sprintf('%s IN (SELECT p.id FROM %s p WHERE p.company_id = :company AND p.%s)', $this->name($reference->parentKey), $this->name($reference->parentTable), $dated);
             }
@@ -461,7 +466,7 @@ final readonly class DbalRecordStore implements RecordStore
 
         return [
             $condition,
-            '{'.implode(',', array_map(static fn (string $value): string => '"'.addcslashes($value, '"\\').'"', $reference->movesWhereValues)).'}',
+            self::texts($reference->movesWhereValues),
         ];
     }
 
@@ -475,6 +480,16 @@ final readonly class DbalRecordStore implements RecordStore
         ksort($counts);
 
         return array_map(static fn (string $table, int $count): array => ['table' => $table, 'count' => $count], array_keys($counts), array_values($counts));
+    }
+
+    /**
+     * A PostgreSQL text array of the values, each quoted.
+     *
+     * @param list<string> $values
+     */
+    private static function texts(array $values): string
+    {
+        return '{'.implode(',', array_map(static fn (string $value): string => '"'.addcslashes($value, '"\\').'"', $values)).'}';
     }
 
     /** @param list<Uuid> $ids */

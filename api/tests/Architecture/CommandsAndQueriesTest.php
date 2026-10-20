@@ -26,6 +26,7 @@ use App\Inbox\Application\NotificationCentre;
 use App\Inbox\Application\NotificationPreferences;
 use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
 use App\Module\Inventory\Application\KeepStock;
+use App\Module\Inventory\Application\Merge\CarryMergedStock;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
 use App\Module\Inventory\Application\StockMap\DrawStockMap;
 use App\Module\Invoices\Application\Bulk\CashInvoicesInBulk;
@@ -70,6 +71,7 @@ final class CommandsAndQueriesTest extends TestCase
         NotificationPreferences::class => 'how a person chooses to be told their own notifications, as reading them is',
         RemindLateInvoices::class => 'a scheduled run with no actor; the stage it records stops it telling twice, its notification is the signal, and a late fee it drafts goes through ManageInvoices, which audits it',
         ForgetSettings::class => 'a part of deleting the subject, whose own use case records the deletion',
+        CarryMergedStock::class => 'a part of merging products and of undoing it, inside the merge\'s transaction, which records it',
         SeedPlatform::class => 'the seed and the convergence at start, which no person changes',
         PinCompanyAtSignIn::class => "a person's own choice of the company a sign-in opens",
         SwitchWorkingCompany::class => "the company a person's own session works in",
