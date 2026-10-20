@@ -71,7 +71,7 @@
       "pack_quantity": "Pièces par colis",
       "pack_quantity_note": "De 2 à 1 000 000. Vide, un colis déjà là garde la sienne.",
       "supplier_number": "Fournisseur",
-      "supplier_number_note": "Le numéro d’un fournisseur de l’entreprise chez qui le produit s’achète, ajouté à ses fournisseurs ; avec supplier_code, celui qui imprime ce code.",
+      "supplier_number_note": "Le numéro d’un fournisseur de l’entreprise chez qui le produit s’achète, ajouté à ses fournisseurs ; avec supplier_code, celui qui imprime ce code.",
       "supplier_code": "Code fournisseur",
       "supplier_code_note": "Le code que ce fournisseur imprime sur son carton : ajouté, ou mis à jour s’il y est déjà ; les autres restent.",
       "default_taxes": "Taxes par défaut",
@@ -127,7 +127,7 @@
       "vendor_number": "Numéro fournisseur",
       "vendor_number_note": "Le numéro du fournisseur chez qui le produit s’achète : importez les fournisseurs d’abord. Une ligne par fournisseur d’un même produit.",
       "vendor_code": "Code fournisseur",
-      "vendor_code_note": "Le code que ce fournisseur donne au produit : ajouté, ou repris d’un autre de ses fournisseurs s’il était le sien ; aucun n’est retiré."
+      "vendor_code_note": "Le code que ce fournisseur donne au produit : ajouté, ou repris d’un autre de ses fournisseurs s’il était le sien ; aucun n’est retiré."
     },
     "title": "Importer des {{subject}}",
     "subjects": {
