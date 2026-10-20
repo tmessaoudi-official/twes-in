@@ -12,7 +12,9 @@ namespace App\Erasure\Infrastructure;
 use App\Erasure\Application\ErasureConflict;
 use App\Erasure\Application\ErasureReference;
 use App\Erasure\Application\ErasureStore;
+use App\Erasure\Application\NamedFile;
 use App\Erasure\Domain\Model\DataErasureRow;
+use App\Files\Infrastructure\Doctrine\UnnamedFiles;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\DBAL\Exception\NotNullConstraintViolationException;
@@ -30,7 +32,7 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DbalErasureStore implements ErasureStore
 {
-    public function __construct(private Connection $connection)
+    public function __construct(private Connection $connection, private UnnamedFiles $unnamedFiles)
     {
     }
 
@@ -143,24 +145,7 @@ final readonly class DbalErasureStore implements ErasureStore
         }
         $this->connection->executeStatement('DELETE FROM data_erasure_row WHERE erasure_id = :erasure AND company_id = :company', $parameters);
 
-        // What still names a file: every foreign key to it, and the columns declared as naming one without a key.
-        $namers = array_map(static fn (array $key): array => [\is_string($key['table']) ? $key['table'] : throw new \LogicException('A table has a name.'), \is_string($key['column']) ? $key['column'] : throw new \LogicException('A column has a name.')], $this->connection->fetchAllAssociative(
-            "SELECT t.relname::text AS \"table\", a.attname::text AS \"column\" FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid JOIN pg_class r ON r.oid = c.confrelid JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1] WHERE c.contype = 'f' AND c.connamespace = current_schema()::regnamespace AND r.relname = 'file'",
-        ));
-        foreach ($files as $file) {
-            $namers[] = [$file->table, $file->column];
-        }
-        $unnamed = [];
-        foreach (array_unique($named) as $id) {
-            foreach ($namers as [$table, $column]) {
-                if (false !== $this->connection->fetchOne(\sprintf('SELECT 1 FROM %s WHERE company_id = :company AND %s = CAST(:id AS uuid) LIMIT 1', $this->name($table), $this->name($column)), ['company' => $parameters['company'], 'id' => $id])) {
-                    continue 2;
-                }
-            }
-            $unnamed[] = Uuid::fromString($id);
-        }
-
-        return $unnamed;
+        return $this->unnamedFiles->among($companyId, $named, array_map(static fn (NamedFile $file): array => ['table' => $file->table, 'column' => $file->column], $files));
     }
 
     /**

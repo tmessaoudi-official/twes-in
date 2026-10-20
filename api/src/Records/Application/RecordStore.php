@@ -36,11 +36,13 @@ interface RecordStore
     public function uses(Uuid $companyId, array $ids, array $references): array;
 
     /**
-     * Deletes the records, copying each under the removal by the statement that deletes it.
+     * Deletes the records with the rows that belong to them, copying each under the removal by the statement that
+     * deletes it.
      *
-     * @param list<Uuid> $ids
+     * @param list<Uuid>            $ids
+     * @param list<RecordReference> $owned the references whose rows go with the records
      */
-    public function remove(Uuid $companyId, Uuid $removalId, RecordSubject $subject, array $ids): void;
+    public function remove(Uuid $companyId, Uuid $removalId, RecordSubject $subject, array $ids, array $owned): void;
 
     /**
      * Puts every copied row back, all or nothing, and lets the copy go.
@@ -49,6 +51,10 @@ interface RecordStore
      */
     public function restore(Uuid $companyId, Uuid $removalId): void;
 
-    /** Deletes the copy. */
-    public function forget(Uuid $companyId, Uuid $removalId): void;
+    /**
+     * Deletes the copy, and says which files its rows named that nothing names any more, for the caller to let go.
+     *
+     * @return list<Uuid>
+     */
+    public function forget(Uuid $companyId, Uuid $removalId): array;
 }

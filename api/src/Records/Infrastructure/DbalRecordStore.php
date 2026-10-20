@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace App\Records\Infrastructure;
 
+use App\Files\Infrastructure\Doctrine\UnnamedFiles;
 use App\Records\Application\RecordLink;
+use App\Records\Application\RecordReference;
 use App\Records\Application\RecordStore;
 use App\Records\Application\RecordSubject;
 use App\Records\Application\RemovalConflict;
@@ -30,14 +32,20 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DbalRecordStore implements RecordStore
 {
-    public function __construct(private Connection $connection)
+    /** The records a removal takes come back first; what belongs to them, which names them, after. */
+    private const int RECORD_STEP = 0;
+    private const int OWNED_STEP = 1;
+
+    public function __construct(private Connection $connection, private UnnamedFiles $unnamedFiles)
     {
     }
 
     public function lockedLabels(Uuid $companyId, RecordSubject $subject, array $ids): array
     {
         $label = implode(', ', array_map(fn (string $column): string => \sprintf('CAST(%s AS text)', $this->name($column)), $subject->labelColumns));
-        // In the ids' order, so that two deletes of the same records never lock them crosswise.
+        // In the ids' order, so that two deletes of the same records never lock them crosswise. FOR UPDATE, not FOR NO KEY
+        // UPDATE: a row written meanwhile with a foreign key to a record (a barcode, a photo) takes FOR KEY SHARE on it,
+        // waits for this delete and then fails, so nothing belonging to the record escapes its copy.
         $rows = $this->connection->fetchAllAssociative(
             \sprintf("SELECT id::text AS id, concat_ws(' ', %s) AS label FROM %s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[])) ORDER BY id FOR UPDATE", $label, $this->name($subject->table)),
             ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids)],
@@ -54,13 +62,10 @@ final readonly class DbalRecordStore implements RecordStore
     {
         $uses = [];
         foreach ($references as $reference) {
-            if (RecordLink::Id !== $reference->link) {
-                // A text or a list naming a record would be counted differently, and no subject declares one as a use yet.
-                throw new \LogicException(\sprintf('%s.%s names its records as %s, which counting uses does not read yet.', $reference->table, $reference->column, $reference->link->value));
-            }
+            [$naming, $parameters] = $this->naming($reference, $companyId, $ids);
             $rows = $this->connection->fetchAllAssociative(
-                \sprintf('SELECT %1$s::text AS id, count(*)::int AS rows FROM %2$s WHERE company_id = :company AND %1$s = ANY(CAST(:ids AS uuid[])) GROUP BY %1$s', $this->name($reference->column), $this->name($reference->table)),
-                ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids)],
+                \sprintf('SELECT %1$s::text AS id, count(*)::int AS rows FROM %2$s WHERE %3$s GROUP BY %1$s', $this->name($reference->column), $this->name($reference->table), $naming),
+                $parameters,
             );
             foreach ($rows as $row) {
                 $count = $row['rows'];
@@ -71,10 +76,19 @@ final readonly class DbalRecordStore implements RecordStore
         return $uses;
     }
 
-    public function remove(Uuid $companyId, Uuid $removalId, RecordSubject $subject, array $ids): void
+    public function remove(Uuid $companyId, Uuid $removalId, RecordSubject $subject, array $ids, array $owned): void
     {
+        $copy = 'INSERT INTO record_removal_row (id, removal_id, company_id, table_name, step, snapshot) SELECT gen_random_uuid(), :removal, :company, :table, %d, to_jsonb(gone) FROM gone';
+        // What belongs to the records first, a step after them, so that the restore puts it back once they stand again.
+        foreach ($owned as $reference) {
+            [$naming, $parameters] = $this->naming($reference, $companyId, $ids);
+            $this->connection->executeStatement(
+                \sprintf('WITH gone AS (DELETE FROM %s WHERE %s RETURNING *) '.$copy, $this->name($reference->table), $naming, self::OWNED_STEP),
+                [...$parameters, 'removal' => $removalId->toRfc4122(), 'table' => $reference->table],
+            );
+        }
         $copied = $this->connection->executeStatement(
-            \sprintf('WITH gone AS (DELETE FROM %s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[])) RETURNING *) INSERT INTO record_removal_row (id, removal_id, company_id, table_name, step, snapshot) SELECT gen_random_uuid(), :removal, :company, :table, 0, to_jsonb(gone) FROM gone', $this->name($subject->table)),
+            \sprintf('WITH gone AS (DELETE FROM %s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[])) RETURNING *) '.$copy, $this->name($subject->table), self::RECORD_STEP),
             ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids), 'removal' => $removalId->toRfc4122(), 'table' => $subject->table],
         );
         if ($copied !== \count($ids)) {
@@ -118,9 +132,48 @@ final readonly class DbalRecordStore implements RecordStore
         }
     }
 
-    public function forget(Uuid $companyId, Uuid $removalId): void
+    public function forget(Uuid $companyId, Uuid $removalId): array
     {
-        $this->connection->executeStatement('DELETE FROM record_removal_row WHERE removal_id = :removal AND company_id = :company', ['company' => $companyId->toRfc4122(), 'removal' => $removalId->toRfc4122()]);
+        $parameters = ['company' => $companyId->toRfc4122(), 'removal' => $removalId->toRfc4122()];
+        $named = [];
+        foreach ($this->connection->fetchFirstColumn('SELECT DISTINCT table_name FROM record_removal_row WHERE removal_id = :removal AND company_id = :company', $parameters) as $table) {
+            foreach ($this->unnamedFiles->columnsOf(self::text($table)) as $column) {
+                foreach ($this->connection->fetchFirstColumn(
+                    'SELECT DISTINCT snapshot->>:column FROM record_removal_row WHERE removal_id = :removal AND company_id = :company AND table_name = :table AND snapshot->>:column IS NOT NULL',
+                    [...$parameters, 'table' => $table, 'column' => $column],
+                ) as $id) {
+                    $named[] = self::text($id);
+                }
+            }
+        }
+        $this->connection->executeStatement('DELETE FROM record_removal_row WHERE removal_id = :removal AND company_id = :company', $parameters);
+
+        return $this->unnamedFiles->among($companyId, $named);
+    }
+
+    /**
+     * Where a reference's column names some of the records, its scope said: a text column holds an id as text.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return array{string, array<string, string>} the condition and its parameters
+     */
+    private function naming(RecordReference $reference, Uuid $companyId, array $ids): array
+    {
+        $cast = match ($reference->link) {
+            RecordLink::Id => 'uuid',
+            RecordLink::TextId => 'text',
+            // A list of ids is read element by element, which no reference asks yet.
+            RecordLink::IdList => throw new \LogicException(\sprintf('%s.%s names its records as %s, which the records engine does not read yet.', $reference->table, $reference->column, $reference->link->value)),
+        };
+        $condition = \sprintf('company_id = :company AND %s = ANY(CAST(:ids AS %s[]))', $this->name($reference->column), $cast);
+        $parameters = ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids)];
+        if (null !== $reference->whereColumn && null !== $reference->whereValue) {
+            $condition .= \sprintf(' AND %s = :scope', $this->name($reference->whereColumn));
+            $parameters['scope'] = $reference->whereValue;
+        }
+
+        return [$condition, $parameters];
     }
 
     private function name(string $identifier): string

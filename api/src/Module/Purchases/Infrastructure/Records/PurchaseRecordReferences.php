@@ -15,8 +15,8 @@ use App\Records\Application\RecordMerge;
 use App\Records\Application\RecordReference;
 
 /**
- * An order names its vendor by id alone, no foreign key crossing the modules. A sent order printed the vendor it went
- * to and stays with it; a draft moves to the vendor kept.
+ * An order names its vendor, and its lines their products, by id alone, no foreign key crossing the modules. A sent
+ * order printed the vendor it went to and stays with it; a draft moves to the vendor kept.
  */
 final readonly class PurchaseRecordReferences implements DeclaresRecordReferences
 {
@@ -30,6 +30,7 @@ final readonly class PurchaseRecordReferences implements DeclaresRecordReference
         return [
             RecordReference::uses('purchase_order', 'vendor_id', 'vendor', RecordMerge::Moves, 'An order names the vendor it is placed with.')
                 ->movingOnlyWhere('status', [PurchaseOrderStatus::Draft->value]),
+            RecordReference::uses('purchase_order_line', 'product_id', 'product', RecordMerge::Stays, 'An order line names the product ordered.'),
         ];
     }
 }
