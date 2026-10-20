@@ -53,7 +53,6 @@ test('a vendor is added with its bank account and terms, then revised', async ({
   // Long enough that the title never shares a row with the bar: beside it, the « Bientôt » button would add one and
   // folds into « ⋮ », so a short name made the check below depend on how wide the run's letters happened to be.
   const name = `Sotumag, Société tunisienne de matériel ${run}`;
-  // A name that long widens its column, and on a laptop the city then gives way for width: a wide window shows it.
   await page.setViewportSize({ width: 1600, height: 900 });
   await signIn(page);
   await inACompany(page, CSRF);
@@ -102,9 +101,15 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     await expect(page).toHaveURL(new RegExp(`[?&]q=${number}`));
     const row = page.getByTestId(`vendor-${number}`);
     await expect(row).toContainText(name);
-    await expect(row).toContainText('Ben Arous');
     await expect(row).toContainText('30');
     expect(await wcagViolations(page)).toEqual([]);
+    // The list's width stops growing with the window, and beside the boxes that select vendors a name this long leaves
+    // the city, the column of lowest priority, no room. A phone's card hides no column.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByTestId('list-cards').getByTestId(`vendor-${number}`)).toContainText(
+      'Ben Arous',
+    );
+    await page.setViewportSize({ width: 1600, height: 900 });
 
     // Row 197: the terms as an interval of days, AND'd with the search, answered by the API.
     await page.goto(`/vendors?q=${number}&paymentTermsDays.min=30&paymentTermsDays.max=45`);
