@@ -45,6 +45,15 @@ interface VendorRepository
     /** Null for a vendor that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Vendor;
 
+    /**
+     * The company's vendors merged away into one of these.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return list<Vendor>
+     */
+    public function mergedInto(array $ids, Uuid $companyId): array;
+
     public function ofNumberInCompany(string $number, Uuid $companyId): ?Vendor;
 
     public function save(Vendor $vendor): void;

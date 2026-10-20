@@ -63,13 +63,19 @@ final readonly class ManagePurchaseOrders
      */
     public function search(Company $company, PurchaseOrderSearch $search, PageRequest $page): Page
     {
-        return $this->orders->search($company->getId(), $search, $page);
+        return $this->orders->search($company->getId(), $this->takingInMergedAway($company, $search), $page);
     }
 
     /** @return array{all: int, statuses: array<string, int>} */
     public function statusCounts(Company $company, PurchaseOrderSearch $search): array
     {
-        return $this->orders->statusCounts($company->getId(), $search);
+        return $this->orders->statusCounts($company->getId(), $this->takingInMergedAway($company, $search));
+    }
+
+    /** A vendor's orders are also those placed with a vendor merged into it since. */
+    private function takingInMergedAway(Company $company, PurchaseOrderSearch $search): PurchaseOrderSearch
+    {
+        return [] === $search->vendors ? $search : $search->forVendors($this->vendors->withMergedAway($company, $search->vendors));
     }
 
     /** @throws PurchaseOrderNotFound */

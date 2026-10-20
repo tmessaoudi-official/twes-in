@@ -239,11 +239,12 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
 
     public function searchMovements(Uuid $companyId, StockMovementSearch $search, PageRequest $page): Page
     {
-        // The product, the location, the lot and the vendor are joined and SELECTED whatever the search asks: every row names them,
-        // and joined without being selected each row read them again, 18 statements for 6 rows (audit PF-07).
+        // The product, the location, the lot and the vendor (the one kept, for a vendor merged away) are joined and
+        // SELECTED whatever the search asks: every row names them, and joined without being selected each row read them
+        // again, 18 statements for 6 rows (audit PF-07).
         $query = $this->entityManager->createQueryBuilder()
-            ->select('m', 'p', 'l', 'lt', 'v')->from(StockMovement::class, 'm')
-            ->join('m.product', 'p')->join('m.location', 'l')->leftJoin('m.lot', 'lt')->leftJoin('m.vendor', 'v')
+            ->select('m', 'p', 'l', 'lt', 'v', 'vk')->from(StockMovement::class, 'm')
+            ->join('m.product', 'p')->join('m.location', 'l')->leftJoin('m.lot', 'lt')->leftJoin('m.vendor', 'v')->leftJoin('v.mergedInto', 'vk')
             ->where('m.company = :company')->setParameter('company', $companyId, 'uuid');
         if ([] !== $search->products) {
             $query->andWhere('m.product IN (:products)')->setParameter('products', self::ids($search->products), ArrayParameterType::STRING);

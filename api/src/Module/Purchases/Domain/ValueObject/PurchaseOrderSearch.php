@@ -37,6 +37,16 @@ final readonly class PurchaseOrderSearch
     ) {
     }
 
+    /**
+     * The same search narrowed to these vendors instead.
+     *
+     * @param list<Uuid> $vendors
+     */
+    public function forVendors(array $vendors): self
+    {
+        return new self($this->text, $this->statuses, $vendors, $this->order, $this->issueDate, $this->expectedOn);
+    }
+
     /** The same search with no status named, which is what a status chip's count is made under. */
     public function withoutStatus(): self
     {

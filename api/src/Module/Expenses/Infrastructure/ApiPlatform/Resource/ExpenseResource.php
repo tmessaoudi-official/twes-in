@@ -395,7 +395,8 @@ final class ExpenseResource
         $resource->reference = $expense->getReference();
         $resource->description = $expense->getDescription();
         $resource->vendorId = $expense->getVendor()?->getId()->toRfc4122();
-        $resource->vendorName = $expense->getVendor()?->getProfile()->name;
+        // Shown as the vendor kept when it was merged away; the id stays the one recorded, which the books name.
+        $resource->vendorName = $expense->getVendor()?->standingFor()->getProfile()->name;
         $resource->payee = $expense->getPayee();
         $resource->categoryId = $expense->getCategory()?->getId()->toRfc4122();
         $resource->categoryName = $expense->getCategory()?->getName();

@@ -43,6 +43,23 @@ final readonly class VendorsForOrders implements OrderVendors
         return array_map(self::vendor(...), $this->vendors->ofIdsInCompany($ids, $company->getId()));
     }
 
+    public function standingFor(Company $company, array $ids): array
+    {
+        $standing = [];
+        foreach ([] === $ids ? [] : $this->vendors->ofIdsInCompany($ids, $company->getId()) as $vendor) {
+            $standing[$vendor->getId()->toRfc4122()] = self::vendor($vendor->standingFor());
+        }
+
+        return $standing;
+    }
+
+    public function withMergedAway(Company $company, array $ids): array
+    {
+        $merged = [] === $ids ? [] : $this->vendors->mergedInto($ids, $company->getId());
+
+        return [...$ids, ...array_map(static fn (Vendor $vendor): Uuid => $vendor->getId(), $merged)];
+    }
+
     private static function vendor(Vendor $vendor): OrderVendor
     {
         $profile = $vendor->getProfile();

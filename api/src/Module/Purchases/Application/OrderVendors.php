@@ -35,4 +35,23 @@ interface OrderVendors
      * @return list<OrderVendor>
      */
     public function ofIds(Company $company, array $ids): array;
+
+    /**
+     * The vendor standing for each of these vendors, keyed by the id asked: itself, or the vendor kept when it was
+     * merged away, which lists show in its place.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return array<string, OrderVendor>
+     */
+    public function standingFor(Company $company, array $ids): array;
+
+    /**
+     * These vendors and every vendor merged into them: what a list narrowed by a vendor takes in.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return list<Uuid>
+     */
+    public function withMergedAway(Company $company, array $ids): array;
 }

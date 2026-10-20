@@ -75,6 +75,15 @@ final class InMemoryVendors implements VendorRepository
         return null;
     }
 
+    public function mergedInto(array $ids, Uuid $companyId): array
+    {
+        return array_values(array_filter($this->ofCompany($companyId), static function (Vendor $vendor) use ($ids): bool {
+            $kept = $vendor->getMergedInto();
+
+            return null !== $kept && array_any($ids, static fn (Uuid $id): bool => $id->equals($kept->getId()));
+        }));
+    }
+
     public function ofNumberInCompany(string $number, Uuid $companyId): ?Vendor
     {
         foreach ($this->ofCompany($companyId) as $vendor) {
