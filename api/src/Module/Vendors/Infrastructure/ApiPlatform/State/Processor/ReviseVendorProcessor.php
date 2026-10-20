@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\StepUp\RecentProof;
 use App\Module\Vendors\Application\ManageVendors;
+use App\Module\Vendors\Application\VendorMergedAway;
 use App\Module\Vendors\Application\VendorNotFound;
 use App\Module\Vendors\Application\VendorNumberTaken;
 use App\Module\Vendors\Domain\Exception\InvalidVendor;
@@ -54,6 +55,8 @@ final readonly class ReviseVendorProcessor implements ProcessorInterface
             throw new NotFoundHttpException('No such vendor.', $absent);
         } catch (VendorNumberTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
+        } catch (VendorMergedAway $merged) {
+            throw new ConflictHttpException($merged->getMessage(), $merged);
         } catch (InvalidVendor $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }

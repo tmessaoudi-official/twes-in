@@ -42,6 +42,9 @@ final readonly class ReceiptDocuments
             if (null === $vendor) {
                 throw new InvalidStockMovement('vendorId', 'No vendor of this company has this id.');
             }
+            if ($vendor->isMergedAway()) {
+                throw new InvalidStockMovement('vendorId', 'This vendor was merged into another: name that one.', null, 'unknown_choice');
+            }
         }
         $document = new ReceiptDocument($vendor, $supplierReference, self::day($receivedOn));
 

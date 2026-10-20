@@ -231,7 +231,7 @@ final readonly class ProductImport implements DeclaresImport
         $quantity = $faults->read(fn (): ?array => $this->quantityOf($record, $context));
 
         $seesCosts = $context->once('sees-costs', fn (): bool => $this->guard->may($company, ProductPermission::COST_READ));
-        [$codes, $vendor] = $this->codes($company, $record, $existing, $seesCosts, $faults);
+        [$codes, $vendor] = $this->codes($company, $record, $existing, $seesCosts, $faults, $notes);
 
         $written = null;
         try {
@@ -587,7 +587,7 @@ final readonly class ProductImport implements DeclaresImport
      * @return array{list<array{BarcodeInput, array<string, string>}>, Uuid|null} each code, with the column each of its
      *                                                                            fields came from, and the supplier named
      */
-    private function codes(Company $company, ImportRecord $record, ?Product $current, bool $seesCosts, RowFaults $faults): array
+    private function codes(Company $company, ImportRecord $record, ?Product $current, bool $seesCosts, RowFaults $faults, RowNotes $notes): array
     {
         $codes = [];
         foreach ($current?->getBarcodes() ?? [] as $row) {
@@ -622,7 +622,7 @@ final readonly class ProductImport implements DeclaresImport
         $code = $record->value('supplier_code');
         $supplier = null;
         if (null !== $number || null !== $code) {
-            $supplier = $faults->read(fn (): Uuid => $this->supplierId($company, $number, $code));
+            $supplier = $faults->read(fn (): Uuid => $this->supplierId($company, $number, $code, $notes));
             if (null !== $supplier && null !== $code) {
                 $codes = self::placed($codes, self::heldAt($codes, BarcodeRole::Supplier, $code), [new BarcodeInput(BarcodeRole::Supplier->value, $code, 1, $supplier), self::cellsOf('supplier_code', ['supplierId' => 'supplier_number'])]);
             }
@@ -665,14 +665,15 @@ final readonly class ProductImport implements DeclaresImport
      *
      * @throws RowRejected
      */
-    private function supplierId(Company $company, ?string $number, ?string $code): Uuid
+    private function supplierId(Company $company, ?string $number, ?string $code, RowNotes $notes): Uuid
     {
         if (null === $number) {
             throw new RowRejected('supplier_number', 'A supplier\'s code goes with the supplier\'s number.', 'value_required');
         }
-
-        return $this->vendors->ofNumberInCompany($number, $company->getId())?->getId()
+        $named = $this->vendors->ofNumberInCompany($number, $company->getId())
             ?? throw new RowRejected('supplier_number', \sprintf('The company has no supplier numbered "%s".', $number), 'unknown_vendor', ['number' => $number]);
+
+        return MergedVendors::followed($named, 'supplier_number', $notes)->getId();
     }
 
     /**

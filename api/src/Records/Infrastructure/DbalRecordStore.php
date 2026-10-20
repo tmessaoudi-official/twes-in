@@ -10,11 +10,13 @@ declare(strict_types=1);
 namespace App\Records\Infrastructure;
 
 use App\Files\Infrastructure\Doctrine\UnnamedFiles;
-use App\Records\Application\MergeConflict;
+use App\Records\Application\Merge\MergeConflict;
 use App\Records\Application\RecordLink;
+use App\Records\Application\RecordMerge;
 use App\Records\Application\RecordReference;
 use App\Records\Application\RecordStore;
 use App\Records\Application\RecordSubject;
+use App\Records\Application\RecordUse;
 use App\Records\Application\RemovalConflict;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
@@ -46,12 +48,27 @@ final readonly class DbalRecordStore implements RecordStore
 
     public function lockedLabels(Uuid $companyId, RecordSubject $subject, array $ids): array
     {
+        return $this->labelled($companyId, $subject, $ids, ' FOR UPDATE');
+    }
+
+    public function labels(Uuid $companyId, RecordSubject $subject, array $ids): array
+    {
+        return $this->labelled($companyId, $subject, $ids, '');
+    }
+
+    /**
+     * @param list<Uuid> $ids
+     *
+     * @return array<string, string>
+     */
+    private function labelled(Uuid $companyId, RecordSubject $subject, array $ids, string $lock): array
+    {
         $label = implode(', ', array_map(fn (string $column): string => \sprintf('CAST(%s AS text)', $this->name($column)), $subject->labelColumns));
         // In the ids' order, so that two deletes of the same records never lock them crosswise. FOR UPDATE, not FOR NO KEY
         // UPDATE: a row written meanwhile with a foreign key to a record (a barcode, a photo) takes FOR KEY SHARE on it,
         // waits for this delete and then fails, so nothing belonging to the record escapes its copy.
         $rows = $this->connection->fetchAllAssociative(
-            \sprintf("SELECT id::text AS id, concat_ws(' ', %s) AS label FROM %s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[])) ORDER BY id FOR UPDATE", $label, $this->name($subject->table)),
+            \sprintf("SELECT id::text AS id, concat_ws(' ', %s) AS label FROM %s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[])) ORDER BY id%s", $label, $this->name($subject->table), $lock),
             ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids)],
         );
         $labels = [];
@@ -164,8 +181,8 @@ final readonly class DbalRecordStore implements RecordStore
                 $type = $this->columnType($reference->table, $reference->column);
                 [$naming, $parameters] = $this->naming($reference, $companyId, [$mergedId]);
                 if (null !== $reference->movesWhereColumn) {
-                    $naming .= \sprintf(' AND %s::text = ANY(CAST(:moving AS text[]))', $this->name($reference->movesWhereColumn));
-                    $parameters['moving'] = '{'.implode(',', array_map(static fn (string $value): string => '"'.addcslashes($value, '"\\').'"', $reference->movesWhereValues)).'}';
+                    [$moving, $parameters['moving']] = $this->moving($reference);
+                    $naming .= ' AND '.$moving;
                 }
                 $kept = $this->value($reference, $companyId, $keptId);
                 if ([] !== $reference->twinColumns) {
@@ -188,6 +205,108 @@ final readonly class DbalRecordStore implements RecordStore
             $this->connection->rollBack();
             throw $failure;
         }
+    }
+
+    public function mergedAwayAmong(Uuid $companyId, RecordSubject $subject, array $ids): array
+    {
+        return array_map(self::text(...), $this->connection->fetchFirstColumn(
+            \sprintf('SELECT id::text FROM %s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[])) AND merged_into_id IS NOT NULL ORDER BY id', $this->name($subject->table)),
+            ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids)],
+        ));
+    }
+
+    public function disagreeing(Uuid $companyId, RecordSubject $subject, array $ids): ?string
+    {
+        $parameters = ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids)];
+        $table = $this->name($subject->table);
+        foreach ($subject->mustAgree as $column) {
+            $name = $this->name($column);
+            // A JSON object agrees key by key: a number one record lacks is no disagreement. A stored empty array is none.
+            $sql = 'jsonb' === $this->columnType($subject->table, $column)
+                ? \sprintf("SELECT EXISTS (SELECT 1 FROM %1\$s a CROSS JOIN LATERAL jsonb_each_text(CASE WHEN jsonb_typeof(a.%2\$s) = 'object' THEN a.%2\$s ELSE '{}'::jsonb END) AS ea JOIN %1\$s b ON b.company_id = a.company_id AND b.id = ANY(CAST(:ids AS uuid[])) AND b.id <> a.id CROSS JOIN LATERAL jsonb_each_text(CASE WHEN jsonb_typeof(b.%2\$s) = 'object' THEN b.%2\$s ELSE '{}'::jsonb END) AS eb WHERE a.company_id = :company AND a.id = ANY(CAST(:ids AS uuid[])) AND ea.key = eb.key AND ea.value <> eb.value)", $table, $name)
+                : \sprintf('SELECT count(DISTINCT %2$s) > 1 FROM %1$s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[]))', $table, $name);
+            if (true === $this->connection->fetchOne($sql, $parameters)) {
+                return $column;
+            }
+        }
+
+        return null;
+    }
+
+    public function alias(Uuid $companyId, Uuid $mergeId, RecordSubject $subject, Uuid $keptId, array $mergedIds): void
+    {
+        $copied = $this->connection->executeStatement(
+            \sprintf("WITH before AS (SELECT id, merged_into_id, is_active FROM %1\$s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[]))), aliased AS (UPDATE %1\$s AS t SET merged_into_id = CAST(:kept AS uuid), is_active = false%2\$s FROM before b WHERE t.id = b.id RETURNING t.id, b.merged_into_id, b.is_active) INSERT INTO record_merge_move (id, removal_id, company_id, table_name, column_name, row_id, from_value, to_value) SELECT gen_random_uuid(), CAST(:merge AS uuid), CAST(:company AS uuid), :table, 'merged_into_id', id, merged_into_id::text, :kept FROM aliased UNION ALL SELECT gen_random_uuid(), CAST(:merge AS uuid), CAST(:company AS uuid), :table, 'is_active', id, is_active::text, 'false' FROM aliased", $this->name($subject->table), $this->versioned($subject->table, 't.')),
+            ['company' => $companyId->toRfc4122(), 'ids' => self::array($mergedIds), 'kept' => $keptId->toRfc4122(), 'merge' => $mergeId->toRfc4122(), 'table' => $subject->table],
+        );
+        if ($copied !== 2 * \count($mergedIds)) {
+            throw new \LogicException(\sprintf('%d records of %s were to be merged away and %d links noted: the merge stops rather than lose one.', \count($mergedIds), $subject->table, $copied));
+        }
+    }
+
+    public function tradedSince(Uuid $companyId, Uuid $keptId, array $transacting, \DateTimeImmutable $since): array
+    {
+        $traded = [];
+        foreach ($transacting as $reference) {
+            if (null === $reference->transactingAt) {
+                continue;
+            }
+            [$naming, $parameters] = $this->naming($reference, $companyId, [$keptId]);
+            if (null !== $reference->movesWhereColumn) {
+                [$moving, $parameters['moving']] = $this->moving($reference);
+                $naming .= ' AND NOT ('.$moving.')';
+            }
+            // From the merge's second: a row dated within it, before or after, is taken as after, which only refuses more.
+            $count = $this->connection->fetchOne(
+                \sprintf("SELECT count(*)::int FROM %s WHERE %s AND %s >= date_trunc('second', CAST(:since AS timestamp))", $this->name($reference->table), $naming, $this->name($reference->transactingAt)),
+                [...$parameters, 'since' => $since->format('Y-m-d H:i:s.u')],
+            );
+            if (!\is_int($count)) {
+                throw new \LogicException('A count reads as an integer.');
+            }
+            if ($count > 0) {
+                $traded[$reference->table] = ($traded[$reference->table] ?? 0) + $count;
+            }
+        }
+
+        return self::byTable($traded);
+    }
+
+    public function merging(Uuid $companyId, array $ids, array $naming): array
+    {
+        $counts = [];
+        foreach ($naming as $reference) {
+            if (RecordUse::Ignored === $reference->onDelete) {
+                continue;
+            }
+            [$condition, $parameters, $named] = $this->naming($reference, $companyId, $ids);
+            $moves = match ($reference->onMerge) {
+                RecordMerge::Moves, RecordMerge::MovesOrDrops => 'true',
+                default => 'false',
+            };
+            if ('true' === $moves && null !== $reference->movesWhereColumn) {
+                [$moves, $parameters['moving']] = $this->moving($reference);
+            }
+            $rows = $this->connection->fetchAllAssociative(
+                \sprintf('SELECT %1$s AS id, (%2$s) AS moves, count(*)::int AS rows FROM %3$s WHERE %4$s GROUP BY 1, 2', $named, $moves, $this->name($reference->table), $condition),
+                $parameters,
+            );
+            foreach ($rows as $row) {
+                $count = \is_int($row['rows']) ? $row['rows'] : throw new \LogicException('A count reads as an integer.');
+                $side = true === $row['moves'] ? 'moves' : 'stays';
+                $id = self::text($row['id']);
+                $counts[$id][$side][$reference->table] = ($counts[$id][$side][$reference->table] ?? 0) + $count;
+            }
+        }
+        $merging = [];
+        foreach ($ids as $id) {
+            $merging[$id->toRfc4122()] = [
+                'moves' => self::byTable($counts[$id->toRfc4122()]['moves'] ?? []),
+                'stays' => self::byTable($counts[$id->toRfc4122()]['stays'] ?? []),
+            ];
+        }
+
+        return $merging;
     }
 
     public function moveBack(Uuid $companyId, Uuid $mergeId): void
@@ -296,6 +415,35 @@ final readonly class DbalRecordStore implements RecordStore
     private static function text(mixed $value): string
     {
         return \is_string($value) ? $value : throw new \LogicException('A name, an id or a label reads as text.');
+    }
+
+    /**
+     * The condition a row a merge moves meets, when its reference moves only some, and the values it is matched on.
+     *
+     * @return array{string, string}
+     */
+    private function moving(RecordReference $reference): array
+    {
+        if (null === $reference->movesWhereColumn) {
+            throw new \LogicException(\sprintf('%s.%s moves every row naming the record.', $reference->table, $reference->column));
+        }
+
+        return [
+            \sprintf('%s::text = ANY(CAST(:moving AS text[]))', $this->name($reference->movesWhereColumn)),
+            '{'.implode(',', array_map(static fn (string $value): string => '"'.addcslashes($value, '"\\').'"', $reference->movesWhereValues)).'}',
+        ];
+    }
+
+    /**
+     * @param array<string, int> $counts by table
+     *
+     * @return list<array{table: string, count: int}> in the tables' order
+     */
+    private static function byTable(array $counts): array
+    {
+        ksort($counts);
+
+        return array_map(static fn (string $table, int $count): array => ['table' => $table, 'count' => $count], array_keys($counts), array_values($counts));
     }
 
     /** @param list<Uuid> $ids */

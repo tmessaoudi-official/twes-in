@@ -7,14 +7,26 @@
 
 declare(strict_types=1);
 
-namespace App\Records\Application;
+namespace App\Records\Application\Merge;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
+use App\Records\Application\MergedAway;
+use App\Records\Application\NoRecordChosen;
+use App\Records\Application\RecordCatalogue;
+use App\Records\Application\RecordMerge;
+use App\Records\Application\RecordReference;
+use App\Records\Application\RecordStore;
+use App\Records\Application\RecordSubject;
+use App\Records\Application\RecordUse;
+use App\Records\Application\RemoveRecords;
+use App\Records\Application\UnknownRecords;
 use App\Records\Domain\Model\RecordRemoval;
 use App\Records\Domain\Repository\RecordRemovalRepository;
+use App\Shared\Application\LiveChange;
+use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -39,6 +51,7 @@ final readonly class MergeRecords
         private Transactions $transactions,
         private ClockInterface $clock,
         private ConfirmStepUp $stepUp,
+        private LiveChanges $liveChanges,
         #[Autowire(param: 'app.records.undoable_for')]
         private string $undoableFor,
     ) {
@@ -50,6 +63,8 @@ final readonly class MergeRecords
      * @throws MergeIntoItself
      * @throws MergeCycle
      * @throws MergeConflict
+     * @throws MergeAlias
+     * @throws MergeMismatch
      * @throws StepUpRequired
      */
     public function handle(Company $company, RecordSubject $subject, mixed $keptId, mixed $ids, Uuid $actorUserId): RecordRemoval
@@ -62,16 +77,21 @@ final readonly class MergeRecords
         if (!$this->stepUp->isRecent($actorUserId)) {
             throw new StepUpRequired('Merging takes a proof given again in the last few minutes.');
         }
-        if (MergedAway::Aliased === $subject->mergedAway) {
-            // The alias, its switch and the pickers that leave it out come with the first subject merged that way.
-            throw new \LogicException(\sprintf('%s is merged as an alias, which the records engine does not do yet.', $subject->table));
-        }
 
         return $this->transactions->run(function () use ($company, $subject, $kept, $merged, $actorUserId): RecordRemoval {
             $all = [$kept, ...$merged];
             $labels = $this->store->lockedLabels($company->getId(), $subject, $all);
             if (\count($labels) !== \count($all)) {
                 throw new UnknownRecords(\sprintf('The company has not every %s asked for.', $subject->table));
+            }
+            $aliased = MergedAway::Aliased === $subject->mergedAway;
+            // Before the cycle: an alias points at the record it was merged into, and is refused for being one.
+            if ($aliased && [] !== $this->store->mergedAwayAmong($company->getId(), $subject, $all)) {
+                throw new MergeAlias(\sprintf('A %s merged into another is neither merged again nor merged into.', $subject->table));
+            }
+            $disagreeing = $this->store->disagreeing($company->getId(), $subject, $all);
+            if (null !== $disagreeing) {
+                throw new MergeMismatch($disagreeing);
             }
             $naming = $this->catalogue->naming($subject->table);
             foreach ($naming as $reference) {
@@ -100,10 +120,21 @@ final readonly class MergeRecords
             foreach ($merged as $id) {
                 $this->store->moveTo($company->getId(), $merge->getId(), $kept, $id, $moving);
             }
-            // Nothing moving names them now; whatever of theirs did not move goes with them, copied for the undo.
-            $this->store->remove($company->getId(), $merge->getId(), $subject, $merged, $owned);
+            if ($aliased) {
+                // They stay for what still names them, switched off and pointing at the one kept.
+                $this->store->alias($company->getId(), $merge->getId(), $subject, $kept, $merged);
+            } else {
+                // Nothing moving names them now; whatever of theirs did not move goes with them, copied for the undo.
+                $this->store->remove($company->getId(), $merge->getId(), $subject, $merged, $owned);
+            }
             foreach ($merged as $id) {
                 $this->audit->record(new AuditEntry($subject->table, $id, \sprintf(self::MERGED, $subject->table), $actorUserId, [], $company->getId()));
+            }
+            // The audit tells the subject's screens; those listing what moved hear it here.
+            foreach (array_unique(array_map(static fn (RecordReference $reference): string => $reference->table, $moving)) as $table) {
+                if ($table !== $subject->table) {
+                    $this->liveChanges->stage(new LiveChange($table, null, \sprintf(self::MERGED, $subject->table), $actorUserId, $company->getId()));
+                }
             }
 
             return $merge;

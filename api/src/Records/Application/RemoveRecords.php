@@ -11,6 +11,7 @@ namespace App\Records\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Records\Application\Merge\MergeAlias;
 use App\Records\Domain\Model\RecordRemoval;
 use App\Records\Domain\Repository\RecordRemovalRepository;
 use App\Shared\Application\Transactions;
@@ -42,6 +43,7 @@ final readonly class RemoveRecords
     /**
      * @throws NoRecordChosen
      * @throws UnknownRecords
+     * @throws MergeAlias
      * @throws RecordsInUse
      */
     public function handle(Company $company, RecordSubject $subject, mixed $ids, ?Uuid $actorUserId): RecordRemoval
@@ -52,6 +54,10 @@ final readonly class RemoveRecords
             $labels = $this->store->lockedLabels($company->getId(), $subject, $chosen);
             if (\count($labels) !== \count($chosen)) {
                 throw new UnknownRecords(\sprintf('The company has not every %s asked for.', $subject->table));
+            }
+            // An alias stands for what the books and the stock still name: it goes only with the merge's undo.
+            if (MergedAway::Aliased === $subject->mergedAway && [] !== $this->store->mergedAwayAmong($company->getId(), $subject, $chosen)) {
+                throw new MergeAlias(\sprintf('A %s merged into another is not deleted.', $subject->table));
             }
             $naming = $this->catalogue->naming($subject->table);
             foreach ($naming as $reference) {

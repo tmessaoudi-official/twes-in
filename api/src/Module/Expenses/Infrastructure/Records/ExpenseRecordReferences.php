@@ -29,7 +29,8 @@ final readonly class ExpenseRecordReferences implements DeclaresRecordReferences
     {
         return [
             RecordReference::uses('expense', 'vendor_id', 'vendor', RecordMerge::Moves, 'An expense names the vendor it was bought from.')
-                ->movingOnlyWhere('status', [ExpenseStatus::Draft->value]),
+                ->movingOnlyWhere('status', [ExpenseStatus::Draft->value])
+                ->transactingAt('updated_at'),
         ];
     }
 }

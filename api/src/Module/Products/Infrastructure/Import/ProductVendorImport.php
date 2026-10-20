@@ -105,9 +105,10 @@ final readonly class ProductVendorImport implements DeclaresImport
         // Every cell is read before anything is written, and every fault found is said at once.
         $faults = new RowFaults();
         $product = $faults->read(fn (): Product => $this->productOf($company, $record));
-        $vendor = $faults->read(fn (): Vendor => $this->vendorOf($company, $record));
+        $named = $faults->read(fn (): Vendor => $this->vendorOf($company, $record));
         $faults->stopIfAny();
-        \assert(null !== $product && null !== $vendor);
+        \assert(null !== $product && null !== $named);
+        $vendor = MergedVendors::followed($named, 'vendor_number', $notes);
 
         try {
             $linked = array_any($product->getVendors(), static fn (Vendor $held): bool => $held->getId()->equals($vendor->getId()));

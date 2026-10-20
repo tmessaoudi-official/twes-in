@@ -379,8 +379,12 @@ final readonly class ManageProducts
         }
         $vendors = [];
         foreach ($ids as $index => $id) {
-            $vendors[] = $this->vendors->ofIdInCompany($id, $company->getId())
+            $vendor = $this->vendors->ofIdInCompany($id, $company->getId())
                 ?? throw new InvalidProduct("vendors.$index", 'No vendor of this company has this id.');
+            if ($vendor->isMergedAway()) {
+                throw new InvalidProduct("vendors.$index", 'This vendor was merged into another: name that one.', 'unknown_choice');
+            }
+            $vendors[] = $vendor;
         }
 
         return $vendors;
@@ -488,6 +492,9 @@ final readonly class ManageProducts
             if (null !== $row->supplierId) {
                 $supplier = $this->vendors->ofIdInCompany($row->supplierId, $company->getId())
                     ?? throw new InvalidProduct("barcodes.$index.supplierId", 'No supplier of this company has this id.');
+                if ($supplier->isMergedAway()) {
+                    throw new InvalidProduct("barcodes.$index.supplierId", 'This supplier was merged into another: name that one.', 'unknown_choice');
+                }
             }
             try {
                 $line = new BarcodeLine($role, new Barcode($row->code), $row->quantity, $supplier);
