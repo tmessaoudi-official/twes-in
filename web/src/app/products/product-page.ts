@@ -49,6 +49,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -94,6 +95,7 @@ export class ProductPage {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+  private readonly deletes = inject(RecordDeletes);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `products/new`. */
   readonly productId = input<string | undefined>(undefined);
@@ -412,8 +414,34 @@ export class ProductPage {
         run: () => this.openLabels(),
         shown: this.id() !== null,
       },
+      {
+        id: 'delete',
+        label: 'records.delete',
+        icon: 'delete',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps it a day, with its codes,
+        // photos and places. A product a document, a movement or a price list names is refused whole, the toast
+        // saying what names it.
+        destructive: true,
+        undoable: true,
+        disabled: busy,
+        run: () => void this.remove(),
+        shown: may && this.current() != null,
+      },
     ];
   });
+
+  private async remove(): Promise<void> {
+    const companyId = this.company()?.id;
+    const product = this.current();
+    if (!companyId || !product) return;
+    const gone = await this.deletes.remove(companyId, 'product', [
+      { id: product.id, label: `${product.reference} ${product.name}` },
+    ]);
+    if (!gone) return;
+    // What was typed went with it: leaving is not abandoning unsaved work.
+    this.unsaved.savedAndLeaving();
+    await this.router.navigate(['/products']);
+  }
 
   private openLabels(): void {
     const id = this.id();

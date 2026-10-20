@@ -162,8 +162,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   it refuses exits 2, which the script drops),
   `Records` (deleting what nothing names, and « Récemment supprimés »: a context declares what names its records with
   `DeclaresRecordReferences` in its own `Infrastructure/Records/`, which `RecordReferenceCoverage` holds to every column
-  that names one; `RemoveRecords` refuses a record in use, keeps the rows a day in `record_removal_row` for `RestoreRecords`,
-  and the worker makes them final every quarter hour),
+  that names one; `RemoveRecords` refuses a record in use, takes the rows a reference says belong to it (`owned`: a
+  product's codes, photos, places, settings), keeps them a day in `record_removal_row` for `RestoreRecords`, and the
+  worker makes them final every quarter hour, letting go the files nothing names any more through the Files context's
+  `UnnamedFiles`, which the erasure shares),
   `Demo` (« Essayer la démo »: a visitor with no account claims a `demo_sandbox`, a whole company written by
   `Dataset/DemoDataset` and owned by a throwaway account; the pool is topped up by `KeepSandboxPool`, its builds on the
   `demo` transport, which the `demo-worker` container alone consumes, so no mail waits behind one; `DemoAccountGuard`

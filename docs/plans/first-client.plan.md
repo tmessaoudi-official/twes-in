@@ -380,7 +380,7 @@ was and was not certified by execution.
 ### Known issues
 - A product deleted with its vendor links, then that vendor deleted (nothing names it once the links went with the
   product): the product's restore refuses whole as `restore_conflict` until the vendor is restored first
-  (`ProductRemovalTest`). The page says only that something stands in its way; naming the vendor to restore first is open.
+  (`ProductRemovalTest`). The toast says that a record it names may have been deleted since, without naming which.
 - Merges (A6+) cannot yet move only a draft's lines: `movingOnlyWhere` reads a column of the line's own table, and a
   line's status is its document's; the product references on invoice, quote, delivery note and order lines are
   declared `Stays` until merges are built.
