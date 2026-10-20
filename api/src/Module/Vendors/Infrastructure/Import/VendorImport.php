@@ -159,6 +159,7 @@ final readonly class VendorImport implements DeclaresImport
             }
             if (null === $existing) {
                 $written = $this->manage->create($company, $input, $actorUserId);
+                $context->created('vendor', $written->getId());
 
                 return RowImported::Created;
             }

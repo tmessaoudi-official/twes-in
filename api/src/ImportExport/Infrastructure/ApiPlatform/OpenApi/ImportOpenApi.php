@@ -17,13 +17,15 @@ use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
+use App\ImportExport\Application\Undo\ImportNotUndoable;
 use App\ImportExport\Application\UnreadableImport;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
 /**
- * Documents the import and its template, two plain controllers API Platform does not describe (ImportController, which
- * reads a multipart upload, and ImportTemplateController, which answers bytes). The guide beside them is a resource.
+ * Documents the import, its template and « Annuler cet import », plain controllers API Platform does not describe
+ * (ImportController, which reads a multipart upload, ImportTemplateController, which answers bytes, and
+ * ImportRunController). The guide beside them is a resource.
  */
 #[AsDecorator('api_platform.openapi.factory')]
 final readonly class ImportOpenApi implements OpenApiFactoryInterface
@@ -41,7 +43,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
         $lines = ['type' => 'array', 'items' => ['type' => 'integer']];
         $report = [
             'type' => 'object',
-            'required' => ['committed', 'created', 'updated', 'unchanged', 'rejected', 'changes', 'notes', 'alreadyImportedAt'],
+            'required' => ['committed', 'created', 'updated', 'unchanged', 'rejected', 'changes', 'notes', 'alreadyImportedAt', 'run'],
             'properties' => [
                 'committed' => ['type' => 'boolean', 'description' => 'Whether the file was stored: never for a preview, nor while a row is rejected.'],
                 'created' => $lines + ['description' => 'The file’s own line numbers, empty lines counted.'],
@@ -79,6 +81,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
                     ],
                 ]],
                 'alreadyImportedAt' => ['type' => ['string', 'null'], 'format' => 'date-time', 'description' => 'When this very file (the same bytes) was last imported into this subject, committed; null when it never was.'],
+                'run' => ['type' => ['string', 'null'], 'format' => 'uuid', 'description' => 'The import kept, which `POST …/import-runs/{id}/undo` takes back within its day; null for a preview or a file stopped on rejected rows.'],
             ],
         ];
         $refused = [
@@ -130,6 +133,73 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
             ],
             summary: 'The empty file to fill in',
             parameters: [$company, $subject, new Parameter('format', 'path', 'The file format', true, schema: ['type' => 'string', 'enum' => ['csv', 'xlsx']])],
+        )));
+
+        $openApi->getPaths()->addPath('/api/companies/{companyId}/import-runs', new PathItem(get: new Operation(
+            operationId: 'importRuns',
+            tags: ['ImportGuide'],
+            responses: [
+                '200' => new Response('« Imports récents »: the imports of the last day into the subjects the person may write, the latest first', $json(['type' => 'array', 'items' => [
+                    'type' => 'object',
+                    'required' => ['id', 'subject', 'at', 'by', 'created', 'updated', 'undoableUntil', 'undoneAt'],
+                    'properties' => [
+                        'id' => ['type' => 'string', 'format' => 'uuid'],
+                        'subject' => ['type' => 'string', 'description' => 'What was imported, such as `customers`.'],
+                        'at' => ['type' => 'string', 'format' => 'date-time'],
+                        'by' => ['type' => ['string', 'null'], 'description' => 'Who ran it, by the name the person goes by; null for an account gone since.'],
+                        'created' => ['type' => 'integer'],
+                        'updated' => ['type' => 'integer'],
+                        'undoableUntil' => ['type' => 'string', 'format' => 'date-time', 'description' => 'Until when « Annuler cet import » takes it back.'],
+                        'undoneAt' => ['type' => ['string', 'null'], 'format' => 'date-time', 'description' => 'When it was taken back; null while it stands, the bin\'s restore included.'],
+                    ],
+                ]])),
+                '401' => new Response('Not signed in'),
+                '404' => new Response('No such company'),
+            ],
+            summary: 'The imports « Annuler cet import » may still take back',
+            parameters: [$company],
+        )));
+
+        $kept = ['type' => 'object', 'required' => ['reference', 'location', 'reason'], 'properties' => [
+            'reference' => ['type' => 'string'],
+            'location' => ['type' => 'string', 'description' => 'The stock location\'s code.'],
+            'reason' => ['type' => 'string', 'enum' => ['counted_since', 'below_zero'], 'description' => 'Counted there since, or goods gone out since so that taking it back would leave less than nothing.'],
+        ]];
+        $openApi->getPaths()->addPath('/api/companies/{companyId}/import-runs/{runId}/undo', new PathItem(post: new Operation(
+            operationId: 'undoImport',
+            tags: ['ImportGuide'],
+            responses: [
+                '200' => new Response('What the undo took back and what it kept', $json([
+                    'type' => 'object',
+                    'required' => ['removal', 'removed', 'kept', 'rowsKept', 'stockTakenBack', 'stockKept', 'updated'],
+                    'properties' => [
+                        'removal' => ['type' => ['string', 'null'], 'format' => 'uuid', 'description' => 'The delete « Récemment supprimés » restores whole; null when no record went.'],
+                        'removed' => ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['id', 'label'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'label' => ['type' => 'string']]]],
+                        'kept' => ['type' => 'array', 'description' => 'The records created that something uses since, which stay.', 'items' => ['type' => 'object', 'required' => ['id', 'label', 'uses'], 'properties' => [
+                            'id' => ['type' => 'string', 'format' => 'uuid'],
+                            'label' => ['type' => 'string'],
+                            'uses' => ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['table', 'column', 'count'], 'properties' => ['table' => ['type' => 'string'], 'column' => ['type' => 'string'], 'count' => ['type' => 'integer']]]],
+                        ]]],
+                        'rowsKept' => ['type' => 'array', 'description' => 'The links the file added that stay, such as a vendor still holding a code of the product.', 'items' => ['type' => 'object', 'required' => ['label', 'reason'], 'properties' => [
+                            'label' => ['type' => 'string'],
+                            'reason' => ['type' => 'string', 'enum' => ['vendor_has_code', 'product_merged']],
+                        ]]],
+                        'stockTakenBack' => ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['reference', 'location', 'quantity'], 'properties' => [
+                            'reference' => ['type' => 'string'],
+                            'location' => ['type' => 'string'],
+                            'quantity' => ['type' => 'string', 'description' => 'What the file had brought, signed, in the unit\'s own decimals.'],
+                        ]]],
+                        'stockKept' => ['type' => 'array', 'items' => $kept],
+                        'updated' => ['type' => 'integer', 'description' => 'The records the file only changed, which stay as changed.'],
+                    ],
+                ])),
+                '401' => new Response('Not signed in'),
+                '403' => new Response('`step_up_required`: the proof given again is not recent; nothing was taken back', $json(['type' => 'object', 'properties' => ['error' => ['type' => 'string', 'enum' => ['step_up_required']]]])),
+                '404' => new Response('No such import, its module switched off, or no permission to write its subject'),
+                '409' => new Response('`import_undone` once taken back, `import_final` once its day is over', $json(['type' => 'object', 'required' => ['error'], 'properties' => ['error' => ['type' => 'string', 'enum' => [ImportNotUndoable::UNDONE, ImportNotUndoable::FINAL]]]])),
+            ],
+            summary: '« Annuler cet import »',
+            parameters: [$company, new Parameter('runId', 'path', 'The import', true, schema: ['type' => 'string', 'format' => 'uuid'])],
         )));
 
         return $openApi;

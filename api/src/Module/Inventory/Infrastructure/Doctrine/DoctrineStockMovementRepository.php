@@ -244,6 +244,19 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return true === $moved;
     }
 
+    public function countedSince(Uuid $productId, Uuid $locationId, \DateTimeImmutable $since, Uuid $exceptRunId): bool
+    {
+        // `at` keeps the second only, so a count in the same second is taken as after: the safe side of a tie.
+        $counted = $this->entityManager->getConnection()->fetchOne(
+            'SELECT EXISTS (SELECT 1 FROM stock_movement m WHERE m.product_id = :product AND m.location_id = :location'
+            .' AND m.source_type = :count AND m.at >= :since AND m.import_run_id IS DISTINCT FROM :run)',
+            ['product' => $productId->toRfc4122(), 'location' => $locationId->toRfc4122(), 'count' => StockMovement::SOURCE_COUNT, 'since' => $since, 'run' => $exceptRunId->toRfc4122()],
+            ['since' => Types::DATETIME_IMMUTABLE],
+        );
+
+        return true === $counted;
+    }
+
     public function ofReversing(Uuid $invoiceId, Uuid $companyId): array
     {
         return $this->entityManager->getRepository(StockMovement::class)->findBy(['reversesSourceId' => $invoiceId, 'company' => $companyId], ['at' => 'ASC', 'id' => 'ASC']);

@@ -44,7 +44,7 @@ final class VendorImportTest extends ApiTestCase
         $this->import($this->twoVendors());
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->importReport());
         $supplier = $this->vendor('FRN-0001');
         self::assertSame('Aciers du Sud', $supplier->getProfile()->name);
         self::assertSame('Aciers du Sud SARL', $supplier->getProfile()->legalName);
@@ -199,7 +199,7 @@ final class VendorImportTest extends ApiTestCase
         $this->import($second, mode: 'upsert');
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'unchanged' => [], 'rejected' => [], 'changes' => [['line' => 2, 'column' => 'name', 'before' => 'Aciers du Sud', 'after' => 'Aciers du Sud SA']], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'unchanged' => [], 'rejected' => [], 'changes' => [['line' => 2, 'column' => 'name', 'before' => 'Aciers du Sud', 'after' => 'Aciers du Sud SA']], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->importReport());
         $this->em()->clear();
         $updated = $this->vendor('FRN-0001');
         self::assertSame('Aciers du Sud SA', $updated->getProfile()->name);

@@ -27,6 +27,8 @@
                 <span>{{
                   'records.recent.merged_into' | translate: { kept: removal.kept.label }
                 }}</span>
+              } @else if (removal.kind === 'import') {
+                <span>{{ 'records.recent.import_undone' | translate }}</span>
               }
               <ul class="m-0 flex list-none flex-col gap-0.5 p-0">
                 @for (item of removal.items; track item.id) {
@@ -42,6 +44,14 @@
                 <span class="text-sm text-on-surface-variant">{{
                   'records.recent.merge_until'
                     | translate: { moment: (removal.effectiveAt | moment) }
+                }}</span>
+              } @else if (removal.kind === 'import') {
+                <span class="text-sm text-on-surface-variant">{{
+                  'records.recent.import_undone_at'
+                    | translate: { moment: (removal.removedAt | moment) }
+                }}</span>
+                <span class="text-sm text-on-surface-variant">{{
+                  'records.recent.until' | translate: { moment: (removal.effectiveAt | moment) }
                 }}</span>
               } @else {
                 <span class="text-sm text-on-surface-variant">{{
@@ -61,8 +71,12 @@
             >
               <mat-icon aria-hidden="true">undo</mat-icon>
               {{
-                (removal.kind === 'merge' ? 'records.recent.undo_merge' : 'records.recent.restore')
-                  | translate
+                (removal.kind === 'merge'
+                  ? 'records.recent.undo_merge'
+                  : removal.kind === 'import'
+                    ? 'records.recent.redo_import'
+                    : 'records.recent.restore'
+                ) | translate
               }}
             </button>
           </li>

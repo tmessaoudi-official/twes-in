@@ -220,6 +220,20 @@
           </app-status-badge>
         }
       </div>
+      @if (report.committed && report.run; as run) {
+        <div>
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="busy()"
+            (click)="undo(run)"
+            data-testid="import-undo"
+          >
+            <mat-icon aria-hidden="true">undo</mat-icon>
+            {{ 'import.undo.action' | translate }}
+          </button>
+        </div>
+      }
 
       @if (report.changes.length > 0) {
         <h3 class="text-lg font-semibold">{{ 'import.changes_title' | translate }}</h3>
@@ -334,6 +348,114 @@
       }
     </div>
   }
+  @if (undone(); as undone) {
+    <div class="flex flex-col gap-3" data-testid="import-undone">
+      <h2 class="text-xl font-semibold">{{ 'import.undo.title' | translate }}</h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <app-status-badge tone="neutral" data-testid="import-undone-removed">
+          {{ 'import.undo.removed' | translate: { count: undone.removed.length } }}
+        </app-status-badge>
+        @if (undone.updated > 0) {
+          <app-status-badge tone="info" data-testid="import-undone-updated">
+            {{ 'import.undo.updated' | translate: { count: undone.updated } }}
+          </app-status-badge>
+        }
+      </div>
+      @if (undone.kept.length > 0 || undone.rowsKept.length > 0) {
+        <h3 class="text-lg font-semibold">{{ 'import.undo.kept_title' | translate }}</h3>
+        <ul class="m-0 flex list-none flex-col gap-1 p-0" data-testid="import-undone-kept">
+          @for (record of undone.kept; track record.id) {
+            <!-- value-direction: a text in the screen's language -->
+            <li>
+              {{ 'import.undo.kept' | translate: { name: record.label, uses: usesOf(record) } }}
+            </li>
+          }
+          @for (row of undone.rowsKept; track $index) {
+            <!-- value-direction: a text in the screen's language -->
+            <li>{{ 'import.undo.rows_kept.' + row.reason | translate: { label: row.label } }}</li>
+          }
+        </ul>
+      }
+      @if (undone.stockTakenBack.length > 0 || undone.stockKept.length > 0) {
+        <h3 class="text-lg font-semibold">{{ 'import.undo.stock_title' | translate }}</h3>
+        <ul class="m-0 flex list-none flex-col gap-1 p-0" data-testid="import-undone-stock">
+          @for (stock of undone.stockTakenBack; track $index) {
+            <!-- value-direction: a text in the screen's language -->
+            <li>
+              {{
+                'import.undo.stock_back'
+                  | translate
+                    : {
+                        reference: stock.reference,
+                        location: stock.location,
+                        quantity: quantity(stock.quantity),
+                      }
+              }}
+            </li>
+          }
+          @for (stock of undone.stockKept; track $index) {
+            <!-- value-direction: a text in the screen's language -->
+            <li class="text-on-surface-variant">
+              {{
+                'import.undo.stock_kept.' + stock.reason
+                  | translate: { reference: stock.reference, location: stock.location }
+              }}
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
+
+  @if (recent().length > 0) {
+    <div class="flex flex-col gap-3" data-testid="import-recent">
+      <h2 class="text-xl font-semibold">{{ 'import.recent.title' | translate }}</h2>
+      <p class="text-sm text-on-surface-variant">{{ 'import.recent.intro' | translate }}</p>
+      <ul class="m-0 flex list-none flex-col gap-3 p-0">
+        @for (run of recent(); track run.id) {
+          <li
+            class="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-outline-variant p-4"
+            [attr.data-testid]="'import-run-' + run.id"
+          >
+            <div class="flex min-w-0 flex-col gap-1">
+              <!-- value-direction: the subject's name in the screen's language -->
+              <span class="font-medium">{{ subjectOf(run) }}</span>
+              <span class="text-sm">
+                @if (run.by; as name) {
+                  {{ 'import.recent.by' | translate: { moment: (run.at | moment), name: name } }}
+                } @else {
+                  {{ 'import.recent.at' | translate: { moment: (run.at | moment) } }}
+                }
+              </span>
+              <span class="text-sm">{{
+                'import.recent.counts' | translate: { created: run.created, updated: run.updated }
+              }}</span>
+              <span class="text-sm text-on-surface-variant">
+                @if (run.undoneAt; as at) {
+                  {{ 'import.recent.undone' | translate: { moment: (at | moment) } }}
+                } @else {
+                  {{ 'import.recent.until' | translate: { moment: (run.undoableUntil | moment) } }}
+                }
+              </span>
+            </div>
+            @if (!run.undoneAt) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="busy()"
+                (click)="undo(run.id)"
+                [attr.data-testid]="'import-run-undo-' + run.id"
+              >
+                <mat-icon aria-hidden="true">undo</mat-icon>
+                {{ 'import.undo.action' | translate }}
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
   @if (guide(); as guide) {
     <div class="flex flex-col gap-3">
       <h2 class="text-xl font-semibold">{{ 'import.columns_title' | translate }}</h2>

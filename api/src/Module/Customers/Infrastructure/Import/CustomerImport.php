@@ -186,6 +186,8 @@ final readonly class CustomerImport implements DeclaresImport
             $this->settingCells->write($company, $written->getId(), $settings, $actorUserId);
             $this->noteMissingIdentifiers($company, $written, $notes);
             if (null === $existing) {
+                $context->created('customer', $written->getId());
+
                 return RowImported::Created;
             }
 

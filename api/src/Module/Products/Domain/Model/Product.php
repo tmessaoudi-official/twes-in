@@ -364,6 +364,12 @@ class Product implements CompanyOwned
         return $vendors;
     }
 
+    /** The row that says the product is bought from this vendor, if it is. */
+    public function vendorLinkOf(Uuid $vendorId): ?ProductVendor
+    {
+        return $this->vendors->findFirst(static fn (int $_, ProductVendor $row): bool => $row->getVendor()->getId()->equals($vendorId));
+    }
+
     private function link(Vendor $vendor, \DateTimeImmutable $now): bool
     {
         $id = $vendor->getId();

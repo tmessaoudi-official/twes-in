@@ -80,6 +80,7 @@ describe('ImportApi', () => {
     const report = await pending;
     expect(report).toEqual({
       committed: false,
+      run: null,
       created: [2],
       updated: [3],
       unchanged: [4],
@@ -256,5 +257,69 @@ describe('ImportApi', () => {
       .flush({ error: 'step_up_required' }, { status: 403, statusText: 'Forbidden' });
     const refused = await pending.catch((error: unknown) => error);
     expect(refused).toEqual(new ImportRefused('step_up_required'));
+  });
+
+  it('reads the import kept from a committed run, and none from a preview', async () => {
+    const kept = api.run('c1', 'customers', new File(['x'], 'f.csv'), 'create', false);
+    http
+      .expectOne('/api/companies/c1/imports/customers')
+      .flush({ committed: true, run: 'r1', created: [2], updated: [], rejected: [], notes: [] });
+    expect((await kept).run).toBe('r1');
+
+    const preview = api.run('c1', 'customers', new File(['x'], 'f.csv'), 'create', true);
+    http
+      .expectOne('/api/companies/c1/imports/customers')
+      .flush({ committed: false, run: null, created: [2], updated: [], rejected: [], notes: [] });
+    expect((await preview).run).toBeNull();
+  });
+
+  it('reads « Imports récents » of the company', async () => {
+    const pending = api.recent('c1');
+    const run = {
+      id: 'r1',
+      subject: 'opening-stock',
+      at: '2026-10-20T10:00:00+01:00',
+      by: 'Sonia',
+      created: 3,
+      updated: 1,
+      undoableUntil: '2026-10-21T10:00:00+01:00',
+      undoneAt: null,
+    };
+    http.expectOne('/api/companies/c1/import-runs').flush([run]);
+
+    expect(await pending).toEqual([run]);
+  });
+
+  it('posts « Annuler cet import » and reads what it did', async () => {
+    const pending = api.undo('c1', 'r1');
+    const request = http.expectOne('/api/companies/c1/import-runs/r1/undo');
+    expect(request.request.method).toBe('POST');
+    const answer = {
+      removal: 'rm1',
+      removed: [{ id: 'x1', label: 'CLI-0001 Carthage' }],
+      kept: [],
+      rowsKept: [{ label: 'VIS-6X40', reason: 'vendor_has_code' }],
+      stockTakenBack: [{ reference: 'VIS-6X40', location: 'A1', quantity: '3' }],
+      stockKept: [{ reference: 'P-OLD', location: 'A1', reason: 'below_zero' }],
+      updated: 2,
+    };
+    request.flush(answer);
+
+    expect(await pending).toEqual(answer);
+  });
+
+  it('names why an undo was refused, and asks for the proof the API wants', async () => {
+    for (const [status, body, code] of [
+      [409, { error: 'import_undone' }, 'import_undone'],
+      [409, { error: 'import_final' }, 'import_final'],
+      [403, { error: 'step_up_required' }, 'step_up_required'],
+      [404, null, 'not_found'],
+    ] as const) {
+      const pending = api.undo('c1', 'r1');
+      http
+        .expectOne('/api/companies/c1/import-runs/r1/undo')
+        .flush(body, { status, statusText: 'Refused' });
+      await expect(pending).rejects.toEqual(new ImportRefused(code));
+    }
   });
 });

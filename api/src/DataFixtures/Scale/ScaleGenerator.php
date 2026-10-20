@@ -76,6 +76,7 @@ final class ScaleGenerator
         'goods_receipt' => 'orders to vendors: a follow-up slice, with the stock they moved',
         'goods_receipt_line' => 'orders to vendors: a follow-up slice, with the stock they moved',
         'import_run' => 'the files a company imported: a clone imported none',
+        'import_run_record' => 'what each import created, for its undo: a clone imported none',
         'invoice_chain_head' => 'where each series\' chain ends: written again when the company is chained after renumbering',
         'invoice_reminder' => 'the reminder stages late invoices reached: a clone has reached none',
         'payment_declaration' => 'a customer\'s declared payments: a follow-up slice',

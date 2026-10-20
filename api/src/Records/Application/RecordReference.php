@@ -54,8 +54,10 @@ final readonly class RecordReference
         public array $notTradingValues = [],
         public ?string $belowTable = null,
         public ?string $belowColumn = null,
+        /** The column an import writes its id into on the rows it makes, which « Annuler cet import » takes as the import's own. */
+        public ?string $importRunColumn = null,
     ) {
-        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none', $transactingAt ?? 'none', $parentTable ?? 'none', $parentKey ?? 'none', $notTradingColumn ?? 'none', $belowTable ?? 'none', $belowColumn ?? 'none', ...$twinColumns] as $name) {
+        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none', $transactingAt ?? 'none', $parentTable ?? 'none', $parentKey ?? 'none', $notTradingColumn ?? 'none', $belowTable ?? 'none', $belowColumn ?? 'none', $importRunColumn ?? 'none', ...$twinColumns] as $name) {
             if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
                 throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $name));
             }
@@ -103,7 +105,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that moves in a merge moves some rows, named by at least one value.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues, $this->belowTable, $this->belowColumn);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues, $this->belowTable, $this->belowColumn, $this->importRunColumn);
     }
 
     /**
@@ -116,7 +118,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that drops its twins in a merge says what makes one, by at least one column.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, array_values($columns), $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues, $this->belowTable, $this->belowColumn);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, array_values($columns), $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues, $this->belowTable, $this->belowColumn, $this->importRunColumn);
     }
 
     /** The column names the subject only on the rows whose other column holds the value: the rest name other tables. */
@@ -126,7 +128,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: a column said of every subject names none of them on some rows only.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues, $this->belowTable, $this->belowColumn);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues, $this->belowTable, $this->belowColumn, $this->importRunColumn);
     }
 
     /**
@@ -139,7 +141,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: say the document a row belongs to before its columns.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $parentTable, $parentKey, $this->notTradingColumn, $this->notTradingValues, $this->belowTable, $this->belowColumn);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $parentTable, $parentKey, $this->notTradingColumn, $this->notTradingValues, $this->belowTable, $this->belowColumn, $this->importRunColumn);
     }
 
     /**
@@ -157,7 +159,32 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: rows that are no trade are named by a column and at least one of its values.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $column, $this->parentTable, $this->parentKey, $unlessColumn, $unlessValues, $this->belowTable, $this->belowColumn);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $column, $this->parentTable, $this->parentKey, $unlessColumn, $unlessValues, $this->belowTable, $this->belowColumn, $this->importRunColumn);
+    }
+
+    /**
+     * A row an import made carries the import's id in `$column`: « Annuler cet import » takes the rows of that import
+     * as belonging to the record it created, and they go with it, while every other row still uses it.
+     */
+    public function importedBy(string $column): self
+    {
+        if (RecordUse::Uses !== $this->onDelete || RecordLink::Id !== $this->link) {
+            throw new \InvalidArgumentException(\sprintf('%s.%s: only a column holding the id of a record it uses is written by an import.', $this->table, $this->column));
+        }
+
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues, $this->belowTable, $this->belowColumn, $column);
+    }
+
+    /**
+     * The rows of this reference one import made, belonging to the record for that import's undo: owned, and only those.
+     */
+    public function rowsOfImport(string $runId): self
+    {
+        if (null === $this->importRunColumn || null === $this->subject) {
+            throw new \LogicException(\sprintf('%s.%s is not written by an import.', $this->table, $this->column));
+        }
+
+        return new self($this->table, $this->column, $this->subject, RecordUse::Owned, $this->onMerge, $this->link, $this->why, null, [], $this->importRunColumn, $runId, [], null, $this->parentTable, $this->parentKey, null, [], $this->belowTable, $this->belowColumn);
     }
 
     /**
@@ -170,6 +197,6 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a column holding the id of a row of one subject\'s records names it through that row.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues, $table, $column);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt, $this->parentTable, $this->parentKey, $this->notTradingColumn, $this->notTradingValues, $table, $column, $this->importRunColumn);
     }
 }

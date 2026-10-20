@@ -111,6 +111,21 @@ describe('RecordDeletes', () => {
     expect(heard).toHaveBeenCalledWith(['vendor', 'record_removal'], 'vendor.restored');
   });
 
+  it('puts an undone import back with its stock, and tells the stock screens as well as its own', async () => {
+    api.restore.mockResolvedValue({
+      ...REMOVAL,
+      subject: 'product',
+      kind: 'import',
+      state: 'restored',
+    });
+
+    expect(await deletes.restore('c1', { id: 'r1' })).toBe(true);
+
+    expect(api.restore).toHaveBeenCalledWith('c1', 'r1');
+    expect(successToasts()).toEqual(['records.import_restored']);
+    expect(heard).toHaveBeenCalledWith(['product', 'record_removal', 'stock'], 'import.restored');
+  });
+
   it('opens its own words before it asks the API, so a screen that never opened them says the delete in words', async () => {
     const order: string[] = [];
     texts.open.mockImplementation(async (name: string) => void order.push(`texts:${name}`));

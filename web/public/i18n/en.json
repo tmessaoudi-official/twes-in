@@ -2490,7 +2490,9 @@
       "invoice": "Invoice",
       "credit_note": "Credit note",
       "cost_correction": "Cost of sales correction",
-      "merge": "Product merge"
+      "merge": "Product merge",
+      "import_undo": "Import undone",
+      "import_redo": "Import restored"
     },
     "kinds": {
       "site": "Site",

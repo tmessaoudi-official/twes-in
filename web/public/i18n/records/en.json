@@ -8,6 +8,7 @@
     "merged_one": "“{{name}}” is merged into “{{kept}}”.",
     "merged_many": "{{count}} records are merged into “{{kept}}”.",
     "merge_undone": "The merge into “{{kept}}” is undone.",
+    "import_restored": "The import stands again, its stock with it.",
     "undo": "Undo",
     "in_use": "Nothing is deleted: {{records}}. Deactivate what is still in use instead.",
     "used_by": "“{{name}}” appears in {{uses}}",
@@ -79,7 +80,7 @@
     },
     "recent": {
       "title": "Recently deleted",
-      "intro": "What you delete or merge stays here for 24 hours, and can be put back as it was. After that, it is final.",
+      "intro": "What you delete, merge or take away by undoing an import stays here for 24 hours, and can be put back as it was. After that, it is final.",
       "empty": "Nothing was deleted in the last 24 hours.",
       "restore": "Put back",
       "removed_at": "Deleted on {{moment}}",
@@ -88,6 +89,9 @@
       "merged_at": "Merged on {{moment}}",
       "merge_until": "Can be undone until {{moment}}",
       "undo_merge": "Undo the merge",
+      "import_undone": "Taken away by undoing an import:",
+      "import_undone_at": "Import undone on {{moment}}",
+      "redo_import": "Restore the import",
       "subjects": {
         "vendor": "{{count}} {count, plural, one {vendor} other {vendors}}",
         "product": "{{count}} {count, plural, one {product} other {products}}",

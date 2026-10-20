@@ -150,6 +150,17 @@ final class InMemoryStockMovements implements StockMovementRepository
         ));
     }
 
+    public function countedSince(Uuid $productId, Uuid $locationId, \DateTimeImmutable $since, Uuid $exceptRunId): bool
+    {
+        foreach ($this->movements as $m) {
+            if ($m->getProduct()->getId()->equals($productId) && $m->getLocation()->getId()->equals($locationId) && StockMovement::SOURCE_COUNT === $m->getSourceType() && $m->getAt() >= $since && !($m->getImportRunId()?->equals($exceptRunId) ?? false)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function movedSinceLastCount(Uuid $productId, Uuid $locationId): bool
     {
         $here = array_filter($this->movements, static fn (StockMovement $m) => $m->getProduct()->getId()->equals($productId) && $m->getLocation()->getId()->equals($locationId));

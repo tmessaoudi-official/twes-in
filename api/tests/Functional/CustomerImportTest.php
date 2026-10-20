@@ -58,7 +58,7 @@ final class CustomerImportTest extends ApiTestCase
         $this->import($this->twoCustomers(), dryRun: true);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->importReport());
         self::assertSame(0, $this->customers());
         self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM audit_log WHERE action = 'customer.created'"));
         $this->getJson($this->companyPath().'/customers');
@@ -72,7 +72,7 @@ final class CustomerImportTest extends ApiTestCase
         $this->import($this->twoCustomers());
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'unchanged' => [], 'rejected' => [], 'changes' => [], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->importReport());
         $business = $this->customer('CLI-0001');
         self::assertSame('Carthage Conseil', $business->getProfile()->name);
         self::assertSame(['matricule_fiscal' => self::MATRICULE], $business->getProfile()->identifiers);
@@ -306,7 +306,7 @@ final class CustomerImportTest extends ApiTestCase
         $this->import($second, mode: 'upsert');
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'unchanged' => [], 'rejected' => [], 'changes' => [['line' => 2, 'column' => 'name', 'before' => 'Carthage Conseil', 'after' => 'Carthage Conseil Group']], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'unchanged' => [], 'rejected' => [], 'changes' => [['line' => 2, 'column' => 'name', 'before' => 'Carthage Conseil', 'after' => 'Carthage Conseil Group']], 'notes' => [], 'alreadyImportedAt' => null, 'encoding' => 'utf-8'], $this->importReport());
         $this->assertNothingImportedIsManaged();
         $this->em()->clear();
         $updated = $this->customer('CLI-0001');

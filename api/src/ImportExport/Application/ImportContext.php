@@ -26,6 +26,9 @@ final class ImportContext
     /** @var array<string, mixed> */
     private array $known = [];
 
+    /** @var array<string, array<string, Uuid>> what the rows created, by table and id */
+    private array $created = [];
+
     /**
      * @param list<string> $ticked  the keys of the subject's switches the person ticked
      * @param list<string> $columns the subject's columns for this company and person
@@ -36,6 +39,22 @@ final class ImportContext
         public readonly bool $dryRun = false,
         public readonly array $columns = [],
     ) {
+    }
+
+    /**
+     * Notes a row the run created, by its table: « Annuler cet import » takes back what nothing uses of it, and only
+     * that. A subject notes every row it creates, the record and any row created beside it that is not the record's own
+     * (a link to another record, a vendor's code), but never one it only changed.
+     */
+    public function created(string $table, Uuid $id): void
+    {
+        $this->created[$table][$id->toRfc4122()] = $id;
+    }
+
+    /** @return array<string, list<Uuid>> what the rows created, by table */
+    public function createdRecords(): array
+    {
+        return array_map(array_values(...), $this->created);
     }
 
     public function ticked(string $switch): bool

@@ -8,6 +8,7 @@
     "merged_one": "« {{name}} » est fusionné dans « {{kept}} ».",
     "merged_many": "{{count}} fiches sont fusionnées dans « {{kept}} ».",
     "merge_undone": "La fusion dans « {{kept}} » est annulée.",
+    "import_restored": "L’import est rétabli, son stock avec lui.",
     "undo": "Annuler",
     "in_use": "Rien n’est supprimé : {{records}}. Désactivez plutôt ce qui sert encore.",
     "used_by": "« {{name}} » figure dans {{uses}}",
@@ -79,7 +80,7 @@
     },
     "recent": {
       "title": "Récemment supprimés",
-      "intro": "Ce que vous supprimez ou fusionnez reste ici 24 heures, et peut être remis tel qu’il était. Ensuite, c’est définitif.",
+      "intro": "Ce que vous supprimez, fusionnez ou retirez en annulant un import reste ici 24 heures, et peut être remis tel qu’il était. Ensuite, c’est définitif.",
       "empty": "Rien n’a été supprimé ces dernières 24 heures.",
       "restore": "Remettre",
       "removed_at": "Supprimé le {{moment}}",
@@ -88,6 +89,9 @@
       "merged_at": "Fusionné le {{moment}}",
       "merge_until": "Peut être annulé jusqu’au {{moment}}",
       "undo_merge": "Annuler la fusion",
+      "import_undone": "Retirés par l’annulation d’un import :",
+      "import_undone_at": "Import annulé le {{moment}}",
+      "redo_import": "Rétablir l’import",
       "subjects": {
         "vendor": "{{count}} {count, plural, one {fournisseur} other {fournisseurs}}",
         "product": "{{count}} {count, plural, one {produit} other {produits}}",

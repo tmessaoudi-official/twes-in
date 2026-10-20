@@ -143,7 +143,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   committed file is kept as an `ImportRun` under its SHA-256, so the same file is flagged, and the stock it moved
   carries its id: `Inventory/Application/ImportStock` is every file's quantities; a file in the shop's own headings
   is read through `pairing`, a JSON object of heading to column (`''` sets a column aside), which the committed run
-  keeps and the guide offers again as `lastPairing`),
+  keeps and the guide offers again as `lastPairing`; « Annuler cet import », `Application/Undo/UndoImport` at `POST …/import-runs/{id}/undo`, takes back within
+  `app.records.undoable_for` and behind a step-up what the run created that nothing uses, as a `RecordRemoval` of kind
+  `import` the bin puts back through `RestoreUndoneImport`, the stock it moved through `ImportedStock` (reversals at their
+  own cost) and the rows a module wrote through `UndoesImportedRows`; « Imports récents » is `GET …/import-runs`),
   `Watch` (« À surveiller »: a module declares its live conditions with `DeclaresWatch` in its own
   `Infrastructure/Watch/`, one statement per kind, gated by its module and permission; a core context's subject has no module and is always on, as `Tenancy`'s unsent invitations, marked by `InvitationMailFailed` when the worker gives up),
   `Legal` (the legal pages' versions, read by anyone at `GET /api/legal/{page}/{language}`; the shipped drafts are

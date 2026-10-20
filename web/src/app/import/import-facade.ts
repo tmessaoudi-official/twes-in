@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { Feedback } from '../shared/feedback/feedback';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { StepUp } from '../shared/step-up/step-up';
 import { ImportApi, ImportNotKept, ImportRefused } from './import-api';
 import type {
@@ -11,6 +12,8 @@ import type {
   ImportPairing,
   ImportRefusal,
   ImportReport,
+  ImportRunSummary,
+  ImportUndone,
   TextEncoding,
 } from './import-types';
 
@@ -25,18 +28,25 @@ export class ImportFacade {
   private readonly api = inject(ImportApi);
   private readonly feedback = inject(Feedback);
   private readonly stepUp = inject(StepUp);
+  private readonly records = inject(RecordDeletes);
 
   private readonly guideSignal = signal<ImportGuide | null>(null);
   private readonly reportSignal = signal<ImportReport | null>(null);
   private readonly refusalSignal = signal<ImportRefusal | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<ImportError | null>(null);
+  private readonly recentSignal = signal<readonly ImportRunSummary[]>([]);
+  private readonly undoneSignal = signal<ImportUndone | null>(null);
 
   readonly guide = this.guideSignal.asReadonly();
   readonly report = this.reportSignal.asReadonly();
   readonly refusal = this.refusalSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
+  /** « Imports récents »: empty until read, and when the person may write none of the subjects imported. */
+  readonly recent = this.recentSignal.asReadonly();
+  /** What the last « Annuler cet import » did, until another file is chosen. */
+  readonly undone = this.undoneSignal.asReadonly();
 
   async load(companyId: string, subject: string): Promise<void> {
     this.forget();
@@ -80,6 +90,7 @@ export class ImportFacade {
           created: report.created.length,
           updated: report.updated.length,
         });
+        await this.loadRecent(companyId);
       }
     } catch (error) {
       if (error instanceof ImportNotKept) {
@@ -94,10 +105,66 @@ export class ImportFacade {
     }
   }
 
+  /** Reads « Imports récents » again; a list that cannot be read stays as it was, the page still working. */
+  async loadRecent(companyId: string): Promise<void> {
+    try {
+      this.recentSignal.set(await this.api.recent(companyId));
+    } catch {
+      // The list is a convenience beside the import: the next import or undo reads it again.
+    }
+  }
+
+  /**
+   * « Annuler cet import », once who is at the screen is proved. What went to « Récemment supprimés » is put back whole
+   * from the toast; an undo that sent nothing there (an opening stock) is corrected by importing the file again.
+   * Answers whether the import was taken back.
+   */
+  async undo(companyId: string, runId: string): Promise<boolean> {
+    this.busySignal.set(true);
+    try {
+      const undone = await this.stepUp.retrying(
+        () => this.api.undo(companyId, runId),
+        (error) => error instanceof ImportRefused && error.code === 'step_up_required',
+        'step_up.intro_change',
+      );
+      this.reportSignal.set(null);
+      this.refusalSignal.set(null);
+      this.undoneSignal.set(undone);
+      this.errorSignal.set(null);
+      const removal = undone.removal;
+      if (removal === null) {
+        this.feedback.effect('import.undo.done', {}, 'corrigeable');
+      } else {
+        this.feedback.effect('import.undo.done', {}, 'annulable', {
+          key: 'records.undo',
+          run: () =>
+            void this.records
+              .restore(companyId, { id: removal })
+              .then((back) => (back ? this.restored(companyId) : undefined)),
+        });
+      }
+      await this.loadRecent(companyId);
+      return true;
+    } catch (error) {
+      this.feedback.failure(`import.errors.${codeOf(error)}`);
+      await this.loadRecent(companyId);
+      return false;
+    } finally {
+      this.busySignal.set(false);
+    }
+  }
+
   /** Drops the last answer, so a new file is never read beside the one before it. */
   forget(): void {
     this.reportSignal.set(null);
     this.refusalSignal.set(null);
+    this.undoneSignal.set(null);
+  }
+
+  /** The import stands again: what its undo said no longer holds. */
+  private async restored(companyId: string): Promise<void> {
+    this.undoneSignal.set(null);
+    await this.loadRecent(companyId);
   }
 }
 

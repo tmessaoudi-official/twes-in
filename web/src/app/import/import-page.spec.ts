@@ -19,7 +19,13 @@ import { Session } from '../shared/session/session';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { ImportFacade } from './import-facade';
 import { CHANGES_SHOWN, ImportPage } from './import-page';
-import type { ImportGuide, ImportRefusal, ImportReport } from './import-types';
+import type {
+  ImportGuide,
+  ImportRefusal,
+  ImportReport,
+  ImportRunSummary,
+  ImportUndone,
+} from './import-types';
 import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
 import { FormatFacade } from '../shared/i18n/format-facade';
 
@@ -53,6 +59,26 @@ class StaticLoader implements TranslateLoader {
         },
         stock: { recount: 'Recompter', recount_note: 'Compte à nouveau.' },
         already_imported: 'Ce fichier a déjà été importé le {{date}}.',
+        undo: {
+          action: 'Annuler cet import',
+          title: 'Ce que l’annulation a fait',
+          removed: '{{count}} retirées',
+          updated: '{{count}} restent modifiées',
+          kept_title: 'Gardé, car déjà utilisé',
+          kept: '« {{name}} » figure dans {{uses}}.',
+          rows_kept: { vendor_has_code: '{{label}} : le fournisseur tient encore un code.' },
+          stock_title: 'Stock',
+          stock_back: '{{reference}} à {{location}} : {{quantity}} repris.',
+          stock_kept: { below_zero: '{{reference}} à {{location}} : sorti depuis.' },
+        },
+        recent: {
+          title: 'Imports récents',
+          by: 'Le {{moment}}, par {{name}}',
+          at: 'Le {{moment}}',
+          counts: '{{created}} créées, {{updated}} modifiées',
+          until: 'Annulable jusqu’au {{moment}}',
+          undone: 'Annulé le {{moment}}',
+        },
         refusals: {
           unknown_columns: 'Colonnes inconnues : {{columns}}.',
           invalid_pairing: 'À associer de nouveau : {{columns}}.',
@@ -76,6 +102,7 @@ class StaticLoader implements TranslateLoader {
             'Fichier lu en {{encoding}}. Des lettres illisibles ? Choisissez l’encodage du fichier.',
         },
       },
+      records: { tables: { quote_line: '{{count}} lignes de devis' } },
     });
   }
 }
@@ -110,6 +137,7 @@ const GUIDE: ImportGuide = {
 
 const CLEAN: ImportReport = {
   committed: false,
+  run: null,
   created: [2, 3],
   updated: [],
   rejected: [],
@@ -122,6 +150,7 @@ const CLEAN: ImportReport = {
 /** An upsert's preview: line 2 changes two columns, line 3 one, line 4 nothing. */
 const CHANGED: ImportReport = {
   committed: false,
+  run: null,
   created: [],
   updated: [2, 3],
   rejected: [],
@@ -137,6 +166,7 @@ const CHANGED: ImportReport = {
 };
 const REJECTED: ImportReport = {
   committed: false,
+  run: null,
   created: [2],
   updated: [],
   rejected: [
@@ -154,12 +184,18 @@ describe('ImportPage', () => {
   const report = signal<ImportReport | null>(null);
   const refusal = signal<ImportRefusal | null>(null);
   const error = signal<string | null>(null);
+  const recent = signal<readonly ImportRunSummary[]>([]);
+  const undone = signal<ImportUndone | null>(null);
   const facade = {
     guide: guide.asReadonly(),
     report: report.asReadonly(),
     refusal: refusal.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    recent: recent.asReadonly(),
+    undone: undone.asReadonly(),
+    loadRecent: vi.fn(async () => undefined),
+    undo: vi.fn(async () => true),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     run: vi.fn(),
@@ -208,6 +244,10 @@ describe('ImportPage', () => {
     report.set(null);
     refusal.set(null);
     error.set(null);
+    recent.set([]);
+    undone.set(null);
+    facade.loadRecent.mockClear();
+    facade.undo.mockReset().mockResolvedValue(true);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.run.mockReset().mockResolvedValue(undefined);
     facade.forget.mockReset();
@@ -545,6 +585,7 @@ describe('ImportPage', () => {
     facade.run.mockImplementation(async () =>
       report.set({
         committed: false,
+        run: null,
         created: [],
         updated: [],
         rejected: [
@@ -578,6 +619,7 @@ describe('ImportPage', () => {
     facade.run.mockImplementation(async () => {
       report.set({
         committed: true,
+        run: 'r1',
         created: [2, 3],
         updated: [],
         rejected: [],
@@ -874,5 +916,106 @@ describe('ImportPage', () => {
 
     expect(q('import-error')).not.toBeNull();
     expect(q('import-columns')).toBeNull();
+  });
+
+  describe('« Annuler cet import »', () => {
+    const RUN: ImportRunSummary = {
+      id: 'r1',
+      subject: 'opening-stock',
+      at: '2026-10-20T10:00',
+      by: 'Sonia',
+      created: 3,
+      updated: 1,
+      undoableUntil: '2026-10-21T10:00',
+      undoneAt: null,
+    };
+
+    it('reads « Imports récents » with the guide', () => {
+      expect(facade.loadRecent).toHaveBeenCalledWith('c1');
+    });
+
+    it('offers it on a stored import, says what it does first, and undoes only on « oui »', async () => {
+      report.set({ ...CLEAN, committed: true, run: 'r1' });
+      await settle();
+      dialog.open.mockReturnValue({ afterClosed: () => of(false) });
+
+      await click('import-undo');
+
+      expect(dialog.open.mock.calls.map(([, config]) => config.data)).toEqual([
+        {
+          kind: 'corrigeable',
+          title: 'import.undo.confirm_title',
+          message: 'import.undo.confirm_message',
+          confirmLabel: 'import.undo.confirm',
+          keepLabel: 'import.undo.keep',
+        },
+      ]);
+      expect(facade.undo).not.toHaveBeenCalled();
+
+      dialog.open.mockReturnValue({ afterClosed: () => of(true) });
+      await click('import-undo');
+
+      expect(facade.undo).toHaveBeenCalledWith('c1', 'r1');
+    });
+
+    it('is not offered on a preview', async () => {
+      report.set(CLEAN);
+      await settle();
+
+      expect(q('import-undo')).toBeNull();
+    });
+
+    it('lists the recent imports, who ran each and until when it is undone, and undoes one from the list', async () => {
+      recent.set([RUN, { ...RUN, id: 'r2', by: null, undoneAt: '2026-10-20T11:00' }]);
+      await settle();
+
+      const first = q('import-run-r1')!.textContent!.replace(/\s+/g, ' ');
+      expect(first).toContain('stocks de départ');
+      expect(first).toContain('Le 9 oct. 2026 (2026-10-20T10:00), par Sonia');
+      expect(first).toContain('3 créées, 1 modifiées');
+      expect(first).toContain('Annulable jusqu’au 9 oct. 2026 (2026-10-21T10:00)');
+      const second = q('import-run-r2')!.textContent!.replace(/\s+/g, ' ');
+      expect(second).toContain('Le 9 oct. 2026 (2026-10-20T10:00)');
+      expect(second).not.toContain(', par');
+      expect(second).toContain('Annulé le 9 oct. 2026 (2026-10-20T11:00)');
+      expect(q('import-run-undo-r2')).toBeNull();
+
+      await click('import-run-undo-r1');
+
+      expect(facade.undo).toHaveBeenCalledWith('c1', 'r1');
+    });
+
+    it('says what the undo kept and why, and the stock it took back in the screen’s decimals', async () => {
+      undone.set({
+        removal: 'rm1',
+        removed: [{ id: 'x1', label: 'CLI-0001' }],
+        kept: [
+          {
+            id: 'x2',
+            label: 'CLI-0002',
+            uses: [{ table: 'quote_line', column: 'customer_id', count: 2 }],
+          },
+        ],
+        rowsKept: [{ label: 'VIS-6X40', reason: 'vendor_has_code' }],
+        stockTakenBack: [{ reference: 'VIS-6X40', location: 'A1', quantity: '2.5' }],
+        stockKept: [{ reference: 'P-OLD', location: 'A1', reason: 'below_zero' }],
+        updated: 2,
+      });
+      await settle();
+
+      expect(q('import-undone-removed')?.textContent).toContain('1 retirées');
+      expect(q('import-undone-updated')?.textContent).toContain('2 restent modifiées');
+      const kept = [
+        ...fixture.nativeElement.querySelectorAll('[data-testid="import-undone-kept"] li'),
+      ].map((item: Element) => item.textContent!.trim());
+      expect(kept).toEqual([
+        '« CLI-0002 » figure dans 2 lignes de devis.',
+        'VIS-6X40 : le fournisseur tient encore un code.',
+      ]);
+      const stock = [
+        ...fixture.nativeElement.querySelectorAll('[data-testid="import-undone-stock"] li'),
+      ].map((item: Element) => item.textContent!.trim());
+      expect(stock).toEqual(['VIS-6X40 à A1 : 2,5 repris.', 'P-OLD à A1 : sorti depuis.']);
+    });
   });
 });

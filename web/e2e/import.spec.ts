@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { aProduct, forget, stockKept } from './catalogue';
-import { inACompany, signIn } from './session';
+import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
+import { proveIfHeldBack } from './step-up';
 import { toast } from './toast';
 
 // Row 59 through the real stack: the owner opens the import screen for customers, takes the empty file, previews a
@@ -124,7 +125,8 @@ test('a file with its own headings is paired once, and the next one is read the 
   );
   await page.getByTestId('import-preview').click();
   await expect(page.getByTestId('import-refusal')).toContainText(reference);
-  await expect(rows).toHaveCount(3);
+  // The run's own headings: a pairing an earlier run kept in the shared company is offered beside them.
+  await expect(rows.filter({ hasText: RUN })).toHaveCount(3);
 
   await pair(reference, 'number');
   await pair(name, 'name');
@@ -305,4 +307,58 @@ test('a product file adds stock, or is read for its prices alone', async ({ page
   } finally {
     await forget(page, [id]);
   }
+});
+
+// « Annuler cet import »: the customers a file created go to « Récemment supprimés », the import reads as undone in
+// « Imports récents », and putting the delete back stands the import again. The numbers are the run's own, and the
+// customers are deactivated at the end, as the first scenario's.
+test('an import is undone from its result, and put back from « Récemment supprimés »', async ({
+  page,
+}) => {
+  const first = `UND-${RUN}-1`;
+  const second = `UND-${RUN}-2`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/imports/customers');
+  await choose(
+    page,
+    'clients.csv',
+    `number,name,kind\n${first},Atelier du Port,individual\n${second},Bazar du Souk,individual\n`,
+  );
+  await page.getByTestId('import-preview').click();
+  await expect(page.getByTestId('import-store')).toBeEnabled();
+  await page.getByTestId('import-store').click();
+  await expect(toast(page)).toContainText('2');
+
+  // The import is listed, who ran it named, until when it may be undone.
+  await expect(page.getByTestId('import-recent')).toContainText('clients');
+
+  await page.getByTestId('import-undo').click();
+  await expect(page.getByTestId('confirm-message')).toContainText('Récemment supprimés');
+  const undone = page.waitForResponse(
+    (response) => response.url().endsWith('/undo') && response.request().method() === 'POST',
+  );
+  await page.getByTestId('confirm-run').click();
+  expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, undone)).ok()).toBe(true);
+  await expect(page.getByTestId('import-undone-removed')).toContainText('2');
+  await expect(page.getByTestId('import-recent')).toContainText('Annulé le');
+
+  await page.goto('/customers');
+  await page.getByTestId('list-filter').fill(`UND-${RUN}`);
+  await expect(page.getByTestId('customers-table')).not.toContainText('Atelier du Port');
+
+  // The bin keeps the delete the undo made, and putting it back stands the import again.
+  await page.goto('/company/recently-deleted');
+  const removal = page.locator('li[data-testid^="removal-"]', { hasText: first });
+  await expect(removal).toContainText('Retirés par l’annulation d’un import');
+  await removal.getByRole('button', { name: 'Rétablir l’import' }).click();
+  await expect(toast(page)).toContainText('L’import est rétabli');
+
+  await page.goto('/customers');
+  await page.getByTestId('list-filter').fill(`UND-${RUN}`);
+  await expect(page.getByTestId('customers-table')).toContainText('Atelier du Port');
+  await expect(page.getByTestId('customers-table')).toContainText('Bazar du Souk');
+
+  await retire(page, first);
+  await retire(page, second);
 });

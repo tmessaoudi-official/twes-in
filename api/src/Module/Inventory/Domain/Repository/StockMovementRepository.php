@@ -107,6 +107,12 @@ interface StockMovementRepository
     public function movedSinceLastCount(Uuid $productId, Uuid $locationId): bool;
 
     /**
+     * Whether the place was counted at or after that moment, by a count no import named `$exceptRunId` wrote: what a
+     * count found replaced what was there before it, so nothing written before it is taken back over it.
+     */
+    public function countedSince(Uuid $productId, Uuid $locationId, \DateTimeImmutable $since, Uuid $exceptRunId): bool;
+
+    /**
      * Holds the stock of a product at a location until the current transaction ends, so a count that reads it and a
      * delivery that takes from it run one after the other; a count would otherwise record its difference from a stock
      * the delivery had already changed. Taken inside a transaction only; callers taking several take them in a fixed order.

@@ -305,7 +305,7 @@ final class InMemoryImportRuns implements ImportRunRepository
     {
         $found = null;
         foreach ($this->saved as $run) {
-            if ($run->getCompany()->getId()->equals($companyId) && $run->getSubject() === $subject && $run->getContentHash() === $contentHash) {
+            if ($run->getCompany()->getId()->equals($companyId) && $run->getSubject() === $subject && $run->getContentHash() === $contentHash && null === $run->getUndoneAt()) {
                 $found = $run;
             }
         }
@@ -327,7 +327,54 @@ final class InMemoryImportRuns implements ImportRunRepository
 
     public function save(ImportRun $run): void
     {
-        $this->saved[] = $run;
+        if (!\in_array($run, $this->saved, true)) {
+            $this->saved[] = $run;
+        }
+    }
+
+    /** @var array<string, array<string, list<Uuid>>> by run */
+    public array $created = [];
+
+    public function ofId(Uuid $companyId, Uuid $id): ?ImportRun
+    {
+        foreach ($this->saved as $run) {
+            if ($run->getCompany()->getId()->equals($companyId) && $run->getId()->equals($id)) {
+                return $run;
+            }
+        }
+
+        return null;
+    }
+
+    public function lockedOfId(Uuid $companyId, Uuid $id): ?ImportRun
+    {
+        return $this->ofId($companyId, $id);
+    }
+
+    public function ofUndoRemoval(Uuid $companyId, Uuid $removalId): ?ImportRun
+    {
+        foreach ($this->saved as $run) {
+            if ($run->getCompany()->getId()->equals($companyId) && ($run->getUndoRemovalId()?->equals($removalId) ?? false)) {
+                return $run;
+            }
+        }
+
+        return null;
+    }
+
+    public function since(Uuid $companyId, array $subjects, \DateTimeImmutable $since): array
+    {
+        return array_values(array_filter(array_reverse($this->saved), static fn (ImportRun $run): bool => $run->getCompany()->getId()->equals($companyId) && \in_array($run->getSubject(), $subjects, true) && $run->getAt() >= $since));
+    }
+
+    public function saveCreated(Uuid $companyId, Uuid $runId, array $created): void
+    {
+        $this->created[$runId->toRfc4122()] = $created;
+    }
+
+    public function createdBy(Uuid $companyId, Uuid $runId): array
+    {
+        return $this->created[$runId->toRfc4122()] ?? [];
     }
 }
 
