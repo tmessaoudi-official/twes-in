@@ -47,11 +47,11 @@ final class CompanyProfileTest extends ApiTestCase
         self::assertStringNotContainsString('fiscal.identifier', $fields[0]['label']);
 
         $regimes = $this->arrayAt($body, 'vatRegimes');
-        self::assertCount(1, $regimes);
-        self::assertIsArray($regimes[0]);
-        self::assertSame('standard', $regimes[0]['code']);
-        self::assertIsString($regimes[0]['label']);
-        self::assertStringNotContainsString('fiscal.regime', $regimes[0]['label']);
+        self::assertSame(['standard', 'forfaitaire'], array_column($regimes, 'code'));
+        foreach (array_column($regimes, 'label') as $label) {
+            self::assertIsString($label);
+            self::assertStringNotContainsString('fiscal.regime', $label);
+        }
     }
 
     public function testAnAdministratorRevisesTheProfile(): void
@@ -114,6 +114,16 @@ final class CompanyProfileTest extends ApiTestCase
         $this->sendJson('PUT', $this->path(), $this->profile(['vatRegime' => 'franchise']));
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    public function testATunisianCompanyMaySayItIsUnderTheForfaitaireRegime(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+
+        $this->sendJson('PUT', $this->path(), $this->profile(['vatRegime' => 'forfaitaire']));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('forfaitaire', $this->em()->getConnection()->fetchOne('SELECT vat_regime FROM company WHERE id = ?', [$this->company->getId()->toRfc4122()]));
     }
 
     public function testAMalformedIbanIsUnprocessable(): void

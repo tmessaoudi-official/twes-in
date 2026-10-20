@@ -76,6 +76,12 @@ final class YamlFiscalPresetsTest extends TestCase
             array_map(static fn (PresetRegime $regime) => $regime->code, $tn->customerTaxRegimes),
         );
         self::assertSame([TaxFamily::Vat], $tn->customerTaxRegimes[1]->excludedFamilies);
+        // A company under the « forfaitaire » regime is outside VAT unless it opts in, and owes any VAT it writes on an
+        // invoice (Code de la TVA art. 2-I, docs/fiscal/TN.md § 9a): its documents charge none and say why.
+        self::assertSame(
+            [['standard', [], null], ['forfaitaire', [TaxFamily::Vat], 'fiscal.mention.tn.forfaitaire']],
+            array_map(static fn (PresetRegime $regime) => [$regime->code, $regime->excludedFamilies, $regime->mentionKey], $tn->companyVatRegimes),
+        );
         self::assertSame('C62', $tn->units[0]->code);
         self::assertSame('000', $tn->establishment->defaultCode);
         self::assertSame('^[0-9]{3}$', $tn->establishment->codePattern);
