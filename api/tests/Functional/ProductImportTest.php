@@ -38,6 +38,7 @@ use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bridge\Doctrine\Middleware\Debug\DebugDataHolder;
 use Symfony\Component\HttpFoundation\Response;
@@ -649,6 +650,109 @@ Cheville 10 mm,6191234567897
             [8, 'default_tax_codes', 'tax_on_document'],
         ], array_map(static fn (array $rejection): array => \array_slice($rejection, 0, 3), $rejections));
         self::assertSame([['gross' => '9.999', 'below' => '9.998', 'above' => '10.000'], ['max' => 3]], [$rejections[0][3], $rejections[2][3]]);
+    }
+
+    /**
+     * A shop's purchases often give their cost as the vendor invoiced it, VAT included: the cost kept is that figure
+     * less the VAT at the product's rate, the VAT a liable company gets back, while a FODEC it paid stays in it. A
+     * company under the « forfaitaire » regime gets no VAT back, so its cost is the figure as it stands.
+     */
+    public function testACostTaxesIncludedIsKeptLessTheVatTheCompanyGetsBack(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import("reference,name,unit_code,unit_price_net,cost_price_gross,default_tax_codes\nVIS-1,Vis 1,H87,2,1.19,TVA19\nVIS-2,Vis 2,H87,2,\"1,212\",FODEC TVA19\nVIS-3,Vis 3,H87,2,1.07,TVA7\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 3, 4], $this->json()['created'], json_encode($this->json()['rejected']) ?: '');
+        $this->em()->clear();
+        $cost = fn (string $reference): ?string => $this->product($reference)->getDetails()->costPrice;
+        self::assertSame(['1.0000', '1.0185', '1.0000'], [$cost('VIS-1'), $cost('VIS-2'), $cost('VIS-3')]);
+
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfaitaire'));
+        $this->em()->flush();
+        $this->import("reference,name,unit_code,unit_price_net,cost_price_gross,default_tax_codes\nVIS-4,Vis 4,H87,2,1.19,TVA19\n");
+
+        self::assertSame([2], $this->json()['created'], json_encode($this->json()['rejected']) ?: '');
+        $this->em()->clear();
+        self::assertSame('1.1900', $cost('VIS-4'), 'no VAT to get back under the forfaitaire regime');
+    }
+
+    /**
+     * A cost taxes included is refused on its own cell beside a cost without them, which could disagree, and where no
+     * VAT rate says what to take off it: the row and the product naming none.
+     */
+    public function testACostTaxesIncludedIsRefusedOnItsCell(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import("reference,name,unit_code,unit_price_net,cost_price,cost_price_gross,default_tax_codes\nVIS-1,Vis 1,H87,2,1,1.19,TVA19\nVIS-2,Vis 2,H87,2,,1.19,\nVIS-3,Vis 3,H87,2,,cher,TVA19\n", dryRun: true);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            [2, 'cost_price_gross', 'cost_net_and_gross'],
+            [3, 'cost_price_gross', 'cost_gross_without_vat'],
+            [4, 'cost_price_gross', 'invalid_price'],
+        ], array_map(static fn (array $rejection): array => \array_slice($rejection, 0, 3), $this->rejections()));
+    }
+
+    /**
+     * Ticked, « Donner les taxes par défaut » gives a new product the row names no tax for the taxes the company marks
+     * as its default on a line, as the product form does (TVA19, never the stamp), and says so; a product already held
+     * keeps its own, none at all for an exempt good. A cost taxes included is then counted over them.
+     */
+    public function testTheDefaultTaxesSwitchGivesANewUntaxedProductTheCompanysLineDefaults(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->import("reference,name,unit_code,unit_price_net\nVIS-0,Vis 0,H87,2\n");
+        self::assertSame([2], $this->json()['created']);
+
+        $this->import("reference,name,unit_code,unit_price_net,cost_price_gross\nVIS-1,Vis 1,H87,2,1.19\nVIS-0,Vis zéro,H87,2,\n", mode: 'upsert', switches: ['default_taxes']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[2], [3]], [$this->json()['created'], $this->json()['updated']], json_encode($this->json()['rejected']) ?: '');
+        self::assertSame([['line' => 2, 'column' => 'default_tax_codes', 'code' => 'default_taxes_given', 'params' => ['codes' => 'TVA19']]], $this->json()['notes']);
+        $this->em()->clear();
+        self::assertSame([$this->taxId('TVA19')], $this->product('VIS-1')->getDefaultTaxComponentIds());
+        self::assertSame('1.0000', $this->product('VIS-1')->getDetails()->costPrice);
+        self::assertSame([], $this->product('VIS-0')->getDefaultTaxComponentIds(), 'a product held keeps its taxes, none included');
+    }
+
+    /**
+     * A catalogue may know a product before its sale price. Ticked, « Importer désactivés les produits sans prix » creates
+     * such a new product at 0 and switched off, which no document sells, still counted in stock, and says so; unticked,
+     * or where the row asks it active, a new product without a price is refused as before.
+     */
+    public function testAnUnpricedProductIsCreatedSwitchedOffOnlyWhenAsked(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $file = "reference,name,unit_code,default_tax_codes,active\nVIS-1,Vis 1,H87,TVA19,\nVIS-2,Vis 2,H87,TVA19,oui\n";
+
+        $this->import($file, dryRun: true);
+        self::assertSame([[2, 'unit_price_net', 'value_required'], [3, 'unit_price_net', 'value_required']], array_map(static fn (array $rejection): array => \array_slice($rejection, 0, 3), $this->rejections()));
+
+        $this->import($file, dryRun: true, switches: ['unpriced_inactive']);
+        self::assertSame([[3, 'unit_price_net', 'value_required']], array_map(static fn (array $rejection): array => \array_slice($rejection, 0, 3), $this->rejections()), 'a row asking it active is not switched off behind its back');
+
+        $this->import("reference,name,unit_code,default_tax_codes\nVIS-1,Vis 1,H87,TVA19\n", switches: ['unpriced_inactive']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[2], [['line' => 2, 'column' => 'unit_price_net', 'code' => 'price_to_enter', 'params' => []]]], [$this->json()['created'], $this->json()['notes']]);
+        $this->em()->clear();
+        self::assertSame(['0.0000', false], [$this->product('VIS-1')->getDetails()->unitPriceNet, $this->product('VIS-1')->isActive()]);
+    }
+
+    /** A product sold under what it costs is most often a slip in the sheet: it is created and pointed out. */
+    public function testAPriceUnderTheCostIsPointedOut(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import("reference,name,unit_code,unit_price_net,cost_price,default_tax_codes\nVIS-1,Vis 1,H87,0.9,1,TVA19\nVIS-2,Vis 2,H87,1,1,TVA19\n");
+
+        self::assertSame([2, 3], $this->json()['created'], json_encode($this->json()['rejected']) ?: '');
+        self::assertSame([['line' => 2, 'column' => 'unit_price_net', 'code' => 'below_cost', 'params' => ['cost' => '1.0000']]], $this->json()['notes']);
     }
 
     /** In euros the cent is the last digit: 9.99 at 20 % is no net price's, as 8.32 makes 9.98 and 8.33 makes 10.00. */

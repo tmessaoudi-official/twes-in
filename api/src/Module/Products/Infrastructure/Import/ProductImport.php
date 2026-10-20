@@ -14,8 +14,13 @@ use App\CustomFields\Domain\Repository\CustomFieldDefinitionRepository;
 use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
+use App\Fiscal\Domain\Calculation\Decimal;
+use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
+use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\ImportExport\Application\DeclaresImport;
 use App\ImportExport\Application\ImportCells;
 use App\ImportExport\Application\ImportColumn;
@@ -84,6 +89,10 @@ final readonly class ProductImport implements DeclaresImport
     public const string IGNORE_QUANTITIES = 'ignore_quantities';
     /** Counts again a place where goods came in or went out since its last count. */
     public const string RECOUNT = 'recount';
+    /** Gives a new product the row names no tax for the company's default line taxes, as the product form does. */
+    public const string DEFAULT_TAXES = 'default_taxes';
+    /** Creates a new product the row gives no sale price at 0 and switched off, which no document then sells. */
+    public const string UNPRICED_INACTIVE = 'unpriced_inactive';
 
     /** The column each field a refusal names is read from, and the code that refusal carries when it says none. */
     private const array REFUSAL_OF = [
@@ -134,6 +143,7 @@ final readonly class ProductImport implements DeclaresImport
         private ModuleStates $modules,
         private CustomerPrice $prices,
         private CurrencyScales $scales,
+        private ExcludedTaxFamilies $excluded,
     ) {
     }
 
@@ -195,10 +205,14 @@ final readonly class ProductImport implements DeclaresImport
                     : [],
                 ...$this->custom($company),
             ],
-            $stock ? [
-                new ImportSwitch(self::IGNORE_QUANTITIES, 'import.stock.ignore_quantities', 'import.stock.ignore_quantities_note'),
-                new ImportSwitch(self::RECOUNT, 'import.stock.recount', 'import.stock.recount_note'),
-            ] : [],
+            [
+                new ImportSwitch(self::DEFAULT_TAXES, 'import.products.default_taxes_switch', 'import.products.default_taxes_switch_note'),
+                new ImportSwitch(self::UNPRICED_INACTIVE, 'import.products.unpriced_inactive', 'import.products.unpriced_inactive_note'),
+                ...$stock ? [
+                    new ImportSwitch(self::IGNORE_QUANTITIES, 'import.stock.ignore_quantities', 'import.stock.ignore_quantities_note'),
+                    new ImportSwitch(self::RECOUNT, 'import.stock.recount', 'import.stock.recount_note'),
+                ] : [],
+            ],
         );
     }
 
@@ -257,12 +271,19 @@ final readonly class ProductImport implements DeclaresImport
                 // it so: a file chooses no rate on its own.
                 if ([] === $written->getDefaultTaxComponentIds()) {
                     $notes->note('default_tax_codes', 'no_taxes');
+                } elseif ($this->givesDefaultTaxes($record, null, $context)) {
+                    $notes->note('default_tax_codes', 'default_taxes_given', ['codes' => implode(' ', array_map(static fn (TaxComponent $tax): string => $tax->getCode(), $this->defaultTaxes($company, $context)))]);
                 }
+                if ($this->unpriced($record, null, $context)) {
+                    $notes->note('unit_price_net', 'price_to_enter');
+                }
+                $this->noteBelowCost($written, $record, $seesCosts, $notes);
                 $this->settleStock($company, $written, $record, $quantity, $home, $actorUserId, $context, $notes);
 
                 return RowImported::Created;
             }
             $written = $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
+            $this->noteBelowCost($written, $record, $seesCosts, $notes);
             $after = $this->inFile($company, $written, $context, $record);
             $moved = [
                 'home_location' => $this->settleHome($company, $written, $home, $actorUserId),
@@ -506,7 +527,8 @@ final readonly class ProductImport implements DeclaresImport
         $held = $current?->getDetails();
         $kind = $record->value('kind');
         $taxIds = $faults->read(fn (): array => $this->taxIds($company, $record, $current, $context), false);
-        $price = $faults->read(fn (): string => $this->priceOf($company, $record, $held, $taxIds), '0');
+        $unpriced = $this->unpriced($record, $current, $context);
+        $price = $unpriced ? '0' : $faults->read(fn (): string => $this->priceOf($company, $record, $held, $taxIds), '0');
 
         return new ProductInput(
             // Left out, a new product is given the next of the company's format and a product found by its code keeps its own.
@@ -516,13 +538,13 @@ final readonly class ProductImport implements DeclaresImport
                 $record->value('description') ?? $held?->description,
                 null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods),
                 $price,
-                ($seesCosts ? $faults->read(static fn (): ?string => ImportCells::decimal($record, 'cost_price', 4)) : null) ?? $held?->costPrice,
+                ($seesCosts ? $faults->read(fn (): ?string => $this->costOf($company, $record, $taxIds)) : null) ?? $held?->costPrice,
                 $record->value('substitution_group') ?? $held?->substitutionGroup,
             ),
             $faults->read(fn (): Uuid => $this->unitId($company, $record, $current, $context), Uuid::v7()),
             $faults->read(fn (): ?Uuid => $this->categoryId($company, $record, $current, $context), $current?->getCategory()?->getId()),
             false === $taxIds ? [] : $taxIds,
-            $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
+            $unpriced ? false : $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
             $this->customValues($company, $record, $current, $faults, $context),
             $codes,
             // Left blank, the product keeps its own; a new one follows what its category or company says.
@@ -755,10 +777,99 @@ final readonly class ProductImport implements DeclaresImport
             ?? throw new RowRejected('category', \sprintf('The company has no product category named "%s". Create it first.', $name), 'unknown_category', ['name' => $name]);
     }
 
+    /**
+     * The cost the row sets: written as it is, or from the cost taxes included as the vendor invoiced it, never both.
+     * Taxes included, it is the figure less the VAT at the product's rate, which a liable company gets back; a levy
+     * such as FODEC is no VAT and stays in it. A company whose regime charges no VAT gets none back, so its cost is the
+     * figure as it stands (docs/fiscal/TN.md § 9a).
+     *
+     * @param list<Uuid>|false $taxIds false when the row's taxes were refused
+     *
+     * @throws RowRejected
+     */
+    private function costOf(Company $company, ImportRecord $record, array|false $taxIds): ?string
+    {
+        $net = ImportCells::decimal($record, 'cost_price', 4);
+        if (null === $record->value('cost_price_gross')) {
+            return $net;
+        }
+        if (null !== $net) {
+            throw new RowRejected('cost_price_gross', 'A row gives its cost without taxes or with them, not both.', 'cost_net_and_gross');
+        }
+        $gross = (string) ImportCells::decimal($record, 'cost_price_gross', 4);
+        if (1 !== preg_match('/^(0|[1-9][0-9]{0,9})(\.[0-9]+)?$/', $gross)) {
+            throw new RowRejected('cost_price_gross', 'A cost is a number from 0.', 'invalid_price');
+        }
+        if (\in_array(TaxFamily::Vat, $this->excluded->companyRegime($company)->excludedFamilies ?? [], true)) {
+            return Decimal::round(Decimal::of($gross), 4)->value;
+        }
+        if (false === $taxIds) {
+            return null;
+        }
+        $rate = Decimal::zero();
+        foreach ($taxIds as $id) {
+            $tax = $this->taxes->ofIdInCompany($id, $company->getId());
+            if (null !== $tax && TaxFamily::Vat === $tax->getFamily() && TaxKind::PercentageLine === $tax->getKind() && null !== $tax->getRate()) {
+                $rate += Decimal::of($tax->getRate());
+            }
+        }
+        if (0 === $rate->compare(0)) {
+            throw new RowRejected('cost_price_gross', 'A cost taxes included needs the VAT rate it carries: name the product\'s taxes.', 'cost_gross_without_vat');
+        }
+
+        return Decimal::round(Decimal::of($gross)->div(1 + $rate / 100, Decimal::WORKING_SCALE), 4)->value;
+    }
+
+    /**
+     * The taxes the company marks as its default on a line, the ones a new product starts with in its form.
+     *
+     * @return list<TaxComponent>
+     */
+    private function defaultTaxes(Company $company, ImportContext $context): array
+    {
+        return $context->once('default-taxes', fn (): array => array_values(array_filter(
+            $this->taxes->ofCompany($company->getId()),
+            static fn (TaxComponent $tax): bool => $tax->isActive() && $tax->isDefault() && TaxKind::PercentageLine === $tax->getKind(),
+        )));
+    }
+
+    /** A new product the row names no tax for, while the person ticked « Donner les taxes par défaut ». */
+    private function givesDefaultTaxes(ImportRecord $record, ?Product $current, ImportContext $context): bool
+    {
+        return null === $current && null === $record->value('default_tax_codes') && $context->ticked(self::DEFAULT_TAXES);
+    }
+
+    /**
+     * A new product the row gives no sale price for, while the person ticked « Importer désactivés les produits sans
+     * prix », unless the row asks it active: that one is refused for its price as before, not switched off unasked.
+     */
+    private function unpriced(ImportRecord $record, ?Product $current, ImportContext $context): bool
+    {
+        $active = $record->value('active');
+
+        return null === $current
+            && null === $record->value('unit_price_net') && null === $record->value('unit_price_gross')
+            && $context->ticked(self::UNPRICED_INACTIVE)
+            && (null === $active || !\in_array(mb_strtolower(trim($active)), self::YES, true));
+    }
+
+    /** A product the row leaves sold under its cost, most often a slip in the sheet, is pointed out. */
+    private function noteBelowCost(Product $written, ImportRecord $record, bool $seesCosts, RowNotes $notes): void
+    {
+        $details = $written->getDetails();
+        $touched = null !== $record->value('unit_price_net') || null !== $record->value('unit_price_gross') || null !== $record->value('cost_price') || null !== $record->value('cost_price_gross');
+        if ($seesCosts && $touched && null !== $details->costPrice && 0 > Decimal::of($details->unitPriceNet)->compare(Decimal::of($details->costPrice))) {
+            $notes->note('unit_price_net', 'below_cost', ['cost' => $details->costPrice]);
+        }
+    }
+
     /** @return list<Uuid> */
     private function taxIds(Company $company, ImportRecord $record, ?Product $current, ImportContext $context): array
     {
         $codes = $record->value('default_tax_codes');
+        if ($this->givesDefaultTaxes($record, $current, $context)) {
+            return array_map(static fn (TaxComponent $tax): Uuid => $tax->getId(), $this->defaultTaxes($company, $context));
+        }
         if (null === $codes) {
             return array_map(Uuid::fromString(...), $current?->getDefaultTaxComponentIds() ?? []);
         }
@@ -825,7 +936,11 @@ final readonly class ProductImport implements DeclaresImport
             // No example: the template's row would then give the price twice.
             new ImportColumn('unit_price_gross', 'import.products.unit_price_gross', false, null, 'import.products.unit_price_gross_note'),
             ...$this->guard->may($company, ProductPermission::COST_READ)
-                ? [new ImportColumn('cost_price', 'import.products.cost_price', false, '0.2200', 'import.products.cost_note')]
+                ? [
+                    new ImportColumn('cost_price', 'import.products.cost_price', false, '0.2200', 'import.products.cost_note'),
+                    // No example: the template's row would then give the cost twice.
+                    new ImportColumn('cost_price_gross', 'import.products.cost_price_gross', false, null, 'import.products.cost_price_gross_note'),
+                ]
                 : [],
             new ImportColumn('barcode', 'import.products.barcode', false, '6191234567897', 'import.products.barcode_note', code: true),
             new ImportColumn('pack_barcode', 'import.products.pack_barcode', false, '16191234567894', 'import.products.pack_barcode_note', code: true),

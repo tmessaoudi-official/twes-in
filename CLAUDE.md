@@ -139,7 +139,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   import with `DeclaresImport`; `RunImport` reads the file, the guide at `GET .../imports/{subject}` describes its
   columns, and every rejected row carries a `code` and `params` the screen translates, from a refusal's `reason`; a row
   imported may carry notes, `RowNotes`, such as the reference its new product was given; a subject offers switches,
-  `ImportSwitch`, says what a row names for duplicates, `identityOf`, and what is said once per file, `finished`; a
+  `ImportSwitch`, worded by the screen alone (`ImportColumnsTest` holds every label and note to each language; the
+  products file's: `default_taxes`, the line defaults for a new product naming no tax, and `unpriced_inactive`, a new
+  product with no price created switched off at 0; its `cost_price_gross` column is a cost with taxes, kept less the
+  VAT the company gets back), says what a row names for duplicates, `identityOf`, and what is said once per file, `finished`; a
   committed file is kept as an `ImportRun` under its SHA-256, so the same file is flagged, and the stock it moved
   carries its id: `Inventory/Application/ImportStock` is every file's quantities; a file in the shop's own headings
   is read through `pairing`, a JSON object of heading to column (`''` sets a column aside), which the committed run

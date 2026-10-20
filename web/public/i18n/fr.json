@@ -3103,7 +3103,9 @@
       "product_merged": "Le produit « {{reference}} » a été fusionné dans « {{kept}} » : modifiez plutôt « {{kept}} ».",
       "customer_merged": "Le client « {{number}} » a été fusionné dans « {{kept}} » : modifiez plutôt « {{kept}} ».",
       "vendor_has_code": "Le fournisseur « {{number}} » a encore un code pour ce produit : retirez d’abord le code.",
-      "invalid_pack_quantity": "Un colis compte de 2 à 1 000 000 pièces, en nombre entier."
+      "invalid_pack_quantity": "Un colis compte de 2 à 1 000 000 pièces, en nombre entier.",
+      "cost_net_and_gross": "Le prix de revient est donné hors taxes et TVA comprise : gardez cost_price ou cost_price_gross.",
+      "cost_gross_without_vat": "Un prix de revient TVA comprise demande le taux de TVA du produit : nommez ses taxes dans default_tax_codes, ou cochez « Donner les taxes par défaut »."
     },
     "action": "Importer"
   },

@@ -83,7 +83,13 @@
       "reorder_point_note": "The quantity at or under which the product is to be reordered, in its home location's establishment (or the only one).",
       "reference_optional_note": "Optional. Left empty, the product is given the next one of the company’s format, and a second import finds it again by its barcode.",
       "location": "Stock location",
-      "location_note": "The code of the location the quantity goes to. Left blank: the row’s or the product’s home location, else the establishment’s default location when there is only one."
+      "location_note": "The code of the location the quantity goes to. Left blank: the row’s or the product’s home location, else the establishment’s default location when there is only one.",
+      "cost_price_gross": "Cost price incl. VAT",
+      "cost_price_gross_note": "The cost of one unit VAT included, as the vendor invoices it, to at most 4 decimals: it is brought down to the cost before VAT at the product’s rate. A company under the forfaitaire regime, which gets no VAT back, keeps it as it is.",
+      "default_taxes_switch": "Give new products naming no tax the default taxes",
+      "default_taxes_switch_note": "The taxes marked “default” in Taxes, as in a new product’s record. A product already held keeps its own.",
+      "unpriced_inactive": "Import new products without a sale price switched off",
+      "unpriced_inactive_note": "They are created at 0 and switched off: no document sells them before their price is entered, and their stock can be counted."
     },
     "vendors": {
       "number": "Vendor number",
@@ -214,7 +220,10 @@
       "vendor_followed": "Supplier “{{number}}” was merged into “{{kept}}”: the row is taken for “{{kept}}”.",
       "name_held": "Another product already has this name ({{reference}}).",
       "identifier_missing": "Without this registration number, this customer cannot be invoiced: add it before issuing one.",
-      "no_taxes": "No tax: every document will sell it without VAT. Give its rate in the file, or in its record."
+      "no_taxes": "No tax: every document will sell it without VAT. Give its rate in the file, or in its record.",
+      "default_taxes_given": "Default taxes given: {{codes}}.",
+      "price_to_enter": "No sale price: created at 0 and switched off. Enter its price in its record, then switch it on.",
+      "below_cost": "Sold under its cost price ({{cost}})."
     },
     "stock": {
       "stock_add": "Quantity to add",
