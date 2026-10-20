@@ -191,15 +191,12 @@ final class ProductRemovalTest extends ApiTestCase
         self::assertIsArray($photo);
         // The second product shows the same picture: its photo names the very same files.
         $this->em()->getConnection()->insert('product_photo', [...$photo, 'id' => Uuid::v7()->toRfc4122(), 'product_id' => $second]);
-        $this->removed('product', $first);
-        Clock::set(new MockClock(new \DateTimeImmutable('+12 hours')));
-        try {
-            $this->em()->getConnection()->executeStatement("UPDATE record_removal SET effective_at = effective_at + interval '12 hours' WHERE id = ?", [$this->removed('product', $second)]);
-            Clock::set(new MockClock(new \DateTimeImmutable('+24 hours +1 minute')));
-            self::assertSame(1, static::getContainer()->get(EndDueRemovals::class)->handle());
-        } finally {
-            Clock::set(new NativeClock());
-        }
+        // Both deletes are asked at the real time, the first then made due: a request under a moved clock outlives the
+        // session's idle limit and is signed out.
+        $ending = $this->removed('product', $first);
+        $this->removed('product', $second);
+        $this->em()->getConnection()->executeStatement("UPDATE record_removal SET effective_at = effective_at - interval '25 hours' WHERE id = ?", [$ending]);
+        self::assertSame(1, static::getContainer()->get(EndDueRemovals::class)->handle());
 
         self::assertSame(3, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM file WHERE id IN (?, ?, ?)', [$photo['original_file_id'], $photo['large_file_id'], $photo['small_file_id']]));
     }
