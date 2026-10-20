@@ -40,7 +40,7 @@ export async function aProduct(page: Page, reference: string): Promise<string> {
   );
 }
 
-/** Creates an individual customer through the API, and says its id; a customer is never deleted, so each run leaves one. */
+/** Creates an individual customer through the API, and says its id; one a document names stays after the run. */
 export async function aCustomer(page: Page, number: string): Promise<string> {
   return page.evaluate(
     async ([csrf, customerNumber]) => {
@@ -59,6 +59,22 @@ export async function aCustomer(page: Page, number: string): Promise<string> {
       return ((await created.json()) as { id: string }).id;
     },
     [CSRF, number] as const,
+  );
+}
+
+/** Deletes a record the run made, through the API, once nothing names it; it is gone for good a day later. */
+export async function removed(page: Page, subject: string, id: string): Promise<void> {
+  await page.evaluate(
+    async ([csrf, subject, id]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const response = await fetch(`/api/companies/${me.company.id}/record-removals`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ subject, ids: [id] }),
+      });
+      if (!response.ok) throw new Error(`deleting ${subject} ${id} answered ${response.status}`);
+    },
+    [CSRF, subject, id] as const,
   );
 }
 

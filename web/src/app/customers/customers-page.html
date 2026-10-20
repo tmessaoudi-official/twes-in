@@ -37,7 +37,22 @@
       [rowTestId]="rowTestId"
       emptyKey="customers.none"
       emptyTestId="customers-empty"
+      [(selected)]="selected"
     >
+      <ng-template appDataListSelection>
+        @if (selected().length > 1) {
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="merging()"
+            (click)="merge()"
+            data-testid="customers-merge"
+          >
+            <mat-icon aria-hidden="true">merge</mat-icon>
+            {{ 'records.merge.action' | translate }}
+          </button>
+        }
+      </ng-template>
       <ng-template appDataListCell="kind" let-row>
         {{ 'customers.kinds.' + row.kind | translate }}
       </ng-template>

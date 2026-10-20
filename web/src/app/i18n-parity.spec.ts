@@ -40,6 +40,7 @@ import enTwoFactor from '../../public/i18n/two-factor/en.json';
 import frTwoFactor from '../../public/i18n/two-factor/fr.json';
 import { directionOf, INTERFACE_LANGUAGES } from './shared/i18n/languages';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
+import { NAMED_TABLES } from './shared/records/record-tables';
 import { SETTING_HINTS } from './shared/settings/setting-forms';
 
 /**
@@ -291,6 +292,14 @@ describe('translation files', () => {
         /(القيمة المضافة|أ\.ق\.م)[^.،"]{0,20}للتصريح|التصريح بالأداء على القيمة المضافة/,
       );
     });
+  });
+
+  it('names every table the records texts word, and only those', () => {
+    // The API holds every table a delete or a merge counts to a word in each language (RecordWordsTest); this
+    // list is what the screens look those words up by, so the two cannot drift apart.
+    const worded = Object.keys(frRecords.records.tables).filter((table) => table !== 'other');
+
+    expect([...NAMED_TABLES].sort()).toEqual(worded.sort());
   });
 
   it('says every setting hint in both languages', () => {

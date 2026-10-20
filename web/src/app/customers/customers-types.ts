@@ -64,9 +64,19 @@ export interface CustomerRow {
   isActive: boolean;
   /** Values by the company's custom field keys; a retired field's value stays here. */
   customFields: Record<string, CustomFieldValue>;
+  /** The customer kept when this one was merged into it: this one then stays only for what already names it. */
+  mergedInto: CustomerMergedInto | null;
 }
 
-export type CustomerInput = Omit<CustomerRow, 'id' | 'version'>;
+/** The customer a customer merged away points at, which lists and documents show in its place. */
+export interface CustomerMergedInto {
+  id: string;
+  number: string;
+  name: string;
+}
+
+/** What a form writes: never the merge, which only « Fusionner… » does. */
+export type CustomerInput = Omit<CustomerRow, 'id' | 'version' | 'mergedInto'>;
 
 export interface CustomerGroupRow {
   id: string;

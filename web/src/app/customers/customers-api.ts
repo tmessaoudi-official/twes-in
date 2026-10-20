@@ -375,6 +375,7 @@ function toCustomer(raw: CustomerCustomerRead | CustomerJsonldCustomerRead): Cus
     notes: raw.notes ?? null,
     isActive: raw.isActive ?? true,
     customFields: { ...(raw.customFields ?? {}) },
+    mergedInto: raw.mergedInto ?? null,
   };
 }
 

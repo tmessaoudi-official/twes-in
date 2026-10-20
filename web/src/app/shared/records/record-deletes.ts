@@ -17,6 +17,7 @@ import {
   type TableCount,
 } from './record-removals-api';
 import type { RecordMergeDialog, RecordMergeDialogData } from './record-merge-dialog';
+import { tableCounts } from './record-tables';
 
 /** The subjects the API lets a person delete, each also the kind its live changes carry. */
 export const DELETABLE_SUBJECTS = [
@@ -25,31 +26,6 @@ export const DELETABLE_SUBJECTS = [
   'product_category',
   'expense_category',
   'customer',
-] as const;
-
-/** The tables a refusal says in words; any other is counted as « other records ». */
-const NAMED_TABLES = [
-  'product',
-  'product_category',
-  'expense_category',
-  'vendor',
-  'stock_movement',
-  'purchase_order',
-  'expense',
-  'product_vendor',
-  'product_barcode',
-  'invoice_line',
-  'quote_line',
-  'delivery_note_line',
-  'purchase_order_line',
-  'stock_lot',
-  'price_list_item',
-  'customer',
-  'invoice',
-  'quote',
-  'delivery_note',
-  'price_list',
-  'customer_credit_entry',
 ] as const;
 
 /** The columns a merge refusal names in words, each saying how the records differ; any other gets the plain refusal. */
@@ -270,15 +246,8 @@ export class RecordDeletes {
 
   /** « 2 mouvements de stock et 1 commande fournisseur », a table the screens do not name counted as other records. */
   private counted(uses: readonly TableCount[]): string {
-    const counts = new Map<string, number>();
-    for (const use of uses) {
-      const table = NAMED_TABLES.find((named) => named === use.table) ?? 'other';
-      counts.set(table, (counts.get(table) ?? 0) + use.count);
-    }
     return this.list(
-      [...counts].map(([table, count]) =>
-        this.translate.instant(`records.tables.${table}`, { count }),
-      ),
+      tableCounts(uses).map(({ key, count }) => this.translate.instant(key, { count })),
     );
   }
 

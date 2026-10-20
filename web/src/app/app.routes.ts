@@ -197,7 +197,7 @@ export const routes: Routes = [
       {
         path: 'customers',
         title: 'nav.customers',
-        canActivate: [moduleGuard(CUSTOMERS_MODULE)],
+        canActivate: [moduleGuard(CUSTOMERS_MODULE), textsOpened(RECORDS_TEXTS)],
         loadComponent: () => import('./customers/customers-page').then((m) => m.CustomersPage),
       },
       {
@@ -217,7 +217,7 @@ export const routes: Routes = [
       {
         path: 'customers/:customerId',
         title: 'titles.customer',
-        canActivate: [moduleGuard(CUSTOMERS_MODULE)],
+        canActivate: [moduleGuard(CUSTOMERS_MODULE), textsOpened(RECORDS_TEXTS)],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
       },
       {

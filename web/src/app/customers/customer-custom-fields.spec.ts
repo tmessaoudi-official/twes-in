@@ -43,6 +43,7 @@ const row = {
   notes: null,
   isActive: true,
   customFields: { sector: 'retail' },
+  mergedInto: null,
 } satisfies CustomerRow;
 
 describe("a company's custom fields on its customers", () => {

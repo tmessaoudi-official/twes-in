@@ -25,6 +25,23 @@
   @if (!mayWrite()) {
     <p data-testid="customer-read-only">{{ 'customers.read_only' | translate }}</p>
   }
+  @if (mergedAway(); as kept) {
+    <div
+      data-testid="customer-merged-away"
+      class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant p-3"
+    >
+      <p>
+        {{ 'records.merged_away.banner' | translate: { kept: kept.number + ' · ' + kept.name } }}
+      </p>
+      <a
+        mat-stroked-button
+        [routerLink]="['/customers', kept.id]"
+        data-testid="customer-merged-away-open"
+      >
+        {{ 'records.merged_away.open' | translate: { kept: kept.number + ' · ' + kept.name } }}
+      </a>
+    </div>
+  }
   @if (error(); as code) {
     <p role="alert" data-testid="customer-error" class="text-error">
       {{ 'customers.errors.' + code | translate }}
@@ -52,7 +69,7 @@
                   [form]="form"
                   testId="customer-form"
                   #mainForm
-                  [readOnly]="!mayWrite()"
+                  [readOnly]="!editable()"
                   [updated]="sync.updated()"
                   [conflicts]="sync.conflicts()"
                   (resolved)="sync.resolve(form, $event)"
@@ -78,7 +95,7 @@
         </div>
       </mat-tab>
     }
-    @if (current()) {
+    @if (standing()) {
       <mat-tab [label]="'customers.tabs.contacts' | translate">
         <div class="flex flex-col gap-6 pt-4" data-testid="customer-tab-contacts">
           @if (current()) {
@@ -165,7 +182,7 @@
         </div>
       </mat-tab>
     }
-    @if (mayStatement() && current(); as customer) {
+    @if (mayStatement() && standing() && current(); as customer) {
       @if (company(); as company) {
         <mat-tab [label]="'customers.tabs.statement' | translate">
           <div class="flex flex-col gap-6 pt-4" data-testid="customer-tab-statement">

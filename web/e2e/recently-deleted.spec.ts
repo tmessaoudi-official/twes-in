@@ -2,7 +2,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { runDigits } from './run';
-import { aProduct, aVendor } from './catalogue';
+import { aCustomer, aProduct, aVendor, removed } from './catalogue';
 import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
 import { proveIfHeldBack } from './step-up';
 import { toast } from './toast';
@@ -435,18 +435,95 @@ test('products ticked are merged into the one kept, the other staying as its ali
   for (const id of [mergedId, keptId]) await removed(page, 'product', id);
 });
 
-/** Deletes a record the run made, through the API, once nothing names it. */
-async function removed(page: Page, subject: string, id: string): Promise<void> {
+test('customers ticked are merged into the one kept, its contact moving, the other staying as its alias, and the merge undone', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const run = runDigits();
+  const kept = `E2E-MRG-${run}-K`;
+  const merged = `E2E-MRG-${run}-A`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const keptId = await aCustomer(page, kept);
+  const mergedId = await aCustomer(page, merged);
   await page.evaluate(
-    async ([csrf, subject, id]) => {
+    async ([csrf, customerId]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const response = await fetch(`/api/companies/${me.company.id}/record-removals`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-        body: JSON.stringify({ subject, ids: [id] }),
-      });
-      if (!response.ok) throw new Error(`deleting ${subject} ${id} answered ${response.status}`);
+      const response = await fetch(
+        `/api/companies/${me.company.id}/customers/${customerId}/contacts`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({ firstName: 'Leila', lastName: 'Ben Salah', isPrimary: true }),
+        },
+      );
+      if (!response.ok) throw new Error(`adding a contact answered ${response.status}`);
     },
-    [CSRF, subject, id] as const,
+    [CSRF, mergedId] as const,
   );
-}
+
+  await page.goto('/customers');
+  await page.getByTestId('list-filter').fill(`E2E-MRG-${run}`);
+  const row = (number: string) => page.getByTestId(`customer-${number}`);
+  await row(kept).locator('[data-testid^="list-select-row-"] input').check();
+  await row(merged).locator('[data-testid^="list-select-row-"] input').check();
+  await page.getByTestId('customers-merge').click();
+
+  await page
+    .locator('[data-testid^="record-merge-keep-"]', { hasText: kept })
+    .locator('input')
+    .check();
+  // Its contact moves, worded as one: a table the screens did not word once showed its raw key here.
+  const preview = page.getByTestId('record-merge-preview');
+  await expect(preview).toContainText(merged);
+  await expect(preview).toContainText('reste, désactivée');
+  await expect(preview).toContainText('1 contact');
+  await expect(preview).not.toContainText('records.');
+  expect(await wcagViolations(page)).toEqual([]);
+  const answered = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/record-merges') && response.request().method() === 'POST',
+  );
+  await page.getByTestId('record-merge-confirm').click();
+  expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, answered)).status()).toBe(201);
+  await expect(toast(page)).toContainText(kept);
+  await expect(row(merged)).toHaveCount(0);
+  await expect(row(kept)).toHaveCount(1);
+
+  // Its page says what became of it and opens the one kept, which now holds the contact; it offers no way to change
+  // or delete it, and leaves the contacts and the account to the customer kept.
+  await page.goto(`/customers/${mergedId}`);
+  await expect(page.getByTestId('customer-merged-away')).toContainText(kept);
+  await expect(page.getByTestId('record-save')).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: 'Contacts' })).toHaveCount(0);
+  expect(await wcagViolations(page)).toEqual([]);
+  await page.getByTestId('customer-merged-away-open').click();
+  await expect(page).toHaveURL(new RegExp(`/customers/${keptId}$`));
+  await expect(page.getByTestId('customer-title')).toContainText(kept);
+  await page.getByRole('tab', { name: 'Contacts' }).click();
+  await expect(page.getByTestId('contacts-table')).toContainText('Leila');
+
+  await page.goto('/company/recently-deleted');
+  const removal = page.locator('li[data-testid^="removal-"]', { hasText: merged });
+  await expect(removal).toContainText(kept);
+  const undone = page.waitForResponse(
+    (response) => response.url().endsWith('/restore') && response.request().method() === 'POST',
+  );
+  await removal.getByRole('button', { name: 'Annuler la fusion' }).click();
+  expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, undone)).status()).toBe(200);
+  await expect(toast(page)).toContainText('annulée');
+
+  // Back as it was, its contact with it; and deleted from its own page, nothing naming it.
+  await page.goto(`/customers/${mergedId}`);
+  await expect(page.getByTestId('customer-title')).toContainText(merged);
+  await expect(page.getByTestId('customer-merged-away')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Contacts' }).click();
+  await expect(page.getByTestId('contacts-table')).toContainText('Leila');
+  await page.getByTestId('record-more').click();
+  const entry = page.getByTestId('record-menu-delete');
+  await expect(entry).toHaveAttribute('data-kind', 'annulable');
+  await entry.click();
+  await expect(page).toHaveURL(/\/customers$/);
+  await expect(toast(page)).toContainText(merged);
+  await removed(page, 'customer', keptId);
+});

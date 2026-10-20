@@ -10,31 +10,34 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Records;
 
 use App\Records\Application\RecordCatalogue;
+use App\Records\Application\RecordMerge;
 use App\Records\Application\RecordUse;
+use App\Tests\Support\ShippedLanguages;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
  * What a module declares deletable, the screens say in words: « Récemment supprimés » lists it, the journal says its
- * delete and its restore rather than the code the API recorded, and a refusal names each table that still uses it.
+ * delete and its restore rather than the code the API recorded, and a refusal names each table that still uses it, as a
+ * merge names each table that moves or stays: a table counted without its words showed its raw key in the merge dialog.
  * The declarations live in the API and the words in the web, so nothing on either side alone sees a pair left half
  * done; a subject added without its words reds here.
  */
 final class RecordWordsTest extends KernelTestCase
 {
-    private const array LANGUAGES = ['fr', 'en', 'ar'];
-
     public function testEverySubjectIsListedAndSaidAndEveryUseIsNamed(): void
     {
         $catalogue = static::getContainer()->get(RecordCatalogue::class);
         $web = \dirname(__DIR__, 4).'/web';
         $deletes = self::read($web.'/src/app/shared/records/record-deletes.ts');
+        $tables = self::read($web.'/src/app/shared/records/record-tables.ts');
         $journal = self::read($web.'/src/app/activity/activity-list.ts');
         $deletable = self::listed($deletes, 'export const DELETABLE_SUBJECTS = [');
-        $named = self::listed($deletes, 'const NAMED_TABLES = [');
+        $named = self::listed($tables, 'export const NAMED_TABLES = [');
         $actions = self::listed($journal, 'export const ACTIVITY_ACTIONS: readonly string[] = [');
         $kinds = self::listed($journal, 'export const ACTIVITY_KINDS = [');
+        $languages = ShippedLanguages::catalogue()->interface();
         $words = [];
-        foreach (self::LANGUAGES as $language) {
+        foreach ($languages as $language) {
             $texts = json_decode(self::read($web.'/public/i18n/records/'.$language.'.json'), true, flags: \JSON_THROW_ON_ERROR);
             self::assertIsArray($texts, $language);
             $words[$language] = $texts;
@@ -49,17 +52,22 @@ final class RecordWordsTest extends KernelTestCase
             foreach (['deleted', 'restored', 'merged', 'merge_undone'] as $verb) {
                 self::assertContains("$table.$verb", $actions, "$table.$verb is missing from ACTIVITY_ACTIONS");
             }
-            foreach (self::LANGUAGES as $language) {
+            foreach ($languages as $language) {
                 self::assertIsString(self::at($words[$language], "records.recent.subjects.$table"), "records.recent.subjects.$table in $language");
             }
         }
+        $counted = [];
         foreach ($catalogue->references() as $reference) {
-            if (RecordUse::Uses !== $reference->onDelete) {
-                continue;
+            if (RecordUse::Uses === $reference->onDelete || RecordMerge::Ignored !== $reference->onMerge) {
+                $counted[$reference->table] = true;
             }
-            self::assertContains($reference->table, $named, "{$reference->table} is missing from NAMED_TABLES");
-            foreach (self::LANGUAGES as $language) {
-                self::assertIsString(self::at($words[$language], "records.tables.{$reference->table}"), "records.tables.{$reference->table} in $language");
+        }
+        // Above what the vendors' and products' references alone count, so losing a module's declarations reds too.
+        self::assertGreaterThanOrEqual(20, \count($counted));
+        foreach (array_keys($counted) as $table) {
+            self::assertContains($table, $named, "$table is missing from NAMED_TABLES");
+            foreach ($languages as $language) {
+                self::assertIsString(self::at($words[$language], "records.tables.$table"), "records.tables.$table in $language");
             }
         }
     }

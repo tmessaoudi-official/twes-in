@@ -26,6 +26,7 @@ import { CustomersFacade } from './customers-facade';
 import { CustomersPage } from './customers-page';
 import type { CustomerGroupRow, CustomerRow } from './customers-types';
 import { exportEntry } from '../shared/testing/list-export';
+import { RecordDeletes } from '../shared/records/record-deletes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -60,7 +61,9 @@ const amel: CustomerRow = {
   notes: null,
   isActive: false,
   customFields: {},
+  mergedInto: null,
 };
+const amelSousse: CustomerRow = { ...amel, id: 'k2', number: 'CLI-0002', name: 'Amel T.' };
 const wholesalers: CustomerGroupRow = {
   id: 'g1',
   name: 'Grossistes',
@@ -71,13 +74,13 @@ const wholesalers: CustomerGroupRow = {
 
 describe('CustomersPage', () => {
   const facade = {
-    customers: signal<readonly CustomerRow[]>([amel]).asReadonly(),
+    customers: signal<readonly CustomerRow[]>([amel, amelSousse]).asReadonly(),
     groups: signal<readonly CustomerGroupRow[]>([wholesalers]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
     customFields: signal([]).asReadonly(),
     options: signal(null).asReadonly(),
-    total: signal(1).asReadonly(),
+    total: signal(2).asReadonly(),
     loadListContext: vi.fn(),
     loadPage: vi.fn(),
     exportUrl: vi.fn(
@@ -89,6 +92,7 @@ describe('CustomersPage', () => {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
   };
+  const deletes = { offerMergeOf: vi.fn() };
   let fixture: ComponentFixture<CustomersPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -104,6 +108,7 @@ describe('CustomersPage', () => {
     facade.loadListContext.mockReset().mockResolvedValue(undefined);
     facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    deletes.offerMergeOf.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       imports: [CustomersPage],
       providers: [
@@ -119,6 +124,7 @@ describe('CustomersPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CustomersFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -201,5 +207,44 @@ describe('CustomersPage', () => {
 
     expect(q('customer-add')).toBeNull();
     expect(q('list-link-k1')).not.toBeNull();
+  });
+
+  const tick = async (id: string): Promise<void> => {
+    (q(`list-select-row-${id}`)!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+  };
+
+  it('offers to merge once two customers are ticked, the one merged away staying as an alias with its defaults moving, and clears the ticks after', async () => {
+    await tick('k2');
+    expect(q('customers-merge')).toBeNull();
+    await tick('k1');
+
+    q('customers-merge')!.click();
+    await settle();
+
+    expect(deletes.offerMergeOf).toHaveBeenCalledWith('c1', 'customer', ['k2', 'k1'], {
+      settings: true,
+      aliased: true,
+    });
+    expect(q('customers-merge')).toBeNull();
+  });
+
+  it('keeps the ticks when the person merges nothing', async () => {
+    deletes.offerMergeOf.mockResolvedValue(false);
+    await tick('k2');
+    await tick('k1');
+
+    q('customers-merge')!.click();
+    await settle();
+
+    expect(q('customers-merge')).not.toBeNull();
+  });
+
+  it('lets nobody but a person who may change customers tick them', async () => {
+    auth.hasPermission.mockReturnValue(false);
+    fixture = TestBed.createComponent(CustomersPage);
+    await settle();
+
+    expect(q('list-select-row-k1')).toBeNull();
   });
 });

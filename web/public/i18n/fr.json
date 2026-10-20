@@ -1208,6 +1208,7 @@
     "title": "Clients",
     "add": "Nouveau client",
     "none": "Aucun client pour l’instant.",
+    "selected": "{count, plural, =0 {Aucun client sélectionné} one {{{count}} client sélectionné} other {{{count}} clients sélectionnés}}",
     "no_company": "Choisissez d’abord une entreprise.",
     "new_title": "Nouveau client",
     "back": "Retour aux clients",

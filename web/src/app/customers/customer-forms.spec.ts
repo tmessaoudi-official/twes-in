@@ -64,6 +64,7 @@ const carthage: CustomerRow = {
   notes: null,
   isActive: true,
   customFields: {},
+  mergedInto: null,
 };
 
 describe('customer forms', () => {
@@ -237,6 +238,8 @@ describe('customer forms', () => {
       ...carthage,
       id: undefined,
       version: undefined,
+      // A form never writes the merge, which only « Fusionner… » does.
+      mergedInto: undefined,
       shippingAddress: {
         line1: null,
         line2: null,
