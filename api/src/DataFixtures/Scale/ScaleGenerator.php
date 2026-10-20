@@ -99,7 +99,7 @@ final class ScaleGenerator
 
     /** Foreign keys of a cloned table that a copy points at a row of its own copy, or empties: `table.column`. */
     private const array REMAPPED = [
-        'invoice.corrects_invoice_id', 'invoice.customer_id', 'invoice.pdf_file_id',
+        'customer.merged_into_id', 'invoice.corrects_invoice_id', 'invoice.customer_id', 'invoice.pdf_file_id',
         'invoice_line.invoice_id', 'invoice_line.deducts_invoice_id', 'invoice_line_tax.line_id', 'invoice_tax.invoice_id', 'payment.invoice_id',
     ];
 
@@ -305,6 +305,8 @@ final class ScaleGenerator
                 'email' => "CASE WHEN src.email IS NULL THEN NULL ELSE 'g' || grp || '.' || src.email END",
                 'created_at' => "src.created_at - make_interval(days => $span + 1)",
                 'updated_at' => "src.updated_at - make_interval(days => $span + 1)",
+                // The customer a merged-away one points at may have no invoice, so no copy: a copy stands as itself.
+                'merged_into_id' => 'NULL',
             ],
             ['company' => $company],
         );

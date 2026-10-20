@@ -17,7 +17,7 @@ use App\Settings\Domain\ValueObject\SettingLevel;
 
 /**
  * A setting is kept at a level, which `level_id` names as `<company id>/<record id>` (SettingAddress): a product's or a
- * product category's settings go and come back with it.
+ * product category's or a customer's settings go and come back with it.
  */
 final readonly class SettingRecordReferences implements DeclaresRecordReferences
 {
@@ -35,6 +35,8 @@ final readonly class SettingRecordReferences implements DeclaresRecordReferences
             RecordReference::owned('setting', 'level_id', 'product_category', RecordMerge::MovesOrDrops, 'A setting kept at a product category\'s level is the category\'s own; merged, the category kept keeps its own where it has one.', RecordLink::CompanyPath)
                 ->droppingTwinsBy('level', 'key')->where('level', SettingLevel::ProductCategory->value),
             RecordReference::ignored('setting', 'level_id', 'expense_category', 'No setting is kept at an expense category\'s level.'),
+            RecordReference::owned('setting', 'level_id', 'customer', RecordMerge::MovesOrDrops, 'A setting kept at a customer\'s level, its payment terms or credit limit, is the customer\'s own; merged, the customer kept keeps its own where it has one.', RecordLink::CompanyPath)
+                ->droppingTwinsBy('level', 'key')->where('level', SettingLevel::Customer->value),
         ];
     }
 }

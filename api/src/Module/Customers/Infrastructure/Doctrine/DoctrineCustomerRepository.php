@@ -52,7 +52,9 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
         $query = $this->entityManager->createQueryBuilder()
             ->select('c', 'g', 'r')->from(Customer::class, 'c')
             ->leftJoin('c.group', 'g')->join('c.taxRegime', 'r')
-            ->where('c.company = :company')->setParameter('company', $companyId, 'uuid');
+            ->where('c.company = :company')->setParameter('company', $companyId, 'uuid')
+            // A customer merged away is listed as the customer kept, which is listed already.
+            ->andWhere('c.mergedInto IS NULL');
         $words = trim($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));

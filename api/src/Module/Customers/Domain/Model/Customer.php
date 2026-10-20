@@ -23,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Someone a company sells to (docs/SPEC.md § 4 customer). Its number is the company's to choose and unique in it; its
  * tax regime comes from the company's own preset; its group, when it has one, is the company's too. Documents will name
- * a customer, so a customer is deactivated, never deleted.
+ * a customer, so a customer they name is deactivated or merged into another, and only one nothing names is deleted.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'customer')]
@@ -98,6 +98,14 @@ class Customer implements CompanyOwned
 
     #[ORM\Column]
     private bool $isActive = true;
+
+    /**
+     * The customer this one was merged into, which lists, pickers and reports show in its place; written by the records
+     * engine, which also switches it off, and emptied again by « Annuler la fusion ».
+     */
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(name: 'merged_into_id', nullable: true)]
+    private ?Customer $mergedInto = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
@@ -311,6 +319,23 @@ class Customer implements CompanyOwned
     public function isActive(): bool
     {
         return $this->isActive;
+    }
+
+    public function getMergedInto(): ?self
+    {
+        return $this->mergedInto;
+    }
+
+    /** Merged into another: what was sent or issued still names it, nothing new does. */
+    public function isMergedAway(): bool
+    {
+        return null !== $this->mergedInto;
+    }
+
+    /** The customer this one stands for: the customer kept when it was merged away, itself otherwise. */
+    public function standingFor(): self
+    {
+        return $this->mergedInto ?? $this;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

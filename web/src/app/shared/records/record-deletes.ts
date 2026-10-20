@@ -24,6 +24,7 @@ export const DELETABLE_SUBJECTS = [
   'product',
   'product_category',
   'expense_category',
+  'customer',
 ] as const;
 
 /** The tables a refusal says in words; any other is counted as « other records ». */
@@ -43,6 +44,12 @@ const NAMED_TABLES = [
   'purchase_order_line',
   'stock_lot',
   'price_list_item',
+  'customer',
+  'invoice',
+  'quote',
+  'delivery_note',
+  'price_list',
+  'customer_credit_entry',
 ] as const;
 
 /** The columns a merge refusal names in words, each saying how the records differ; any other gets the plain refusal. */

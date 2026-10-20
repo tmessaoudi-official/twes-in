@@ -11,6 +11,7 @@ namespace App\Module\Customers\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Module\Customers\Application\CustomerMergedAway;
 use App\Module\Customers\Application\CustomerNotFound;
 use App\Module\Customers\Application\CustomerNumberTaken;
 use App\Module\Customers\Application\ManageCustomers;
@@ -18,6 +19,7 @@ use App\Module\Customers\Domain\Exception\InvalidCustomer;
 use App\Module\Customers\Infrastructure\ApiPlatform\Resource\CustomerResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\ApiPlatform\Output\RecordChangedProblem;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -40,6 +42,9 @@ final readonly class ReviseCustomerProcessor implements ProcessorInterface
             throw new NotFoundHttpException('No such customer.', $absent);
         } catch (CustomerNumberTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
+        } catch (CustomerMergedAway $merged) {
+            // It changed since the form was opened: the screen reads it again and finds it merged away, read-only.
+            throw new RecordChangedProblem($merged);
         } catch (InvalidCustomer $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }

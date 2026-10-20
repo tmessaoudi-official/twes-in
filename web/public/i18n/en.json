@@ -3098,6 +3098,7 @@
       "unknown_vendor": "The company has no supplier numbered “{{number}}”.",
       "vendor_merged": "Supplier “{{number}}” was merged into “{{kept}}”: change “{{kept}}” instead.",
       "product_merged": "Product “{{reference}}” was merged into “{{kept}}”: change “{{kept}}” instead.",
+      "customer_merged": "Customer “{{number}}” was merged into “{{kept}}”: change “{{kept}}” instead.",
       "vendor_has_code": "Vendor “{{number}}” still has a code for this product: remove the code first.",
       "invalid_pack_quantity": "A pack counts 2 to 1,000,000 pieces, as a whole number."
     },
@@ -3982,7 +3983,11 @@
       "customer": {
         "created": "created the customer",
         "revised": "changed the customer",
-        "credit_applied": "applied the customer’s credit"
+        "credit_applied": "applied the customer’s credit",
+        "deleted": "deleted the customer",
+        "restored": "restored the customer",
+        "merged": "merged the customer",
+        "merge_undone": "undid the merge of the customer"
       },
       "contact": {
         "created": "added a contact",

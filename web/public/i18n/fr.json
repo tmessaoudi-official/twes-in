@@ -3098,6 +3098,7 @@
       "unknown_vendor": "L’entreprise n’a aucun fournisseur numéroté « {{number}} ».",
       "vendor_merged": "Le fournisseur « {{number}} » a été fusionné dans « {{kept}} » : modifiez plutôt « {{kept}} ».",
       "product_merged": "Le produit « {{reference}} » a été fusionné dans « {{kept}} » : modifiez plutôt « {{kept}} ».",
+      "customer_merged": "Le client « {{number}} » a été fusionné dans « {{kept}} » : modifiez plutôt « {{kept}} ».",
       "vendor_has_code": "Le fournisseur « {{number}} » a encore un code pour ce produit : retirez d’abord le code.",
       "invalid_pack_quantity": "Un colis compte de 2 à 1 000 000 pièces, en nombre entier."
     },
@@ -3982,7 +3983,11 @@
       "customer": {
         "created": "a créé le client",
         "revised": "a modifié le client",
-        "credit_applied": "a imputé un avoir du client"
+        "credit_applied": "a imputé un avoir du client",
+        "deleted": "a supprimé le client",
+        "restored": "a remis le client",
+        "merged": "a fusionné le client",
+        "merge_undone": "a défait la fusion du client"
       },
       "contact": {
         "created": "a ajouté un contact",

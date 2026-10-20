@@ -141,16 +141,16 @@ final class RecordReferenceCoverageTest extends KernelTestCase
         $owning = new readonly class implements DeclaresRecordReferences {
             public function subjects(): array
             {
-                return [new RecordSubject('customer', 'customer.write', null, ['name'])];
+                return [new RecordSubject('customer_group', 'customer.write', null, ['name'])];
             }
 
             public function references(): array
             {
-                return [RecordReference::owned('invoice', 'customer_id', 'customer', RecordMerge::Moves, 'Not so; a case.')];
+                return [RecordReference::owned('invoice', 'customer_id', 'customer_group', RecordMerge::Moves, 'Not so; a case.')];
             }
         };
 
-        self::assertContains('invoice_line.invoice_id names invoice rows, which go with a customer, and nothing can declare it', RecordReferenceCoverage::unaccounted($this->connection(), new RecordCatalogue([...$this->declarations(), $owning])));
+        self::assertContains('invoice_line.invoice_id names invoice rows, which go with a customer_group, and nothing can declare it', RecordReferenceCoverage::unaccounted($this->connection(), new RecordCatalogue([...$this->declarations(), $owning])));
     }
 
     /** @param callable(RecordReference): bool $drop */

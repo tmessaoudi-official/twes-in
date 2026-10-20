@@ -14,7 +14,10 @@ use App\Records\Application\DeclaresRecordReferences;
 use App\Records\Application\RecordMerge;
 use App\Records\Application\RecordReference;
 
-/** An invoice's line names the product it sells: a product an invoice names is used, and its line keeps naming it through a merge. */
+/**
+ * An invoice names the customer it bills and its lines the products they sell: what an invoice names is used, and an
+ * issued one keeps naming it through a merge. A customer's credit is its own record of what it was owed and spent.
+ */
 final readonly class InvoiceRecordReferences implements DeclaresRecordReferences
 {
     public function subjects(): array
@@ -29,6 +32,12 @@ final readonly class InvoiceRecordReferences implements DeclaresRecordReferences
                 ->through('invoice', 'invoice_id')
                 ->movingOnlyWhere('status', [InvoiceStatus::Draft->value])
                 ->transactingAt('issued_at'),
+            // Any invoice of the customer kept written since but a draft, issued, paid or cancelled, means it traded.
+            RecordReference::uses('invoice', 'customer_id', 'customer', RecordMerge::Moves, 'An invoice bills its customer; merged, a draft bills the customer kept, an issued invoice whom it printed.')
+                ->movingOnlyWhere('status', [InvoiceStatus::Draft->value])
+                ->transactingAt('updated_at'),
+            RecordReference::uses('customer_credit_entry', 'customer_id', 'customer', RecordMerge::Stays, 'A credit entry is what the customer was owed or spent, as recorded; merged, the customer kept stands for it.')
+                ->transactingAt('created_at'),
         ];
     }
 }

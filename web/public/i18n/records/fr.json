@@ -42,6 +42,12 @@
       "product_category": "{{count}} {count, plural, one {sous-catégorie} other {sous-catégories}}",
       "expense_category": "{{count}} {count, plural, one {sous-catégorie} other {sous-catégories}}",
       "vendor": "{{count}} {count, plural, one {fournisseur} other {fournisseurs}}",
+      "invoice": "{{count}} {count, plural, one {facture} other {factures}}",
+      "quote": "{{count}} {count, plural, one {devis} other {devis}}",
+      "delivery_note": "{{count}} {count, plural, one {bon de livraison} other {bons de livraison}}",
+      "price_list": "{{count}} {count, plural, one {tarif} other {tarifs}}",
+      "customer_credit_entry": "{{count}} {count, plural, one {écriture de crédit} other {écritures de crédit}}",
+      "customer": "{{count}} {count, plural, one {client} other {clients}}",
       "other": "{{count}} {count, plural, one {autre fiche} other {autres fiches}}"
     },
     "errors": {
@@ -76,7 +82,8 @@
         "vendor": "{{count}} {count, plural, one {fournisseur} other {fournisseurs}}",
         "product": "{{count}} {count, plural, one {produit} other {produits}}",
         "product_category": "{{count}} {count, plural, one {catégorie d’articles} other {catégories d’articles}}",
-        "expense_category": "{{count}} {count, plural, one {catégorie de dépenses} other {catégories de dépenses}}"
+        "expense_category": "{{count}} {count, plural, one {catégorie de dépenses} other {catégories de dépenses}}",
+        "customer": "{{count}} {count, plural, one {client} other {clients}}"
       }
     },
     "mismatch": {

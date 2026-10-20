@@ -3098,6 +3098,7 @@
       "unknown_vendor": "ليس للشركة أي مزوّد بالرقم « {{number}} ».",
       "vendor_merged": "دُمج المزوّد « {{number}} » في « {{kept}} »: عدّل « {{kept}} » بدلًا منه.",
       "product_merged": "دُمج المنتج « {{reference}} » في « {{kept}} »: عدّل « {{kept}} » بدلًا منه.",
+      "customer_merged": "دُمج الحريف « {{number}} » في « {{kept}} »: عدّل « {{kept}} » بدلًا منه.",
       "vendor_has_code": "لا يزال للمزوّد « {{number}} » رمز لهذا المنتج: احذف الرمز أولًا.",
       "invalid_pack_quantity": "الحزمة تعدّ من 2 إلى 1 000 000 قطعة، بعدد صحيح."
     },
@@ -3982,7 +3983,11 @@
       "customer": {
         "created": "أنشأ الحريف",
         "revised": "عدّل الحريف",
-        "credit_applied": "خصم فاتورة تعديلية للحريف"
+        "credit_applied": "خصم فاتورة تعديلية للحريف",
+        "deleted": "حذف الحريف",
+        "restored": "أعاد الحريف",
+        "merged": "دمج الحريف",
+        "merge_undone": "ألغى دمج الحريف"
       },
       "contact": {
         "created": "أضاف جهة اتّصال",

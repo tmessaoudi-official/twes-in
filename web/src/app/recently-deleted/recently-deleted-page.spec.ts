@@ -197,6 +197,7 @@ describe('RecentlyDeletedPage', () => {
       'product',
       'product_category',
       'expense_category',
+      'customer',
     ]);
 
     api.pending.mockResolvedValue([]);
