@@ -124,9 +124,9 @@ final class RecordCatalogueTest extends TestCase
         )]);
     }
 
-    public function testASubjectIsAliasedByAMergeUnlessItSaysOtherwise(): void
+    public function testASubjectIsNotMergedUnlessItSaysHow(): void
     {
-        self::assertSame(MergedAway::Aliased, new RecordSubject('vendor', 'vendor.write', 'vendors', ['name'])->mergedAway);
+        self::assertNull(new RecordSubject('vendor', 'vendor.write', 'vendors', ['name'])->mergedAway);
     }
 
     /**

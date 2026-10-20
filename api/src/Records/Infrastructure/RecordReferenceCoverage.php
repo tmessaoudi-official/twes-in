@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Records\Infrastructure;
 
+use App\Records\Application\MergedAway;
 use App\Records\Application\RecordCatalogue;
 use App\Records\Application\RecordReference;
 use App\Records\Application\RecordUse;
@@ -45,6 +46,16 @@ final class RecordReferenceCoverage
             }
         }
         $columns = $schema->columns();
+        foreach ($catalogue->subjects() as $subject) {
+            if (MergedAway::Aliased !== $subject->mergedAway) {
+                continue;
+            }
+            foreach (['merged_into_id', 'is_active'] as $column) {
+                if (!\in_array("$subject->table.$column", $columns, true)) {
+                    $out[] = \sprintf('the subject %1$s is merged as an alias and %1$s has no %2$s', $subject->table, $column);
+                }
+            }
+        }
         foreach ($catalogue->references() as $reference) {
             if (!\in_array("$reference->table.$reference->column", $columns, true)) {
                 $out[] = \sprintf('%s.%s is declared and no longer exists', $reference->table, $reference->column);

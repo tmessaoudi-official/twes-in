@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Records;
 
 use App\Records\Application\DeclaresRecordReferences;
+use App\Records\Application\MergedAway;
 use App\Records\Application\RecordCatalogue;
 use App\Records\Application\RecordMerge;
 use App\Records\Application\RecordReference;
@@ -110,6 +111,27 @@ final class RecordReferenceCoverageTest extends KernelTestCase
         };
 
         self::assertContains('the subject old_supplier has no table', RecordReferenceCoverage::unaccounted($this->connection(), new RecordCatalogue([...$this->declarations(), $gone])));
+    }
+
+    public function testASubjectMergedAsAnAliasWithoutItsColumnsIsNamed(): void
+    {
+        // An alias is switched off and points at the record kept: a table without both columns has nowhere to keep it.
+        $aliased = new readonly class implements DeclaresRecordReferences {
+            public function subjects(): array
+            {
+                return [new RecordSubject('customer_group', 'customer.write', null, ['name'], MergedAway::Aliased)];
+            }
+
+            public function references(): array
+            {
+                return [];
+            }
+        };
+
+        $unaccounted = RecordReferenceCoverage::unaccounted($this->connection(), new RecordCatalogue([...$this->declarations(), $aliased]));
+
+        self::assertContains('the subject customer_group is merged as an alias and customer_group has no merged_into_id', $unaccounted);
+        self::assertContains('the subject customer_group is merged as an alias and customer_group has no is_active', $unaccounted);
     }
 
     public function testARowNamingWhatGoesWithASubjectIsNamed(): void
