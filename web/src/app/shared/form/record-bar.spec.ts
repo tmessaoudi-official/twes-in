@@ -89,9 +89,19 @@ class Host {
           keepLabel: 'danger.keep',
         },
       },
+      {
+        id: 'remove',
+        label: 'form.revert',
+        icon: 'delete',
+        destructive: true,
+        undoable: true,
+        shown: this.removable(),
+        run: () => this.did.push('remove'),
+      },
     ];
   });
   readonly dangerous = signal(false);
+  readonly removable = signal(false);
 }
 
 /** The bar where a record page draws it: beside a title, in the document header it measures. */
@@ -253,6 +263,24 @@ describe('RecordBar', () => {
     (document.querySelector('[data-testid="record-menu-revert"]') as HTMLElement).click();
     await settle();
     expect(fixture.componentInstance.did).toEqual(['revert']);
+  });
+
+  it('folds a delete into its « ⋮ » on a wide window too, says it annulable and runs it without asking', async () => {
+    fixture.componentInstance.removable.set(true);
+    await settle();
+    expect(q('record-remove')).toBeNull();
+
+    q('record-more')!.click();
+    await settle();
+    const entry = document.querySelector<HTMLElement>('[data-testid="record-menu-remove"]');
+    expect([entry?.getAttribute('data-kind'), entry?.classList.contains('text-error')]).toEqual([
+      'annulable',
+      true,
+    ]);
+    entry!.click();
+    await settle();
+    expect(document.querySelector('[data-testid="confirm-message"]')).toBeNull();
+    expect(fixture.componentInstance.did).toEqual(['remove']);
   });
 
   it('draws no « ⋮ » on a wide window with nothing to fold', () => {

@@ -12,6 +12,9 @@ import frDemoMails from '../../public/i18n/demo-mails/fr.json';
 import arPurchases from '../../public/i18n/purchases/ar.json';
 import enPurchases from '../../public/i18n/purchases/en.json';
 import frPurchases from '../../public/i18n/purchases/fr.json';
+import arRecords from '../../public/i18n/records/ar.json';
+import enRecords from '../../public/i18n/records/en.json';
+import frRecords from '../../public/i18n/records/fr.json';
 import arReports from '../../public/i18n/reports/ar.json';
 import enReports from '../../public/i18n/reports/en.json';
 import frReports from '../../public/i18n/reports/fr.json';
@@ -61,6 +64,7 @@ const parts: Record<string, Record<string, unknown>> = {
   import: { fr: frImport, en: enImport, ar: arImport },
   platform: { fr: frPlatform, en: enPlatform, ar: arPlatform },
   purchases: { fr: frPurchases, en: enPurchases, ar: arPurchases },
+  records: { fr: frRecords, en: enRecords, ar: arRecords },
   reports: { fr: frReports, en: enReports, ar: arReports },
   schedule: { fr: frSchedule, en: enSchedule, ar: arSchedule },
   'stock-plan': { fr: frStockPlan, en: enStockPlan, ar: arStockPlan },

@@ -29,6 +29,7 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { PURCHASES_MODULE } from '../purchases/purchases-nav';
+import { RecordDeletes } from '../shared/records/record-deletes';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
 
@@ -52,6 +53,7 @@ export class VendorPage {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+  private readonly deletes = inject(RecordDeletes);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `vendors/new`. */
   readonly vendorId = input<string | undefined>(undefined);
@@ -176,8 +178,33 @@ export class VendorPage {
           this.auth.hasModule(PURCHASES_MODULE) &&
           this.auth.hasPermission('purchase.write'),
       },
+      {
+        id: 'delete',
+        label: 'records.delete',
+        icon: 'delete',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps it a day. A vendor something
+        // still names is refused whole, the toast saying what names it.
+        destructive: true,
+        undoable: true,
+        disabled: busy,
+        run: () => void this.remove(),
+        shown: may && this.current() != null,
+      },
     ];
   });
+
+  private async remove(): Promise<void> {
+    const companyId = this.company()?.id;
+    const vendor = this.current();
+    if (!companyId || !vendor) return;
+    const gone = await this.deletes.remove(companyId, 'vendor', [
+      { id: vendor.id, label: `${vendor.number} ${vendor.name}` },
+    ]);
+    if (!gone) return;
+    // What was typed went with it: leaving is not abandoning unsaved work.
+    this.unsaved.savedAndLeaving();
+    await this.router.navigate(['/vendors']);
+  }
 
   /** A new order to this vendor, the vendor already named in its header. */
   private async orderFrom(): Promise<void> {

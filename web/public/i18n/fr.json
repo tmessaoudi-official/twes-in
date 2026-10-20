@@ -585,6 +585,7 @@
     "activity": "Journal d’activité",
     "accounting_export": "Export comptable",
     "data_erasure": "Effacer des données",
+    "recently_deleted": "Récemment supprimés",
     "new_purchase": "Nouvelle commande fournisseur"
   },
   "shell": {

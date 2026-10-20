@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { rareOn } from '../list/list-types';
 import { menuOrder, onRecord, onRows, type RecordAction } from './record-action';
+import { kindOf } from './screen-action';
 
 interface Doc {
   id: string;
@@ -161,5 +162,31 @@ describe('RecordAction', () => {
     };
 
     expect([unasked.id, annulableAsking.id]).toEqual(['issue', 'remove']);
+  });
+
+  it('says an annulable effect is annulable without asking, as its toast will', () => {
+    const [remove] = onRecord<Doc>(
+      [
+        {
+          id: 'remove',
+          label: 'remove',
+          icon: 'delete',
+          group: 'correct',
+          frequency: 'rare',
+          effect: { kind: 'annulable' },
+          shown: () => true,
+          run: vi.fn(),
+        },
+      ],
+      draft,
+      false,
+    );
+
+    expect([remove?.confirm, remove === undefined ? null : kindOf(remove)]).toEqual([
+      undefined,
+      'annulable',
+    ]);
+    expect(kindOf({ undoable: true })).toBe('annulable');
+    expect(kindOf({})).toBeUndefined();
   });
 });

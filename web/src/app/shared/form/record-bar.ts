@@ -12,7 +12,7 @@ import { Label } from '../a11y/label';
 import type { PlannedAction } from '../actions/planned-actions';
 import { plannedRoom } from '../actions/planned-room';
 import { runAction } from '../actions/run-action';
-import type { ActionConfirm, ScreenAction } from '../actions/screen-action';
+import { kindOf, type ActionConfirm, type ScreenAction } from '../actions/screen-action';
 import { Session } from '../session/session';
 import { ThemeFacade } from '../theme/theme-facade';
 import { ConfirmDialog } from '../ui/confirm-dialog';
@@ -105,11 +105,15 @@ import { WINDOW_CLASS } from '../ui/window-class';
               mat-menu-item
               type="button"
               [disabled]="action.disabled === true"
+              [class.text-error]="action.destructive"
               (click)="run(action)"
               [attr.data-testid]="'record-menu-' + action.id"
+              [attr.data-kind]="kind(action)"
             >
               @if (action.icon) {
-                <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+                <mat-icon aria-hidden="true" [class.text-error]="action.destructive">{{
+                  action.icon
+                }}</mat-icon>
               }
               <span>{{ action.label | translate: action.labelParams }}</span>
             </button>
@@ -182,9 +186,17 @@ export class RecordBar {
   private readonly secondary = computed(() =>
     this.offered().filter((action) => action.primary !== true),
   );
-  /** Drawn beside the next step; on a phone folded into the « ⋮ », where they stacked one per row (audit V-12). */
-  protected readonly plain = computed(() => (this.compact() ? [] : this.secondary()));
-  protected readonly folded = computed(() => (this.compact() ? this.secondary() : []));
+  /**
+   * Drawn beside the next step; on a phone folded into the « ⋮ », where they stacked one per row (audit V-12). A delete is
+   * folded on every window and listed last, never a button a hand reaches for on its way to Enregistrer.
+   */
+  protected readonly plain = computed(() =>
+    this.compact() ? [] : this.secondary().filter((action) => action.destructive !== true),
+  );
+  protected readonly folded = computed(() => [
+    ...(this.compact() ? this.secondary().filter((action) => action.destructive !== true) : []),
+    ...this.secondary().filter((action) => action.destructive === true),
+  ]);
   /** The planned actions shown: those the catalogue still plans, and none once « Montrer ce qui arrive » is off. */
   protected readonly coming = computed(() => {
     if (!this.theme.showComing()) return [];
@@ -212,6 +224,10 @@ export class RecordBar {
    */
   protected openComing(action: PlannedAction): void {
     void this.router.navigateByUrl(`/coming/${action.module}`);
+  }
+
+  protected kind(action: ScreenAction): string | null {
+    return kindOf(action) ?? null;
   }
 
   protected run(action: ScreenAction): void {

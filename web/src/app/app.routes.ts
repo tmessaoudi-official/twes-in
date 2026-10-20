@@ -26,6 +26,7 @@ import { guardUnsaved } from './shared/form/unsaved-changes';
 import { customerScreenLock } from './customer-screen/customer-screen-lock';
 import { moduleGuard } from './shell/module-guard';
 import { textsOpened, textsPart } from './shared/i18n/texts-part';
+import { RECORDS_TEXTS } from './shared/records/records-texts';
 import { SCHEDULE_TEXTS } from './shared/schedule/schedule-texts';
 
 export const routes: Routes = [
@@ -396,7 +397,7 @@ export const routes: Routes = [
       {
         path: 'vendors/:vendorId',
         title: 'titles.vendor',
-        canActivate: [moduleGuard(VENDORS_MODULE)],
+        canActivate: [moduleGuard(VENDORS_MODULE), textsOpened(RECORDS_TEXTS)],
         loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
       },
       {
@@ -567,6 +568,13 @@ export const routes: Routes = [
             title: 'nav.support_access',
             loadComponent: () =>
               import('./support-access/support-access-page').then((m) => m.SupportAccessPage),
+          },
+          {
+            path: 'company/recently-deleted',
+            title: 'nav.recently_deleted',
+            canActivate: [textsOpened(RECORDS_TEXTS)],
+            loadComponent: () =>
+              import('./recently-deleted/recently-deleted-page').then((m) => m.RecentlyDeletedPage),
           },
           {
             path: 'company/data-erasure',

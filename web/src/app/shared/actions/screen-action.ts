@@ -13,9 +13,8 @@ import type { ActionGroup } from './record-action';
  * cannot run *for now* — a save in flight — is present and refused, because a control that vanishes mid-save is a
  * control nobody can learn.
  *
- * The class of an action is DERIVED, not declared twice: an action carrying `confirm` is a confirm action, and one
- * without is plain. The ruling's third class, `undo` — an "Annuler" toast over a server-side bin — has no field
- * here on purpose: no bin exists in the API, and a class nothing can produce is a promise, not a type.
+ * The class of an action is DERIVED, not declared twice: an action carrying `confirm` is a confirm action, one marked
+ * `undoable` asks nothing because its toast offers « Annuler » over « Récemment supprimés », and any other is plain.
  *
  * What a consequential action does to the record is its KIND (docs/SPEC.md § 7, 2026-09-25 22:17): a confirmation
  * must say it, so `ActionConfirm.kind` is required and a new confirmation cannot be written without choosing one.
@@ -45,6 +44,8 @@ export interface ScreenAction {
   rare?: boolean;
   /** Drawn as destructive, never a visible button, and asks before it runs when `confirm` is given. */
   destructive?: boolean;
+  /** Taken back from the toast it ends on, so it asks nothing and says « annulable » where its kind is said. */
+  undoable?: boolean;
   /** An address rather than a command: the PDF, which opens in its own tab. */
   href?: string;
   /** A `routerLink` array, for an action that navigates inside the app. */
@@ -98,9 +99,12 @@ export const ACTION_KIND_ICONS: Readonly<Record<ActionKind, IconName>> = {
   definitif_a_terme: 'hourglass_top',
 };
 
-/** An action's kind, from its confirmation; an action that asks nothing has none. */
-export function kindOf(action: { confirm?: ActionConfirm }): ActionKind | undefined {
-  return action.confirm?.kind;
+/** An action's kind, from its confirmation, or annulable when its toast takes it back; any other has none. */
+export function kindOf(action: {
+  confirm?: ActionConfirm;
+  undoable?: boolean;
+}): ActionKind | undefined {
+  return action.confirm?.kind ?? (action.undoable === true ? 'annulable' : undefined);
 }
 
 /**

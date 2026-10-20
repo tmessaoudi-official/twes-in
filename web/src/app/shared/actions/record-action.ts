@@ -100,6 +100,7 @@ export function onRecord<R>(
       next: frequency === 'next',
       rare: frequency === 'rare',
       destructive: action.effect.kind === 'definitif',
+      undoable: action.effect.kind === 'annulable',
       shown: action.shown(record) && href !== null,
       disabled: busy || (action.disabled?.(record) ?? false),
       href: href ?? undefined,
