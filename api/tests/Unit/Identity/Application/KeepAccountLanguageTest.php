@@ -40,7 +40,7 @@ final class KeepAccountLanguageTest extends TestCase
         self::assertSame('en', $this->users->ofId($this->user->getId())?->getLocale());
     }
 
-    /** Going back to the company's choice leaves the account on the last language the person chose. */
+    /** No language named, as where nothing is in force, leaves the account on the last one it was given. */
     public function testNoChoiceAtAllLeavesTheAccountAsItWas(): void
     {
         $this->keep->chosen($this->user->getId(), 'en');

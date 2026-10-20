@@ -16,7 +16,8 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
- * The person's own choice of screen language becomes their account's. The setting is already committed, so nothing
+ * The screen language in force for a person becomes their account's: their own choice, or after going back to the
+ * company's, the one their screens now show where they went back. The setting is already committed, so nothing
  * here throws: an account left on its previous language is logged, and the next choice puts it right.
  */
 #[AsEventListener(event: PersonalSettingChanged::class, method: 'onChanged')]
@@ -32,7 +33,7 @@ final readonly class KeepAccountLanguageOnSettings
             return;
         }
         try {
-            $this->keep->chosen($event->userId, \is_string($event->value) ? $event->value : null);
+            $this->keep->chosen($event->userId, \is_string($event->inForce) ? $event->inForce : null);
         } catch (\Throwable $failure) {
             $this->logger->error('The account {user} kept its language after its person chose another: {failure}.', ['user' => $event->userId->toRfc4122(), 'failure' => $failure->getMessage(), 'exception' => $failure]);
         }
