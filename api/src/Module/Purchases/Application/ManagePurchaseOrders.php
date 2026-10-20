@@ -181,7 +181,7 @@ final readonly class ManagePurchaseOrders
             throw new InvalidPurchaseOrder('productId', \sprintf('The product %s is a service: only goods are ordered from a vendor here.', $product->reference));
         }
         if (!$product->active && null === $kept) {
-            throw new InvalidPurchaseOrder('productId', \sprintf('The product %s is deactivated.', $product->reference));
+            throw new InvalidPurchaseOrder('productId', null === $product->keptReference ? \sprintf('The product %s is deactivated.', $product->reference) : \sprintf('The product %s was merged into %s: a new document names the product kept.', $product->reference, $product->keptReference));
         }
         $unit = $this->units->ofIdInCompany($product->unitId, $company->getId())
             ?? throw new \LogicException('A product is counted in a unit of its own company.');

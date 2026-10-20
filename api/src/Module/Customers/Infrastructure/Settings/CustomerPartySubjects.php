@@ -38,7 +38,8 @@ final readonly class CustomerPartySubjects implements PartySubjects
         if (!$this->modules->isEnabled($company->getId(), CustomersModule::KEY)) {
             return null;
         }
-        $customer = $this->customers->ofIdInCompany($customerId, $company->getId());
+        // A customer merged into another handed it its settings: its address reaches the customer kept's.
+        $customer = $this->customers->ofIdInCompany($customerId, $company->getId())?->standingFor();
 
         return null === $customer ? null : new PartySubject($customer->getId(), $customer->getGroup()?->getId());
     }

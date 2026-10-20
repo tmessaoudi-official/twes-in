@@ -47,7 +47,8 @@ interface InvoiceRepository
 
     /**
      * Every overdue invoice of the company on a day, by the overdue chip's rule, the longest late first: what a reminder
-     * run reads, a row each, without loading the documents.
+     * run reads, a row each, without loading the documents. The customer of an invoice made out to a customer merged into
+     * another is the customer kept.
      *
      * @return list<array{invoiceId: Uuid, number: string, customerId: Uuid, customerName: string, dueDate: \DateTimeImmutable, amountDue: string}>
      */

@@ -64,7 +64,8 @@ final readonly class DraftLateFee
         if (null === $late || null === $unit) {
             return null;
         }
-        $customer = $late->getCustomer();
+        // The settings of a customer merged into another went to the customer kept, whom the fee is drafted for.
+        $customer = $late->getCustomer()->standingFor();
         $language = $this->settings->text(new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId()), 'document.language');
         $description = $this->wording->lateFeeLine($language, $late->getNumber() ?? '', $stage, $daysLate);
 

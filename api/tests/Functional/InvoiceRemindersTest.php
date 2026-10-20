@@ -192,6 +192,46 @@ final class InvoiceRemindersTest extends ApiTestCase
         self::assertCount(1, $this->drafts(), 'never drafted twice for one stage');
     }
 
+    /**
+     * An invoice made out to a customer merged into another stays its own, but the customer it is chased from is the one
+     * kept: the merge handed that customer the settings, so its own say whether to remind and in which language the fee is
+     * worded, the fee is drafted for it, and the notice names it.
+     */
+    public function testAnInvoiceOfACustomerMergedAwayIsChasedAsTheCustomerKept(): void
+    {
+        $this->set('late_fees.enabled', true, null);
+        $this->set('late_fees.tiers', '5 ; 10', null);
+        $kept = $this->customer('CLI-0002', 'Grossiste Nabeul')->getId();
+        $this->set('document.language', 'en', $kept);
+        $invoice = $this->issue('100');
+        $number = $this->stringAt($this->getInvoice($invoice), 'number');
+        $this->dueDaysAgo($invoice, 16);
+        $keptOutOfReminders = $this->customer('CLI-0003', 'Sans relance')->getId();
+        $this->set('reminders.enabled', false, $keptOutOfReminders);
+        $mergedIntoTheOneOut = $this->customer('CLI-0004', 'Ancien compte')->getId()->toRfc4122();
+        $notReminded = $this->issue('100', $mergedIntoTheOneOut);
+        $this->dueDaysAgo($notReminded, 16);
+        $merge = 'UPDATE customer SET merged_into_id = ?, is_active = false WHERE id = ?';
+        $this->em()->getConnection()->executeStatement($merge, [$kept->toRfc4122(), $this->customerId]);
+        $this->em()->getConnection()->executeStatement($merge, [$keptOutOfReminders->toRfc4122(), $mergedIntoTheOneOut]);
+
+        $this->runAt('09:00');
+
+        self::assertSame([[$invoice, 2, 16]], $this->reminders(), 'the customer kept out of reminders leaves out what was merged into it');
+        $told = $this->toldTo($this->userId);
+        self::assertSame(
+            [['invoice.late_fee_drafted', 'Grossiste Nabeul', $kept->toRfc4122()]],
+            array_map(static fn (array $notice): array => [$notice['type'], $notice['payload']['customer'] ?? null, $notice['payload']['customer_id'] ?? null], $told),
+        );
+        $fee = $this->getInvoice($this->drafts()[0]);
+        self::assertSame($kept->toRfc4122(), $fee['customerId'] ?? null, 'the fee is drafted for the customer kept');
+        $lines = $fee['lines'] ?? null;
+        self::assertIsArray($lines);
+        self::assertIsArray($lines[0] ?? null);
+        self::assertSame("Late fee: invoice $number, reminder 2 (16 days late)", $lines[0]['description'] ?? null, 'in the language of the customer kept');
+        self::assertSame($this->customerId, $this->getInvoice($invoice)['customerId'] ?? null, 'the late invoice stays with the customer merged away');
+    }
+
     public function testAShareIsOfWhatTheInvoiceStillOwes(): void
     {
         $this->set('late_fees.enabled', true, null);

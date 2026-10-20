@@ -332,6 +332,14 @@ class Customer implements CompanyOwned
         return null !== $this->mergedInto;
     }
 
+    /** Why a new document may not name it, switched off as it is: merged into another, or deactivated. */
+    public function whySwitchedOff(): string
+    {
+        return null === $this->mergedInto
+            ? \sprintf('The customer %s is deactivated.', $this->number)
+            : \sprintf('The customer %s was merged into %s: a new document names the customer kept.', $this->number, $this->mergedInto->number);
+    }
+
     /** The customer this one stands for: the customer kept when it was merged away, itself otherwise. */
     public function standingFor(): self
     {

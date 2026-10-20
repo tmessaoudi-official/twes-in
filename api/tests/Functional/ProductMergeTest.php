@@ -531,10 +531,17 @@ final class ProductMergeTest extends ApiTestCase
         [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
         $this->merged($kept, [$merged]);
 
-        $this->postJson($this->path('invoices'), $this->invoiceBody($merged));
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        $this->postJson($this->path('purchase-orders'), ['vendorId' => $this->vendorId, 'lines' => [['productId' => $merged, 'quantity' => '10']]]);
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $lines = [['productId' => $merged, 'quantity' => '2']];
+        foreach ([
+            'invoices' => $this->invoiceBody($merged),
+            'quotes' => ['customerId' => $this->customerId, 'establishmentId' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'lines' => $lines],
+            'delivery-notes' => ['customerId' => $this->customerId, 'establishmentId' => null, 'deliveryDate' => null, 'customerReference' => null, 'notesInternal' => null, 'lines' => $lines],
+            'purchase-orders' => ['vendorId' => $this->vendorId, 'lines' => [['productId' => $merged, 'quantity' => '10']]],
+        ] as $documents => $body) {
+            $this->postJson($this->path($documents), $body);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $documents);
+            self::assertStringContainsString('The product VIS-6B was merged into VIS-6', $this->stringAt($this->json(), 'detail'), $documents);
+        }
         $this->sendJson('PUT', $this->path("products/$merged"), $this->productBody('VIS-6B', $this->storedVersion('product', $merged)));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
     }

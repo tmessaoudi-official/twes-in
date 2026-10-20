@@ -111,17 +111,20 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
     public function overdueRows(Uuid $companyId, \DateTimeImmutable $today): array
     {
         $rows = $this->filtered($companyId, new InvoiceSearch()->onlyOverdue($today))
-            ->select('i.id AS invoiceId', 'i.number AS number', 'c.id AS customerId', 'c.name AS customerName', 'i.dueDate AS dueDate', 'i.amountDue AS amountDue')
+            ->select('i.id AS invoiceId', 'i.number AS number', 'c.id AS customerId', 'c.name AS customerName', 'ck.id AS keptId', 'ck.name AS keptName', 'i.dueDate AS dueDate', 'i.amountDue AS amountDue')
             ->orderBy('i.dueDate')->addOrderBy('i.number')
             ->getQuery()->getArrayResult();
 
         return array_values(array_map(static function (mixed $row): array {
             if (!\is_array($row) || !($row['invoiceId'] ?? null) instanceof Uuid || !($row['customerId'] ?? null) instanceof Uuid || !($row['dueDate'] ?? null) instanceof \DateTimeImmutable
-                || !\is_string($row['number'] ?? null) || !\is_string($row['customerName'] ?? null) || !is_numeric($row['amountDue'] ?? null)) {
+                || !\is_string($row['number'] ?? null) || !\is_string($row['customerName'] ?? null) || !is_numeric($row['amountDue'] ?? null)
+                || !(null === ($row['keptId'] ?? null) || $row['keptId'] instanceof Uuid) || !(null === ($row['keptName'] ?? null) || \is_string($row['keptName']))) {
                 throw new \UnexpectedValueException('An overdue invoice came back in a shape it is never written in.');
             }
+            // A customer merged into another is chased as the customer kept.
+            [$customerId, $customerName] = $row['keptId'] instanceof Uuid && \is_string($row['keptName']) ? [$row['keptId'], $row['keptName']] : [$row['customerId'], $row['customerName']];
 
-            return ['invoiceId' => $row['invoiceId'], 'number' => $row['number'], 'customerId' => $row['customerId'], 'customerName' => $row['customerName'], 'dueDate' => $row['dueDate'], 'amountDue' => (string) $row['amountDue']];
+            return ['invoiceId' => $row['invoiceId'], 'number' => $row['number'], 'customerId' => $customerId, 'customerName' => $customerName, 'dueDate' => $row['dueDate'], 'amountDue' => (string) $row['amountDue']];
         }, $rows));
     }
 

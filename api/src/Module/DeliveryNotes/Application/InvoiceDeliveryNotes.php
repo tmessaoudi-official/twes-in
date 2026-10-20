@@ -31,7 +31,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Delivery notes and the invoices they end on. An invoice is drafted from validated or
  * delivered notes of one customer and one establishment, whose rows are held meanwhile, so that a note on an invoice that
- * is not cancelled is on no other. The notes turn invoiced once that invoice is issued, so a draft cancelled on the way
+ * is not cancelled is on no other. A customer merged into another is the customer kept here: its notes go on the kept
+ * customer's invoice. The notes turn invoiced once that invoice is issued, so a draft cancelled on the way
  * strands none. Invoices know delivery notes only by the ids of their lines; this is the one place the two meet.
  */
 final readonly class InvoiceDeliveryNotes
@@ -118,7 +119,7 @@ final readonly class InvoiceDeliveryNotes
                 throw new InvalidDeliveryNote('invoiceId', self::NOT_AN_INVOICE);
             }
             [$notes, $lines] = $this->plan($company, $noteIds, $named, $quantities);
-            if (!$notes[0]->getCustomer()->getId()->equals($invoice->customerId) || !$notes[0]->getEstablishment()->getId()->equals($invoice->establishmentId)) {
+            if (!$notes[0]->getCustomer()->standingFor()->getId()->equals($invoice->customerId) || !$notes[0]->getEstablishment()->getId()->equals($invoice->establishmentId)) {
                 throw new InvalidDeliveryNote('invoiceId', 'Delivery notes are added to an invoice of their customer and their establishment.');
             }
 
@@ -174,12 +175,12 @@ final readonly class InvoiceDeliveryNotes
                 DeliveryNoteStatus::Cancelled === $note->getStatus() => InvoicingCheckRow::CANCELLED,
                 DeliveryNoteStatus::Invoiced === $note->getStatus() => InvoicingCheckRow::INVOICED,
                 !self::anythingLeft($note, $left) => InvoicingCheckRow::NOTHING_LEFT,
-                null !== $customer && !$note->getCustomer()->getId()->equals($customer) => InvoicingCheckRow::OTHER_CUSTOMER,
+                null !== $customer && !$note->getCustomer()->standingFor()->getId()->equals($customer) => InvoicingCheckRow::OTHER_CUSTOMER,
                 null !== $establishment && !$note->getEstablishment()->getId()->equals($establishment) => InvoicingCheckRow::OTHER_ESTABLISHMENT,
                 default => null,
             };
             if (null === $skipped && null === $customer) {
-                [$customer, $establishment] = [$note->getCustomer()->getId(), $note->getEstablishment()->getId()];
+                [$customer, $establishment] = [$note->getCustomer()->standingFor()->getId(), $note->getEstablishment()->getId()];
             }
             $rows[] = new InvoicingCheckRow($id, $note, $skipped);
         }
@@ -225,7 +226,7 @@ final readonly class InvoiceDeliveryNotes
         }
         $first = $notes[0];
         foreach ($notes as $note) {
-            if (!$note->getCustomer()->getId()->equals($first->getCustomer()->getId())) {
+            if (!$note->getCustomer()->standingFor()->getId()->equals($first->getCustomer()->standingFor()->getId())) {
                 throw new InvalidDeliveryNote('deliveryNoteIds', 'An invoice is drafted from delivery notes of one customer.');
             }
             if (!$note->getEstablishment()->getId()->equals($first->getEstablishment()->getId())) {

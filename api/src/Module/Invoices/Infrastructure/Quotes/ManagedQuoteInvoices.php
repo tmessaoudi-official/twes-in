@@ -99,7 +99,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
         if (InvoiceType::Invoice !== $invoice->getType() || $invoice->isDeposit()) {
             throw new QuoteInvoicingRefused('invoiceId', 'A quote is added to an invoice, never to a deposit invoice or a credit note.');
         }
-        if (!$invoice->getCustomer()->getId()->equals($quote->getCustomer()->getId()) || !$invoice->getEstablishment()->getId()->equals($quote->getEstablishment()->getId())) {
+        if (!$invoice->getCustomer()->getId()->equals($quote->getCustomer()->standingFor()->getId()) || !$invoice->getEstablishment()->getId()->equals($quote->getEstablishment()->getId())) {
             throw new QuoteInvoicingRefused('invoiceId', 'A quote is added to an invoice of its customer and its establishment.');
         }
         $discount = $quote->getHeader()->discountAmount;
@@ -155,7 +155,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
 
             $unit = $this->units->ofCodeInCompany(self::ONE, $company->getId())
                 ?? throw new QuoteInvoicingRefused('unitId', \sprintf('A deposit line counts in the unit %s, which the company does not have.', self::ONE));
-            $description = $this->wording->depositLine($this->deductions->language($company, $quote->getCustomer()), $quote->getNumber() ?? '', $percentage);
+            $description = $this->wording->depositLine($this->deductions->language($company, $quote->getCustomer()->standingFor()), $quote->getNumber() ?? '', $percentage);
             $lines = [];
             foreach ($groups as $index => [$taxes]) {
                 if (0 === $nets[$index]->compare(0)) {
@@ -227,7 +227,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
     private function withDepositsGivenBack(Quote $quote, array $lines): array
     {
         $company = $quote->getCompany();
-        $language = $this->deductions->language($company, $quote->getCustomer());
+        $language = $this->deductions->language($company, $quote->getCustomer()->standingFor());
         foreach ($this->invoices->depositsOfQuotes($company->getId(), [$quote->getId()]) as $deposit) {
             if (InvoiceStatus::Draft === $deposit->getStatus()) {
                 throw new QuoteInvoicingRefused('deposits', \sprintf('The deposit invoice drafted %s is still a draft: issue or cancel it before invoicing the quote.', $deposit->getCreatedAt()->format('Y-m-d')));

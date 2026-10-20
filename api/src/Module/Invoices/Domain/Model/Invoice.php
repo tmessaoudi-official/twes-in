@@ -332,7 +332,8 @@ class Invoice implements CompanyOwned
         }
         $copy = new self($invoice->company, $now);
         $copy->establishment = $invoice->establishment;
-        $copy->customer = $invoice->customer;
+        // A copy is a new document: one of a customer merged into another is made out to the customer kept.
+        $copy->customer = $invoice->customer->standingFor();
         $header = $invoice->getHeader();
         $copy->apply(new InvoiceHeader(
             null,

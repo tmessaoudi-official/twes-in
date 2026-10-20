@@ -145,6 +145,9 @@ final readonly class ManageInvoices
      */
     public function createFromLines(Company $company, Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $origin, ?Uuid $actorUserId, ?Uuid $quoteId = null, bool $deposit = false): Invoice
     {
+        // What stayed with a customer merged into another, a delivered note or an accepted quote, is invoiced to the customer kept.
+        $customer = $customer->standingFor();
+
         return $this->transactions->run(function () use ($company, $establishment, $customer, $header, $lines, $origin, $actorUserId, $quoteId, $deposit): Invoice {
             $invoice = Invoice::create($company, $establishment, $customer, $header, $lines, $this->documentTaxes($company, $customer, null, []), $this->clock->now(), $quoteId, $deposit);
             $this->totals->checked($invoice);
@@ -322,7 +325,7 @@ final readonly class ManageInvoices
         $customer = $this->customers->ofIdInCompany($input->customerId, $company->getId())
             ?? throw new InvalidInvoice('customerId', 'No customer of this company has this id.');
         if (!$customer->isActive() && !(null !== $current && $current->getCustomer()->getId()->equals($customer->getId()))) {
-            throw new InvalidInvoice('customerId', \sprintf('The customer %s is deactivated.', $customer->getNumber()));
+            throw new InvalidInvoice('customerId', $customer->whySwitchedOff());
         }
 
         if (null === $input->establishmentId) {
@@ -514,7 +517,7 @@ final readonly class ManageInvoices
             $product = $this->products->ofIdInCompany($line->productId, $company->getId())
                 ?? throw new InvalidInvoice('productId', 'No product of this company has this id.');
             if (!$product->isActive() && !\in_array($product->getId()->toRfc4122(), $kept['products'], true)) {
-                throw new InvalidInvoice('productId', \sprintf('The product %s is deactivated.', $product->getReference()));
+                throw new InvalidInvoice('productId', $product->whySwitchedOff());
             }
         }
 
