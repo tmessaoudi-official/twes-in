@@ -1,0 +1,84 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Records\Application;
+
+/**
+ * A column that names a subject's records, declared by the module owning the column, through a foreign key or not, and
+ * what deleting, restoring and merging do about it. A delete, the « Récemment supprimés » page, a merge and an import's
+ * undo all read the same declaration, so a record is « used » in one sense everywhere.
+ *
+ * A merge may move only some of the rows naming the record that goes: those whose `$movesWhereColumn` holds one of
+ * `$movesWhereValues` (a draft), while the others stay with it, sealed (an issued document, a movement).
+ */
+final readonly class RecordReference
+{
+    /** @param list<string> $movesWhereValues */
+    private function __construct(
+        public string $table,
+        public string $column,
+        public ?string $subject,
+        public RecordUse $onDelete,
+        public RecordMerge $onMerge,
+        public RecordLink $link,
+        public string $why,
+        public ?string $movesWhereColumn = null,
+        public array $movesWhereValues = [],
+    ) {
+        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none'] as $name) {
+            if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
+                throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $name));
+            }
+        }
+        if (null === $subject && RecordUse::Ignored !== $onDelete) {
+            throw new \InvalidArgumentException(\sprintf('%s.%s: only a column that never names a subject may leave its subject unsaid.', $table, $column));
+        }
+    }
+
+    /** A row naming the record makes it used: the delete is refused and says how many rows name it. */
+    public static function uses(string $table, string $column, string $subject, RecordMerge $onMerge, string $why, RecordLink $link = RecordLink::Id): self
+    {
+        return new self($table, $column, $subject, RecordUse::Uses, $onMerge, $link, $why);
+    }
+
+    /** A row naming the record belongs to it: it goes with the record, is copied, and comes back with it. */
+    public static function owned(string $table, string $column, string $subject, RecordMerge $onMerge, string $why, RecordLink $link = RecordLink::Id): self
+    {
+        return new self($table, $column, $subject, RecordUse::Owned, $onMerge, $link, $why);
+    }
+
+    /** The column is emptied when the record goes, and filled again when it is restored. */
+    public static function cleared(string $table, string $column, string $subject, RecordMerge $onMerge, string $why, RecordLink $link = RecordLink::Id): self
+    {
+        return new self($table, $column, $subject, RecordUse::Cleared, $onMerge, $link, $why);
+    }
+
+    /**
+     * The column never names the subject, or names it only as history (the audit's), which neither a delete nor a merge
+     * changes; null for every subject at once.
+     */
+    public static function ignored(string $table, string $column, ?string $subject, string $why): self
+    {
+        return new self($table, $column, $subject, RecordUse::Ignored, RecordMerge::Ignored, RecordLink::Id, $why);
+    }
+
+    /**
+     * Only the rows whose column holds one of the values move in a merge; the others stay with the merged-away record.
+     *
+     * @param list<string> $values
+     */
+    public function movingOnlyWhere(string $column, array $values): self
+    {
+        if (RecordMerge::Moves !== $this->onMerge || [] === $values) {
+            throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that moves in a merge moves some rows, named by at least one value.', $this->table, $this->column));
+        }
+
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values);
+    }
+}
