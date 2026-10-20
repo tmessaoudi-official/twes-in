@@ -195,6 +195,27 @@ final class ProductExportTest extends ApiTestCase
         self::assertSame([[], [2, 3], [], []], [$report['updated'] ?? null, $report['unchanged'] ?? null, $report['changes'] ?? null, $report['rejected'] ?? null]);
     }
 
+    /** A vendor the product is bought from without a code of theirs is written by number, and brought back changes nothing. */
+    public function testAVendorLinkedWithoutACodeIsWrittenAndBroughtBackUnchanged(): void
+    {
+        $service = $this->em()->getRepository(Product::class)->findOneBy(['reference' => 'SRV-001']);
+        $vendor = $this->em()->getRepository(Vendor::class)->findOneBy(['number' => 'F-001']);
+        self::assertInstanceOf(Product::class, $service);
+        self::assertInstanceOf(Vendor::class, $vendor);
+        $service->replaceVendors([$vendor], new \DateTimeImmutable());
+        $this->em()->flush();
+        $this->signIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $lines = $this->csv('/exports/products.csv');
+        $header = $this->header($lines);
+        $rows = array_column(array_map(static fn (string $line): array => array_combine($header, str_getcsv($line, escape: '')), \array_slice($lines, 1)), null, 'reference');
+        self::assertSame(['F-001', ''], [$rows['SRV-001']['supplier_number'] ?? null, $rows['SRV-001']['supplier_code'] ?? null]);
+
+        $this->uploadFile($this->path().'/imports/products', 'products.csv', implode("\n", $lines)."\n", 'file', ['mode' => 'upsert', 'dryRun' => '1']);
+        self::assertResponseIsSuccessful();
+        self::assertSame([[], [2, 3], []], [$this->json()['updated'] ?? null, $this->json()['unchanged'] ?? null, $this->json()['rejected'] ?? null]);
+    }
+
     /** What every part of an .xlsx archive says, joined, so a figure is found whichever part holds it. */
     private function unzipped(string $bytes): string
     {

@@ -15,6 +15,7 @@ use App\Module\Products\Domain\ValueObject\BarcodeLine;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
+use App\Module\Vendors\Domain\Model\Vendor;
 use App\Shared\Domain\Service\CompanyOwned;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -89,6 +90,14 @@ class Product implements CompanyOwned
     #[ORM\OneToMany(targetEntity: ProductBarcode::class, mappedBy: 'product', cascade: ['persist', 'detach'], orphanRemoval: true)]
     private Collection $barcodes;
 
+    /**
+     * The vendors it is bought from, written only through `replaceVendors` and the supplier codes.
+     *
+     * @var Collection<int, ProductVendor>
+     */
+    #[ORM\OneToMany(targetEntity: ProductVendor::class, mappedBy: 'product', cascade: ['persist', 'detach'], orphanRemoval: true)]
+    private Collection $vendors;
+
     /** @var list<string> the company's tax components a new line for this product starts with */
     #[ORM\Column(type: Types::JSON, options: ['jsonb' => true, 'default' => '[]'])]
     private array $defaultTaxComponentIds = [];
@@ -118,6 +127,7 @@ class Product implements CompanyOwned
         $this->createdAt = $now;
         $this->updatedAt = $now;
         $this->barcodes = new ArrayCollection();
+        $this->vendors = new ArrayCollection();
         // Set here, not as the property's default: Doctrine's lazy ghosts skip defaults naming another class.
         $this->tracking = ProductTracking::None;
     }
@@ -281,12 +291,79 @@ class Product implements CompanyOwned
             } elseif ($row->write($line)) {
                 $changed = true;
             }
+            // A supplier's code says the product is bought from that vendor: the link is kept with it, and stays after it.
+            if (null !== $line->supplier && $this->link($line->supplier, $now)) {
+                $changed = true;
+            }
         }
         if ($changed) {
             $this->updatedAt = $now;
         }
 
         return $changed;
+    }
+
+    /**
+     * The vendors it is bought from become exactly these. A vendor a supplier's code still names stays: the code goes
+     * first, or the order to that vendor would print a code of a vendor the product no longer has.
+     *
+     * @param list<Vendor> $vendors
+     *
+     * @return bool whether anything changed
+     *
+     * @throws InvalidProduct
+     */
+    public function replaceVendors(array $vendors, \DateTimeImmutable $now): bool
+    {
+        $wanted = [];
+        foreach ($vendors as $index => $vendor) {
+            if (!$vendor->getCompany()->getId()->equals($this->company->getId())) {
+                throw new InvalidProduct("vendors.$index", 'A product\'s vendor is a vendor of its own company.');
+            }
+            $wanted[$vendor->getId()->toRfc4122()] = $vendor;
+        }
+        foreach ($this->barcodes as $code) {
+            $named = $code->getSupplier();
+            if (null !== $named && !isset($wanted[$named->getId()->toRfc4122()])) {
+                throw new InvalidProduct('vendors', \sprintf('The supplier code %s names vendor %s: remove the code first.', $code->getCode(), $named->getNumber()));
+            }
+        }
+
+        $changed = false;
+        foreach ($this->vendors as $row) {
+            if (!isset($wanted[$row->getVendor()->getId()->toRfc4122()])) {
+                $this->vendors->removeElement($row);
+                $changed = true;
+            }
+        }
+        foreach ($wanted as $vendor) {
+            $changed = $this->link($vendor, $now) || $changed;
+        }
+        if ($changed) {
+            $this->updatedAt = $now;
+        }
+
+        return $changed;
+    }
+
+    /** @return list<Vendor> by number */
+    public function getVendors(): array
+    {
+        $vendors = array_map(static fn (ProductVendor $row): Vendor => $row->getVendor(), $this->vendors->getValues());
+        usort($vendors, static fn (Vendor $a, Vendor $b): int => $a->getNumber() <=> $b->getNumber());
+
+        return $vendors;
+    }
+
+    private function link(Vendor $vendor, \DateTimeImmutable $now): bool
+    {
+        $id = $vendor->getId();
+        if ($this->vendors->exists(static fn (int $_, ProductVendor $row): bool => $row->getVendor()->getId()->equals($id))) {
+            return false;
+        }
+        $this->vendors->add(new ProductVendor($this, $vendor, $now));
+
+        return true;
     }
 
     /** @return list<ProductBarcode> by role — unit, pack, supplier, internal — then by code */

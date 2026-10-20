@@ -488,10 +488,56 @@ final class ManageProductsTest extends TestCase
     }
 
     /**
+     * The vendors a product is bought from become exactly those named, a supplier code's vendor among them; a revision
+     * changing them is audited as `vendors`, one naming none keeps them.
+     */
+    public function testTheVendorsNamedAreLinkedAuditedAndKeptWhenNoneAreNamed(): void
+    {
+        $sotupa = Vendor::create($this->company, 'F-001', new VendorProfile('Sotupa'), new \DateTimeImmutable());
+        $sfax = Vendor::create($this->company, 'F-002', new VendorProfile('Sfax'), new \DateTimeImmutable());
+        $this->vendors->save($sotupa);
+        $this->vendors->save($sfax);
+
+        $code = [new BarcodeInput('supplier', 'SOT-4471', 1, $sotupa->getId())];
+        $product = $this->manage->create($this->company, $this->input(barcodes: $code, vendorIds: [$sfax->getId(), $sotupa->getId()]), null);
+        self::assertSame([$sotupa, $sfax], $product->getVendors(), 'by number');
+
+        $this->manage->revise($this->company, $product->getId(), $this->input(barcodes: $code), null);
+        self::assertSame([$sotupa, $sfax], $product->getVendors(), 'naming none keeps them');
+        self::assertCount(1, $this->audit->entries);
+
+        $this->manage->revise($this->company, $product->getId(), $this->input(barcodes: $code, vendorIds: [$sotupa->getId()]), null);
+        self::assertSame([$sotupa], $product->getVendors());
+        self::assertSame(['fields' => ['vendors']], $this->audit->entries[1]->changes);
+    }
+
+    /** Who a product is bought from is purchasing knowledge: written with costs, and only the company's own vendors. */
+    public function testVendorsAreNamedOnlyWithCostsAndOnlyAmongTheCompanysOwn(): void
+    {
+        $theirs = Vendor::create($this->globex, 'F-001', new VendorProfile('Initech'), new \DateTimeImmutable());
+        $ours = Vendor::create($this->company, 'F-001', new VendorProfile('Sotupa'), new \DateTimeImmutable());
+        $this->vendors->save($theirs);
+        $this->vendors->save($ours);
+
+        foreach ([
+            'vendors' => $this->input(seesCosts: false, vendorIds: [$ours->getId()]),
+            'vendors.1' => $this->input(vendorIds: [$ours->getId(), $theirs->getId()]),
+        ] as $field => $input) {
+            try {
+                $this->manage->create($this->company, $input, null);
+                self::fail('accepted: '.$field);
+            } catch (InvalidProduct $refused) {
+                self::assertSame($field, $refused->field);
+            }
+        }
+    }
+
+    /**
      * @param list<string>|null                    $taxes        codes of the company's taxes
      * @param list<Uuid>|null                      $taxIds       ids, when they are not the company's
      * @param array<string, string|int|float|bool> $customFields
      * @param list<BarcodeInput>                   $barcodes
+     * @param list<Uuid>|null                      $vendorIds
      */
     private function input(
         string $reference = 'ART-001',
@@ -510,6 +556,7 @@ final class ManageProductsTest extends TestCase
         ?ProductTracking $tracking = null,
         ?string $cost = null,
         bool $seesCosts = true,
+        ?array $vendorIds = null,
     ): ProductInput {
         $company ??= $this->company;
 
@@ -524,6 +571,7 @@ final class ManageProductsTest extends TestCase
             $barcodes,
             $tracking,
             $seesCosts,
+            $vendorIds,
         );
     }
 

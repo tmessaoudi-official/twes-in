@@ -54,6 +54,7 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
+use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\Model\Company;
@@ -98,6 +99,7 @@ final readonly class ProductImport implements DeclaresImport
         'defaultTaxComponentIds' => ['default_tax_codes', 'unknown_tax_code'],
         'substitutionGroup' => ['substitution_group', 'invalid_text'],
         'tracking' => ['tracking', 'invalid_value'],
+        'vendors' => ['supplier_number', 'invalid_value'],
     ];
 
     /** What the inventory answers for: where goods lie, the reorder point and the stock, compared through its ports. */
@@ -229,11 +231,11 @@ final readonly class ProductImport implements DeclaresImport
         $quantity = $faults->read(fn (): ?array => $this->quantityOf($record, $context));
 
         $seesCosts = $context->once('sees-costs', fn (): bool => $this->guard->may($company, ProductPermission::COST_READ));
-        $codes = $this->codes($company, $record, $existing, $seesCosts, $faults);
+        [$codes, $vendor] = $this->codes($company, $record, $existing, $seesCosts, $faults);
 
         $written = null;
         try {
-            $input = $this->input($company, $record, $existing, $faults, array_column($codes, 0), $seesCosts, $context);
+            $input = $this->input($company, $record, $existing, $faults, array_column($codes, 0), $vendor, $seesCosts, $context);
             $faults->stopIfAny();
             \assert(false !== $home);
             // Rendered before the write, which changes the product in place.
@@ -425,7 +427,7 @@ final readonly class ProductImport implements DeclaresImport
         });
         $cells = [];
         foreach (array_diff($context->columns, self::STOCK_COLUMNS) as $column) {
-            $cells[$column] = ProductInFile::cell($product, $column, $codes, $record->value('pack_barcode'), $record->value('supplier_code'));
+            $cells[$column] = ProductInFile::cell($product, $column, $codes, $record->value('pack_barcode'), $record->value('supplier_code'), $record->value('supplier_number'));
         }
 
         return $cells;
@@ -493,7 +495,7 @@ final readonly class ProductImport implements DeclaresImport
      * @throws InvalidProduct
      */
     /** @param list<BarcodeInput> $codes */
-    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults, array $codes, bool $seesCosts, ImportContext $context): ProductInput
+    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults, array $codes, ?Uuid $vendor, bool $seesCosts, ImportContext $context): ProductInput
     {
         $held = $current?->getDetails();
         $kind = $record->value('kind');
@@ -521,6 +523,8 @@ final readonly class ProductImport implements DeclaresImport
             $faults->read(static fn (): ?ProductTracking => self::tracking($record)),
             // Somebody who sees no cost is shown no supplier's code, so the product form's rule keeps them as stored.
             seesCosts: $seesCosts,
+            // The vendor the row names is added to those the product is bought from; a file removes none.
+            vendorIds: null === $vendor ? null : self::withVendor($current, $vendor),
         );
     }
 
@@ -578,7 +582,10 @@ final readonly class ProductImport implements DeclaresImport
      * product holds under that code; nothing the row does not name is removed. A supplier's code is only for somebody
      * who sees costs: for anybody else the product's are left out here and kept as stored by the use case.
      *
-     * @return list<array{BarcodeInput, array<string, string>}> each code, with the column each of its fields came from
+     * The supplier the row names by number is returned beside them: the product is bought from it, code or not.
+     *
+     * @return array{list<array{BarcodeInput, array<string, string>}>, Uuid|null} each code, with the column each of its
+     *                                                                            fields came from, and the supplier named
      */
     private function codes(Company $company, ImportRecord $record, ?Product $current, bool $seesCosts, RowFaults $faults): array
     {
@@ -613,6 +620,7 @@ final readonly class ProductImport implements DeclaresImport
 
         $number = $record->value('supplier_number');
         $code = $record->value('supplier_code');
+        $supplier = null;
         if (null !== $number || null !== $code) {
             $supplier = $faults->read(fn (): Uuid => $this->supplierId($company, $number, $code));
             if (null !== $supplier && null !== $code) {
@@ -620,7 +628,24 @@ final readonly class ProductImport implements DeclaresImport
             }
         }
 
-        return $codes;
+        return [$codes, $supplier];
+    }
+
+    /**
+     * The vendors the product is bought from, with this one among them.
+     *
+     * @return list<Uuid>
+     */
+    private static function withVendor(?Product $current, Uuid $vendor): array
+    {
+        $ids = array_map(static fn (Vendor $held): Uuid => $held->getId(), $current?->getVendors() ?? []);
+        foreach ($ids as $id) {
+            if ($id->equals($vendor)) {
+                return $ids;
+            }
+        }
+
+        return [...$ids, $vendor];
     }
 
     /**
@@ -636,14 +661,14 @@ final readonly class ProductImport implements DeclaresImport
     }
 
     /**
-     * The supplier the row names by number, both halves of the pair given.
+     * The supplier the row names by number, alone or with its code: a code names no supplier on its own.
      *
      * @throws RowRejected
      */
     private function supplierId(Company $company, ?string $number, ?string $code): Uuid
     {
-        if (null === $number || null === $code) {
-            throw new RowRejected(null === $number ? 'supplier_number' : 'supplier_code', 'A supplier\'s code goes with the supplier\'s number.', 'value_required');
+        if (null === $number) {
+            throw new RowRejected('supplier_number', 'A supplier\'s code goes with the supplier\'s number.', 'value_required');
         }
 
         return $this->vendors->ofNumberInCompany($number, $company->getId())?->getId()

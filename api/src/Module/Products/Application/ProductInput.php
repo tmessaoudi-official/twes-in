@@ -24,6 +24,9 @@ final readonly class ProductInput
      * @param bool                    $seesCosts              whether the writer may read costs (product.cost.read): one who
      *                                                        may not neither sets a cost nor a supplier's code, and keeps
      *                                                        those stored
+     * @param list<Uuid>|null         $vendorIds              the vendors it is bought from, exactly these and each
+     *                                                        supplier code's vendor among them; null keeps them; only
+     *                                                        one who may read costs names them
      */
     public function __construct(
         public string $reference,
@@ -36,6 +39,7 @@ final readonly class ProductInput
         public ?array $barcodes = null,
         public ?ProductTracking $tracking = null,
         public bool $seesCosts = true,
+        public ?array $vendorIds = null,
     ) {
     }
 }
