@@ -15,6 +15,9 @@ use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportHeading;
+use App\ImportExport\Application\ImportSettings;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\ShippedLanguages;
 use Symfony\Component\HttpFoundation\Response;
@@ -52,7 +55,7 @@ final class ImportColumnsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $guide = $this->json();
-        self::assertSame(['customers', ['number'], 2000], [$guide['subject'] ?? null, $guide['identity'] ?? null, $guide['maxRows'] ?? null]);
+        self::assertSame(['customers', ['number'], 5000], [$guide['subject'] ?? null, $guide['identity'] ?? null, $guide['maxRows'] ?? null]);
         $columns = [];
         foreach ($this->arrayAt($guide, 'columns') as $column) {
             self::assertIsArray($column);
@@ -113,6 +116,25 @@ final class ImportColumnsTest extends ApiTestCase
             $columns = array_column($this->arrayAt($this->json(), 'columns'), 'example', 'key');
             self::assertSame('1234567A/B/M/000', $columns['matricule_fiscal'] ?? null, $subject);
         }
+    }
+
+    /** The row cap is the platform's setting, and the guide and the import read the same one. */
+    public function testThePlatformsRowCapIsWhatTheGuideSaysAndWhatTheImportHolds(): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::platform(), ImportSettings::MAX_ROWS, 3, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->getJson($this->path('customers'));
+        self::assertResponseIsSuccessful();
+        self::assertSame(3, $this->json()['maxRows'] ?? null);
+
+        $this->uploadFile($this->path('customers'), 'customers.csv', "number,name,custom.employees\nC-1,a,1\nC-2,b,1\nC-3,c,1\nC-4,d,1\n", 'file', ['mode' => 'create', 'dryRun' => '1']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['too_many_rows', 3], [$this->json()['error'] ?? null, $this->json()['limit'] ?? null]);
+
+        $this->uploadFile($this->path('customers'), 'customers.csv', "number,name,custom.employees\nC-1,a,1\nC-2,b,1\nC-3,c,1\n", 'file', ['mode' => 'create', 'dryRun' => '1']);
+        self::assertResponseIsSuccessful();
     }
 
     public function testSomebodyWhoCannotWriteCustomersIsAnsweredAsAStranger(): void

@@ -287,7 +287,7 @@ describe('PlatformApi', () => {
     expect((await rejected).status).toBe('suspended');
   });
 
-  it("reads the switches, the support channels, the delays, the demo and every key's version in one request", async () => {
+  it("reads the switches, the support channels, the delays, the demo, the imports and every key's version in one request", async () => {
     const settings = api.settings();
 
     http.expectOne('/api/platform/settings').flush([
@@ -326,6 +326,16 @@ describe('PlatformApi', () => {
         max: 100,
         versions: { platform: 6 },
       },
+      {
+        key: 'import.max_rows',
+        type: 'int',
+        labelKey: 'settings.platform.import_max_rows',
+        value: 1200,
+        default: 5000,
+        min: 1,
+        max: 5000,
+        versions: { platform: 7 },
+      },
     ]);
 
     expect(await settings).toEqual({
@@ -339,6 +349,16 @@ describe('PlatformApi', () => {
           value: 12,
           min: 3,
           max: 100,
+        },
+      },
+      // Nor is the rows an imported file may hold.
+      imports: {
+        rows: {
+          key: 'import.max_rows',
+          labelKey: 'settings.platform.import_max_rows',
+          value: 1200,
+          min: 1,
+          max: 5000,
         },
       },
       support: {
@@ -374,6 +394,7 @@ describe('PlatformApi', () => {
         'company.reopen_days': 0,
         'demo.enabled': 4,
         'demo.sandboxes_max': 6,
+        'import.max_rows': 7,
       },
     });
   });
@@ -384,6 +405,7 @@ describe('PlatformApi', () => {
     http.expectOne('/api/platform/settings').flush([]);
 
     expect((await settings).demo).toEqual({ enabled: true, most: null });
+    expect((await settings).imports).toEqual({ rows: null });
   });
 
   it('sets one switch at the platform level, the demo among them', async () => {

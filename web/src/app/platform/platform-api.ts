@@ -123,12 +123,17 @@ export class PlatformApi {
           status_url: channel('status_url'),
         },
         delays: rows
-          .filter((row) => row.type === 'int' && row.key !== undefined && row.key !== DEMO_MOST)
+          .filter((row) => row.type === 'int' && row.key !== undefined && !OWN_CARDS.has(row.key))
           .map(toNumber),
         demo: {
           enabled: valueOf('demo.enabled') !== false,
           most: ((row) => (row === undefined ? null : toNumber(row)))(
             rows.find((row) => row.key === DEMO_MOST),
+          ),
+        },
+        imports: {
+          rows: ((row) => (row === undefined ? null : toNumber(row)))(
+            rows.find((row) => row.key === IMPORT_ROWS),
           ),
         },
         versions: platformVersions(rows),
@@ -320,6 +325,9 @@ function accountParams(search: PlatformAccountSearch): HttpParams {
 
 /** How many demo sandboxes may exist at once: a whole-number setting with a card of its own, not a delay. */
 const DEMO_MOST = 'demo.sandboxes_max';
+/** How many rows one imported file may hold: a card of its own too. */
+const IMPORT_ROWS = 'import.max_rows';
+const OWN_CARDS: ReadonlySet<string> = new Set([DEMO_MOST, IMPORT_ROWS]);
 
 function toNumber(row: SettingSettingRead): PlatformNumber {
   return {

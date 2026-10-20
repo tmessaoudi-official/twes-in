@@ -16,6 +16,7 @@ import {
   type PlatformCompanySearch,
   type PlatformCompanyRow,
   type PlatformDemo,
+  type PlatformImports,
   type PlatformError,
   type PlatformNumber,
   type PlatformSettings,
@@ -37,6 +38,7 @@ export class PlatformFacade {
   private readonly supportSignal = signal<PlatformSupport | null>(null);
   private readonly delaysSignal = signal<readonly PlatformNumber[] | null>(null);
   private readonly demoSignal = signal<PlatformDemo | null>(null);
+  private readonly importsSignal = signal<PlatformImports | null>(null);
   /** The version of each platform key's row when read, which a form's save sends back. */
   private versions: Readonly<Record<string, number>> = {};
   private readonly busySignal = signal(false);
@@ -82,6 +84,8 @@ export class PlatformFacade {
   readonly delays = this.delaysSignal.asReadonly();
   /** Whether visitors may try the demo and how many sandboxes may exist at once, null until read. */
   readonly demo = this.demoSignal.asReadonly();
+  /** How many rows one imported file may hold, null until read. */
+  readonly imports = this.importsSignal.asReadonly();
   private readonly subscriptionSignal = signal<PlatformSubscriptionRow | null>(null);
   private readonly openedSignal = signal<string | null>(null);
   /** The subscription of the company whose panel is open, null while it is being read or where there is none. */
@@ -343,6 +347,13 @@ export class PlatformFacade {
     return this.saveSettings([{ key, value: most }]);
   }
 
+  /** Saves how many rows one imported file may hold, with the version read, and shows what the platform then holds. */
+  async saveImportRows(rows: number): Promise<boolean> {
+    const key = this.importsSignal()?.rows?.key;
+    if (key === undefined) return false;
+    return this.saveSettings([{ key, value: rows }]);
+  }
+
   clearError(): void {
     this.errorSignal.set(null);
   }
@@ -382,6 +393,7 @@ export class PlatformFacade {
     this.supportSignal.set(settings.support);
     this.delaysSignal.set(settings.delays);
     this.demoSignal.set(settings.demo);
+    this.importsSignal.set(settings.imports);
     this.versions = settings.versions;
   }
 

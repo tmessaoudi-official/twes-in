@@ -12,6 +12,13 @@
       "save": "Enregistrer",
       "saved": "Nombre de démos enregistré."
     },
+    "imports": {
+      "title": "Imports",
+      "intro": "Combien de lignes un fichier importé peut contenir, en-tête non compris. Un fichier est importé d’un bloc, tout ou rien ; un fichier plus long est refusé, et la personne le coupe en plusieurs.",
+      "bounds": "De {{min}} à {{max}} lignes",
+      "save": "Enregistrer",
+      "saved": "Nombre de lignes enregistré."
+    },
     "waiting": {
       "title": "En attente d’approbation",
       "none": "Aucune entreprise n’attend d’approbation.",

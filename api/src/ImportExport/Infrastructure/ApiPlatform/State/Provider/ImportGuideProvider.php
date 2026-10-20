@@ -14,15 +14,17 @@ use ApiPlatform\State\ProviderInterface;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportHeading;
+use App\ImportExport\Application\ImportSettings;
 use App\ImportExport\Application\ImportSwitch;
 use App\ImportExport\Application\UnknownImportSubject;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\ImportExport\Infrastructure\ApiPlatform\Output\ImportGuideColumn;
 use App\ImportExport\Infrastructure\ApiPlatform\Output\ImportGuideSwitch;
 use App\ImportExport\Infrastructure\ApiPlatform\Resource\ImportGuideResource;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -39,8 +41,7 @@ final readonly class ImportGuideProvider implements ProviderInterface
         private CompanyGuard $guard,
         private TranslatorInterface $translator,
         private ImportRunRepository $runs,
-        #[Autowire(param: 'app.import.max_rows')]
-        private int $maxRows,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -59,7 +60,7 @@ final readonly class ImportGuideProvider implements ProviderInterface
         $guide = new ImportGuideResource();
         $guide->subject = $subject->key;
         $guide->identity = $declaration->identityColumns();
-        $guide->maxRows = $this->maxRows;
+        $guide->maxRows = $this->settings->integer(new SettingContext(), ImportSettings::MAX_ROWS);
         $guide->columns = array_map(fn (ImportColumn $column): ImportGuideColumn => new ImportGuideColumn(
             $column->key,
             $column->required,

@@ -12,10 +12,11 @@ namespace App\ImportExport\Application;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Domain\Model\ImportRun;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -35,8 +36,7 @@ final readonly class RunImport
 {
     public function __construct(
         private Transactions $transactions,
-        #[Autowire(param: 'app.import.max_rows')]
-        private int $maxRows,
+        private ReadSetting $settings,
         private ImportRunRepository $runs,
         private ClockInterface $clock,
     ) {
@@ -144,6 +144,8 @@ final readonly class RunImport
      */
     private function records(ImportSubject $subject, iterable $rows, array $pairing): array
     {
+        // The platform's, read for each file: an operator's change holds from the next one.
+        $maxRows = $this->settings->integer(new SettingContext(), ImportSettings::MAX_ROWS);
         $paired = [];
         $header = null;
         $width = 0;
@@ -154,8 +156,8 @@ final readonly class RunImport
             if ('' === implode('', $cells)) {
                 // Skipped, not free: a file of nothing but blank lines, or a workbook whose one cell sits on its millionth
                 // row, would otherwise be read to the end.
-                if (++$blank > $this->maxRows) {
-                    throw new UnreadableImport(UnreadableImport::TOO_MANY_ROWS, [], $this->maxRows);
+                if (++$blank > $maxRows) {
+                    throw new UnreadableImport(UnreadableImport::TOO_MANY_ROWS, [], $maxRows);
                 }
                 continue;
             }
@@ -168,8 +170,8 @@ final readonly class RunImport
                 $width = \count($cells);
                 continue;
             }
-            if (\count($records) === $this->maxRows) {
-                throw new UnreadableImport(UnreadableImport::TOO_MANY_ROWS, [], $this->maxRows);
+            if (\count($records) === $maxRows) {
+                throw new UnreadableImport(UnreadableImport::TOO_MANY_ROWS, [], $maxRows);
             }
             if (!$readable) {
                 $records[] = new ImportRecord($line, [], unreadable: true);

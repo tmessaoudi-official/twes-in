@@ -64,6 +64,9 @@ const SETTINGS = {
     enabled: true,
     most: { key: 'demo.sandboxes_max', labelKey: 'l.d', value: 10, min: 3, max: 100 },
   },
+  imports: {
+    rows: { key: 'import.max_rows', labelKey: 'l.i', value: 5000, min: 1, max: 5000 },
+  },
   versions: {
     'support.phone': 4,
     'support.whatsapp': 0,
@@ -73,6 +76,7 @@ const SETTINGS = {
     'company.reopen_days': 1,
     'demo.enabled': 0,
     'demo.sandboxes_max': 2,
+    'import.max_rows': 3,
   },
 };
 
@@ -297,6 +301,23 @@ describe('PlatformFacade', () => {
       [[{ key: 'demo.sandboxes_max', value: 20, version: 2 }]],
     ]);
     expect(facade.demo()?.most?.value).toBe(20);
+  });
+
+  it('saves how many rows an imported file may hold with the version read, and shows what the platform then holds', async () => {
+    await facade.load();
+    expect(facade.imports()).toEqual(SETTINGS.imports);
+    api.saveSettings.mockResolvedValue(undefined);
+    api.settings.mockResolvedValueOnce({
+      ...SETTINGS,
+      imports: { rows: { ...SETTINGS.imports.rows, value: 1200 } },
+    });
+
+    expect(await facade.saveImportRows(1200)).toBe(true);
+
+    expect(api.saveSettings.mock.calls).toEqual([
+      [[{ key: 'import.max_rows', value: 1200, version: 3 }]],
+    ]);
+    expect(facade.imports()?.rows?.value).toBe(1200);
   });
 
   it('saves the support channels changed, and only those, together, then shows what the platform holds', async () => {
