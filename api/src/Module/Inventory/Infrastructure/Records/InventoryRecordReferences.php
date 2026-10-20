@@ -28,7 +28,8 @@ final readonly class InventoryRecordReferences implements DeclaresRecordReferenc
     public function references(): array
     {
         return [
-            RecordReference::uses('stock_movement', 'vendor_id', 'vendor', RecordMerge::Stays, 'A movement names the vendor the goods came from.'),
+            RecordReference::uses('stock_movement', 'vendor_id', 'vendor', RecordMerge::Stays, 'A movement names the vendor the goods came from.')
+                ->transactingAt('at'),
             RecordReference::ignored('stock_movement', 'source_id', null, 'A movement\'s source is the document or count that made it, never a record a person deletes or merges.'),
             RecordReference::uses('stock_movement', 'product_id', 'product', RecordMerge::Stays, 'A movement names the product it moved.'),
             RecordReference::uses('stock_lot', 'product_id', 'product', RecordMerge::Stays, 'A lot is a batch of one product.'),

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Records\Application;
 
+use App\Records\Application\Merge\MergeConflict;
 use Symfony\Component\Uid\Uuid;
 
 /** The records engine's rows, read and moved by table name, every statement naming the company. */
@@ -23,6 +24,15 @@ interface RecordStore
      * @return array<string, string> label by id, the ids the company does not have left out
      */
     public function lockedLabels(Uuid $companyId, RecordSubject $subject, array $ids): array;
+
+    /**
+     * The records of the subject the company has among the ids, each named as a person reads it, for a screen to read.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return array<string, string> label by id, the ids the company does not have left out
+     */
+    public function labels(Uuid $companyId, RecordSubject $subject, array $ids): array;
 
     /**
      * What names each record, by the references that make it used.
@@ -83,4 +93,48 @@ interface RecordStore
      * @return list<Uuid>
      */
     public function forget(Uuid $companyId, Uuid $removalId): array;
+
+    /**
+     * The records among the ids already merged into another, which no merge or delete takes any more.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return list<string>
+     */
+    public function mergedAwayAmong(Uuid $companyId, RecordSubject $subject, array $ids): array;
+
+    /**
+     * The first of the subject's columns that must agree in which the records hold different values, if any.
+     *
+     * @param list<Uuid> $ids
+     */
+    public function disagreeing(Uuid $companyId, RecordSubject $subject, array $ids): ?string;
+
+    /**
+     * Switches the records merged away off and points them at the record kept, noting both columns under the merge, so
+     * that its undo switches them back on and lets them go.
+     *
+     * @param list<Uuid> $mergedIds
+     */
+    public function alias(Uuid $companyId, Uuid $mergeId, RecordSubject $subject, Uuid $keptId, array $mergedIds): void;
+
+    /**
+     * What names the record kept and is dated at or after the moment by its reference's trading column, among the rows
+     * a merge would not move: the record kept traded since.
+     *
+     * @param list<RecordReference> $transacting
+     *
+     * @return list<array{table: string, count: int}> by table, those with no row left out
+     */
+    public function tradedSince(Uuid $companyId, Uuid $keptId, array $transacting, \DateTimeImmutable $since): array;
+
+    /**
+     * What a merge would move from each record to the record kept, and what would stay naming it, by table.
+     *
+     * @param list<Uuid>            $ids
+     * @param list<RecordReference> $naming
+     *
+     * @return array<string, array{moves: list<array{table: string, count: int}>, stays: list<array{table: string, count: int}>}> by record id
+     */
+    public function merging(Uuid $companyId, array $ids, array $naming): array;
 }

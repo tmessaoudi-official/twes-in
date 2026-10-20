@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Records\Application;
+namespace App\Records\Application\Merge;
 
 /** A row the merge would point at the record kept, which a unique index then refuses, as twins none was declared for. */
 final class MergeConflict extends \RuntimeException

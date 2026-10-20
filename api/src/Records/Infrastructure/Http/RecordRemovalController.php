@@ -11,10 +11,14 @@ namespace App\Records\Infrastructure\Http;
 
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\ModuleRegistry\Application\ModuleStates;
-use App\Records\Application\MergeConflict;
-use App\Records\Application\MergeCycle;
-use App\Records\Application\MergeIntoItself;
-use App\Records\Application\MergeRecords;
+use App\Records\Application\Merge\MergeAlias;
+use App\Records\Application\Merge\MergeConflict;
+use App\Records\Application\Merge\MergeCycle;
+use App\Records\Application\Merge\MergeIntoItself;
+use App\Records\Application\Merge\MergeMismatch;
+use App\Records\Application\Merge\MergeRecords;
+use App\Records\Application\Merge\MergeTransacted;
+use App\Records\Application\Merge\PreviewMerge;
 use App\Records\Application\NoRecordChosen;
 use App\Records\Application\ReadRemovals;
 use App\Records\Application\RecordCatalogue;
@@ -56,6 +60,7 @@ final readonly class RecordRemovalController
         private MergeRecords $merge,
         private RestoreRecords $restore,
         private ReadRemovals $read,
+        private PreviewMerge $preview,
     ) {
     }
 
@@ -95,6 +100,22 @@ final readonly class RecordRemovalController
         $this->moduleOn($company, $subject);
 
         return $this->answer(fn (): Response => new JsonResponse($this->described($this->merge->handle($company, $subject, $body['keptId'] ?? null, $body['ids'] ?? null, $this->guard->account()->getId())), Response::HTTP_CREATED));
+    }
+
+    /** What merging the records would move and leave, asked of the subject's writer as merging is. */
+    #[Route('/api/companies/{companyId}/record-merges/preview', name: 'api_record_removal_merge_preview', methods: ['GET'])]
+    public function previewMerge(Request $request, string $companyId): Response
+    {
+        try {
+            $subject = $this->catalogue->subject($request->query->getString('subject'));
+        } catch (UnknownRecords $unknown) {
+            throw new NotFoundHttpException($unknown->getMessage(), $unknown);
+        }
+        $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $subject->writePermission);
+        $this->moduleOn($company, $subject);
+        $ids = $request->query->all()['ids'] ?? null;
+
+        return $this->answer(fn (): Response => new JsonResponse($this->preview->handle($company, $subject, $ids)));
     }
 
     #[Route('/api/companies/{companyId}/record-removals', name: 'api_record_removal_list', methods: ['GET'])]
@@ -158,6 +179,12 @@ final readonly class RecordRemovalController
             return new JsonResponse(['error' => 'merge_cycle'], Response::HTTP_CONFLICT);
         } catch (MergeConflict $conflict) {
             return new JsonResponse(['error' => 'merge_conflict', 'table' => $conflict->table], Response::HTTP_CONFLICT);
+        } catch (MergeAlias) {
+            return new JsonResponse(['error' => 'merge_alias'], Response::HTTP_CONFLICT);
+        } catch (MergeMismatch $mismatch) {
+            return new JsonResponse(['error' => 'merge_mismatch', 'column' => $mismatch->column], Response::HTTP_CONFLICT);
+        } catch (MergeTransacted $traded) {
+            return new JsonResponse(['error' => 'merge_transacted', 'uses' => $traded->uses], Response::HTTP_CONFLICT);
         } catch (StepUpRequired) {
             return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         } catch (UnknownRecords $absent) {

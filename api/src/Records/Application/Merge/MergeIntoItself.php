@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Records\Application;
+namespace App\Records\Application\Merge;
 
 /** The record to keep is among those merged into it. */
 final class MergeIntoItself extends \DomainException

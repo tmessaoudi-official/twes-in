@@ -209,6 +209,7 @@
       "reference_given": "Reference given: {{reference}}.",
       "name_shared": "A product already has this name ({{reference}}): with neither a reference nor a barcode, this row makes another one.",
       "stock_change": "Stock at {{location}}: {{before}} → {{after}}.",
+      "vendor_followed": "Supplier “{{number}}” was merged into “{{kept}}”: the row is taken for “{{kept}}”.",
       "name_held": "Another product already has this name ({{reference}}).",
       "identifier_missing": "Without this registration number, this customer cannot be invoiced: add it before issuing one.",
       "no_taxes": "No tax: every document will sell it without VAT. Give its rate in the file, or in its record."

@@ -46,15 +46,15 @@ class RecordMergeMove implements CompanyOwned
     #[ORM\Column(type: 'uuid')]
     private Uuid $rowId;
 
-    /** What the column held before the merge, as text: an id, or a company path. */
-    #[ORM\Column(length: 255)]
-    private string $fromValue;
+    /** What the column held before the merge, as text: an id, or a company path; nothing for an alias's first link. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $fromValue;
 
     /** What the merge wrote: the undo points the row back only while it still holds it. */
     #[ORM\Column(length: 255)]
     private string $toValue;
 
-    public function __construct(RecordRemoval $removal, string $tableName, string $columnName, Uuid $rowId, string $fromValue, string $toValue)
+    public function __construct(RecordRemoval $removal, string $tableName, string $columnName, Uuid $rowId, ?string $fromValue, string $toValue)
     {
         $this->id = Uuid::v7();
         $this->removal = $removal;
@@ -96,7 +96,7 @@ class RecordMergeMove implements CompanyOwned
         return $this->rowId;
     }
 
-    public function getFromValue(): string
+    public function getFromValue(): ?string
     {
         return $this->fromValue;
     }

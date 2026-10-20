@@ -94,6 +94,7 @@ final readonly class ManageVendors
      *
      * @throws VendorNotFound
      * @throws VendorNumberTaken
+     * @throws VendorMergedAway
      * @throws InvalidVendor
      * @throws RecordChanged
      */
@@ -103,6 +104,9 @@ final readonly class ManageVendors
             $vendor = $this->get($company, $id);
             if (null !== $version) {
                 $this->versions->expect($vendor, $version);
+            }
+            if ($vendor->isMergedAway()) {
+                throw new VendorMergedAway(\sprintf('The vendor %s was merged into %s: it is no longer revised.', $vendor->getNumber(), $vendor->standingFor()->getNumber()));
             }
             $holder = $this->vendors->ofNumberInCompany(trim($input->number), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($vendor->getId())) {

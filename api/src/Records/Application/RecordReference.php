@@ -19,6 +19,9 @@ namespace App\Records\Application;
  *
  * A column naming rows of several tables names this subject's only on the rows whose `$whereColumn` holds
  * `$whereValue`: a setting's `level_id` names a product where its `level` is `product`.
+ *
+ * A row naming the record kept, dated by `$transactingAt` at or after a merge and no longer one a merge would move,
+ * is the record kept trading since (goods received, an expense in the books): the merge is then no longer undone.
  */
 final readonly class RecordReference
 {
@@ -39,8 +42,9 @@ final readonly class RecordReference
         public ?string $whereColumn = null,
         public ?string $whereValue = null,
         public array $twinColumns = [],
+        public ?string $transactingAt = null,
     ) {
-        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none', ...$twinColumns] as $name) {
+        foreach ([$table, $column, $subject ?? 'any', $movesWhereColumn ?? 'none', $whereColumn ?? 'none', $transactingAt ?? 'none', ...$twinColumns] as $name) {
             if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
                 throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $name));
             }
@@ -88,7 +92,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that moves in a merge moves some rows, named by at least one value.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue, $this->twinColumns);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $column, $values, $this->whereColumn, $this->whereValue, $this->twinColumns, $this->transactingAt);
     }
 
     /**
@@ -101,7 +105,7 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: only a reference that drops its twins in a merge says what makes one, by at least one column.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, array_values($columns));
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, array_values($columns), $this->transactingAt);
     }
 
     /** The column names the subject only on the rows whose other column holds the value: the rest name other tables. */
@@ -111,6 +115,16 @@ final readonly class RecordReference
             throw new \InvalidArgumentException(\sprintf('%s.%s: a column said of every subject names none of them on some rows only.', $this->table, $this->column));
         }
 
-        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value, $this->twinColumns);
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $column, $value, $this->twinColumns, $this->transactingAt);
+    }
+
+    /** Rows naming the record kept and dated by the column at or after a merge, outside what a merge moves, mean it traded since. */
+    public function transactingAt(string $column): self
+    {
+        if (RecordUse::Ignored === $this->onDelete) {
+            throw new \InvalidArgumentException(\sprintf('%s.%s: a column that names no record says no trade of one.', $this->table, $this->column));
+        }
+
+        return new self($this->table, $this->column, $this->subject, $this->onDelete, $this->onMerge, $this->link, $this->why, $this->movesWhereColumn, $this->movesWhereValues, $this->whereColumn, $this->whereValue, $this->twinColumns, $column);
     }
 }

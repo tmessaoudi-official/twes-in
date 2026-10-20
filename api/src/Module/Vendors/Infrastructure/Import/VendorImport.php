@@ -141,6 +141,11 @@ final readonly class VendorImport implements DeclaresImport
         if (null !== $existing && ImportMode::Create === $mode) {
             throw new RowRejected('number', 'A vendor already has this number. Import in "create and update" mode to update it.', 'already_exists');
         }
+        // What a vendor merged away was stays as merged, for the documents that still name it.
+        if (null !== $existing && $existing->isMergedAway()) {
+            $kept = $existing->standingFor()->getNumber();
+            throw new RowRejected('number', \sprintf('The vendor %s was merged into %s: change %s instead.', $number, $kept, $kept), 'vendor_merged', ['number' => $number, 'kept' => $kept]);
+        }
         // Every cell is read before anything is written, and every fault found is said at once (ruling 9).
         $faults = new RowFaults();
         $faults->read(fn () => $this->rules->hold(VendorResource::class, VendorResource::WRITE, self::cells($record)));
