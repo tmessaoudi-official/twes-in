@@ -23,6 +23,7 @@ use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Infrastructure\ApiPlatform\Output\RecordChangedProblem;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
@@ -61,7 +62,7 @@ final class CustomerMergeTest extends ApiTestCase
         $this->productId = $product->getId()->toRfc4122();
         $matricule = ['matricule_fiscal' => '1234567A/B/M/000'];
         $customers = [
-            'C-001' => [new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', identifiers: $matricule), $standard],
+            'C-001' => [new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', identifiers: $matricule, billingAddress: new PostalAddress('12, rue du Lac', null, '1053', 'Tunis', 'TN')), $standard],
             'C-002' => [new CustomerProfile(CustomerKind::Company, 'Carthage Conseil Sfax', identifiers: $matricule), $standard],
             'C-003' => [new CustomerProfile(CustomerKind::Company, 'Carthage'), $standard],
             'C-004' => [new CustomerProfile(CustomerKind::Company, 'Visserie du Sud', identifiers: ['matricule_fiscal' => '7654321B/A/M/000']), $standard],
@@ -436,6 +437,140 @@ final class CustomerMergeTest extends ApiTestCase
         self::assertSame('28.000', $this->json()['balance'] ?? null, '50 held, 22 applied');
     }
 
+    /**
+     * What stayed with the customer merged away, a validated delivery note or a quote it accepted, is invoiced to the
+     * customer kept, beside what is the kept customer's own, and a copy of one of its invoices is drafted for the customer
+     * kept: a new document is never made out to a customer switched off.
+     */
+    public function testWhatStayedWithTheCustomerMergedAwayIsInvoicedToTheCustomerKept(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->customerId('C-001'), $this->customerId('C-002')];
+        $noteOfMerged = $this->aDeliveryNote($merged, validated: true);
+        $noteOfKept = $this->aDeliveryNote($kept, validated: true);
+        $laterNoteOfMerged = $this->aDeliveryNote($merged, validated: true);
+        $quote = $this->aQuote($merged, sent: true);
+        $quoteAdded = $this->aQuote($merged, sent: true);
+        $quoteWithDeposit = $this->aQuote($merged, sent: true);
+        $issued = $this->anInvoice($merged, issued: true);
+        $this->merged($kept, [$merged]);
+        $this->aSetting($kept, 'document.language', 'en');
+        $this->em()->getConnection()->executeStatement("UPDATE quote SET status = 'accepted', number = 'DEV-' || right(id::text, 12) WHERE id IN (?, ?, ?)", [$quote, $quoteAdded, $quoteWithDeposit]);
+
+        $this->postJson($this->path('invoices/from-delivery-notes/check'), ['deliveryNoteIds' => [$noteOfMerged, $noteOfKept]]);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        self::assertSame(
+            [['included', null, 'Carthage Conseil'], ['included', null, 'Carthage Conseil']],
+            array_map(static fn (mixed $row): array => \is_array($row) ? [$row['outcome'] ?? null, $row['reason'] ?? null, $row['customerName'] ?? null] : [], $this->arrayAt($this->json(), 'rows')),
+            'the preview',
+        );
+        $this->postJson($this->path('invoices/from-delivery-notes'), ['deliveryNoteIds' => [$noteOfMerged, $noteOfKept]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        $draft = $this->stringAt($this->json(), 'id');
+        self::assertSame($kept, $this->customerOf('invoice', $draft), 'the invoice drafted from the notes');
+
+        $this->postJson($this->path('invoices/from-delivery-notes/check'), ['deliveryNoteIds' => [$laterNoteOfMerged], 'invoiceId' => $draft]);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        self::assertSame([['included', null]], array_map(static fn (mixed $row): array => \is_array($row) ? [$row['outcome'] ?? null, $row['reason'] ?? null] : [], $this->arrayAt($this->json(), 'rows')), 'the preview of adding to the draft');
+        $this->postJson($this->path("invoices/$draft/delivery-notes"), ['deliveryNoteIds' => [$laterNoteOfMerged]]);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+
+        $this->postJson($this->path("quotes/$quote/invoice"), null);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        self::assertSame($kept, $this->customerOf('invoice', $this->stringAt($this->json(), 'invoiceId')), 'the invoice of the quote');
+        $this->postJson($this->path("quotes/$quoteAdded/invoices/$draft"), null);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+
+        // A deposit is worded in the documents' language of the customer kept, which the merge handed its settings to.
+        $this->postJson($this->path("quotes/$quoteWithDeposit/deposit-invoices"), ['depositPercentage' => '10', 'depositAmount' => null]);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        self::assertSame(
+            [[$kept, '10% deposit on quote DEV-'.substr($quoteWithDeposit, -12)]],
+            $this->em()->getConnection()->fetchAllNumeric('SELECT i.customer_id::text, l.description FROM invoice i JOIN invoice_line l ON l.invoice_id = i.id WHERE i.quote_id = ? AND i.deposit', [$quoteWithDeposit]),
+            'the deposit invoice',
+        );
+        // Issued, it is given back on the invoice of the whole quote, in the same language.
+        $deposit = $this->em()->getConnection()->fetchOne('SELECT id::text FROM invoice WHERE quote_id = ? AND deposit', [$quoteWithDeposit]);
+        self::assertIsString($deposit);
+        $this->postJson($this->path("invoices/$deposit/issue"), null);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        $issuedDeposit = $this->json();
+        $this->postJson($this->path("quotes/$quoteWithDeposit/invoice"), null);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        self::assertContains(
+            \sprintf('Deposit already invoiced: invoice %s of %s', $this->stringAt($issuedDeposit, 'number'), new \DateTimeImmutable($this->stringAt($issuedDeposit, 'issueDate'))->format('d/m/Y')),
+            $this->em()->getConnection()->fetchFirstColumn('SELECT description FROM invoice_line WHERE invoice_id = ?', [$this->stringAt($this->json(), 'invoiceId')]),
+            'the deposit given back',
+        );
+
+        $this->postJson($this->path("invoices/$issued/duplicate"), null);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        self::assertSame($kept, $this->customerOf('invoice', $this->stringAt($this->json(), 'id')), 'the copy');
+        self::assertSame($merged, $this->customerOf('invoice', $issued), 'the invoice copied stays with the customer merged away');
+    }
+
+    /**
+     * What is asked by the address of the customer merged away, its settings, contacts and prices, is the customer kept's,
+     * which the merge handed them to; a new record naming it is refused, as a picker never offers it.
+     */
+    public function testWhatIsAskedThroughTheCustomerMergedAwayIsTheCustomerKepts(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->customerId('C-001'), $this->customerId('C-002')];
+        $this->postJson($this->path('price-lists'), ['name' => 'Sfax', 'customerId' => $merged, 'items' => [['productId' => $this->productId, 'minQuantity' => '1', 'unitPriceNet' => '0.4']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        $movedContact = $this->aContact($merged, 'Trabelsi', true);
+        $model = $this->anInvoice($merged, issued: true);
+        $this->merged($kept, [$merged]);
+        $this->aSetting($kept, 'document.payment_terms_days', 45);
+
+        $this->getJson($this->path("products/{$this->productId}/price?customerId=$merged"));
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        self::assertSame(['0.4000', 'Sfax'], [$this->json()['unitPriceNet'] ?? null, $this->json()['priceListName'] ?? null], 'the price list moved to the customer kept');
+
+        $terms = fn (string $customer): mixed => array_column($this->getJsonList($this->path("settings?chain=parties&customerId=$customer")), null, 'key')['document.payment_terms_days']['value'] ?? null;
+        self::assertSame(45, $terms($merged), 'the settings read are the customer kept\'s');
+        $this->sendJson('PUT', $this->path('settings/document.payment_terms_days'), ['level' => 'customer', 'customerId' => $merged, 'value' => 60]);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        self::assertSame(60, $terms($kept), 'and written there');
+
+        self::assertSame([$movedContact], array_column($this->getJsonList($this->path("customers/$merged/contacts")), 'id'), 'the contacts are the customer kept\'s');
+        $this->postJson($this->path("customers/$merged/contacts"), ['firstName' => 'Leila', 'isPrimary' => false]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        $added = $this->stringAt($this->json(), 'id');
+        self::assertSame($kept, $this->customerOf('contact', $added), 'a contact added is the customer kept\'s');
+        $this->sendJson('PUT', $this->path("customers/$merged/contacts/$added"), ['firstName' => 'Leila', 'isPrimary' => true, 'version' => $this->storedVersion('contact', $added)]);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        $primary = fn (): array => $this->em()->getConnection()->fetchFirstColumn('SELECT id::text FROM contact WHERE customer_id = ? AND is_primary', [$kept]);
+        self::assertSame([$added], $primary(), 'the contact made the main one takes over from the customer kept\'s');
+        $this->sendJson('DELETE', $this->path("customers/$merged/contacts/$added"));
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame([$movedContact], $primary(), 'and hands it back when removed');
+
+        $this->postJson($this->path('price-lists'), ['name' => 'Sfax 2', 'customerId' => $merged, 'items' => []]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('customerId: The customer C-002 was merged into C-001', $this->stringAt($this->json(), 'detail'));
+        $line = [['productId' => $this->productId, 'quantity' => '1']];
+        foreach (['invoices' => ['supplyDate' => null, 'paymentTermsDays' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null], 'quotes' => ['discountAmount' => null], 'delivery-notes' => ['deliveryDate' => null]] as $documents => $more) {
+            $this->postJson($this->path($documents), ['customerId' => $merged, 'establishmentId' => null, 'customerReference' => null, 'notesInternal' => null, 'lines' => $line, ...$more]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $documents);
+            self::assertStringContainsString('The customer C-002 was merged into C-001', $this->stringAt($this->json(), 'detail'), $documents);
+        }
+
+        $this->postJson($this->path('recurring-invoices'), ['modelInvoiceId' => $model, 'unit' => 'month', 'every' => 1, 'anchor' => 'date', 'monthDay' => 1, 'startsOn' => new \DateTimeImmutable('first day of next month')->format('Y-m-d'), 'endsOn' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        self::assertSame('Carthage Conseil', $this->json()['customerName'] ?? null, 'a recurring invoice of its model is drafted for the customer kept');
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function getJsonList(string $path): array
+    {
+        $this->getJson($path);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+
+        return $this->jsonList();
+    }
+
     /** Before anything runs, the screen says what each customer would hand over and what would stay with it. */
     public function testThePreviewSaysWhatMovesAndWhatStays(): void
     {
@@ -614,7 +749,7 @@ final class CustomerMergeTest extends ApiTestCase
 
     private function signedIn(bool $prove = true): void
     {
-        $permissions = ['company.read', 'customer.read', 'customer.write', 'invoice.read', 'invoice.write', 'payment.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'product.read'];
+        $permissions = ['company.read', 'customer.read', 'customer.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'product.read', 'product.write'];
         $this->createUser('shop@twes.local', self::PASSWORD, $this->company, $permissions, 'member');
         $this->login('shop@twes.local', self::PASSWORD);
         self::assertResponseIsSuccessful();

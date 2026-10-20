@@ -521,6 +521,14 @@ class Product implements CompanyOwned
         return null !== $this->mergedInto;
     }
 
+    /** Why a new document may not name it, switched off as it is: merged into another, or deactivated. */
+    public function whySwitchedOff(): string
+    {
+        return null === $this->mergedInto
+            ? \sprintf('The product %s is deactivated.', $this->reference)
+            : \sprintf('The product %s was merged into %s: a new document names the product kept.', $this->reference, $this->mergedInto->reference);
+    }
+
     /** The product this one stands for: the product kept when it was merged away, itself otherwise. */
     public function standingFor(): self
     {

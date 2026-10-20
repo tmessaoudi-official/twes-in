@@ -87,7 +87,7 @@ final readonly class ManageContacts
             $now = $this->clock->now();
             $changed = $contact->revise($details, $now);
             if ($isPrimary && !$contact->isPrimary()) {
-                $this->stepDown(array_values(array_filter($this->contacts->ofCustomer($customerId), static fn (Contact $other) => $other !== $contact)));
+                $this->stepDown(array_values(array_filter($this->contacts->ofCustomer($contact->getCustomer()->getId()), static fn (Contact $other) => $other !== $contact)));
             }
             if ($contact->markPrimary($isPrimary, $now) || $changed) {
                 $this->contacts->save($contact);
@@ -107,8 +107,9 @@ final readonly class ManageContacts
         $this->transactions->run(function () use ($company, $customerId, $contactId, $actorUserId): void {
             $contact = $this->contact($company, $customerId, $contactId);
             $wasPrimary = $contact->isPrimary();
+            $holder = $contact->getCustomer()->getId();
             $this->contacts->remove($contact);
-            $next = $wasPrimary ? ($this->contacts->ofCustomer($customerId)[0] ?? null) : null;
+            $next = $wasPrimary ? ($this->contacts->ofCustomer($holder)[0] ?? null) : null;
             if (null !== $next && $next->markPrimary(true, $this->clock->now())) {
                 $this->contacts->save($next);
             }
@@ -130,9 +131,10 @@ final readonly class ManageContacts
         }
     }
 
+    /** A customer merged into another handed it its contacts: its address reaches the customer kept's. */
     private function customer(Company $company, Uuid $customerId): Customer
     {
-        return $this->customers->ofIdInCompany($customerId, $company->getId()) ?? throw new CustomerNotFound();
+        return ($this->customers->ofIdInCompany($customerId, $company->getId()) ?? throw new CustomerNotFound())->standingFor();
     }
 
     private function contact(Company $company, Uuid $customerId, Uuid $contactId): Contact

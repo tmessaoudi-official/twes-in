@@ -260,7 +260,7 @@ final readonly class ManageQuotes
         $customer = $this->customers->ofIdInCompany($input->customerId, $company->getId())
             ?? throw new InvalidQuote('customerId', 'No customer of this company has this id.');
         if (!$customer->isActive() && !(null !== $current && $current->getCustomer()->getId()->equals($customer->getId()))) {
-            throw new InvalidQuote('customerId', \sprintf('The customer %s is deactivated.', $customer->getNumber()));
+            throw new InvalidQuote('customerId', $customer->whySwitchedOff());
         }
 
         if (null === $input->establishmentId) {
@@ -292,7 +292,7 @@ final readonly class ManageQuotes
             $product = $this->products->ofIdInCompany($line->productId, $company->getId())
                 ?? throw new InvalidQuote('productId', 'No product of this company has this id.');
             if (!$product->isActive() && !\in_array($product->getId()->toRfc4122(), $kept['products'], true)) {
-                throw new InvalidQuote('productId', \sprintf('The product %s is deactivated.', $product->getReference()));
+                throw new InvalidQuote('productId', $product->whySwitchedOff());
             }
         }
 

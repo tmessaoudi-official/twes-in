@@ -68,6 +68,7 @@ final readonly class ProductsForOrders implements OrderProducts
             $product->isActive(),
             $product->getTracking()->value,
             $details->costPrice,
+            $product->getMergedInto()?->getReference(),
         );
     }
 }

@@ -33,7 +33,8 @@ final readonly class ResolveUnitPrice
     public function of(Product $product, ?Uuid $customerId, string $quantity, \DateTimeImmutable $on): ResolvedPrice
     {
         $company = $product->getCompany();
-        $customer = null === $customerId ? null : $this->customers->ofIdInCompany($customerId, $company->getId());
+        // A customer merged into another handed it its price lists.
+        $customer = null === $customerId ? null : $this->customers->ofIdInCompany($customerId, $company->getId())?->standingFor();
         $groupId = $customer?->getGroup()?->getId();
         $lists = $this->lists->applicable($company->getId(), $on, $customer?->getId(), $groupId);
 

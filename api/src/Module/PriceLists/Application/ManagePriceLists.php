@@ -128,8 +128,12 @@ final readonly class ManagePriceLists
     /** @throws InvalidPriceList */
     private function checkScope(Company $company, PriceListInput $input): void
     {
-        if (null !== $input->customerId && null === $this->customers->ofIdInCompany($input->customerId, $company->getId())) {
+        $customer = null === $input->customerId ? null : $this->customers->ofIdInCompany($input->customerId, $company->getId());
+        if (null !== $input->customerId && null === $customer) {
             throw new InvalidPriceList('customerId', 'No customer of this company has this id.');
+        }
+        if (null !== $customer && $customer->isMergedAway()) {
+            throw new InvalidPriceList('customerId', \sprintf('The customer %s was merged into %s: a price list is for the customer kept.', $customer->getNumber(), $customer->standingFor()->getNumber()));
         }
         if (null !== $input->customerGroupId && null === $this->groups->ofIdInCompany($input->customerGroupId, $company->getId())) {
             throw new InvalidPriceList('customerGroupId', 'No customer group of this company has this id.');

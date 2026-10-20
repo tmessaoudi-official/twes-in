@@ -28,6 +28,8 @@ final readonly class OrderProduct
         public bool $active,
         public string $tracking,
         public ?string $costPrice,
+        /** The reference of the product kept, when this one was merged into another. */
+        public ?string $keptReference = null,
     ) {
     }
 }

@@ -58,13 +58,13 @@ final readonly class InvoicingCheckProcessor implements ProcessorInterface
             $answer->rows[] = [
                 'id' => $row->id->toRfc4122(),
                 'number' => $row->note?->getNumber(),
-                'customerName' => $row->note?->getCustomer()->getProfile()->name,
+                'customerName' => $row->note?->getCustomer()->standingFor()->getProfile()->name,
                 'outcome' => $row->included() ? 'included' : 'skipped',
                 'reason' => $row->skipped,
             ];
             if ($row->included()) {
                 ++$answer->included;
-                $answer->customerId ??= $row->note?->getCustomer()->getId()->toRfc4122();
+                $answer->customerId ??= $row->note?->getCustomer()->standingFor()->getId()->toRfc4122();
                 $answer->establishmentId ??= $row->note?->getEstablishment()->getId()->toRfc4122();
             } else {
                 ++$answer->skipped;

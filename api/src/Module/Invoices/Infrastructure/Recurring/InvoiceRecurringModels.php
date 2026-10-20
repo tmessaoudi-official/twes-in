@@ -50,7 +50,8 @@ final readonly class InvoiceRecurringModels implements RecurringModels
             if (!$invoice instanceof Invoice) {
                 continue;
             }
-            $customer = $invoice->getCustomer();
+            // Its copies are drafted for the customer kept when the model's customer was merged into another.
+            $customer = $invoice->getCustomer()->standingFor();
             $models[$invoice->getId()->toRfc4122()] = new RecurringModel(
                 $invoice->getNumber(),
                 $customer->getProfile()->name,
