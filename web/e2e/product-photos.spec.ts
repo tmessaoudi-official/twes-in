@@ -3,12 +3,12 @@ import { expect, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
-import { aProduct } from './catalogue';
+import { aProduct, removed } from './catalogue';
 
 // A product's photos through the real stack (docs/SPEC.md § 7, 2026-10-08 23:02): two photos sent from this device,
 // the first main, the second marked main instead and moved first with the buttons, one removed and put back from its
 // toast, and the main photo shown beside the product's title and on its row of the list. Each run makes its own
-// product, which keeps its photos: products are never deleted.
+// product, deleted at the end with its photos.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
 /** A 2x1 PNG, red then blue: small, and a real picture the server can cut. */
@@ -69,6 +69,7 @@ test('a product shows its gallery, its main photo and its order, each changed wi
   await expect(
     page.getByTestId(`product-${reference}`).locator('[data-column="photo"] img'),
   ).toHaveAttribute('src', new RegExp(`/photos/${second}/content\\?size=small$`));
+  await removed(page, 'product', id);
 });
 
 test('the main photo stands beside a product in an invoice line’s picker', async ({ page }) => {
@@ -103,4 +104,5 @@ test('the main photo stands beside a product in an invoice line’s picker', asy
     )
     .toBe(true);
   expect(await wcagViolations(page)).toEqual([]);
+  await removed(page, 'product', id);
 });

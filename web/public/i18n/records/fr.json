@@ -48,6 +48,12 @@
       "price_list": "{{count}} {count, plural, one {tarif} other {tarifs}}",
       "customer_credit_entry": "{{count}} {count, plural, one {écriture de crédit} other {écritures de crédit}}",
       "customer": "{{count}} {count, plural, one {client} other {clients}}",
+      "contact": "{{count}} {count, plural, one {contact} other {contacts}}",
+      "setting": "{{count}} {count, plural, one {valeur par défaut} other {valeurs par défaut}}",
+      "product_photo": "{{count}} {count, plural, one {photo} other {photos}}",
+      "product_home_location": "{{count}} {count, plural, one {emplacement habituel} other {emplacements habituels}}",
+      "product_reorder_point": "{{count}} {count, plural, one {seuil de réapprovisionnement} other {seuils de réapprovisionnement}}",
+      "product_cost_change": "{{count}} {count, plural, one {changement de coût} other {changements de coût}}",
       "other": "{{count}} {count, plural, one {autre fiche} other {autres fiches}}"
     },
     "errors": {

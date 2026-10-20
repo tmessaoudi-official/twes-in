@@ -48,6 +48,12 @@
       "price_list": "{count, plural, zero {لا قوائم أسعار} one {قائمة أسعار واحدة} two {قائمتي أسعار} few {{{count}} قوائم أسعار} many {{{count}} قائمة أسعار} other {{{count}} قائمة أسعار}}",
       "customer_credit_entry": "{count, plural, zero {لا قيود رصيد} one {قيد رصيد واحد} two {قيدي رصيد} few {{{count}} قيود رصيد} many {{{count}} قيد رصيد} other {{{count}} قيد رصيد}}",
       "customer": "{count, plural, zero {لا حرفاء} one {حريف واحد} two {حريفين} few {{{count}} حرفاء} many {{{count}} حريفًا} other {{{count}} حريف}}",
+      "contact": "{count, plural, zero {لا جهات اتصال} one {جهة اتصال واحدة} two {جهتي اتصال} few {{{count}} جهات اتصال} many {{{count}} جهةَ اتصال} other {{{count}} جهة اتصال}}",
+      "setting": "{count, plural, zero {لا قيم افتراضية} one {قيمة افتراضية واحدة} two {قيمتين افتراضيتين} few {{{count}} قيم افتراضية} many {{{count}} قيمةً افتراضية} other {{{count}} قيمة افتراضية}}",
+      "product_photo": "{count, plural, zero {لا صور} one {صورة واحدة} two {صورتين} few {{{count}} صور} many {{{count}} صورةً} other {{{count}} صورة}}",
+      "product_home_location": "{count, plural, zero {لا مواقع معتادة} one {موقع معتاد واحد} two {موقعين معتادين} few {{{count}} مواقع معتادة} many {{{count}} موقعًا معتادًا} other {{{count}} موقع معتاد}}",
+      "product_reorder_point": "{count, plural, zero {لا عتبات إعادة تزوّد} one {عتبة إعادة تزوّد واحدة} two {عتبتي إعادة تزوّد} few {{{count}} عتبات إعادة تزوّد} many {{{count}} عتبةَ إعادة تزوّد} other {{{count}} عتبة إعادة تزوّد}}",
+      "product_cost_change": "{count, plural, zero {لا تغييرات في الكلفة} one {تغيير واحد في الكلفة} two {تغييرين في الكلفة} few {{{count}} تغييرات في الكلفة} many {{{count}} تغييرًا في الكلفة} other {{{count}} تغيير في الكلفة}}",
       "other": "{count, plural, zero {لا بطاقات أخرى} one {بطاقة أخرى واحدة} two {بطاقتين أخريين} few {{{count}} بطاقات أخرى} many {{{count}} بطاقة أخرى} other {{{count}} بطاقة أخرى}}"
     },
     "errors": {

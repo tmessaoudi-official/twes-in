@@ -8,40 +8,32 @@ import { runDigits } from './run';
 
 // G4 through the real stack: in the seeded Tunisian company, the owner creates a customer group, gives it its own
 // payment terms, files a business customer in it and finds the terms inherited on the customer, then adds a contact.
-// One database is shared by the whole suite, so the names are unique to the run and the customer is taken out of
-// the group and deactivated (customers are never deleted) before the group is deleted, which forgets its terms.
+// One database is shared by the whole suite, so the names are unique to the run and the customer, which nothing else
+// names, is deleted before the group is, which forgets its terms.
 const CSRF = '0123456789abcdef0123456789abcdef';
 const TERMS = 'field-document__payment_terms_days';
 
-/** Takes the run's customer out of its group, deactivates it, then deletes the group. */
+/** Deletes the run's customer, its contacts and defaults with it, then the group it was filed in. */
 async function retire(page: Page, number: string, groupName: string): Promise<void> {
   await page.evaluate(
     async ([csrf, customerNumber, group]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      // The list is paged: the customer is found by its number, then read whole as the single record it is.
+      // The list is paged: the customer is found by its number among those its search answers.
       const customerNumbered = async (company: string, wanted: string) => {
         const listed = (await (
           await fetch(`${company}/customers?q=${encodeURIComponent(wanted)}`)
         ).json()) as { member: { id: string; number: string }[] };
-        const hit = listed.member.find((row) => row.number === wanted);
-        return hit === undefined
-          ? undefined
-          : ((await (await fetch(`${company}/customers/${hit.id}`)).json()) as {
-              id: string;
-              number: string;
-            });
+        return listed.member.find((row) => row.number === wanted);
       };
       const base = `/api/companies/${me.company.id}`;
       const customer = await customerNumbered(base, customerNumber);
       if (customer) {
-        // The write shape has no id: a body naming one is refused, and the group could then not be deleted.
-        const { id, ...fields } = customer;
-        const revised = await fetch(`${base}/customers/${id}`, {
-          method: 'PUT',
+        const deleted = await fetch(`${base}/record-removals`, {
+          method: 'POST',
           headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-          body: JSON.stringify({ ...fields, customerGroupId: null, isActive: false }),
+          body: JSON.stringify({ subject: 'customer', ids: [customer.id] }),
         });
-        if (!revised.ok) throw new Error(`retiring ${customerNumber} answered ${revised.status}`);
+        if (!deleted.ok) throw new Error(`deleting ${customerNumber} answered ${deleted.status}`);
       }
       const groups = (await (await fetch(`${base}/customer-groups`)).json()) as {
         id: string;

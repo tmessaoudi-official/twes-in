@@ -64,7 +64,7 @@ const sector: CustomFieldDefinition = {
   isActive: true,
   version: 1,
 };
-const amel: CustomerRow = { ...input, id: 'k1', version: 1 };
+const amel: CustomerRow = { ...input, id: 'k1', version: 1, mergedInto: null };
 const wholesalers: CustomerGroupRow = {
   id: 'g1',
   name: 'Grossistes',

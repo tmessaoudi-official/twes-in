@@ -11,37 +11,27 @@ import { cardHasFocus, scan as scanned } from './scan';
 // G5 products through the real stack: in the seeded Tunisian company, the owner files a category, creates a service
 // in it in hours with the 19 % VAT by default, finds its price at the currency's three decimals, revises it, and
 // finds it in the list under its category. One database is shared by the whole suite, so the names are unique to
-// the run, and the product is deactivated (products are never deleted) and taken out of the category before the
-// category is deleted.
+// the run, and the product is deleted before its category is.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
-/** Deactivates the run's product and takes it out of its category, then deletes the category. */
+/** Deletes the run's product, then its category, which nothing names any more. */
 async function retire(page: Page, reference: string, categoryName: string): Promise<void> {
   await page.evaluate(
     async ([csrf, productReference, category]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
       const base = `/api/companies/${me.company.id}`;
-      // The list is paged: the product is found by its reference, then read whole as the single record it is.
+      // The list is paged: the product is found by its reference among those its search answers.
       const listed = (await (
         await fetch(`${base}/products?q=${encodeURIComponent(productReference)}`)
       ).json()) as { member: { id: string; reference: string }[] };
-      const hit = listed.member.find((row) => row.reference === productReference);
-      const product =
-        hit === undefined
-          ? undefined
-          : ((await (await fetch(`${base}/products/${hit.id}`)).json()) as {
-              id: string;
-              reference: string;
-            });
+      const product = listed.member.find((row) => row.reference === productReference);
       if (product) {
-        // The write shape has no id: a body naming one is refused, and the category could then not be deleted.
-        const { id, ...fields } = product;
-        const revised = await fetch(`${base}/products/${id}`, {
-          method: 'PUT',
+        const deleted = await fetch(`${base}/record-removals`, {
+          method: 'POST',
           headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-          body: JSON.stringify({ ...fields, categoryId: null, isActive: false }),
+          body: JSON.stringify({ subject: 'product', ids: [product.id] }),
         });
-        if (!revised.ok) throw new Error(`retiring ${productReference} answered ${revised.status}`);
+        if (!deleted.ok) throw new Error(`deleting ${productReference} answered ${deleted.status}`);
       }
       const categories = (await (await fetch(`${base}/product-categories`)).json()) as {
         id: string;

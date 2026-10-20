@@ -40,6 +40,7 @@ import { RecordHistory } from '../activity/record-history';
 import { PartyDefaults } from './party-defaults';
 import type { ContactRow } from './customers-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { ScreenActions } from '../shared/actions/screen-actions';
@@ -75,6 +76,7 @@ export class CustomerPage {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+  private readonly deletes = inject(RecordDeletes);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `customers/new`. */
   readonly customerId = input<string | undefined>(undefined);
@@ -97,6 +99,17 @@ export class CustomerPage {
     const customer = this.facade.customer();
     return customer?.id === id ? customer : undefined;
   });
+  /** The customer kept when this one was merged into it: this one stays only for what was sent or issued to it. */
+  protected readonly mergedAway = computed(() => this.current()?.mergedInto ?? null);
+  /** A customer merged away is kept as it was, whoever looks at it. */
+  protected readonly editable = computed(() => this.mayWrite() && this.mergedAway() === null);
+  /**
+   * A customer read and not merged away: its defaults, contacts and account are its own. Merged away, they went to
+   * the customer kept, and its own address answers with that one's, so its page leaves them to that one's page.
+   */
+  protected readonly standing = computed(
+    () => this.current() != null && this.mergedAway() === null,
+  );
   protected readonly descriptor = computed(() => {
     const options = this.facade.options();
     return options === null
@@ -158,7 +171,7 @@ export class CustomerPage {
   /** The subject of the defaults panel: the customer once it exists. */
   protected readonly defaultsSubject = computed(() => {
     const current = this.current();
-    return current ? { customerId: current.id } : null;
+    return current && this.standing() ? { customerId: current.id } : null;
   });
 
   /** A contact's own actions: editing under the pointer, removing behind "⋮" as everything destructive is. */
@@ -241,7 +254,7 @@ export class CustomerPage {
   protected readonly recordActions = computed<ScreenAction[]>(() => {
     const busy = this.busy();
     const changes = this.changes();
-    const may = this.mayWrite();
+    const may = this.editable();
     return [
       {
         id: 'save',
@@ -267,12 +280,37 @@ export class CustomerPage {
         icon: 'request_quote',
         run: () => void this.newQuote(),
         shown:
-          this.current() != null &&
+          this.standing() &&
           this.auth.hasPermission('quote.write') &&
           this.auth.hasModule('quotes'),
       },
+      {
+        id: 'delete',
+        label: 'records.delete',
+        icon: 'delete',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps it a day. A customer still
+        // named by a document is refused, the toast saying by what.
+        destructive: true,
+        undoable: true,
+        disabled: busy,
+        run: () => void this.remove(),
+        shown: may && this.current() != null,
+      },
     ];
   });
+
+  /** Deletes the customer, then leaves its page for the list once it is gone. */
+  private async remove(): Promise<void> {
+    const companyId = this.company()?.id;
+    const customer = this.current();
+    if (!companyId || !customer) return;
+    const gone = await this.deletes.remove(companyId, 'customer', [
+      { id: customer.id, label: `${customer.number} ${customer.name}` },
+    ]);
+    if (!gone) return;
+    this.unsaved.savedAndLeaving();
+    await this.router.navigate(['/customers']);
+  }
 
   /** A new quote for this customer, chosen on it as if picked. */
   private async newQuote(): Promise<void> {

@@ -48,6 +48,12 @@
       "price_list": "{{count}} {count, plural, one {price list} other {price lists}}",
       "customer_credit_entry": "{{count}} {count, plural, one {credit entry} other {credit entries}}",
       "customer": "{{count}} {count, plural, one {customer} other {customers}}",
+      "contact": "{{count}} {count, plural, one {contact} other {contacts}}",
+      "setting": "{{count}} {count, plural, one {default} other {defaults}}",
+      "product_photo": "{{count}} {count, plural, one {photo} other {photos}}",
+      "product_home_location": "{{count}} {count, plural, one {home location} other {home locations}}",
+      "product_reorder_point": "{{count}} {count, plural, one {reorder point} other {reorder points}}",
+      "product_cost_change": "{{count}} {count, plural, one {cost change} other {cost changes}}",
       "other": "{{count}} {count, plural, one {other record} other {other records}}"
     },
     "errors": {

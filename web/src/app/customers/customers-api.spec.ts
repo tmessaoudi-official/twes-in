@@ -75,7 +75,17 @@ describe('CustomersApi', () => {
       isActive: true,
     });
 
-    expect(await pending).toEqual({ ...carthage, id: 'k 1', version: 4 });
+    expect(await pending).toEqual({ ...carthage, id: 'k 1', version: 4, mergedInto: null });
+  });
+
+  it('reads the customer a customer merged away points at', async () => {
+    const kept = { id: 'k1', number: 'CLI-0001', name: 'Carthage Conseil' };
+    const pending = api.customer('c1', 'k2');
+    http
+      .expectOne('/api/companies/c1/customers/k2')
+      .flush({ id: 'k2', version: 2, number: 'CLI-0002', name: 'Carthage Sfax', mergedInto: kept });
+
+    expect((await pending).mergedInto).toEqual(kept);
   });
 
   it('sends a customer with flat address fields', async () => {

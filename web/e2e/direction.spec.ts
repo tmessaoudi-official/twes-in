@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
-import { aCustomer } from './catalogue';
+import { aCustomer, removed } from './catalogue';
 import { forgetPresentationChoices } from './presentation';
 import { inACompany, signIn } from './session';
 import { chooseLanguage } from './language';
@@ -74,11 +74,10 @@ test('a screen in Arabic turns over and speaks Arabic', async ({ page }, testInf
 // A value cut short keeps its start in sight in either direction: its box cuts at the value's own end, so a Latin
 // number in an Arabic list loses its last characters, never its first (« …791728493868 » was a customer number
 // without its letters). A list sizes its columns to their values, so only a person cuts one: the number and name
-// columns are narrowed with their handles, from the keyboard. A customer is never deleted, so each run leaves one, as
-// the other scenarios creating customers do.
+// columns are narrowed with their handles, from the keyboard. The run's customer is deleted at the end.
 test('a value cut short in Arabic keeps its start in sight', async ({ page }, testInfo) => {
   const number = `RTL-${Date.now()}-QUINCAILLERIE`;
-  await aCustomer(page, number);
+  const id = await aCustomer(page, number);
   await chooseArabic(page);
   await page.goto('/customers');
   await page.getByTestId('list-filter').fill(number);
@@ -114,11 +113,13 @@ test('a value cut short in Arabic keeps its start in sight', async ({ page }, te
     'the number and the name are both cut',
   ).toEqual([number, `Client ${number}`]);
   expect(cut.filter((each) => !each.firstInSight)).toEqual([]);
+  await removed(page, 'customer', id);
 });
 
 // A telephone number holds no letter to give it a direction, so on an Arabic screen it would take the screen's and read
 // « 000 000 74 216+ ». Typed into its field and shown in its list, it must read as it is written, the « + » first. The
 // field is left to right through Chromium's own stylesheet for a tel input; the list through its value's `dir="auto"`.
+// The run's customer is deleted at the end.
 test('a telephone number reads as it is written on an Arabic screen', async ({
   page,
 }, testInfo) => {
@@ -189,6 +190,7 @@ test('a telephone number reads as it is written on an Arabic screen', async ({
     return null;
   }, phone);
   expect(plusFirstInList, 'the list').toBe(true);
+  await removed(page, 'customer', id);
 });
 
 // The screens a shop opens first, each without a WCAG failure in Arabic: a label that does not fit, a name not

@@ -38,6 +38,7 @@ import type {
   CustomersError,
 } from './customers-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { LiveChanges, type LiveChange } from '../shared/realtime/live-changes';
 import {
   offeredNext,
@@ -104,6 +105,7 @@ const carthage: CustomerRow = {
   notes: null,
   isActive: true,
   customFields: {},
+  mergedInto: null,
 };
 const leila: ContactRow = {
   id: 'p1',
@@ -165,6 +167,7 @@ describe('CustomerPage', () => {
     reset: vi.fn(),
     clearError: vi.fn(),
   };
+  const deletes = { remove: vi.fn() };
   let heard: { kinds: readonly string[]; handler: (changes: readonly LiveChange[]) => void }[] = [];
   const live = {
     on: (kinds: readonly string[], handler: (changes: readonly LiveChange[]) => void) =>
@@ -271,6 +274,7 @@ describe('CustomerPage', () => {
     modules.clear();
     ['customers', 'invoices'].forEach((each) => modules.add(each));
     partySettings.load.mockReset().mockResolvedValue(undefined);
+    deletes.remove.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       imports: [CustomerPage],
       providers: [
@@ -290,6 +294,7 @@ describe('CustomerPage', () => {
         { provide: LiveChanges, useValue: live },
         { provide: PartySettings, useValue: partySettings },
         { provide: AuthFacade, useValue: auth },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -598,12 +603,12 @@ describe('CustomerPage', () => {
     const save = screen.forKey('s');
     expect(save?.id).toBe('save');
     expect(save?.disabled).toBe(true);
-    expect(screen.actions().map((action) => action.id)).toEqual(['save']);
+    expect(screen.actions().map((action) => action.id)).toEqual(['save', 'delete']);
 
     type('field-email', 'compta@carthage.tn');
     await settle();
     expect(screen.forKey('s')?.disabled).toBe(false);
-    expect(screen.actions().map((action) => action.id)).toEqual(['save', 'revert']);
+    expect(screen.actions().map((action) => action.id)).toEqual(['save', 'revert', 'delete']);
 
     // The one declaration, so the keystroke saves exactly what the button saves.
     screen.forKey('s')?.run?.();
@@ -868,5 +873,80 @@ describe('CustomerPage', () => {
     await openTab('Contacts');
     expect(q('contact-add')).toBeNull();
     expect(q('row-more-p1')).toBeNull();
+  });
+
+  /** The entry « ⋮ » lists for an action, the menu opened first. */
+  async function menuEntry(id: string): Promise<HTMLElement | null> {
+    q('record-more')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return document.body.querySelector<HTMLElement>(`[data-testid="record-menu-${id}"]`);
+  }
+
+  it('deletes the customer without asking, said annulable, and goes back to the list once it is gone', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    customer.set(carthage);
+    await open('k1');
+
+    const entry = await menuEntry('delete');
+    expect(entry?.getAttribute('data-kind')).toBe('annulable');
+    entry!.click();
+    await settle();
+
+    expect(auth.hasPermission).toHaveBeenCalledWith('customer.write');
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'customer', [
+      { id: 'k1', label: 'CLI-0001 Carthage Conseil' },
+    ]);
+    expect(navigate).toHaveBeenCalledWith(['/customers']);
+  });
+
+  it('stays on the customer when the delete is refused, and offers none to whoever may not write customers', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    deletes.remove.mockResolvedValue(false);
+    customer.set(carthage);
+    await open('k1');
+    (await menuEntry('delete'))!.click();
+    await settle();
+    expect(navigate).not.toHaveBeenCalled();
+
+    fixture.destroy();
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'customer.write');
+    await open('k1');
+    expect(await menuEntry('delete')).toBeNull();
+  });
+
+  it('offers no delete while a customer is new', async () => {
+    await open(undefined);
+
+    expect(await menuEntry('delete')).toBeNull();
+  });
+
+  it('shows a customer merged away as such, opening the one kept, with no way to change, delete or quote it, and none of what is now the one kept', async () => {
+    modules.add('quotes');
+    customer.set(carthage);
+    await open('k1');
+    expect(q('record-new-quote')).not.toBeNull();
+    fixture.destroy();
+
+    customer.set({
+      ...carthage,
+      id: 'k2',
+      number: 'CLI-0002',
+      name: 'Carthage Sfax',
+      isActive: false,
+      mergedInto: { id: 'k1', number: 'CLI-0001', name: 'Carthage Conseil' },
+    });
+    await open('k2');
+
+    expect(q('customer-merged-away')).not.toBeNull();
+    expect(q('customer-merged-away-open')?.getAttribute('href')).toBe('/customers/k1');
+    expect(q('record-save')).toBeNull();
+    expect((q('field-number') as HTMLInputElement).disabled).toBe(true);
+    expect(await menuEntry('delete')).toBeNull();
+    expect(q('record-new-quote')).toBeNull();
+    // Nobody lacks the right to change it: it is the merge that keeps it as it was.
+    expect(q('customer-read-only')).toBeNull();
+    // Its defaults, contacts and account went to the customer kept, which its own address now answers with.
+    expect(tabLabels()).toEqual(['Fiche', 'activity.history.title']);
   });
 });

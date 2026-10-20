@@ -1208,6 +1208,7 @@
     "title": "Customers",
     "add": "New customer",
     "none": "No customers yet.",
+    "selected": "{count, plural, =0 {No customer selected} one {{{count}} customer selected} other {{{count}} customers selected}}",
     "no_company": "Choose a company first.",
     "new_title": "New customer",
     "back": "Back to customers",

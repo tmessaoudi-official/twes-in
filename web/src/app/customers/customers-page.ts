@@ -13,10 +13,12 @@ import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { DataList, DataListCell } from '../shared/list/data-list';
+import { DataList, DataListCell, DataListSelection } from '../shared/list/data-list';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { StatusBadge } from '../shared/ui/status-badge';
 import {
   type CustomerListRow,
@@ -25,7 +27,7 @@ import {
   customersList,
 } from './customer-forms';
 import type { CustomerSearch } from './customers-types';
-import type { ListQuery } from '../shared/list/list-types';
+import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { CustomersFacade } from './customers-facade';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { CUSTOMERS_TABS } from './customers-nav';
@@ -36,11 +38,13 @@ import { CUSTOMERS_TABS } from './customers-nav';
   imports: [
     PageTabs,
     MatButtonModule,
+    MatIconModule,
     ListExport,
     RouterLink,
     TranslatePipe,
     DataList,
     DataListCell,
+    DataListSelection,
     StatusBadge,
   ],
   templateUrl: './customers-page.html',
@@ -52,14 +56,20 @@ export class CustomersPage implements OnInit {
   protected readonly tabs = CUSTOMERS_TABS;
   private readonly facade = inject(CustomersFacade);
   private readonly auth = inject(AuthFacade);
+  private readonly deletes = inject(RecordDeletes);
 
-  protected readonly list = computed(() =>
-    customersList(
+  // Customers are selected to be merged, which only a person who may change them can do.
+  protected readonly list = computed<ListDescriptor<CustomerListRow>>(() => {
+    const list = customersList(
       this.facade.customFields(),
       this.facade.groups(),
       this.facade.options()?.regimes ?? [],
-    ),
-  );
+    );
+    return this.mayWrite() ? { ...list, selection: { countKey: 'customers.selected' } } : list;
+  });
+  /** The customers ticked on the page shown, by id, in the order they were ticked. */
+  protected readonly selected = signal<readonly string[]>([]);
+  protected readonly merging = signal(false);
   protected readonly rows = computed(() =>
     customerListRows(this.facade.customers(), this.facade.groups()),
   );
@@ -90,6 +100,30 @@ export class CustomersPage implements OnInit {
         this.destroyRef,
       );
       await this.facade.loadListContext(companyId);
+    }
+  }
+
+  /**
+   * Merges the customers ticked into the one the person keeps; the others stay, switched off and pointing at it, for
+   * what was sent or issued to them, their contacts and defaults going to it. The dialog first says, from the API, what
+   * moves and what stays.
+   */
+  protected async merge(): Promise<void> {
+    const companyId = this.company()?.id;
+    const ids = this.selected();
+    if (!companyId || ids.length < 2 || this.merging()) return;
+    this.merging.set(true);
+    try {
+      if (
+        await this.deletes.offerMergeOf(companyId, 'customer', ids, {
+          settings: true,
+          aliased: true,
+        })
+      ) {
+        this.selected.set([]);
+      }
+    } finally {
+      this.merging.set(false);
     }
   }
 

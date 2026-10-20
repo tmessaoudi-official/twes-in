@@ -148,6 +148,16 @@ describe('RecordMergeDialog, records merged away as aliases', () => {
         moves: [],
         stays: [],
       },
+      {
+        // A table the API counts before any screen words it, read as other records rather than as its key.
+        id: 'v4',
+        label: 'F-004 Sotumag Sousse',
+        moves: [
+          { table: 'purchase_order', count: 1 },
+          { table: 'vendor_unworded', count: 2 },
+        ],
+        stays: [],
+      },
     ],
     settings: false,
     aliased: true,
@@ -168,6 +178,7 @@ describe('RecordMergeDialog, records merged away as aliases', () => {
         purchase_order: '{{count}} {count, plural, one {commande} other {commandes}}',
         expense: '{{count}} {count, plural, one {dépense} other {dépenses}}',
         stock_movement: '{{count}} {count, plural, one {mouvement} other {mouvements}}',
+        other: '{{count}} {count, plural, one {autre fiche} other {autres fiches}}',
       },
       recent: {
         subjects: { vendor: '{{count}} {count, plural, one {fournisseur} other {fournisseurs}}' },
@@ -203,6 +214,7 @@ describe('RecordMergeDialog, records merged away as aliases', () => {
     ).toEqual([
       '« F-002 Sotumag Sfax » reste, désactivée, et renvoie vers la fiche gardée. Ce qui passe dans la fiche gardée : 1 commande. Ce qui reste au nom de « F-002 Sotumag Sfax » : 3 dépenses.',
       '« F-003 Sotumag Gabès » reste, désactivée, et renvoie vers la fiche gardée. Rien ne passe dans la fiche gardée.',
+      '« F-004 Sotumag Sousse » reste, désactivée, et renvoie vers la fiche gardée. Ce qui passe dans la fiche gardée : 1 commande et 2 autres fiches.',
     ]);
     expect(root.textContent).toContain(
       'Annulable 24 heures, tant que rien n’est reçu au nom de la fiche gardée.',

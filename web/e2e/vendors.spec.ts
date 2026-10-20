@@ -8,36 +8,27 @@ import { runDigits } from './run';
 
 // G8 through the real stack: in the seeded Tunisian company, the owner adds a vendor without any registration number,
 // with its bank account and payment terms, revises it and finds it in the list. One database is shared by the whole
-// suite, so the number is unique to the run and the vendor is deactivated at the end (vendors are never deleted).
+// suite, so the number is unique to the run and the vendor is deleted at the end.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
-/** Deactivates the run's vendor. */
+/** Deletes the run's vendor. */
 async function retire(page: Page, number: string): Promise<void> {
   await page.evaluate(
     async ([csrf, vendorNumber]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
       const base = `/api/companies/${me.company.id}`;
-      // The list is paged: the vendor is found by its number, then read whole as the single record it is.
+      // The list is paged: the vendor is found by its number among those its search answers.
       const listed = (await (
         await fetch(`${base}/vendors?q=${encodeURIComponent(vendorNumber)}`)
       ).json()) as { member: { id: string; number: string }[] };
-      const hit = listed.member.find((row) => row.number === vendorNumber);
-      const vendor =
-        hit === undefined
-          ? undefined
-          : ((await (await fetch(`${base}/vendors/${hit.id}`)).json()) as {
-              id: string;
-              number: string;
-            });
+      const vendor = listed.member.find((row) => row.number === vendorNumber);
       if (vendor) {
-        // The write shape has no id: a body naming one is refused.
-        const { id, ...fields } = vendor;
-        const revised = await fetch(`${base}/vendors/${id}`, {
-          method: 'PUT',
+        const deleted = await fetch(`${base}/record-removals`, {
+          method: 'POST',
           headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-          body: JSON.stringify({ ...fields, isActive: false }),
+          body: JSON.stringify({ subject: 'vendor', ids: [vendor.id] }),
         });
-        if (!revised.ok) throw new Error(`retiring ${vendorNumber} answered ${revised.status}`);
+        if (!deleted.ok) throw new Error(`deleting ${vendorNumber} answered ${deleted.status}`);
       }
     },
     [CSRF, number] as const,

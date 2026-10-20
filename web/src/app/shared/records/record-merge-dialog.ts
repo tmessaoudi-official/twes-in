@@ -6,6 +6,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatRadioModule } from '@angular/material/radio';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { RemovedItem, TableCount } from './record-removals-api';
+import { tableCounts } from './record-tables';
 
 /**
  * A record offered for a merge, with what names it that a merge moves to the record kept, by table, and what names it
@@ -133,14 +134,10 @@ export class RecordMergeDialog {
 
   /** « 2 produits et 1 sous-catégorie », or null when no table counts a row. */
   private counted(tables: readonly TableCount[]): string | null {
-    const counted = tables.filter((table) => table.count > 0);
+    const counted = tableCounts(tables);
     return counted.length === 0
       ? null
-      : this.list(
-          counted.map((table) =>
-            this.translate.instant(`records.tables.${table.table}`, { count: table.count }),
-          ),
-        );
+      : this.list(counted.map(({ key, count }) => this.translate.instant(key, { count })));
   }
 
   /** « a, b et c » as the screen's language joins a list. */
