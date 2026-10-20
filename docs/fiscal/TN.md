@@ -193,6 +193,20 @@ note in the preview, and the matricule is still required on the invoice.
 Whether FODEC applies to exempt, suspended or export sales was not established in this round. The regimes exclude
 VAT only.
 
+## 9a. Company VAT regimes
+
+| Rule | Preset | Source | Status |
+|---|---|---|---|
+| A person under the income tax's « forfaitaire » regime (art. 44 bis of the Code de l'IRPP et de l'IS) is outside VAT unless it opts to become liable for all its activity | company regime `forfaitaire` excludes the `vat` family | Code de la TVA art. 2-I-3 [17] | unvalidated |
+| Whoever writes VAT on an invoice owes it from that alone, so a forfaitaire company's documents charge none | the regime removes VAT from every line; a line naming it is refused | Code de la TVA art. 2-I-2 [17] | unvalidated |
+| The invoice duty of art. 18-II is laid on liable persons « autres que ceux soumis au régime forfaitaire »; nothing forbids a forfaitaire from issuing one | the company still issues its documents, under the same numbering | Code de la TVA art. 18-II [17] | unvalidated |
+| VAT on goods sold by a person under the art. 44 bis tax gives its buyer no deduction | the mention `fiscal.mention.tn.forfaitaire` says so on each document | Code de la TVA art. 10-2 [17] | unvalidated |
+| Only a liable person deducts the VAT it paid, so a forfaitaire company's purchase cost is the price with its tax | an import's cost given with its tax is kept as it is under `forfaitaire`, brought to the price before tax otherwise | Code de la TVA art. 9-I [17]: « les assujettis imputent » the VAT on their purchases (the cost that follows is inferred) | unvalidated |
+
+Not established: whether FODEC (§ 3) and the stamp duty of § 4 fall on a forfaitaire's documents (the regime removes
+VAT only, so both stay as the products and the document carry them), the mention's
+wording (no text prescribes one), and which turnover keeps a retailer in the regime (art. 44 bis's thresholds, not read).
+
 ## 10. Rounding
 
 No official rounding rule was found. The preset uses half-up to the millime and rounds each tax once per rate group
@@ -223,7 +237,7 @@ comes after the POC (docs/SPEC.md § 2).
 - On supplier payments (§ 5a): the withholding by nature (fees, rents), not modelled; whether FODEC belongs in a TEJ operation's `MontantHT` and the stamp outside every operation and the withholding base, not found in a text.
 - The monthly declaration itself and its forms (§ 2a), not produced; the declaration of a régime forfaitaire, not researched.
 - Matricule check letter (§ 8), not verified.
-- Regime mention wording (§ 7, § 9), unsourced.
+- Regime mention wording (§ 7, § 9, § 9a), unsourced; the stamp on a forfaitaire's invoice and the regime's thresholds (§ 9a), not read.
 - Credit notes (§ 4a): who bears a credit note's own stamp, whether a refused or fully credited invoice's stamp is ever given back (art. 118-13°, art. 74), and whether art. 6-I's « droits et taxes » takes the stamp into the VAT base (§ 4).
 - Advances (§ 2b): VAT shown on a goods advance, the stamp on a deposit invoice and FODEC on an advance, not found in a text; an untaxed goods advance (art. 5-2) is not offered.
 

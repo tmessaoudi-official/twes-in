@@ -15,11 +15,13 @@ fiscal:
         export: 'Export'
         intra_eu: 'Intracommunautaire'
         franchise: 'Franchise en base de TVA'
+        forfaitaire: 'Régime forfaitaire'
     mention:
         tn:
             exempt: 'Opération exonérée de la TVA.'
             suspended: 'Vente en suspension de la TVA.'
             export: 'Exportation exonérée de la TVA.'
+            forfaitaire: 'Non assujetti à la TVA : régime forfaitaire, article 44 bis du code de l’IRPP et de l’IS.'
         fr:
             exempt: 'Exonération de TVA, %reference%.'
             intra_eu: 'Autoliquidation. Exonération de TVA, articles 262 ter I et 283-2 du CGI.'

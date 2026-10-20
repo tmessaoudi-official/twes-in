@@ -15,11 +15,13 @@ fiscal:
         export: 'Export'
         intra_eu: 'Intra-EU'
         franchise: 'VAT-free threshold (franchise en base)'
+        forfaitaire: 'Estimated regime (forfaitaire)'
     mention:
         tn:
             exempt: 'Transaction exempt from VAT.'
             suspended: 'Sale under VAT suspension.'
             export: 'Export, exempt from VAT.'
+            forfaitaire: 'Not liable to VAT: estimated (forfaitaire) regime, article 44 bis of the Income Tax Code.'
         fr:
             exempt: 'VAT exemption, %reference%.'
             intra_eu: 'Reverse charge. VAT exemption, articles 262 ter I and 283-2 of the French General Tax Code.'

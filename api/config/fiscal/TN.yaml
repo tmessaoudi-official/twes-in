@@ -81,6 +81,10 @@ company_vat_regimes:
     - code: standard
       label_key: fiscal.regime.standard
       excluded_families: []
+    - code: forfaitaire
+      label_key: fiscal.regime.forfaitaire
+      excluded_families: [vat]
+      mention_key: fiscal.mention.tn.forfaitaire
 
 mentions:
     invoice: []
