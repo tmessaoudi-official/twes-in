@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -197,6 +198,7 @@ describe('QuotePage', () => {
   const inventory = { onHand: vi.fn() };
   const granted = new Set<string>();
   const modules = new Set<string>();
+  const deletes = { remove: vi.fn() };
   const auth = {
     me: () => ({
       user: { id: 'u1' },
@@ -239,6 +241,7 @@ describe('QuotePage', () => {
   }
 
   beforeEach(() => {
+    deletes.remove.mockReset().mockResolvedValue(true);
     error.set(null);
     quote.set(null);
     attachments.set([]);
@@ -288,6 +291,7 @@ describe('QuotePage', () => {
         { provide: ProductScans, useValue: scans },
         { provide: InventoryFacade, useValue: inventory },
         { provide: AuthFacade, useValue: auth },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -887,6 +891,51 @@ describe('QuotePage', () => {
         expect(noticeToasts()).toEqual([{ key: 'documents.add_to.not_draft' }]),
       );
       expect(readById()).toEqual([]);
+    });
+  });
+
+  describe('deleting a draft', () => {
+    async function menuEntry(id: string): Promise<HTMLElement | null> {
+      q('document-more')?.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return document.body.querySelector<HTMLElement>(`[data-testid="document-menu-${id}"]`);
+    }
+
+    it('deletes the draft without asking, said annulable, and goes back to the list once it is gone', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      quote.set(draft);
+      await open('q1');
+
+      const entry = await menuEntry('delete');
+      expect(entry?.getAttribute('data-kind')).toBe('annulable');
+      entry!.click();
+      await settle();
+
+      // Not numbered yet, it is named by its customer.
+      expect(deletes.remove).toHaveBeenCalledWith('c1', 'quote', [{ id: 'q1', label: 'Carthage' }]);
+      expect(navigate).toHaveBeenCalledWith(['/quotes']);
+    });
+
+    it('stays on the draft when the delete is refused, and offers none once it left the draft stage or to a reader', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      deletes.remove.mockResolvedValue(false);
+      quote.set(draft);
+      await open('q1');
+      (await menuEntry('delete'))!.click();
+      await settle();
+      expect(navigate).not.toHaveBeenCalled();
+
+      fixture.destroy();
+      quote.set(sent);
+      await open('q1');
+      expect(await menuEntry('delete')).toBeNull();
+
+      fixture.destroy();
+      granted.delete('quote.write');
+      quote.set(draft);
+      await open('q1');
+      expect(await menuEntry('delete')).toBeNull();
     });
   });
 });

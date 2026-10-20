@@ -298,6 +298,7 @@ on and updates itself at night, so nothing done after it may break what exists o
 - [2026-10-20 16:49] ASSUMED (review): A9b writes through a customer merged away: a request addressed by the merged-away customer's own path (its settings, contacts, unit price) reaches the customer kept, which the merge handed them to, as credit and account already do; a new record naming it in a body (a price list, a document) is refused with a message naming the customer kept (and likewise for a product merged away). Basis: the worklist pick « an alias id asked answers with the kept customer's figures » and the existing refusal of a document naming a switched-off customer. Alternatives: refuse every write through the old address (409), or accept body references silently as the kept one.
 - [2026-10-20 16:49] ASSUMED (review): A9b: what stayed with a customer merged away (a validated delivery note, an accepted quote, a deposit, a recurring model, a copy, a late fee) is drafted for the customer kept, in its language and settings; the late invoice and its credit notes keep naming the customer they were issued to. The customer group count keeps counting customers merged away, as it counts every switched-off customer, since they still name the group and the delete guard reads the same count. Alternatives: refuse to invoice an alias's notes until moved; leave aliases out of the group count.
 - [2026-10-20 17:12] ASSUMED (review): A merged-away customer's page shows its record, read-only, and its history only; its Valeurs par défaut, Contacts and Relevé tabs are hidden, since the API answers them with the kept customer's (moved by the merge), and the banner opens the kept customer. No new quote is offered from it. Basis: showing another customer's contacts and account under the alias's title misleads; a product alias keeps read-only tabs because its own rows stay readable. Alternatives: read-only tabs as on products; a redirect to the kept customer.
+- [2026-10-20 18:11] ASSUMED (review): Drafts (invoice, quote, delivery note) are deleted through the records engine, not the erasure's: one delete for every screen and one undo place, « Récemment supprimés », 24 hours (CLAUDE.md records/ canon; advisor agreed). The engine learns three things: a subject limited to some rows (a document only while it is a draft: an issued one is not found, so never deleted), rows owned two levels down (a line's taxes, copied and put back with the line), and a label read through another table (a draft has no number yet: it reads as its customer). A draft another record names stays and is refused as used: a quote it came from, a recurring invoice copying it, a reminder's late fee, a payment; cancelling stays offered for it. The draft merge (step 14) stays unmergeable until its parked questions are ruled. Alternatives: the erasure's rows per document (refused: a second undo place); clearing the quote's link (the engine does not clear yet).
 
 ## Formal Plan
 No fixed date (2026-10-20 00:49, replacing the Wednesday 10:00 deadline): the release is tagged once every step below
@@ -374,6 +375,7 @@ was and was not certified by execution.
 | 23 | Raw SQL: nine defects fixed test-first, each copied rule in one place, V1 and V2 settled, D11's allowed-joins test | M | todo | - | api/src/** api/tests/** |
 | 24 | PHPStan's Doctrine loader measured, then the 32 habit statements moved to DQL | M | todo | - | api/phpstan.dist.neon api/src/** |
 | 25 | Release decisions built: D12 ports without Product, D13 invoices' activity columns, D16 category merge screen, D18 « ailleurs », D19 links cleared on delete | L | todo | - | api/src/** web/src/** |
+| 26 | Deleted freely (00:36 third class) with the 24 h undo: drafts of invoices, quotes and delivery notes first, then unsent orders, cheques held, contacts, files, barcodes, the stock map, recurring templates | L | doing | - | api/src/** web/src/app/** web/e2e/** |
 <!-- /progress-block -->
 ### Blocked
 - Step 1 waits on the developer: `PUBLISH_IMAGES=true`; the three GHCR packages made public after the first publish
@@ -427,6 +429,19 @@ was and was not certified by execution.
   entities relate to it in Doctrine: the same crossing `ModuleBoundariesTest` keeps under `AWAITING_A_RULING`. (F7)
   « Activité par membre » (Reports) shows the invoices' « émises » and « paiements » columns whatever the invoices
   module's state; `ReportContext` carries no module state, so which module declares those columns is the choice.
+- Merging drafts (step 14, ruled 01:32: invoices, delivery notes, quotes of one customer and type, « lines combined into
+  one draft »), parked 2026-10-20 18:06 while the draft delete it rests on is built. Open, all user-visible: (a) what
+  the drafts merged away bring besides their lines: their printed notes, customer reference, supply or delivery date,
+  payment terms and document discount (recommended: the kept draft's header stays; their printed notes are appended to
+  its notes; a draft with a document discount is refused, as « Ajouter à la facture » refuses a quote with one, since
+  spreading it moves tax between rates); (b) drafts of another establishment (recommended: refused, as the number
+  series is the establishment's); (c) credit notes and deposits (recommended: invoices only, a credit note naming the
+  invoice it corrects and a deposit being one each); (d) the drafts merged away go to « Récemment supprimés » for 24
+  hours, the undo putting the kept draft's lines back as they were (recommended), or are cancelled.
+- Cancel or delete on a draft (row 26), parked 2026-10-20 18:11: a draft invoice, quote or delivery note will offer
+  « Supprimer » (gone, back for 24 hours from « Récemment supprimés ») beside the « Annuler » it offers today (kept,
+  marked cancelled). Recommended: a draft offers delete alone, cancelling staying for a sent quote and a validated
+  note, where it records something; both are built side by side until ruled, nothing removed.
 ### Needs research
 - Protecting the code and the data on a shop's PC: reopened later by the developer (ruled 2026-10-19 00:41), with
   BitLocker, the developer holding the administrator account, Symfony 8.2's encrypted columns from 8.2.0 and the contract.

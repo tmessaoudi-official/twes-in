@@ -36,9 +36,10 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DbalRecordStore implements RecordStore, MergeChanges
 {
-    /** The records a removal takes come back first; what belongs to them, which names them, after. */
+    /** The records a removal takes come back first; what belongs to them, which names them, after; what belongs to that, last. */
     private const int RECORD_STEP = 0;
     private const int OWNED_STEP = 1;
+    private const int BELOW_STEP = 2;
 
     /** Copies the rows a statement named `gone` returns under the removal, at the step given. */
     private const string COPY = 'INSERT INTO record_removal_row (id, removal_id, company_id, table_name, step, snapshot) SELECT gen_random_uuid(), :removal, :company, :table, %d, to_jsonb(gone) FROM gone';
@@ -64,13 +65,20 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
      */
     private function labelled(Uuid $companyId, RecordSubject $subject, array $ids, string $lock): array
     {
-        $label = implode(', ', array_map(fn (string $column): string => \sprintf('CAST(%s AS text)', $this->name($column)), $subject->labelColumns));
+        $columns = array_map(fn (string $column): string => \sprintf('CAST(s.%s AS text)', $this->name($column)), $subject->labelColumns);
+        $join = '';
+        if (null !== $subject->labelTable && null !== $subject->labelKey) {
+            $columns = [...$columns, ...array_map(fn (string $column): string => \sprintf('CAST(l.%s AS text)', $this->name($column)), $subject->labelTableColumns)];
+            $join = \sprintf(' LEFT JOIN %s l ON l.company_id = s.company_id AND l.id = s.%s', $this->name($subject->labelTable), $this->name($subject->labelKey));
+        }
+        [$scope, $scoped] = $this->scope($subject, 's.');
         // In the ids' order, so that two deletes of the same records never lock them crosswise. FOR UPDATE, not FOR NO KEY
         // UPDATE: a row written meanwhile with a foreign key to a record (a barcode, a photo) takes FOR KEY SHARE on it,
-        // waits for this delete and then fails, so nothing belonging to the record escapes its copy.
+        // waits for this delete and then fails, so nothing belonging to the record escapes its copy. Only the record is
+        // locked, never the row its label is read from.
         $rows = $this->connection->fetchAllAssociative(
-            \sprintf("SELECT id::text AS id, concat_ws(' ', %s) AS label FROM %s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[])) ORDER BY id%s", $label, $this->name($subject->table), $lock),
-            ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids)],
+            \sprintf("SELECT s.id::text AS id, concat_ws(' ', %s) AS label FROM %s s%s WHERE s.company_id = :company AND s.id = ANY(CAST(:ids AS uuid[]))%s ORDER BY s.id%s", implode(', ', $columns), $this->name($subject->table), $join, $scope, '' === $lock ? '' : $lock.' OF s'),
+            ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids), ...$scoped],
         );
         $labels = [];
         foreach ($rows as $row) {
@@ -100,17 +108,20 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
 
     public function remove(Uuid $companyId, Uuid $removalId, RecordSubject $subject, array $ids, array $owned): void
     {
-        // What belongs to the records first, a step after them, so that the restore puts it back once they stand again.
+        // What belongs to the records first, a step after them, so that the restore puts it back once they stand again; and
+        // what belongs to that before it, a step later still, or its foreign key would cascade it away uncopied.
+        usort($owned, static fn (RecordReference $a, RecordReference $b): int => (null !== $b->belowTable) <=> (null !== $a->belowTable));
         foreach ($owned as $reference) {
             [$naming, $parameters] = $this->naming($reference, $companyId, $ids);
             $this->connection->executeStatement(
-                \sprintf('WITH gone AS (DELETE FROM %s WHERE %s RETURNING *) '.self::COPY, $this->name($reference->table), $naming, self::OWNED_STEP),
+                \sprintf('WITH gone AS (DELETE FROM %s WHERE %s RETURNING *) '.self::COPY, $this->name($reference->table), $naming, null === $reference->belowTable ? self::OWNED_STEP : self::BELOW_STEP),
                 [...$parameters, 'removal' => $removalId->toRfc4122(), 'table' => $reference->table],
             );
         }
+        [$scope, $scoped] = $this->scope($subject, '');
         $copied = $this->connection->executeStatement(
-            \sprintf('WITH gone AS (DELETE FROM %s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[])) RETURNING *) '.self::COPY, $this->name($subject->table), self::RECORD_STEP),
-            ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids), 'removal' => $removalId->toRfc4122(), 'table' => $subject->table],
+            \sprintf('WITH gone AS (DELETE FROM %s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[]))%s RETURNING *) '.self::COPY, $this->name($subject->table), $scope, self::RECORD_STEP),
+            ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids), 'removal' => $removalId->toRfc4122(), 'table' => $subject->table, ...$scoped],
         );
         if ($copied !== \count($ids)) {
             throw new \LogicException(\sprintf('%d rows of %s were asked for and %d copied: the delete stops rather than lose one.', \count($ids), $subject->table, $copied));
@@ -401,6 +412,13 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
         };
         $values = '{'.implode(',', array_map(fn (Uuid $id): string => $this->value($reference, $companyId, $id), $ids)).'}';
         $condition = \sprintf('company_id = :company AND %s = ANY(CAST(:ids AS %s[]))', $column, $cast);
+        if (null !== $reference->belowTable && null !== $reference->belowColumn) {
+            // The row names one belonging to the record, which names the record.
+            $below = $this->name($reference->belowTable);
+            $owner = $this->name($reference->belowColumn);
+            $condition = \sprintf('company_id = :company AND %1$s IN (SELECT o.id FROM %2$s o WHERE o.company_id = :company AND o.%3$s = ANY(CAST(:ids AS %4$s[])))', $column, $below, $owner, $cast);
+            $named = \sprintf('(SELECT o.%3$s FROM %2$s o WHERE o.id = %1$s)::text', $column, $below, $owner);
+        }
         $parameters = ['company' => $companyId->toRfc4122(), 'ids' => $values];
         if (null !== $reference->whereColumn && null !== $reference->whereValue) {
             $condition .= \sprintf(' AND %s = :scope', $this->name($reference->whereColumn));
@@ -408,6 +426,20 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
         }
 
         return [$condition, $parameters, $named];
+    }
+
+    /**
+     * The condition only a subject's records meet, when only some of its rows are (a draft), and its parameter.
+     *
+     * @return array{string, array<string, string>}
+     */
+    private function scope(RecordSubject $subject, string $alias): array
+    {
+        if (null === $subject->whereColumn) {
+            return ['', []];
+        }
+
+        return [\sprintf(' AND %s%s::text = ANY(CAST(:records_where AS text[]))', $alias, $this->name($subject->whereColumn)), ['records_where' => self::texts($subject->whereValues)]];
     }
 
     /** The column's own type, as the database writes it, which a value written into it is cast to. */

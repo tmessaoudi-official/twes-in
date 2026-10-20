@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { RecordDeletes } from '../shared/records/record-deletes';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -119,6 +120,7 @@ export class DeliveryNotePage {
   private readonly feedback = inject(Feedback);
   protected readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+  private readonly deletes = inject(RecordDeletes);
   private readonly productScans = inject(ProductScans);
   private readonly display = inject(CustomerDisplay);
   private readonly linesEditor = viewChild(DeliveryNoteLines);
@@ -495,6 +497,18 @@ export class DeliveryNotePage {
           keepLabel: 'delivery_notes.actions.keep',
         },
       },
+      {
+        id: 'delete',
+        label: 'records.delete',
+        icon: 'delete',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps the draft a day. A draft another
+        // record names is refused, the toast saying by what.
+        destructive: true,
+        undoable: true,
+        disabled: busy,
+        run: () => void this.remove(),
+        shown: this.current()?.status === 'draft' && this.mayWrite(),
+      },
     ];
   });
 
@@ -525,6 +539,19 @@ export class DeliveryNotePage {
     );
     return [...new Set(ids)];
   });
+  /** Deletes the draft, then leaves its page for the list once it is gone; what was typed in it goes with it. */
+  private async remove(): Promise<void> {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    if (!companyId || !current) return;
+    const gone = await this.deletes.remove(companyId, 'delivery_note', [
+      { id: current.id, label: current.number ?? current.customerName },
+    ]);
+    if (!gone) return;
+    this.unsaved.savedAndLeaving();
+    await this.router.navigate(['/delivery-notes']);
+  }
+
   protected readonly canCancel = computed(() => {
     const status = this.current()?.status;
     return (status === 'draft' || status === 'validated') && this.mayValidate();

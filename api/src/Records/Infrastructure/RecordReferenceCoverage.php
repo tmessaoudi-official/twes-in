@@ -63,11 +63,27 @@ final class RecordReferenceCoverage
         }
 
         // An owned table's rows are copied and deleted by the subject's ids, so a row naming one of them would be emptied,
-        // cascaded away uncopied, or refuse the delete; no declaration can say what to do about it.
+        // cascaded away uncopied, or refuse the delete, unless declared as naming the record through that row (a line's
+        // tax); a row owned that way is itself named by nothing.
         $ownedBy = [];
+        $below = [];
         foreach ($catalogue->references() as $reference) {
             if (RecordUse::Owned === $reference->onDelete && null !== $reference->subject) {
                 $ownedBy[$reference->table] = $reference->subject;
+            }
+            if (null !== $reference->belowTable) {
+                $below["$reference->table.$reference->column"] = $reference->belowTable;
+            }
+        }
+        $ownedDirectly = [];
+        foreach ($catalogue->references() as $reference) {
+            if (RecordUse::Owned === $reference->onDelete && null !== $reference->subject && null === $reference->belowTable) {
+                $ownedDirectly[$reference->table] = true;
+            }
+        }
+        foreach ($catalogue->references() as $reference) {
+            if (null !== $reference->belowTable && !isset($ownedDirectly[$reference->belowTable])) {
+                $out[] = \sprintf('%s.%s names the record through %s, whose rows are not owned by it directly', $reference->table, $reference->column, $reference->belowTable);
             }
         }
 
@@ -77,7 +93,7 @@ final class RecordReferenceCoverage
             if (\in_array($target, $subjects, true) && !$isDeclared($table, $column, $target)) {
                 $out[] = $undeclared($table, $column, $target);
             }
-            if (isset($ownedBy[$target])) {
+            if (isset($ownedBy[$target]) && !(isset($ownedDirectly[$target]) && ($below["$table.$column"] ?? null) === $target)) {
                 $out[] = \sprintf('%s.%s names %s rows, which go with a %s, and nothing can declare it', $table, $column, $target, $ownedBy[$target]);
             }
         }
@@ -103,6 +119,12 @@ final class RecordReferenceCoverage
             foreach ($subjects as $subject) {
                 if (SchemaLinks::namedAfter($column, $subject) && !$isDeclared($table, $column, $subject)) {
                     $out[] = $undeclared($table, $column, $subject);
+                }
+            }
+            // By the owned table's whole name: its last word alone (`location_id` for product_home_location) names others.
+            foreach (array_keys($ownedDirectly) as $owned) {
+                if (($column === $owned.'_id' || str_ends_with($column, '_'.$owned.'_id')) && ($below["$table.$column"] ?? null) !== $owned) {
+                    $out[] = \sprintf('%s.%s names %s rows, which go with a %s, and is not declared as naming it through them', $table, $column, $owned, $ownedBy[$owned]);
                 }
             }
         }

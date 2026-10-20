@@ -4041,14 +4041,18 @@
         "accepted": "marked the quote accepted",
         "refused": "marked the quote refused",
         "cancelled": "closed the quote as not pursued",
-        "invoiced": "invoiced the quote"
+        "invoiced": "invoiced the quote",
+        "deleted": "deleted the quote draft",
+        "restored": "restored the quote draft"
       },
       "invoice": {
         "created": "created the invoice",
         "revised": "changed the invoice",
         "issued": "issued the invoice",
         "cancelled": "abandoned the draft",
-        "credited": "credited the invoice"
+        "credited": "credited the invoice",
+        "deleted": "deleted the invoice draft",
+        "restored": "restored the invoice draft"
       },
       "payment": {
         "recorded": "recorded a payment",
@@ -4060,7 +4064,9 @@
         "validated": "validated the delivery note",
         "delivered": "delivered the delivery note",
         "cancelled": "cancelled the delivery note",
-        "invoiced": "invoiced the delivery note"
+        "invoiced": "invoiced the delivery note",
+        "deleted": "deleted the delivery note draft",
+        "restored": "restored the delivery note draft"
       },
       "expense": {
         "created": "created the expense",

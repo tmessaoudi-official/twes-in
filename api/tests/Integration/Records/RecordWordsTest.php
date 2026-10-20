@@ -46,10 +46,11 @@ final class RecordWordsTest extends KernelTestCase
         self::assertNotEmpty($catalogue->subjects());
         self::assertContains('record_removal.ended', $actions);
         self::assertContains('record_removal', $kinds);
-        foreach (array_keys($catalogue->subjects()) as $table) {
+        foreach ($catalogue->subjects() as $table => $subject) {
             self::assertContains($table, $deletable, "$table is missing from DELETABLE_SUBJECTS");
             self::assertContains($table, $kinds, "$table is missing from ACTIVITY_KINDS");
-            foreach (['deleted', 'restored', 'merged', 'merge_undone'] as $verb) {
+            // A subject that is never merged journals no merge.
+            foreach (null === $subject->mergedAway ? ['deleted', 'restored'] : ['deleted', 'restored', 'merged', 'merge_undone'] as $verb) {
                 self::assertContains("$table.$verb", $actions, "$table.$verb is missing from ACTIVITY_ACTIONS");
             }
             foreach ($languages as $language) {

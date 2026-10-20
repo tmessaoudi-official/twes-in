@@ -54,7 +54,11 @@
       "product_home_location": "{count, plural, zero {لا مواقع معتادة} one {موقع معتاد واحد} two {موقعين معتادين} few {{{count}} مواقع معتادة} many {{{count}} موقعًا معتادًا} other {{{count}} موقع معتاد}}",
       "product_reorder_point": "{count, plural, zero {لا عتبات إعادة تزوّد} one {عتبة إعادة تزوّد واحدة} two {عتبتي إعادة تزوّد} few {{{count}} عتبات إعادة تزوّد} many {{{count}} عتبةَ إعادة تزوّد} other {{{count}} عتبة إعادة تزوّد}}",
       "product_cost_change": "{count, plural, zero {لا تغييرات في الكلفة} one {تغيير واحد في الكلفة} two {تغييرين في الكلفة} few {{{count}} تغييرات في الكلفة} many {{{count}} تغييرًا في الكلفة} other {{{count}} تغيير في الكلفة}}",
-      "other": "{count, plural, zero {لا بطاقات أخرى} one {بطاقة أخرى واحدة} two {بطاقتين أخريين} few {{{count}} بطاقات أخرى} many {{{count}} بطاقة أخرى} other {{{count}} بطاقة أخرى}}"
+      "other": "{count, plural, zero {لا بطاقات أخرى} one {بطاقة أخرى واحدة} two {بطاقتين أخريين} few {{{count}} بطاقات أخرى} many {{{count}} بطاقة أخرى} other {{{count}} بطاقة أخرى}}",
+      "payment": "{count, plural, zero {لا دفوعات} one {دفعة واحدة} two {دفعتين} few {{{count}} دفوعات} many {{{count}} دفعةً} other {{{count}} دفعة}}",
+      "payment_instrument": "{count, plural, zero {لا صكوك ولا كمبيالات} one {صك أو كمبيالة واحدة} two {صكين أو كمبيالتين} few {{{count}} صكوك أو كمبيالات} many {{{count}} صكًا أو كمبيالةً} other {{{count}} صك أو كمبيالة}}",
+      "invoice_reminder": "{count, plural, zero {لا تذكيرات} one {تذكير واحد} two {تذكيرين} few {{{count}} تذكيرات} many {{{count}} تذكيرًا} other {{{count}} تذكير}}",
+      "recurring_invoice": "{count, plural, zero {لا فواتير دورية} one {فاتورة دورية واحدة} two {فاتورتين دوريتين} few {{{count}} فواتير دورية} many {{{count}} فاتورةً دوريةً} other {{{count}} فاتورة دورية}}"
     },
     "errors": {
       "network": "الخادم لا يستجيب. أعد المحاولة بعد قليل.",
@@ -89,7 +93,10 @@
         "product": "{count, plural, zero {لا منتجات} one {منتج واحد} two {منتجان} few {{{count}} منتجات} many {{{count}} منتجًا} other {{{count}} منتج}}",
         "product_category": "{count, plural, zero {لا أصناف منتجات} one {صنف منتجات واحد} two {صنفا منتجات} few {{{count}} أصناف منتجات} many {{{count}} صنف منتجات} other {{{count}} صنف منتجات}}",
         "expense_category": "{count, plural, zero {لا أصناف مصاريف} one {صنف مصاريف واحد} two {صنفا مصاريف} few {{{count}} أصناف مصاريف} many {{{count}} صنف مصاريف} other {{{count}} صنف مصاريف}}",
-        "customer": "{count, plural, zero {لا حرفاء} one {حريف واحد} two {حريفان} few {{{count}} حرفاء} many {{{count}} حريفًا} other {{{count}} حريف}}"
+        "customer": "{count, plural, zero {لا حرفاء} one {حريف واحد} two {حريفان} few {{{count}} حرفاء} many {{{count}} حريفًا} other {{{count}} حريف}}",
+        "invoice": "{count, plural, zero {لا مسودات فواتير} one {مسودة فاتورة واحدة} two {مسودتا فاتورة} few {{{count}} مسودات فواتير} many {{{count}} مسودة فاتورة} other {{{count}} مسودة فاتورة}}",
+        "quote": "{count, plural, zero {لا مسودات عروض أسعار} one {مسودة عرض سعر واحدة} two {مسودتا عرض سعر} few {{{count}} مسودات عروض أسعار} many {{{count}} مسودة عرض سعر} other {{{count}} مسودة عرض سعر}}",
+        "delivery_note": "{count, plural, zero {لا مسودات وصول تسليم} one {مسودة وصل تسليم واحدة} two {مسودتا وصل تسليم} few {{{count}} مسودات وصول تسليم} many {{{count}} مسودة وصل تسليم} other {{{count}} مسودة وصل تسليم}}"
       }
     },
     "mismatch": {

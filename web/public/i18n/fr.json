@@ -4041,14 +4041,18 @@
         "accepted": "a marqué le devis accepté",
         "refused": "a marqué le devis refusé",
         "cancelled": "a classé le devis sans suite",
-        "invoiced": "a facturé le devis"
+        "invoiced": "a facturé le devis",
+        "deleted": "a supprimé le brouillon de devis",
+        "restored": "a remis le brouillon de devis"
       },
       "invoice": {
         "created": "a créé la facture",
         "revised": "a modifié la facture",
         "issued": "a émis la facture",
         "cancelled": "a abandonné le brouillon",
-        "credited": "a établi un avoir sur la facture"
+        "credited": "a établi un avoir sur la facture",
+        "deleted": "a supprimé le brouillon de facture",
+        "restored": "a remis le brouillon de facture"
       },
       "payment": {
         "recorded": "a enregistré un paiement",
@@ -4060,7 +4064,9 @@
         "validated": "a validé le bon de livraison",
         "delivered": "a livré le bon de livraison",
         "cancelled": "a annulé le bon de livraison",
-        "invoiced": "a facturé le bon de livraison"
+        "invoiced": "a facturé le bon de livraison",
+        "deleted": "a supprimé le brouillon de bon de livraison",
+        "restored": "a remis le brouillon de bon de livraison"
       },
       "expense": {
         "created": "a créé la dépense",

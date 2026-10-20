@@ -29,6 +29,9 @@ final readonly class SettingRecordReferences implements DeclaresRecordReferences
     public function references(): array
     {
         return [
+            RecordReference::ignored('setting', 'level_id', 'invoice', 'No setting is kept at an invoice\'s level.'),
+            RecordReference::ignored('setting', 'level_id', 'quote', 'No setting is kept at a quote\'s level.'),
+            RecordReference::ignored('setting', 'level_id', 'delivery_note', 'No setting is kept at a delivery note\'s level.'),
             RecordReference::ignored('setting', 'level_id', 'vendor', 'No setting is kept at a vendor\'s level.'),
             RecordReference::owned('setting', 'level_id', 'product', RecordMerge::MovesOrDrops, 'A setting kept at a product\'s level is the product\'s own; merged, the product kept keeps its own where it has one.', RecordLink::CompanyPath)
                 ->droppingTwinsBy('level', 'key')->where('level', SettingLevel::Product->value),

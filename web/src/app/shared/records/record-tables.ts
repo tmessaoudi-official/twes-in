@@ -34,6 +34,10 @@ export const NAMED_TABLES = [
   'delivery_note',
   'price_list',
   'customer_credit_entry',
+  'payment',
+  'payment_instrument',
+  'invoice_reminder',
+  'recurring_invoice',
 ] as const;
 
 /** What names a record, by the key that words its table, the tables not worded summed as other records. */

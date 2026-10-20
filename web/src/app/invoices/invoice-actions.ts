@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { inject, Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
@@ -109,6 +110,8 @@ export interface InvoiceActionsOptions {
   creditBalance?: () => string;
   /** Said after an action changed the document, to a screen whose own change never comes back to it as a live one. */
   changed?: (invoice: InvoiceRow) => void;
+  /** Said once the document is deleted, to a screen that showed it alone; else it is told the document changed. */
+  gone?: () => void;
 }
 
 /**
@@ -127,6 +130,7 @@ export class InvoiceActions {
   private readonly recurring = inject(RecurringApi);
   private readonly format = inject(FormatFacade);
   private readonly texts = inject(TextsParts);
+  private readonly deletes = inject(RecordDeletes);
 
   rights(): InvoiceRights {
     const country = this.auth.me()?.company?.countryCode;
@@ -279,6 +283,18 @@ export class InvoiceActions {
         },
         shown: (invoice) => invoiceMay.abandon(invoice, rights),
         run: (invoice) => void this.abandon(invoice, changed),
+      },
+      {
+        id: 'delete',
+        label: 'records.delete',
+        icon: 'delete',
+        group: 'state',
+        frequency: 'rare',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps the draft a day. A draft
+        // another record names (the quote it came from, a recurring invoice's model) is refused, the toast saying by what.
+        effect: { kind: 'annulable' },
+        shown: (invoice) => invoiceMay.abandon(invoice, rights),
+        run: (invoice) => void this.remove(invoice, options.gone ?? (() => changed(invoice))),
       },
     ];
   }
@@ -438,6 +454,16 @@ export class InvoiceActions {
     if (!reason) return;
     const credit = await this.facade.creditNote(companyId, invoice.id, reason);
     if (credit !== null) await this.router.navigate(['/invoices', credit.id]);
+  }
+
+  /** Deletes a draft, which « Annuler » or « Récemment supprimés » puts back as it was. */
+  private async remove(invoice: InvoiceRow, gone: () => void): Promise<void> {
+    const companyId = this.companyId();
+    if (!companyId || this.facade.busy()) return;
+    const removed = await this.deletes.remove(companyId, 'invoice', [
+      { id: invoice.id, label: invoice.number ?? invoice.customerName },
+    ]);
+    if (removed) gone();
   }
 
   /** Voids a draft for good; asked first by whoever runs it, from its preview. */
