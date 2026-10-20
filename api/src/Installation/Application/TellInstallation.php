@@ -12,14 +12,16 @@ namespace App\Installation\Application;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
+use App\Tenancy\Application\Company\DemoCompanies;
 use App\Tenancy\Domain\Repository\CompanyRepository;
 use App\Tenancy\Domain\Repository\MembershipRepository;
 
 /**
  * What a shop's installation script (scripts/onprem/twes) tells about the installation it runs: a release out goes to
- * each company's owners, who decide when it is applied; an update that failed or was rolled back, a health check that
- * fails and backups that failed or stopped go to the platform's operators, who mend them. The script also mails its own
- * alerts, since the application may be what is down; here they reach the bell once it answers.
+ * each company's owners, who decide when it is applied, but never to a demo sandbox's, a visitor who decides nothing
+ * here; an update that failed or was rolled back, a health check that fails and backups that failed or stopped go to
+ * the platform's operators, who mend them. The script also mails its own alerts, since the application may be what is
+ * down; here they reach the bell once it answers.
  *
  * The line comes from a script on the same machine, but it is still checked whole: each kind takes the parameters it
  * names and no other, each once, each a short plain value, so nothing the bell shows was written by anything else.
@@ -53,6 +55,7 @@ final readonly class TellInstallation
         private CompanyRepository $companies,
         private MembershipRepository $memberships,
         private Notifications $notifications,
+        private DemoCompanies $demo,
     ) {
     }
 
@@ -87,9 +90,15 @@ final readonly class TellInstallation
     /** @param array<string, string> $payload */
     private function tellOwners(string $kind, array $payload): int
     {
+        $sandboxes = [];
+        foreach ($this->demo->all() as $sandbox) {
+            $sandboxes[$sandbox->toRfc4122()] = true;
+        }
         $companies = [];
         foreach ($this->companies->all() as $company) {
-            $companies[] = $company->getId();
+            if (!isset($sandboxes[$company->getId()->toRfc4122()])) {
+                $companies[] = $company->getId();
+            }
         }
         $told = 0;
         foreach ($this->memberships->ownersOfCompanies($companies) as $membership) {

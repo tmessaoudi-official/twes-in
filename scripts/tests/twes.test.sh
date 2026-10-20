@@ -212,6 +212,9 @@ out=$(PLATFORM=wsl DOCKER_OS='Docker Desktop' twes "$d" install); [[ "$out" != *
 out=$(PLATFORM=wsl twes "$d" install); check "install again under WSL with Docker Engine: scheduled by systemd" $? 0 "$out" "scheduled: twes-in-start.service"
 d=$(bare); mkdir -p "$TMPDIR/usb"
 out=$(BACKUPS=$TMPDIR/usb answers | twes "$d" install); check "a backup folder given is the backups' folder" $? 0 "$(value_of "$d" BACKUP_DIRECTORY)" "$TMPDIR/usb"
+d=$(bare); odd="$TMPDIR/usb\nUPDATE_POLICY=off"; mkdir -p "$odd"
+out=$(BACKUPS=$odd answers | twes "$d" install); check "a backup folder whose name holds a backslash is written as typed" $? 0 "$(value_of "$d" BACKUP_DIRECTORY)" "$odd"
+[[ "$(grep -c '^UPDATE_POLICY=off$' "$d/etc/install.env")" == 0 ]]; check "  never read as a second value" $? 0 "$(cat "$d/etc/install.env")" ""
 d=$(bare)
 out=$(BACKUPS=$TMPDIR/nowhere/at/all answers | twes "$d" install); check "a backup folder that does not exist: refused" $? 1 "$out" "no folder at $TMPDIR/nowhere/at/all"
 d=$(bare)

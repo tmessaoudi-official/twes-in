@@ -16,13 +16,17 @@ use Sentry\EventHint;
  * What an error report keeps before it leaves for the error tracker (docs/START.md § 15): where it happened and in
  * what shape, never who or with what. As the audit trail keeps field names and never values, a report keeps the
  * request's method and path, the exception's type, its frames and its message with every value in it masked: an
- * address, anything quoted, any run of six digits or more (a phone, an account, a tax number). The person, the body,
+ * address, anything quoted, any run of six digits or more (a phone, an account, a tax number), and the values a
+ * database error details after its column names (`Key (name)=(…)`, `Failing row contains (…)`), which hold whatever
+ * the row held, parentheses included, so they are cut to the end of the detail. The person, the body,
  * the query, the cookies, the headers, the client address, the breadcrumbs and the frames' variables are dropped.
  * Named in config/packages/sentry.yaml as the SDK's before_send.
  */
 final class ScrubPersonalData
 {
     private const array MASKS = [
+        '/(\bKey \([^)]*\)=)\(.*?\)(?= already exists| is not present| is still referenced| conflicts with|\.?[ \t]*$)/mu' => '$1([values])',
+        '/(\bFailing row contains )\(.*\)(?=\.?[ \t]*$)/mu' => '$1([values])',
         '/[^\s@<>"\'«»()]+@[^\s@<>"\'«»()]+\.[^\s@<>"\'«»()]+/u' => '[address]',
         '/"[^"]*"/u' => '"[value]"',
         '/«\s*[^»]*?\s*»/u' => '« [value] »',

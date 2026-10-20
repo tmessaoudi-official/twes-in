@@ -63,6 +63,18 @@ final class ScrubPersonalDataTest extends TestCase
         yield 'a value in single quotes' => ["Key 'TN-1234567A' refused", "Key '[value]' refused"];
         yield 'a long number' => ['Phone 21698765432 or IBAN TN5904018104004942712345 refused', 'Phone [number] or IBAN TN[number] refused'];
         yield 'a short number stays, as a line or a count does' => ['Line 12 of 40 refused', 'Line 12 of 40 refused'];
+        yield "a unique key's values, as PostgreSQL details them" => [
+            "SQLSTATE[23505]: Unique violation: 7 ERROR:  duplicate key value violates unique constraint \"uniq_vendor_name\"\nDETAIL:  Key (company_id, name)=(019a2b3c-0000-7000-8000-000000000001, Ben Ali (Sfax)) already exists.",
+            "SQLSTATE[23505]: Unique violation: 7 ERROR:  duplicate key value violates unique constraint \"[value]\"\nDETAIL:  Key (company_id, name)=([values]) already exists.",
+        ];
+        yield "a missing reference's value" => [
+            "ERROR:  insert or update on table \"invoice\" violates foreign key constraint \"fk_1\"\nDETAIL:  Key (customer_id)=(Dupont Sfax) is not present in table \"customer\".",
+            "ERROR:  insert or update on table \"[value]\" violates foreign key constraint \"[value]\"\nDETAIL:  Key (customer_id)=([values]) is not present in table \"[value]\".",
+        ];
+        yield "a check's failing row" => [
+            "ERROR:  new row for relation \"customer\" violates check constraint \"chk_1\"\nDETAIL:  Failing row contains (019a, Dupont Sfax, ali-ben, 21 rue Habib (bloc B), null).",
+            "ERROR:  new row for relation \"[value]\" violates check constraint \"[value]\"\nDETAIL:  Failing row contains ([values]).",
+        ];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('messages')]
