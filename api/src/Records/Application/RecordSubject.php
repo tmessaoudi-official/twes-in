@@ -11,14 +11,18 @@ namespace App\Records\Application;
 
 /**
  * A kind of record a person may delete while nothing uses it, restore, and merge: its table, which its references name,
- * and the permission that writes it, which deleting and restoring need.
+ * the permission that writes it, which deleting and restoring need, the module it belongs to, switched off with it, and
+ * the columns that name one record to a person (« F-001 Sotumag »), joined by a space where they hold something.
  */
 final readonly class RecordSubject
 {
-    public function __construct(public string $table, public string $writePermission)
+    /** @param non-empty-list<string> $labelColumns */
+    public function __construct(public string $table, public string $writePermission, public ?string $module, public array $labelColumns)
     {
-        if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $table)) {
-            throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $table));
+        foreach ([$table, ...$labelColumns] as $name) {
+            if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
+                throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $name));
+            }
         }
     }
 }

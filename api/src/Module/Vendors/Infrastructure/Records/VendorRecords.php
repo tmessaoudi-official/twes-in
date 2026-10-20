@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Vendors\Infrastructure\Records;
 
 use App\Module\Vendors\Infrastructure\ApiPlatform\Security\VendorPermission;
+use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\Records\Application\DeclaresRecordReferences;
 use App\Records\Application\RecordSubject;
 
@@ -18,7 +19,7 @@ final readonly class VendorRecords implements DeclaresRecordReferences
 {
     public function subjects(): array
     {
-        return [new RecordSubject('vendor', VendorPermission::WRITE)];
+        return [new RecordSubject('vendor', VendorPermission::WRITE, VendorsModule::KEY, ['number', 'name'])];
     }
 
     public function references(): array
