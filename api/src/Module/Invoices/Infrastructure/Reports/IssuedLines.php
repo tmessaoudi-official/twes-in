@@ -13,6 +13,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Reports\Application\ReportContext;
 use App\Module\Reports\Application\ReportPeriod;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 
 /**
  * Every line of a period's issued documents, as the sales reports read them: its share of its document's net, the base
@@ -22,8 +23,10 @@ use App\Module\Reports\Application\ReportPeriod;
  */
 final class IssuedLines
 {
-    private const string LINES = 'SELECT i.id AS document, i.number, i.customer_snapshot ->> \'name\' AS party, i.issue_date,
-                COALESCE(named.merged_into_id, l.product_id) AS product_id, l.unit_id, l.unit_cost,
+    private static function lines(): string
+    {
+        return 'SELECT i.id AS document, i.number, i.customer_snapshot ->> \'name\' AS party, i.issue_date,
+                '.KeptRecords::id('named').' AS product_id, l.unit_id, l.unit_cost,
                 CASE WHEN i.document_type = :credit THEN -1 ELSE 1 END * l.quantity AS quantity,
                 CASE WHEN SUM(l.line_net) OVER (PARTITION BY i.id) = 0 THEN l.line_net
                      ELSE l.line_net * i.total_net / SUM(l.line_net) OVER (PARTITION BY i.id) END AS net,
@@ -32,6 +35,7 @@ final class IssuedLines
            LEFT JOIN product named ON named.id = l.product_id
           WHERE i.company_id = :company AND i.status <> :cancelled AND i.amount_due IS NOT NULL
             AND i.issue_date BETWEEN :from AND :to %1$s';
+    }
 
     /**
      * The lines' query, to be read as a subquery, and its values, narrowed to the establishment asked.
@@ -48,9 +52,9 @@ final class IssuedLines
             'to' => $period->to->format('Y-m-d'),
         ];
         if (null === $context->establishmentId) {
-            return [\sprintf(self::LINES, ''), $params];
+            return [\sprintf(self::lines(), ''), $params];
         }
 
-        return [\sprintf(self::LINES, 'AND i.establishment_id = :establishment'), $params + ['establishment' => $context->establishmentId]];
+        return [\sprintf(self::lines(), 'AND i.establishment_id = :establishment'), $params + ['establishment' => $context->establishmentId]];
     }
 }

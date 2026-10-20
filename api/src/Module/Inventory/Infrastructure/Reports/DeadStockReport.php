@@ -25,6 +25,7 @@ use App\Module\Reports\Application\ReportPeriod;
 use App\Module\Reports\Application\ReportRow;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use BcMath\Number;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
@@ -119,18 +120,18 @@ final readonly class DeadStockReport implements DeclaresReport
                       JOIN product bp ON bp.id = back.product_id
                       LEFT JOIN stock_lot bl ON bl.id = back.lot_id
                      WHERE back.source_type = m.source_type AND back.source_id = m.source_id
-                       AND COALESCE(bp.merged_into_id, bp.id) = COALESCE(mp.merged_into_id, mp.id)
+                       AND '.KeptRecords::id('bp').' = '.KeptRecords::id('mp').'
                        AND back.location_id = m.location_id AND bl.code IS NOT DISTINCT FROM ml.code AND back.kind = :in)';
         $rows = $this->connection->fetchAllAssociative(
             'SELECT g.product_id, p.name, p.reference, u.code AS unit, g.on_hand, g.last_sold,
                     CAST(:today AS date) - COALESCE(g.last_sold, g.first_in) AS quiet_days
                FROM (
-                    SELECT COALESCE(mp.merged_into_id, mp.id) AS product_id, SUM(m.quantity) AS on_hand,
+                    SELECT '.KeptRecords::id('mp').' AS product_id, SUM(m.quantity) AS on_hand,
                            MAX('.$day.') FILTER (WHERE '.$sold.') AS last_sold,
                            MIN('.$day.') FILTER (WHERE m.quantity > 0 AND m.source_type <> :merge) AS first_in
                       FROM stock_movement m JOIN product mp ON mp.id = m.product_id LEFT JOIN stock_lot ml ON ml.id = m.lot_id '.$join.'
                      WHERE '.$where.'
-                     GROUP BY COALESCE(mp.merged_into_id, mp.id)
+                     GROUP BY '.KeptRecords::id('mp').'
                     HAVING SUM(m.quantity) > 0
                ) g
                JOIN product p ON p.id = g.product_id
