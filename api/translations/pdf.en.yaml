@@ -101,6 +101,8 @@ payment:
 watermark:
     draft: 'DRAFT'
     cancelled: 'CANCELLED'
+    cancelled_invoice: 'CANCELLED'
+    cancelled_order: 'CANCELLED'
     duplicate: 'DUPLICATE'
     copy: 'COPY'
     preview: 'PREVIEW'

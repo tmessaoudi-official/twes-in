@@ -136,6 +136,19 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
     }
 
     /**
+     * « Cancelled » across the page agrees with the document it stamps: an invoice is feminine in French and in Arabic,
+     * where a quote or a delivery note sharing the plain word is not.
+     */
+    public function testACancelledInvoiceIsStampedInTheFeminine(): void
+    {
+        self::bootKernel();
+
+        self::assertStringContainsString('<div class="watermark">ANNULÉE</div>', $this->html(new DocumentDesign(), [], [], watermark: InvoicePage::CANCELLED));
+        self::assertStringContainsString('<div class="watermark">CANCELLED</div>', $this->html(new DocumentDesign(), [], [], watermark: InvoicePage::CANCELLED, language: 'en'));
+        self::assertStringContainsString('<div class="watermark">ملغاة</div>', $this->html(new DocumentDesign(), [], [], watermark: InvoicePage::CANCELLED, language: 'ar'));
+    }
+
+    /**
      * A rated tax prints its name in the document's language with the rate the document froze, which its name may already
      * say; a name saying another rate (a tax renamed since) never hides the rate charged.
      */
@@ -353,11 +366,11 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
     }
 
     /**
-     * @param list<string>                         $keys
-     * @param array<string, array<string, string>> $parameters
-     * @param list<QuantityTotal>                  $quantities
-     * @param InvoicePage::DRAFT|null              $watermark
-     * @param array<string, string>                $taxNames
+     * @param list<string>                                   $keys
+     * @param array<string, array<string, string>>           $parameters
+     * @param list<QuantityTotal>                            $quantities
+     * @param InvoicePage::DRAFT|InvoicePage::CANCELLED|null $watermark
+     * @param array<string, string>                          $taxNames
      */
     private function html(DocumentDesign $design, array $keys, array $parameters, ?string $savings = null, array $quantities = [], ?string $watermark = InvoicePage::DRAFT, string $language = 'fr', array $taxNames = []): string
     {

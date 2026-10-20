@@ -90,6 +90,13 @@ final class TwigPurchaseOrderTemplateTest extends KernelTestCase
         }
     }
 
+    /** The Arabic title, « طلبية », is feminine, and the stamp across it agrees. */
+    public function testACancelledOrderIsStampedInAgreementWithItsArabicTitle(): void
+    {
+        self::assertStringContainsString('<div class="watermark">ملغاة</div>', $this->html(PurchaseOrderPage::CANCELLED, 'ar'));
+        self::assertStringContainsString('<div class="watermark">ANNULÉ</div>', $this->html(PurchaseOrderPage::CANCELLED, 'fr'));
+    }
+
     public function testInArabicThePageReadsRightToLeftAndEachTypedValueReadsItsOwnWay(): void
     {
         $html = $this->html(null, 'ar');
