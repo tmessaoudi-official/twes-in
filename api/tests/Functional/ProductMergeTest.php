@@ -629,6 +629,27 @@ final class ProductMergeTest extends ApiTestCase
         self::assertSame([[$kept, '1.000', 30]], array_map(static fn (array $row): array => [$row['subjectId'] ?? null, \is_array($row['params'] ?? null) ? $row['params']['onHand'] ?? null : null, \is_array($row['params'] ?? null) ? $row['params']['days'] ?? null : null], $this->jsonList()));
     }
 
+    /** A sale of the product merged away whose goods came back to the product kept, in its lot, was never a sale. */
+    public function testASaleComingBackToTheProductKeptIsNoSaleForTheDeadStock(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->products['VIS-L'], $this->products['VIS-L2']];
+        $this->received($merged, '5', '2.000', 'L-1', '2027-01-31');
+        $this->postJson($this->path('delivery-notes'), ['customerId' => $this->customerId, 'establishmentId' => null, 'deliveryDate' => null, 'deliveryAddressLine1' => null, 'deliveryAddressLine2' => null, 'deliveryPostalCode' => null, 'deliveryCity' => null, 'deliveryCountryCode' => null, 'customerReference' => null, 'remarksPrinted' => null, 'notesInternal' => null, 'lines' => [['productId' => $merged, 'quantity' => '2', 'lotCode' => 'L-1']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $note = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path("delivery-notes/$note/validate"), null);
+        self::assertResponseIsSuccessful();
+        $this->em()->getConnection()->executeStatement("UPDATE stock_movement SET at = at - interval '100 days'");
+        $this->merged($kept, [$merged]);
+        $this->postJson($this->path("delivery-notes/$note/cancel"), null);
+        self::assertResponseIsSuccessful();
+
+        $this->getJson($this->path('reports/dead-stock'));
+        self::assertResponseIsSuccessful();
+        self::assertSame([['VIS-L', '5.000', null, 100]], $this->reportRows(['reference', 'on_hand', 'last_sold', 'quiet_days']));
+    }
+
     public function testMergingProductsTakesWritingThemAndAProofGivenAgain(): void
     {
         $this->signedIn(prove: false);
