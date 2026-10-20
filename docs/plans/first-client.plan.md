@@ -339,10 +339,14 @@ was and was not certified by execution.
 - Records texts in Arabic (A3, `web/public/i18n/records/ar.json`), two choices to confirm: the counts after « وارد في »
   are written in the genitive dual (حركتي مخزون، طلبيتين) while the standalone heading of « Récemment supprimés » is
   nominative (مزوّدان); and the 11–99 form takes tanwin where the noun stands alone (مصروفًا، منتجًا مرتبطًا) but not
-  in a construct (حركة مخزون، رمز مزوّد).
+  in a construct (حركة مخزون، رمز مزوّد). A4 added the product's forms under the same two conventions: the
+  heading's « منتج », the six refusal tables (invoice, quote, delivery note and order lines, lots, price-list items)
+  and the longer `restore_conflict` sentence (« or a record it names was deleted since »).
 - A delete refused as in use (409 `record_used`) tells whoever may write vendors how many stock movements, purchase
   orders and expenses name each one, whatever modules and read permissions they hold: counts, never contents. Keep the
   counts, or say only « still in use » to someone who may not read that subject? Asked of the security lens at the panel.
+  Since A4 the same holds for products: whoever writes products sees how many invoice, quote, delivery note and order
+  lines, lots and price-list items name one, whether or not they may read those modules.
 - Delete while unused (00:36), asked 2026-10-20 for the morning: does a configuration link make a record « used »? Every imported vendor is named by `product_vendor`, every product by a category, a barcode by its supplier; read literally, none of the ~40 imported vendors could be deleted, only merged, and a name that is no vendor at all (a lone section label) has nothing to merge into. Built as a per-column role, these three blocking until ruled (and, since A4, a price list's item naming a product); the recommended answer is that a configuration link is cleared with the record (and refilled by « Restaurer »), while documents, movements and expenses keep blocking.
 - The mails' language once someone goes back to the company's language: the account keeps the last language chosen (`KeepAccountLanguage`), so a person who tried Arabic and returned to French still gets Arabic mail. The screens no longer read it (2026-10-19 12:14). Should going back to the company's language also move the account's mail language to it?
 - Their Excel file: received and converted (step 17, local only: `var/claude/client-excel/out/`, never committed). Its report, `report.md`, lists by sheet number what was read and every doubt; to ask the developer through `AskUserQuestion`, one sheet's doubt per option: sheets 3 and 15 (cost column without a heading, HT or TTC not said), 4 (pieces or boxes, a sale price headed HTVA computed on the TTC cost), 6, 17, 19, 36 (no sale price read: none named, or two), 14 (which vendor rows 3 to 42 belong to; a VAT column reading 0.01), 20 (per-unit columns and quantity), 26 (quantity and discount without a heading), 35 (first block's sale price below cost), the purchase lines with no product name, and the 119 near-identical names to merge after the import.
@@ -378,6 +382,8 @@ was and was not certified by execution.
   `scripts/backup/restore-drill.sh` now waits for promotion (`promoted`) and prints the container's log on that failure;
   the four runs since passed, waiting 0 s each. Read that log if it comes back.
 ### Known issues
+- `UnnamedFiles` reads the foreign keys to `file` from the catalogue once per owned table when a removal ends, then
+  once more to decide which files are named (nine reads for a product): correct, a P2 to read them once per call.
 - A product deleted with its vendor links, then that vendor deleted (nothing names it once the links went with the
   product): the product's restore refuses whole as `restore_conflict` until the vendor is restored first
   (`ProductRemovalTest`). The toast says that a record it names may have been deleted since, without naming which.

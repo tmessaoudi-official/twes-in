@@ -35,8 +35,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * A company's products (docs/SPEC.md § 4 product). Read with product.read, added and revised with product.write;
- * never deleted, deactivated instead. The shape is checked here, the company's units, categories and taxes by the
- * use case. Prices are decimal strings answered at four decimals.
+ * deactivated, or deleted through the records engine while nothing names it. The shape is checked here, the company's
+ * units, categories and taxes by the use case. Prices are decimal strings answered at four decimals.
  */
 #[ApiResource(
     shortName: 'Product',
