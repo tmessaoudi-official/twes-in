@@ -121,12 +121,21 @@
       "unit_cost": "Coût unitaire",
       "unit_cost_note": "Ce qu’a coûté une unité ajoutée. Laissé vide : le coût du produit. Jamais avec une quantité comptée."
     },
+    "product_vendors": {
+      "product_reference": "Référence produit",
+      "product_reference_note": "La référence du produit tel qu’il existe déjà : importez les produits d’abord.",
+      "vendor_number": "Numéro fournisseur",
+      "vendor_number_note": "Le numéro du fournisseur chez qui le produit s’achète : importez les fournisseurs d’abord. Une ligne par fournisseur d’un même produit.",
+      "vendor_code": "Code fournisseur",
+      "vendor_code_note": "Le code que ce fournisseur donne au produit : ajouté, ou repris d’un autre de ses fournisseurs s’il était le sien ; aucun n’est retiré."
+    },
     "title": "Importer des {{subject}}",
     "subjects": {
       "customers": "clients",
       "products": "produits",
       "vendors": "fournisseurs",
-      "opening_stock": "stocks de départ"
+      "opening_stock": "stocks de départ",
+      "product_vendors": "fournisseurs des produits"
     },
     "identity": "Une ligne est retrouvée par : {{columns}}. Au plus {{rows}} lignes par fichier.",
     "no_company": "Choisissez une entreprise pour importer un fichier.",

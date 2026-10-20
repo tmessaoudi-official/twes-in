@@ -176,7 +176,7 @@ final readonly class ManageProducts
             $product->track($tracking, $now);
             $product->reviseCustomFields($values, $now);
             $product->replaceBarcodes($lines, $now);
-            $vendors = $this->vendorsNamed($company, $input);
+            $vendors = $this->vendorsNamed($company, $input->vendorIds, $input->seesCosts);
             if (null !== $vendors) {
                 $product->replaceVendors($vendors, $now);
             }
@@ -218,7 +218,7 @@ final readonly class ManageProducts
             $this->assertStockKeepsItsMeaning($company, $product, $unit, $input->details->kind);
             $tracking = $this->trackingKeptByStock($company, $product, Product::trackingFor($input->tracking ?? $product->getTracking(), $input->details->kind));
             $values = $this->customFieldValues($company, $input, $product);
-            $vendors = $this->vendorsNamed($company, $input);
+            $vendors = $this->vendorsNamed($company, $input->vendorIds, $input->seesCosts);
 
             $now = $this->clock->now();
             $costBefore = $product->getDetails()->costPrice;
@@ -276,6 +276,61 @@ final readonly class ManageProducts
     }
 
     /**
+     * The product is bought from this vendor too, under the vendor's own code when one is given, as a file of who sells
+     * what says it: the code is added beside the vendor's others, or moved to this vendor when the product holds it
+     * under another; nothing is removed. Audited as a revision of the fields it changed, which it answers.
+     *
+     * @return list<string> the fields changed: `barcodes`, `vendors`, or none
+     *
+     * @throws ProductNotFound
+     * @throws ProductBarcodeTaken
+     * @throws InvalidProduct
+     */
+    public function addVendor(Company $company, Uuid $id, Uuid $vendorId, ?string $code, ?Uuid $actorUserId, bool $seesCosts = true): array
+    {
+        return $this->transactions->run(function () use ($company, $id, $vendorId, $code, $actorUserId, $seesCosts): array {
+            $product = $this->locked($company, $id);
+            [$vendor] = $this->vendorsNamed($company, [$vendorId], $seesCosts);
+            $now = $this->clock->now();
+            $before = array_map(static fn (Vendor $held): string => $held->getId()->toRfc4122(), $product->getVendors());
+            $changed = [];
+            if (null !== $code && $product->replaceBarcodes($this->barcodeLines($company, self::withSupplierCode($product, $vendorId, $code), $product), $now)) {
+                $changed[] = 'barcodes';
+            }
+            $product->replaceVendors([...$product->getVendors(), $vendor], $now);
+            if (!\in_array($vendorId->toRfc4122(), $before, true)) {
+                $changed[] = 'vendors';
+            }
+            if ([] !== $changed) {
+                $this->products->save($product);
+                $this->record($company, $product->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
+
+            return $changed;
+        });
+    }
+
+    /**
+     * The product's codes with `$code` as this vendor's: the one held under that code becomes the vendor's, else the
+     * code is added.
+     *
+     * @return list<BarcodeInput>
+     */
+    private static function withSupplierCode(Product $product, Uuid $vendorId, string $code): array
+    {
+        $key = Barcode::keyOf($code);
+        $rows = [];
+        $placed = false;
+        foreach ($product->getBarcodes() as $held) {
+            $mine = BarcodeRole::Supplier === $held->getRole() && $key === $held->getMatchKey();
+            $placed = $placed || $mine;
+            $rows[] = new BarcodeInput($held->getRole()->value, $held->getCode(), $held->getQuantity(), $mine ? $vendorId : $held->getSupplier()?->getId());
+        }
+
+        return $placed ? $rows : [...$rows, new BarcodeInput(BarcodeRole::Supplier->value, $code, 1, $vendorId)];
+    }
+
+    /**
      * The codes a writer who may not read costs sends, with the supplier's codes they were never shown kept as stored
      * (docs/SPEC.md § 7, 2026-09-23 09:45, slice 5): a list they cannot see whole would otherwise erase them.
      *
@@ -302,23 +357,25 @@ final readonly class ManageProducts
     }
 
     /**
-     * The vendors the input names, found in the company; null when it names none, which keeps them.
+     * The vendors named, found in the company; null when none are named, which keeps them.
      *
-     * @return list<Vendor>|null
+     * @param list<Uuid>|null $ids
+     *
+     * @return ($ids is null ? null : list<Vendor>)
      *
      * @throws InvalidProduct
      */
-    private function vendorsNamed(Company $company, ProductInput $input): ?array
+    private function vendorsNamed(Company $company, ?array $ids, bool $seesCosts): ?array
     {
-        if (null === $input->vendorIds) {
+        if (null === $ids) {
             return null;
         }
         // Who a product is bought from is purchasing knowledge, read and written with costs.
-        if (!$input->seesCosts) {
+        if (!$seesCosts) {
             throw new InvalidProduct('vendors', 'A product\'s vendors are written by someone who may read costs.');
         }
         $vendors = [];
-        foreach ($input->vendorIds as $index => $id) {
+        foreach ($ids as $index => $id) {
             $vendors[] = $this->vendors->ofIdInCompany($id, $company->getId())
                 ?? throw new InvalidProduct("vendors.$index", 'No vendor of this company has this id.');
         }

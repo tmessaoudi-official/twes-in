@@ -82,6 +82,7 @@ final class ImportTemplatesTest extends ApiTestCase
             'vendors' => ['number', 'phone', 'postal_code', 'iban', 'bic', 'matricule_fiscal'],
             'products' => ['reference', 'barcode', 'pack_barcode', 'supplier_number', 'supplier_code', 'home_location', 'location'],
             'opening-stock' => ['reference', 'barcode', 'location_code'],
+            'product-vendors' => ['product_reference', 'vendor_number', 'vendor_code'],
         ];
 
         foreach ($codes as $subject => $expected) {

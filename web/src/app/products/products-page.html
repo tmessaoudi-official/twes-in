@@ -7,9 +7,35 @@
       <div class="flex flex-wrap gap-2">
         <app-list-export [address]="exporter()" testId="products-export" />
         @if (mayWrite() && company()) {
-          <a mat-stroked-button routerLink="/imports/products" data-testid="products-import">
-            {{ 'import.action' | translate }}
-          </a>
+          @if (mayImportVendors()) {
+            <button
+              mat-stroked-button
+              [matMenuTriggerFor]="importMenu"
+              data-testid="products-import"
+            >
+              {{ 'import.action' | translate }}
+            </button>
+            <mat-menu #importMenu="matMenu">
+              <a
+                mat-menu-item
+                routerLink="/imports/products"
+                data-testid="products-import-products"
+              >
+                {{ 'products.imports.products' | translate }}
+              </a>
+              <a
+                mat-menu-item
+                routerLink="/imports/product-vendors"
+                data-testid="products-import-vendors"
+              >
+                {{ 'products.imports.vendors' | translate }}
+              </a>
+            </mat-menu>
+          } @else {
+            <a mat-stroked-button routerLink="/imports/products" data-testid="products-import">
+              {{ 'import.action' | translate }}
+            </a>
+          }
           <a mat-flat-button routerLink="/products/new" data-testid="product-add">
             {{ 'products.add' | translate }}
           </a>
