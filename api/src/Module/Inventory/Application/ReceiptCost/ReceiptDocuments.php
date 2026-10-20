@@ -30,8 +30,13 @@ final readonly class ReceiptDocuments
     {
     }
 
-    /** @throws InvalidStockMovement */
-    public function named(Company $company, ?string $vendorId, ?string $supplierReference, ?string $receivedOn): ?ReceiptDocument
+    /**
+     * A receipt names a vendor still standing; one against an order already sent names the order's, even merged away
+     * since, as the order stays the vendor merged away's.
+     *
+     * @throws InvalidStockMovement
+     */
+    public function named(Company $company, ?string $vendorId, ?string $supplierReference, ?string $receivedOn, bool $ofASentOrder = false): ?ReceiptDocument
     {
         $vendor = null;
         if (null !== $vendorId && '' !== $vendorId) {
@@ -42,7 +47,7 @@ final readonly class ReceiptDocuments
             if (null === $vendor) {
                 throw new InvalidStockMovement('vendorId', 'No vendor of this company has this id.');
             }
-            if ($vendor->isMergedAway()) {
+            if ($vendor->isMergedAway() && !$ofASentOrder) {
                 throw new InvalidStockMovement('vendorId', 'This vendor was merged into another: name that one.', null, 'unknown_choice');
             }
         }
