@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
 use App\Module\Invoices\Application\Statement\StatementSource;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -31,15 +32,15 @@ final readonly class DoctrineStatementSource implements StatementSource
                i.total_gross - i.withholding_amount AS amount,
                CASE i.document_type WHEN 'invoice' THEN 1 ELSE 2 END AS rank
           FROM invoice i
-         WHERE i.company_id = :company AND i.customer_id = :customer AND i.amount_due IS NOT NULL
+         WHERE i.company_id = :company AND %1$s AND i.amount_due IS NOT NULL
         UNION ALL
         SELECT p.payment_date, 'payment', i.number, i.id, p.reference, -p.amount, 3
           FROM payment p JOIN invoice i ON i.id = p.invoice_id
-         WHERE i.company_id = :company AND i.customer_id = :customer AND i.amount_due IS NOT NULL
+         WHERE i.company_id = :company AND %1$s AND i.amount_due IS NOT NULL
         UNION ALL
         SELECT c.entry_date, 'credit_transfer', i.number, i.id, c.reference, c.amount, 4
           FROM customer_credit_entry c JOIN invoice i ON i.id = c.invoice_id
-         WHERE c.company_id = :company AND c.customer_id = :customer AND c.kind = 'credited'
+         WHERE c.company_id = :company AND %2$s AND c.kind = 'credited'
         SQL;
 
     private Connection $connection;
@@ -52,7 +53,7 @@ final readonly class DoctrineStatementSource implements StatementSource
     public function balanceBefore(Uuid $companyId, Uuid $customerId, \DateTimeImmutable $day): string
     {
         $sum = $this->connection->fetchOne(
-            'SELECT COALESCE(SUM(e.amount), 0) FROM ('.self::ACCOUNT.') e WHERE e.day < :day',
+            'SELECT COALESCE(SUM(e.amount), 0) FROM ('.self::account().') e WHERE e.day < :day',
             $this->parameters($companyId, $customerId) + ['day' => $day->format('Y-m-d')],
         );
 
@@ -62,7 +63,7 @@ final readonly class DoctrineStatementSource implements StatementSource
     public function entries(Uuid $companyId, Uuid $customerId, \DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT e.* FROM ('.self::ACCOUNT.') e WHERE e.day >= :from AND e.day <= :to
+            'SELECT e.* FROM ('.self::account().') e WHERE e.day >= :from AND e.day <= :to
              ORDER BY e.day, e.rank, e.number COLLATE "C", e.document_id, e.reference COLLATE "C" NULLS FIRST',
             $this->parameters($companyId, $customerId) + ['from' => $from->format('Y-m-d'), 'to' => $to->format('Y-m-d')],
         );
@@ -75,6 +76,12 @@ final readonly class DoctrineStatementSource implements StatementSource
             'reference' => null === $row['reference'] ? null : self::text($row['reference']),
             'amount' => self::text($row['amount']),
         ], $rows);
+    }
+
+    /** The account of the customer kept, with what was made out to the customers merged into it. */
+    private static function account(): string
+    {
+        return \sprintf(self::ACCOUNT, KeptRecords::among('i.customer_id', 'customer', ':customer'), KeptRecords::among('c.customer_id', 'customer', ':customer'));
     }
 
     /** @return array<string, string> */

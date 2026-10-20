@@ -331,6 +331,111 @@ final class CustomerMergeTest extends ApiTestCase
         self::assertSame([[$issued[1], 'Carthage Conseil']], array_map(static fn (mixed $document): array => \is_array($document) ? [$document['id'] ?? null, $document['party'] ?? null] : [], $this->arrayAt($this->json(), 'documents')));
     }
 
+    /**
+     * The lists narrowed to the customer kept show what stays with the customer merged away too, named and sorted as the
+     * customer kept, while each document still names the customer it was made out to.
+     */
+    public function testTheListsNarrowedToTheCustomerKeptShowWhatStayedWithTheOneMergedAway(): void
+    {
+        $this->signedIn();
+        [$kept, $merged, $other] = [$this->customerId('C-001'), $this->customerId('C-002'), $this->customerId('C-003')];
+        // A name sorting before every other, so a list sorted by the name recorded would put it first.
+        $this->em()->getConnection()->executeStatement("UPDATE customer SET name = 'Abidi' WHERE id = ?", [$merged]);
+        $invoices = [$this->anIssuedLateInvoice($kept), $this->anIssuedLateInvoice($merged), $this->anIssuedLateInvoice($other)];
+        $quote = $this->aQuote($merged, sent: true);
+        $note = $this->aDeliveryNote($merged, validated: true);
+        [$otherQuote, $otherNote] = [$this->aQuote($other, sent: true), $this->aDeliveryNote($other, validated: true)];
+        $this->em()->getConnection()->executeStatement(
+            "INSERT INTO payment_instrument (id, invoice_id, company_id, kind, amount, due_on, bank, number, status, created_at, updated_at)
+             VALUES (?, ?, ?, 'check', '1.000', CURRENT_DATE, '', 'CHQ-1', 'held', now(), now())",
+            [Uuid::v7()->toRfc4122(), $invoices[1], $this->companyId()],
+        );
+        $this->merged($kept, [$merged]);
+
+        $this->getJson($this->path('invoices?customerId='.$kept.'&order[number]=asc'));
+        $rows = array_map(static fn (array $row): array => [$row['id'] ?? null, $row['customerId'] ?? null, $row['customerName'] ?? null], $this->jsonList());
+        $expected = [[$invoices[0], $kept, 'Carthage Conseil'], [$invoices[1], $merged, 'Carthage Conseil']];
+        usort($rows, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
+        usort($expected, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
+        self::assertSame($expected, $rows, 'invoices');
+        $this->getJson($this->path('quotes?customerId='.$kept));
+        self::assertSame([[$quote, $merged, 'Carthage Conseil']], array_map(static fn (array $row): array => [$row['id'] ?? null, $row['customerId'] ?? null, $row['customerName'] ?? null], $this->jsonList()), 'quotes');
+        $this->getJson($this->path('delivery-notes?customerId='.$kept));
+        self::assertSame([[$note, $merged, 'Carthage Conseil']], array_map(static fn (array $row): array => [$row['id'] ?? null, $row['customerId'] ?? null, $row['customerName'] ?? null], $this->jsonList()), 'delivery notes');
+        $this->getJson($this->path('instruments?customerId='.$kept));
+        self::assertSame(['Carthage Conseil'], array_column($this->jsonList(), 'customerName'), 'instruments');
+
+        // Sorted by the name shown: « Carthage » before « Carthage Conseil », where « Abidi », the name recorded, would come first.
+        foreach (['invoices' => $invoices[2], 'quotes' => $otherQuote, 'delivery-notes' => $otherNote] as $list => $first) {
+            $this->getJson($this->path("$list?order[customer]=asc"));
+            self::assertSame($first, array_column($this->jsonList(), 'id')[0] ?? null, $list);
+        }
+
+        // The customer's account counts what is overdue on the invoices of the customer merged into it.
+        $this->getJson($this->path("customers/$kept/account"));
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['overdueCount'] ?? null);
+    }
+
+    /**
+     * The customer kept answers for what the customer merged into it owes and holds: its account, its credit balance and
+     * its statement take in both, asked by either id, so a merge never splits what one customer owes in two.
+     */
+    public function testTheAccountOfTheCustomerKeptTakesInWhatWasMergedIntoIt(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->customerId('C-001'), $this->customerId('C-002')];
+        // Each invoice comes to 12 less the 1 the customer withholds; each customer holds 25 paid beyond an invoice, and a
+        // credit note gave back 5 of what was paid on the invoice of the customer merged away.
+        $this->anIssuedLateInvoice($kept);
+        $owedByMerged = $this->anIssuedLateInvoice($merged);
+        $this->aCreditEntry($kept);
+        $this->aCreditEntry($merged);
+        $this->em()->getConnection()->executeStatement("UPDATE customer_credit_entry SET kind = 'credited', amount = '5.000', invoice_id = ? WHERE id = ?", [$owedByMerged, $this->aCreditEntry($merged)]);
+        $note = $this->aDeliveryNote($merged, validated: true);
+        $this->merged($kept, [$merged]);
+        $this->aSetting($kept, 'credit.limit', '20');
+
+        // A delivery to the customer merged away weighs what the customer kept owes, 27 less the 55 it holds, against
+        // the limit of the customer kept.
+        $this->getJson($this->path("delivery-notes/$note/credit"));
+        self::assertResponseIsSuccessful();
+        self::assertSame(['20.000', '-28.000'], [$this->json()['limit'] ?? null, $this->json()['owed'] ?? null], 'the delivery\'s credit check');
+
+        foreach ([$kept, $merged] as $asked) {
+            $this->getJson($this->path("customers/$asked/credit-balance"));
+            self::assertResponseIsSuccessful();
+            self::assertSame('55.000', $this->json()['balance'] ?? null, 'the credit balance');
+            $this->getJson($this->path("customers/$asked/account"));
+            self::assertResponseIsSuccessful();
+            $account = $this->json();
+            self::assertSame(['27.000', '55.000', 2], [$account['balance'] ?? null, $account['onAccount'] ?? null, $account['overdueCount'] ?? null], 'the account');
+            $this->getJson($this->path("customers/$asked/statement"));
+            self::assertResponseIsSuccessful();
+            $statement = $this->json();
+            self::assertSame(['Carthage Conseil', '27.000'], [$statement['customerName'] ?? null, $statement['closingBalance'] ?? null], 'the statement');
+        }
+    }
+
+    /** Credit held by the customer kept pays an invoice made out to the customer merged into it, and the reverse. */
+    public function testTheCreditOfTheCustomerKeptPaysWhatTheOneMergedAwayOwes(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->customerId('C-001'), $this->customerId('C-002')];
+        $owedByMerged = $this->anIssuedLateInvoice($merged);
+        $owedByKept = $this->anIssuedLateInvoice($kept);
+        $this->aCreditEntry($kept);
+        $this->aCreditEntry($merged);
+        $this->merged($kept, [$merged]);
+
+        $this->postJson($this->path("invoices/$owedByMerged/apply-credit"), ['amount' => '11']);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        $this->postJson($this->path("invoices/$owedByKept/apply-credit"), ['amount' => '11']);
+        self::assertResponseIsSuccessful((string) $this->client->getResponse()->getContent());
+        $this->getJson($this->path("customers/$kept/credit-balance"));
+        self::assertSame('28.000', $this->json()['balance'] ?? null, '50 held, 22 applied');
+    }
+
     /** Before anything runs, the screen says what each customer would hand over and what would stay with it. */
     public function testThePreviewSaysWhatMovesAndWhatStays(): void
     {
@@ -509,7 +614,7 @@ final class CustomerMergeTest extends ApiTestCase
 
     private function signedIn(bool $prove = true): void
     {
-        $permissions = ['company.read', 'customer.read', 'customer.write', 'invoice.read', 'invoice.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'product.read'];
+        $permissions = ['company.read', 'customer.read', 'customer.write', 'invoice.read', 'invoice.write', 'payment.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'product.read'];
         $this->createUser('shop@twes.local', self::PASSWORD, $this->company, $permissions, 'member');
         $this->login('shop@twes.local', self::PASSWORD);
         self::assertResponseIsSuccessful();

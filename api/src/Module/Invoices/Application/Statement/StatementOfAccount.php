@@ -38,7 +38,9 @@ final readonly class StatementOfAccount
      */
     public function handle(Company $company, Uuid $customerId, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to): CustomerStatement
     {
-        $customer = $this->customers->ofIdInCompany($customerId, $company->getId()) ?? throw new CustomerNotFound();
+        // A customer merged into another is read as the customer kept, whose account holds what was made out to both.
+        $customer = ($this->customers->ofIdInCompany($customerId, $company->getId()) ?? throw new CustomerNotFound())->standingFor();
+        $customerId = $customer->getId();
         $to ??= $this->account->today($company);
         $from ??= $to->modify('first day of january this year');
         if ($from > $to) {

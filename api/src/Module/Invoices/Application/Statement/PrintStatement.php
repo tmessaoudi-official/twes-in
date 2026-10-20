@@ -47,7 +47,8 @@ final readonly class PrintStatement
     public function pdf(Company $company, Uuid $customerId, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to): PrintedStatement
     {
         $statement = $this->statement->handle($company, $customerId, $from, $to);
-        $customer = $this->customers->ofIdInCompany($customerId, $company->getId()) ?? throw new CustomerNotFound();
+        // A customer merged into another prints the statement of the customer kept.
+        $customer = ($this->customers->ofIdInCompany($customerId, $company->getId()) ?? throw new CustomerNotFound())->standingFor();
         $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
         $print = DocumentFormats::print($this->settings, $context, $company);
         $language = $this->settings->text($context, 'document.language');

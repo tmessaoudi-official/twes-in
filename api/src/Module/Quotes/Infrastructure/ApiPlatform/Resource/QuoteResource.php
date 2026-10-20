@@ -450,7 +450,7 @@ final class QuoteResource
         $resource->status = $quote->getStatus()->value;
         $resource->expired = $quote->isExpired($today);
         $resource->customerId = $quote->getCustomer()->getId()->toRfc4122();
-        $resource->customerName = $quote->getCustomer()->getProfile()->name;
+        $resource->customerName = $quote->getCustomer()->standingFor()->getProfile()->name;
         $resource->establishmentId = $quote->getEstablishment()->getId()->toRfc4122();
         $snapshot = $quote->getCustomerSnapshot();
         $resource->customerSnapshot = null === $snapshot ? null : ['identifiers' => new \ArrayObject($snapshot->identifiers)] + $snapshot->toArray();

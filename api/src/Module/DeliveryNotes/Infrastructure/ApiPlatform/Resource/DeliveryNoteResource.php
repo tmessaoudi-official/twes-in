@@ -408,7 +408,7 @@ final class DeliveryNoteResource
         $resource->invoicedByInvoiceId = $note->getInvoicedByInvoiceId()?->toRfc4122();
         $resource->invoices = array_map(static fn (CarryingInvoice $invoice): array => ['invoiceId' => $invoice->id->toRfc4122(), 'number' => $invoice->number, 'status' => $invoice->status], $invoices);
         $resource->customerId = $note->getCustomer()->getId()->toRfc4122();
-        $resource->customerName = $note->getCustomer()->getProfile()->name;
+        $resource->customerName = $note->getCustomer()->standingFor()->getProfile()->name;
         $resource->establishmentId = $note->getEstablishment()->getId()->toRfc4122();
         $snapshot = $note->getCustomerSnapshot();
         $resource->customerSnapshot = null === $snapshot ? null : ['identifiers' => new \ArrayObject($snapshot->identifiers)] + $snapshot->toArray();

@@ -38,7 +38,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
      */
     public const string MATCHES_WORDS = "SEARCH_TEXT(i.number, i.customerReference, JSON_VALUES(i.customerSnapshot)) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
     private const string OVERDUE = 'overdue';
-    private const array SORTED_BY = ['number' => 'i.number', 'customer' => 'c.name', 'issueDate' => 'i.issueDate', 'dueDate' => 'i.dueDate', 'status' => 'i.status'];
+    private const array SORTED_BY = ['number' => 'i.number', 'customer' => 'CASE WHEN ck.id IS NULL THEN c.name ELSE ck.name END', 'issueDate' => 'i.issueDate', 'dueDate' => 'i.dueDate', 'status' => 'i.status'];
 
     public function __construct(private EntityManagerInterface $entityManager)
     {
@@ -131,6 +131,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         $query = $this->entityManager->createQueryBuilder()
             ->from(Invoice::class, 'i')
             ->join('i.customer', 'c')
+            ->leftJoin('c.mergedInto', 'ck')
             ->where('i.company = :company')->setParameter('company', $companyId, 'uuid');
         $words = trim($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
@@ -168,7 +169,8 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             }
         }
         if ([] !== $search->customers) {
-            $query->andWhere('i.customer IN (:customerIds)')
+            // A customer's documents are also those made out to a customer merged into it.
+            $query->andWhere('(i.customer IN (:customerIds) OR ck.id IN (:customerIds))')
                 ->setParameter('customerIds', array_map(static fn (Uuid $each): string => $each->toRfc4122(), $search->customers), ArrayParameterType::STRING);
         }
         if ([] !== $search->ids) {

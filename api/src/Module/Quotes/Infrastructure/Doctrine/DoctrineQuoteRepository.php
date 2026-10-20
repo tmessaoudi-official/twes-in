@@ -33,7 +33,7 @@ final readonly class DoctrineQuoteRepository implements QuoteRepository
 
     private const array SORTED_BY = [
         'number' => 'q.number',
-        'customer' => 'c.name',
+        'customer' => 'CASE WHEN ck.id IS NULL THEN c.name ELSE ck.name END',
         'issueDate' => 'q.issueDate',
         'validUntil' => 'q.validUntil',
         'status' => 'q.status',
@@ -98,6 +98,7 @@ final readonly class DoctrineQuoteRepository implements QuoteRepository
         $query = $this->entityManager->createQueryBuilder()
             ->from(Quote::class, 'q')
             ->join('q.customer', 'c')
+            ->leftJoin('c.mergedInto', 'ck')
             ->where('q.company = :company')->setParameter('company', $companyId, 'uuid');
         $words = trim($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
@@ -111,7 +112,8 @@ final readonly class DoctrineQuoteRepository implements QuoteRepository
                 ->setParameter('statuses', array_map(static fn (QuoteStatus $each): string => $each->value, $search->statuses), ArrayParameterType::STRING);
         }
         if ([] !== $search->customers) {
-            $query->andWhere('q.customer IN (:customerIds)')
+            // A customer's documents are also those made out to a customer merged into it.
+            $query->andWhere('(q.customer IN (:customerIds) OR ck.id IN (:customerIds))')
                 ->setParameter('customerIds', array_map(static fn (Uuid $each): string => $each->toRfc4122(), $search->customers), ArrayParameterType::STRING);
         }
         Intervals::days($query, 'q.issueDate', 'issued', $search->issueDate);

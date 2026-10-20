@@ -74,6 +74,7 @@ final readonly class DoctrinePaymentInstrumentRepository implements PaymentInstr
             ->from(PaymentInstrument::class, 'i')
             ->join('i.invoice', 'inv')
             ->join('inv.customer', 'c')
+            ->leftJoin('c.mergedInto', 'ck')
             ->where('i.company = :company')
             ->setParameter('company', $companyId, 'uuid');
         // The values of one filter are OR'd, the filters AND'd.
@@ -84,7 +85,8 @@ final readonly class DoctrinePaymentInstrumentRepository implements PaymentInstr
             $query->andWhere('i.kind IN (:kinds)')->setParameter('kinds', $search->kinds);
         }
         if ([] !== $search->customers) {
-            $query->andWhere('inv.customer IN (:customerIds)')
+            // A customer's instruments are also those made out to a customer merged into it.
+            $query->andWhere('(inv.customer IN (:customerIds) OR ck.id IN (:customerIds))')
                 ->setParameter('customerIds', array_map(static fn (Uuid $each): string => $each->toRfc4122(), $search->customers), ArrayParameterType::STRING);
         }
         Intervals::days($query, 'i.dueOn', 'due', $search->dueOn);

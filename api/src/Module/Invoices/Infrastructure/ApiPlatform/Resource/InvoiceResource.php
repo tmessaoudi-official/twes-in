@@ -576,7 +576,7 @@ final class InvoiceResource
         $resource->number = $invoice->getNumber();
         $resource->status = $invoice->getStatus()->value;
         $resource->customerId = $invoice->getCustomer()->getId()->toRfc4122();
-        $resource->customerName = $invoice->getCustomer()->getProfile()->name;
+        $resource->customerName = $invoice->getCustomer()->standingFor()->getProfile()->name;
         $resource->establishmentId = $invoice->getEstablishment()->getId()->toRfc4122();
         $resource->issueDate = $invoice->getIssueDate()?->format('Y-m-d');
         $resource->supplyDate = $header->supplyDate?->format('Y-m-d');

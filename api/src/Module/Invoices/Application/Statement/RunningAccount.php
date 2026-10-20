@@ -52,6 +52,8 @@ final readonly class RunningAccount
     /** What the customer may owe before a delivery warns: theirs, else their group's, else the company's; zero is no limit. */
     public function limit(Company $company, Customer $customer): Number
     {
+        // A customer merged into another answers with the account of the customer kept, its limit included.
+        $customer = $customer->standingFor();
         $limit = $this->settings->value(new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId()), 'credit.limit');
 
         return Decimal::of(\is_string($limit) ? $limit : '0');
@@ -79,6 +81,7 @@ final readonly class RunningAccount
     /** What the customer owes at the end of the company's today, less what they hold on account. */
     public function owed(Company $company, Customer $customer): Number
     {
+        $customer = $customer->standingFor();
         $today = $this->today($company);
 
         return $this->balanceAt($company, $customer->getId(), $today)->sub($this->onAccountAt($company, $customer->getId(), $today));
@@ -93,6 +96,7 @@ final readonly class RunningAccount
     /** The account as it stands at the end of the company's today. */
     public function of(Company $company, Customer $customer): CustomerAccountToday
     {
+        $customer = $customer->standingFor();
         $today = $this->today($company);
         $scale = $this->scales->of($company->getCurrency());
         $balance = $this->balanceAt($company, $customer->getId(), $today);
