@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\ImportExport\Application;
+namespace App\ImportExport\Application\Export;
 
 /**
  * What a list asked for, as its own query string says it: the words, the choices that narrow it and the order. The same

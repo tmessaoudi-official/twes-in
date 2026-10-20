@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\ImportExport\Application;
+namespace App\ImportExport\Application\Export;
 
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\Model\Company;

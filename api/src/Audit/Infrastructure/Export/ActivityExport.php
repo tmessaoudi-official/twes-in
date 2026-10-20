@@ -12,8 +12,8 @@ namespace App\Audit\Infrastructure\Export;
 use App\Audit\Application\ReadActivity;
 use App\Audit\Infrastructure\ApiPlatform\Payload\ActivitySearchReader;
 use App\Audit\Infrastructure\ApiPlatform\Security\AuditPermission;
-use App\ImportExport\Application\DeclaresExport;
-use App\ImportExport\Application\ExportQuery;
+use App\ImportExport\Application\Export\DeclaresExport;
+use App\ImportExport\Application\Export\ExportQuery;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
 

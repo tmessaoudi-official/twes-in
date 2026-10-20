@@ -11,8 +11,8 @@ namespace App\Module\Expenses\Infrastructure\Export;
 
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\ImportExport\Application\DeclaresExport;
-use App\ImportExport\Application\ExportQuery;
+use App\ImportExport\Application\Export\DeclaresExport;
+use App\ImportExport\Application\Export\ExportQuery;
 use App\Module\Expenses\Application\ManageExpenses;
 use App\Module\Expenses\Domain\Model\Expense;
 use App\Module\Expenses\Domain\ValueObject\ExpenseSearch;

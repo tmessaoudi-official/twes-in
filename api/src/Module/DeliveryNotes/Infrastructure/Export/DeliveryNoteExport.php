@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Infrastructure\Export;
 
-use App\ImportExport\Application\DeclaresExport;
-use App\ImportExport\Application\ExportQuery;
+use App\ImportExport\Application\Export\DeclaresExport;
+use App\ImportExport\Application\Export\ExportQuery;
 use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;

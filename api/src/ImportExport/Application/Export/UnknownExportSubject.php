@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\ImportExport\Application;
+namespace App\ImportExport\Application\Export;
 
 /** Nothing of that name can be exported, or its module is switched off for the company. */
 final class UnknownExportSubject extends \RuntimeException

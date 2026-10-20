@@ -11,9 +11,9 @@ namespace App\Demo\Infrastructure\Http;
 
 use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Infrastructure\Security\SecurityUser;
-use App\ImportExport\Application\ExportCatalogue;
-use App\ImportExport\Application\ExportForTheBooks;
-use App\ImportExport\Application\UnknownExportSubject;
+use App\ImportExport\Application\Export\ExportCatalogue;
+use App\ImportExport\Application\Export\ExportForTheBooks;
+use App\ImportExport\Application\Export\UnknownExportSubject;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;

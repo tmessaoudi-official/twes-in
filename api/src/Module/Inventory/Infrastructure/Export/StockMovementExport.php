@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Export;
 
-use App\ImportExport\Application\DeclaresExport;
-use App\ImportExport\Application\ExportQuery;
+use App\ImportExport\Application\Export\DeclaresExport;
+use App\ImportExport\Application\Export\ExportQuery;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\StockMovementSearch;

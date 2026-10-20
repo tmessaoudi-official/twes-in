@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\AccountingExport\Infrastructure\Export;
 
-use App\ImportExport\Application\ExportForTheBooks;
-use App\ImportExport\Application\ExportQuery;
+use App\ImportExport\Application\Export\ExportForTheBooks;
+use App\ImportExport\Application\Export\ExportQuery;
 use App\Module\AccountingExport\Application\PaymentEntries;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportModule;
 use App\Module\AccountingExport\Infrastructure\Module\AccountingExportPermission;
