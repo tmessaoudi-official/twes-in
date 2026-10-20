@@ -31,6 +31,7 @@ import {
 } from '../shared/testing/feedback';
 import { Feedback } from '../shared/feedback/feedback';
 import { announceSaved } from '../shared/testing/live';
+import { RecordDeletes } from '../shared/records/record-deletes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -103,6 +104,7 @@ describe('VendorPage', () => {
     hasPermission: vi.fn(),
     hasModule: vi.fn(),
   };
+  const deletes = { remove: vi.fn() };
   let fixture: ComponentFixture<VendorPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -138,6 +140,7 @@ describe('VendorPage', () => {
     facade.reviseVendor.mockReset().mockResolvedValue(sotumag);
     auth.hasPermission.mockReset().mockReturnValue(true);
     auth.hasModule.mockReset().mockReturnValue(true);
+    deletes.remove.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       imports: [VendorPage],
       providers: [
@@ -153,6 +156,7 @@ describe('VendorPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: VendorsFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -196,6 +200,46 @@ describe('VendorPage', () => {
     expect(auth.hasModule).toHaveBeenCalledWith('purchases');
     expect(auth.hasPermission).toHaveBeenCalledWith('purchase.write');
     expect(navigate).toHaveBeenCalledWith(['/purchases/new'], { queryParams: { vendorId: 'v1' } });
+  });
+
+  /** The entry « ⋮ » lists for an action, the menu opened first. */
+  async function menuEntry(id: string): Promise<HTMLElement | null> {
+    q('record-more')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return document.body.querySelector<HTMLElement>(`[data-testid="record-menu-${id}"]`);
+  }
+
+  it('deletes the vendor without asking, said annulable, and goes back to the list once it is gone', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    vendor.set(sotumag);
+    await open('v1');
+
+    const entry = await menuEntry('delete');
+    expect(entry?.getAttribute('data-kind')).toBe('annulable');
+    entry!.click();
+    await settle();
+
+    expect(auth.hasPermission).toHaveBeenCalledWith('vendor.write');
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'vendor', [
+      { id: 'v1', label: 'FRN-0001 Sotumag' },
+    ]);
+    expect(navigate).toHaveBeenCalledWith(['/vendors']);
+  });
+
+  it('stays on the vendor when the delete is refused, and offers none to whoever may not write vendors', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    deletes.remove.mockResolvedValue(false);
+    vendor.set(sotumag);
+    await open('v1');
+    (await menuEntry('delete'))!.click();
+    await settle();
+    expect(navigate).not.toHaveBeenCalled();
+
+    fixture.destroy();
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'vendor.write');
+    await open('v1');
+    expect(await menuEntry('delete')).toBeNull();
   });
 
   it('offers no order to a retired vendor, nor where the company does not buy through orders', async () => {

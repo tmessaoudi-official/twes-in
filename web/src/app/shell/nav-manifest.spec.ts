@@ -180,7 +180,7 @@ describe('the navigation manifest', () => {
       ],
       ['fiscal', ['taxes', 'units', 'closing']],
       ['team', ['members', 'roles', 'activity', 'support-access']],
-      ['data', ['data-erasure']],
+      ['data', ['recently-deleted', 'data-erasure']],
       ['customisation', ['custom-fields', 'modules']],
     ]);
     expect(SETTINGS_NAV.every((entry) => entry.permission !== undefined)).toBe(true);
@@ -225,7 +225,7 @@ describe('the navigation manifest', () => {
       ],
       ['fiscal', ['taxes', 'units', 'closing', 'fiscal-preset']],
       ['team', ['members', 'roles', 'activity', 'support-access']],
-      ['data', ['data-erasure']],
+      ['data', ['recently-deleted', 'data-erasure']],
       ['customisation', ['custom-fields', 'modules', 'texts']],
     ]);
     // « Montrer ce qui arrive » off: only what works.

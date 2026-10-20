@@ -585,6 +585,7 @@
     "activity": "Activity journal",
     "accounting_export": "Accounting export",
     "data_erasure": "Erase data",
+    "recently_deleted": "Recently deleted",
     "new_purchase": "New purchase order"
   },
   "shell": {

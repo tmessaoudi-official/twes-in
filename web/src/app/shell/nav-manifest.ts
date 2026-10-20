@@ -220,6 +220,15 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     role: 'owner',
   },
   {
+    // « Récemment supprimés »: open to every member, each seeing only the deletes of what they may write.
+    key: 'recently-deleted',
+    labelKey: 'nav.recently_deleted',
+    icon: 'history',
+    route: '/company/recently-deleted',
+    section: 'data',
+    permission: 'company.read',
+  },
+  {
     // « Effacer des données »: the owner's alone, behind a fresh proof of who is at the screen (docs/SPEC.md § 7).
     key: 'data-erasure',
     labelKey: 'nav.data_erasure',

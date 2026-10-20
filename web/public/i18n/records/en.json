@@ -1,0 +1,39 @@
+{
+  "records": {
+    "delete": "Delete",
+    "deleted_one": "“{{name}}” is deleted.",
+    "deleted_many": "{{count}} records are deleted.",
+    "restored_one": "“{{name}}” is back.",
+    "restored_many": "{{count}} records are back.",
+    "undo": "Undo",
+    "in_use": "Nothing is deleted: {{records}}. Deactivate what is still in use instead.",
+    "used_by": "“{{name}}” appears in {{uses}}",
+    "tables": {
+      "stock_movement": "{{count}} {count, plural, one {stock movement} other {stock movements}}",
+      "purchase_order": "{{count}} {count, plural, one {purchase order} other {purchase orders}}",
+      "expense": "{{count}} {count, plural, one {expense} other {expenses}}",
+      "product_vendor": "{{count}} {count, plural, one {linked product} other {linked products}}",
+      "product_barcode": "{{count}} {count, plural, one {vendor code} other {vendor codes}}",
+      "other": "{{count}} {count, plural, one {other record} other {other records}}"
+    },
+    "errors": {
+      "network": "The server is not answering. Try again in a moment.",
+      "not_found": "This delete no longer exists, or you may not put it back.",
+      "no_record": "Choose at least one record to delete.",
+      "record_used": "Nothing is deleted, because a record is still in use.",
+      "restore_conflict": "Nothing is put back, because a record made since takes its place (the same number, for instance).",
+      "removal_final": "The 24 hours are over. The delete is final."
+    },
+    "recent": {
+      "title": "Recently deleted",
+      "intro": "What you delete stays here for 24 hours and can be put back as it was. After that, the delete is final.",
+      "empty": "Nothing was deleted in the last 24 hours.",
+      "restore": "Put back",
+      "removed_at": "Deleted on {{moment}}",
+      "until": "Can be put back until {{moment}}",
+      "subjects": {
+        "vendor": "{{count}} {count, plural, one {vendor} other {vendors}}"
+      }
+    }
+  }
+}

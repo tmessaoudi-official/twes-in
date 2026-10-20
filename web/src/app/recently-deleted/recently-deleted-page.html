@@ -1,0 +1,55 @@
+<section class="flex flex-col gap-4 p-4" data-testid="recently-deleted-page">
+  <h1 class="text-2xl font-semibold">{{ 'records.recent.title' | translate }}</h1>
+  <p class="text-sm text-on-surface-variant">{{ 'records.recent.intro' | translate }}</p>
+
+  @if (failed()) {
+    <p role="alert" class="text-error" data-testid="removals-error">
+      {{ 'records.errors.network' | translate }}
+    </p>
+  } @else if (removals(); as list) {
+    @if (list.length === 0) {
+      <p class="flex items-center gap-2" data-testid="removals-empty">
+        <mat-icon aria-hidden="true">history</mat-icon>{{ 'records.recent.empty' | translate }}
+      </p>
+    } @else {
+      <ul class="m-0 flex list-none flex-col gap-3 p-0">
+        @for (removal of list; track removal.id) {
+          <li
+            class="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-outline-variant p-4"
+            [attr.data-testid]="'removal-' + removal.id"
+          >
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="font-medium">{{
+                'records.recent.subjects.' + removal.subject
+                  | translate: { count: removal.items.length }
+              }}</span>
+              <ul class="m-0 flex list-none flex-col gap-0.5 p-0">
+                @for (item of removal.items; track item.id) {
+                  <li>
+                    <bdi>{{ item.label }}</bdi>
+                  </li>
+                }
+              </ul>
+              <span class="text-sm text-on-surface-variant">{{
+                'records.recent.removed_at' | translate: { moment: (removal.removedAt | moment) }
+              }}</span>
+              <span class="text-sm text-on-surface-variant">{{
+                'records.recent.until' | translate: { moment: (removal.effectiveAt | moment) }
+              }}</span>
+            </div>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="restoring() !== null"
+              (click)="restore(removal)"
+              [attr.data-testid]="'removal-restore-' + removal.id"
+            >
+              <mat-icon aria-hidden="true">undo</mat-icon>
+              {{ 'records.recent.restore' | translate }}
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>

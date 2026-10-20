@@ -1,0 +1,39 @@
+{
+  "records": {
+    "delete": "حذف",
+    "deleted_one": "حُذف « {{name}} ».",
+    "deleted_many": "حُذفت {{count}} من البطاقات.",
+    "restored_one": "أُعيد « {{name}} ».",
+    "restored_many": "أُعيدت {{count}} من البطاقات.",
+    "undo": "تراجع",
+    "in_use": "لم يُحذف شيء: {{records}}. عطّل ما يزال مستعملًا بدل حذفه.",
+    "used_by": "« {{name}} » وارد في {{uses}}",
+    "tables": {
+      "stock_movement": "{count, plural, zero {لا حركات مخزون} one {حركة مخزون واحدة} two {حركتي مخزون} few {{{count}} حركات مخزون} many {{{count}} حركة مخزون} other {{{count}} حركة مخزون}}",
+      "purchase_order": "{count, plural, zero {لا طلبيات لدى مزوّد} one {طلبية واحدة لدى مزوّد} two {طلبيتين لدى مزوّد} few {{{count}} طلبيات لدى مزوّد} many {{{count}} طلبية لدى مزوّد} other {{{count}} طلبية لدى مزوّد}}",
+      "expense": "{count, plural, zero {لا مصاريف} one {مصروف واحد} two {مصروفين} few {{{count}} مصاريف} many {{{count}} مصروفًا} other {{{count}} مصروف}}",
+      "product_vendor": "{count, plural, zero {لا منتجات مرتبطة} one {منتج مرتبط واحد} two {منتجين مرتبطين} few {{{count}} منتجات مرتبطة} many {{{count}} منتجًا مرتبطًا} other {{{count}} منتج مرتبط}}",
+      "product_barcode": "{count, plural, zero {لا رموز مزوّد} one {رمز مزوّد واحد} two {رمزي مزوّد} few {{{count}} رموز مزوّد} many {{{count}} رمز مزوّد} other {{{count}} رمز مزوّد}}",
+      "other": "{count, plural, zero {لا بطاقات أخرى} one {بطاقة أخرى واحدة} two {بطاقتين أخريين} few {{{count}} بطاقات أخرى} many {{{count}} بطاقة أخرى} other {{{count}} بطاقة أخرى}}"
+    },
+    "errors": {
+      "network": "الخادم لا يستجيب. أعد المحاولة بعد قليل.",
+      "not_found": "هذا الحذف لم يعد موجودًا، أو لا يمكنك إرجاعه.",
+      "no_record": "اختر بطاقة واحدة على الأقل لحذفها.",
+      "record_used": "لم يُحذف شيء، لأن إحدى البطاقات ما تزال مستعملة.",
+      "restore_conflict": "لم يُرجَع شيء، لأن بطاقة أُنشئت بعد ذلك تشغل مكانها (الرقم نفسه مثلًا).",
+      "removal_final": "انقضت الساعات الأربع والعشرون. أصبح الحذف نهائيًا."
+    },
+    "recent": {
+      "title": "المحذوفات مؤخرًا",
+      "intro": "ما تحذفه يبقى هنا 24 ساعة، ويمكن إرجاعه كما كان. بعد ذلك يصبح الحذف نهائيًا.",
+      "empty": "لم يُحذف شيء خلال الساعات الأربع والعشرين الأخيرة.",
+      "restore": "إرجاع",
+      "removed_at": "حُذف في {{moment}}",
+      "until": "يمكن إرجاعه حتى {{moment}}",
+      "subjects": {
+        "vendor": "{count, plural, zero {لا مزوّدين} one {مزوّد واحد} two {مزوّدان} few {{{count}} مزوّدين} many {{{count}} مزوّدًا} other {{{count}} مزوّد}}"
+      }
+    }
+  }
+}
