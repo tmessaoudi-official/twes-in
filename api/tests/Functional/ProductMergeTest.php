@@ -332,7 +332,7 @@ final class ProductMergeTest extends ApiTestCase
         $this->merged($kept, [$merged]);
 
         $line = $this->em()->getConnection()->fetchOne('SELECT id::text FROM purchase_order_line WHERE purchase_order_id = ?', [$order]);
-        $this->postJson($this->path("purchase-orders/$order/receipts"), ['receivedOn' => (new \DateTimeImmutable())->format('Y-m-d'), 'lines' => [['orderLineId' => $line, 'locationId' => $this->site(), 'quantity' => '4']]]);
+        $this->postJson($this->path("purchase-orders/$order/receipts"), ['receivedOn' => self::dayOf($this->company), 'lines' => [['orderLineId' => $line, 'locationId' => $this->site(), 'quantity' => '4']]]);
 
         self::assertResponseIsSuccessful();
         self::assertSame(['4.000', '0.000'], [$this->onHand($kept), $this->onHand($merged)]);
@@ -733,7 +733,7 @@ final class ProductMergeTest extends ApiTestCase
         $invoice = $this->anInvoice($product, issued: true);
         $connection = $this->em()->getConnection();
         $connection->executeStatement("UPDATE product SET created_at = now() - interval '120 days' WHERE company_id = ?", [$this->companyId()]);
-        $connection->executeStatement('UPDATE invoice SET issue_date = CAST(? AS date) WHERE id = ?', [(new \DateTimeImmutable("-$days days"))->format('Y-m-d'), $invoice]);
+        $connection->executeStatement('UPDATE invoice SET issue_date = CAST(? AS date) WHERE id = ?', [self::dayOf($this->company, "-$days days"), $invoice]);
     }
 
     /** @return array<string, mixed> */
