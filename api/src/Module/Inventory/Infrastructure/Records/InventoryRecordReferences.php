@@ -31,7 +31,13 @@ final readonly class InventoryRecordReferences implements DeclaresRecordReferenc
         return [
             RecordReference::uses('stock_movement', 'vendor_id', 'vendor', RecordMerge::Stays, 'A movement names the vendor the goods came from.')
                 ->transactingAt('at'),
-            RecordReference::ignored('stock_movement', 'source_id', null, 'A movement\'s source is the document or count that made it, never a record a person deletes or merges.'),
+            RecordReference::ignored('stock_movement', 'source_id', null, 'A movement\'s source is the document or count that made it, never a record a person merges.'),
+            // Only an issued invoice or a validated note moves stock, and neither is deleted; a draft found named by a
+            // movement is kept all the same rather than leave the movement naming nothing.
+            RecordReference::uses('stock_movement', 'source_id', 'invoice', RecordMerge::Ignored, 'A movement names the invoice that took the goods out.')
+                ->where('source_type', StockMovement::SOURCE_INVOICE),
+            RecordReference::uses('stock_movement', 'source_id', 'delivery_note', RecordMerge::Ignored, 'A movement names the delivery note that took the goods out.')
+                ->where('source_type', StockMovement::SOURCE_DELIVERY_NOTE),
             RecordReference::uses('stock_movement', 'product_id', 'product', RecordMerge::Stays, 'A movement names the product it moved; the goods a merge carried are no trade of the product kept.')
                 ->transactingAt('at', 'source_type', [StockMovement::SOURCE_MERGE]),
             RecordReference::uses('stock_lot', 'product_id', 'product', RecordMerge::Stays, 'A lot is a batch of one product.'),

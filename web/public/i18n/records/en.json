@@ -54,7 +54,11 @@
       "product_home_location": "{{count}} {count, plural, one {home location} other {home locations}}",
       "product_reorder_point": "{{count}} {count, plural, one {reorder point} other {reorder points}}",
       "product_cost_change": "{{count}} {count, plural, one {cost change} other {cost changes}}",
-      "other": "{{count}} {count, plural, one {other record} other {other records}}"
+      "other": "{{count}} {count, plural, one {other record} other {other records}}",
+      "payment": "{{count}} {count, plural, one {payment} other {payments}}",
+      "payment_instrument": "{{count}} {count, plural, one {cheque or traite} other {cheques or traites}}",
+      "invoice_reminder": "{{count}} {count, plural, one {reminder} other {reminders}}",
+      "recurring_invoice": "{{count}} {count, plural, one {recurring invoice} other {recurring invoices}}"
     },
     "errors": {
       "network": "The server is not answering. Try again in a moment.",
@@ -89,7 +93,10 @@
         "product": "{{count}} {count, plural, one {product} other {products}}",
         "product_category": "{{count}} {count, plural, one {product category} other {product categories}}",
         "expense_category": "{{count}} {count, plural, one {expense category} other {expense categories}}",
-        "customer": "{{count}} {count, plural, one {customer} other {customers}}"
+        "customer": "{{count}} {count, plural, one {customer} other {customers}}",
+        "invoice": "{{count}} {count, plural, one {invoice draft} other {invoice drafts}}",
+        "quote": "{{count}} {count, plural, one {quote draft} other {quote drafts}}",
+        "delivery_note": "{{count}} {count, plural, one {delivery note draft} other {delivery note drafts}}"
       }
     },
     "mismatch": {

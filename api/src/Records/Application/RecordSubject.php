@@ -17,16 +17,42 @@ namespace App\Records\Application;
  * (`merged_into_id`), which its table must hold, or removed. One that says nothing is not merged, and a merge of it is
  * answered as one of records the company does not keep. Records holding different values in a column of `$mustAgree`
  * are not one record and are not merged; for a JSON object, the keys both hold.
+ *
+ * Only the rows whose `$whereColumn` holds one of `$whereValues` are the subject's records (a draft): any other is
+ * answered as one the company does not keep, and stays. A record whose own columns may all be empty (a draft has no
+ * number yet) is named also by columns of the row its `$labelKey` names in `$labelTable` (its customer's number and name).
  */
 final readonly class RecordSubject
 {
     /**
      * @param non-empty-list<string> $labelColumns
      * @param list<string>           $mustAgree
+     * @param list<string>           $whereValues
+     * @param list<string>           $labelTableColumns
      */
-    public function __construct(public string $table, public string $writePermission, public ?string $module, public array $labelColumns, public ?MergedAway $mergedAway = null, public array $mustAgree = [])
-    {
-        foreach ([$table, ...$labelColumns, ...$mustAgree] as $name) {
+    public function __construct(
+        public string $table,
+        public string $writePermission,
+        public ?string $module,
+        public array $labelColumns,
+        public ?MergedAway $mergedAway = null,
+        public array $mustAgree = [],
+        public ?string $whereColumn = null,
+        public array $whereValues = [],
+        public ?string $labelTable = null,
+        public ?string $labelKey = null,
+        public array $labelTableColumns = [],
+    ) {
+        if ((null === $whereColumn) !== ([] === $whereValues)) {
+            throw new \InvalidArgumentException(\sprintf('%s: the rows that are its records are named by a column and at least one of its values.', $table));
+        }
+        if ((null === $labelTable) !== (null === $labelKey) || (null === $labelTable) !== ([] === $labelTableColumns)) {
+            throw new \InvalidArgumentException(\sprintf('%s: a label read from another table names that table, the column leading to it and its columns.', $table));
+        }
+        if (null !== $whereColumn && null !== $mergedAway) {
+            throw new \InvalidArgumentException(\sprintf('%s: a subject only some rows of which are records is not merged.', $table));
+        }
+        foreach ([$table, ...$labelColumns, ...$mustAgree, $whereColumn ?? 'none', $labelTable ?? 'none', $labelKey ?? 'none', ...$labelTableColumns] as $name) {
             if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
                 throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $name));
             }

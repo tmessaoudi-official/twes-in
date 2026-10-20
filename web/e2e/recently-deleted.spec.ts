@@ -527,3 +527,82 @@ test('customers ticked are merged into the one kept, its contact moving, the oth
   await expect(toast(page)).toContainText(merged);
   await removed(page, 'customer', keptId);
 });
+
+/** A draft of a document with no line yet, for the customer, through the API; its id. */
+async function aDraft(
+  page: Page,
+  kind: 'invoices' | 'quotes' | 'delivery-notes',
+  customerId: string,
+): Promise<string> {
+  return page.evaluate(
+    async ([csrf, kind, customer]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const created = await fetch(`/api/companies/${me.company.id}/${kind}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ customerId: customer, lines: [] }),
+      });
+      if (!created.ok) throw new Error(`drafting the ${kind} answered ${created.status}`);
+      return ((await created.json()) as { id: string }).id;
+    },
+    [CSRF, kind, customerId] as const,
+  );
+}
+
+// A draft is deleted from its page without a question, as the records are: not numbered yet, it is named by its
+// customer. The invoice is taken back from the toast and put back from « Récemment supprimés »; each draft ends deleted,
+// so the run's customer, which nothing names then, goes too.
+test('a draft invoice, quote or delivery note is deleted from its page and put back', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const number = `E2E-DRAFT-${runDigits()}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const customer = await aCustomer(page, number);
+
+  async function deleteIt(list: string): Promise<void> {
+    await page.getByTestId('document-more').click();
+    const entry = page.getByTestId('document-menu-delete');
+    await expect(entry).toHaveAttribute('data-kind', 'annulable');
+    await entry.click();
+    await expect(page).toHaveURL(new RegExp(`${list}$`));
+    await expect(toast(page)).toContainText(number);
+  }
+
+  const invoice = await aDraft(page, 'invoices', customer);
+  await page.goto(`/invoices/${invoice}`);
+  await expect(page.getByTestId('invoice-title')).toBeVisible();
+  await deleteIt('/invoices');
+  await toast(page).getByTestId('toast-action').click();
+  await expect(toast(page)).toContainText('remis');
+  await page.goto(`/invoices/${invoice}`);
+  await expect(page.getByTestId('invoice-title')).toBeVisible();
+  await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
+
+  await deleteIt('/invoices');
+  await page.goto('/company/recently-deleted');
+  const removal = page.locator('li[data-testid^="removal-"]', { hasText: number });
+  await expect(removal).toHaveCount(1);
+  await expect(removal).toContainText('1 brouillon de facture');
+  expect(await wcagViolations(page)).toEqual([]);
+  await removal.getByRole('button').click();
+  await expect(toast(page)).toContainText('remis');
+  await expect(removal).toHaveCount(0);
+  await page.goto(`/invoices/${invoice}`);
+  await expect(page.getByTestId('invoice-title')).toBeVisible();
+  await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
+  await deleteIt('/invoices');
+
+  for (const [kind, title] of [
+    ['quotes', 'quote-title'],
+    ['delivery-notes', 'delivery-note-title'],
+  ] as const) {
+    const draft = await aDraft(page, kind, customer);
+    await page.goto(`/${kind}/${draft}`);
+    await expect(page.getByTestId(title)).toBeVisible();
+    await deleteIt(`/${kind}`);
+    await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 15_000 });
+  }
+  await removed(page, 'customer', customer);
+});

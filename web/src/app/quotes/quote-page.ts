@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { RecordDeletes } from '../shared/records/record-deletes';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -118,6 +119,7 @@ export class QuotePage {
   private readonly feedback = inject(Feedback);
   protected readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+  private readonly deletes = inject(RecordDeletes);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `quotes/new`. */
   readonly quoteId = input<string | undefined>(undefined);
@@ -453,8 +455,33 @@ export class QuotePage {
           keepLabel: 'quotes.actions.keep',
         },
       },
+      {
+        id: 'delete',
+        label: 'records.delete',
+        icon: 'delete',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps the draft a day. A draft another
+        // record names is refused, the toast saying by what.
+        destructive: true,
+        undoable: true,
+        disabled: busy,
+        run: () => void this.remove(),
+        shown: status === 'draft' && this.mayWrite(),
+      },
     ];
   });
+
+  /** Deletes the draft, then leaves its page for the list once it is gone; what was typed in it goes with it. */
+  private async remove(): Promise<void> {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    if (!companyId || !current) return;
+    const gone = await this.deletes.remove(companyId, 'quote', [
+      { id: current.id, label: current.number ?? current.customerName },
+    ]);
+    if (!gone) return;
+    this.unsaved.savedAndLeaving();
+    await this.router.navigate(['/quotes']);
+  }
 
   protected readonly pdfUrl = computed(() => {
     const companyId = this.company()?.id;

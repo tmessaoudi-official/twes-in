@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -300,6 +301,7 @@ describe('InvoicePage', () => {
   const recurring = { create: vi.fn() };
   const granted = new Set<string>();
   const modulesOn = new Set<string>();
+  const deletes = { remove: vi.fn() };
   const auth = {
     me: () => ({
       user: { id: 'u1' },
@@ -388,6 +390,7 @@ describe('InvoicePage', () => {
   }
 
   beforeEach(() => {
+    deletes.remove.mockReset().mockResolvedValue(true);
     error.set(null);
     invoice.set(null);
     granted.clear();
@@ -441,6 +444,7 @@ describe('InvoicePage', () => {
         { provide: RecurringApi, useValue: recurring },
         { provide: TextsApi, useValue: { part: () => Promise.resolve({}) } },
         { provide: AuthFacade, useValue: auth },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: FileSaver, useValue: saver },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -1495,6 +1499,42 @@ describe('InvoicePage', () => {
     await settle();
     expect(facade.cancel).toHaveBeenCalledWith('c1', 'i1');
     await vi.waitFor(() => expect(effectToasts()).toEqual(['invoices.cancelled:definitif']));
+  });
+
+  it('deletes a draft without asking, said annulable, and goes back to the list once it is gone', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    invoice.set(draft);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    const entry = over('document-menu-delete');
+    expect(entry?.getAttribute('data-kind')).toBe('annulable');
+    entry!.click();
+    await settle();
+
+    // Not numbered yet, it is named by its customer.
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'invoice', [{ id: 'i1', label: 'Carthage' }]);
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices']));
+  });
+
+  it('stays on the draft when its delete is refused, and offers none once issued', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    deletes.remove.mockResolvedValue(false);
+    invoice.set(draft);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-delete')!.click();
+    await settle();
+    await vi.waitFor(() => expect(deletes.remove).toHaveBeenCalled());
+    expect(navigate).not.toHaveBeenCalled();
+
+    fixture.destroy();
+    invoice.set(issued);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-delete')).toBeNull();
   });
 
   it('reads a locked document rather than showing a form nobody may fill in', async () => {

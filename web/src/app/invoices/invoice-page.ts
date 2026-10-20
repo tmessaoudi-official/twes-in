@@ -552,8 +552,14 @@ export class InvoicePage {
     this.invoiceActions.declare({
       creditBalance: () => this.creditBalance(),
       changed: () => this.reread(),
+      gone: () => void this.leaveGone(),
     }),
   );
+  /** The draft is deleted: what was typed in it goes with it, and the list is where the person was. */
+  private async leaveGone(): Promise<void> {
+    this.unsaved.savedAndLeaving();
+    await this.router.navigate(['/invoices']);
+  }
   /** « Rétablir »: what was typed goes back to the saved document (docs/SPEC.md § 7, 2026-10-11 08:26). */
   private screenRevert(busy: boolean): ScreenAction[] {
     return [

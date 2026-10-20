@@ -20,6 +20,7 @@ import type { RecordedFeedback } from '../testing/feedback';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { StepUp } from '../step-up/step-up';
+import { TextsParts } from '../i18n/texts-part';
 import { RecordDeletes } from './record-deletes';
 import { RecordRemovalsApi, RemovalRefused, type RecordRemoval } from './record-removals-api';
 
@@ -59,6 +60,7 @@ describe('RecordDeletes', () => {
   // The real retry over a faked dialog: what is under test is when the proof is asked, not the dialog.
   const dialog = { open: vi.fn() };
   const stepUp = { request: vi.fn(), retrying: StepUp.prototype.retrying };
+  const texts = { open: vi.fn() };
   let deletes: RecordDeletes;
   let heard: ReturnType<typeof vi.spyOn>;
 
@@ -68,6 +70,7 @@ describe('RecordDeletes', () => {
     api.merge.mockReset();
     api.previewMerge.mockReset();
     stepUp.request.mockReset().mockResolvedValue(true);
+    texts.open.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       providers: [
         provideTranslateService({ fallbackLang: 'fr' }),
@@ -76,6 +79,7 @@ describe('RecordDeletes', () => {
         { provide: RecordRemovalsApi, useValue: api },
         { provide: StepUp, useValue: stepUp },
         { provide: MatDialog, useValue: dialog },
+        { provide: TextsParts, useValue: texts },
       ],
     });
     const translate = TestBed.inject(TranslateService);
@@ -105,6 +109,29 @@ describe('RecordDeletes', () => {
     await vi.waitFor(() => expect(successToasts().at(-1)).toBe('records.restored_one'));
     expect(api.restore).toHaveBeenCalledWith('c1', 'r1');
     expect(heard).toHaveBeenCalledWith(['vendor', 'record_removal'], 'vendor.restored');
+  });
+
+  it('opens its own words before it asks the API, so a screen that never opened them says the delete in words', async () => {
+    const order: string[] = [];
+    texts.open.mockImplementation(async (name: string) => void order.push(`texts:${name}`));
+    api.remove.mockImplementation(async () => (order.push('remove'), REMOVAL));
+    api.restore.mockImplementation(async () => (order.push('restore'), REMOVAL));
+
+    expect(await deletes.remove('c1', 'vendor', [{ id: 'v1', label: 'F-001 Sotumag' }])).toBe(true);
+    expect(await deletes.restore('c1', REMOVAL)).toBe(true);
+
+    expect(order).toEqual(['texts:records', 'remove', 'texts:records', 'restore']);
+  });
+
+  it('deletes nothing when its words cannot be fetched, as the network refused it', async () => {
+    texts.open.mockRejectedValue(new Error('offline'));
+
+    expect(await deletes.remove('c1', 'vendor', [{ id: 'v1', label: 'F-001 Sotumag' }])).toBe(
+      false,
+    );
+
+    expect(api.remove).not.toHaveBeenCalled();
+    expect(failureToasts()).toEqual(['records.errors.network']);
   });
 
   it('counts several records rather than naming them', async () => {

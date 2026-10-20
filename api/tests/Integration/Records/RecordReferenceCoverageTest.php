@@ -45,6 +45,8 @@ final class RecordReferenceCoverageTest extends KernelTestCase
         yield 'a column with no foreign key' => ['purchase_order', 'vendor_id', 'purchase_order.vendor_id names vendor records and is not declared'];
         yield 'a column naming rows of any table' => ['attachment', 'entity_id', 'attachment.entity_id may name vendor records and is not declared'];
         yield 'a text column naming rows of any table' => ['setting', 'level_id', 'setting.level_id may name vendor records and is not declared'];
+        yield 'a foreign key into rows going with a record' => ['invoice_line_tax', 'line_id', 'invoice_line_tax.line_id names invoice_line rows, which go with a invoice, and nothing can declare it'];
+        yield 'a column with no foreign key naming rows going with a record' => ['invoice_line', 'source_delivery_note_line_id', 'invoice_line.source_delivery_note_line_id names delivery_note_line rows, which go with a delivery_note, and is not declared as naming it through them'];
     }
 
     #[DataProvider('forgotten')]
@@ -151,6 +153,25 @@ final class RecordReferenceCoverageTest extends KernelTestCase
         };
 
         self::assertContains('invoice_line.invoice_id names invoice rows, which go with a customer_group, and nothing can declare it', RecordReferenceCoverage::unaccounted($this->connection(), new RecordCatalogue([...$this->declarations(), $owning])));
+    }
+
+    public function testARecordNamedThroughRowsThatDoNotGoWithItIsNamed(): void
+    {
+        // The engine finds the rows to copy through the table named, by the subject's ids: rows of a table that does not
+        // go with the record are found by nothing.
+        $through = new readonly class implements DeclaresRecordReferences {
+            public function subjects(): array
+            {
+                return [];
+            }
+
+            public function references(): array
+            {
+                return [RecordReference::owned('expense_line', 'vendor_id', 'vendor', RecordMerge::Ignored, 'Not so; a case.')->below('purchase_order', 'vendor_id')];
+            }
+        };
+
+        self::assertContains('expense_line.vendor_id names the record through purchase_order, whose rows are not owned by it directly', RecordReferenceCoverage::unaccounted($this->connection(), new RecordCatalogue([...$this->declarations(), $through])));
     }
 
     /** @param callable(RecordReference): bool $drop */

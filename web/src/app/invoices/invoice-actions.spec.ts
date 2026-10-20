@@ -12,9 +12,10 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { onRecord, onRows } from '../shared/actions/record-action';
 import { FileSaver } from '../shared/files/save-file';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { rareOn } from '../shared/list/list-types';
 import { provideQuietFeedback } from '../shared/testing/feedback';
-import { InvoiceActions } from './invoice-actions';
+import { InvoiceActions, type InvoiceActionsOptions } from './invoice-actions';
 import { InvoicesFacade } from './invoices-facade';
 import type { InvoiceRow } from './invoices-types';
 
@@ -94,6 +95,7 @@ describe('InvoiceActions', () => {
     cancel: vi.fn(),
   };
   const dialog = { open: vi.fn() };
+  const deletes = { remove: vi.fn() };
 
   function actions(): InvoiceActions {
     return TestBed.inject(InvoiceActions);
@@ -134,6 +136,7 @@ describe('InvoiceActions', () => {
     country = 'TN';
     dialog.open.mockReset();
     facade.recordPayment.mockClear();
+    deletes.remove.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -152,6 +155,7 @@ describe('InvoiceActions', () => {
         { provide: RecurringApi, useValue: { create: vi.fn() } },
         { provide: FormatFacade, useValue: { locale: () => 'fr-TN' } },
         { provide: TextsParts, useValue: { open: () => Promise.resolve() } },
+        { provide: RecordDeletes, useValue: deletes },
       ],
     });
   });
@@ -177,6 +181,7 @@ describe('InvoiceActions', () => {
       'duplicate:rare',
       'make-recurring:rare',
       'cancel:rare',
+      'delete:rare',
     ]);
     expect(onPage(paid)).toEqual([
       'pdf:frequent',
@@ -243,6 +248,37 @@ describe('InvoiceActions', () => {
       keepLabel: 'invoices.actions.keep',
     });
     expect(abandon?.icon).toBe('delete_forever');
+  });
+
+  it('deletes a draft without asking, then tells the screen it is gone, or that it changed when it says nothing', async () => {
+    const gone = vi.fn();
+    const changed = vi.fn();
+    const remove = (options: InvoiceActionsOptions) =>
+      onRecord(actions().declare(options), draft, false).find((action) => action.id === 'delete')!;
+
+    expect(remove({}).confirm).toBeUndefined();
+    remove({ gone, changed }).run?.();
+    await vi.waitFor(() => expect(gone).toHaveBeenCalled());
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'invoice', [
+      { id: draft.id, label: draft.customerName },
+    ]);
+    expect(changed).not.toHaveBeenCalled();
+
+    onRows(actions().declare({ changed }))
+      .find((action) => action.id === 'delete')!
+      .run?.(draft);
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledWith(draft));
+  });
+
+  it('leaves the screen as it is when the draft is refused, being named by another record', async () => {
+    deletes.remove.mockResolvedValue(false);
+    const gone = vi.fn();
+    onRecord(actions().declare({ gone }), draft, false)
+      .find((action) => action.id === 'delete')!
+      .run?.();
+    await vi.waitFor(() => expect(deletes.remove).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(gone).not.toHaveBeenCalled();
   });
 
   it('records a payment from a row, asked in the dialog with what the row still owes, and says the row changed', async () => {

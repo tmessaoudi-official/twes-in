@@ -5,6 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { Feedback } from '../feedback/feedback';
+import { TextsParts } from '../i18n/texts-part';
 import { LiveChanges } from '../realtime/live-changes';
 import { StepUp } from '../step-up/step-up';
 import {
@@ -18,6 +19,7 @@ import {
 } from './record-removals-api';
 import type { RecordMergeDialog, RecordMergeDialogData } from './record-merge-dialog';
 import { tableCounts } from './record-tables';
+import { RECORDS_TEXTS } from './records-texts';
 
 /** The subjects the API lets a person delete, each also the kind its live changes carry. */
 export const DELETABLE_SUBJECTS = [
@@ -26,6 +28,9 @@ export const DELETABLE_SUBJECTS = [
   'product_category',
   'expense_category',
   'customer',
+  'invoice',
+  'quote',
+  'delivery_note',
 ] as const;
 
 /** The columns a merge refusal names in words, each saying how the records differ; any other gets the plain refusal. */
@@ -56,6 +61,7 @@ export class RecordDeletes {
   private readonly live = inject(LiveChanges);
   private readonly stepUp = inject(StepUp);
   private readonly dialog = inject(MatDialog);
+  private readonly texts = inject(TextsParts);
 
   /** Deletes the records, all of them or none; answers whether they went. */
   async remove(
@@ -64,6 +70,7 @@ export class RecordDeletes {
     items: readonly RemovedItem[],
   ): Promise<boolean> {
     try {
+      await this.words();
       const removal = await this.api.remove(
         companyId,
         subject,
@@ -93,6 +100,12 @@ export class RecordDeletes {
    * answers whether they went, false too when the person merged nothing.
    */
   async offerMerge(companyId: string, data: RecordMergeDialogData): Promise<boolean> {
+    try {
+      await this.words();
+    } catch (error) {
+      this.refused(error);
+      return false;
+    }
     // Loaded when first asked, as a dialog no page opens on arrival.
     const component = (await import('./record-merge-dialog')).RecordMergeDialog;
     const ref = this.dialog.open<RecordMergeDialog, RecordMergeDialogData, RemovedItem | null>(
@@ -140,6 +153,7 @@ export class RecordDeletes {
     items: readonly RemovedItem[],
   ): Promise<boolean> {
     try {
+      await this.words();
       const merge = await this.proved(() =>
         this.api.merge(
           companyId,
@@ -169,6 +183,7 @@ export class RecordDeletes {
   /** Puts back what a delete took, as it was, or undoes a merge; answers whether it came back. */
   async restore(companyId: string, removal: RecordRemoval): Promise<boolean> {
     try {
+      await this.words();
       const restored = await this.proved(() => this.api.restore(companyId, removal.id));
       if (restored.kind === 'merge') {
         this.live.changedHere(
@@ -188,6 +203,15 @@ export class RecordDeletes {
       this.refused(error, true);
       return false;
     }
+  }
+
+  /**
+   * Opens the words a delete, a merge and their undo are said in, before anything is asked of the API: the toast is
+   * drawn from the root and outlives the page, and a screen whose route did not open them would say keys. Words that
+   * cannot be fetched stop the action, which the network would refuse as well, rather than run it unsaid.
+   */
+  private words(): Promise<void> {
+    return this.texts.open(RECORDS_TEXTS);
   }
 
   /**
