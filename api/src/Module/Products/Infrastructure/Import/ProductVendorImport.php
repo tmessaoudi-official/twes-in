@@ -43,8 +43,8 @@ use Symfony\Component\Uid\Uuid;
  * each. Written through ManageProducts::addVendor, the product's own rules: a file adds links and codes, never removes
  * one, as the product file's supplier columns do.
  *
- * Who a product is bought from is read with costs, so the subject exists only for somebody who may read them, and only
- * while the company keeps vendors: anybody else is answered as if nothing of the name could be imported.
+ * Who a product is bought from is read with the product, so whoever writes products may import it while the company
+ * keeps vendors; a vendor's own code is read with costs, so its column is offered only to somebody who may read them.
  */
 final readonly class ProductVendorImport implements DeclaresImport
 {
@@ -87,14 +87,16 @@ final readonly class ProductVendorImport implements DeclaresImport
 
     public function subjectFor(Company $company): ImportSubject
     {
-        if (!$this->guard->may($company, ProductPermission::COST_READ) || !$this->modules->isEnabled($company->getId(), VendorsModule::KEY)) {
+        if (!$this->modules->isEnabled($company->getId(), VendorsModule::KEY)) {
             throw new UnknownImportSubject(\sprintf('Nothing named "%s" can be imported.', self::KEY));
         }
 
         return new ImportSubject(self::KEY, [
             new ImportColumn('product_reference', 'import.product_vendors.product_reference', true, 'VIS-6X40', 'import.product_vendors.product_reference_note', code: true),
             new ImportColumn('vendor_number', 'import.product_vendors.vendor_number', true, 'FRN-0001', 'import.product_vendors.vendor_number_note', code: true),
-            new ImportColumn('vendor_code', 'import.product_vendors.vendor_code', false, 'SF-883', 'import.product_vendors.vendor_code_note', code: true),
+            ...$this->guard->may($company, ProductPermission::COST_READ)
+                ? [new ImportColumn('vendor_code', 'import.product_vendors.vendor_code', false, 'SF-883', 'import.product_vendors.vendor_code_note', code: true)]
+                : [],
         ]);
     }
 
@@ -110,9 +112,10 @@ final readonly class ProductVendorImport implements DeclaresImport
         try {
             $linked = array_any($product->getVendors(), static fn (Vendor $held): bool => $held->getId()->equals($vendor->getId()));
             if ($linked && ImportMode::Create === $mode) {
-                throw new RowRejected('vendor_number', 'This product is already bought from this vendor. Import in "create and update" mode to add a code of theirs.', 'already_exists');
+                throw new RowRejected('vendor_number', 'This product is already bought from this vendor. Import in "create and update" mode to change it.', 'already_exists');
             }
-            $changed = $this->manage->addVendor($company, $product->getId(), $vendor->getId(), $record->value('vendor_code'), $actorUserId);
+            $seesCosts = $context->once('sees-costs', fn (): bool => $this->guard->may($company, ProductPermission::COST_READ));
+            $changed = $this->manage->addVendor($company, $product->getId(), $vendor->getId(), $record->value('vendor_code'), $actorUserId, $seesCosts);
 
             return match (true) {
                 !$linked => RowImported::Created,

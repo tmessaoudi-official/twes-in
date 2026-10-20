@@ -176,7 +176,7 @@ final readonly class ManageProducts
             $product->track($tracking, $now);
             $product->reviseCustomFields($values, $now);
             $product->replaceBarcodes($lines, $now);
-            $vendors = $this->vendorsNamed($company, $input->vendorIds, $input->seesCosts);
+            $vendors = $this->vendorsNamed($company, $input->vendorIds);
             if (null !== $vendors) {
                 $product->replaceVendors($vendors, $now);
             }
@@ -218,7 +218,7 @@ final readonly class ManageProducts
             $this->assertStockKeepsItsMeaning($company, $product, $unit, $input->details->kind);
             $tracking = $this->trackingKeptByStock($company, $product, Product::trackingFor($input->tracking ?? $product->getTracking(), $input->details->kind));
             $values = $this->customFieldValues($company, $input, $product);
-            $vendors = $this->vendorsNamed($company, $input->vendorIds, $input->seesCosts);
+            $vendors = $this->vendorsNamed($company, $input->vendorIds);
 
             $now = $this->clock->now();
             $costBefore = $product->getDetails()->costPrice;
@@ -290,7 +290,11 @@ final readonly class ManageProducts
     {
         return $this->transactions->run(function () use ($company, $id, $vendorId, $code, $actorUserId, $seesCosts): array {
             $product = $this->locked($company, $id);
-            [$vendor] = $this->vendorsNamed($company, [$vendorId], $seesCosts);
+            // A vendor's own code is read and written with costs; the vendor's name, with the product.
+            if (null !== $code && !$seesCosts) {
+                throw new InvalidProduct('barcodes', 'A supplier\'s code is written by someone who may read costs.');
+            }
+            [$vendor] = $this->vendorsNamed($company, [$vendorId]);
             $now = $this->clock->now();
             $before = array_map(static fn (Vendor $held): string => $held->getId()->toRfc4122(), $product->getVendors());
             $changed = [];
@@ -359,20 +363,19 @@ final readonly class ManageProducts
     /**
      * The vendors named, found in the company; null when none are named, which keeps them.
      *
+     * Who a product is bought from is read by whoever reads the product, so whoever writes it names them; only the
+     * vendors' own codes stay with costs.
+     *
      * @param list<Uuid>|null $ids
      *
      * @return ($ids is null ? null : list<Vendor>)
      *
      * @throws InvalidProduct
      */
-    private function vendorsNamed(Company $company, ?array $ids, bool $seesCosts): ?array
+    private function vendorsNamed(Company $company, ?array $ids): ?array
     {
         if (null === $ids) {
             return null;
-        }
-        // Who a product is bought from is purchasing knowledge, read and written with costs.
-        if (!$seesCosts) {
-            throw new InvalidProduct('vendors', 'A product\'s vendors are written by someone who may read costs.');
         }
         $vendors = [];
         foreach ($ids as $index => $id) {

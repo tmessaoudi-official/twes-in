@@ -732,17 +732,20 @@ Cheville 10 mm,6191234567897
         self::assertSame(['F-001', 'F-002'], self::vendorNumbers($this->product('VIS-1')));
     }
 
-    /** Who a product is bought from is read and written with costs: somebody who sees none cannot name a vendor. */
-    public function testWhoSeesNoCostCannotNameAVendor(): void
+    /** Who a product is bought from is written with the product; a vendor's own code for it only with costs. */
+    public function testWhoSeesNoCostNamesAVendorButNoCodeOfTheirs(): void
     {
         $this->aVendor('F-001', 'Sotumag');
         $this->signedIn(['product.read', 'product.write']);
 
         $this->import("reference,name,unit_code,unit_price_net,supplier_number\nVIS-1,Vis 1,H87,1,F-001\n");
+        self::assertSame([2], $this->json()['created'] ?? null, json_encode($this->json()) ?: '');
+        $this->em()->clear();
+        self::assertSame(['F-001'], self::vendorNumbers($this->product('VIS-1')));
 
+        $this->import("reference,name,supplier_number,supplier_code\nVIS-1,Vis 1,F-001,SF-1\n", mode: 'upsert');
         self::assertResponseStatusCodeSame(422);
-        self::assertSame(['unknown_columns', ['supplier_number']], [$this->json()['error'] ?? null, $this->json()['columns'] ?? null], 'the column is not theirs to fill');
-        self::assertSame(0, $this->products());
+        self::assertSame(['unknown_columns', ['supplier_code']], [$this->json()['error'] ?? null, $this->json()['columns'] ?? null], 'the code is not theirs to fill');
     }
 
     /** @return list<string> */

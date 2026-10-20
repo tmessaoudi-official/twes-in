@@ -823,11 +823,13 @@ final readonly class ProductImport implements DeclaresImport
             new ImportColumn('barcode', 'import.products.barcode', false, '6191234567897', 'import.products.barcode_note', code: true),
             new ImportColumn('pack_barcode', 'import.products.pack_barcode', false, '16191234567894', 'import.products.pack_barcode_note', code: true),
             new ImportColumn('pack_quantity', 'import.products.pack_quantity', false, '12', 'import.products.pack_quantity_note'),
-            // A supplier's code is a cost reader's, and names one of the company's suppliers.
-            ...$this->guard->may($company, ProductPermission::COST_READ) && $this->modules->isEnabled($company->getId(), 'vendors')
+            // Who a product is bought from is read with the product; a supplier's own code for it, with costs.
+            ...$this->modules->isEnabled($company->getId(), 'vendors')
                 ? [
                     new ImportColumn('supplier_number', 'import.products.supplier_number', false, 'FRN-0001', 'import.products.supplier_number_note', code: true),
-                    new ImportColumn('supplier_code', 'import.products.supplier_code', false, 'SF-883', 'import.products.supplier_code_note', code: true),
+                    ...$this->guard->may($company, ProductPermission::COST_READ)
+                        ? [new ImportColumn('supplier_code', 'import.products.supplier_code', false, 'SF-883', 'import.products.supplier_code_note', code: true)]
+                        : [],
                 ]
                 : [],
             new ImportColumn('default_tax_codes', 'import.products.default_taxes', false, null, 'import.products.default_taxes_note'),

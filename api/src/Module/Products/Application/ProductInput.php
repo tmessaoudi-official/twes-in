@@ -25,8 +25,7 @@ final readonly class ProductInput
      *                                                        may not neither sets a cost nor a supplier's code, and keeps
      *                                                        those stored
      * @param list<Uuid>|null         $vendorIds              the vendors it is bought from, exactly these and each
-     *                                                        supplier code's vendor among them; null keeps them; only
-     *                                                        one who may read costs names them
+     *                                                        supplier code's vendor among them; null keeps them
      */
     public function __construct(
         public string $reference,

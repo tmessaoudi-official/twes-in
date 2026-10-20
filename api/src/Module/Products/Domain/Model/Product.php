@@ -325,7 +325,8 @@ class Product implements CompanyOwned
         foreach ($this->barcodes as $code) {
             $named = $code->getSupplier();
             if (null !== $named && !isset($wanted[$named->getId()->toRfc4122()])) {
-                throw new InvalidProduct('vendors', \sprintf('The supplier code %s names vendor %s: remove the code first.', $code->getCode(), $named->getNumber()));
+                // The code itself is left unsaid: who may name vendors is not always who may read their codes.
+                throw new InvalidProduct('vendors', \sprintf('Vendor %s still has a code for this product: remove the code first.', $named->getNumber()), 'vendor_has_code', ['number' => $named->getNumber()]);
             }
         }
 

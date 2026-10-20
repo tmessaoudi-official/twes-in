@@ -511,25 +511,33 @@ final class ManageProductsTest extends TestCase
         self::assertSame(['fields' => ['vendors']], $this->audit->entries[1]->changes);
     }
 
-    /** Who a product is bought from is purchasing knowledge: written with costs, and only the company's own vendors. */
-    public function testVendorsAreNamedOnlyWithCostsAndOnlyAmongTheCompanysOwn(): void
+    /**
+     * Who a product is bought from is written with the product, among the company's own vendors; a vendor's own code
+     * for it only by somebody who may read costs.
+     */
+    public function testVendorsAreTheCompanysOwnAndTheirCodesACostReaders(): void
     {
         $theirs = Vendor::create($this->globex, 'F-001', new VendorProfile('Initech'), new \DateTimeImmutable());
         $ours = Vendor::create($this->company, 'F-001', new VendorProfile('Sotupa'), new \DateTimeImmutable());
         $this->vendors->save($theirs);
         $this->vendors->save($ours);
 
-        foreach ([
-            'vendors' => $this->input(seesCosts: false, vendorIds: [$ours->getId()]),
-            'vendors.1' => $this->input(vendorIds: [$ours->getId(), $theirs->getId()]),
-        ] as $field => $input) {
-            try {
-                $this->manage->create($this->company, $input, null);
-                self::fail('accepted: '.$field);
-            } catch (InvalidProduct $refused) {
-                self::assertSame($field, $refused->field);
-            }
+        $product = $this->manage->create($this->company, $this->input(seesCosts: false, vendorIds: [$ours->getId()]), null);
+        self::assertSame([$ours], $product->getVendors(), 'somebody who sees no cost still names the vendor');
+
+        try {
+            $this->manage->create($this->company, $this->input(reference: 'ART-002', vendorIds: [$ours->getId(), $theirs->getId()]), null);
+            self::fail('accepted another company\'s vendor');
+        } catch (InvalidProduct $refused) {
+            self::assertSame('vendors.1', $refused->field);
         }
+        try {
+            $this->manage->addVendor($this->company, $product->getId(), $ours->getId(), 'SOT-1', null, seesCosts: false);
+            self::fail('accepted a code from somebody who sees no cost');
+        } catch (InvalidProduct $refused) {
+            self::assertSame('barcodes', $refused->field);
+        }
+        self::assertSame([], $product->getBarcodes());
     }
 
     /**
