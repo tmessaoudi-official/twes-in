@@ -165,7 +165,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   that names one; `RemoveRecords` refuses a record in use, takes the rows a reference says belong to it (`owned`: a
   product's codes, photos, places, settings), keeps them a day in `record_removal_row` for `RestoreRecords`, and the
   worker makes them final every quarter hour, letting go the files nothing names any more through the Files context's
-  `UnnamedFiles`, which the erasure shares),
+  `UnnamedFiles`, which the erasure shares; `Merge/MergeRecords` merges records of a subject that says how, its
+  `MergedAway`: an alias stays switched off pointing at the record kept (`merged_into_id`, which `RecordReferenceCoverage`
+  requires of its table), a removed one goes as a delete does; a subject that says nothing is not merged; `PreviewMerge`
+  says what moves and what stays, and the undo is the removal's restore),
   `Demo` (« Essayer la démo »: a visitor with no account claims a `demo_sandbox`, a whole company written by
   `Dataset/DemoDataset` and owned by a throwaway account; the pool is topped up by `KeepSandboxPool`, its builds on the
   `demo` transport, which the `demo-worker` container alone consumes, so no mail waits behind one; `DemoAccountGuard`
@@ -638,3 +641,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   every scan through `axeAtRest(page)` (`web/e2e/axe.ts`), never `new AxeBuilder` in a spec (2026-10-19).
 - `make web-tools CMD='…'` already starts in `web/`: a `cd web &&` before the command fails with exit 2, which a sabotage
   harness reading only the exit takes for a red suite. Run the unmutated command first and read the tally (2026-10-20).
+- A default added to a shared declaration reaches every declaration written before it: `RecordSubject`'s merged-away
+  default of « alias » made every product delete ask for a column products lack, and only the product suite saw it.
+  Run the suites of the existing declarers, not only the new one's; prefer a default that does nothing (2026-10-20).

@@ -31,7 +31,7 @@ const input: VendorInput = {
   isActive: true,
   defaultExpenseCategoryId: null,
 };
-const sotumag: VendorRow = { ...input, id: 'v1', version: 1 };
+const sotumag: VendorRow = { ...input, id: 'v1', version: 1, mergedInto: null };
 const options: VendorOptions = { countryCode: 'TN', identifiers: [], expenseCategories: null };
 
 // The proof dialog is answered by the test; `retrying` itself is StepUp's own.

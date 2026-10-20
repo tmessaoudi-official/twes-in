@@ -22,6 +22,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { VendorsFacade } from './vendors-facade';
 import { VendorsPage } from './vendors-page';
 import type { VendorRow } from './vendors-types';
@@ -56,12 +57,15 @@ const sotumag: VendorRow = {
   notes: null,
   isActive: false,
   defaultExpenseCategoryId: null,
+  mergedInto: null,
 };
+
+const sfax: VendorRow = { ...sotumag, id: 'v2', number: 'FRN-0002', name: 'Sotumag Sfax' };
 
 describe('VendorsPage', () => {
   const facade = {
-    vendors: signal<readonly VendorRow[]>([sotumag]).asReadonly(),
-    total: signal(1).asReadonly(),
+    vendors: signal<readonly VendorRow[]>([sotumag, sfax]).asReadonly(),
+    total: signal(2).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
     loadPage: vi.fn(),
@@ -74,6 +78,7 @@ describe('VendorsPage', () => {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
   };
+  const deletes = { offerMergeOf: vi.fn() };
   let fixture: ComponentFixture<VendorsPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -88,6 +93,7 @@ describe('VendorsPage', () => {
   beforeEach(async () => {
     facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    deletes.offerMergeOf.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       imports: [VendorsPage],
       providers: [
@@ -103,6 +109,7 @@ describe('VendorsPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: VendorsFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -158,5 +165,33 @@ describe('VendorsPage', () => {
 
     expect(q('vendor-add')).toBeNull();
     expect(q('list-link-v1')).not.toBeNull();
+  });
+
+  const tick = async (id: string): Promise<void> => {
+    (q(`list-select-row-${id}`)!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+  };
+
+  it('offers to merge once two vendors are ticked, the one merged away staying as an alias, and clears the ticks after', async () => {
+    await tick('v2');
+    expect(q('vendors-merge')).toBeNull();
+    await tick('v1');
+
+    q('vendors-merge')!.click();
+    await settle();
+
+    expect(deletes.offerMergeOf).toHaveBeenCalledWith('c1', 'vendor', ['v2', 'v1'], {
+      settings: false,
+      aliased: true,
+    });
+    expect(q('vendors-merge')).toBeNull();
+  });
+
+  it('lets nobody but a person who may change vendors tick them', async () => {
+    auth.hasPermission.mockReturnValue(false);
+    fixture = TestBed.createComponent(VendorsPage);
+    await settle();
+
+    expect(q('list-select-row-v1')).toBeNull();
   });
 });

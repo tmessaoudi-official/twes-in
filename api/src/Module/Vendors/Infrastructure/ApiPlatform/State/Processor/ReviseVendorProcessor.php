@@ -21,6 +21,7 @@ use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Resource\VendorResource;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Security\VendorPermission;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\ApiPlatform\Output\RecordChangedProblem;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -56,7 +57,8 @@ final readonly class ReviseVendorProcessor implements ProcessorInterface
         } catch (VendorNumberTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (VendorMergedAway $merged) {
-            throw new ConflictHttpException($merged->getMessage(), $merged);
+            // It changed since the form was opened: the screen reads it again and finds it merged away, read-only.
+            throw new RecordChangedProblem($merged);
         } catch (InvalidVendor $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }

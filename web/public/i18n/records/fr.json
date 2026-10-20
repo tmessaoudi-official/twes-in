@@ -20,7 +20,11 @@
       "settings": "Les réglages par défaut passent aussi, sauf ceux que la fiche gardée règle déjà.",
       "undo_hint": "La fusion peut être annulée pendant 24 heures, depuis le message qui suit ou « Récemment supprimés ».",
       "cancel": "Ne rien fusionner",
-      "confirm": "Fusionner"
+      "confirm": "Fusionner",
+      "alias": "« {{name}} » reste, désactivée, et renvoie vers la fiche gardée. Ce qui passe dans la fiche gardée : {{moves}}.",
+      "alias_empty": "« {{name}} » reste, désactivée, et renvoie vers la fiche gardée. Rien ne passe dans la fiche gardée.",
+      "alias_stays": "Ce qui reste au nom de « {{name}} », tel que les livres et le stock l’ont enregistré : {{stays}}.",
+      "undo_hint_alias": "La fusion peut être annulée pendant 24 heures, depuis le message qui suit ou « Récemment supprimés », tant que rien n’a été reçu ni enregistré au nom de la fiche gardée."
     },
     "tables": {
       "stock_movement": "{{count}} {count, plural, one {mouvement de stock} other {mouvements de stock}}",
@@ -50,7 +54,10 @@
       "merge_into_itself": "Rien n’est fusionné, car la fiche gardée figure parmi celles à fusionner.",
       "merge_cycle": "Rien n’est fusionné, car la fiche gardée est rangée sous une fiche à fusionner. Gardez plutôt celle du dessus.",
       "merge_conflict": "Rien n’est fusionné, car une ligne déplacée entre en conflit avec une ligne de la fiche gardée.",
-      "step_up_required": "Rien n’a changé, car votre identité n’a pas été confirmée."
+      "step_up_required": "Rien n’a changé, car votre identité n’a pas été confirmée.",
+      "merge_alias": "Rien n’est fusionné, car une de ces fiches a déjà été fusionnée dans une autre. Choisissez plutôt celle-là.",
+      "merge_mismatch": "Rien n’est fusionné, car ces fiches ne décrivent pas la même chose.",
+      "merge_transacted": "La fusion n’est plus annulée, car la fiche gardée a servi depuis."
     },
     "recent": {
       "title": "Récemment supprimés",
@@ -69,6 +76,14 @@
         "product_category": "{{count}} {count, plural, one {catégorie d’articles} other {catégories d’articles}}",
         "expense_category": "{{count}} {count, plural, one {catégorie de dépenses} other {catégories de dépenses}}"
       }
+    },
+    "mismatch": {
+      "identifiers": "Rien n’est fusionné, car ces fiches portent des numéros d’identification différents (le matricule fiscal, par exemple) : ce ne sont pas les mêmes."
+    },
+    "traded_since": "La fusion n’est plus annulée, car la fiche gardée figure depuis dans {{uses}}.",
+    "merged_away": {
+      "banner": "Cette fiche a été fusionnée dans « {{kept}} ». Elle reste pour ce qui la nomme déjà et n’est plus modifiée ; les listes montrent « {{kept}} » à sa place.",
+      "open": "Ouvrir « {{kept}} »"
     }
   }
 }

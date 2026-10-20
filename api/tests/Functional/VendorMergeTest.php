@@ -18,6 +18,7 @@ use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Infrastructure\ApiPlatform\Output\RecordChangedProblem;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
@@ -210,6 +211,8 @@ final class VendorMergeTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path("vendors/$merged"), ['number' => 'F-002', 'name' => 'Sotumag Sfax II', 'isActive' => true, 'version' => $this->storedVersion('vendor', $merged)]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        // Changed since the form was opened, as a screen reads it: it reads the vendor again and finds it merged away.
+        self::assertSame(RecordChangedProblem::TYPE, $this->json()['type'] ?? null);
 
         $connection = $this->em()->getConnection();
         self::assertSame([0, 0, 0], array_map(static fn (string $table): mixed => $connection->fetchOne(\sprintf('SELECT count(*) FROM %s WHERE %s = ?', ...explode(':', $table)), [$merged]), ['expense:vendor_id', 'stock_movement:vendor_id', 'product_barcode:supplier_id']));
@@ -240,6 +243,11 @@ final class VendorMergeTest extends ApiTestCase
         self::assertSame(['id' => $kept, 'number' => 'F-001', 'name' => 'Sotumag'], $this->json()['mergedInto'] ?? null);
         $this->getJson($this->path("vendors/$kept"));
         self::assertArrayNotHasKey('mergedInto', $this->json());
+        // A picker offers the vendor kept alone: nothing new may name the one merged away.
+        foreach (['expense-options/vendors?q=sotumag', 'stock-options/vendors?q=sotumag', 'purchase-order-options/vendors?q=sotumag'] as $picker) {
+            $this->getJson($this->path($picker));
+            self::assertSame([$kept, $other], array_column($this->jsonList(), 'id'), $picker);
+        }
 
         $this->getJson($this->path('expenses?vendorId='.$kept));
         self::assertSame([[$recorded, $merged, 'Sotumag']], array_map(static fn (array $row): array => [$row['id'] ?? null, $row['vendorId'] ?? null, $row['vendorName'] ?? null], $this->jsonList()));

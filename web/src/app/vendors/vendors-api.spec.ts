@@ -84,7 +84,17 @@ describe('VendorsApi', () => {
       defaultExpenseCategoryId: 'k2',
     });
 
-    expect(await pending).toEqual({ ...sotumag, id: 'v 1', version: 4 });
+    expect(await pending).toEqual({ ...sotumag, id: 'v 1', version: 4, mergedInto: null });
+  });
+
+  it('reads the vendor a vendor merged away points at', async () => {
+    const kept = { id: 'v1', number: 'FRN-0001', name: 'Sotumag' };
+    const pending = api.vendor('c1', 'v2');
+    http
+      .expectOne('/api/companies/c1/vendors/v2')
+      .flush({ id: 'v2', version: 2, number: 'FRN-0002', name: 'Sotumag Sfax', mergedInto: kept });
+
+    expect((await pending).mergedInto).toEqual(kept);
   });
 
   it('reads one page of vendors as the API searched, narrowed and sorted it, with the total', async () => {

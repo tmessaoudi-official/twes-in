@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
@@ -45,6 +45,21 @@ export interface RecordInUse {
   readonly uses: readonly RecordUse[];
 }
 
+/** Rows of one table, counted. */
+export interface TableCount {
+  readonly table: string;
+  readonly count: number;
+}
+
+/**
+ * What a merge would do to one record, said before it runs: what names it and moves to the record kept, and what names
+ * it and stays, as the books and the stock recorded it. Counts only.
+ */
+export interface MergePreview extends RemovedItem {
+  readonly moves: readonly TableCount[];
+  readonly stays: readonly TableCount[];
+}
+
 /** Why the API refused, as the screens translate it. */
 export type RemovalError =
   | 'network'
@@ -56,13 +71,21 @@ export type RemovalError =
   | 'merge_into_itself'
   | 'merge_cycle'
   | 'merge_conflict'
+  | 'merge_alias'
+  | 'merge_mismatch'
+  | 'merge_transacted'
   | 'step_up_required';
 
-/** Thrown when the API refuses; a record in use carries what names each record. */
+/**
+ * Thrown when the API refuses. A record in use carries what names each record; a mismatch, the column the records
+ * disagree on; an undo refused, what names the record kept since the merge.
+ */
 export class RemovalRefused extends Error {
   constructor(
     readonly code: RemovalError,
     readonly records: readonly RecordInUse[] = [],
+    readonly column: string | null = null,
+    readonly uses: readonly TableCount[] = [],
   ) {
     super(code);
   }
@@ -83,7 +106,6 @@ export class RecordRemovalsApi {
     );
   }
 
-  /** The deletes still restorable, of the subjects the person may write, the newest first. */
   /**
    * Merges the records into the one kept, all of them or none. The API holds it back as `step_up_required` until the
    * person proved who they are in the last few minutes.
@@ -99,6 +121,20 @@ export class RecordRemovalsApi {
     );
   }
 
+  /** What merging these records would move and leave, record by record, asked before the person picks the one kept. */
+  async previewMerge(
+    companyId: string,
+    subject: string,
+    ids: readonly string[],
+  ): Promise<MergePreview[]> {
+    let params = new HttpParams().set('subject', subject);
+    for (const id of ids) params = params.append('ids[]', id);
+    return this.call(() =>
+      this.http.get<MergePreview[]>(`${base(companyId)}/record-merges/preview`, { params }),
+    );
+  }
+
+  /** The deletes still restorable, of the subjects the person may write, the newest first. */
   async pending(companyId: string): Promise<RecordRemoval[]> {
     return this.call(() => this.http.get<RecordRemoval[]>(`${base(companyId)}/record-removals`));
   }
@@ -132,6 +168,9 @@ const CODES: readonly RemovalError[] = [
   'merge_into_itself',
   'merge_cycle',
   'merge_conflict',
+  'merge_alias',
+  'merge_mismatch',
+  'merge_transacted',
   'step_up_required',
 ];
 
@@ -144,5 +183,12 @@ function refusal(error: unknown): RemovalRefused {
   const fields = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
   const known = CODES.find((candidate) => candidate === fields['error']);
   const records = Array.isArray(fields['records']) ? (fields['records'] as RecordInUse[]) : [];
-  return new RemovalRefused(known ?? 'network', known === 'record_used' ? records : []);
+  const column = typeof fields['column'] === 'string' ? fields['column'] : null;
+  const uses = Array.isArray(fields['uses']) ? (fields['uses'] as TableCount[]) : [];
+  return new RemovalRefused(
+    known ?? 'network',
+    known === 'record_used' ? records : [],
+    known === 'merge_mismatch' ? column : null,
+    known === 'merge_transacted' ? uses : [],
+  );
 }

@@ -127,3 +127,86 @@ describe('RecordMergeDialog', () => {
     expect(close).toHaveBeenCalledWith(null);
   });
 });
+
+describe('RecordMergeDialog, records merged away as aliases', () => {
+  const VENDORS: RecordMergeDialogData = {
+    subject: 'vendor',
+    candidates: [
+      { id: 'v1', label: 'F-001 Sotumag', moves: [], stays: [] },
+      {
+        id: 'v2',
+        label: 'F-002 Sotumag Sfax',
+        moves: [{ table: 'purchase_order', count: 1 }],
+        stays: [
+          { table: 'expense', count: 3 },
+          { table: 'stock_movement', count: 0 },
+        ],
+      },
+      {
+        id: 'v3',
+        label: 'F-003 Sotumag Gabès',
+        moves: [],
+        stays: [],
+      },
+    ],
+    settings: false,
+    aliased: true,
+  };
+  const ALIAS_FR = {
+    records: {
+      ...FR.records,
+      merge: {
+        ...FR.records.merge,
+        alias:
+          '« {{name}} » reste, désactivée, et renvoie vers la fiche gardée. Ce qui passe dans la fiche gardée : {{moves}}.',
+        alias_empty:
+          '« {{name}} » reste, désactivée, et renvoie vers la fiche gardée. Rien ne passe dans la fiche gardée.',
+        alias_stays: 'Ce qui reste au nom de « {{name}} » : {{stays}}.',
+        undo_hint_alias: 'Annulable 24 heures, tant que rien n’est reçu au nom de la fiche gardée.',
+      },
+      tables: {
+        purchase_order: '{{count}} {count, plural, one {commande} other {commandes}}',
+        expense: '{{count}} {count, plural, one {dépense} other {dépenses}}',
+        stock_movement: '{{count}} {count, plural, one {mouvement} other {mouvements}}',
+      },
+      recent: {
+        subjects: { vendor: '{{count}} {count, plural, one {fournisseur} other {fournisseurs}}' },
+      },
+    },
+  };
+  let root: HTMLElement;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [RecordMergeDialog],
+      providers: [
+        provideTranslateService({ fallbackLang: 'fr' }),
+        provideTranslateCompiler(PluralCompiler),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        { provide: MatDialogRef, useValue: { close: vi.fn() } },
+        { provide: MAT_DIALOG_DATA, useValue: VENDORS },
+      ],
+    });
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('fr', ALIAS_FR);
+    translate.use('fr');
+    const fixture = TestBed.createComponent(RecordMergeDialog);
+    fixture.detectChanges();
+    root = fixture.nativeElement as HTMLElement;
+  });
+
+  it('says each record stays, switched off and pointing at the one kept, with what moves and what stays', () => {
+    expect(
+      [...root.querySelectorAll('[data-testid="record-merge-preview"] li')].map(
+        (line) => line.textContent?.trim() ?? '',
+      ),
+    ).toEqual([
+      '« F-002 Sotumag Sfax » reste, désactivée, et renvoie vers la fiche gardée. Ce qui passe dans la fiche gardée : 1 commande. Ce qui reste au nom de « F-002 Sotumag Sfax » : 3 dépenses.',
+      '« F-003 Sotumag Gabès » reste, désactivée, et renvoie vers la fiche gardée. Rien ne passe dans la fiche gardée.',
+    ]);
+    expect(root.textContent).toContain(
+      'Annulable 24 heures, tant que rien n’est reçu au nom de la fiche gardée.',
+    );
+    expect(root.textContent).not.toContain('disparaît');
+  });
+});

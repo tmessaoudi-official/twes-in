@@ -12,7 +12,9 @@ import {
   RemovalRefused,
   type RecordInUse,
   type RecordRemoval,
+  type MergePreview,
   type RemovedItem,
+  type TableCount,
 } from './record-removals-api';
 import type { RecordMergeDialog, RecordMergeDialogData } from './record-merge-dialog';
 
@@ -42,6 +44,9 @@ const NAMED_TABLES = [
   'stock_lot',
   'price_list_item',
 ] as const;
+
+/** The columns a merge refusal names in words, each saying how the records differ; any other gets the plain refusal. */
+const MISMATCH_COLUMNS = ['identifiers'] as const;
 
 /**
  * Deleting or merging records and putting them back, the same on every screen that does either: nothing asks first, since the toast
@@ -108,6 +113,26 @@ export class RecordDeletes {
       kept,
       data.candidates.filter((candidate) => candidate.id !== kept.id),
     );
+  }
+
+  /**
+   * Asks the API what merging these records would move and leave, then offers the merge as `offerMerge` does; answers
+   * whether they went. A subject whose screen does not already know what names each record uses this one.
+   */
+  async offerMergeOf(
+    companyId: string,
+    subject: string,
+    ids: readonly string[],
+    shape: { readonly settings: boolean; readonly aliased: boolean },
+  ): Promise<boolean> {
+    let candidates: MergePreview[];
+    try {
+      candidates = await this.api.previewMerge(companyId, subject, ids);
+    } catch (error) {
+      this.refused(error);
+      return false;
+    }
+    return this.offerMerge(companyId, { subject, candidates, ...shape });
   }
 
   /**
@@ -196,29 +221,39 @@ export class RecordDeletes {
 
   private refused(error: unknown): void {
     const refusal = error instanceof RemovalRefused ? error : new RemovalRefused('network');
+    const column = MISMATCH_COLUMNS.find((known) => known === refusal.column);
     if (refusal.code === 'record_used' && refusal.records.length > 0) {
       this.feedback.failure('records.in_use', {
         records: this.list(refusal.records.map((record) => this.usedBy(record))),
       });
+    } else if (refusal.code === 'merge_mismatch' && column !== undefined) {
+      this.feedback.failure(`records.mismatch.${column}`);
+    } else if (refusal.code === 'merge_transacted' && refusal.uses.length > 0) {
+      this.feedback.failure('records.traded_since', { uses: this.counted(refusal.uses) });
     } else {
       this.feedback.failure(`records.errors.${refusal.code}`);
     }
   }
 
   private usedBy(record: RecordInUse): string {
+    return this.translate.instant('records.used_by', {
+      name: record.label,
+      uses: this.counted(record.uses),
+    });
+  }
+
+  /** « 2 mouvements de stock et 1 commande fournisseur », a table the screens do not name counted as other records. */
+  private counted(uses: readonly TableCount[]): string {
     const counts = new Map<string, number>();
-    for (const use of record.uses) {
+    for (const use of uses) {
       const table = NAMED_TABLES.find((named) => named === use.table) ?? 'other';
       counts.set(table, (counts.get(table) ?? 0) + use.count);
     }
-    return this.translate.instant('records.used_by', {
-      name: record.label,
-      uses: this.list(
-        [...counts].map(([table, count]) =>
-          this.translate.instant(`records.tables.${table}`, { count }),
-        ),
+    return this.list(
+      [...counts].map(([table, count]) =>
+        this.translate.instant(`records.tables.${table}`, { count }),
       ),
-    });
+    );
   }
 
   /** « a, b et c » as the screen's language joins a list. */

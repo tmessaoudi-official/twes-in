@@ -109,6 +109,7 @@ describe('RecordRemovalsApi', () => {
       [409, { error: 'merge_cycle' }, 'merge_cycle'],
       [409, { error: 'merge_conflict', table: 'product_vendor' }, 'merge_conflict'],
       [422, { error: 'merge_into_itself' }, 'merge_into_itself'],
+      [409, { error: 'merge_alias' }, 'merge_alias'],
     ] as const) {
       const refused = api.merge('c1', 'product_category', 'k1', ['m1']);
       http
@@ -117,4 +118,58 @@ describe('RecordRemovalsApi', () => {
       expect(await refused.catch((error: unknown) => (error as RemovalRefused).code)).toBe(code);
     }
   });
+
+  it('reads which column two records disagree on, and what the record kept did since', async () => {
+    const mismatched = api.merge('c1', 'vendor', 'k1', ['m1']);
+    http
+      .expectOne('/api/companies/c1/record-merges')
+      .flush(
+        { error: 'merge_mismatch', column: 'identifiers' },
+        { status: 409, statusText: 'Refused' },
+      );
+    const mismatch = await refusalOf(mismatched);
+    expect([mismatch.code, mismatch.column]).toEqual(['merge_mismatch', 'identifiers']);
+
+    const undone = api.restore('c1', 'r1');
+    const uses = [
+      { table: 'stock_movement', count: 2 },
+      { table: 'expense', count: 1 },
+    ];
+    http
+      .expectOne('/api/companies/c1/record-removals/r1/restore')
+      .flush({ error: 'merge_transacted', uses }, { status: 409, statusText: 'Refused' });
+    const traded = await refusalOf(undone);
+    expect([traded.code, traded.uses]).toEqual(['merge_transacted', uses]);
+  });
+
+  it('previews a merge: what moves to the record kept and what stays naming each record, by table', async () => {
+    const preview = [
+      {
+        id: 'm/1',
+        label: 'F-002 Sotumag Sfax',
+        moves: [{ table: 'purchase_order', count: 1 }],
+        stays: [{ table: 'expense', count: 3 }],
+      },
+    ];
+    const asked = api.previewMerge('c/1', 'vendor', ['k1', 'm/1']);
+    const get = http.expectOne(
+      (request) => request.url === '/api/companies/c%2F1/record-merges/preview',
+    );
+    expect([get.request.method, get.request.urlWithParams]).toEqual([
+      'GET',
+      '/api/companies/c%2F1/record-merges/preview?subject=vendor&ids%5B%5D=k1&ids%5B%5D=m/1',
+    ]);
+    get.flush(preview);
+    expect(await asked).toEqual(preview);
+  });
 });
+
+/** The refusal a call ended on; a call that went through fails the case. */
+async function refusalOf(call: Promise<unknown>): Promise<RemovalRefused> {
+  return call.then(
+    () => {
+      throw new Error('The call went through.');
+    },
+    (error: unknown) => error as RemovalRefused,
+  );
+}
