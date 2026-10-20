@@ -35,6 +35,15 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `var/claude/` and return one line; spawn them unnamed.
 - **Say what was and was not certified by execution** in a goal's completion note, in one
   sentence each. "Tests pass" is not a claim about a container coming up.
+- **A fix is a class** (developer ruling, docs/SPEC.md § 7): every fix, decision or finding names its class (a silent
+  result, a stale screen, a field not seen, an unclear error, an action missing where its subject appears), lists every
+  member found, its search pasted in the plan, and fixes them in the same change or names each one left as a plan row. A
+  gate is added where the class can be found mechanically, a lesson otherwise. Generalize when a second member exists or
+  a principle covers it; a one-off is written down with why.
+- **Deciding while the developer is away**: pick when a rule decides (never silent; every action wherever its subject
+  appears, its context filled in and changeable; every outcome shown at once in every tab; guide but never choose a fiscal
+  or legal answer; data over code; one canon; undo first; parameters over fixed values; a fix is a class); when none does,
+  pick only if `advisor()` agrees, else park it and move on. Every pick is logged `ASSUMED (review)` naming its rule.
 - Craft lessons go under § "Lessons" below, five lines at most, only when they change what to
   do next time.
 - **Comments say why**, with no dates and no SPEC row numbers (developer ruling, 2026-09-27): the decision's record is
