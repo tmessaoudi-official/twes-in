@@ -23,9 +23,11 @@ use Symfony\Component\Console\Tester\ApplicationTester;
  */
 final class InstallationTellTest extends ApiTestCase
 {
+    use MakesSandboxes;
+
     private const string PASSWORD = 'password-1234';
 
-    public function testAReleaseOutIsToldToEachCompanysOwnersAndToNobodyElse(): void
+    public function testAReleaseOutIsToldToEachCompanysOwnersAndToNobodyElseNotEvenADemoVisitor(): void
     {
         $shop = $this->createCompany('Quincaillerie');
         $other = $this->createCompany('Atelier');
@@ -33,6 +35,9 @@ final class InstallationTellTest extends ApiTestCase
         $this->createUser('clerk@shop.test', self::PASSWORD, $shop, ['company.read'], Role::MEMBER);
         $second = $this->createUser('owner@atelier.test', self::PASSWORD, $other);
         $this->createUser('operator@twes.local', self::PASSWORD, operator: true);
+        // A visitor trying the demo owns a sandbox's company and decides nothing about the installation.
+        $this->readySandbox('TN');
+        $this->em()->flush();
 
         $tester = $this->tell('installation.update_available', 'version=v2026.10.21.1', 'previous=v2026.10.20.1');
 

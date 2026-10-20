@@ -466,8 +466,11 @@ $(restore_commands "$label" "$previous" "$address")" \
 }
 
 set_value() { # name value: the values file rewritten beside itself, readable by its owner alone
+  # The pair reaches awk through its environment: -v would turn a backslash in the value (a folder's name) into an
+  # escape, and a \n into a second line of the file.
   local tmp=$values.new.$$
-  awk -v k="$1" -v v="$2" 'index($0, k "=") == 1 { if (!done) print k "=" v; done = 1; next } { print } END { if (!done) print k "=" v }' \
+  TWES_K=$1 TWES_V=$2 awk 'BEGIN { k = ENVIRON["TWES_K"]; v = ENVIRON["TWES_V"] }
+    index($0, k "=") == 1 { if (!done) print k "=" v; done = 1; next } { print } END { if (!done) print k "=" v }' \
     "$values" > "$tmp"
   chmod 600 "$tmp"
   mv -f "$tmp" "$values"
