@@ -62,9 +62,9 @@ final readonly class DbalRecordStore implements RecordStore
     {
         $uses = [];
         foreach ($references as $reference) {
-            [$naming, $parameters] = $this->naming($reference, $companyId, $ids);
+            [$naming, $parameters, $named] = $this->naming($reference, $companyId, $ids);
             $rows = $this->connection->fetchAllAssociative(
-                \sprintf('SELECT %1$s::text AS id, count(*)::int AS rows FROM %2$s WHERE %3$s GROUP BY %1$s', $this->name($reference->column), $this->name($reference->table), $naming),
+                \sprintf('SELECT %1$s AS id, count(*)::int AS rows FROM %2$s WHERE %3$s GROUP BY 1', $named, $this->name($reference->table), $naming),
                 $parameters,
             );
             foreach ($rows as $row) {
@@ -152,28 +152,30 @@ final readonly class DbalRecordStore implements RecordStore
     }
 
     /**
-     * Where a reference's column names some of the records, its scope said: a text column holds an id as text.
+     * Where a reference's column names some of the records, its scope said, and the record each row names as text. A
+     * company path is matched whole, so the column's own index serves.
      *
      * @param list<Uuid> $ids
      *
-     * @return array{string, array<string, string>} the condition and its parameters
+     * @return array{string, array<string, string>, string} the condition, its parameters and the id each row names
      */
     private function naming(RecordReference $reference, Uuid $companyId, array $ids): array
     {
-        $cast = match ($reference->link) {
-            RecordLink::Id => 'uuid',
-            RecordLink::TextId => 'text',
+        $column = $this->name($reference->column);
+        [$values, $cast, $named] = match ($reference->link) {
+            RecordLink::Id => [self::array($ids), 'uuid', $column.'::text'],
+            RecordLink::CompanyPath => [self::array($ids, $companyId->toRfc4122().'/'), 'text', \sprintf("split_part(%s, '/', 2)", $column)],
             // A list of ids is read element by element, which no reference asks yet.
             RecordLink::IdList => throw new \LogicException(\sprintf('%s.%s names its records as %s, which the records engine does not read yet.', $reference->table, $reference->column, $reference->link->value)),
         };
-        $condition = \sprintf('company_id = :company AND %s = ANY(CAST(:ids AS %s[]))', $this->name($reference->column), $cast);
-        $parameters = ['company' => $companyId->toRfc4122(), 'ids' => self::array($ids)];
+        $condition = \sprintf('company_id = :company AND %s = ANY(CAST(:ids AS %s[]))', $column, $cast);
+        $parameters = ['company' => $companyId->toRfc4122(), 'ids' => $values];
         if (null !== $reference->whereColumn && null !== $reference->whereValue) {
             $condition .= \sprintf(' AND %s = :scope', $this->name($reference->whereColumn));
             $parameters['scope'] = $reference->whereValue;
         }
 
-        return [$condition, $parameters];
+        return [$condition, $parameters, $named];
     }
 
     private function name(string $identifier): string
@@ -186,9 +188,9 @@ final readonly class DbalRecordStore implements RecordStore
         return \is_string($value) ? $value : throw new \LogicException('A name, an id or a label reads as text.');
     }
 
-    /** @param list<Uuid> $ids */
-    private static function array(array $ids): string
+    /** @param list<Uuid> $ids each written after the prefix, which holds no comma, brace or quote */
+    private static function array(array $ids, string $prefix = ''): string
     {
-        return '{'.implode(',', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids)).'}';
+        return '{'.implode(',', array_map(static fn (Uuid $id): string => $prefix.$id->toRfc4122(), $ids)).'}';
     }
 }

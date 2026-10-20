@@ -15,8 +15,6 @@ use App\Module\Products\Domain\Exception\InvalidProductCategory;
 use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Domain\Repository\ProductCategoryRepository;
 use App\Module\Products\Domain\Repository\ProductRepository;
-use App\Settings\Application\ForgetSettings;
-use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
@@ -26,20 +24,18 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A company's product categories: listed by name, each name used once in the company, placed under another of its
- * categories or at the top, and deleted only once they hold no subcategory and no product, taking the defaults set
- * for them along. Audited with the names of the fields a revision changed, never their values.
+ * categories or at the top. Deleting one is the records engine's, which keeps it a day to put back. Audited with the
+ * names of the fields a revision changed, never their values.
  */
 final readonly class ManageProductCategories
 {
     public const string ENTITY_TYPE = 'product_category';
     public const string CREATED = 'product_category.created';
     public const string REVISED = 'product_category.revised';
-    public const string DELETED = 'product_category.deleted';
 
     public function __construct(
         private ProductCategoryRepository $categories,
         private ProductRepository $products,
-        private ForgetSettings $settings,
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
@@ -108,25 +104,6 @@ final readonly class ManageProductCategories
             }
 
             return $category;
-        });
-    }
-
-    /**
-     * @throws ProductCategoryNotFound
-     * @throws ProductCategoryInUse
-     */
-    public function delete(Company $company, Uuid $id, ?Uuid $actorUserId): void
-    {
-        $this->transactions->run(function () use ($company, $id, $actorUserId): void {
-            $category = $this->find($company, $id);
-            $subcategories = $this->childCount($category);
-            $products = $this->productCount($category);
-            if ($subcategories > 0 || $products > 0) {
-                throw new ProductCategoryInUse($subcategories, $products);
-            }
-            $this->settings->at(SettingAddress::productCategory($company, $id));
-            $this->categories->remove($category);
-            $this->record($company, $id, self::DELETED, [], $actorUserId);
         });
     }
 

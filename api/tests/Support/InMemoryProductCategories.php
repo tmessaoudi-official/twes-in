@@ -59,9 +59,4 @@ final class InMemoryProductCategories implements ProductCategoryRepository
             $this->categories[] = $category;
         }
     }
-
-    public function remove(ProductCategory $category): void
-    {
-        $this->categories = array_values(array_filter($this->categories, static fn (ProductCategory $c) => $c !== $category));
-    }
 }

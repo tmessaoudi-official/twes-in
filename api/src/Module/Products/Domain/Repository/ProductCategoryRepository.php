@@ -26,6 +26,4 @@ interface ProductCategoryRepository
     public function countChildren(Uuid $categoryId): int;
 
     public function save(ProductCategory $category): void;
-
-    public function remove(ProductCategory $category): void;
 }

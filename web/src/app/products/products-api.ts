@@ -338,14 +338,6 @@ export class ProductsApi {
     );
   }
 
-  /** 409 while the category still holds a subcategory or a product. */
-  async deleteCategory(companyId: string, id: string): Promise<void> {
-    await this.guard(
-      async () => firstValueFrom(this.http.delete(path(companyId, 'product-categories', id))),
-      'in_use',
-    );
-  }
-
   /** Where this product normally lives, one entry per establishment that has one (docs/SPEC.md row 101). */
   async homes(companyId: string, productId: string): Promise<ProductHomeRow[]> {
     return this.guard(async () => {

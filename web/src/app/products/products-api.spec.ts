@@ -650,12 +650,6 @@ describe('ProductsApi', () => {
         { status: 409, statusText: 'Conflict' },
       );
     await expect(changed).rejects.toEqual(new ProductsRefused('record_changed'));
-
-    const removed = api.deleteCategory('c1', 'k1');
-    const del = http.expectOne('/api/companies/c1/product-categories/k1');
-    expect(del.request.method).toBe('DELETE');
-    del.flush(null, { status: 409, statusText: 'Conflict' });
-    await expect(removed).rejects.toEqual(new ProductsRefused('in_use'));
   });
 
   it('asks the API what a price comes to with its taxes, one line per quantity, saving nothing', async () => {

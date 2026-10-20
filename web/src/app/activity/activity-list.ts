@@ -37,6 +37,7 @@ export const ACTIVITY_KINDS = [
   'module',
   'export',
   'support_grant',
+  'record_removal',
 ] as const;
 
 /**
@@ -77,14 +78,19 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'product.photo_restored',
   'product.photos_reordered',
   'product.main_photo_changed',
+  'product.deleted',
+  'product.restored',
   'product_category.created',
   'product_category.revised',
   'product_category.deleted',
+  'product_category.restored',
   'price_list.created',
   'price_list.revised',
   'price_list.deleted',
   'vendor.created',
   'vendor.revised',
+  'vendor.deleted',
+  'vendor.restored',
   'quote.created',
   'quote.revised',
   'quote.sent',
@@ -118,6 +124,8 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'purchase_order.cancelled',
   'expense_category.created',
   'expense_category.revised',
+  'expense_category.deleted',
+  'expense_category.restored',
   'stock_location.created',
   'stock_location.revised',
   'stock_location.deleted',
@@ -145,6 +153,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'support_access.ended',
   'support.entered',
   'support.read',
+  'record_removal.ended',
 ];
 
 /** The translation key that says an action in words, or null for one said as recorded. */

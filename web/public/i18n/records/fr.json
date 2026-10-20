@@ -20,6 +20,10 @@
       "purchase_order_line": "{{count}} {count, plural, one {ligne de commande fournisseur} other {lignes de commandes fournisseur}}",
       "stock_lot": "{{count}} {count, plural, one {lot} other {lots}}",
       "price_list_item": "{{count}} {count, plural, one {prix d’une liste de prix} other {prix de listes de prix}}",
+      "product": "{{count}} {count, plural, one {produit} other {produits}}",
+      "product_category": "{{count}} {count, plural, one {sous-catégorie} other {sous-catégories}}",
+      "expense_category": "{{count}} {count, plural, one {sous-catégorie} other {sous-catégories}}",
+      "vendor": "{{count}} {count, plural, one {fournisseur} other {fournisseurs}}",
       "other": "{{count}} {count, plural, one {autre fiche} other {autres fiches}}"
     },
     "errors": {
@@ -39,7 +43,9 @@
       "until": "Peut être remis jusqu’au {{moment}}",
       "subjects": {
         "vendor": "{{count}} {count, plural, one {fournisseur} other {fournisseurs}}",
-        "product": "{{count}} {count, plural, one {produit} other {produits}}"
+        "product": "{{count}} {count, plural, one {produit} other {produits}}",
+        "product_category": "{{count}} {count, plural, one {catégorie d’articles} other {catégories d’articles}}",
+        "expense_category": "{{count}} {count, plural, one {catégorie de dépenses} other {catégories de dépenses}}"
       }
     }
   }

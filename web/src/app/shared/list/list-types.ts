@@ -76,6 +76,8 @@ export interface RowAction<Row> {
   href?: (row: Row) => string;
   /** Drawn as destructive, and never a visible button. */
   destructive?: boolean;
+  /** Taken back from its toast, so it asks nothing: « ⋮ » says it is annulable, as the record bar does. */
+  undoable?: boolean;
   /** Hidden for a row it cannot apply to — a paid invoice has nothing to pay. */
   shown?: (row: Row) => boolean;
   /**

@@ -159,13 +159,6 @@ export class ProductsFacade {
     );
   }
 
-  async deleteCategory(companyId: string, id: string): Promise<boolean> {
-    return this.write(
-      () => this.api.deleteCategory(companyId, id),
-      () => this.reloadCategories(companyId),
-    );
-  }
-
   /**
    * The with-tax figures of a price being typed, or null when the API could not count them (a tax it refuses, the
    * network). Quiet: a preview that fails says so where it is shown, never as the page's error.

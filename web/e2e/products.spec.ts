@@ -49,9 +49,10 @@ async function retire(page: Page, reference: string, categoryName: string): Prom
       }[];
       const found = categories.find((row) => row.name === category);
       if (found) {
-        const deleted = await fetch(`${base}/product-categories/${found.id}`, {
-          method: 'DELETE',
-          headers: { 'csrf-token': csrf },
+        const deleted = await fetch(`${base}/record-removals`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({ subject: 'product_category', ids: [found.id] }),
         });
         if (!deleted.ok) throw new Error(`deleting ${category} answered ${deleted.status}`);
       }

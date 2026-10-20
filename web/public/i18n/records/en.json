@@ -20,6 +20,10 @@
       "purchase_order_line": "{{count}} {count, plural, one {purchase order line} other {purchase order lines}}",
       "stock_lot": "{{count}} {count, plural, one {lot} other {lots}}",
       "price_list_item": "{{count}} {count, plural, one {price list price} other {price list prices}}",
+      "product": "{{count}} {count, plural, one {product} other {products}}",
+      "product_category": "{{count}} {count, plural, one {subcategory} other {subcategories}}",
+      "expense_category": "{{count}} {count, plural, one {subcategory} other {subcategories}}",
+      "vendor": "{{count}} {count, plural, one {vendor} other {vendors}}",
       "other": "{{count}} {count, plural, one {other record} other {other records}}"
     },
     "errors": {
@@ -39,7 +43,9 @@
       "until": "Can be put back until {{moment}}",
       "subjects": {
         "vendor": "{{count}} {count, plural, one {vendor} other {vendors}}",
-        "product": "{{count}} {count, plural, one {product} other {products}}"
+        "product": "{{count}} {count, plural, one {product} other {products}}",
+        "product_category": "{{count}} {count, plural, one {product category} other {product categories}}",
+        "expense_category": "{{count}} {count, plural, one {expense category} other {expense categories}}"
       }
     }
   }

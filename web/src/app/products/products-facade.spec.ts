@@ -89,7 +89,6 @@ describe('ProductsFacade', () => {
     categories: vi.fn(),
     createCategory: vi.fn(),
     reviseCategory: vi.fn(),
-    deleteCategory: vi.fn(),
     substitutionGroups: vi.fn(),
   };
   const fieldsApi = { list: vi.fn() };
@@ -248,13 +247,6 @@ describe('ProductsFacade', () => {
       { name: 'Matériel', parentId: null },
       2,
     );
-    api.deleteCategory.mockResolvedValue(undefined);
-    expect(await facade.deleteCategory('c1', 'k1')).toBe(true);
-    expect(api.categories).toHaveBeenCalledTimes(3);
-
-    api.deleteCategory.mockRejectedValueOnce(new ProductsRefused('in_use'));
-    expect(await facade.deleteCategory('c1', 'k1')).toBe(false);
-    expect(facade.error()).toBe('in_use');
   });
 
   it('says the network failed when a read throws something else', async () => {

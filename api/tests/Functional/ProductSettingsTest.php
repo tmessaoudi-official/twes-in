@@ -137,9 +137,9 @@ final class ProductSettingsTest extends ApiTestCase
         $this->sendJson('PUT', $this->path(self::UNIT), ['level' => 'product_category', 'productCategoryId' => $categoryId, 'value' => 'HUR']);
         self::assertResponseIsSuccessful();
 
-        $this->sendJson('DELETE', $this->companyPath().'/product-categories/'.$categoryId);
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'product_category', 'ids' => [$categoryId]]);
 
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertEquals(0, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM setting WHERE level = 'product_category'"));
     }
 

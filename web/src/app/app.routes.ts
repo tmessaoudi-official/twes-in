@@ -242,7 +242,7 @@ export const routes: Routes = [
       {
         path: 'products/categories',
         title: 'nav.product_categories',
-        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        canActivate: [moduleGuard(PRODUCTS_MODULE), textsOpened(RECORDS_TEXTS)],
         loadComponent: () =>
           import('./products/product-categories-page').then((m) => m.ProductCategoriesPage),
       },
@@ -430,7 +430,7 @@ export const routes: Routes = [
       {
         path: 'expenses/categories',
         title: 'nav.expense_categories',
-        canActivate: [moduleGuard(EXPENSES_MODULE)],
+        canActivate: [moduleGuard(EXPENSES_MODULE), textsOpened(RECORDS_TEXTS)],
         loadComponent: () =>
           import('./expenses/expense-categories-page').then((m) => m.ExpenseCategoriesPage),
       },

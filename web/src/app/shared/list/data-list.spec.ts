@@ -185,6 +185,15 @@ const declared: ListDescriptor<Customer> = {
         keepLabel: 'c.keep',
       }),
     },
+    {
+      id: 'forget',
+      label: 'c.forget',
+      icon: 'delete',
+      destructive: true,
+      // Taken back from its toast, so it asks nothing.
+      undoable: true,
+      run: (row) => ran.push(`forget:${row.id}`),
+    },
   ],
 };
 
@@ -1150,6 +1159,24 @@ describe('DataList', () => {
       await host.whenStable();
       expect(q('row-menu-export-1')).not.toBeNull();
       expect(q('row-menu-archive-1')).not.toBeNull();
+    });
+
+    it('says in « ⋮ » what each entry does to the record, as the record bar does', async () => {
+      (inRow('1', '[data-testid="row-more-1"]') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+      expect(
+        ['export', 'archive', 'forget'].map((id) =>
+          q(`row-menu-${id}-1`)?.getAttribute('data-kind'),
+        ),
+      ).toEqual([null, 'definitif', 'annulable']);
+
+      // Annulable: it runs on the click, the toast offering to take it back.
+      (q('row-menu-forget-1') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+      expect(document.querySelector('[data-testid="confirm-message"]')).toBeNull();
+      expect(ran).toEqual(['forget:1']);
     });
 
     it('names each icon button, and runs what it declares', async () => {

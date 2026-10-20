@@ -28,14 +28,13 @@ import type { ProductCategoryRow, ProductsError } from './products-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import { RecordDeletes } from '../shared/records/record-deletes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       products: {
         categories: {
-          errors: { in_use: 'Cette catégorie contient encore des produits.' },
-          delete_message: '{{name}} sera supprimée.',
           delete_named: 'Supprimer {{name}}',
         },
       },
@@ -78,9 +77,9 @@ describe('ProductCategoriesPage', () => {
     loadCategories: vi.fn(),
     createCategory: vi.fn(),
     reviseCategory: vi.fn(),
-    deleteCategory: vi.fn(),
     clearError: vi.fn(),
   };
+  const deletes = { remove: vi.fn() };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
@@ -126,7 +125,7 @@ describe('ProductCategoriesPage', () => {
     facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.createCategory.mockReset().mockResolvedValue(true);
     facade.reviseCategory.mockReset().mockResolvedValue(true);
-    facade.deleteCategory.mockReset().mockResolvedValue(true);
+    deletes.remove.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
     articleSettings.load.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
@@ -145,6 +144,7 @@ describe('ProductCategoriesPage', () => {
         { provide: ProductsFacade, useValue: facade },
         { provide: ArticleSettings, useValue: articleSettings },
         { provide: AuthFacade, useValue: auth },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -194,7 +194,7 @@ describe('ProductCategoriesPage', () => {
     expect(facade.createCategory).toHaveBeenCalledWith('c1', { name: 'Services', parentId: null });
   });
 
-  it('renames a category keeping its parent, and deletes one by its identifier', async () => {
+  it('renames a category keeping its parent, and deletes one without asking', async () => {
     q('row-action-edit-k2')!.click();
     await settle();
     type('field-name', 'Ordinateurs portables');
@@ -215,15 +215,14 @@ describe('ProductCategoriesPage', () => {
     await settle();
     // The menu names the row it deletes, as the customer groups' does.
     expect(inMenu('row-menu-delete-k3')?.textContent).toContain('Supprimer Archives');
+    // Asks nothing: the toast offers « Annuler » and « Récemment supprimés » keeps it a day.
+    expect(inMenu('row-menu-delete-k3')?.getAttribute('data-kind')).toBe('annulable');
     inMenu('row-menu-delete-k3')!.click();
     await settle();
-    // Destructive, so it asks first, and the question names the row rather than asking about "it".
-    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
-      'Archives',
-    );
-    (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
-    await settle();
-    expect(facade.deleteCategory).toHaveBeenCalledWith('c1', 'k3');
+    expect(document.querySelector('[data-testid="confirm-message"]')).toBeNull();
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'product_category', [
+      { id: 'k3', label: 'Archives' },
+    ]);
   });
 
   it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
@@ -292,13 +291,6 @@ describe('ProductCategoriesPage', () => {
     await settle();
     expect(q('article-defaults')).not.toBeNull();
     expect(articleSettings.load).toHaveBeenCalledWith('c1', { productCategoryId: 'k2' });
-  });
-
-  it('says a category still in use cannot go', async () => {
-    error.set('in_use');
-    await settle();
-
-    expect(q('product-categories-error')?.textContent).toContain('encore des produits');
   });
 
   it('offers no change to a reader', async () => {

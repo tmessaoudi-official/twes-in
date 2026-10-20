@@ -169,7 +169,13 @@ describe('RecentlyDeletedPage', () => {
 
   it('reads the list again when a delete or a restore is made anywhere', async () => {
     await open();
-    expect(live.reloadOn.mock.calls[0][0]).toEqual(['record_removal', 'vendor', 'product']);
+    expect(live.reloadOn.mock.calls[0][0]).toEqual([
+      'record_removal',
+      'vendor',
+      'product',
+      'product_category',
+      'expense_category',
+    ]);
 
     api.pending.mockResolvedValue([]);
     await (live.reloadOn.mock.calls[0][1] as () => Promise<void>)();

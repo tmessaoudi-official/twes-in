@@ -30,6 +30,7 @@ import {
   successToasts,
 } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import { RecordDeletes } from '../shared/records/record-deletes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -68,6 +69,7 @@ describe('ExpenseCategoriesPage', () => {
     reviseCategory: vi.fn(),
     clearError: vi.fn(),
   };
+  const deletes = { remove: vi.fn() };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
@@ -104,6 +106,7 @@ describe('ExpenseCategoriesPage', () => {
     facade.createCategory.mockReset().mockResolvedValue(true);
     facade.reviseCategory.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    deletes.remove.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       imports: [ExpenseCategoriesPage],
       providers: [
@@ -119,11 +122,16 @@ describe('ExpenseCategoriesPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ExpensesFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
+  });
+
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
   });
 
   it('lists the categories by their path, each active or not', async () => {
@@ -246,5 +254,23 @@ describe('ExpenseCategoriesPage', () => {
     await create();
     expect(q('expense-category-add')).toBeNull();
     expect(q('row-action-edit-k2')).toBeNull();
+    expect(q('row-more-k2')).toBeNull();
+  });
+
+  it('deletes a category from its « ⋮ » without asking, the toast offering to take it back', async () => {
+    await create();
+    q('row-more-k2')!.click();
+    await settle();
+    const entry = document.body.querySelector(
+      '.cdk-overlay-container [data-testid="row-menu-delete-k2"]',
+    ) as HTMLElement;
+    expect(entry.getAttribute('data-kind')).toBe('annulable');
+    entry.click();
+    await settle();
+
+    expect(document.querySelector('[data-testid="confirm-message"]')).toBeNull();
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'expense_category', [
+      { id: 'k2', label: 'Carburant' },
+    ]);
   });
 });
