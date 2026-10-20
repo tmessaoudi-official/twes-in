@@ -110,6 +110,7 @@ final readonly class ManageCustomers
      *
      * @throws CustomerNotFound
      * @throws CustomerNumberTaken
+     * @throws CustomerMergedAway
      * @throws InvalidCustomer
      * @throws RecordChanged
      */
@@ -119,6 +120,9 @@ final readonly class ManageCustomers
             $customer = $this->get($company, $id);
             if (null !== $version) {
                 $this->versions->expect($customer, $version);
+            }
+            if ($customer->isMergedAway()) {
+                throw new CustomerMergedAway(\sprintf('The customer %s was merged into %s: it is no longer revised.', $customer->getNumber(), $customer->standingFor()->getNumber()));
             }
             $holder = $this->customers->ofNumberInCompany(trim($input->number), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($customer->getId())) {

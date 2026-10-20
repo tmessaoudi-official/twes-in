@@ -223,6 +223,15 @@ final class CustomerResource
     #[Groups([self::READ, self::WRITE])]
     public bool $isActive = true;
 
+    /**
+     * The customer kept when this one was merged away: lists, reports and pickers show that one wherever this one is named.
+     *
+     * @var array{id: string, number: string, name: string}|null
+     */
+    #[ApiProperty(schema: ['anyOf' => [['type' => 'object', 'required' => ['id', 'number', 'name'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'number' => ['type' => 'string'], 'name' => ['type' => 'string']]], ['type' => 'null']]])]
+    #[Groups([self::READ])]
+    public ?array $mergedInto = null;
+
     public static function of(Customer $customer): self
     {
         $profile = $customer->getProfile();
@@ -246,6 +255,8 @@ final class CustomerResource
         $resource->notes = $profile->notes;
         $resource->customFields = $customer->getCustomFields();
         $resource->isActive = $customer->isActive();
+        $kept = $customer->getMergedInto();
+        $resource->mergedInto = null === $kept ? null : ['id' => $kept->getId()->toRfc4122(), 'number' => $kept->getNumber(), 'name' => $kept->getProfile()->name];
 
         return $resource;
     }

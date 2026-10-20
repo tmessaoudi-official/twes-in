@@ -42,6 +42,12 @@
       "product_category": "{count, plural, zero {لا أصناف فرعية} one {صنف فرعي واحد} two {صنفين فرعيين} few {{{count}} أصناف فرعية} many {{{count}} صنفًا فرعيًا} other {{{count}} صنف فرعي}}",
       "expense_category": "{count, plural, zero {لا أصناف فرعية} one {صنف فرعي واحد} two {صنفين فرعيين} few {{{count}} أصناف فرعية} many {{{count}} صنفًا فرعيًا} other {{{count}} صنف فرعي}}",
       "vendor": "{count, plural, zero {لا مزوّدين} one {مزوّد واحد} two {مزوّدين} few {{{count}} مزوّدين} many {{{count}} مزوّدًا} other {{{count}} مزوّد}}",
+      "invoice": "{count, plural, zero {لا فواتير} one {فاتورة واحدة} two {فاتورتين} few {{{count}} فواتير} many {{{count}} فاتورةً} other {{{count}} فاتورة}}",
+      "quote": "{count, plural, zero {لا عروض أسعار} one {عرض سعر واحد} two {عرضي سعر} few {{{count}} عروض أسعار} many {{{count}} عرض سعر} other {{{count}} عرض سعر}}",
+      "delivery_note": "{count, plural, zero {لا وصول تسليم} one {وصل تسليم واحد} two {وصلي تسليم} few {{{count}} وصول تسليم} many {{{count}} وصل تسليم} other {{{count}} وصل تسليم}}",
+      "price_list": "{count, plural, zero {لا قوائم أسعار} one {قائمة أسعار واحدة} two {قائمتي أسعار} few {{{count}} قوائم أسعار} many {{{count}} قائمة أسعار} other {{{count}} قائمة أسعار}}",
+      "customer_credit_entry": "{count, plural, zero {لا قيود رصيد} one {قيد رصيد واحد} two {قيدي رصيد} few {{{count}} قيود رصيد} many {{{count}} قيد رصيد} other {{{count}} قيد رصيد}}",
+      "customer": "{count, plural, zero {لا حرفاء} one {حريف واحد} two {حريفين} few {{{count}} حرفاء} many {{{count}} حريفًا} other {{{count}} حريف}}",
       "other": "{count, plural, zero {لا بطاقات أخرى} one {بطاقة أخرى واحدة} two {بطاقتين أخريين} few {{{count}} بطاقات أخرى} many {{{count}} بطاقة أخرى} other {{{count}} بطاقة أخرى}}"
     },
     "errors": {
@@ -76,7 +82,8 @@
         "vendor": "{count, plural, zero {لا مزوّدين} one {مزوّد واحد} two {مزوّدان} few {{{count}} مزوّدين} many {{{count}} مزوّدًا} other {{{count}} مزوّد}}",
         "product": "{count, plural, zero {لا منتجات} one {منتج واحد} two {منتجان} few {{{count}} منتجات} many {{{count}} منتجًا} other {{{count}} منتج}}",
         "product_category": "{count, plural, zero {لا أصناف منتجات} one {صنف منتجات واحد} two {صنفا منتجات} few {{{count}} أصناف منتجات} many {{{count}} صنف منتجات} other {{{count}} صنف منتجات}}",
-        "expense_category": "{count, plural, zero {لا أصناف مصاريف} one {صنف مصاريف واحد} two {صنفا مصاريف} few {{{count}} أصناف مصاريف} many {{{count}} صنف مصاريف} other {{{count}} صنف مصاريف}}"
+        "expense_category": "{count, plural, zero {لا أصناف مصاريف} one {صنف مصاريف واحد} two {صنفا مصاريف} few {{{count}} أصناف مصاريف} many {{{count}} صنف مصاريف} other {{{count}} صنف مصاريف}}",
+        "customer": "{count, plural, zero {لا حرفاء} one {حريف واحد} two {حريفان} few {{{count}} حرفاء} many {{{count}} حريفًا} other {{{count}} حريف}}"
       }
     },
     "mismatch": {

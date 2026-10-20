@@ -42,6 +42,12 @@
       "product_category": "{{count}} {count, plural, one {subcategory} other {subcategories}}",
       "expense_category": "{{count}} {count, plural, one {subcategory} other {subcategories}}",
       "vendor": "{{count}} {count, plural, one {vendor} other {vendors}}",
+      "invoice": "{{count}} {count, plural, one {invoice} other {invoices}}",
+      "quote": "{{count}} {count, plural, one {quote} other {quotes}}",
+      "delivery_note": "{{count}} {count, plural, one {delivery note} other {delivery notes}}",
+      "price_list": "{{count}} {count, plural, one {price list} other {price lists}}",
+      "customer_credit_entry": "{{count}} {count, plural, one {credit entry} other {credit entries}}",
+      "customer": "{{count}} {count, plural, one {customer} other {customers}}",
       "other": "{{count}} {count, plural, one {other record} other {other records}}"
     },
     "errors": {
@@ -76,7 +82,8 @@
         "vendor": "{{count}} {count, plural, one {vendor} other {vendors}}",
         "product": "{{count}} {count, plural, one {product} other {products}}",
         "product_category": "{{count}} {count, plural, one {product category} other {product categories}}",
-        "expense_category": "{{count}} {count, plural, one {expense category} other {expense categories}}"
+        "expense_category": "{{count}} {count, plural, one {expense category} other {expense categories}}",
+        "customer": "{{count}} {count, plural, one {customer} other {customers}}"
       }
     },
     "mismatch": {

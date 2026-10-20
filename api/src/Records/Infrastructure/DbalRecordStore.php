@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Records\Infrastructure;
 
 use App\Files\Infrastructure\Doctrine\UnnamedFiles;
+use App\Records\Application\Merge\MergeChanges;
 use App\Records\Application\Merge\MergeConflict;
 use App\Records\Application\RecordLink;
 use App\Records\Application\RecordMerge;
@@ -33,7 +34,7 @@ use Symfony\Component\Uid\Uuid;
  * `jsonb_populate_record` with the columns it was copied with that the table still has, so a column added within the
  * day takes its default.
  */
-final readonly class DbalRecordStore implements RecordStore
+final readonly class DbalRecordStore implements RecordStore, MergeChanges
 {
     /** The records a removal takes come back first; what belongs to them, which names them, after. */
     private const int RECORD_STEP = 0;
@@ -243,6 +244,18 @@ final readonly class DbalRecordStore implements RecordStore
         if ($copied !== 2 * \count($mergedIds)) {
             throw new \LogicException(\sprintf('%d records of %s were to be merged away and %d links noted: the merge stops rather than lose one.', \count($mergedIds), $subject->table, $copied));
         }
+    }
+
+    public function set(Uuid $companyId, Uuid $mergeId, string $table, string $column, array $rowIds, string $value): void
+    {
+        if ([] === $rowIds) {
+            return;
+        }
+        // A row already holding the value is left out: nothing of it is to be put back.
+        $this->connection->executeStatement(
+            \sprintf('WITH before AS (SELECT id, %2$s::text AS held FROM %1$s WHERE company_id = :company AND id = ANY(CAST(:ids AS uuid[])) AND %2$s::text IS DISTINCT FROM :value), changed AS (UPDATE %1$s AS t SET %2$s = CAST(:value AS %3$s)%4$s FROM before b WHERE t.id = b.id RETURNING t.id, b.held) INSERT INTO record_merge_move (id, removal_id, company_id, table_name, column_name, row_id, from_value, to_value) SELECT gen_random_uuid(), CAST(:merge AS uuid), CAST(:company AS uuid), :table, :column, id, held, :value FROM changed', $this->name($table), $this->name($column), $this->columnType($table, $column), $this->versioned($table, 't.')),
+            ['company' => $companyId->toRfc4122(), 'ids' => self::array($rowIds), 'value' => $value, 'merge' => $mergeId->toRfc4122(), 'table' => $table, 'column' => $column],
+        );
     }
 
     public function tradedSince(Uuid $companyId, Uuid $keptId, array $transacting, \DateTimeImmutable $since): array
