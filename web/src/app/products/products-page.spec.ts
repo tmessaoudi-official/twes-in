@@ -112,6 +112,7 @@ describe('ProductsPage', () => {
     facade.loadListContext.mockReset().mockResolvedValue(undefined);
     facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    auth.hasModule.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [ProductsPage],
       providers: [
@@ -188,6 +189,29 @@ describe('ProductsPage', () => {
     await settle();
     expect(q('product-add')).toBeNull();
     expect(q('product-categories-link')).not.toBeNull();
+  });
+
+  it('offers the file of who sells each product beside the products one, to a cost reader while vendors are kept', async () => {
+    q('products-import')?.click();
+    await settle();
+    const entry = (id: string): string | null | undefined =>
+      document.querySelector(`[data-testid="${id}"]`)?.getAttribute('href');
+    expect([entry('products-import-products'), entry('products-import-vendors')]).toEqual([
+      '/imports/products',
+      '/imports/product-vendors',
+    ]);
+
+    for (const [permission, module] of [
+      [(name: string) => name !== 'product.cost.read', true],
+      [() => true, false],
+    ] as const) {
+      fixture.destroy();
+      auth.hasPermission.mockImplementation(permission);
+      auth.hasModule.mockReturnValue(module);
+      fixture = TestBed.createComponent(ProductsPage);
+      await settle();
+      expect(q('products-import')?.getAttribute('href')).toBe('/imports/products');
+    }
   });
 
   it('leads to the categories through the tabs of the products screens', () => {

@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
@@ -40,6 +41,7 @@ import type { ProductSearch } from './products-types';
   imports: [
     PageTabs,
     MatButtonModule,
+    MatMenuModule,
     RouterLink,
     TranslatePipe,
     AmountPipe,
@@ -76,6 +78,10 @@ export class ProductsPage implements OnInit {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));
+  /** Who a product is bought from is read with costs, and only while the company keeps vendors. */
+  protected readonly mayImportVendors = computed(
+    () => this.auth.hasModule('vendors') && this.auth.hasPermission('product.cost.read'),
+  );
   protected readonly rowTestId = (row: ProductListRow): string => `product-${row.reference}`;
   /** Where the list's category filter searches: the categories already read, each named by its path. */
   protected readonly pickSources: Readonly<Record<string, ListPickSource>> = {

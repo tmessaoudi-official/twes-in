@@ -2049,6 +2049,10 @@
     },
     "title": "Produits",
     "add": "Nouveau produit",
+    "imports": {
+      "products": "Produits",
+      "vendors": "Fournisseurs des produits"
+    },
     "none": "Aucun produit pour l’instant.",
     "no_company": "Choisissez d’abord une entreprise.",
     "new_title": "Nouveau produit",

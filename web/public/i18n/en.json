@@ -2049,6 +2049,10 @@
     },
     "title": "Products",
     "add": "New product",
+    "imports": {
+      "products": "Products",
+      "vendors": "Product vendors"
+    },
     "none": "No products yet.",
     "no_company": "Choose a company first.",
     "new_title": "New product",

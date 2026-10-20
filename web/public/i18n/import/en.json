@@ -121,12 +121,21 @@
       "unit_cost": "Unit cost",
       "unit_cost_note": "What one unit added cost. Left blank: the product’s cost. Never with a counted quantity."
     },
+    "product_vendors": {
+      "product_reference": "Product reference",
+      "product_reference_note": "The reference of a product that already exists: import the products first.",
+      "vendor_number": "Vendor number",
+      "vendor_number_note": "The number of the vendor the product is bought from: import the vendors first. One row for each vendor of a product.",
+      "vendor_code": "Supplier code",
+      "vendor_code_note": "The code this vendor gives the product: added, or taken over from another of its vendors if it was theirs; none is removed."
+    },
     "title": "Import {{subject}}",
     "subjects": {
       "customers": "customers",
       "products": "products",
       "vendors": "vendors",
-      "opening_stock": "opening stock"
+      "opening_stock": "opening stock",
+      "product_vendors": "product vendors"
     },
     "identity": "A row is found again by: {{columns}}. At most {{rows}} rows per file.",
     "no_company": "Choose a company to import a file.",
