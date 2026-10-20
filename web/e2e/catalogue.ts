@@ -79,7 +79,7 @@ export async function aVendor(page: Page, number: string): Promise<string> {
   );
 }
 
-/** Retires the run's vendor; a vendor is never deleted. */
+/** Retires the run's vendor, which the run's purchase order still names, so it cannot be deleted. */
 export async function retireVendor(page: Page, id: string): Promise<void> {
   await page.evaluate(
     async ([csrf, vendorId]) => {

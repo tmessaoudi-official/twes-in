@@ -88,6 +88,25 @@ final class RecordReferenceCoverageTest extends KernelTestCase
         self::assertContains('the subject old_supplier has no table', RecordReferenceCoverage::unaccounted($this->connection(), new RecordCatalogue([...$this->declarations(), $gone])));
     }
 
+    public function testARowNamingWhatGoesWithASubjectIsNamed(): void
+    {
+        // The engine copies and deletes an owned table's rows by the subject's ids; a row naming one of those rows would
+        // be emptied, cascaded away uncopied, or refuse the delete, and nothing could declare it.
+        $owning = new readonly class implements DeclaresRecordReferences {
+            public function subjects(): array
+            {
+                return [new RecordSubject('customer', 'customer.write', null, ['name'])];
+            }
+
+            public function references(): array
+            {
+                return [RecordReference::owned('invoice', 'customer_id', 'customer', RecordMerge::Moves, 'Not so; a case.')];
+            }
+        };
+
+        self::assertContains('invoice_line.invoice_id names invoice rows, which go with a customer, and nothing can declare it', RecordReferenceCoverage::unaccounted($this->connection(), new RecordCatalogue([...$this->declarations(), $owning])));
+    }
+
     /** @param callable(RecordReference): bool $drop */
     private function catalogueWithout(callable $drop): RecordCatalogue
     {

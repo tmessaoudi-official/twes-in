@@ -26,8 +26,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Something a company sells (docs/SPEC.md § 4 product). Its reference is the company's to choose and unique in it;
- * its unit and its category are the company's too. Documents will name a product, so a product is deactivated,
- * never deleted.
+ * its unit and its category are the company's too. Once anything names it, a document, a movement or a price list,
+ * it is deactivated rather than deleted; nothing naming it, it is deleted and may be put back for a day.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'product')]

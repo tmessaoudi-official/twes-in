@@ -11,6 +11,7 @@ namespace App\Records\Infrastructure;
 
 use App\Records\Application\RecordCatalogue;
 use App\Records\Application\RecordReference;
+use App\Records\Application\RecordUse;
 use App\Shared\Infrastructure\Doctrine\SchemaLinks;
 use Doctrine\DBAL\Connection;
 
@@ -18,8 +19,9 @@ use Doctrine\DBAL\Connection;
  * What the database has that the records engine was not told about: a column naming a subject's records that no module
  * declared, by its foreign key, by its name when it has none (`purchase_order.vendor_id`), as a list of ids
  * (`default_tax_component_ids`), or as a column naming rows of any table (`entity_id`, a setting's `level_id`); and a
- * subject or reference whose table or column is gone. An undeclared column would let a delete pass over a record that
- * column still names, or a merge leave it naming the record that went.
+ * subject or reference whose table or column is gone; and a foreign key to a table whose rows go with a subject. An
+ * undeclared column would let a delete pass over a record that column still names, or a merge leave it naming the
+ * record that went.
  */
 final class RecordReferenceCoverage
 {
@@ -49,11 +51,23 @@ final class RecordReferenceCoverage
             }
         }
 
+        // An owned table's rows are copied and deleted by the subject's ids, so a row naming one of them would be emptied,
+        // cascaded away uncopied, or refuse the delete; no declaration can say what to do about it.
+        $ownedBy = [];
+        foreach ($catalogue->references() as $reference) {
+            if (RecordUse::Owned === $reference->onDelete && null !== $reference->subject) {
+                $ownedBy[$reference->table] = $reference->subject;
+            }
+        }
+
         $keyed = [];
         foreach ($schema->foreignKeys() as ['table' => $table, 'column' => $column, 'target' => $target]) {
             $keyed[] = "$table.$column";
             if (\in_array($target, $subjects, true) && !$isDeclared($table, $column, $target)) {
                 $out[] = $undeclared($table, $column, $target);
+            }
+            if (isset($ownedBy[$target])) {
+                $out[] = \sprintf('%s.%s names %s rows, which go with a %s, and nothing can declare it', $table, $column, $target, $ownedBy[$target]);
             }
         }
 
