@@ -31,7 +31,8 @@ final readonly class InventoryRecordReferences implements DeclaresRecordReferenc
             RecordReference::uses('stock_movement', 'vendor_id', 'vendor', RecordMerge::Stays, 'A movement names the vendor the goods came from.')
                 ->transactingAt('at'),
             RecordReference::ignored('stock_movement', 'source_id', null, 'A movement\'s source is the document or count that made it, never a record a person deletes or merges.'),
-            RecordReference::uses('stock_movement', 'product_id', 'product', RecordMerge::Stays, 'A movement names the product it moved.'),
+            RecordReference::uses('stock_movement', 'product_id', 'product', RecordMerge::Stays, 'A movement names the product it moved.')
+                ->transactingAt('at'),
             RecordReference::uses('stock_lot', 'product_id', 'product', RecordMerge::Stays, 'A lot is a batch of one product.'),
             RecordReference::owned('product_home_location', 'product_id', 'product', RecordMerge::MovesOrDrops, 'Where a product is kept is its own; merged, the product kept is kept there too, once.')->droppingTwinsBy('location_id'),
             RecordReference::owned('product_reorder_point', 'product_id', 'product', RecordMerge::MovesOrDrops, 'A product\'s reorder points are its own; merged, the product kept keeps its own where it has one.')->droppingTwinsBy('establishment_id'),

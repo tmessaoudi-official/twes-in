@@ -13,6 +13,8 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
+use App\Records\Application\Merge\MergeEffects;
+use App\Records\Application\Merge\MergeRefused;
 use App\Records\Application\Merge\MergeTransacted;
 use App\Records\Domain\Exception\RemovalNoLongerPending;
 use App\Records\Domain\Model\RecordRemoval;
@@ -23,6 +25,7 @@ use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -41,6 +44,9 @@ final readonly class RestoreRecords
         private ConfirmStepUp $stepUp,
         private RecordCatalogue $catalogue,
         private LiveChanges $liveChanges,
+        /** @var iterable<MergeEffects> */
+        #[AutowireIterator('app.record.merge_effects')]
+        private iterable $effects = [],
     ) {
     }
 
@@ -50,6 +56,7 @@ final readonly class RestoreRecords
      * @throws RemovalConflict
      * @throws StepUpRequired         when it undoes a merge without a proof given again in the last few minutes
      * @throws MergeTransacted        when the record a merge kept traded since
+     * @throws MergeRefused           when a module refuses to undo what it did for the merge
      */
     public function handle(Company $company, Uuid $removalId, ?Uuid $actorUserId): RecordRemoval
     {
@@ -75,7 +82,15 @@ final readonly class RestoreRecords
             // once the records it names stand again.
             $this->store->restore($company->getId(), $removal->getId());
             if ($merge) {
-                $this->store->moveBack($company->getId(), $removal->getId());
+                $this->store->moveBack($company->getId(), $removal->getId(), $naming);
+                $merged = $removal->recordIds();
+                if (null !== $kept && [] !== $merged) {
+                    foreach ($this->effects as $effects) {
+                        if ($effects->subject() === $removal->getSubject()) {
+                            $effects->unmerging($company->getId(), $removal->getId(), Uuid::fromString($kept['id']), $merged, $actorUserId, $now);
+                        }
+                    }
+                }
             }
             $removal->restore($now);
             $this->removals->save($removal);

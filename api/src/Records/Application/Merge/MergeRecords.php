@@ -31,6 +31,7 @@ use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -54,6 +55,9 @@ final readonly class MergeRecords
         private LiveChanges $liveChanges,
         #[Autowire(param: 'app.records.undoable_for')]
         private string $undoableFor,
+        /** @var iterable<MergeEffects> */
+        #[AutowireIterator('app.record.merge_effects')]
+        private iterable $effects = [],
     ) {
     }
 
@@ -65,6 +69,7 @@ final readonly class MergeRecords
      * @throws MergeConflict
      * @throws MergeAlias
      * @throws MergeMismatch
+     * @throws MergeRefused
      * @throws StepUpRequired
      */
     public function handle(Company $company, RecordSubject $subject, mixed $keptId, mixed $ids, Uuid $actorUserId): RecordRemoval
@@ -119,6 +124,12 @@ final readonly class MergeRecords
                 new \DateInterval($this->undoableFor),
             );
             $this->removals->save($merge);
+            // Before anything is pointed elsewhere, while what is merged away still stands as itself.
+            foreach ($this->effects as $effects) {
+                if ($effects->subject() === $subject->table) {
+                    $effects->merging($company->getId(), $merge->getId(), $kept, $merged, $actorUserId, $this->clock->now());
+                }
+            }
             // One at a time, so that a row two of them both hold is moved once and dropped as a twin the second time.
             foreach ($merged as $id) {
                 $this->store->moveTo($company->getId(), $merge->getId(), $kept, $id, $moving);

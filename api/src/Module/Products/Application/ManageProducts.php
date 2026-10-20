@@ -143,6 +143,14 @@ final readonly class ManageProducts
         return $this->products->ofIdInCompany($id, $company->getId()) ?? throw new ProductNotFound();
     }
 
+    /** @throws ProductMergedAway */
+    private static function notMergedAway(Product $product): void
+    {
+        if ($product->isMergedAway()) {
+            throw new ProductMergedAway(\sprintf('The product %s was merged into %s: it is no longer revised.', $product->getReference(), $product->standingFor()->getReference()));
+        }
+    }
+
     /** The product as a write reads it: under a row lock, so another write of it waits rather than being refused. */
     private function locked(Company $company, Uuid $id): Product
     {
@@ -199,6 +207,7 @@ final readonly class ManageProducts
      * @throws ProductBarcodeTaken
      * @throws InvalidProduct
      * @throws RecordChanged
+     * @throws ProductMergedAway
      */
     public function revise(Company $company, Uuid $id, ProductInput $input, ?Uuid $actorUserId, ?int $version = null): Product
     {
@@ -207,6 +216,7 @@ final readonly class ManageProducts
             if (null !== $version) {
                 $this->versions->expect($product, $version);
             }
+            self::notMergedAway($product);
             $holder = $this->products->ofReferenceInCompany(trim($input->reference), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($product->getId())) {
                 throw new ProductReferenceTaken();
@@ -257,6 +267,7 @@ final readonly class ManageProducts
      * @throws ProductBarcodeTaken
      * @throws InvalidProduct
      * @throws RecordChanged
+     * @throws ProductMergedAway
      */
     public function replaceBarcodes(Company $company, Uuid $id, array $rows, ?Uuid $actorUserId, bool $seesCosts = true, ?int $version = null): Product
     {
@@ -265,6 +276,7 @@ final readonly class ManageProducts
             if (null !== $version) {
                 $this->versions->expect($product, $version);
             }
+            self::notMergedAway($product);
             $rows = $seesCosts ? $rows : $this->unseenCodesKept($rows, $product);
             if ($product->replaceBarcodes($this->barcodeLines($company, $rows, $product), $this->clock->now())) {
                 $this->products->save($product);
@@ -285,11 +297,13 @@ final readonly class ManageProducts
      * @throws ProductNotFound
      * @throws ProductBarcodeTaken
      * @throws InvalidProduct
+     * @throws ProductMergedAway
      */
     public function addVendor(Company $company, Uuid $id, Uuid $vendorId, ?string $code, ?Uuid $actorUserId, bool $seesCosts = true): array
     {
         return $this->transactions->run(function () use ($company, $id, $vendorId, $code, $actorUserId, $seesCosts): array {
             $product = $this->locked($company, $id);
+            self::notMergedAway($product);
             // A vendor's own code is read and written with costs; the vendor's name, with the product.
             if (null !== $code && !$seesCosts) {
                 throw new InvalidProduct('barcodes', 'A supplier\'s code is written by someone who may read costs.');

@@ -211,6 +211,11 @@ final readonly class ProductImport implements DeclaresImport
         if (null !== $existing && ImportMode::Create === $mode) {
             throw null === $reference ? new RowRejected('barcode', 'A product already answers to this code. Import in "create and update" mode to update it.', 'already_exists', ['reference' => $existing->getReference()]) : new RowRejected('reference', 'A product already has this reference. Import in "create and update" mode to update it.', 'already_exists');
         }
+        // What a product merged away was stays as merged, for the documents that still name it.
+        if (null !== $existing && $existing->isMergedAway()) {
+            [$merged, $kept] = [$existing->getReference(), $existing->standingFor()->getReference()];
+            throw new RowRejected('reference', \sprintf('The product %s was merged into %s: change %s instead.', $merged, $kept, $kept), 'product_merged', ['reference' => $merged, 'kept' => $kept]);
+        }
         if (null === $existing) {
             // A new product whose name another already holds is pointed out, as it may be that product under another
             // reference; the more so when nothing in the row can find it again, and a second import would make it twice.

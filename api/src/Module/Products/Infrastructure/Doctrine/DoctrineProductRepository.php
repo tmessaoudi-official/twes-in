@@ -85,7 +85,9 @@ final readonly class DoctrineProductRepository implements ProductRepository
         $query = $this->entityManager->createQueryBuilder()
             ->select('p', 'c')->from(Product::class, 'p')
             ->leftJoin('p.category', 'c')
-            ->where('p.company = :company')->setParameter('company', $companyId, 'uuid');
+            ->where('p.company = :company')->setParameter('company', $companyId, 'uuid')
+            // A product merged away is listed as the product kept, which is listed already.
+            ->andWhere('p.mergedInto IS NULL');
         $this->matchWords($query, $companyId, trim($search->text ?? ''));
         if ([] !== $search->kinds) {
             $query->andWhere('p.kind IN (:kinds)')

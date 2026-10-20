@@ -109,6 +109,14 @@ class Product implements CompanyOwned
     #[ORM\Column]
     private bool $isActive = true;
 
+    /**
+     * The product this one was merged into, which lists and pickers show in its place; written by the records engine,
+     * which also switches it off, and emptied again by « Annuler la fusion ».
+     */
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(name: 'merged_into_id', nullable: true)]
+    private ?Product $mergedInto = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -500,5 +508,22 @@ class Product implements CompanyOwned
     public function isActive(): bool
     {
         return $this->isActive;
+    }
+
+    public function getMergedInto(): ?self
+    {
+        return $this->mergedInto;
+    }
+
+    /** Merged into another: issued documents and movements still name it, nothing new does. */
+    public function isMergedAway(): bool
+    {
+        return null !== $this->mergedInto;
+    }
+
+    /** The product this one stands for: the product kept when it was merged away, itself otherwise. */
+    public function standingFor(): self
+    {
+        return $this->mergedInto ?? $this;
     }
 }

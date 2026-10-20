@@ -30,7 +30,9 @@ final readonly class PurchaseRecordReferences implements DeclaresRecordReference
         return [
             RecordReference::uses('purchase_order', 'vendor_id', 'vendor', RecordMerge::Moves, 'An order names the vendor it is placed with.')
                 ->movingOnlyWhere('status', [PurchaseOrderStatus::Draft->value]),
-            RecordReference::uses('purchase_order_line', 'product_id', 'product', RecordMerge::Stays, 'An order line names the product ordered.'),
+            RecordReference::uses('purchase_order_line', 'product_id', 'product', RecordMerge::Moves, 'An order line names the product ordered; merged, a draft orders the product kept, a sent order what the vendor was sent.')
+                ->through('purchase_order', 'purchase_order_id')
+                ->movingOnlyWhere('status', [PurchaseOrderStatus::Draft->value]),
         ];
     }
 }
