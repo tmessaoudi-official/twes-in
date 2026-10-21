@@ -14,6 +14,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { refusedByTheDemo } from '../shared/testing/said-answers';
 import { DeliveryNoteBulk } from './delivery-note-bulk';
 import { DeliveryNotesRefused } from './delivery-notes-api';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
@@ -214,6 +215,17 @@ describe('DeliveryNoteBulk', () => {
     await invoice(fixture);
 
     expect(said()).toEqual(['delivery_notes.errors.conflict']);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('says nothing more when the demo interceptor has already said the refusal', async () => {
+    check = checkOf(row('a'));
+    invoiced = refusedByTheDemo(new DeliveryNotesRefused('conflict'));
+    const fixture = create(['a']);
+
+    await invoice(fixture);
+
+    expect(said()).toEqual([]);
     expect(navigate).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { Injectable } from '@angular/core';
+import { refusedFor } from '../errors/said-already';
 
 /** One camera of this device, as the person picks it. */
 export interface CameraDevice {
@@ -43,6 +44,7 @@ export class BrowserCamera extends Camera {
   }
 
   async open(deviceId: string | null): Promise<MediaStream> {
+    // refusal-answer: none, the browser has no camera to ask.
     if (!this.available()) throw new CameraRefused('unsupported');
     try {
       return await navigator.mediaDevices.getUserMedia({
@@ -56,7 +58,7 @@ export class BrowserCamera extends Camera {
         },
       });
     } catch (error) {
-      throw new CameraRefused(refusalOf(error));
+      throw refusedFor(error, new CameraRefused(refusalOf(error)));
     }
   }
 }

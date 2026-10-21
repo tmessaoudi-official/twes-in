@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { type PasswordResetError, resetErrorOf } from './password-reset-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the page translates. */
 export class PasswordResetRefused extends Error {
@@ -33,9 +34,9 @@ export class PasswordResetApi {
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status > 0) {
         const body = error.error as { error?: string } | null;
-        throw new PasswordResetRefused(resetErrorOf(body?.error));
+        throw refusedFor(error, new PasswordResetRefused(resetErrorOf(body?.error)));
       }
-      throw new PasswordResetRefused('network');
+      throw refusedFor(error, new PasswordResetRefused('network'));
     }
   }
 }

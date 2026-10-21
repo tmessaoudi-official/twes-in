@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { CompanyApi, CompanyRefused, companyLogoUrl } from './company-api';
 import type { CompanyProfileChanges } from './company-types';
+import { saidAlready } from '../shared/errors/said-already';
 
 const changes: CompanyProfileChanges = {
   legalName: 'Demo SARL',
@@ -147,13 +148,15 @@ describe('CompanyApi, the members', () => {
     await expect(removing).rejects.toEqual(new CompanyRefused('forbidden'));
   });
 
-  it("names the demo's refusal of an invitation as the demo's, which the screen leaves to the toast", async () => {
+  it("keeps the demo's answer under its refusal of an invitation, which the screen leaves to the toast", async () => {
     const adding = api.addMember('c1', 'someone@example.test', 'staff');
     http
       .expectOne({ method: 'POST', url: '/api/companies/c1/members' })
       .flush({ error: 'demo_refused' }, { status: 403, statusText: 'Forbidden' });
 
-    await expect(adding).rejects.toEqual(new CompanyRefused('demo_refused'));
+    await expect(adding).rejects.toSatisfy(
+      (error) => error instanceof CompanyRefused && saidAlready(error),
+    );
   });
 
   // docs/SPEC.md § 7, the step-up list: the refusal names its token first, for the screen to ask for the proof.

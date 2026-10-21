@@ -6,6 +6,7 @@ import { Session } from '../shared/session/session';
 import { ModulesApi, ModulesRefused } from './modules-api';
 import { ModulesFacade } from './modules-facade';
 import type { ModuleRow } from './modules-types';
+import { refusedByTheDemo } from '../shared/testing/said-answers';
 
 const customers: ModuleRow = {
   key: 'customers',
@@ -100,7 +101,7 @@ describe('ModulesFacade', () => {
     expect(facade.error()).toBe('already_available');
     expect(facade.modules()).toEqual([customers, { ...quotes, interested: true }]);
 
-    api.setInterest.mockRejectedValue(new ModulesRefused('demo_refused'));
+    api.setInterest.mockRejectedValue(refusedByTheDemo(new ModulesRefused('invalid')));
     expect(await facade.setInterest('c1', 'quotes', false)).toBe(false);
     expect(facade.error()).toBeNull();
   });

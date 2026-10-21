@@ -19,8 +19,6 @@ export type InvoicesError =
   | 'missing_operation_category'
   /** A deposit came to more than its quote leaves once the quote's issued deposits are charged. */
   | 'deposit_beyond_quote'
-  /** Something a demo account may not do, which the interceptor has said in words already. */
-  | 'demo_refused'
   | MentionDatumError
   | PartyIdentityError;
 

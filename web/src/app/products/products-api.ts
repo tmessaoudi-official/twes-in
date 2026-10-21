@@ -68,6 +68,7 @@ import {
   type ProductsError,
   type ProductVendor,
 } from './products-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ProductsRefused extends Error {
@@ -297,7 +298,7 @@ export class ProductsApi {
       // Every answer carries it; a 0 would be refused by the API rather than taken for a version.
       return { barcodes: (saved.barcodes ?? []).map(toBarcode), version: saved.version ?? 0 };
     } catch (error) {
-      throw new BarcodesRefused(barcodesRefusal(error));
+      throw refusedFor(error, new BarcodesRefused(barcodesRefusal(error)));
     }
   }
 
@@ -327,7 +328,7 @@ export class ProductsApi {
       };
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 404) return null;
-      throw new ProductsRefused(codeOf(error, 'invalid'));
+      throw refusedFor(error, new ProductsRefused(codeOf(error, 'invalid')));
     }
   }
 
@@ -543,7 +544,7 @@ export class ProductsApi {
     try {
       return await call();
     } catch (error) {
-      throw new ProductsRefused(codeOf(error, conflict));
+      throw refusedFor(error, new ProductsRefused(codeOf(error, conflict)));
     }
   }
 
@@ -553,7 +554,7 @@ export class ProductsApi {
     try {
       return await call();
     } catch (error) {
-      throw new ProductsRefused(codeOf(error, 'settled'), []);
+      throw refusedFor(error, new ProductsRefused(codeOf(error, 'settled'), []));
     }
   }
 
@@ -563,7 +564,7 @@ export class ProductsApi {
     } catch (error) {
       const refusals =
         error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
-      throw new ProductsRefused(codeOf(error, 'reference_taken'), refusals);
+      throw refusedFor(error, new ProductsRefused(codeOf(error, 'reference_taken'), refusals));
     }
   }
 }

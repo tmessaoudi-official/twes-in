@@ -34,6 +34,7 @@ import {
   type Receiving,
   type VendorOption,
 } from './purchases-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates and, for a 422, the field it named. */
 export class PurchasesRefused extends Error {
@@ -254,9 +255,12 @@ export class PurchasesApi {
     try {
       return await call();
     } catch (error) {
-      throw new PurchasesRefused(
-        codeOf(error),
-        error instanceof HttpErrorResponse ? refusedField(error) : null,
+      throw refusedFor(
+        error,
+        new PurchasesRefused(
+          codeOf(error),
+          error instanceof HttpErrorResponse ? refusedField(error) : null,
+        ),
       );
     }
   }

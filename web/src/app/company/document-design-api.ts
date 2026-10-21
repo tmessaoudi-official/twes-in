@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { DocumentDesign, PreviewState } from './document-design-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Why the API gave no picture, as the preview names it. */
 export class PreviewRefused extends Error {
@@ -40,7 +41,7 @@ export class DocumentDesignApi {
       );
       return await dataAddressOf(picture);
     } catch (error) {
-      throw new PreviewRefused(stateOf(error));
+      throw refusedFor(error, new PreviewRefused(stateOf(error)));
     }
   }
 

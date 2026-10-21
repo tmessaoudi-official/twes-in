@@ -26,6 +26,7 @@ import {
 } from './vendors-types';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class VendorsRefused extends Error {
@@ -115,7 +116,7 @@ export class VendorsApi {
     try {
       return await call();
     } catch (error) {
-      throw new VendorsRefused(codeOf(error), refusalsOf(error));
+      throw refusedFor(error, new VendorsRefused(codeOf(error), refusalsOf(error)));
     }
   }
 }

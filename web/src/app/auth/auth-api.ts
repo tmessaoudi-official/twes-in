@@ -34,6 +34,7 @@ import type {
   SignedInState,
   TotpEnrolment,
 } from './auth-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 const ACCESSES: readonly CompanyAccess[] = ['full', 'read_only', 'locked'];
 const STAGES: readonly CompanySubscription['stage'][] = [
@@ -229,7 +230,7 @@ async function send<T>(request: Observable<T>): Promise<T> {
   try {
     return await firstValueFrom(request);
   } catch (error) {
-    throw new AuthRefused(codeOf(error));
+    throw refusedFor(error, new AuthRefused(codeOf(error)));
   }
 }
 

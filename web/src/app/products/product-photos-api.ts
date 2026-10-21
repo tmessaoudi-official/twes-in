@@ -11,6 +11,7 @@ import {
   type ProductPhotoRow,
 } from './product-photos-types';
 import { productPhotoUrl } from './product-photo-url';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses a photo or a change to the gallery; carries what the screen says. */
 export class ProductPhotosRefused extends Error {
@@ -83,7 +84,7 @@ export class ProductPhotosApi {
     try {
       return await call();
     } catch (error) {
-      throw new ProductPhotosRefused(refusalOf(error));
+      throw refusedFor(error, new ProductPhotosRefused(refusalOf(error)));
     }
   }
 }

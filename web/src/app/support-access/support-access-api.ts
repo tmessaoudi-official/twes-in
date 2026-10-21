@@ -3,6 +3,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Whether the company is open to support, and the windows an owner may open it for. */
 export interface SupportAccessState {
@@ -15,13 +16,7 @@ export interface SupportAccessState {
 
 /** Why the API refused, as the page translates it. */
 export type SupportAccessError =
-  | 'network'
-  | 'not_found'
-  | 'owner_only'
-  | 'support_window'
-  | 'step_up_required'
-  /** Something a demo account may not do, which the interceptor has said in words already. */
-  | 'demo_refused';
+  'network' | 'not_found' | 'owner_only' | 'support_window' | 'step_up_required';
 
 export class SupportAccessRefused extends Error {
   constructor(readonly code: SupportAccessError) {
@@ -64,18 +59,18 @@ const path = (companyId: string): string =>
 
 function refusal(error: unknown): SupportAccessRefused {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
-    return new SupportAccessRefused('network');
+    return refusedFor(error, new SupportAccessRefused('network'));
   }
-  if (error.status === 404) return new SupportAccessRefused('not_found');
+  if (error.status === 404) return refusedFor(error, new SupportAccessRefused('not_found'));
   const body: unknown = error.error;
   const code =
     typeof body === 'object' && body !== null ? (body as Record<string, unknown>)['error'] : null;
-  return new SupportAccessRefused(
-    code === 'owner_only' ||
-      code === 'support_window' ||
-      code === 'step_up_required' ||
-      code === 'demo_refused'
-      ? code
-      : 'network',
+  return refusedFor(
+    error,
+    new SupportAccessRefused(
+      code === 'owner_only' || code === 'support_window' || code === 'step_up_required'
+        ? code
+        : 'network',
+    ),
   );
 }

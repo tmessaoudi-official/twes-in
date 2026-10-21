@@ -7,6 +7,7 @@ import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
+import { refusedByTheDemo } from '../shared/testing/said-answers';
 
 const owner: MemberRow = {
   userId: 'u1',
@@ -165,7 +166,7 @@ describe('MembersFacade', () => {
   });
 
   it("adds nothing of its own to the demo's refusal of an invitation, which the toast has said", async () => {
-    api.addMember.mockRejectedValue(new CompanyRefused('demo_refused'));
+    api.addMember.mockRejectedValue(refusedByTheDemo(new CompanyRefused('forbidden')));
 
     expect(await facade.add('c1', 'someone@example.test', 'staff')).toBeNull();
     expect(facade.error()).toBeNull();

@@ -3,6 +3,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { refusedByTheDemo } from '../shared/testing/said-answers';
 import { AuthApi, AuthRefused } from './auth-api';
 import { AuthFacade } from './auth-facade';
 import { PasskeyClient } from './passkey-client';
@@ -253,6 +254,16 @@ describe('AuthFacade', () => {
     expect(await facade.changePassword('a', 'b')).toBe('too_many');
     api.changePassword.mockRejectedValueOnce(new AuthRefused('network'));
     expect(await facade.changePassword('a', 'b')).toBe('network');
+  });
+
+  it('leaves a refusal the demo interceptor has already said unworded, so no screen says it again', async () => {
+    api.changePassword.mockRejectedValueOnce(refusedByTheDemo(new AuthRefused('network')));
+    expect(await facade.changePassword('a', 'b')).toBeNull();
+    api.beginTotpEnrolment.mockRejectedValueOnce(refusedByTheDemo(new AuthRefused('network')));
+    expect(await facade.beginTotpEnrolment()).toEqual({ ok: false, error: null });
+
+    api.beginTotpEnrolment.mockRejectedValueOnce(new AuthRefused('network'));
+    expect(await facade.beginTotpEnrolment()).toEqual({ ok: false, error: 'network' });
   });
 
   it('holds the sign-in on the customer screen and lets go of it, reading the sign-in again each time', async () => {

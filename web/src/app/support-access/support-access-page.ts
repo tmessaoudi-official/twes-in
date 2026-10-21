@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
+import { saidAlready } from '../shared/errors/said-already';
 import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
@@ -117,7 +117,8 @@ export class SupportAccessPage {
   }
 
   private refused(error: unknown): void {
-    const code = unlessDemoRefused(error instanceof SupportAccessRefused ? error.code : 'network');
-    if (code !== null) this.feedback.failure(`support_access.refused.${code}`);
+    if (saidAlready(error)) return;
+    const code = error instanceof SupportAccessRefused ? error.code : 'network';
+    this.feedback.failure(`support_access.refused.${code}`);
   }
 }

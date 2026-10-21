@@ -175,11 +175,11 @@ describe('TwoFactorPage', () => {
     expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);
   });
 
-  it("adds nothing of its own to the demo's refusal of an enrolment, which the toast has said", async () => {
+  it('adds nothing of its own to a refusal the facade says was said already', async () => {
     const { query } = await render(
       { enrolled: false, required: false, totp: false, passkeys: 0 },
       [],
-      (begin) => begin.mockResolvedValue({ ok: false, error: 'demo_refused' }),
+      (begin) => begin.mockResolvedValue({ ok: false, error: null }),
     );
 
     expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);

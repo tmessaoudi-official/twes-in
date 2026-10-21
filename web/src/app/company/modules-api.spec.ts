@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ModulesApi } from './modules-api';
+import { saidAlready } from '../shared/errors/said-already';
 
 describe('ModulesApi', () => {
   let api: ModulesApi;
@@ -100,7 +101,7 @@ describe('ModulesApi', () => {
     http
       .expectOne('/api/companies/c1/modules/quotes/interest')
       .flush({ error: 'demo_refused' }, { status: 403, statusText: 'Forbidden' });
-    await expect(demo).rejects.toMatchObject({ code: 'demo_refused' });
+    await expect(demo).rejects.toSatisfy(saidAlready);
   });
 
   it('switches a module, and says why a switch was refused', async () => {

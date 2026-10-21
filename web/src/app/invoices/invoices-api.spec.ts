@@ -3,8 +3,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { HttpErrorResponse } from '@angular/common/http';
-import { codeOf, InvoicesApi, InvoicesRefused } from './invoices-api';
+import { InvoicesApi, InvoicesRefused } from './invoices-api';
 import type { InvoiceInput, InvoiceRow } from './invoices-types';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 
@@ -687,19 +686,5 @@ describe('InvoicesApi', () => {
     const draft = api.preview('c1', 'i1', input);
     http.expectOne('/api/companies/c1/invoices/i1/preview').flush({ total: '2.000' });
     expect(await draft).toEqual({ total: '2.000' });
-  });
-
-  describe('codeOf', () => {
-    it("names the demo's refusal, read by the interceptor from a file's body, as the demo's", () => {
-      const refused = (body: unknown) =>
-        new HttpErrorResponse({
-          status: 403,
-          error: body,
-          url: '/api/companies/c1/invoices/i1/factur-x.xml',
-        });
-
-      expect(codeOf(refused({ error: 'demo_refused' }))).toBe('demo_refused');
-      expect(codeOf(refused({ error: 'support_read_only' }))).not.toBe('demo_refused');
-    });
   });
 });

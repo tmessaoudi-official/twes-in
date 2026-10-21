@@ -23,6 +23,7 @@ import type {
   RecurringInvoiceRevision,
   RecurringInvoiceRow,
 } from './recurring-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the screen translates and, for a 422, the field it was about. */
 export class RecurringRefused extends Error {
@@ -155,14 +156,14 @@ function toRow(raw: RecurringInvoiceRecurringInvoiceRead): RecurringInvoiceRow {
 /** A 422 names its field as the form does (`startsOn`, `monthDay`); a refusal naming none is the form's as a whole. */
 function refused(error: unknown): RecurringRefused {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
-    return new RecurringRefused('network');
+    return refusedFor(error, new RecurringRefused('network'));
   }
   if (error.status === 404) {
-    return new RecurringRefused('not_found');
+    return refusedFor(error, new RecurringRefused('not_found'));
   }
   if (error.status === 409 && isRecordChanged(error.error)) {
-    return new RecurringRefused('record_changed');
+    return refusedFor(error, new RecurringRefused('record_changed'));
   }
   const [first] = refusalsIn(error.error);
-  return new RecurringRefused('invalid', first?.field ?? null);
+  return refusedFor(error, new RecurringRefused('invalid', first?.field ?? null));
 }

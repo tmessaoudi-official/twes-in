@@ -21,6 +21,7 @@ import {
   type UnitInput,
   type UnitRow,
 } from './fiscal-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class FiscalRefused extends Error {
@@ -163,7 +164,7 @@ export class FiscalApi {
     try {
       return await call();
     } catch (error) {
-      throw new FiscalRefused(codeOf(error));
+      throw refusedFor(error, new FiscalRefused(codeOf(error)));
     }
   }
 }

@@ -12,6 +12,7 @@ import type { ListPage } from '../shared/list/list-types';
 import { INSTRUMENT_KINDS, INSTRUMENT_STATUSES } from './instruments-types';
 import { codeOf, InvoicesRefused } from './invoices-api';
 import type { PortfolioRow, PortfolioSearch } from './portfolio-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** The HTTP edge of the portfolio of cheques and traites: the only code here that knows its endpoint and generated types. */
 @Injectable({ providedIn: 'root' })
@@ -31,7 +32,7 @@ export class PortfolioApi {
         throw new Error('A page of the portfolio came without its total.');
       return { rows: page.member.map(toRow), total: page.totalItems };
     } catch (error) {
-      throw new InvoicesRefused(codeOf(error));
+      throw refusedFor(error, new InvoicesRefused(codeOf(error)));
     }
   }
 }

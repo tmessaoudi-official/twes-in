@@ -44,6 +44,7 @@ import type {
   TejFileAnswer,
   TejRefusalCode,
 } from './expenses-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ExpensesRefused extends Error {
@@ -270,7 +271,7 @@ export class ExpensesApi {
       ) {
         return toTejRefusal(JSON.parse(await error.error.text()) as RawTejRefusal);
       }
-      throw new ExpensesRefused(codeOf(error, EXPENSE));
+      throw refusedFor(error, new ExpensesRefused(codeOf(error, EXPENSE)));
     }
   }
 
@@ -388,7 +389,7 @@ export class ExpensesApi {
     try {
       return await call();
     } catch (error) {
-      throw new ExpensesRefused(codeOf(error, refusals));
+      throw refusedFor(error, new ExpensesRefused(codeOf(error, refusals)));
     }
   }
 
@@ -399,7 +400,7 @@ export class ExpensesApi {
     } catch (error) {
       const refusals =
         error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
-      throw new ExpensesRefused(codeOf(error, EXPENSE), refusals);
+      throw refusedFor(error, new ExpensesRefused(codeOf(error, EXPENSE), refusals));
     }
   }
 }

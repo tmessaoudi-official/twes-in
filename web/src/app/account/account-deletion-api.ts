@@ -3,6 +3,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** A company the account is the only owner of, which keeps the account from going. */
 export interface OwnedAlone {
@@ -47,19 +48,19 @@ export class AccountDeletionApi {
 
 function refusalOf(error: unknown): AccountDeletionRefused {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
-    return new AccountDeletionRefused('network');
+    return refusedFor(error, new AccountDeletionRefused('network'));
   }
   const body: unknown = error.error;
   const code =
     typeof body === 'object' && body !== null && 'error' in body ? String(body.error) : '';
   const known = KNOWN.find((candidate) => candidate === code);
-  if (known === undefined) return new AccountDeletionRefused('refused');
+  if (known === undefined) return refusedFor(error, new AccountDeletionRefused('refused'));
   const companies =
     known === 'sole_owner' && typeof body === 'object' && body !== null && 'companies' in body
       ? ownedAlone(body.companies)
       : [];
 
-  return new AccountDeletionRefused(known, companies);
+  return refusedFor(error, new AccountDeletionRefused(known, companies));
 }
 
 function ownedAlone(value: unknown): OwnedAlone[] {

@@ -19,6 +19,7 @@ import {
 import type { RecordMergeDialog, RecordMergeDialogData } from './record-merge-dialog';
 import { tableCounts } from './record-tables';
 import { RECORDS_TEXTS } from './records-texts';
+import { refusedFor } from '../errors/said-already';
 
 /** The subjects the API lets a person delete, each also the kind its live changes carry. */
 export const DELETABLE_SUBJECTS = [
@@ -237,7 +238,8 @@ export class RecordDeletes {
 
   /** Says why the API refused; `undoing` when it refused to put back what a delete or a merge took. */
   private refused(error: unknown, undoing = false): void {
-    const refusal = error instanceof RemovalRefused ? error : new RemovalRefused('network');
+    const refusal =
+      error instanceof RemovalRefused ? error : refusedFor(error, new RemovalRefused('network'));
     const column = MISMATCH_COLUMNS.find((known) => known === refusal.column);
     if (refusal.code === 'record_used' && refusal.records.length > 0) {
       this.feedback.failure('records.in_use', {

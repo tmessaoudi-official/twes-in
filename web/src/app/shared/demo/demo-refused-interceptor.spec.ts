@@ -10,11 +10,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Feedback } from '../feedback/feedback';
-import {
-  demoRefusedInterceptor,
-  isDemoRefused,
-  unlessDemoRefused,
-} from './demo-refused-interceptor';
+import { demoRefusedInterceptor, isDemoRefused } from './demo-refused-interceptor';
 
 describe('demoRefusedInterceptor', () => {
   const feedback = { failure: vi.fn() };
@@ -112,10 +108,5 @@ describe('demoRefusedInterceptor', () => {
     expect(isDemoRefused(answer(403, { error: 'support_read_only' }))).toBe(false);
     expect(isDemoRefused(answer(403, 'demo_refused'))).toBe(false);
     expect(isDemoRefused(new Error('demo_refused'))).toBe(false);
-  });
-
-  it("leaves a screen nothing of its own to say for the demo's refusal, and every other failure as it is", () => {
-    expect(unlessDemoRefused<'demo_refused' | 'invalid'>('demo_refused')).toBeNull();
-    expect(unlessDemoRefused<'demo_refused' | 'invalid'>('invalid')).toBe('invalid');
   });
 });

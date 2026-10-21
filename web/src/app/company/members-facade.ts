@@ -2,7 +2,6 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { requestState } from '../shared/feedback/request-state';
 import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
@@ -40,23 +39,20 @@ export class MembersFacade {
   }
 
   private async mutate<T>(companyId: string, call: () => Promise<T>): Promise<T | null> {
-    return this.state.writeAnswer(
-      async () => {
-        // Adding or removing somebody waits for the person to prove who they are again.
-        const result = await this.stepUp.retrying(
-          call,
-          (error) => error instanceof CompanyRefused && error.code === 'step_up_required',
-          'step_up.intro_sensitive',
-        );
-        this.membersSignal.set(await this.api.members(companyId));
-        // What was just written can be this person's OWN rights: the session is read again so the menu, the
-        // permission-gated controls and the record bars follow at once (developer, 2026-09-20). `refresh`, never
-        // `load`: a moment without the API after a successful write is not a sign-out.
-        await this.auth.refresh();
-        return result;
-      },
-      { code: (error) => unlessDemoRefused(codeOf(error)) },
-    );
+    return this.state.writeAnswer(async () => {
+      // Adding or removing somebody waits for the person to prove who they are again.
+      const result = await this.stepUp.retrying(
+        call,
+        (error) => error instanceof CompanyRefused && error.code === 'step_up_required',
+        'step_up.intro_sensitive',
+      );
+      this.membersSignal.set(await this.api.members(companyId));
+      // What was just written can be this person's OWN rights: the session is read again so the menu, the
+      // permission-gated controls and the record bars follow at once (developer, 2026-09-20). `refresh`, never
+      // `load`: a moment without the API after a successful write is not a sign-out.
+      await this.auth.refresh();
+      return result;
+    });
   }
 }
 

@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import type { InvoiceReminderInvoiceReminderRead } from '../api/types.gen';
 import { codeOf, InvoicesRefused } from './invoices-api';
 import type { InvoiceReminderRow } from './invoices-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** The HTTP edge of an invoice's reminder stages: the only code here that knows their endpoint and generated type. */
 @Injectable({ providedIn: 'root' })
@@ -22,7 +23,7 @@ export class RemindersApi {
       );
       return rows.map(toRow);
     } catch (error) {
-      throw new InvoicesRefused(codeOf(error));
+      throw refusedFor(error, new InvoicesRefused(codeOf(error)));
     }
   }
 }

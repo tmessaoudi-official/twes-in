@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ClosingApi, ClosingRefused } from './closing-api';
+import { saidAlready } from '../shared/errors/said-already';
 
 describe('ClosingApi', () => {
   let api: ClosingApi;
@@ -43,12 +44,14 @@ describe('ClosingApi', () => {
     await expect(closed).rejects.toEqual(new ClosingRefused('invalid'));
   });
 
-  it("names the demo's refusal as the demo's, which the page leaves to the toast", async () => {
+  it("keeps the demo's answer under its refusal, which the page leaves to the toast", async () => {
     const closed = api.closeThrough('c1', '2026-08-31');
     http
       .expectOne('/api/companies/c1/closing')
       .flush({ error: 'demo_refused' }, { status: 403, statusText: 'Forbidden' });
 
-    await expect(closed).rejects.toEqual(new ClosingRefused('demo_refused'));
+    await expect(closed).rejects.toSatisfy(
+      (error) => error instanceof ClosingRefused && saidAlready(error),
+    );
   });
 });

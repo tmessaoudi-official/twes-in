@@ -16,6 +16,7 @@ import {
   type CustomFieldEntity,
   type CustomFieldInput,
 } from './custom-fields-types';
+import { refusedFor } from '../errors/said-already';
 
 /** Why the API refused, as the screens translate it. */
 export type CustomFieldsError =
@@ -81,7 +82,7 @@ export class CustomFieldsApi {
     try {
       return await call();
     } catch (error) {
-      throw new CustomFieldsRefused(codeOf(error));
+      throw refusedFor(error, new CustomFieldsRefused(codeOf(error)));
     }
   }
 }

@@ -20,6 +20,7 @@ import type {
 } from './settings-types';
 import { SILENT } from '../feedback/activity-interceptor';
 import { isRecordChanged } from '../errors/record-changed';
+import { refusedFor } from '../errors/said-already';
 
 /** A preference written as it is clicked is quiet: nobody waits for it, so it never shows the activity bar. */
 const quietly = (quiet: boolean) => new HttpContext().set(SILENT, quiet);
@@ -137,19 +138,19 @@ export class SettingsApi {
       return await call();
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 404) {
-        throw new SettingsRefused('not_found');
+        throw refusedFor(error, new SettingsRefused('not_found'));
       }
       if (error instanceof HttpErrorResponse && (error.status === 400 || error.status === 422)) {
-        throw new SettingsRefused('invalid');
+        throw refusedFor(error, new SettingsRefused('invalid'));
       }
       if (
         error instanceof HttpErrorResponse &&
         error.status === 409 &&
         isRecordChanged(error.error)
       ) {
-        throw new SettingsRefused('record_changed');
+        throw refusedFor(error, new SettingsRefused('record_changed'));
       }
-      throw new SettingsRefused('network');
+      throw refusedFor(error, new SettingsRefused('network'));
     }
   }
 }

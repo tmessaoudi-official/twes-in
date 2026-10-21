@@ -39,11 +39,11 @@ export type LoginError =
   | 'passkey_cancelled'
   // The browser refused because this device already holds a passkey for the account. Never sent by the API.
   | 'passkey_already_registered'
-  // « Essayer la démo »: switched off since the page loaded, no sandbox ready yet, a country it does not offer, and
-  // something a demo account may not do.
+  // « Essayer la démo »: switched off since the page loaded, no sandbox ready yet, and a country it does not offer.
   | 'demo_off'
   | 'demo_busy'
   | 'unknown_country'
+  // Something a demo account may not do: the API's AuthError names it, and the interceptor says it (`saidAlready`).
   | 'demo_refused'
   | 'network';
 
@@ -159,7 +159,10 @@ export type LoginOutcome =
   | { status: 'second_factor' }
   | { status: 'refused'; error: LoginError };
 
-/** How a password change came out: made, or the one reason it was not. */
+/**
+ * How a password change came out: made, or the one reason it was not; null when an interceptor said why already
+ * (`saidAlready`), so the page shows nothing more.
+ */
 export type PasswordChangeOutcome =
   | 'changed'
   | 'current_password'
@@ -171,10 +174,10 @@ export type PasswordChangeOutcome =
   | 'refused';
 
 export type EnrolmentOutcome =
-  { ok: true; enrolment: TotpEnrolment } | { ok: false; error: LoginError };
+  { ok: true; enrolment: TotpEnrolment } | { ok: false; error: LoginError | null };
 
 export type ConfirmationOutcome =
-  { ok: true; recoveryCodes: string[] } | { ok: false; error: LoginError };
+  { ok: true; recoveryCodes: string[] } | { ok: false; error: LoginError | null };
 
 /** The options of a passkey ceremony as the API sends them: WebAuthn's own JSON, which the browser parses. */
 export interface PasskeyOptions {
@@ -193,12 +196,13 @@ export interface PasskeySummary {
 }
 
 export type PasskeysOutcome =
-  { ok: true; passkeys: PasskeySummary[] } | { ok: false; error: LoginError };
+  { ok: true; passkeys: PasskeySummary[] } | { ok: false; error: LoginError | null };
 
 /** A registered passkey, with the recovery codes it issued when it was the account's first factor. */
 export type PasskeyAdded =
-  { ok: true; passkey: PasskeySummary; recoveryCodes: string[] } | { ok: false; error: LoginError };
+  | { ok: true; passkey: PasskeySummary; recoveryCodes: string[] }
+  | { ok: false; error: LoginError | null };
 
-export type PasskeyRemoved = { ok: true } | { ok: false; error: LoginError };
+export type PasskeyRemoved = { ok: true } | { ok: false; error: LoginError | null };
 
-export type AuthenticatorRemoved = { ok: true } | { ok: false; error: LoginError };
+export type AuthenticatorRemoved = { ok: true } | { ok: false; error: LoginError | null };

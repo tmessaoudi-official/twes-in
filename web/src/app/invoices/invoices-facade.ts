@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable, signal } from '@angular/core';
@@ -277,9 +276,7 @@ export class InvoicesFacade {
     id: string,
     format: FacturXFormat,
   ): Promise<FacturXAnswer | null> {
-    return this.state.writeAnswer(() => this.api.facturX(companyId, id, format), {
-      code: (error) => unlessDemoRefused(codeOf(error)),
-    });
+    return this.state.writeAnswer(() => this.api.facturX(companyId, id, format));
   }
 
   clearError(): void {

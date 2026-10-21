@@ -16,6 +16,7 @@ import type {
   PriceListsError,
   ResolvedPrice,
 } from './price-lists-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class PriceListsRefused extends Error {
@@ -104,7 +105,7 @@ export class PriceListsApi {
     try {
       return await call();
     } catch (error) {
-      throw new PriceListsRefused(codeOf(error));
+      throw refusedFor(error, new PriceListsRefused(codeOf(error)));
     }
   }
 }

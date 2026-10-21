@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
+import { saidAlready } from '../shared/errors/said-already';
 import { Feedback } from '../shared/feedback/feedback';
 import { BulkSkippedDialog, type BulkSkippedDialogData } from '../shared/list/bulk-skipped-dialog';
 import { DeliveryNotesRefused } from './delivery-notes-api';
@@ -84,6 +85,7 @@ export class DeliveryNoteBulk {
       );
       await this.router.navigate(['/invoices', invoiceId]);
     } catch (error) {
+      if (saidAlready(error)) return;
       const code = error instanceof DeliveryNotesRefused ? error.code : 'network';
       this.feedback.failure(`delivery_notes.errors.${code}`);
     }

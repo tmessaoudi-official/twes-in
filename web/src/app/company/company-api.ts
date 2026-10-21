@@ -29,9 +29,9 @@ import {
   type NumberingSeriesRow,
 } from './company-types';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
-import { DEMO_REFUSED, isDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CompanyRefused extends Error {
@@ -175,7 +175,7 @@ export class CompanyApi {
       );
     } catch (error) {
       // Only a revision names its fields: the other calls' refusals are about the row as a whole.
-      throw new CompanyRefused(profileCodeOf(error), refusalsOf(error));
+      throw refusedFor(error, new CompanyRefused(profileCodeOf(error), refusalsOf(error)));
     }
   }
 
@@ -282,7 +282,7 @@ export class CompanyApi {
     try {
       return await call();
     } catch (error) {
-      throw new CompanyRefused(refusal(error));
+      throw refusedFor(error, new CompanyRefused(refusal(error)));
     }
   }
 }
@@ -430,7 +430,6 @@ function codeOf(error: unknown): CompanyError {
   }
   switch (error.status) {
     case 403:
-      if (isDemoRefused(error)) return DEMO_REFUSED;
       return stepUpAsked(error) ? 'step_up_required' : 'forbidden';
     case 404:
       return 'not_found';
