@@ -68,6 +68,12 @@ final readonly class ProductDetails
         return new self($this->name, $this->description, $this->kind, $this->unitPriceNet, $costPrice, $this->substitutionGroup);
     }
 
+    /** The same product at another price: what a price review sets. */
+    public function withUnitPriceNet(string $unitPriceNet): self
+    {
+        return new self($this->name, $this->description, $this->kind, $unitPriceNet, $this->costPrice, $this->substitutionGroup);
+    }
+
     /** @return list<string> the fields whose values differ from the other's, in the order a form shows them */
     public function differencesFrom(self $other): array
     {

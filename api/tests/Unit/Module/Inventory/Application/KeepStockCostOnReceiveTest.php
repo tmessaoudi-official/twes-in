@@ -19,6 +19,7 @@ use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\CostBasis;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Module\Products\Application\ChangeProductCost;
+use App\Module\Products\Application\ProductPriceSettings;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\CostChangeSource;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
@@ -43,6 +44,7 @@ use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockLots;
 use App\Tests\Support\InMemoryStockMovements;
 use App\Tests\Support\RecordingLiveChanges;
+use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -198,9 +200,9 @@ final class KeepStockCostOnReceiveTest extends TestCase
         $this->laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '1250', '1000'), $piece, null, [], $now);
         $products->save($this->laptop);
         $this->settings->save(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
-        $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new StockCostSettings()]), $this->settings));
+        $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new StockCostSettings(), new ProductPriceSettings()]), $this->settings));
         $this->history = new InMemoryProductCostChanges();
-        $this->keep = new KeepStock($movements, $lots, $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges($transactions), null, new ProductCostOnReceipt(new ChangeProductCost($products, $this->history, $audit, $clock, $transactions)));
+        $this->keep = new KeepStock($movements, $lots, $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges($transactions), null, new ProductCostOnReceipt(new ChangeProductCost($products, $this->history, $audit, $clock, $transactions, $read, ShippedFiscalPresets::scales())));
     }
 
     private function product(string $reference, string $costPrice): Product

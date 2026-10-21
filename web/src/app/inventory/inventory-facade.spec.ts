@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { PriceReviewOffer } from '../products/price-review-offer';
 import { InventoryApi, InventoryRefused } from './inventory-api';
 import { InventoryFacade } from './inventory-facade';
 import type {
@@ -106,6 +107,7 @@ describe('InventoryFacade', () => {
     restoreToLoss: vi.fn(),
   };
   let facade: InventoryFacade;
+  let priceReviews: { after: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     api.options.mockReset().mockResolvedValue(options);
@@ -127,7 +129,13 @@ describe('InventoryFacade', () => {
     api.locationHomes.mockReset().mockResolvedValue([]);
     api.whereabouts.mockReset();
     api.pickProducts.mockReset().mockResolvedValue([]);
-    TestBed.configureTestingModule({ providers: [{ provide: InventoryApi, useValue: api }] });
+    priceReviews = { after: vi.fn(async () => undefined) };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: InventoryApi, useValue: api },
+        { provide: PriceReviewOffer, useValue: priceReviews },
+      ],
+    });
     facade = TestBed.inject(InventoryFacade);
   });
 
@@ -332,6 +340,8 @@ describe('InventoryFacade', () => {
     expect(api.record).toHaveBeenCalledWith('c1', input);
     expect(api.levels).toHaveBeenLastCalledWith('c1', SEARCH);
     expect(facade.levels()).toEqual([level]);
+    // A receipt may have moved the product's cost under its price: the margin is said, never silent.
+    expect(priceReviews.after).toHaveBeenCalledWith('c1', ['p1']);
   });
 
   it('records a receipt shared over several places in one call, then reads the page again', async () => {
@@ -350,6 +360,7 @@ describe('InventoryFacade', () => {
     expect(await facade.receiveSplit('c1', input)).toBe(true);
 
     expect(api.receiveSplit).toHaveBeenCalledWith('c1', input);
+    expect(priceReviews.after).toHaveBeenCalledWith('c1', [input.productId]);
     expect(api.record).not.toHaveBeenCalled();
     expect(api.levels).toHaveBeenLastCalledWith('c1', SEARCH);
   });

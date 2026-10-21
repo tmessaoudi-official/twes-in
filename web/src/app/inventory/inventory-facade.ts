@@ -33,6 +33,7 @@ import type {
   StockPlanSaved,
 } from './inventory-types';
 import type { PlanStep } from './stock-plan-draft';
+import { PriceReviewOffer } from '../products/price-review-offer';
 
 /** How many ids the stock product picker resolves in one question (its `ids` parameter's own bound). */
 const PICK_IDS_MOST = 20;
@@ -41,6 +42,7 @@ const PICK_IDS_MOST = 20;
 @Injectable({ providedIn: 'root' })
 export class InventoryFacade {
   private readonly api = inject(InventoryApi);
+  private readonly priceReviews = inject(PriceReviewOffer);
   private readonly optionsSignal = signal<StockOptions | null>(null);
   private readonly levelsSignal = signal<readonly StockLevelRow[]>([]);
   private readonly totalSignal = signal(0);
@@ -262,7 +264,7 @@ export class InventoryFacade {
 
   /** A receipt or a count; true once recorded and the stock read again, false with the reason in `error`. */
   async record(companyId: string, input: StockMovementInput): Promise<boolean> {
-    return this.write(
+    const recorded = await this.write(
       () => this.api.record(companyId, input),
       // The page in hand is read again, not the whole stock: what was just recorded belongs on it or does not.
       async () => {
@@ -270,6 +272,10 @@ export class InventoryFacade {
         if (search !== null) await this.loadStock(companyId, search);
       },
     );
+    // A receipt may move the product's cost under its price: said here, whichever screen received the goods.
+    if (recorded && input.operation === 'receive')
+      void this.priceReviews.after(companyId, [input.productId]);
+    return recorded;
   }
 
   /** The cost a cost reader enters for a receipt left « à compléter »; true once entered and the movements read again. */
@@ -279,10 +285,20 @@ export class InventoryFacade {
     unitCost: string,
     applyCost: CostBasis | null,
   ): Promise<boolean> {
-    return this.write(
-      () => this.api.enterReceiptCost(companyId, movementId, unitCost, applyCost),
+    // The receipt names its product, whose cost the late cost may move under its price.
+    const costed: { productId: string | null } = { productId: null };
+    const entered = await this.write(
+      async () => {
+        costed.productId = (
+          await this.api.enterReceiptCost(companyId, movementId, unitCost, applyCost)
+        ).productId;
+      },
       () => this.reloadMovements(companyId),
     );
+    if (entered && costed.productId !== null) {
+      void this.priceReviews.after(companyId, [costed.productId]);
+    }
+    return entered;
   }
 
   /** The files a loss keeps, or null when they could not be read (the reason is in `error`). */
@@ -337,13 +353,15 @@ export class InventoryFacade {
 
   /** One delivery shared over several places, stored whole or not at all; true once recorded and the page read again. */
   async receiveSplit(companyId: string, input: StockReceiptInput): Promise<boolean> {
-    return this.write(
+    const received = await this.write(
       () => this.api.receiveSplit(companyId, input),
       async () => {
         const search = this.search;
         if (search !== null) await this.loadStock(companyId, search);
       },
     );
+    if (received) void this.priceReviews.after(companyId, [input.productId]);
+    return received;
   }
 
   /** What was found at several places, stored whole or not at all; true once recorded and the page read again. */

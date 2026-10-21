@@ -49,6 +49,7 @@ const laptop: ProductRow = {
   unitPriceNet: '1250.0000',
   barcodes: [],
   mainPhotoId: null,
+  priceReview: null,
   mergedInto: null,
 };
 const hardware: ProductCategoryRow = {

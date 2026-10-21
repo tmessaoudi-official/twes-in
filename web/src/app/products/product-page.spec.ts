@@ -40,7 +40,7 @@ import type {
   ProductRow,
   ProductsError,
 } from './products-types';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { effectToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { Feedback } from '../shared/feedback/feedback';
 import { AddToDocuments } from '../shared/documents/add-to-documents';
@@ -81,6 +81,7 @@ const laptop: ProductRow = {
   tracking: 'none',
   substitutionGroup: null,
   mainPhotoId: null,
+  priceReview: null,
   mergedInto: null,
 };
 
@@ -109,6 +110,7 @@ describe('ProductPage', () => {
     clearError: vi.fn(),
     pricePreview: vi.fn(),
     referencePreview: vi.fn(),
+    settlePriceReview: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -171,6 +173,7 @@ describe('ProductPage', () => {
     facade.reviseProduct.mockReset().mockResolvedValue(laptop);
     facade.pricePreview.mockReset().mockResolvedValue(null);
     facade.referencePreview.mockReset().mockResolvedValue(null);
+    facade.settlePriceReview.mockReset();
     categories.set([]);
     auth.hasPermission.mockReset().mockReturnValue(true);
     auth.hasModule.mockReset().mockReturnValue(true);
@@ -234,6 +237,62 @@ describe('ProductPage', () => {
     fixture.detectChanges();
     return document.body.querySelector<HTMLElement>(`[data-testid="record-menu-${id}"]`);
   }
+
+  // docs/SPEC.md § 7, cost and price: a margin a receipt moved stays on the product until someone settles it.
+  it('shows the margin a receipt moved and settles it on the version read, said corrigeable', async () => {
+    const review = {
+      previousCost: '1000.0000',
+      cost: '1100.0000',
+      price: '1250.0000',
+      suggestedPrice: '1375.000',
+      previousMargin: '20.0',
+      margin: '12.0',
+    };
+    product.set({ ...laptop, priceReview: review });
+    facade.settlePriceReview.mockResolvedValue({
+      ...laptop,
+      version: 2,
+      unitPriceNet: '1375.0000',
+      priceReview: null,
+    });
+    await open(laptop.id);
+    expect(q('product-price-review')).not.toBeNull();
+
+    q('product-price-review-adjust')!.click();
+    await settle();
+
+    expect(facade.settlePriceReview).toHaveBeenCalledWith('c1', 'p1', 'adjust', laptop.version);
+    // The form stands on the version the review left first, then the outcome is said.
+    await vi.waitFor(() =>
+      expect(effectToasts()).toEqual(['products.price_review.adjusted:corrigeable']),
+    );
+  });
+
+  it('shows no margin notice on a product no receipt moved', async () => {
+    product.set(laptop);
+    await open(laptop.id);
+
+    expect(q('product-price-review')).toBeNull();
+  });
+
+  it('only shows the moved margin to someone who may not write products', async () => {
+    auth.hasPermission.mockImplementation((name: string) => name !== 'product.write');
+    product.set({
+      ...laptop,
+      priceReview: {
+        previousCost: '1000.0000',
+        cost: '1100.0000',
+        price: '1250.0000',
+        suggestedPrice: '1375.000',
+        previousMargin: '20.0',
+        margin: '12.0',
+      },
+    });
+    await open(laptop.id);
+
+    expect(q('product-price-review')).not.toBeNull();
+    expect(q('product-price-review-adjust')).toBeNull();
+  });
 
   it('deletes the product without asking, said annulable, and goes back to the list once it is gone', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);

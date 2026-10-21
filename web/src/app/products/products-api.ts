@@ -29,6 +29,7 @@ import type {
   ProductProductWriteValidationProductWrite as ProductProductWrite,
   ProductScanProductScanRead,
   ProductCostChangeProductCostChangeRead,
+  ProductPriceReviewProductPriceReviewWriteRecordReviseValidationProductPriceReviewWriteRecordRevise as ProductPriceReviewWrite,
   ProductSubstituteProductSubstituteRead,
   ProductSubstitutionGroupProductSubstitutionGroupRead,
   StockTotalStockTotalRead,
@@ -59,6 +60,7 @@ import {
   type ProductRow,
   type ProductScan,
   type ProductSearch,
+  type PriceReviewDecision,
   type ProductsError,
 } from './products-types';
 
@@ -217,6 +219,28 @@ export class ProductsApi {
       toProduct(
         await firstValueFrom(
           this.http.put<ProductProductRead>(path(companyId, 'products', id), body),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Settles the margin a receipt's cost moved under the price: `adjust` sets the price that keeps it, `keep` keeps the
+   * price. `version` is the product's as read: one saved since answers `record_changed`, one already settled `settled`.
+   */
+  async settlePriceReview(
+    companyId: string,
+    id: string,
+    decision: PriceReviewDecision,
+    version: number,
+  ): Promise<ProductRow> {
+    return this.settling(async () =>
+      toProduct(
+        await firstValueFrom(
+          this.http.post<ProductProductRead>(`${path(companyId, 'products', id)}/price-review`, {
+            decision,
+            version,
+          } satisfies ProductPriceReviewWrite),
         ),
       ),
     );
@@ -499,6 +523,15 @@ export class ProductsApi {
   }
 
   /** A product's save, the only call whose refusals name the fields of the form. */
+  /** A settlement refused: another save in between, or the margin already settled by someone else. */
+  private async settling<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      throw new ProductsRefused(codeOf(error, 'settled'), []);
+    }
+  }
+
   private async saving<T>(call: () => Promise<T>): Promise<T> {
     try {
       return await call();
@@ -594,6 +627,7 @@ function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductR
     substitutionGroup: raw.substitutionGroup ?? null,
     mainPhotoId: raw.mainPhotoId ?? null,
     mergedInto: raw.mergedInto ?? null,
+    priceReview: raw.priceReview ?? null,
   };
 }
 

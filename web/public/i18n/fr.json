@@ -1005,7 +1005,9 @@
       "traceability": "Traçabilité d’un nouvel article",
       "show_price_excl_tax": "Afficher aussi le prix HT à ce qui fait face au client",
       "reference_format": "Format des références générées",
-      "reference_format_hint": "Lettres, chiffres et . _ / - autour d’un seul {SEQ} ou {SEQ:n} (n chiffres) : ART-{SEQ:5} donne ART-00042. Une catégorie peut avoir le sien ; le numéro vient d’un seul compteur de l’entreprise."
+      "reference_format_hint": "Lettres, chiffres et . _ / - autour d’un seul {SEQ} ou {SEQ:n} (n chiffres) : ART-{SEQ:5} donne ART-00042. Une catégorie peut avoir le sien ; le numéro vient d’un seul compteur de l’entreprise.",
+      "price_on_cost_change": "Prix après un nouveau coût",
+      "price_on_cost_change_hint": "Quand une réception change le prix de revient d’un article sous son prix de vente : proposer d’ajuster le prix (la marge s’affiche jusqu’à ce que quelqu’un décide), garder le prix, ou suivre la marge."
     },
     "stock": {
       "cost_on_receive": "Ce que fait une réception de stock au coût d’un produit"
@@ -1063,6 +1065,11 @@
           "none": "Sans suivi",
           "lot": "Par lot",
           "serial": "Par numéro de série"
+        },
+        "price_on_cost_change": {
+          "offer": "Proposer d’ajuster le prix",
+          "keep": "Garder le prix",
+          "follow": "Suivre la marge"
         }
       },
       "document": {
@@ -2130,7 +2137,8 @@
       "reference_taken": "Un autre produit porte déjà cette référence.",
       "name_taken": "Une autre catégorie porte déjà ce nom.",
       "invalid": "La modification a été refusée. Vérifiez l’unité, les prix et les taxes.",
-      "barcode_taken": "Ce code est déjà celui d’un autre article."
+      "barcode_taken": "Ce code est déjà celui d’un autre article.",
+      "settled": "La marge de ce produit a déjà été traitée."
     },
     "categories": {
       "title": "Catégories de produits",
@@ -2355,6 +2363,16 @@
     "selected": "{count, plural, =0 {Aucun produit sélectionné} one {{{count}} produit sélectionné} other {{{count}} produits sélectionnés}}",
     "bulk": {
       "labels": "Étiquettes"
+    },
+    "price_review": {
+      "margin": "La marge est passée de {{before}} % à {{after}} %.",
+      "why": "Le prix de revient est passé de {{previousCost}} à {{cost}} {{currency}}, sous un prix unitaire HT resté à {{price}} {{currency}}.",
+      "adjust": "Ajuster le prix à {{price}} {{currency}}",
+      "keep": "Garder le prix",
+      "adjust_short": "Ajuster le prix",
+      "moved": "La marge de {{name}} est passée de {{before}} % à {{after}} %.",
+      "adjusted": "Prix de {{name}} ajusté à {{price}}.",
+      "kept": "Prix de {{name}} gardé à {{price}}."
     }
   },
   "inventory": {
@@ -3320,6 +3338,12 @@
           "title": "Montants à vérifier",
           "hint": "Des brouillons préparés par une dépense récurrente au montant variable. Vérifiez chaque montant sur la facture, puis enregistrez la dépense."
         }
+      },
+      "product": {
+        "margin_moved": {
+          "title": "Marges à revoir",
+          "hint": "Une réception a changé le prix de revient sous un prix de vente resté le même : ajustez le prix ou gardez-le."
+        }
       }
     },
     "columns": {
@@ -3351,14 +3375,19 @@
       "invitedOn": "Invitée le",
       "description": "Description",
       "payee": "Payé à",
-      "date": "Date"
+      "date": "Date",
+      "previousMargin": "Marge avant",
+      "margin": "Marge",
+      "price": "Prix unitaire HT",
+      "cost": "Prix de revient"
     },
     "actions": {
       "see_invoices": "Voir les factures en retard de {{name}}",
       "open_product": "Ouvrir {{name}}",
       "open_invoice": "Ouvrir {{name}}",
       "enter_cost": "Saisir le coût de {{name}}",
-      "open_expense": "Ouvrir {{name}}"
+      "open_expense": "Ouvrir {{name}}",
+      "review_price": "Revoir le prix de {{name}}"
     }
   },
   "coming": {

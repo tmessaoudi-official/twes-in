@@ -12,6 +12,7 @@ namespace App\Module\Products\Infrastructure\ApiPlatform\State\Provider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
+use App\Fiscal\Application\CurrencyScales;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\Photo\ProductPhotos;
 use App\Module\Products\Domain\Model\Product;
@@ -31,7 +32,7 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class ProductCollectionProvider implements ProviderInterface
 {
-    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private Paging $paging, private ProductPhotos $photos)
+    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private Paging $paging, private ProductPhotos $photos, private CurrencyScales $scales)
     {
     }
 
@@ -42,6 +43,7 @@ final readonly class ProductCollectionProvider implements ProviderInterface
         $search = ProductSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, ProductSearch::SORTS));
 
         $withCosts = $this->guard->may($company, ProductPermission::COST_READ);
+        $scale = $this->scales->of($company->getCurrency());
 
         $page = $this->manage->search($company, $search, $this->paging->request($operation, $context));
         // The page's main photos in one read rather than one per row.
@@ -49,7 +51,7 @@ final readonly class ProductCollectionProvider implements ProviderInterface
 
         return $this->paging->paginator(
             $page,
-            static fn (Product $product): ProductResource => ProductResource::of($product, $withCosts, $photos[$product->getId()->toRfc4122()] ?? null),
+            static fn (Product $product): ProductResource => ProductResource::of($product, $withCosts, $scale, $photos[$product->getId()->toRfc4122()] ?? null),
         );
     }
 }

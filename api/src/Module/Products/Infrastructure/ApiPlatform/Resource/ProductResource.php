@@ -158,6 +158,17 @@ final class ProductResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $costPrice = null;
 
+    /**
+     * The margin a receipt's cost moved under the price: the cost the price was set against, the cost now, the price, the
+     * price that keeps the margin, at the currency's decimals, and the margin before and now as percentages of the price. Null when nothing moved it, and for a caller without
+     * product.cost.read. Settled at POST .../price-review.
+     *
+     * @var array{previousCost: string, cost: string, price: string, suggestedPrice: string, previousMargin: string, margin: string}|null
+     */
+    #[ApiProperty(writable: false, schema: ['anyOf' => [['type' => 'object', 'required' => ['previousCost', 'cost', 'price', 'suggestedPrice', 'previousMargin', 'margin'], 'properties' => ['previousCost' => ['type' => 'string'], 'cost' => ['type' => 'string'], 'price' => ['type' => 'string'], 'suggestedPrice' => ['type' => 'string'], 'previousMargin' => ['type' => 'string'], 'margin' => ['type' => 'string']]], ['type' => 'null']]])]
+    #[Groups([self::READ])]
+    public ?array $priceReview = null;
+
     #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $categoryId = null;
@@ -208,7 +219,8 @@ final class ProductResource
     #[Groups([self::READ])]
     public ?array $mergedInto = null;
 
-    public static function of(Product $product, bool $withCosts, ?string $mainPhotoId = null): self
+    /** @param int $priceScale the decimals of the company's currency, which a suggested price is given at */
+    public static function of(Product $product, bool $withCosts, int $priceScale, ?string $mainPhotoId = null): self
     {
         $details = $product->getDetails();
         $resource = new self();
@@ -222,6 +234,8 @@ final class ProductResource
         $resource->unitId = $product->getUnit()->getId()->toRfc4122();
         $resource->unitPriceNet = $details->unitPriceNet;
         $resource->costPrice = $withCosts ? $details->costPrice : null;
+        $review = $withCosts ? $product->priceReview() : null;
+        $resource->priceReview = null === $review ? null : ['previousCost' => $review->previousCost, 'cost' => $review->cost, 'price' => $review->price, 'suggestedPrice' => $review->suggestedPrice($priceScale), 'previousMargin' => $review->previousMargin(), 'margin' => $review->margin()];
         $resource->categoryId = $product->getCategory()?->getId()->toRfc4122();
         $resource->substitutionGroup = $details->substitutionGroup;
         $resource->barcodes = ProductBarcodeRow::listOf($product, $withCosts);
