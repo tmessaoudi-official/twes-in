@@ -16,6 +16,9 @@
 #   Playwright             web/package-lock.json's @playwright/test = infra/web/tools.Dockerfile's ARG
 #   Symfony minor          every symfony/* pinned "X.Y.*" = composer.json extra.symfony.require
 #   Angular major          every @angular/* in web/package.json = @angular/core's
+#   registry               the throwaway registry of the shop check (scripts/onprem/onprem-check.sh) = the staging
+#                          check's (scripts/staging/staging-check.sh)
+#   docker CLI             the tools image copies the CLI and its compose plugin from one docker image (infra/api/Dockerfile)
 # Usage: version-pins.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -122,10 +125,22 @@ if [[ -f "$root/web/package.json" ]]; then
   else for p in "${ng[@]}"; do m=$(grep -oE '[0-9]+' <<<"${p#* }" | head -1); [[ "$m" == "$core" ]] || problem "Angular: ${p%% *} is ${p#* }, @angular/core is major $core"; done; fi
 else problem "Angular: found no web/package.json"; fi
 
+# registry: both proofs of the road push to the same registry release
+onprem_registry=$(grab scripts/onprem/onprem-check.sh '^REGISTRY_IMAGE=registry:[^[:space:]]+' | sed 's/.*=//' | sort -u)
+staging_registry=$(grab scripts/staging/staging-check.sh '^REGISTRY_IMAGE=registry:[^[:space:]]+' | sed 's/.*=//' | sort -u)
+if [[ -z "$onprem_registry" ]]; then problem "registry image: found none in scripts/onprem/onprem-check.sh (REGISTRY_IMAGE=registry:<tag>)"
+elif [[ -z "$staging_registry" ]]; then problem "registry image: found none in scripts/staging/staging-check.sh (REGISTRY_IMAGE=registry:<tag>)"
+elif [[ "$staging_registry" != "$onprem_registry" ]]; then problem "registry image: scripts/staging/staging-check.sh runs $(inline "$staging_registry"), scripts/onprem/onprem-check.sh $(inline "$onprem_registry")"; fi
+
+# docker CLI: the compose plugin is built for the CLI it ships beside
+docker_cli=$(grab infra/api/Dockerfile 'COPY --from=docker:[^[:space:]]+' | sed 's/.*=//' | sort -u)
+if [[ -z "$docker_cli" ]]; then problem "docker CLI: found no COPY --from=docker:<tag> in infra/api/Dockerfile"
+elif [[ "$(wc -l <<<"$docker_cli")" -ne 1 ]]; then problem "docker CLI: infra/api/Dockerfile copies from $(inline "$docker_cli")"; fi
+
 if ((${#problems[@]})); then
   printf 'version-pins: FAIL — %d cop(ies) disagree (a bump moves every copy: docs/UPDATE.md):\n' "${#problems[@]}"
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi
-printf 'version-pins: OK — 8 pins agree across their copies (postgres %s, Caddy %s, PHP %s, Node %s, Playwright %s, Symfony %s, Angular %s)\n' \
-  "${compose_pg#postgres:}" "${lan_caddy#caddy:}" "$image_php" "$nvmrc" "$pw_lock" "$sf" "$core"
+printf 'version-pins: OK — 10 pins agree across their copies (postgres %s, Caddy %s, PHP %s, Node %s, Playwright %s, Symfony %s, Angular %s, registry %s, docker CLI %s)\n' \
+  "${compose_pg#postgres:}" "${lan_caddy#caddy:}" "$image_php" "$nvmrc" "$pw_lock" "$sf" "$core" "${onprem_registry#registry:}" "${docker_cli#docker:}"

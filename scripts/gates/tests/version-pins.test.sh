@@ -22,6 +22,8 @@ EOF
   cat > "$d/infra/api/Dockerfile" <<'EOF'
 FROM dunglas/frankenphp:1.12.7-php8.5-trixie
 RUN install-php-extensions pdo_pgsql intl zip opcache bcmath
+COPY --from=docker:29.9.2-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker:29.9.2-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
 EOF
   printf 'FROM postgres:18.6-trixie\nRUN apt-get install -y pgbackrest\n' > "$d/infra/postgres/Dockerfile"
   printf '[twes]\npg1-path=/var/lib/postgresql/18/docker\n' > "$d/infra/postgres/pgbackrest.conf"
@@ -38,6 +40,9 @@ EOF
   "extra": { "symfony": { "require": "8.1.*" } }
 }
 EOF
+  mkdir -p "$d/scripts/onprem" "$d/scripts/staging"
+  printf 'REGISTRY_IMAGE=registry:3.1.2\n' > "$d/scripts/onprem/onprem-check.sh"
+  printf 'REGISTRY_IMAGE=registry:3.1.2\n' > "$d/scripts/staging/staging-check.sh"
   printf '26\n' > "$d/web/.nvmrc"
   cat > "$d/web/package.json" <<'EOF'
 {
@@ -51,7 +56,7 @@ EOF
 run() { bash "$GATE" --root "$1" 2>&1; }
 echo "version-pins gate"
 
-d=$(tree); out=$(run "$d"); check "every copy agreeing passes" $? 0 "$out" "OK — 8 pins agree"
+d=$(tree); out=$(run "$d"); check "every copy agreeing passes" $? 0 "$out" "OK — 10 pins agree"
 d=$(tree); sed -i 's/caddy:2.11.6-alpine/caddy:2.11.5-alpine/' "$d/compose.deploy.yaml"
 out=$(run "$d"); check "the edge on another Caddy than the LAN door is refused" $? 1 "$out" "caddy image"
 d=$(tree); printf 'services:\n  edge:\n    image: nginx:1\n' > "$d/compose.deploy.yaml"
@@ -121,5 +126,17 @@ out=$(run "$d"); check "the monitor's database on another postgres than compose.
 
 d=$(tree); rm "$d/infra/monitor/compose.yaml"
 out=$(run "$d"); check "a missing monitor compose file is refused, not skipped" $? 1 "$out" "infra/monitor/compose.yaml"
+
+d=$(tree); sed -i 's/registry:3.1.2/registry:3.0.0/' "$d/scripts/staging/staging-check.sh"
+out=$(run "$d"); check "the staging check's registry apart from the shop check's is named with its file" $? 1 "$out" "scripts/staging/staging-check.sh"
+
+d=$(tree); rm "$d/scripts/onprem/onprem-check.sh"
+out=$(run "$d"); check "a missing shop check is refused, not skipped" $? 1 "$out" "scripts/onprem/onprem-check.sh"
+
+d=$(tree); sed -i '0,/docker:29.9.2-cli/s//docker:29.9.0-cli/' "$d/infra/api/Dockerfile"
+out=$(run "$d"); check "the docker CLI and its compose plugin copied from two releases are refused" $? 1 "$out" "docker CLI"
+
+d=$(tree); sed -i '/COPY --from=docker/d' "$d/infra/api/Dockerfile"
+out=$(run "$d"); check "a tools image copying no docker CLI is refused, not skipped" $? 1 "$out" "docker CLI"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
