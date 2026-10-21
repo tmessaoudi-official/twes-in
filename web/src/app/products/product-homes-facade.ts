@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { requestState } from '../shared/feedback/request-state';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { InventoryApi } from '../inventory/inventory-api';
 import type { StockLocationRow } from '../inventory/inventory-types';
@@ -7,7 +8,6 @@ import { ProductsApi, ProductsRefused } from './products-api';
 import { ProductsFacade } from './products-facade';
 import { appended, groupByEstablishment, moved, without } from './product-home-order';
 import type { ProductHomeRow, ProductsError } from './products-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * Where one product normally lives, per establishment (docs/SPEC.md row 101), with the locations it may be given.
@@ -25,18 +25,18 @@ export type HomesWrite = 'saved' | 'refused' | 'changed';
 @Injectable()
 export class ProductHomes {
   private readonly api = inject(ProductsApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly stock = inject(InventoryApi);
   private readonly products = inject(ProductsFacade);
   private readonly homesSignal = signal<readonly ProductHomeRow[]>([]);
   private readonly locationsSignal = signal<readonly StockLocationRow[]>([]);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<ProductsError | null>(null);
+  private readonly state = requestState<ProductsError>((error) =>
+    error instanceof ProductsRefused ? error.code : 'network',
+  );
 
   readonly homes = this.homesSignal.asReadonly();
   readonly locations = this.locationsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   /** The establishments this product is already at home in, so a second home there is offered as a move, not a duplicate. */
   readonly establishmentsAtHome = computed(
@@ -69,7 +69,7 @@ export class ProductHomes {
   ): Promise<HomesWrite> {
     const place = this.locationsSignal().find((location) => location.id === locationId);
     if (place === undefined) {
-      this.errorSignal.set('invalid');
+      this.state.fail(new ProductsRefused('invalid'));
       return 'refused';
     }
     return this.write(companyId, productId, place.establishmentId, version, (ids) =>
@@ -125,25 +125,14 @@ export class ProductHomes {
       this.homesSignal.set(await this.api.homes(companyId, productId));
     });
     if (done) return 'saved';
-    if (this.errorSignal() !== 'record_changed') return 'refused';
-    this.errorSignal.set(null);
+    if (this.state.error() !== 'record_changed') return 'refused';
+    this.state.clearError();
     await this.run(async () => this.homesSignal.set(await this.api.homes(companyId, productId)));
     return 'changed';
   }
 
   /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
   private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
-    const marked = !(reading && this.quietReads.quiet());
-    if (marked) this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      await work();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(error instanceof ProductsRefused ? error.code : 'network');
-      return false;
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    return reading ? this.state.read(work) : this.state.write(work);
   }
 }

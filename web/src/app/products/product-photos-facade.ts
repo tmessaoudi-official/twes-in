@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { requestState } from '../shared/feedback/request-state';
 import { moved } from './product-home-order';
 import { ProductPhotosApi, ProductPhotosRefused } from './product-photos-api';
 import type { PhotoSize, ProductPhotoRefusal, ProductPhotoRow } from './product-photos-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * One product's photos: its gallery in order, one main. Its own facade, as each tab of the product has one: a gallery
@@ -13,16 +13,16 @@ import { QuietReads } from '../shared/feedback/quiet-reads';
 @Injectable()
 export class ProductPhotos {
   private readonly api = inject(ProductPhotosApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly photosSignal = signal<readonly ProductPhotoRow[]>([]);
-  private readonly busySignal = signal(false);
-  private readonly refusalSignal = signal<ProductPhotoRefusal | null>(null);
+  private readonly state = requestState<ProductPhotoRefusal>((error) =>
+    error instanceof ProductPhotosRefused ? error.refusal : { code: 'network', params: {} },
+  );
   private readonly loadedForSignal = signal<string | null>(null);
 
   readonly photos = this.photosSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
+  readonly busy = this.state.busy;
   /** Why the last change was refused; null once another succeeds. */
-  readonly refusal = this.refusalSignal.asReadonly();
+  readonly refusal = this.state.error;
   readonly main = computed(() => this.photosSignal().find((photo) => photo.main) ?? null);
   /** The product whose gallery is held: what is held answers for that product only. */
   readonly loadedFor = this.loadedForSignal.asReadonly();
@@ -98,19 +98,6 @@ export class ProductPhotos {
 
   /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
   private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
-    const marked = !(reading && this.quietReads.quiet());
-    if (marked) this.busySignal.set(true);
-    this.refusalSignal.set(null);
-    try {
-      await work();
-      return true;
-    } catch (error) {
-      this.refusalSignal.set(
-        error instanceof ProductPhotosRefused ? error.refusal : { code: 'network', params: {} },
-      );
-      return false;
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    return reading ? this.state.read(work) : this.state.write(work);
   }
 }

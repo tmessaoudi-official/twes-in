@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { FiscalApi, FiscalRefused } from './fiscal-api';
 import type {
@@ -10,25 +11,21 @@ import type {
   UnitInput,
   UnitRow,
 } from './fiscal-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The fiscal setup of one company: its taxes, its units and the regimes its customers may be under. */
 @Injectable({ providedIn: 'root' })
 export class FiscalFacade {
   private readonly api = inject(FiscalApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly taxesSignal = signal<readonly TaxComponentRow[]>([]);
   private readonly unitsSignal = signal<readonly UnitRow[]>([]);
   private readonly regimesSignal = signal<readonly CustomerTaxRegimeRow[]>([]);
-  private readonly busySignal = signal(false);
-  private reads = 0;
-  private readonly errorSignal = signal<FiscalError | null>(null);
+  private readonly state = requestState(codeOf);
 
   readonly taxes = this.taxesSignal.asReadonly();
   readonly units = this.unitsSignal.asReadonly();
   readonly regimes = this.regimesSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   async loadTaxes(companyId: string): Promise<void> {
     await this.read(async () => {
@@ -85,41 +82,18 @@ export class FiscalFacade {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) {
-      this.reads++;
-      this.busySignal.set(true);
-    }
-    // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
-    this.errorSignal.set(null);
-    try {
-      await load();
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (marked && --this.reads === 0) this.busySignal.set(false);
-    }
+    await this.state.read(load);
   }
 
   private async write(call: () => Promise<unknown>, reload: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await call();
       await reload();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 

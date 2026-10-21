@@ -4,11 +4,11 @@ import { inject, Injectable, signal } from '@angular/core';
 import { CustomersApi } from '../customers/customers-api';
 import type { CustomerGroupRow } from '../customers/customers-types';
 import { ProductsApi } from '../products/products-api';
+import { requestState } from '../shared/feedback/request-state';
 import type { PickOption } from '../shared/form/pick-field';
 import { PriceListsApi, PriceListsRefused } from './price-lists-api';
 import type { ProductFigures } from './price-lists-figures';
 import type { PriceListInput, PriceListRow, PriceListsError } from './price-lists-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** How many products or customers a picker offers for the words typed. */
 const PICK_SIZE = 10;
@@ -20,21 +20,21 @@ const FIGURES_CAP = 100;
 @Injectable({ providedIn: 'root' })
 export class PriceListsFacade {
   private readonly api = inject(PriceListsApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly products = inject(ProductsApi);
   private readonly customers = inject(CustomersApi);
   private readonly listsSignal = signal<readonly PriceListRow[]>([]);
   private readonly groupsSignal = signal<readonly CustomerGroupRow[]>([]);
   private readonly figuresSignal = signal<ReadonlyMap<string, ProductFigures>>(new Map());
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<PriceListsError | null>(null);
+  private readonly state = requestState<PriceListsError>((error) =>
+    error instanceof PriceListsRefused ? error.code : 'network',
+  );
 
   readonly lists = this.listsSignal.asReadonly();
   readonly groups = this.groupsSignal.asReadonly();
   /** The price and cost of each product seen so far, which a row's price is read beside. */
   readonly figures = this.figuresSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   async load(companyId: string): Promise<void> {
     await this.run(async () => {
@@ -75,8 +75,8 @@ export class PriceListsFacade {
     if (await this.write(companyId, () => this.api.revise(companyId, id, input, version))) {
       return 'saved';
     }
-    if (this.errorSignal() !== 'record_changed') return 'refused';
-    this.errorSignal.set(null);
+    if (this.state.error() !== 'record_changed') return 'refused';
+    this.state.clearError();
     return 'changed';
   }
 
@@ -85,7 +85,7 @@ export class PriceListsFacade {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   /** The few products the words name, as a picker shows them. */
@@ -171,16 +171,9 @@ export class PriceListsFacade {
 
   /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
   private async run(work: () => Promise<boolean>, reading = false): Promise<boolean> {
-    const marked = !(reading && this.quietReads.quiet());
-    if (marked) this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      return await work();
-    } catch (error) {
-      this.errorSignal.set(error instanceof PriceListsRefused ? error.code : 'network');
-      return false;
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    if (!reading) return this.state.write(work);
+    return this.state.read(async () => {
+      await work();
+    });
   }
 }

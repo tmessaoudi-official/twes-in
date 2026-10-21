@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import type {
@@ -9,7 +10,6 @@ import type {
   SettingsError,
   VersionedSettingChange,
 } from '../shared/settings/settings-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The level a product's, a product category's or an establishment's own values are stored at. */
 export const articleLevelOf = (subject: ArticleSubject): SettingLevel =>
@@ -23,27 +23,17 @@ export const articleLevelOf = (subject: ArticleSubject): SettingLevel =>
 @Injectable({ providedIn: 'root' })
 export class ArticleSettings {
   private readonly api = inject(SettingsApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly rowsSignal = signal<readonly SettingRow[]>([]);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<SettingsError | null>(null);
+  private readonly state = requestState(codeOf);
 
   readonly rows = this.rowsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   async load(companyId: string, subject: ArticleSubject): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) this.busySignal.set(true);
-    try {
-      this.rowsSignal.set(await this.api.chain(companyId, 'articles', subject));
-      this.errorSignal.set(null);
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    await this.state.read(async () =>
+      this.rowsSignal.set(await this.api.chain(companyId, 'articles', subject)),
+    );
   }
 
   /** True when the API accepted every change, together; the chain is read again after. */
@@ -65,7 +55,7 @@ export class ArticleSettings {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   private async write(
@@ -73,18 +63,10 @@ export class ArticleSettings {
     subject: ArticleSubject,
     call: () => Promise<unknown>,
   ): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await call();
       this.rowsSignal.set(await this.api.chain(companyId, 'articles', subject));
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 
