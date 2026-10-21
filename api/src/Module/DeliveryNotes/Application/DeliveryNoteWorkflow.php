@@ -12,6 +12,7 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\DocumentNames;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;
@@ -52,6 +53,7 @@ final readonly class DeliveryNoteWorkflow
         private ClockInterface $clock,
         private ReadSetting $settings,
         private DocumentNames $names,
+        private ExcludedTaxFamilies $excluded,
     ) {
     }
 
@@ -140,6 +142,7 @@ final readonly class DeliveryNoteWorkflow
     private function numbered(Company $company, DeliveryNote $note, ?Uuid $actorUserId): DeliveryNote
     {
         $note->assertDraft('is validated');
+        $this->chargedByItsRegimes($company, $note);
         $allocated = $this->numbers->allocate($company, $note->getEstablishment(), self::DOCUMENT_TYPE);
         if ($this->notes->numberTaken($company->getId(), $allocated->number)) {
             throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()));
@@ -174,5 +177,25 @@ final readonly class DeliveryNoteWorkflow
     private function record(Company $company, DeliveryNote $note, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(ManageDeliveryNotes::ENTITY_TYPE, $note->getId(), $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    /**
+     * Every tax the draft carries is still one its customer's regime and its company's charge: either may have changed
+     * since the draft was saved, and the validation refuses rather than drop a tax, which would choose a fiscal answer for
+     * the person validating.
+     *
+     * @throws InvalidDeliveryNote
+     */
+    private function chargedByItsRegimes(Company $company, DeliveryNote $note): void
+    {
+        $regime = $note->getCustomer()->getTaxRegime();
+        foreach ($note->getLines() as $index => $line) {
+            foreach ($line->getTaxes() as $tax) {
+                $leftOutBy = $this->excluded->regimeLeavingOut($company, $regime, $tax->getTaxComponent()->getFamily());
+                if (null !== $leftOutBy) {
+                    throw (new InvalidDeliveryNote('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode())))->within("lines[$index]");
+                }
+            }
+        }
     }
 }

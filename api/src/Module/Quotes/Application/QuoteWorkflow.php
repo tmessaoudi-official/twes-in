@@ -12,6 +12,7 @@ namespace App\Module\Quotes\Application;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\DocumentNames;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Quotes\Domain\Exception\InvalidQuote;
 use App\Module\Quotes\Domain\Exception\QuoteNotDraft;
@@ -56,6 +57,7 @@ final readonly class QuoteWorkflow
         private ReadSetting $settings,
         private QuoteInvoices $invoices,
         private DocumentNames $names,
+        private ExcludedTaxFamilies $excluded,
     ) {
     }
 
@@ -75,6 +77,7 @@ final readonly class QuoteWorkflow
             $quote = $this->locked($company, $id);
             $quote->assertDraft('is sent');
             $this->totals->checked($quote);
+            $this->chargedByItsRegimes($company, $quote);
             $allocated = $this->numbers->allocate($company, $quote->getEstablishment(), self::DOCUMENT_TYPE);
             if ($this->quotes->numberTaken($company->getId(), $allocated->number)) {
                 throw new QuoteNumberTaken(\sprintf('The number %s is already on another quote of this company: give the quote series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $quote->getEstablishment()->getCode()));
@@ -257,5 +260,25 @@ final readonly class QuoteWorkflow
     private function record(Company $company, Quote $quote, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(ManageQuotes::ENTITY_TYPE, $quote->getId(), $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    /**
+     * Every tax the draft carries is still one its customer's regime and its company's charge: either may have changed
+     * since the draft was saved, and the send refuses rather than drop a tax, which would choose a fiscal answer for
+     * the person sending.
+     *
+     * @throws InvalidQuote
+     */
+    private function chargedByItsRegimes(Company $company, Quote $quote): void
+    {
+        $regime = $quote->getCustomer()->getTaxRegime();
+        foreach ($quote->getLines() as $index => $line) {
+            foreach ($line->getTaxes() as $tax) {
+                $leftOutBy = $this->excluded->regimeLeavingOut($company, $regime, $tax->getTaxComponent()->getFamily());
+                if (null !== $leftOutBy) {
+                    throw (new InvalidQuote('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode())))->within("lines[$index]");
+                }
+            }
+        }
     }
 }

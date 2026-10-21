@@ -29,6 +29,7 @@ use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tests\Support\FakePdfRenderer;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\HttpFoundation\Response;
@@ -888,6 +889,48 @@ final class InvoicesTest extends ApiTestCase
 
         $this->getJson($this->path($id));
         self::assertSame(['paid', '0.000'], [$this->json()['status'], $this->json()['amountDue']], 'the credit notes of every line close the invoice');
+    }
+
+    /**
+     * A credit note gives back what its invoice charged, under the regime that invoice was issued in: an invoice charged
+     * VAT before its company moved to the forfaitaire regime is still corrected with that VAT, saved and issued; a tax
+     * the invoice never charged is still refused by the regime as it stands.
+     */
+    public function testACreditNoteKeepsTheTaxesItsInvoiceChargedAfterARegimeChange(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $line = fn (array $taxes): array => ['description' => 'Conseil', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '100', 'taxComponentIds' => $taxes];
+        $issued = function (array $taxes) use ($line): string {
+            $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [$line($taxes)]]));
+            $id = $this->stringAt($this->json(), 'id');
+            $this->postJson($this->path($id).'/issue', null);
+            self::assertResponseIsSuccessful();
+
+            return $id;
+        };
+        $credited = function (string $invoice, array $taxes) use ($line): string {
+            $this->postJson($this->path($invoice).'/credit-notes', ['creditNoteReason' => 'Retour']);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            $creditId = $this->stringAt($this->json(), 'id');
+            $this->sendJson('PUT', $this->path($creditId), $this->invoice(['version' => $this->storedVersion('invoice', $creditId), 'documentTaxComponentIds' => [], 'lines' => [$line($taxes)]]));
+
+            return $creditId;
+        };
+        $charged = $issued([$this->taxId('TVA19')]);
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', postalCode: '1000', city: 'Tunis', vatRegime: 'forfaitaire'));
+        $this->em()->flush();
+
+        $creditId = $credited($charged, [$this->taxId('TVA19')]);
+        self::assertResponseIsSuccessful('the VAT its invoice charged stays on the credit note');
+        $this->postJson($this->path($creditId).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame('-119.000', $this->json()['amountDue']);
+
+        $credited($issued([]), [$this->taxId('TVA19')]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'VAT its invoice never charged');
+        self::assertStringContainsString('lines[0].taxComponentIds: The forfaitaire regime does not charge TVA19.', (string) $this->client->getResponse()->getContent());
     }
 
     public function testPaymentsNeedPaymentWriteAndStayInTheirCompany(): void

@@ -149,7 +149,7 @@ final readonly class ManageInvoices
         $customer = $customer->standingFor();
 
         return $this->transactions->run(function () use ($company, $establishment, $customer, $header, $lines, $origin, $actorUserId, $quoteId, $deposit): Invoice {
-            $invoice = Invoice::create($company, $establishment, $customer, $header, $lines, $this->documentTaxes($company, $customer, null, []), $this->clock->now(), $quoteId, $deposit);
+            $invoice = Invoice::create($company, $establishment, $customer, $header, $lines, $this->documentTaxes($company, $customer, null, [], []), $this->clock->now(), $quoteId, $deposit);
             $this->totals->checked($invoice);
             $this->invoices->save($invoice);
             $this->record($company, $invoice->getId(), self::CREATED, $origin, $actorUserId);
@@ -390,7 +390,7 @@ final readonly class ManageInvoices
             $lines = array_map(static fn (int $position, InvoiceLineDetails $line): InvoiceLineDetails => isset($amounts[$position]) ? $line->givingBack($amounts[$position]) : $line, array_keys($lines), $lines);
         }
 
-        return [$establishment, $customer, $lines, $this->documentTaxes($company, $customer, $input->documentTaxComponentIds, $kept['documentTaxes']), $sentFrom];
+        return [$establishment, $customer, $lines, $this->documentTaxes($company, $customer, $input->documentTaxComponentIds, $kept['documentTaxes'], $kept['chargedBefore']), $sentFrom];
     }
 
     /**
@@ -505,7 +505,7 @@ final readonly class ManageInvoices
         return [$sources, $room];
     }
 
-    /** @param array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>, sources: list<string>} $kept */
+    /** @param array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>, sources: list<string>, chargedBefore: list<string>} $kept */
     private function line(Company $company, Customer $customer, InvoiceLineInput $line, array $kept): InvoiceLineDetails
     {
         if (null !== $line->sourceDeliveryNoteLineId && !\in_array($line->sourceDeliveryNoteLineId->toRfc4122(), $kept['sources'], true)) {
@@ -533,7 +533,7 @@ final readonly class ManageInvoices
             ?? throw new InvalidInvoice('unitPriceNet', 'A line without a product states its price.');
         $description = null === $line->description || '' === trim($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
-        return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned, discountAmount: $line->discountAmount, section: $line->section, creditedLineId: $line->creditedLineId);
+        return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes'], $kept['chargedBefore']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned, discountAmount: $line->discountAmount, section: $line->section, creditedLineId: $line->creditedLineId);
     }
 
     /**
@@ -542,16 +542,17 @@ final readonly class ManageInvoices
      *
      * @param list<string>|null $productDefaults
      * @param list<string>      $kept
+     * @param list<string>      $chargedBefore
      *
      * @return list<TaxComponent>
      */
-    private function lineTaxes(Company $company, Customer $customer, InvoiceLineInput $line, ?array $productDefaults, array $kept): array
+    private function lineTaxes(Company $company, Customer $customer, InvoiceLineInput $line, ?array $productDefaults, array $kept, array $chargedBefore): array
     {
         if (null === $line->taxComponentIds) {
             return $this->chargeable($company, $customer, $productDefaults ?? $this->defaultLineTaxIds($company), TaxKind::PercentageLine);
         }
 
-        return $this->stated($company, $customer, $line->taxComponentIds, $kept, 'taxComponentIds');
+        return $this->stated($company, $customer, $line->taxComponentIds, $kept, $chargedBefore, 'taxComponentIds');
     }
 
     /**
@@ -575,13 +576,14 @@ final readonly class ManageInvoices
      *
      * @param list<Uuid>|null $stated
      * @param list<string>    $kept
+     * @param list<string>    $chargedBefore
      *
      * @return list<TaxComponent>
      */
-    private function documentTaxes(Company $company, Customer $customer, ?array $stated, array $kept): array
+    private function documentTaxes(Company $company, Customer $customer, ?array $stated, array $kept, array $chargedBefore): array
     {
         if (null !== $stated) {
-            return $this->stated($company, $customer, $stated, $kept, 'documentTaxComponentIds');
+            return $this->stated($company, $customer, $stated, $kept, $chargedBefore, 'documentTaxComponentIds');
         }
 
         $companyDefaults = array_map(
@@ -618,11 +620,12 @@ final readonly class ManageInvoices
 
     /**
      * @param list<Uuid>   $ids
-     * @param list<string> $kept
+     * @param list<string> $kept          retired taxes the draft already carries, which it may keep
+     * @param list<string> $chargedBefore what a credit note's invoice charged, which its regimes no longer decide
      *
      * @return list<TaxComponent>
      */
-    private function stated(Company $company, Customer $customer, array $ids, array $kept, string $field): array
+    private function stated(Company $company, Customer $customer, array $ids, array $kept, array $chargedBefore, string $field): array
     {
         $taxes = [];
         foreach ($ids as $taxId) {
@@ -631,7 +634,8 @@ final readonly class ManageInvoices
             if (!$tax->isActive() && !\in_array($taxId->toRfc4122(), $kept, true)) {
                 throw new InvalidInvoice($field, \sprintf('The tax %s is retired.', $tax->getCode()));
             }
-            $leftOutBy = $this->excluded->regimeLeavingOut($company, $customer->getTaxRegime(), $tax->getFamily());
+            // A credit note gives back what its invoice charged, under the regimes it was issued in.
+            $leftOutBy = \in_array($taxId->toRfc4122(), $chargedBefore, true) ? null : $this->excluded->regimeLeavingOut($company, $customer->getTaxRegime(), $tax->getFamily());
             if (null !== $leftOutBy) {
                 throw new InvalidInvoice($field, \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()));
             }
@@ -642,13 +646,14 @@ final readonly class ManageInvoices
     }
 
     /**
-     * The products, units, line taxes, document taxes and delivery note lines a draft already names, by id.
+     * The products, units, line taxes, document taxes and delivery note lines a draft already names, by id, and for a
+     * credit note the taxes its invoice charged.
      *
-     * @return array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>, sources: list<string>}
+     * @return array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>, sources: list<string>, chargedBefore: list<string>}
      */
     private static function named(?Invoice $invoice): array
     {
-        $named = ['products' => [], 'units' => [], 'taxes' => [], 'documentTaxes' => [], 'sources' => []];
+        $named = ['products' => [], 'units' => [], 'taxes' => [], 'documentTaxes' => [], 'sources' => [], 'chargedBefore' => $invoice?->getCorrectedInvoice()?->chargedTaxIds() ?? []];
         foreach ($invoice?->getLines() ?? [] as $line) {
             $product = $line->getProduct();
             if (null !== $product) {

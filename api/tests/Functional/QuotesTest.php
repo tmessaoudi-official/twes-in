@@ -125,6 +125,31 @@ final class QuotesTest extends ApiTestCase
         self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM numbering_series WHERE document_type = 'quote' AND company_id = ?", [$this->company->getId()->toRfc4122()]));
     }
 
+    /**
+     * A draft saved before its customer's regime changed still carries the VAT that regime now leaves out: sent, it would
+     * print the regime's mention over the VAT it charges. The send is refused as the save is, naming the line, and the
+     * quote stays a draft with no number; which tax goes is the person's to say.
+     */
+    public function testATaxTheRegimeNowLeavesOutRefusesTheSendBeforeANumberIsTaken(): void
+    {
+        $this->signedIn(self::WRITER);
+        $id = $this->draft();
+        $export = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'export');
+        $customer = $this->em()->find(Customer::class, $this->customer->getId());
+        self::assertNotNull($export);
+        self::assertNotNull($customer);
+        $customer->revise($customer->getNumber(), $customer->getProfile(), $customer->getGroup(), $export, [], $customer->isActive(), new \DateTimeImmutable());
+        $this->em()->flush();
+
+        $this->postJson($this->path($id).'/send', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('lines[0].taxComponentIds', (string) $this->client->getResponse()->getContent());
+        self::assertStringContainsString('The export regime does not charge TVA19.', (string) $this->client->getResponse()->getContent());
+        $this->getJson($this->path($id));
+        self::assertSame(['draft', null], [$this->json()['status'], $this->json()['number']]);
+    }
+
     public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
     {
         $this->signedIn(self::WRITER);

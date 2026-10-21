@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
@@ -76,6 +77,7 @@ final readonly class InvoiceWorkflow
         private CurrencyScales $scales,
         private SealInvoiceChains $chains,
         private DocumentNames $names,
+        private ExcludedTaxFamilies $excluded,
     ) {
     }
 
@@ -88,6 +90,8 @@ final readonly class InvoiceWorkflow
      * @throws InvoiceNumberTaken   when another establishment of the company already gave the number
      * @throws PartyIdentityMissing when the seller or the customer cannot be named as the law asks
      * @throws InvalidInvoice       on `deposit` when a deposit invoice comes to more than its quote leaves once its other issued deposits are charged
+     * @throws InvalidInvoice       on `lines[i].taxComponentIds` or `documentTaxComponentIds` when the customer's or the company's
+     *                              regime, changed since the draft was saved, no longer charges one of its taxes
      * @throws InvalidInvoice       on `operationCategory` when the law asks what its operations are and neither a choice nor its lines say
      * @throws InvalidInvoice       on `amountDue` when a credit note comes to more than its invoice invoiced less its earlier credit notes;
      *                              on `excessTo` when part of it was already paid and it does not say where that goes
@@ -109,6 +113,7 @@ final readonly class InvoiceWorkflow
             $customer = $invoice->getCustomer();
             // Before the series, as a mention is: an invoice that cannot name its parties takes no number.
             $this->parties->assertNamed($company, $invoice->getEstablishment(), $customer);
+            $this->chargedByItsRegimes($company, $invoice);
             $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
             $language = $this->settings->text($context, 'document.language');
             // Before the series and the mentions, which depend on it: a document that cannot say what its operations are takes no number.
@@ -181,6 +186,39 @@ final readonly class InvoiceWorkflow
         $this->events->publish(...$invoice->releaseEvents());
 
         return $invoice;
+    }
+
+    /**
+     * Every tax the draft carries is still one its customer's regime and its company's charge: either may have changed
+     * since the draft was saved, and the issue refuses rather than drop a tax, which would choose a fiscal answer for
+     * the person issuing. A credit note gives back what its invoice charged under the regimes it was issued in.
+     *
+     * @throws InvalidInvoice
+     */
+    private function chargedByItsRegimes(Company $company, Invoice $invoice): void
+    {
+        $regime = $invoice->getCustomer()->getTaxRegime();
+        $chargedBefore = $invoice->getCorrectedInvoice()?->chargedTaxIds() ?? [];
+        foreach ($invoice->getLines() as $index => $line) {
+            foreach ($line->getTaxes() as $tax) {
+                if (\in_array($tax->getTaxComponent()->getId()->toRfc4122(), $chargedBefore, true)) {
+                    continue;
+                }
+                $leftOutBy = $this->excluded->regimeLeavingOut($company, $regime, $tax->getTaxComponent()->getFamily());
+                if (null !== $leftOutBy) {
+                    throw (new InvalidInvoice('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode())))->within("lines[$index]");
+                }
+            }
+        }
+        foreach ($invoice->getDocumentTaxes() as $tax) {
+            if (\in_array($tax->getTaxComponent()->getId()->toRfc4122(), $chargedBefore, true)) {
+                continue;
+            }
+            $leftOutBy = $this->excluded->regimeLeavingOut($company, $regime, $tax->getTaxComponent()->getFamily());
+            if (null !== $leftOutBy) {
+                throw new InvalidInvoice('documentTaxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()));
+            }
+        }
     }
 
     /**

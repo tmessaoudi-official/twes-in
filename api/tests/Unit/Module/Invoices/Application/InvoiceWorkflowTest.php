@@ -134,6 +134,7 @@ final class InvoiceWorkflowTest extends TestCase
             ShippedFiscalPresets::scales(),
             new SealInvoiceChains(new InMemoryInvoiceChains($this->invoices), $numbers, $this->transactions),
             new DocumentNames($this->taxes),
+            new ExcludedTaxFamilies(ShippedFiscalPresets::presets()),
         );
         foreach ([$this->company, $this->globex] as $company) {
             $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));
@@ -434,6 +435,67 @@ final class InvoiceWorkflowTest extends TestCase
 
         self::assertSame([[InvoiceStatus::Draft, null], [InvoiceStatus::Draft, null]], [[$empty->getStatus(), $empty->getNumber()], [$invoice->getStatus(), $invoice->getNumber()]]);
         self::assertSame([[], [], 0], [$this->audit->entries, $this->events->published, $this->transactions->committed]);
+    }
+
+    /**
+     * A draft saved before its company's VAT regime or its customer's changed still carries what the regime now leaves
+     * out: issuing it would print the regime's « no VAT » mention over the VAT it charges. The issue is refused as the
+     * save is, naming the line, and nothing is numbered; which tax goes is the person's to say.
+     */
+    public function testATaxTheRegimeNowLeavesOutRefusesTheIssueBeforeANumberIsTaken(): void
+    {
+        $customer = $this->customer('standard', null);
+        $draft = $this->draft($customer);
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis', vatRegime: 'forfaitaire'));
+
+        try {
+            $this->workflow->issue($this->company, $draft->getId(), null);
+            self::fail('a forfaitaire company issued an invoice charging VAT under the mention that it charges none');
+        } catch (InvalidInvoice $refused) {
+            self::assertSame(['lines[0].taxComponentIds', 'The forfaitaire regime does not charge TVA19.'], [$refused->field, $refused->getMessage()]);
+        }
+        self::assertSame([InvoiceStatus::Draft, null, [], 0], [$draft->getStatus(), $draft->getNumber(), $this->audit->entries, $this->transactions->committed]);
+
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));
+        $exported = $this->draft($customer);
+        $now = $this->clock->now();
+        $customer->revise($customer->getNumber(), $customer->getProfile(), $customer->getGroup(), new CustomerTaxRegime('TN', 'export', 'fiscal.regime.export', [TaxFamily::Vat], 'fiscal.mention.tn.export', 0, $now), [], $customer->isActive(), $now);
+        try {
+            $this->workflow->issue($this->company, $exported->getId(), null);
+            self::fail('an invoice charged VAT to a customer whose regime now leaves it out');
+        } catch (InvalidInvoice $refused) {
+            self::assertSame(['lines[0].taxComponentIds', 'The export regime does not charge TVA19.'], [$refused->field, $refused->getMessage()]);
+        }
+        self::assertNull($exported->getNumber());
+
+        // A regime is data: one a preset writes leaving out the stamp refuses the document's own tax the same way.
+        $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($unit);
+        $stamped = $this->draft($customer, null, [new InvoiceLineDetails(null, 'Pièce', '1', $unit, '10', null, [])]);
+        $customer->revise($customer->getNumber(), $customer->getProfile(), $customer->getGroup(), new CustomerTaxRegime('TN', 'unstamped', 'fiscal.regime.export', [TaxFamily::Stamp], null, 0, $now), [], $customer->isActive(), $now);
+        try {
+            $this->workflow->issue($this->company, $stamped->getId(), null);
+            self::fail('an invoice carried a document tax its customer\'s regime now leaves out');
+        } catch (InvalidInvoice $refused) {
+            self::assertSame(['documentTaxComponentIds', 'The unstamped regime does not charge TIMBRE.'], [$refused->field, $refused->getMessage()]);
+        }
+        self::assertNull($stamped->getNumber());
+    }
+
+    /**
+     * A credit note gives back what its invoice charged, under the regime that invoice was issued in: an invoice charged
+     * VAT before its company moved to the forfaitaire regime is corrected with that VAT, or it could never be corrected.
+     */
+    public function testACreditNoteGivesBackTheTaxesItsInvoiceChargedWhateverTheRegimeIsNow(): void
+    {
+        $invoice = $this->workflow->issue($this->company, $this->draft($this->customer('standard', null))->getId(), null);
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis', vatRegime: 'forfaitaire'));
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
+        $this->invoices->save($credit);
+
+        $this->workflow->issue($this->company, $credit->getId(), null);
+
+        self::assertSame(['AV-2026-09-00001', '-12.900'], [$credit->getNumber(), $credit->getIssuedFigures()?->amountDue]);
     }
 
     public function testAMentionThatCannotBeFilledRefusesTheIssueBeforeANumberIsTakenAndWhatFillsItIsKept(): void
