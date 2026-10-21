@@ -11,8 +11,10 @@ namespace App\Tests\Unit\Module\DeliveryNotes\Application;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\DocumentNames;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
@@ -115,6 +117,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
             $this->clock,
             new ReadSetting($resolve),
             new DocumentNames($this->taxes),
+            new ExcludedTaxFamilies(ShippedFiscalPresets::presets()),
         );
         $now = $this->clock->now();
         $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
@@ -205,6 +208,28 @@ final class DeliveryNoteWorkflowTest extends TestCase
 
         self::assertSame([[DeliveryNoteStatus::Draft, null], [DeliveryNoteStatus::Draft, null]], [[$empty->getStatus(), $empty->getNumber()], [$note->getStatus(), $note->getNumber()]]);
         self::assertSame([[], [], 0], [$this->audit->entries, $this->events->published, $this->transactions->committed]);
+    }
+
+    /**
+     * A draft saved before its customer's regime changed still carries the VAT that regime now leaves out: validated, it
+     * would print the regime's mention over the VAT it charges. The validation is refused as the save is, naming the
+     * line, and nothing is numbered; which tax goes is the person's to say.
+     */
+    public function testATaxTheRegimeNowLeavesOutRefusesTheValidationBeforeANumberIsTaken(): void
+    {
+        $vat = $this->taxes->ofCodeInCompany('TVA19', $this->company->getId());
+        self::assertNotNull($vat);
+        $note = $this->draft([new DeliveryNoteLineDetails(null, 'Pièce', '2', $this->unit('C62'), '10', [$vat])]);
+        $now = $this->clock->now();
+        $this->customer->revise($this->customer->getNumber(), $this->customer->getProfile(), $this->customer->getGroup(), new CustomerTaxRegime('TN', 'export', 'fiscal.regime.export', [TaxFamily::Vat], 'fiscal.mention.tn.export', 0, $now), [], $this->customer->isActive(), $now);
+
+        try {
+            $this->workflow->validateAndDeliver($this->company, $note->getId(), null);
+            self::fail('a note charged VAT to a customer whose regime now leaves it out');
+        } catch (InvalidDeliveryNote $refused) {
+            self::assertSame(['lines[0].taxComponentIds', 'The export regime does not charge TVA19.'], [$refused->field, $refused->getMessage()]);
+        }
+        self::assertSame([DeliveryNoteStatus::Draft, null, [], 0], [$note->getStatus(), $note->getNumber(), $this->audit->entries, $this->transactions->committed]);
     }
 
     public function testANumberAnotherEstablishmentOfTheCompanyAlreadyGaveIsRefusedWithTheWayOut(): void

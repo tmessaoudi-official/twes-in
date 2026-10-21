@@ -973,6 +973,22 @@ class Invoice implements CompanyOwned
         return array_values($this->documentTaxes->toArray());
     }
 
+    /**
+     * The ids of every tax this document carries, on a line or on itself, each once: what a credit note of it may give
+     * back whatever its regimes say now, since they charged it when it was issued.
+     *
+     * @return list<string>
+     */
+    public function chargedTaxIds(): array
+    {
+        $ids = [];
+        foreach ([...array_merge(...array_map(static fn (InvoiceLine $line): array => $line->getTaxes(), $this->getLines())), ...$this->getDocumentTaxes()] as $tax) {
+            $ids[$tax->getTaxComponent()->getId()->toRfc4122()] = true;
+        }
+
+        return array_keys($ids);
+    }
+
     /** What issuing wrote, as the columns hold it; null while the document is a draft or was cancelled as one. */
     public function getIssuedFigures(): ?InvoiceFigures
     {
