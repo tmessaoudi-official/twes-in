@@ -854,7 +854,9 @@ passkey to a name, never to an address). A phone or another computer on the shop
 `https://<this computer's address>`, which `twes` reads at each start, since a router may hand out another; a fixed one
 goes in the values as `LAN_HOST`. With no network at all, the computer alone opens `https://localhost`. The edge's
 certificates come from its own authority: a phone trusts it once, from `http://<address>/root.crt`, then opens the
-HTTPS address. Mailed links name the network address.
+HTTPS address. An Android phone installs it as a CA certificate from its security settings (the menu's name varies by maker);
+an iPhone installs the downloaded profile, then turns on full trust under Settings > General >
+About > Certificate Trust Settings, without which Safari still warns. Mailed links name the network address.
 
 **Installing on Windows.** The checkout lives inside WSL's own filesystem (`~`, never `/mnt/c`), where `.gitattributes`
 keeps every file as git holds it, and Docker runs one of two ways, chosen at the shop:
