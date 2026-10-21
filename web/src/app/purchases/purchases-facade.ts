@@ -14,13 +14,11 @@ import type {
   Receiving,
   VendorOption,
 } from './purchases-types';
-import { PriceReviewOffer } from '../products/price-review-offer';
 
 /** The orders to vendors of the company being worked in, and the order open on screen. */
 @Injectable({ providedIn: 'root' })
 export class PurchasesFacade {
   private readonly api = inject(PurchasesApi);
-  private readonly priceReviews = inject(PriceReviewOffer);
   private readonly ordersSignal = signal<readonly PurchaseOrderRow[]>([]);
   private readonly orderSignal = signal<PurchaseOrderRow | null>(null);
   private readonly totalSignal = signal(0);
@@ -151,16 +149,8 @@ export class PurchasesFacade {
     id: string,
     input: ReceiptInput,
   ): Promise<PurchaseOrderRow | null> {
-    const order = await this.step(() => this.api.receive(companyId, id, input));
-    if (order !== null) {
-      // The products of the lines received, whose cost the receipt may have moved under their price.
-      const received = new Set(input.lines.map((line) => line.orderLineId));
-      const productIds = order.lines
-        .filter((line) => received.has(line.id))
-        .map((line) => line.productId);
-      void this.priceReviews.after(companyId, productIds);
-    }
-    return order;
+    // What the receipt did to the products' prices or margins is said from its own answer (`PriceEffects`).
+    return this.step(() => this.api.receive(companyId, id, input));
   }
 
   clearError(): void {

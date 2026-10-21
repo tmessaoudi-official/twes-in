@@ -749,7 +749,7 @@ final class ProductMergeTest extends ApiTestCase
         $id = $this->stringAt($this->json(), 'id');
         if ($issued) {
             // The engine reads the document's state, not how it got there: issuing for real is the invoices' own tests.
-            $this->em()->getConnection()->executeStatement("UPDATE invoice SET status = 'issued', issued_at = now() WHERE id = ?", [$id]);
+            $this->em()->getConnection()->executeStatement("UPDATE invoice SET status = 'issued', issued_at = CAST(? AS timestamp) WHERE id = ?", [self::apiNow(), $id]);
         }
 
         return $id;

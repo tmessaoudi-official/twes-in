@@ -2372,7 +2372,10 @@
       "adjust_short": "Adjust the price",
       "moved": "The margin of {{name}} went from {{before}}% to {{after}}%.",
       "adjusted": "Price of {{name}} set to {{price}}.",
-      "kept": "Price of {{name}} kept at {{price}}."
+      "kept": "Price of {{name}} kept at {{price}}.",
+      "followed": "The price of {{name}} went from {{before}} to {{after}} with its cost.",
+      "followed_many": "{{count}} {count, plural, one {price followed its cost} other {prices followed their cost}}.",
+      "moved_many": "The margin of {{count}} {count, plural, one {product} other {products}} moved."
     }
   },
   "inventory": {

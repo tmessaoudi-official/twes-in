@@ -25,6 +25,7 @@ use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
+use App\Tests\Support\InMemoryEffects;
 use App\Tests\Support\InMemoryProductCostChanges;
 use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemorySettings;
@@ -39,6 +40,7 @@ final class ChangeProductCostTest extends TestCase
     private InMemoryAuditTrail $audit;
     private InMemoryProducts $products;
     private InMemorySettings $settings;
+    private InMemoryEffects $effects;
     private ChangeProductCost $change;
     private Company $company;
     private Unit $piece;
@@ -104,6 +106,37 @@ final class ChangeProductCostTest extends TestCase
         self::assertSame(['fields' => ['costPrice', 'unitPriceNet']], $this->audit->entries[0]->changes);
     }
 
+    public function testAPriceThatFollowedItsCostIsSaidToWhoeverReceivedWithThePriceItHad(): void
+    {
+        $this->choose('follow');
+        $product = $this->product('12', '18.462');
+
+        $this->change->handle($this->company, $product, '13', CostChangeSource::Receipt, Uuid::v7(), null);
+
+        self::assertSame([[ChangeProductCost::PRICE_FOLLOWED, $product->getId()->toRfc4122(), ['previousPrice' => '18.4620']]], $this->effects->told(), 'a price moved by itself is never moved in silence, and « Annuler » needs the one it had');
+    }
+
+    public function testAMarginMovedUnderAKeptPriceIsSaidEachTimeAReceiptMovesTheCostAgain(): void
+    {
+        $product = $this->product('12', '18.462');
+
+        $this->change->handle($this->company, $product, '13', CostChangeSource::Receipt, Uuid::v7(), null);
+        $this->change->handle($this->company, $product, '13', CostChangeSource::Receipt, Uuid::v7(), null);
+        $this->change->handle($this->company, $product, '14', CostChangeSource::Receipt, Uuid::v7(), null);
+
+        $moved = [ChangeProductCost::MARGIN_MOVED, $product->getId()->toRfc4122(), []];
+        self::assertSame([$moved, $moved], $this->effects->told(), 'a receipt at the same cost moved nothing and says nothing, though the review is still open');
+    }
+
+    public function testAKeptPriceAndACostTypedInTheProductSayNothing(): void
+    {
+        $this->change->handle($this->company, $this->product('12', '18.462'), '13', CostChangeSource::Edited, null, null);
+        $this->choose('keep');
+        $this->change->handle($this->company, $this->product('12', '18.462'), '13', CostChangeSource::Receipt, Uuid::v7(), null);
+
+        self::assertSame([], $this->effects->told());
+    }
+
     public function testKeepingThePriceOpensNoReview(): void
     {
         $this->choose('keep');
@@ -131,8 +164,9 @@ final class ChangeProductCostTest extends TestCase
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->products = new InMemoryProducts();
         $this->settings = new InMemorySettings();
+        $this->effects = new InMemoryEffects();
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new ProductPriceSettings()]), $this->settings));
-        $this->change = new ChangeProductCost($this->products, $this->history, $this->audit, new MockClock('2026-10-03 10:00:00'), $transactions, $read, ShippedFiscalPresets::scales());
+        $this->change = new ChangeProductCost($this->products, $this->history, $this->audit, new MockClock('2026-10-03 10:00:00'), $transactions, $read, ShippedFiscalPresets::scales(), $this->effects);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, new \DateTimeImmutable());
     }

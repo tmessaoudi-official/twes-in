@@ -13,6 +13,7 @@ use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;
 use App\Shared\Application\RealtimePublisher;
+use App\Shared\Infrastructure\Doctrine\StagedUntilCommit;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Service\ResetInterface;
@@ -27,7 +28,7 @@ use Symfony\Contracts\Service\ResetInterface;
  * editor must hear that its own record is gone. The tab itself never hears its echo through the connection, so what a
  * request from a tab said is kept for its answer (`LiveChangesAnswer`), and its own screens hear it there.
  */
-final class StagedLiveChanges implements LiveChanges, ResetInterface
+final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetInterface
 {
     private const string TAB = '/^[A-Za-z0-9-]{1,64}$/';
 

@@ -45,6 +45,8 @@ export class RequestActivity {
   private attempt = 0;
   private quietRuns = 0;
   private check: Subscription | null = null;
+  private settledWaiters: (() => void)[] = [];
+  private settleTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly busySignal = signal(false);
   private readonly slowSignal = signal(false);
@@ -112,6 +114,18 @@ export class RequestActivity {
       this.inFlight--;
       if (this.inFlight === 0) this.idle();
     };
+  }
+
+  /**
+   * Resolves once no request is in flight, looked at a turn later, so a request an answer's continuation starts (a page
+   * reading itself again after a save) is waited for too. What a request did beyond its subject is said then, after the
+   * page's own outcome, which would otherwise take its place on screen.
+   */
+  settled(): Promise<void> {
+    return new Promise((resolve) => {
+      this.settledWaiters.push(resolve);
+      this.settleWhenIdle();
+    });
   }
 
   /** An answer arrived from the API, so it can be reached. */
@@ -198,5 +212,18 @@ export class RequestActivity {
     this.busyTimer = this.slowTimer = null;
     this.busySignal.set(false);
     this.slowSignal.set(false);
+    this.settleWhenIdle();
+  }
+
+  private settleWhenIdle(): void {
+    if (this.inFlight > 0 || this.settledWaiters.length === 0 || this.settleTimer !== null) return;
+    this.settleTimer = setTimeout(() => {
+      this.settleTimer = null;
+      // A request begun meanwhile ends through idle(), which looks again.
+      if (this.inFlight > 0) return;
+      const waiters = this.settledWaiters;
+      this.settledWaiters = [];
+      for (const resolve of waiters) resolve();
+    }, 0);
   }
 }

@@ -9,7 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Shared\Application\Effect;
 use App\Shared\Infrastructure\Doctrine\CompanyFilter;
+use App\Shared\Infrastructure\Effects\EffectsAnswer;
+use App\Shared\Infrastructure\Effects\StagedEffects;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -31,5 +34,17 @@ final class WorkerModeTest extends ApiTestCase
 
         $filters = static::getContainer()->get(EntityManagerInterface::class)->getFilters();
         self::assertFalse($filters->isEnabled(CompanyFilter::NAME), 'the company filter outlived its request');
+    }
+
+    /** What one request did beyond its subject is said in its own answer, never in the next person's. */
+    public function testTheEffectsOfOneRequestAreNotSaidInTheNext(): void
+    {
+        $this->client->disableReboot();
+        $this->client->request('GET', '/api/health');
+        static::getContainer()->get(StagedEffects::class)->said(new Effect('product.price_followed', null));
+
+        $this->client->request('GET', '/api/health');
+
+        self::assertFalse($this->client->getResponse()->headers->has(EffectsAnswer::HEADER), 'an effect outlived its request');
     }
 }

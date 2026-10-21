@@ -2372,7 +2372,10 @@
       "adjust_short": "Ajuster le prix",
       "moved": "La marge de {{name}} est passée de {{before}} % à {{after}} %.",
       "adjusted": "Prix de {{name}} ajusté à {{price}}.",
-      "kept": "Prix de {{name}} gardé à {{price}}."
+      "kept": "Prix de {{name}} gardé à {{price}}.",
+      "followed": "Le prix de {{name}} est passé de {{before}} à {{after}} avec son coût.",
+      "followed_many": "{{count}} {count, plural, one {prix a suivi son coût} other {prix ont suivi leur coût}}.",
+      "moved_many": "La marge de {{count}} {count, plural, one {produit} other {produits}} a bougé."
     }
   },
   "inventory": {

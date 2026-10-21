@@ -35,6 +35,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
+use App\Tests\Support\InMemoryEffects;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryProductCostChanges;
 use App\Tests\Support\InMemoryProducts;
@@ -202,7 +203,7 @@ final class KeepStockCostOnReceiveTest extends TestCase
         $this->settings->save(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new StockCostSettings(), new ProductPriceSettings()]), $this->settings));
         $this->history = new InMemoryProductCostChanges();
-        $this->keep = new KeepStock($movements, $lots, $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges($transactions), null, new ProductCostOnReceipt(new ChangeProductCost($products, $this->history, $audit, $clock, $transactions, $read, ShippedFiscalPresets::scales())));
+        $this->keep = new KeepStock($movements, $lots, $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges($transactions), null, new ProductCostOnReceipt(new ChangeProductCost($products, $this->history, $audit, $clock, $transactions, $read, ShippedFiscalPresets::scales(), new InMemoryEffects())));
     }
 
     private function product(string $reference, string $costPrice): Product

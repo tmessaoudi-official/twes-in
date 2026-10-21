@@ -115,6 +115,16 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
+     * Now as the API stamps it, PHP's clock in UTC to the second, for a row a test writes in SQL beside the API's own
+     * stamps: the database's `now()` is the test transaction's start, which can fall a second before a request the test
+     * made since, so a row written « after » it would read as before it.
+     */
+    protected static function apiNow(): string
+    {
+        return new \DateTimeImmutable('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+    }
+
+    /**
      * The day it is for the company, or that day shifted (`-100 days`), which is how the API reads a day it is sent or
      * counts days to: in UTC it is still yesterday for the hour after midnight in Tunis, and a receipt dated so is refused
      * as before its order was sent.

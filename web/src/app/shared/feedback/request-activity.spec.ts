@@ -90,6 +90,36 @@ describe('RequestActivity', () => {
     expect(activity().busy()).toBe(false);
   });
 
+  it('settles once nothing is in flight after the work an answer started, not between an answer and its follow-up', async () => {
+    let settled = false;
+    const receipt = activity().started();
+    void activity()
+      .settled()
+      .then(() => (settled = true));
+
+    // What awaited the answer reads the page again in its continuation, before the turn ends.
+    let reload: () => void = () => undefined;
+    receipt();
+    queueMicrotask(() => (reload = activity().started()));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(false);
+
+    reload();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(true);
+  });
+
+  it('settles on the next turn when nothing is in flight', async () => {
+    let settled = false;
+    void activity()
+      .settled()
+      .then(() => (settled = true));
+    expect(settled).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(true);
+  });
+
   it('turns unreachable on a network failure, retries the health check with growing waits, and says when it is back', () => {
     activity().failed(0, '/api/customers');
     expect(activity().unavailable()).toBe(true);
