@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
@@ -11,7 +12,6 @@ import type {
   SubscriptionView,
   WaitingPayment,
 } from './subscription-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * The working company's subscription, and the payments it declares. A declaration changes what the company may do —
@@ -21,67 +21,42 @@ import { QuietReads } from '../shared/feedback/quiet-reads';
 @Injectable({ providedIn: 'root' })
 export class SubscriptionFacade {
   private readonly api = inject(SubscriptionApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
   private readonly subscriptionSignal = signal<SubscriptionView | null>(null);
   private readonly waitingSignal = signal<readonly WaitingPayment[]>([]);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<SubscriptionError | null>(null);
+  private readonly state = requestState(codeOf);
   /** Told apart from "not loaded yet": a company licensing does not manage has no subscription at all. */
   private readonly managedSignal = signal(true);
 
   readonly subscription = this.subscriptionSignal.asReadonly();
   readonly waiting = this.waitingSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
   readonly managed = this.managedSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) this.busySignal.set(true);
-    try {
+    await this.state.read(async () => {
       const view = await this.api.ofCompany(companyId);
       this.subscriptionSignal.set(view);
       this.managedSignal.set(view !== null);
-      this.errorSignal.set(null);
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    });
   }
 
   /** True when the API kept the declaration; the page then shows what it kept. */
   async declare(companyId: string, payment: DeclaredPayment): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      await this.api.declare(companyId, payment);
-      await this.reread(companyId);
-      return true;
-    } catch (error) {
-      this.errorSignal.set(unlessDemoRefused(codeOf(error)));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.write(
+      async () => {
+        await this.api.declare(companyId, payment);
+        await this.reread(companyId);
+      },
+      { code: (error) => unlessDemoRefused(codeOf(error)) },
+    );
   }
 
   /** An operator's queue: every payment waiting for a decision, across all companies. */
   async loadWaiting(): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) this.busySignal.set(true);
-    try {
-      this.waitingSignal.set(await this.api.waiting());
-      this.errorSignal.set(null);
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    await this.state.read(async () => this.waitingSignal.set(await this.api.waiting()));
   }
 
   async confirm(declarationId: string, periods: number, note: string | null): Promise<boolean> {
@@ -93,9 +68,7 @@ export class SubscriptionFacade {
   }
 
   private async decide(call: () => Promise<unknown>): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       // A decision is a platform write: it waits for the operator to prove who is at the screen (docs/SPEC.md § 7).
       await this.stepUp.retrying(
         call,
@@ -106,13 +79,7 @@ export class SubscriptionFacade {
       // An operator can decide about the company they are themselves working in, and its status, access and
       // subscription are all things the shell reads from the session (developer sweep, 2026-09-20).
       await this.auth.refresh();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 
   /** What the company may do has just changed, so the session is read again with the subscription. */

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { SignupApi, SignupRefused } from './signup-api';
 import type {
@@ -19,16 +20,17 @@ export class SignupFacade {
   private readonly linkEmailSignal = signal<string | null>(null);
   private readonly requestedSignal = signal(false);
   private readonly completedSignal = signal<SignupCompleted | null>(null);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<SignupError | null>(null);
+  private readonly state = requestState<SignupError>((error) =>
+    error instanceof SignupRefused ? error.code : 'network',
+  );
 
   /** Null until read; closed when the API cannot say, since offering a signup that may not exist helps nobody. */
   readonly availability = this.availabilitySignal.asReadonly();
   readonly linkEmail = this.linkEmailSignal.asReadonly();
   readonly requested = this.requestedSignal.asReadonly();
   readonly completed = this.completedSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   async loadAvailability(): Promise<SignupAvailability> {
     let availability = CLOSED;
@@ -67,15 +69,7 @@ export class SignupFacade {
   }
 
   private async run<T>(call: () => Promise<T>, refused: T): Promise<T> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      return await call();
-    } catch (error) {
-      this.errorSignal.set(error instanceof SignupRefused ? error.code : 'network');
-      return refused;
-    } finally {
-      this.busySignal.set(false);
-    }
+    const answer = await this.state.writeAnswer(call);
+    return answer === null ? refused : answer;
   }
 }
