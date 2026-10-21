@@ -902,10 +902,13 @@ export class StockMapPage implements OnInit {
     });
     // A place chosen on the plan or in the 3D brings its line in « Dessiné sur cet étage » into view, as the list and
     // the plans show one selection (docs/SPEC.md § 7, 2026-10-09 23:19). scrollIntoView is optional: jsdom has none.
+    // Only a new choice scrolls: `selected` is read again on every move and reload of the same place, and scrolling
+    // then moved the page under whatever the person had open, a dropdown's panel following its field off the screen.
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     const injector = inject(Injector);
     effect(() => {
-      const code = this.selected()?.locationCode;
+      if (this.selectedId() === null) return;
+      const code = untracked(this.selected)?.locationCode;
       if (code === undefined) return;
       afterNextRender(
         () =>

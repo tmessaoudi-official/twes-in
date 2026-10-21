@@ -3022,6 +3022,33 @@ describe('StockMapPage', () => {
     expect(scrolled).toContain(q('stock-drawing-R1'));
   });
 
+  /**
+   * Only a choice scrolls: the same place read again, moved or reloaded, leaves the page where the person has it. A
+   * scroll on every reading moved the page under an open dropdown, which followed its field off the screen.
+   */
+  it('scrolls to the chosen line once, not again when the same place changes', async () => {
+    const scrolled: Element[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this);
+    };
+    try {
+      q('stock-drawing-R1')!.click();
+      await settle();
+      expect(scrolled).toContain(q('stock-drawing-R1'));
+      scrolled.length = 0;
+
+      boardKey('ArrowRight');
+      await settle();
+      expect(unsaved()).toBe('1');
+    } finally {
+      if (original) Element.prototype.scrollIntoView = original;
+      else delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    }
+
+    expect(scrolled).toEqual([]);
+  });
+
   /** The 3D is for looking in either mode; in Aménager it stands up the plan being arranged, not the one saved. */
   it('shows the volume in Aménager too, standing up the plan as it is being arranged', async () => {
     q('stock-drawing-R1')!.click();
