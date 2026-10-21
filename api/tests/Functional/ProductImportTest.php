@@ -546,6 +546,27 @@ Cheville 10 mm,6191234567897
     }
 
     /**
+     * A cell pasted from a web page or another program carries no-break, narrow no-break or zero-width spaces at its
+     * ends, which no person sees: a reference so written is the product already there, never a second one beside it,
+     * and a name keeps none of them.
+     */
+    public function testACellsInvisibleSpacesAtItsEndsAreNotPartOfIt(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->import($this->twoProducts());
+        self::assertResponseIsSuccessful();
+        $before = $this->products();
+
+        $this->import("reference,name\n\u{00A0}VIS-6X40\u{202F},\u{200B}Vis 6x40 inox\u{00A0}\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[], [2]], [$this->importReport()['created'], $this->importReport()['updated']]);
+        self::assertSame($before, $this->products());
+        $this->em()->clear();
+        self::assertSame('Vis 6x40 inox', $this->product('VIS-6X40')->getDetails()->name);
+    }
+
+    /**
      * What the product holds that no column of the file writes is kept by an upsert, as a blank cell keeps what it
      * names: a file that does not mention substitution groups does not take a product out of its group.
      */

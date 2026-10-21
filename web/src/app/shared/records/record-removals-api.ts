@@ -71,6 +71,8 @@ export type RemovalError =
   | 'record_used'
   | 'restore_conflict'
   | 'removal_final'
+  | 'removal_restored'
+  | 'merge_undone'
   | 'merge_into_itself'
   | 'merge_cycle'
   | 'merge_conflict'
@@ -172,6 +174,8 @@ const CODES: readonly RemovalError[] = [
   'record_used',
   'restore_conflict',
   'removal_final',
+  'removal_restored',
+  'merge_undone',
   'merge_into_itself',
   'merge_cycle',
   'merge_conflict',

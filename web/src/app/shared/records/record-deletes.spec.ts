@@ -187,6 +187,21 @@ describe('RecordDeletes', () => {
     expect(failureToasts()).toEqual(['records.errors.restore_conflict']);
   });
 
+  it.each([
+    ['removal_restored', 'records.restored_already'],
+    ['merge_undone', 'records.merge_undone_already'],
+  ] as const)(
+    'says a %s refusal as the outcome it is: what was taken is back already',
+    async (code, said) => {
+      api.restore.mockRejectedValue(new RemovalRefused(code));
+
+      expect(await deletes.restore('c1', REMOVAL)).toBe(true);
+
+      expect(successToasts()).toEqual([said]);
+      expect(failureToasts()).toEqual([]);
+    },
+  );
+
   const KEPT = { id: 'k1', label: 'Visserie' };
   const MERGE: RecordRemoval = {
     ...REMOVAL,

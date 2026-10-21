@@ -70,7 +70,7 @@ final readonly class RestoreRecords
             $removal = $this->removals->lockedOfId($company->getId(), $removalId) ?? throw new UnknownRecords('The company has no such delete.');
             $now = $this->clock->now();
             if (!$removal->isRestorableAt($now)) {
-                throw new RemovalNoLongerPending('This delete can no longer be undone.');
+                throw $removal->noLongerPending();
             }
             $merge = RemovalKind::Merge === $removal->getKind();
             if ($merge && (null === $actorUserId || !$this->stepUp->isRecent($actorUserId))) {

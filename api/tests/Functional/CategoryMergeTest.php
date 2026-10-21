@@ -84,7 +84,7 @@ final class CategoryMergeTest extends ApiTestCase
         self::assertSame(1, $this->integer("SELECT count(*) FROM audit_log WHERE action = 'product_category.merge_undone' AND entity_id = ?", [$screws]));
         $this->postJson($this->path('record-removals/'.$this->stringAt($merge, 'id').'/restore'), null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
-        self::assertSame('removal_final', $this->json()['error'] ?? null);
+        self::assertSame('merge_undone', $this->json()['error'] ?? null);
     }
 
     /** What someone filed elsewhere since the merge stays where they put it. */
