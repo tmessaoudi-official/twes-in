@@ -18,6 +18,8 @@ use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Products\Application\Photo\ProductPhotos;
+use App\Module\Products\Application\ProductCheckScopes;
+use App\Module\Products\Domain\ValueObject\ProductCheckReason;
 use App\Module\Products\Infrastructure\ApiPlatform\Output\ProductTaxOption;
 use App\Module\Products\Infrastructure\ApiPlatform\Output\ProductUnitOption;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductOptionsResource;
@@ -34,6 +36,7 @@ final readonly class ProductOptionsProvider implements ProviderInterface
         private TaxComponentRepository $taxes,
         private CurrencyScales $scales,
         private ProductPhotos $photos,
+        private ProductCheckScopes $checkScopes,
     ) {
     }
 
@@ -50,6 +53,8 @@ final readonly class ProductOptionsProvider implements ProviderInterface
         $options->taxes = array_values(array_map(static fn (TaxComponent $tax) => new ProductTaxOption($tax->getId()->toRfc4122(), $tax->getCode(), $tax->getName(), $tax->getFamily()->value, $tax->isDefault()), $taxes));
         $options->photosPerProduct = $this->photos->perProduct();
         $options->photoMaxBytes = $this->photos->maxBytes();
+        $scope = $this->checkScopes->of($company, $this->guard->may($company, ProductPermission::COST_READ));
+        $options->checkReasons = array_map(static fn (ProductCheckReason $reason): string => $reason->value, $scope->reasons());
 
         return $options;
     }

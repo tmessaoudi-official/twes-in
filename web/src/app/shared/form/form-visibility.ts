@@ -13,10 +13,15 @@ function holds(condition: FieldCondition, values: FormValues): boolean {
   return (
     value !== null &&
     value !== undefined &&
-    condition.oneOf.includes(String(value)) &&
+    (condition.zero === true
+      ? ZERO.test(String(value))
+      : condition.oneOf.includes(String(value))) &&
     (condition.and === undefined || holds(condition.and, values))
   );
 }
+
+/** A decimal as the control keeps it, the API's point form, that comes to nothing; an empty field is no number at all. */
+const ZERO = /^[+-]?(0+(\.0*)?|\.0+)$/;
 
 /**
  * Enables the controls of the fields that apply and disables the others, so a hidden field is neither validated

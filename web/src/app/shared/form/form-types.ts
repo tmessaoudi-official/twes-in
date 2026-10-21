@@ -31,13 +31,15 @@ export interface FieldOption {
   label: string;
 }
 
-/** Another field of the same form, and the values of it under which a field applies. */
-export interface FieldCondition {
+/**
+ * Another field of the same form, and the values of it under which a field applies: one of a list, or, for a decimal
+ * field, any writing of nothing (`0`, `0.000`), which no list of values can name.
+ */
+export type FieldCondition = {
   field: string;
-  oneOf: string[];
   /** A second condition that must hold too: a choice hidden by its own condition keeps its value, not its say. */
   and?: FieldCondition;
-}
+} & ({ oneOf: string[]; zero?: never } | { zero: true; oneOf?: never });
 
 /**
  * One field of a form, as configuration: a screen declares its fields, an installation may add custom ones

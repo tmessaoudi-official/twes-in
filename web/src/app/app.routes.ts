@@ -26,6 +26,7 @@ import { guardUnsaved } from './shared/form/unsaved-changes';
 import { customerScreenLock } from './customer-screen/customer-screen-lock';
 import { moduleGuard } from './shell/module-guard';
 import { textsOpened, textsPart } from './shared/i18n/texts-part';
+import { CHECK_TEXTS } from './shared/check/check-texts';
 import { RECORDS_TEXTS } from './shared/records/records-texts';
 import { SCHEDULE_TEXTS } from './shared/schedule/schedule-texts';
 
@@ -172,6 +173,7 @@ export const routes: Routes = [
       {
         path: 'watch/:kind',
         title: 'watch.title',
+        canActivate: [textsOpened(CHECK_TEXTS)],
         loadComponent: () => import('./watch/watch-subject-page').then((m) => m.WatchSubjectPage),
       },
       {
@@ -229,14 +231,18 @@ export const routes: Routes = [
       {
         path: 'products',
         title: 'nav.products',
-        canActivate: [moduleGuard(PRODUCTS_MODULE), textsOpened(RECORDS_TEXTS)],
+        canActivate: [
+          moduleGuard(PRODUCTS_MODULE),
+          textsOpened(RECORDS_TEXTS),
+          textsOpened(CHECK_TEXTS),
+        ],
         loadComponent: () => import('./products/products-page').then((m) => m.ProductsPage),
       },
       {
         // Before ':productId', which would otherwise take "new" and "categories" for identifiers.
         path: 'products/new',
         title: 'titles.new_product',
-        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        canActivate: [moduleGuard(PRODUCTS_MODULE), textsOpened(CHECK_TEXTS)],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
       {
@@ -249,7 +255,11 @@ export const routes: Routes = [
       {
         path: 'products/:productId',
         title: 'titles.product',
-        canActivate: [moduleGuard(PRODUCTS_MODULE), textsOpened(RECORDS_TEXTS)],
+        canActivate: [
+          moduleGuard(PRODUCTS_MODULE),
+          textsOpened(RECORDS_TEXTS),
+          textsOpened(CHECK_TEXTS),
+        ],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
       {

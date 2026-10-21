@@ -14,6 +14,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Fiscal\Application\CurrencyScales;
 use App\Module\Products\Application\NothingToReview;
 use App\Module\Products\Application\Photo\ProductPhotos;
+use App\Module\Products\Application\ProductCheckScopes;
 use App\Module\Products\Application\ProductMergedAway;
 use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Application\ReviewProductPrice;
@@ -34,6 +35,7 @@ final readonly class SettlePriceReviewProcessor implements ProcessorInterface
         private CompanyGuard $guard,
         private ProductPhotos $photos,
         private CurrencyScales $scales,
+        private ProductCheckScopes $checkScopes,
     ) {
     }
 
@@ -58,6 +60,6 @@ final readonly class SettlePriceReviewProcessor implements ProcessorInterface
             throw new ConflictHttpException($settled->getMessage(), $settled);
         }
 
-        return ProductResource::of($product, true, $this->scales->of($company->getCurrency()), $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null);
+        return ProductResource::of($product, $this->checkScopes->of($company, true), $this->scales->of($company->getCurrency()), $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null);
     }
 }

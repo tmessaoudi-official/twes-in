@@ -25,9 +25,12 @@ use App\Module\Products\Application\CustomerPrice;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Model\ProductBarcode;
 use App\Module\Products\Domain\Model\ProductCategory;
+use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\Barcode;
 use App\Module\Products\Domain\ValueObject\BarcodeLine;
 use App\Module\Products\Domain\ValueObject\BarcodeRole;
+use App\Module\Products\Domain\ValueObject\ProductCheckReason;
+use App\Module\Products\Domain\ValueObject\ProductCheckScope;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Module\Vendors\Domain\Model\Vendor;
@@ -35,6 +38,7 @@ use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
@@ -476,16 +480,46 @@ Cheville 10 mm,6191234567897
         ));
     }
 
-    public function testARowWithoutAUnitIsRejectedBecauseAProductIsSoldInOne(): void
+    /**
+     * A new product the row gives no unit is sold in the company's default one and asks for it to be confirmed, which a
+     * later row naming its unit does; goods from a file await their count. A row found again without a unit confirms none.
+     */
+    public function testARowWithoutAUnitTakesTheDefaultUnitToConfirmAndNewGoodsAwaitTheirCount(): void
     {
         $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 
-        $this->import("reference,name,unit_price_net\nART-9,Sans unité,1.000\n", dryRun: true);
-
+        $this->import("reference,name,kind,unit_price_net\nART-9,Sans unité,goods,1.000\nSRV-9,Pose,service,5.000\n");
         self::assertResponseIsSuccessful();
-        $rejected = $this->arrayAt($this->json(), 'rejected');
-        self::assertIsArray($rejected[0] ?? null);
-        self::assertSame(['unit_code', 'value_required'], [$rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null]);
+        self::assertSame([[2, 3], []], [$this->json()['created'] ?? null, $this->json()['rejected'] ?? null]);
+        self::assertContains(['line' => 2, 'column' => 'unit_code', 'code' => 'unit_to_confirm', 'params' => ['code' => 'C62']], $this->arrayAt($this->json(), 'notes'));
+        $goods = $this->productOf('ART-9');
+        self::assertSame(['C62', true, true], [$goods->getUnit()->getCode(), \in_array(ProductCheckReason::UnitToConfirm, $goods->checkReasons(self::everything()), true), $goods->awaitsCount()]);
+        self::assertFalse($this->productOf('SRV-9')->awaitsCount(), 'a service is never counted');
+
+        $this->import("reference,name\nART-9,Sans unité encore\n", mode: 'upsert');
+        self::assertContains(ProductCheckReason::UnitToConfirm, $this->productOf('ART-9')->checkReasons(self::everything()), 'a row that names no unit confirms none');
+
+        $this->import("reference,name,unit_code\nART-9,Sans unité encore,H87\n", mode: 'upsert');
+        self::assertSame([[2], []], [$this->json()['updated'] ?? null, $this->json()['rejected'] ?? null], (string) $this->client->getResponse()->getContent());
+        $confirmed = $this->productOf('ART-9');
+        self::assertSame(['H87', false, true], [$confirmed->getUnit()->getCode(), \in_array(ProductCheckReason::UnitToConfirm, $confirmed->checkReasons(self::everything()), true), $confirmed->awaitsCount()]);
+    }
+
+    /** A note in « to_check » marks the product with it; a blank cell keeps the mark; a note past its maximum is the cell's refusal. */
+    public function testTheToCheckColumnMarksAProductWithItsNoteAndABlankCellKeepsIt(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import("reference,name,unit_code,unit_price_net,to_check\nART-2,Écrou,H87,1,".str_repeat('a', CheckMark::NOTE_MAX + 1)."\n", dryRun: true);
+        self::assertSame([[2, 'to_check', 'invalid_text', ['max' => CheckMark::NOTE_MAX]]], $this->rejections());
+        $this->import("reference,name,unit_code,unit_price_net,to_check\nART-1,Vis,H87,1,prix fournisseur à relire\n");
+        self::assertResponseIsSuccessful();
+        self::assertEquals(new CheckMark(true, 'prix fournisseur à relire'), $this->productOf('ART-1')->getCheckMark());
+
+        $this->import("reference,name,to_check\nART-1,Vis zinguée,\n", mode: 'upsert');
+        self::assertEquals(new CheckMark(true, 'prix fournisseur à relire'), $this->productOf('ART-1')->getCheckMark(), 'a blank cell keeps the mark');
+        $this->import("reference,name,to_check\nART-1,Vis zinguée,prix fournisseur à relire\n", mode: 'upsert');
+        self::assertSame([[], [2]], [$this->json()['updated'] ?? null, $this->json()['unchanged'] ?? null], 'the same note is no change');
     }
 
     public function testCreateModeRefusesAKnownReferenceAndUpsertFillsInOnlyTheCellsTheRowHas(): void
@@ -1236,6 +1270,20 @@ Cheville 10 mm,6191234567897
         return self::HEADER
             ."\nVIS-6X40,Vis 6x40 zinguée,goods,H87,Visserie,\"0,45\",\"0,22\",6191234567897,TVA19,non,A12"
             ."\nMO-TOUR,Tournage à l'heure,service,HUR,,45.000,,,,,\n";
+    }
+
+    private function productOf(string $reference): Product
+    {
+        $this->em()->clear();
+        $product = static::getContainer()->get(ProductRepository::class)->ofReferenceInCompany($reference, $this->company->getId());
+        self::assertNotNull($product, $reference);
+
+        return $product;
+    }
+
+    private static function everything(): ProductCheckScope
+    {
+        return new ProductCheckScope(keepsStock: true, chargesVat: true, seesCosts: true);
     }
 
     /** @param list<string> $switches */

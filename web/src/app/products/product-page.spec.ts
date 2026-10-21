@@ -62,6 +62,7 @@ const options: ProductOptions = {
   taxes: [{ id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat', isDefault: true }],
   photosPerProduct: 6,
   photoMaxBytes: 5242880,
+  checkReasons: [],
 };
 const laptop: ProductRow = {
   id: 'p1',
@@ -82,6 +83,10 @@ const laptop: ProductRow = {
   substitutionGroup: null,
   mainPhotoId: null,
   priceReview: null,
+  toCheck: false,
+  checkNote: null,
+  zeroPriceIntended: false,
+  checkReasons: [],
   mergedInto: null,
 };
 
@@ -254,6 +259,10 @@ describe('ProductPage', () => {
       version: 2,
       unitPriceNet: '1375.0000',
       priceReview: null,
+      toCheck: false,
+      checkNote: null,
+      zeroPriceIntended: false,
+      checkReasons: [],
     });
     await open(laptop.id);
     expect(q('product-price-review')).not.toBeNull();
@@ -273,6 +282,35 @@ describe('ProductPage', () => {
     await open(laptop.id);
 
     expect(q('product-price-review')).toBeNull();
+  });
+
+  it('names what a product lacks and the mark put on it, with its note', async () => {
+    product.set({
+      ...laptop,
+      toCheck: true,
+      checkNote: 'Prix à confirmer',
+      checkReasons: ['vendor_missing', 'to_count'],
+    });
+    await open(laptop.id);
+
+    expect(q('product-check-marked')?.textContent).toContain('check.marked');
+    expect(q('product-check-note')?.textContent).toContain('Prix à confirmer');
+    const reasons = [...(q('product-check-reasons')?.querySelectorAll('li') ?? [])];
+    expect(reasons.map((each) => each.getAttribute('data-reason'))).toEqual([
+      'vendor_missing',
+      'to_count',
+    ]);
+    expect(reasons.map((each) => each.textContent?.trim())).toEqual([
+      'check.reasons.vendor_missing',
+      'check.reasons.to_count',
+    ]);
+  });
+
+  it('shows nothing to check on a product that lacks nothing and is not marked', async () => {
+    product.set(laptop);
+    await open(laptop.id);
+
+    expect(q('product-check')).toBeNull();
   });
 
   it('only shows the moved margin to someone who may not write products', async () => {

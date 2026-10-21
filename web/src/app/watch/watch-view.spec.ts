@@ -173,6 +173,60 @@ describe('watchRowView', () => {
     expect(view.cells['days']).toBe(3);
   });
 
+  it("writes what a product lacks in the screen's language, its mark first, and its note", () => {
+    const say = (key: string) => `«${key}»`;
+    const view = watchRowView(
+      {
+        kind: 'product.to_check',
+        subjectId: 'p1',
+        params: {
+          product: 'Vis 4x40',
+          reference: 'VIS-440',
+          reasons: 'price_missing,to_count',
+          marked: 1,
+          note: 'Prix à confirmer',
+        },
+      },
+      0,
+      figures,
+      say,
+    );
+
+    expect(view.cells['reasons']).toBe(
+      '«check.marked», «check.reasons.price_missing», «check.reasons.to_count»',
+    );
+    expect(view.cells['note']).toBe('Prix à confirmer');
+    const unmarked = watchRowView(
+      {
+        kind: 'product.to_check',
+        subjectId: 'p2',
+        params: { product: 'Colle', reference: 'COL', reasons: '', marked: 1, note: '' },
+      },
+      1,
+      figures,
+      say,
+    );
+    expect(unmarked.cells['reasons']).toBe('«check.marked»');
+    expect(
+      watchRowView(
+        {
+          kind: 'product.to_check',
+          subjectId: 'p3',
+          params: {
+            product: 'Gant',
+            reference: 'GNT',
+            reasons: 'barcode_missing',
+            marked: 0,
+            note: '',
+          },
+        },
+        2,
+        figures,
+        say,
+      ).cells['reasons'],
+    ).toBe('«check.reasons.barcode_missing»');
+  });
+
   it('leaves a cell out when the API sent no such figure', () => {
     const view = watchRowView(
       { kind: 'k', subjectId: null, params: { product: 'Colle' } },

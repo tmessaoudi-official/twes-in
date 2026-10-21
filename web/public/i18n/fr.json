@@ -2118,7 +2118,12 @@
       "description": "Description",
       "tracking": "Traçabilité",
       "substitutionGroup": "Groupe de substitution",
-      "defaultTaxComponentIds": "Taxes par défaut"
+      "defaultTaxComponentIds": "Taxes par défaut",
+      "toCheck": "À vérifier",
+      "checkNote": "Note de vérification",
+      "zeroPriceIntended": "Prix 0 voulu",
+      "unitToConfirm": "Unité à confirmer",
+      "toCount": "À compter"
     },
     "form": {
       "no_category": "Aucune catégorie",
@@ -3346,6 +3351,10 @@
         "margin_moved": {
           "title": "Marges à revoir",
           "hint": "Une réception a changé le prix de revient sous un prix de vente resté le même : ajustez le prix ou gardez-le."
+        },
+        "to_check": {
+          "title": "Articles à vérifier",
+          "hint": "Un article marqué « À vérifier », ou auquel il manque ce qu’un article demande ici : complétez sa fiche."
         }
       }
     },
@@ -3382,7 +3391,9 @@
       "previousMargin": "Marge avant",
       "margin": "Marge",
       "price": "Prix unitaire HT",
-      "cost": "Prix de revient"
+      "cost": "Prix de revient",
+      "reasons": "À vérifier",
+      "note": "Note"
     },
     "actions": {
       "see_invoices": "Voir les factures en retard de {{name}}",

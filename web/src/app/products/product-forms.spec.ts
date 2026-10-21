@@ -14,7 +14,12 @@ import {
   productsList,
   productValues,
 } from './product-forms';
-import type { ProductCategoryRow, ProductOptions, ProductRow } from './products-types';
+import type {
+  ProductCategoryRow,
+  ProductCheckReason,
+  ProductOptions,
+  ProductRow,
+} from './products-types';
 
 const options: ProductOptions = {
   currency: 'TND',
@@ -29,6 +34,7 @@ const options: ProductOptions = {
   ],
   photosPerProduct: 6,
   photoMaxBytes: 5242880,
+  checkReasons: [],
 };
 const hardware: ProductCategoryRow = {
   id: 'k1',
@@ -74,6 +80,10 @@ const laptop: ProductRow = {
   mainPhotoId: null,
   mergedInto: null,
   priceReview: null,
+  toCheck: false,
+  checkNote: null,
+  zeroPriceIntended: false,
+  checkReasons: [],
 };
 const warranty: CustomFieldDefinition = {
   id: 'f1',
@@ -127,6 +137,8 @@ describe('product forms', () => {
       trackings: ['serial'],
       categoryIds: ['0199a1b2-0000-7000-8000-000000000001'],
       isActive: false,
+      toCheck: null,
+      checkReasons: [],
       intervals: { 'unitPriceNet.min': '5' },
       order: { key: 'isActive', direction: 'desc' },
     });
@@ -146,6 +158,8 @@ describe('product forms', () => {
       trackings: [],
       categoryIds: [],
       isActive: null,
+      toCheck: null,
+      checkReasons: [],
       intervals: {},
       order: { key: 'category', direction: 'asc' },
     });
@@ -226,6 +240,7 @@ describe('product forms', () => {
       'identity',
       'pricing',
       'taxes',
+      'check',
       'description',
       'custom',
     ]);
@@ -336,7 +351,98 @@ describe('product forms', () => {
       customFields: { warranty: 24 },
       tracking: 'none',
       substitutionGroup: null,
+      toCheck: false,
+      checkNote: null,
+      zeroPriceIntended: false,
     });
+  });
+
+  // docs/SPEC.md § 7, 2026-10-20 01:40: « à vérifier » by hand with a note, and « prix 0 voulu » under a price of nothing.
+  it('marks a product to check with its note, and keeps the note only with its mark', () => {
+    const marked: ProductRow = { ...laptop, toCheck: true, checkNote: 'Prix à confirmer' };
+    const values = productValues(marked, options);
+    expect(values).toEqual(
+      expect.objectContaining({
+        toCheck: true,
+        checkNote: 'Prix à confirmer',
+        zeroPriceIntended: false,
+      }),
+    );
+    expect(productInput(values, options)).toEqual(
+      expect.objectContaining({ toCheck: true, checkNote: 'Prix à confirmer' }),
+    );
+    expect(productInput({ ...values, checkNote: '  ' }, options).checkNote).toBeNull();
+    expect(productInput({ ...values, toCheck: false }, options)).toEqual(
+      expect.objectContaining({ toCheck: false, checkNote: null }),
+    );
+    expect(productValues(null, options)).toEqual(
+      expect.objectContaining({ toCheck: false, checkNote: '', zeroPriceIntended: false }),
+    );
+  });
+
+  it('asks the note under the mark and « prix 0 voulu » under a price of nothing', () => {
+    const fields = productForm(options, []).sections.flatMap((section) => section.fields);
+    expect(fields.find((field) => field.id === 'checkNote')).toEqual(
+      expect.objectContaining({
+        kind: 'textarea',
+        maxLength: 500,
+        visibleWhen: { field: 'toCheck', oneOf: ['true'] },
+      }),
+    );
+    expect(fields.find((field) => field.id === 'zeroPriceIntended')).toEqual(
+      expect.objectContaining({
+        kind: 'checkbox',
+        visibleWhen: { field: 'unitPriceNet', zero: true },
+      }),
+    );
+    expect(
+      productInput({ ...productValues(laptop, options), zeroPriceIntended: true }, options)
+        .zeroPriceIntended,
+    ).toBe(true);
+  });
+
+  it('narrows the list to what is to check, and by what is missing among the reasons said to this reader', () => {
+    const query = (filters: Record<string, string>) => ({
+      query: '',
+      filters,
+      sort: null,
+      pageIndex: 0,
+      pageSize: 25,
+    });
+    expect(productSearch(query({ toCheck: 'yes' })).toCheck).toBe(true);
+    expect(productSearch(query({ toCheck: 'no' })).toCheck).toBe(false);
+    expect(productSearch(query({ toCheck: 'maybe' })).toCheck).toBeNull();
+    expect(
+      productSearch(query({ checkReason: 'cost_missing,barcode_missing,unknown' }), [
+        'price_missing',
+        'barcode_missing',
+      ]).checkReasons,
+    ).toEqual(['barcode_missing']);
+    expect(productSearch(query({ checkReason: 'barcode_missing' })).checkReasons).toEqual([]);
+
+    const filters = (offered: ProductCheckReason[]) =>
+      (productsList([], offered).filters ?? []).map((filter) => [
+        filter.id,
+        filter.options.map((option) => option.value),
+      ]);
+    expect(filters(['barcode_missing', 'price_missing']).slice(3)).toEqual([
+      ['toCheck', ['yes', 'no']],
+      ['checkReason', ['price_missing', 'barcode_missing']],
+    ]);
+    expect(filters([]).slice(3)).toEqual([['toCheck', ['yes', 'no']]]);
+    const reasonFilter = productsList([], ['price_missing']).filters?.[4];
+    const row = {
+      ...laptop,
+      categoryName: null,
+      unitName: '',
+      checkReasons: ['price_missing' as const],
+    };
+    expect(reasonFilter?.value(row)).toEqual(['price_missing']);
+    expect(productsList([], []).filters?.[3]?.value(row)).toBe('yes');
+    expect(productsList([], []).filters?.[3]?.value({ ...row, checkReasons: [] })).toBe('no');
+    expect(
+      productsList([], []).filters?.[3]?.value({ ...row, checkReasons: [], toCheck: true }),
+    ).toBe('yes');
   });
 
   // docs/SPEC.md § 7, 2026-09-22 11:10 and 2026-09-23 slice 7: how a product's stock is told apart.

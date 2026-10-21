@@ -96,6 +96,8 @@ export class PriceListsFacade {
       trackings: [],
       categoryIds: [],
       isActive: true,
+      toCheck: null,
+      checkReasons: [],
       intervals: {},
       order: null,
     });

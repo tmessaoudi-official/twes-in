@@ -21,6 +21,7 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
+use App\Module\Products\Infrastructure\Watch\ProductCheckWatch;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
@@ -80,7 +81,7 @@ final class WatchTest extends ApiTestCase
 
         $this->getJson($this->watch());
         self::assertResponseIsSuccessful();
-        self::assertSame([0, []], [$this->json()['count'] ?? null, $this->subjects()], 'a quiet company: nothing to watch');
+        self::assertSame([0, []], [$this->countBesideTheCheck(), $this->subjects()], 'a quiet company: nothing to watch');
 
         // A customer 40 days late on one invoice, and VIS sold on it (so VIS is not "unsold").
         $invoiceId = $this->issuedInvoice('VIS');
@@ -115,7 +116,7 @@ final class WatchTest extends ApiTestCase
             ['stock.lot_expired', 1],
             ['stock.lot_expiring', 1],
         ], $this->subjects());
-        self::assertSame(8, $this->json()['count'] ?? null, 'the count is every row of every subject');
+        self::assertSame(8, $this->countBesideTheCheck(), 'the count is every row of every subject');
         self::assertArrayNotHasKey('items', $this->json(), 'the summary carries counts, never rows');
 
         self::assertSame([
@@ -306,7 +307,7 @@ final class WatchTest extends ApiTestCase
         $this->signedIn(['company.read', 'stock.read'], 'keeper@twes.local', 'keeper');
         $this->getJson($this->watch());
         self::assertSame(['stock.lot_expiring'], array_column($this->subjects(), 0), 'no invoice.read: no late customer');
-        self::assertSame(1, $this->json()['count'] ?? null, 'and none in the count');
+        self::assertSame(1, $this->countBesideTheCheck(), 'and none in the count');
         $this->getJson($this->watch().'/invoices.late_customer');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a subject the role may not read is not there, whoever asks by name');
         $this->getJson($this->watch().'/stock.lot_expiring');
@@ -338,8 +339,34 @@ final class WatchTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor by name');
     }
 
-    /** @return list<array{mixed, mixed}> each subject of the summary as kind and count */
+    /**
+     * Each subject of the summary as kind and count, but « À vérifier »: the products here lack the codes, categories and
+     * vendors it asks for, and ProductCheckTest reads that subject.
+     *
+     * @return list<array{mixed, mixed}>
+     */
     private function subjects(): array
+    {
+        return array_values(array_filter($this->everySubject(), static fn (array $subject): bool => ProductCheckWatch::TO_CHECK !== $subject[0]));
+    }
+
+    /** The summary's count less what « À vérifier » adds to it, which {@see subjects()} leaves out. */
+    private function countBesideTheCheck(): int
+    {
+        $count = $this->json()['count'] ?? null;
+        self::assertIsInt($count);
+        foreach ($this->everySubject() as [$kind, $subjectCount]) {
+            if (ProductCheckWatch::TO_CHECK === $kind) {
+                self::assertIsInt($subjectCount);
+                $count -= $subjectCount;
+            }
+        }
+
+        return $count;
+    }
+
+    /** @return list<array{mixed, mixed}> each subject of the summary as kind and count */
+    private function everySubject(): array
     {
         $subjects = $this->json()['subjects'] ?? null;
         self::assertIsArray($subjects);

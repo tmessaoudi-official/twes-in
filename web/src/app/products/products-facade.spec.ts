@@ -23,6 +23,8 @@ const everyProduct: ProductSearch = {
   trackings: [],
   categoryIds: [],
   isActive: null,
+  toCheck: null,
+  checkReasons: [],
   intervals: {},
   order: null,
 };
@@ -41,6 +43,9 @@ const input: ProductInput = {
   customFields: {},
   tracking: 'none',
   substitutionGroup: null,
+  toCheck: false,
+  checkNote: null,
+  zeroPriceIntended: false,
 };
 const laptop: ProductRow = {
   ...input,
@@ -50,6 +55,10 @@ const laptop: ProductRow = {
   barcodes: [],
   mainPhotoId: null,
   priceReview: null,
+  toCheck: false,
+  checkNote: null,
+  zeroPriceIntended: false,
+  checkReasons: [],
   mergedInto: null,
 };
 const hardware: ProductCategoryRow = {
@@ -67,6 +76,7 @@ const options: ProductOptions = {
   taxes: [],
   photosPerProduct: 6,
   photoMaxBytes: 5242880,
+  checkReasons: [],
 };
 const warranty: CustomFieldDefinition = {
   id: 'f1',

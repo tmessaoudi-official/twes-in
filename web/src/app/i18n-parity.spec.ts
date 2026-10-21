@@ -29,6 +29,9 @@ import fr from '../../public/i18n/fr.json';
 import arPlatform from '../../public/i18n/platform/ar.json';
 import enPlatform from '../../public/i18n/platform/en.json';
 import frPlatform from '../../public/i18n/platform/fr.json';
+import arCheck from '../../public/i18n/check/ar.json';
+import enCheck from '../../public/i18n/check/en.json';
+import frCheck from '../../public/i18n/check/fr.json';
 import arSchedule from '../../public/i18n/schedule/ar.json';
 import enSchedule from '../../public/i18n/schedule/en.json';
 import frSchedule from '../../public/i18n/schedule/fr.json';
@@ -59,6 +62,7 @@ function keysOf(value: unknown, prefix = ''): string[] {
 /** The texts a page loads with itself (`textsPart`), beside the language's own file: checked as one with it. */
 const parts: Record<string, Record<string, unknown>> = {
   account: { fr: frAccount, en: enAccount, ar: arAccount },
+  check: { fr: frCheck, en: enCheck, ar: arCheck },
   'data-erasure': { fr: frDataErasure, en: enDataErasure, ar: arDataErasure },
   'demo-mails': { fr: frDemoMails, en: enDemoMails, ar: arDemoMails },
   expense: { fr: frExpense, en: enExpense, ar: arExpense },

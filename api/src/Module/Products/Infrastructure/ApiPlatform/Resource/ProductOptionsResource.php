@@ -77,4 +77,14 @@ final class ProductOptionsResource
     /** How large one photo may be, in bytes. */
     #[Groups([self::READ])]
     public int $photoMaxBytes = 0;
+
+    /**
+     * What « À vérifier » may say to this reader in this company, for a list to offer only those: the cost to a cost
+     * reader, the count while stock is kept, the VAT where it is charged.
+     *
+     * @var list<string>
+     */
+    #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ProductResource::CHECK_REASONS]])]
+    #[Groups([self::READ])]
+    public array $checkReasons = [];
 }

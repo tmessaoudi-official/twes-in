@@ -16,9 +16,12 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
+use App\Module\Products\Application\ProductCheckInput;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\ValueObject\ProductCheckReason;
+use App\Module\Products\Domain\ValueObject\ProductCheckScope;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
@@ -27,6 +30,7 @@ use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\CreateProduct
 use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\ReviseProductProcessor;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Provider\ProductCollectionProvider;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Provider\ProductItemProvider;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
@@ -51,6 +55,8 @@ use Symfony\Component\Validator\Constraints as Assert;
                 'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the reference or name, or one of its codes spelled whole, whatever their case and accents; under three characters, the exact reference only.'),
                 'kind[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['goods', 'service']]], description: 'Several kinds, OR\'d; a single `kind=goods` still works.', constraints: []),
                 'isActive' => new QueryParameter(schema: ['type' => 'boolean']),
+                'toCheck' => new QueryParameter(schema: ['type' => 'boolean'], description: '« À vérifier »: marked by a person or lacking any reason said to this reader; false, neither.'),
+                'checkReason[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => self::CHECK_REASONS]], description: 'Several reasons, OR\'d; a reason not said to this reader (the cost without product.cost.read, the count without stock kept, the VAT where none is charged) is refused.', constraints: []),
                 'tracking[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['none', 'lot', 'serial']]], description: 'Several ways of telling stock apart, OR\'d; a single `tracking=lot` still works.', constraints: []),
                 'categoryId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid']], description: 'Several categories, OR\'d, each with every category under it.', constraints: []),
                 'unitPriceNet[min]' => new QueryParameter(schema: self::AMOUNT, description: 'A selling price before tax of at least this, a decimal string.'),
@@ -89,6 +95,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 )]
 final class ProductResource
 {
+    /** `ProductCheckReason`'s values, which an attribute cannot read from the enum; `ProductCheckTest` holds them equal. */
+    public const array CHECK_REASONS = ['price_missing', 'vendor_missing', 'vat_missing', 'cost_missing', 'barcode_missing', 'category_missing', 'unit_to_confirm', 'to_count'];
+
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
     /** A decimal string, as every amount is: a float would round it. */
     private const array AMOUNT = ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\\.[0-9]{1,4})?$'];
@@ -205,6 +214,29 @@ final class ProductResource
     #[Groups([self::READ, self::WRITE])]
     public bool $isActive = true;
 
+    /** « À vérifier » as a person set it, on the form or through a file's row. */
+    #[Groups([self::READ, self::WRITE])]
+    public bool $toCheck = false;
+
+    /** What to look at, kept while the mark is on; dropped when it is taken off. */
+    #[Assert\Length(max: CheckMark::NOTE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => CheckMark::NOTE_MAX]])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $checkNote = null;
+
+    /** A price of nothing meant rather than missing; forgotten once the price is no longer nothing. */
+    #[Groups([self::READ, self::WRITE])]
+    public bool $zeroPriceIntended = false;
+
+    /**
+     * What the product lacks, each clearing itself once fixed, in the order a screen lists them; the cost only for a
+     * caller with product.cost.read, the count only while the company keeps stock.
+     *
+     * @var list<string>
+     */
+    #[ApiProperty(writable: false, schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => self::CHECK_REASONS]])]
+    #[Groups([self::READ])]
+    public array $checkReasons = [];
+
     /** The photo shown wherever the product is picked or seen (…/photos/{id}/content), or null when it has none. */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
@@ -219,9 +251,13 @@ final class ProductResource
     #[Groups([self::READ])]
     public ?array $mergedInto = null;
 
-    /** @param int $priceScale the decimals of the company's currency, which a suggested price is given at */
-    public static function of(Product $product, bool $withCosts, int $priceScale, ?string $mainPhotoId = null): self
+    /**
+     * @param ProductCheckScope $scope      what the caller may be told: the cost only with product.cost.read
+     * @param int               $priceScale the decimals of the company's currency, which a suggested price is given at
+     */
+    public static function of(Product $product, ProductCheckScope $scope, int $priceScale, ?string $mainPhotoId = null): self
     {
+        $withCosts = $scope->seesCosts;
         $details = $product->getDetails();
         $resource = new self();
         $resource->id = $product->getId()->toRfc4122();
@@ -243,6 +279,11 @@ final class ProductResource
         $resource->customFields = $product->getCustomFields();
         $resource->isActive = $product->isActive();
         $resource->mainPhotoId = $mainPhotoId;
+        $mark = $product->getCheckMark();
+        $resource->toCheck = $mark->marked;
+        $resource->checkNote = $mark->note;
+        $resource->zeroPriceIntended = $product->isZeroPriceIntended();
+        $resource->checkReasons = array_map(static fn (ProductCheckReason $reason): string => $reason->value, $product->checkReasons($scope));
         $kept = $product->getMergedInto();
         $resource->mergedInto = null === $kept ? null : ['id' => $kept->getId()->toRfc4122(), 'reference' => $kept->getReference(), 'name' => $kept->getDetails()->name];
 
@@ -262,6 +303,8 @@ final class ProductResource
             $this->customFields,
             tracking: null === $this->tracking ? null : ProductTracking::from($this->tracking),
             seesCosts: $seesCosts,
+            check: new ProductCheckInput(new CheckMark($this->toCheck, $this->checkNote), $this->zeroPriceIntended),
+            unitNamed: true,
         );
     }
 }

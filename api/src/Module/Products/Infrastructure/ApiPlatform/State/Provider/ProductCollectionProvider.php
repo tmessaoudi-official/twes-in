@@ -15,6 +15,7 @@ use ApiPlatform\State\ProviderInterface;
 use App\Fiscal\Application\CurrencyScales;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\Photo\ProductPhotos;
+use App\Module\Products\Application\ProductCheckScopes;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductSearch;
 use App\Module\Products\Infrastructure\ApiPlatform\Payload\ProductSearchReader;
@@ -32,7 +33,7 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class ProductCollectionProvider implements ProviderInterface
 {
-    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private Paging $paging, private ProductPhotos $photos, private CurrencyScales $scales)
+    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private Paging $paging, private ProductPhotos $photos, private CurrencyScales $scales, private ProductCheckScopes $checkScopes)
     {
     }
 
@@ -43,6 +44,8 @@ final readonly class ProductCollectionProvider implements ProviderInterface
         $search = ProductSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, ProductSearch::SORTS));
 
         $withCosts = $this->guard->may($company, ProductPermission::COST_READ);
+        $search = $this->checkScopes->scoped($company, $search, $withCosts);
+        $scope = $search->checkScope ?? $this->checkScopes->of($company, $withCosts);
         $scale = $this->scales->of($company->getCurrency());
 
         $page = $this->manage->search($company, $search, $this->paging->request($operation, $context));
@@ -51,7 +54,7 @@ final readonly class ProductCollectionProvider implements ProviderInterface
 
         return $this->paging->paginator(
             $page,
-            static fn (Product $product): ProductResource => ProductResource::of($product, $withCosts, $scale, $photos[$product->getId()->toRfc4122()] ?? null),
+            static fn (Product $product): ProductResource => ProductResource::of($product, $scope, $scale, $photos[$product->getId()->toRfc4122()] ?? null),
         );
     }
 }

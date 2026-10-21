@@ -55,7 +55,7 @@
       "substitution_group": "Substitution group",
       "substitution_group_note": "Products sharing this name can stand in for one another when one is out of stock.",
       "unit_code": "Unit",
-      "unit_code_note": "The code of one of the company's units (H87 piece, HUR hour). Required for a new product.",
+      "unit_code_note": "The code of one of the company’s units (H87 piece, HUR hour). Blank for a new product: the default unit, to confirm on its page.",
       "category": "Category",
       "category_note": "The name of an existing category; create it before importing.",
       "unit_price_net": "Net unit price",
@@ -77,6 +77,8 @@
       "default_taxes": "Default taxes",
       "default_taxes_note": "Tax codes separated by commas (TVA19).",
       "active": "Active",
+      "to_check": "To check",
+      "to_check_note": "A note marks the product « To check » with it, 500 characters at most; left blank, the mark stays as it is.",
       "home_location": "Home location",
       "home_location_note": "The code of a stock location: it is what a receipt will propose.",
       "reorder_point": "Reorder point",
@@ -223,7 +225,8 @@
       "no_taxes": "No tax: every document will sell it without VAT. Give its rate in the file, or in its record.",
       "default_taxes_given": "Default taxes given: {{codes}}.",
       "price_to_enter": "No sale price: created at 0 and switched off. Enter its price in its record, then switch it on.",
-      "below_cost": "Sold under its cost price ({{cost}})."
+      "below_cost": "Sold under its cost price ({{cost}}).",
+      "unit_to_confirm": "No unit: created in {{code}}, the default unit. Confirm it on its page."
     },
     "stock": {
       "stock_add": "Quantity to add",

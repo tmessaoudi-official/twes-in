@@ -40,6 +40,7 @@ use App\Module\Products\Application\CustomerPrice;
 use App\Module\Products\Application\GrossUnreachable;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
+use App\Module\Products\Application\ProductCheckInput;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Application\Stock\ProductFileStock;
@@ -62,6 +63,9 @@ use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -93,6 +97,8 @@ final readonly class ProductImport implements DeclaresImport
     public const string DEFAULT_TAXES = 'default_taxes';
     /** Creates a new product the row gives no sale price at 0 and switched off, which no document then sells. */
     public const string UNPRICED_INACTIVE = 'unpriced_inactive';
+    /** The unit a new product the row gives none is sold in, as the product form offers it. */
+    private const string DEFAULT_UNIT = 'article.default_unit';
 
     /** The column each field a refusal names is read from, and the code that refusal carries when it says none. */
     private const array REFUSAL_OF = [
@@ -109,6 +115,7 @@ final readonly class ProductImport implements DeclaresImport
         'substitutionGroup' => ['substitution_group', 'invalid_text'],
         'tracking' => ['tracking', 'invalid_value'],
         'vendors' => ['supplier_number', 'invalid_value'],
+        'checkNote' => ['to_check', 'invalid_text'],
     ];
 
     /** What the inventory answers for: where goods lie, the reorder point and the stock, compared through its ports. */
@@ -144,6 +151,7 @@ final readonly class ProductImport implements DeclaresImport
         private CustomerPrice $prices,
         private CurrencyScales $scales,
         private ExcludedTaxFamilies $excluded,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -276,6 +284,9 @@ final readonly class ProductImport implements DeclaresImport
                 }
                 if ($this->unpriced($record, null, $context)) {
                     $notes->note('unit_price_net', 'price_to_enter');
+                }
+                if (null === $record->value('unit_code')) {
+                    $notes->note('unit_code', 'unit_to_confirm', ['code' => $written->getUnit()->getCode()]);
                 }
                 $this->noteBelowCost($written, $record, $seesCosts, $notes);
                 $this->settleStock($company, $written, $record, $quantity, $home, $actorUserId, $context, $notes);
@@ -529,6 +540,7 @@ final readonly class ProductImport implements DeclaresImport
         $taxIds = $faults->read(fn (): array => $this->taxIds($company, $record, $current, $context), false);
         $unpriced = $this->unpriced($record, $current, $context);
         $price = $unpriced ? '0' : $faults->read(fn (): string => $this->priceOf($company, $record, $held, $taxIds), '0');
+        $productKind = null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods);
 
         return new ProductInput(
             // Left out, a new product is given the next of the company's format and a product found by its code keeps its own.
@@ -536,7 +548,7 @@ final readonly class ProductImport implements DeclaresImport
             new ProductDetails(
                 $record->value('name') ?? $held->name ?? '',
                 $record->value('description') ?? $held?->description,
-                null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods),
+                $productKind,
                 $price,
                 ($seesCosts ? $faults->read(fn (): ?string => $this->costOf($company, $record, $taxIds)) : null) ?? $held?->costPrice,
                 $record->value('substitution_group') ?? $held?->substitutionGroup,
@@ -553,6 +565,11 @@ final readonly class ProductImport implements DeclaresImport
             seesCosts: $seesCosts,
             // The vendor the row names is added to those the product is bought from; a file removes none.
             vendorIds: null === $vendor ? null : self::withVendor($current, $vendor),
+            check: $faults->read(static fn (): ?ProductCheckInput => self::check($record, $current)),
+            // A unit the row does not name is not one confirmed, on a new product as on one found again.
+            unitNamed: null !== $record->value('unit_code'),
+            // Goods coming in from a file are counted on the shelf before their stock is trusted.
+            awaitsCount: null === $current && ProductKind::Goods === $productKind,
         );
     }
 
@@ -590,6 +607,26 @@ final readonly class ProductImport implements DeclaresImport
         } catch (GrossUnreachable $unreachable) {
             throw new RowRejected('unit_price_gross', $unreachable->getMessage(), 'gross_unreachable', ['gross' => $gross, 'below' => $unreachable->below, 'above' => $unreachable->above]);
         }
+    }
+
+    /**
+     * « À vérifier » as the row writes it: its note sets the mark with that note; a blank cell keeps the mark as it is,
+     * and a price of nothing meant stays as the product holds it.
+     *
+     * @throws RowRejected
+     */
+    private static function check(ImportRecord $record, ?Product $current): ?ProductCheckInput
+    {
+        $note = $record->value('to_check');
+        if (null === $note) {
+            return null;
+        }
+        $refusal = CheckMark::noteRefusal($note);
+        if (null !== $refusal) {
+            throw new RowRejected('to_check', $refusal->message, $refusal->reason, $refusal->params);
+        }
+
+        return new ProductCheckInput(new CheckMark(true, $note), $current?->isZeroPriceIntended() ?? false);
     }
 
     /** @throws RowRejected */
@@ -757,13 +794,19 @@ final readonly class ProductImport implements DeclaresImport
     private function unitId(Company $company, ImportRecord $record, ?Product $current, ImportContext $context): Uuid
     {
         $code = $record->value('unit_code');
-        if (null === $code) {
-            return $current?->getUnit()->getId()
-                ?? throw new RowRejected('unit_code', 'A product is sold in a unit, so a new one names its code.', 'value_required');
+        if (null !== $current && null === $code) {
+            return $current->getUnit()->getId();
         }
+        // A new product the row gives no unit is sold in the company's default one, and asks for it to be confirmed.
+        $code ??= $this->defaultUnit($company);
 
         return $context->once('unit:'.$code, fn (): ?Uuid => $this->units->ofCodeInCompany($code, $company->getId())?->getId())
             ?? throw new RowRejected('unit_code', \sprintf('The company has no unit coded "%s".', $code), 'unknown_unit', ['code' => $code]);
+    }
+
+    private function defaultUnit(Company $company): string
+    {
+        return $this->settings->text(new SettingContext($company), self::DEFAULT_UNIT);
     }
 
     private function categoryId(Company $company, ImportRecord $record, ?Product $current, ImportContext $context): ?Uuid
@@ -956,6 +999,7 @@ final readonly class ProductImport implements DeclaresImport
                 : [],
             new ImportColumn('default_tax_codes', 'import.products.default_taxes', false, null, 'import.products.default_taxes_note'),
             new ImportColumn('active', 'import.products.active', false, 'yes', 'import.boolean_note'),
+            new ImportColumn('to_check', 'import.products.to_check', false, null, 'import.products.to_check_note'),
             ...$this->homes->offered($company)
                 ? [
                     new ImportColumn('home_location', 'import.products.home_location', false, 'A-12', 'import.products.home_location_note', code: true),

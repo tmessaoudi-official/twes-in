@@ -14,11 +14,14 @@ use App\Fiscal\Domain\Model\Unit;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\ValueObject\BarcodeLine;
 use App\Module\Products\Domain\ValueObject\PriceReview;
+use App\Module\Products\Domain\ValueObject\ProductCheckReason;
+use App\Module\Products\Domain\ValueObject\ProductCheckScope;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -117,6 +120,25 @@ class Product implements CompanyOwned
 
     #[ORM\Column]
     private bool $isActive = true;
+
+    /** « À vérifier » as a person set it, on the form or through a file's row. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $toCheck = false;
+
+    #[ORM\Column(length: CheckMark::NOTE_MAX, nullable: true)]
+    private ?string $checkNote = null;
+
+    /** A price of nothing is meant, not missing: said once, and forgotten when the price is no longer nothing. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $zeroPriceIntended = false;
+
+    /** Given its company's default unit by a file that named none, until someone names one. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $unitToConfirm = false;
+
+    /** Created by a file with no stock of its own known, until a count finds what is there. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $toCount = false;
 
     /**
      * The product this one was merged into, which lists and pickers show in its place; written by the records engine,
@@ -484,6 +506,114 @@ class Product implements CompanyOwned
     }
 
     /**
+     * What the product lacks, of what the scope may say, in the order a screen lists it. The list filter and « À
+     * surveiller » read the same rules in the database (`ProductCheckRules`), which `ProductCheckRulesTest` holds to these.
+     *
+     * @return list<ProductCheckReason>
+     */
+    public function checkReasons(ProductCheckScope $scope): array
+    {
+        $goods = ProductKind::Goods === $this->kind;
+
+        return array_values(array_filter($scope->reasons(), fn (ProductCheckReason $reason): bool => ($goods || !$reason->onlyForGoods()) && match ($reason) {
+            ProductCheckReason::PriceMissing => 0 === Decimal::of($this->unitPriceNet)->compare(0) && !$this->zeroPriceIntended,
+            ProductCheckReason::VendorMissing => $this->vendors->isEmpty(),
+            ProductCheckReason::VatMissing => [] === $this->defaultTaxComponentIds,
+            ProductCheckReason::CostMissing => null === $this->costPrice,
+            ProductCheckReason::BarcodeMissing => $this->barcodes->isEmpty(),
+            ProductCheckReason::CategoryMissing => null === $this->category,
+            ProductCheckReason::UnitToConfirm => $this->unitToConfirm,
+            ProductCheckReason::ToCount => $this->toCount,
+        }));
+    }
+
+    /**
+     * Sets the mark a person put on it and whether its price of nothing is meant; a price that is not nothing means
+     * nothing of the kind, so that is not kept.
+     *
+     * @return list<string> the fields that changed
+     *
+     * @throws InvalidProduct
+     */
+    public function reviseCheck(CheckMark $mark, bool $zeroPriceIntended, \DateTimeImmutable $now): array
+    {
+        $refusal = CheckMark::noteRefusal($mark->note);
+        if (null !== $refusal) {
+            throw new InvalidProduct('checkNote', $refusal->message, $refusal->reason, $refusal->params);
+        }
+        $zeroPriceIntended = $zeroPriceIntended && 0 === Decimal::of($this->unitPriceNet)->compare(0);
+        $changed = [];
+        if ($mark->marked !== $this->toCheck) {
+            $changed[] = 'toCheck';
+        }
+        if ($mark->note !== $this->checkNote) {
+            $changed[] = 'checkNote';
+        }
+        if ($zeroPriceIntended !== $this->zeroPriceIntended) {
+            $changed[] = 'zeroPriceIntended';
+        }
+        if ([] !== $changed) {
+            $this->toCheck = $mark->marked;
+            $this->checkNote = $mark->note;
+            $this->zeroPriceIntended = $zeroPriceIntended;
+            $this->updatedAt = $now;
+        }
+
+        return $changed;
+    }
+
+    public function getCheckMark(): CheckMark
+    {
+        return new CheckMark($this->toCheck, $this->checkNote);
+    }
+
+    public function isZeroPriceIntended(): bool
+    {
+        return $this->zeroPriceIntended;
+    }
+
+    public function awaitsCount(): bool
+    {
+        return $this->toCount;
+    }
+
+    /** A new product a file gave its company's default unit, as it named none. */
+    public function awaitUnitConfirmation(): void
+    {
+        $this->unitToConfirm = true;
+    }
+
+    /** @return bool whether a unit was waiting to be named */
+    public function confirmUnit(\DateTimeImmutable $now): bool
+    {
+        if (!$this->unitToConfirm) {
+            return false;
+        }
+        $this->unitToConfirm = false;
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    /** A new product a file created with none of its stock known. */
+    public function awaitCount(): void
+    {
+        $this->toCount = true;
+    }
+
+    /** @return bool whether a count was awaited */
+    public function counted(\DateTimeImmutable $now): bool
+    {
+        if (!$this->toCount) {
+            return false;
+        }
+        $this->toCount = false;
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    /**
      * Something a product form shows beside the product, and kept outside it, changed (where it lives): its version
      * moves, so a list read before that change is refused rather than written over it.
      */
@@ -511,6 +641,9 @@ class Product implements CompanyOwned
         $this->description = $details->description;
         $this->kind = $details->kind;
         $this->unitPriceNet = $details->unitPriceNet;
+        if (0 !== Decimal::of($this->unitPriceNet)->compare(0)) {
+            $this->zeroPriceIntended = false;
+        }
         $this->costPrice = $details->costPrice;
         $this->substitutionGroup = $details->substitutionGroup;
     }

@@ -52,6 +52,8 @@ final class ProductInFile
             'supplier_code' === $column => self::held($product, BarcodeRole::Supplier, $supplierCode)?->getCode() ?? '',
             'default_tax_codes' === $column => implode(',', array_map(static fn (string $id): string => $taxCodes[$id] ?? '', $product->getDefaultTaxComponentIds())),
             'active' === $column => $product->isActive() ? 'yes' : 'no',
+            // The note a person left; a mark without one writes nothing, which the import reads as « keep the mark ».
+            'to_check' === $column => $product->getCheckMark()->note ?? '',
             str_starts_with($column, ProductImport::CUSTOM_PREFIX) => self::custom($product->getCustomFields()[substr($column, \strlen(ProductImport::CUSTOM_PREFIX))] ?? null),
             default => '',
         };

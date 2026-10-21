@@ -328,6 +328,27 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'counting writes stock');
     }
 
+    /** « à compter » leaves a product once a count of it is kept, and only then: a count refused at one place clears nothing. */
+    public function testACountKeptTellsTheProductItWasCounted(): void
+    {
+        $laptop = $this->em()->find(Product::class, Uuid::fromString($this->laptopId));
+        self::assertNotNull($laptop);
+        $laptop->awaitCount();
+        $this->em()->flush();
+        $this->signedIn(['stock.read', 'stock.write']);
+        $siteId = $this->defaultLocationId();
+
+        $this->postJson($this->path('stock-counts'), ['productId' => $this->laptopId, 'parts' => [['locationId' => $siteId, 'quantity' => '4'], ['locationId' => $siteId, 'quantity' => '1']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertTrue($this->product($this->laptopId)->awaitsCount(), 'a count refused is no count');
+
+        $this->postJson($this->path('stock-counts'), ['productId' => $this->laptopId, 'parts' => [['locationId' => $siteId, 'quantity' => '4']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertFalse($this->product($this->laptopId)->awaitsCount());
+        $audited = $this->em()->getConnection()->fetchFirstColumn("SELECT changes->>'fields' FROM audit_log WHERE entity_id = :id AND action = 'product.revised'", ['id' => $this->laptopId]);
+        self::assertSame(['["toCount"]'], $audited, 'the screens showing the product hear of it');
+    }
+
     public function testTrackedGoodsAreReceivedAndCountedAndTheirStockListedByLocation(): void
     {
         $this->signedIn(['stock.read', 'stock.write']);
@@ -1361,6 +1382,15 @@ final class InventoryTest extends ApiTestCase
     {
         $this->postJson($this->path('stock-movements'), ['productId' => $this->laptopId, ...$movement]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+    }
+
+    private function product(string $id): Product
+    {
+        $this->em()->clear();
+        $product = $this->em()->find(Product::class, Uuid::fromString($id));
+        self::assertNotNull($product);
+
+        return $product;
     }
 
     private function defaultLocationId(): string
