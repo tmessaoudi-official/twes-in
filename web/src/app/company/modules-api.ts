@@ -8,22 +8,15 @@ import type {
   ModuleModuleRead,
   ModuleModuleWriteValidationModuleWrite as ModuleModuleWrite,
 } from '../api/types.gen';
-import { DEMO_REFUSED, isDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import type { ModuleRow } from './modules-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /**
  * Why the API refused, as the screen translates it: a module switched on before what it needs, or switched off while
  * an enabled module still needs it (both a 409, told apart by the direction of the switch).
  */
 export type ModulesError =
-  | 'network'
-  | 'not_found'
-  | 'needs_modules'
-  | 'still_needed'
-  | 'already_available'
-  | 'invalid'
-  /** Something a demo account may not do, which the interceptor has said in words already. */
-  | 'demo_refused';
+  'network' | 'not_found' | 'needs_modules' | 'still_needed' | 'already_available' | 'invalid';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ModulesRefused extends Error {
@@ -42,7 +35,7 @@ export class ModulesApi {
     try {
       return (await firstValueFrom(this.http.get<ModuleModuleRead[]>(path(companyId)))).map(toRow);
     } catch (error) {
-      throw new ModulesRefused(codeOf(error, 'off'));
+      throw refusedFor(error, new ModulesRefused(codeOf(error, 'off')));
     }
   }
 
@@ -55,7 +48,7 @@ export class ModulesApi {
         ),
       );
     } catch (error) {
-      throw new ModulesRefused(codeOf(error, enabled ? 'on' : 'off'));
+      throw refusedFor(error, new ModulesRefused(codeOf(error, enabled ? 'on' : 'off')));
     }
   }
 
@@ -72,7 +65,7 @@ export class ModulesApi {
         ),
       );
     } catch (error) {
-      throw new ModulesRefused(codeOf(error, 'interest'));
+      throw refusedFor(error, new ModulesRefused(codeOf(error, 'interest')));
     }
   }
 }
@@ -84,7 +77,6 @@ function codeOf(error: unknown, attempt: Attempt): ModulesError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
   }
-  if (isDemoRefused(error)) return DEMO_REFUSED;
   switch (error.status) {
     case 404:
       return 'not_found';

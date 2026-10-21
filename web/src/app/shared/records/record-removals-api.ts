@@ -3,6 +3,7 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { refusedFor } from '../errors/said-already';
 
 /** One record a delete took, named as it read when it went: the only thing « Récemment supprimés » shows of it. */
 export interface RemovedItem {
@@ -183,9 +184,9 @@ const CODES: readonly RemovalError[] = [
 
 function refusal(error: unknown): RemovalRefused {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
-    return new RemovalRefused('network');
+    return refusedFor(error, new RemovalRefused('network'));
   }
-  if (error.status === 404) return new RemovalRefused('not_found');
+  if (error.status === 404) return refusedFor(error, new RemovalRefused('not_found'));
   const body: unknown = error.error;
   const fields = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
   const known = CODES.find((candidate) => candidate === fields['error']);
@@ -193,13 +194,16 @@ function refusal(error: unknown): RemovalRefused {
   const column = typeof fields['column'] === 'string' ? fields['column'] : null;
   const uses = Array.isArray(fields['uses']) ? (fields['uses'] as TableCount[]) : [];
   const reason = typeof fields['reason'] === 'string' ? fields['reason'] : null;
-  return new RemovalRefused(
-    known ?? 'network',
-    known === 'record_used' ? records : [],
-    known === 'merge_mismatch' ? column : null,
-    known === 'merge_transacted' ? uses : [],
-    known === 'merge_refused' ? reason : null,
-    known === 'merge_refused' ? namedWords(fields) : {},
+  return refusedFor(
+    error,
+    new RemovalRefused(
+      known ?? 'network',
+      known === 'record_used' ? records : [],
+      known === 'merge_mismatch' ? column : null,
+      known === 'merge_transacted' ? uses : [],
+      known === 'merge_refused' ? reason : null,
+      known === 'merge_refused' ? namedWords(fields) : {},
+    ),
   );
 }
 

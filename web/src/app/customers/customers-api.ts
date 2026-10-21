@@ -42,6 +42,7 @@ import {
   type StatementKind,
   type TaxFamily,
 } from './customers-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CustomersRefused extends Error {
@@ -299,7 +300,7 @@ export class CustomersApi {
     try {
       return await call();
     } catch (error) {
-      throw new CustomersRefused(codeOf(error, conflict), refusalsOf(error));
+      throw refusedFor(error, new CustomersRefused(codeOf(error, conflict), refusalsOf(error)));
     }
   }
 }

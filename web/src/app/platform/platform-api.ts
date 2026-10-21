@@ -39,6 +39,7 @@ import type {
   PlatformSwitch,
   SupportChannel,
 } from './platform-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 export class PlatformRefused extends Error {
   constructor(readonly code: PlatformError) {
@@ -211,7 +212,7 @@ export class PlatformApi {
       );
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 404) return null;
-      throw new PlatformRefused(codeOf(error, 'refused'));
+      throw refusedFor(error, new PlatformRefused(codeOf(error, 'refused')));
     }
   }
 
@@ -282,7 +283,7 @@ export class PlatformApi {
     try {
       return await call();
     } catch (error) {
-      throw new PlatformRefused(codeOf(error, conflict));
+      throw refusedFor(error, new PlatformRefused(codeOf(error, conflict)));
     }
   }
 }

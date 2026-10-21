@@ -5,6 +5,7 @@ import { QuietReads } from '../shared/feedback/quiet-reads';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
 import { InvoicesFacade } from './invoices-facade';
 import type { InvoiceInput, InvoiceOptions, InvoiceRow } from './invoices-types';
+import { refusedByTheDemo } from '../shared/testing/said-answers';
 
 const options: InvoiceOptions = {
   currency: 'TND',
@@ -292,7 +293,7 @@ describe('InvoicesFacade', () => {
   });
 
   it("adds nothing of its own to the demo's refusal of a Factur-X file, which the toast has said", async () => {
-    const facturX = vi.fn().mockRejectedValue(new InvoicesRefused('demo_refused'));
+    const facturX = vi.fn().mockRejectedValue(refusedByTheDemo(new InvoicesRefused('not_found')));
     Object.assign(api, { facturX });
 
     expect(await facade.facturX('c1', 'i1', 'xml')).toBeNull();

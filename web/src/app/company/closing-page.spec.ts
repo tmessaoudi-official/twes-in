@@ -24,6 +24,7 @@ import { effectToasts, provideQuietFeedback } from '../shared/testing/feedback';
 import { ClosingApi, ClosingRefused, type CompanyClosing } from './closing-api';
 import { ClosingPage } from './closing-page';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { refusedByTheDemo } from '../shared/testing/said-answers';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -147,7 +148,7 @@ describe('ClosingPage', () => {
 
   it("adds nothing of its own to the demo's refusal, which the toast has said", async () => {
     await open({ closedThrough: '2026-09-30', writable: true });
-    api.closeThrough.mockRejectedValue(new ClosingRefused('demo_refused'));
+    api.closeThrough.mockRejectedValue(refusedByTheDemo(new ClosingRefused('invalid')));
 
     await closeThrough('2026-10-15');
 

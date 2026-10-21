@@ -69,6 +69,7 @@ export class ProductHomes {
   ): Promise<HomesWrite> {
     const place = this.locationsSignal().find((location) => location.id === locationId);
     if (place === undefined) {
+      // refusal-answer: none, the place was refused here before anything was sent.
       this.state.fail(new ProductsRefused('invalid'));
       return 'refused';
     }

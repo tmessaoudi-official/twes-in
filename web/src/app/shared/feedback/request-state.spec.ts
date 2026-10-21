@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { refusedFor } from '../errors/said-already';
+import { SUBMISSION_IN_PROGRESS, SUBMISSION_UNANSWERED } from '../submissions/submission-keys';
+import { demoAnswer, submissionAnswer } from '../testing/said-answers';
 import { QuietReads } from './quiet-reads';
 import { LatestRequest, requestState, type RequestState } from './request-state';
 
 class Refused extends Error {
-  constructor(readonly code: 'not_found' | 'demo_refused') {
+  constructor(readonly code: 'not_found' | 'held') {
     super(code);
   }
 }
@@ -147,10 +150,9 @@ describe('requestState', () => {
   });
 
   it('lets one write say its own code, and a null code shows nothing', async () => {
-    const demo = new Refused('demo_refused');
-    await state.write(() => Promise.reject(demo), {
-      code: (error) =>
-        error instanceof Refused && error.code === 'demo_refused' ? null : codeOf(error),
+    const held = new Refused('held');
+    await state.write(() => Promise.reject(held), {
+      code: (error) => (error instanceof Refused && error.code === 'held' ? null : codeOf(error)),
     });
     expect(state.error()).toBeNull();
 
@@ -158,6 +160,41 @@ describe('requestState', () => {
     await nothing.read(() => Promise.reject(new Error('refused')));
     expect(nothing.error()).toBeNull();
   });
+
+  it.each([
+    ['the demo refused', demoAnswer],
+    ['a write is still being made', () => submissionAnswer(SUBMISSION_IN_PROGRESS)],
+    ['a write was made and its answer lost', () => submissionAnswer(SUBMISSION_UNANSWERED)],
+  ])(
+    'shows no error of its own where an interceptor has said %s, read, written or failed, under a refusal or bare',
+    async (_said, answer) => {
+      const failed: unknown[] = [];
+      for (const refusal of [refusedFor(answer(), new Refused('not_found')), answer()]) {
+        state.fail(new Refused('not_found'));
+        await state.read(() => Promise.reject(refusal), { failed: (error) => failed.push(error) });
+        expect(state.error()).toBeNull();
+
+        state.fail(new Refused('not_found'));
+        expect(
+          await state.write(() => Promise.reject(refusal), {
+            failed: (error) => failed.push(error),
+          }),
+        ).toBe(false);
+        expect(state.error()).toBeNull();
+        expect(state.busy()).toBe(false);
+
+        state.fail(new Refused('not_found'));
+        await state.writeAnswer(() => Promise.reject(refusal), { code: () => 'not_found' });
+        expect(state.error()).toBeNull();
+
+        state.fail(new Refused('not_found'));
+        state.fail(refusal);
+        expect(state.error()).toBeNull();
+      }
+      // The facade's own bookkeeping still runs: only what the screen says is left out.
+      expect(failed).toHaveLength(4);
+    },
+  );
 
   it('answers what a write answered, or null when it was refused', async () => {
     expect(await state.writeAnswer(() => Promise.resolve({ id: 'a1' }))).toEqual({ id: 'a1' });

@@ -5,7 +5,6 @@ import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular
 import type { PreviewBody } from '../shared/documents/document-figures';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import { isPeriodClosed } from '../shared/documents/period-closed';
-import { DEMO_REFUSED, isDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -67,6 +66,7 @@ import {
   type PaymentInput,
   type ResolvedPrice,
 } from './invoices-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class InvoicesRefused extends Error {
@@ -96,7 +96,7 @@ export class InvoicesApi {
       return { number: answer.number, operationCategory: operationsOf(answer.operationCategory) };
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 409) return null;
-      throw new InvoicesRefused(codeOf(error));
+      throw refusedFor(error, new InvoicesRefused(codeOf(error)));
     }
   }
 
@@ -464,7 +464,7 @@ export class InvoicesApi {
       ) {
         return toFacturXRefusal(JSON.parse(await error.error.text()) as RawFacturXRefusal);
       }
-      throw new InvoicesRefused(codeOf(error));
+      throw refusedFor(error, new InvoicesRefused(codeOf(error)));
     }
   }
 
@@ -497,7 +497,7 @@ export class InvoicesApi {
     try {
       return await call();
     } catch (error) {
-      throw new InvoicesRefused(codeOf(error));
+      throw refusedFor(error, new InvoicesRefused(codeOf(error)));
     }
   }
 }
@@ -506,7 +506,6 @@ export function codeOf(error: unknown): InvoicesError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
   }
-  if (isDemoRefused(error)) return DEMO_REFUSED;
   switch (error.status) {
     case 404:
       return 'not_found';

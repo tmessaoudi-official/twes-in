@@ -3,7 +3,6 @@
 import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { StepUp } from '../shared/step-up/step-up';
 import { SubscriptionApi, SubscriptionRefused } from './subscription-api';
 import type {
@@ -45,13 +44,10 @@ export class SubscriptionFacade {
 
   /** True when the API kept the declaration; the page then shows what it kept. */
   async declare(companyId: string, payment: DeclaredPayment): Promise<boolean> {
-    return this.state.write(
-      async () => {
-        await this.api.declare(companyId, payment);
-        await this.reread(companyId);
-      },
-      { code: (error) => unlessDemoRefused(codeOf(error)) },
-    );
+    return this.state.write(async () => {
+      await this.api.declare(companyId, payment);
+      await this.reread(companyId);
+    });
   }
 
   /** An operator's queue: every payment waiting for a decision, across all companies. */

@@ -16,8 +16,8 @@ import type {
   SubscriptionView,
   WaitingPayment,
 } from './subscription-types';
-import { DEMO_REFUSED, isDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
+import { refusedFor } from '../shared/errors/said-already';
 
 export class SubscriptionRefused extends Error {
   constructor(readonly code: SubscriptionError) {
@@ -40,7 +40,7 @@ export class SubscriptionApi {
       );
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 404) return null;
-      throw new SubscriptionRefused(codeOf(error));
+      throw refusedFor(error, new SubscriptionRefused(codeOf(error)));
     }
   }
 
@@ -107,7 +107,7 @@ export class SubscriptionApi {
     try {
       return await call();
     } catch (error) {
-      throw new SubscriptionRefused(codeOf(error));
+      throw refusedFor(error, new SubscriptionRefused(codeOf(error)));
     }
   }
 }
@@ -167,7 +167,6 @@ function codeOf(error: unknown): SubscriptionError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) return 'network';
   // An operator's decision is a platform write, which waits for a recent proof (docs/SPEC.md § 7).
   if (stepUpAsked(error)) return 'step_up_required';
-  if (isDemoRefused(error)) return DEMO_REFUSED;
   if (error.status === 404) return 'not_managed';
   if (error.status === 409) return 'already_declared';
   return error.status === 422 ? 'invalid' : 'refused';

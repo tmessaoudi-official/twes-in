@@ -8,6 +8,7 @@ import type {
   InvitationInvitationWriteValidationAccept as InvitationInvitationWrite,
 } from '../api/types.gen';
 import type { InvitationError, InvitationOffer } from './invitation-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 export class InvitationRefused extends Error {
   constructor(readonly code: InvitationError) {
@@ -59,7 +60,7 @@ export class InvitationApi {
     try {
       return await call();
     } catch (error) {
-      throw new InvitationRefused(codeOf(error));
+      throw refusedFor(error, new InvitationRefused(codeOf(error)));
     }
   }
 }

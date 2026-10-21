@@ -43,6 +43,7 @@ import {
   type QuotesError,
   type QuoteStatusCounts,
 } from './quotes-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class QuotesRefused extends Error {
@@ -346,7 +347,7 @@ export class QuotesApi {
     try {
       return await call();
     } catch (error) {
-      throw new QuotesRefused(codeOf(error, invalid));
+      throw refusedFor(error, new QuotesRefused(codeOf(error, invalid)));
     }
   }
 }

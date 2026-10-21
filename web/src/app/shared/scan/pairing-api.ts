@@ -12,6 +12,7 @@ import type {
 } from '../../api/types.gen';
 import { CSRF_HEADER, csrfToken } from '../session/csrf-token';
 import { SILENT } from '../feedback/activity-interceptor';
+import { refusedFor } from '../errors/said-already';
 
 export type PairingEcho = ScanPairingEcho;
 
@@ -124,7 +125,7 @@ export class PairingApi {
     try {
       return await firstValueFrom(request);
     } catch (error) {
-      throw new PairingRefused(refusalOf(error));
+      throw refusedFor(error, new PairingRefused(refusalOf(error)));
     }
   }
 }

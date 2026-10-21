@@ -9,6 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanyFacade } from '../company/company-facade';
 import type { ActionConfirm } from '../shared/actions/screen-action';
+import { saidAlready } from '../shared/errors/said-already';
 import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { StepUp } from '../shared/step-up/step-up';
@@ -75,6 +76,7 @@ export class AccountDeletion {
         'definitif_a_terme',
       );
     } catch (error) {
+      if (saidAlready(error)) return;
       const code = error instanceof AccountDeletionRefused ? error.code : 'refused';
       // The proof is older than the API keeps it: asked again where the person is, then the same request once more.
       if (code === 'step_up_required' && again) {

@@ -21,6 +21,7 @@ import {
   type ImportUndone,
   type TextEncoding,
 } from './import-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses the request itself; carries the code the screen translates. */
 export class ImportRefused extends Error {
@@ -168,42 +169,43 @@ export class ImportApi {
 
 function refusalOf(error: unknown): Error {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
-    return new ImportRefused('network');
+    return refusedFor(error, new ImportRefused('network'));
   }
   // A file setting or changing what asks who is at the screen (a vendor's bank details) waits for a recent proof, and
   // kept nothing (docs/SPEC.md § 7).
-  if (stepUpAsked(error)) return new ImportRefused('step_up_required');
+  if (stepUpAsked(error)) return refusedFor(error, new ImportRefused('step_up_required'));
   switch (error.status) {
     case 404:
-      return new ImportRefused('not_found');
+      return refusedFor(error, new ImportRefused('not_found'));
     case 409:
-      return conflictOf(error.error);
+      return conflictOf(error);
     case 413:
-      return new ImportRefused('file_too_large');
+      return refusedFor(error, new ImportRefused('file_too_large'));
     case 422:
-      return notKept(error.error);
+      return notKept(error);
     default:
-      return new ImportRefused('invalid');
+      return refusedFor(error, new ImportRefused('invalid'));
   }
 }
 
 /** An undo refused names why: taken back already, or past its day. */
-function conflictOf(body: unknown): ImportRefused {
-  const reason = (body as Record<string, unknown> | null)?.['error'];
-  return new ImportRefused(
-    reason === 'import_undone' || reason === 'import_final' ? reason : 'invalid',
+function conflictOf(error: HttpErrorResponse): ImportRefused {
+  const reason = (error.error as Record<string, unknown> | null)?.['error'];
+  return refusedFor(
+    error,
+    new ImportRefused(reason === 'import_undone' || reason === 'import_final' ? reason : 'invalid'),
   );
 }
 
 /** A 422 carries either the report of a run that was rolled back, or the reason the file was refused whole. */
-function notKept(body: unknown): Error {
-  const answer = body as Record<string, unknown> | null;
+function notKept(error: HttpErrorResponse): Error {
+  const answer = error.error as Record<string, unknown> | null;
   if (answer !== null && typeof answer === 'object' && 'rejected' in answer) {
     return new ImportNotKept(toReport(answer), null);
   }
   const reason = answer?.['error'];
   if (typeof reason !== 'string') {
-    return new ImportRefused('invalid');
+    return refusedFor(error, new ImportRefused('invalid'));
   }
 
   return new ImportNotKept(null, {

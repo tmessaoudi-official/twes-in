@@ -17,6 +17,7 @@ import {
   type ReportQuery,
   type ReportResult,
 } from './reports-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** The one importer of the generated types for the reports. */
 @Injectable({ providedIn: 'root' })
@@ -83,7 +84,8 @@ export class ReportsApi {
       return await firstValueFrom(request);
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 404) throw new ReportGone();
-      if (error instanceof HttpErrorResponse && error.status === 422) throw new ReportRefused();
+      if (error instanceof HttpErrorResponse && error.status === 422)
+        throw refusedFor(error, new ReportRefused());
       throw error;
     }
   }

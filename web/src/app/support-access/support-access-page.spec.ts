@@ -26,6 +26,7 @@ import {
   type SupportAccessState,
 } from './support-access-api';
 import { DEFAULT_SUPPORT_HOURS, SupportAccessPage } from './support-access-page';
+import { refusedByTheDemo } from '../shared/testing/said-answers';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -179,7 +180,7 @@ describe('SupportAccessPage', () => {
   });
 
   it("adds nothing of its own to the demo's refusal, which the toast has said", async () => {
-    api.grant.mockReset().mockRejectedValue(new SupportAccessRefused('demo_refused'));
+    api.grant.mockReset().mockRejectedValue(refusedByTheDemo(new SupportAccessRefused('network')));
     await open();
 
     q('support-access-grant')!.click();

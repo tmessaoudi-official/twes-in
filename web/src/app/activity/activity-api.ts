@@ -11,6 +11,7 @@ import { type ExportFormat, exportAddress } from '../shared/list/export-address'
 import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import type { ActivityError, ActivityRow, ActivitySearch } from './activity-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ActivityRefused extends Error {
@@ -37,7 +38,7 @@ export class ActivityApi {
         throw new Error('A page of the journal came without its total.');
       return { rows: page.member.map(toRow), total: page.totalItems };
     } catch (error) {
-      throw new ActivityRefused(codeOf(error));
+      throw refusedFor(error, new ActivityRefused(codeOf(error)));
     }
   }
 

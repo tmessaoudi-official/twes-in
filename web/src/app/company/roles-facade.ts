@@ -6,6 +6,7 @@ import { requestState } from '../shared/feedback/request-state';
 import { StepUp } from '../shared/step-up/step-up';
 import { RolesApi, RolesRefused } from './roles-api';
 import type { PermissionGroupRow, RoleRow } from './roles-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** The roles of the company being worked in, the catalogue they are ticked from, and the writes. */
 @Injectable({ providedIn: 'root' })
@@ -93,7 +94,7 @@ export class RolesFacade {
 }
 
 function refusalOf(error: unknown): RolesRefused {
-  return error instanceof RolesRefused ? error : new RolesRefused('network');
+  return error instanceof RolesRefused ? error : refusedFor(error, new RolesRefused('network'));
 }
 
 /** The sentence after the code: the token is what the code matched on; a person reads what follows it. */

@@ -25,6 +25,7 @@ import type {
   SignedInState,
 } from './auth-types';
 import { PasskeyClient } from './passkey-client';
+import { refusedFor, saidAlready } from '../shared/errors/said-already';
 
 /**
  * The signed-in state, as signals. The session itself is a cookie the browser keeps; this facade only knows
@@ -139,7 +140,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
     try {
       return { ok: true, enrolment: await this.api.beginTotpEnrolment() };
     } catch (error) {
-      return { ok: false, error: codeOf(error) };
+      return { ok: false, error: shownOf(error) };
     }
   }
 
@@ -152,7 +153,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
       );
       return { ok: true, recoveryCodes };
     } catch (error) {
-      return { ok: false, error: codeOf(error) };
+      return { ok: false, error: shownOf(error) };
     }
   }
 
@@ -160,7 +161,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
     try {
       return { ok: true, recoveryCodes: await this.api.regenerateRecoveryCodes(code) };
     } catch (error) {
-      return { ok: false, error: codeOf(error) };
+      return { ok: false, error: shownOf(error) };
     }
   }
 
@@ -174,7 +175,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
         recoveryCodes: await this.api.regenerateRecoveryCodesWithPasskey(credential),
       };
     } catch (error) {
-      return { ok: false, error: codeOf(error) };
+      return { ok: false, error: shownOf(error) };
     }
   }
 
@@ -190,12 +191,13 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
   async changePassword(
     currentPassword: string,
     newPassword: string,
-  ): Promise<PasswordChangeOutcome> {
+  ): Promise<PasswordChangeOutcome | null> {
     try {
       await this.api.changePassword(currentPassword, newPassword);
       this.signedOut();
       return 'changed';
     } catch (error) {
+      if (saidAlready(error)) return null;
       const code = codeOf(error);
       switch (code) {
         case 'current_password':
@@ -260,7 +262,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
     try {
       return { ok: true, passkeys: await this.api.listPasskeys() };
     } catch (error) {
-      return { ok: false, error: codeOf(error) };
+      return { ok: false, error: shownOf(error) };
     }
   }
 
@@ -279,7 +281,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
       );
       return { ok: true, ...added };
     } catch (error) {
-      return { ok: false, error: codeOf(error) };
+      return { ok: false, error: shownOf(error) };
     }
   }
 
@@ -298,7 +300,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
       });
       return { ok: true };
     } catch (error) {
-      return { ok: false, error: codeOf(error) };
+      return { ok: false, error: shownOf(error) };
     }
   }
 
@@ -315,7 +317,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
       );
       return { ok: true };
     } catch (error) {
-      return { ok: false, error: codeOf(error) };
+      return { ok: false, error: shownOf(error) };
     }
   }
 
@@ -401,10 +403,13 @@ async function fromBrowser<T>(ceremony: () => Promise<T>): Promise<T> {
   try {
     return await ceremony();
   } catch (error) {
-    throw new AuthRefused(
-      error instanceof DOMException && error.name === 'InvalidStateError'
-        ? 'passkey_already_registered'
-        : 'passkey_cancelled',
+    throw refusedFor(
+      error,
+      new AuthRefused(
+        error instanceof DOMException && error.name === 'InvalidStateError'
+          ? 'passkey_already_registered'
+          : 'passkey_cancelled',
+      ),
     );
   }
 }
@@ -428,6 +433,11 @@ function stepUpOutcome(error: unknown): StepUpOutcome {
 
 function codeOf(error: unknown): LoginError {
   return error instanceof AuthRefused ? error.code : 'network';
+}
+
+/** What a refused step says on its screen: nothing when an interceptor said it already (`saidAlready`). */
+function shownOf(error: unknown): LoginError | null {
+  return saidAlready(error) ? null : codeOf(error);
 }
 
 /** The rule App\Licensing\Domain\Access enforces, mirrored so a screen offers only what the API would accept. */

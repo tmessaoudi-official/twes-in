@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { NotificationMailStop } from '../api/types.gen';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Why a stop link did not go through, as the page says it. */
 export type StopMailError = 'link_not_usable' | 'too_many_attempts' | 'network';
@@ -25,7 +26,7 @@ export class StopMailApi {
     try {
       await firstValueFrom(this.http.post<void>('/api/notification-preferences/stop', body));
     } catch (error) {
-      throw new StopMailRefused(refusalOf(error));
+      throw refusedFor(error, new StopMailRefused(refusalOf(error)));
     }
   }
 }

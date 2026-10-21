@@ -80,6 +80,7 @@ import {
 } from './inventory-types';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import type { PlanStep } from './stock-plan-draft';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** How many products one question about stock on hand may name (`StockOnHandResource::MOST`). */
 const ON_HAND_MOST = 100;
@@ -549,7 +550,7 @@ export class InventoryApi {
         floorVersion: raw.floorVersion ?? null,
       };
     } catch (error) {
-      throw new InventoryRefused(codeOf(error, 'invalid'), refusedEntry(error));
+      throw refusedFor(error, new InventoryRefused(codeOf(error, 'invalid'), refusedEntry(error)));
     }
   }
 
@@ -707,7 +708,10 @@ export class InventoryApi {
     try {
       return await call();
     } catch (error) {
-      throw new InventoryRefused(file ? fileCodeOf(error) : codeOf(error, conflict, invalid));
+      throw refusedFor(
+        error,
+        new InventoryRefused(file ? fileCodeOf(error) : codeOf(error, conflict, invalid)),
+      );
     }
   }
 }

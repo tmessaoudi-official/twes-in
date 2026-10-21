@@ -47,6 +47,7 @@ import {
 } from './delivery-notes-types';
 import { InvoicesApi, refusedField } from '../invoices/invoices-api';
 import { trackingOf } from '../products/products-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class DeliveryNotesRefused extends Error {
@@ -367,7 +368,7 @@ export class DeliveryNotesApi {
     try {
       return await call();
     } catch (error) {
-      throw new DeliveryNotesRefused(codeOf(error));
+      throw refusedFor(error, new DeliveryNotesRefused(codeOf(error)));
     }
   }
 }

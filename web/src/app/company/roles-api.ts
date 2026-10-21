@@ -11,6 +11,7 @@ import type {
 } from '../api/types.gen';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import type { PermissionGroupRow, RoleRow } from './roles-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /**
  * Why the API refused, as the screen translates it.
@@ -116,38 +117,41 @@ export class RolesApi {
 
 function refusalOf(error: unknown): RolesRefused {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
-    return new RolesRefused('network');
+    return refusedFor(error, new RolesRefused('network'));
   }
   const detail = typeof error.error?.detail === 'string' ? error.error.detail : '';
   switch (error.status) {
     case 404:
-      return new RolesRefused('not_found', detail);
+      return refusedFor(error, new RolesRefused('not_found', detail));
     case 403:
       if (detail.startsWith('step_up_required:'))
-        return new RolesRefused('step_up_required', detail);
+        return refusedFor(error, new RolesRefused('step_up_required', detail));
       // Otherwise it is the one refusal that is not a bare permission miss: the editor tried to give what they do not hold.
-      return new RolesRefused(
-        detail.startsWith('role_permission_not_held:') ? 'not_held' : 'invalid',
-        detail,
+      return refusedFor(
+        error,
+        new RolesRefused(
+          detail.startsWith('role_permission_not_held:') ? 'not_held' : 'invalid',
+          detail,
+        ),
       );
     case 409:
-      return new RolesRefused(
-        isRecordChanged(error.error) ? 'record_changed' : 'name_taken',
-        detail,
+      return refusedFor(
+        error,
+        new RolesRefused(isRecordChanged(error.error) ? 'record_changed' : 'name_taken', detail),
       );
     case 422:
       // Three refusals share this status and the API leads each with its own token (RoleResource's constants, the
       // shape CompanyGuard already uses). Reading the token rather than the sentence is what keeps this working
       // when the message is reworded or translated; a functional test pins each one.
       if (detail.startsWith('role_in_use:')) {
-        return new RolesRefused('in_use', detail);
+        return refusedFor(error, new RolesRefused('in_use', detail));
       }
       if (detail.startsWith('role_built_in:')) {
-        return new RolesRefused('built_in', detail);
+        return refusedFor(error, new RolesRefused('built_in', detail));
       }
-      return new RolesRefused('unknown_permission', detail);
+      return refusedFor(error, new RolesRefused('unknown_permission', detail));
     default:
-      return new RolesRefused('invalid', detail);
+      return refusedFor(error, new RolesRefused('invalid', detail));
   }
 }
 

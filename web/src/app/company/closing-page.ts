@@ -18,7 +18,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { runAction } from '../shared/actions/run-action';
-import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
+import { saidAlready } from '../shared/errors/said-already';
 import { Feedback } from '../shared/feedback/feedback';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
@@ -116,7 +116,8 @@ export class ClosingPage implements OnInit {
       this.form.reset();
       this.feedback.effect('company.closing.closed', {}, 'definitif');
     } catch (error) {
-      this.error.set(unlessDemoRefused(error instanceof ClosingRefused ? error.code : 'network'));
+      if (!saidAlready(error))
+        this.error.set(error instanceof ClosingRefused ? error.code : 'network');
     } finally {
       this.busy.set(false);
     }

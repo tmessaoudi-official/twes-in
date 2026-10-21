@@ -7,6 +7,7 @@ import { StepUp } from '../shared/step-up/step-up';
 import { SubscriptionApi, SubscriptionRefused } from './subscription-api';
 import { SubscriptionFacade } from './subscription-facade';
 import type { PaymentRow, SubscriptionView } from './subscription-types';
+import { refusedByTheDemo } from '../shared/testing/said-answers';
 
 const declared: PaymentRow = {
   id: 'p1',
@@ -121,7 +122,7 @@ describe('SubscriptionFacade', () => {
   });
 
   it("adds nothing of its own to the demo's refusal of a declaration, which the toast has said", async () => {
-    api.declare.mockRejectedValue(new SubscriptionRefused('demo_refused'));
+    api.declare.mockRejectedValue(refusedByTheDemo(new SubscriptionRefused('refused')));
 
     expect(await facade.declare('c1', { ...declared, currency: 'TND' })).toBe(false);
 

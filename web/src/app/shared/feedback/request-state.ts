@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, type Signal, signal } from '@angular/core';
+import { saidAlready } from '../errors/said-already';
 import { QuietReads } from './quiet-reads';
 
 /** How a read is told apart: whether it is still the latest of its kind, and what the facade keeps beside the code. */
@@ -23,7 +24,9 @@ export interface WriteOptions<E> {
  * for (`error`, a code the screen translates). One count over every marked request, so busy holds until the last one
  * answers and a press is never sent twice. A read nobody asked for, run inside `QuietReads`, is not marked: marked, the
  * screen's actions would turn disabled for its moment and a click already on its way would be refused unseen. A write
- * is always marked. An error is cleared when the next request starts, and kept until then.
+ * is always marked. An error is cleared when the next request starts, and kept until then. A failure an interceptor
+ * has already said in words (`saidAlready`: the demo's refusal, a write still being made or whose answer was lost)
+ * sets no error, so the screen never says it a second time, nor something else; `failed` still runs.
  */
 export class RequestState<E> {
   private readonly busySignal = signal(false);
@@ -47,7 +50,7 @@ export class RequestState<E> {
       return options.current?.() ?? true;
     } catch (error) {
       if (options.current?.() === false) return false;
-      this.errorSignal.set(this.code(error));
+      this.errorSignal.set(this.shown(error, this.code));
       options.failed?.(error);
       return false;
     } finally {
@@ -78,7 +81,7 @@ export class RequestState<E> {
 
   /** A failure outside a marked request, such as a picker's search: said, busy left as it is. */
   fail(error: unknown): void {
-    this.errorSignal.set(this.code(error));
+    this.errorSignal.set(this.shown(error, this.code));
   }
 
   clearError(): void {
@@ -94,12 +97,17 @@ export class RequestState<E> {
     try {
       return { kept: true, answer: await call() };
     } catch (error) {
-      this.errorSignal.set((options.code ?? this.code)(error));
+      this.errorSignal.set(this.shown(error, options.code ?? this.code));
       options.failed?.(error);
       return { kept: false };
     } finally {
       end();
     }
+  }
+
+  /** What the screen says of a failure: nothing when an interceptor already said it. */
+  private shown(error: unknown, code: (error: unknown) => E | null): E | null {
+    return saidAlready(error) ? null : code(error);
   }
 
   /** Counts one marked request; what it returns ends it, once. */

@@ -15,6 +15,7 @@ import {
   type InstrumentRow,
   type InstrumentStep,
 } from './instruments-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** The HTTP edge of an invoice's cheques and traites: the only code here that knows endpoints and generated types. */
 @Injectable({ providedIn: 'root' })
@@ -79,7 +80,7 @@ export class InstrumentsApi {
     try {
       return await call();
     } catch (error) {
-      throw new InvoicesRefused(codeOf(error));
+      throw refusedFor(error, new InvoicesRefused(codeOf(error)));
     }
   }
 }

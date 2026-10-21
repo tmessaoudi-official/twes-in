@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { SubscriptionApi, SubscriptionRefused } from './subscription-api';
+import { saidAlready } from '../shared/errors/said-already';
 
 const payment = {
   id: 'p1',
@@ -175,7 +176,9 @@ describe('SubscriptionApi', () => {
     http
       .expectOne('/api/companies/c1/subscription/payments')
       .flush({ error: 'demo_refused' }, { status: 403, statusText: 'Forbidden' });
-    await expect(demo).rejects.toEqual(new SubscriptionRefused('demo_refused'));
+    await expect(demo).rejects.toSatisfy(
+      (error) => error instanceof SubscriptionRefused && saidAlready(error),
+    );
 
     const unreachable = api.waiting();
     http.expectOne('/api/platform/payment-declarations').error(new ProgressEvent('error'));

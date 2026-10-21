@@ -2,7 +2,6 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { requestState } from '../shared/feedback/request-state';
 import { ModulesApi, ModulesRefused, type ModulesError } from './modules-api';
 import type { ModuleRow } from './modules-types';
@@ -42,15 +41,10 @@ export class ModulesFacade {
    * reads what the API kept.
    */
   async setInterest(companyId: string, key: string, interested: boolean): Promise<boolean> {
-    return this.state.write(
-      async () => {
-        const row = await this.api.setInterest(companyId, key, interested);
-        this.modulesSignal.update((rows) =>
-          rows.map((each) => (each.key === row.key ? row : each)),
-        );
-      },
-      { code: (error) => unlessDemoRefused(codeOf(error)) },
-    );
+    return this.state.write(async () => {
+      const row = await this.api.setInterest(companyId, key, interested);
+      this.modulesSignal.update((rows) => rows.map((each) => (each.key === row.key ? row : each)));
+    });
   }
 
   clearError(): void {

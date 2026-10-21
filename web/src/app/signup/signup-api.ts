@@ -14,6 +14,7 @@ import type {
   SignupDetails,
   SignupError,
 } from './signup-types';
+import { refusedFor } from '../shared/errors/said-already';
 
 export class SignupRefused extends Error {
   constructor(readonly code: SignupError) {
@@ -64,7 +65,7 @@ export class SignupApi {
     try {
       return await call();
     } catch (error) {
-      throw new SignupRefused(codeOf(error));
+      throw refusedFor(error, new SignupRefused(codeOf(error)));
     }
   }
 }

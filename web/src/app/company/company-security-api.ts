@@ -8,6 +8,7 @@ import type {
   CompanySecurityCompanySecurityWrite,
 } from '../api/types.gen';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
+import { refusedFor } from '../shared/errors/said-already';
 
 /** Whether the company requires a second factor of its members, and whether the caller may change that. */
 export interface CompanySecurity {
@@ -36,7 +37,7 @@ export class CompanySecurityApi {
         await firstValueFrom(this.http.get<CompanySecurityCompanySecurityRead>(path(companyId))),
       );
     } catch (error) {
-      throw new CompanySecurityRefused(codeOf(error));
+      throw refusedFor(error, new CompanySecurityRefused(codeOf(error)));
     }
   }
 
@@ -49,7 +50,7 @@ export class CompanySecurityApi {
         ),
       );
     } catch (error) {
-      throw new CompanySecurityRefused(codeOf(error));
+      throw refusedFor(error, new CompanySecurityRefused(codeOf(error)));
     }
   }
 }

@@ -16,6 +16,7 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { StepUp } from '../shared/step-up/step-up';
 import { provideStillAppearance } from '../shared/testing/appearance';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { refusedByTheDemo } from '../shared/testing/said-answers';
 import { AccountDeletion } from './account-deletion';
 import { AccountDeletionApi, AccountDeletionRefused } from './account-deletion-api';
 
@@ -210,6 +211,14 @@ describe('AccountDeletion', () => {
     expect(said()).toEqual([
       { kind: 'failure', key: 'account.deletion.failed', params: undefined },
     ]);
+    expect(auth.sessionEnded).not.toHaveBeenCalled();
+  });
+
+  it('says nothing more when the demo interceptor has already said the refusal', async () => {
+    api.delete.mockRejectedValue(refusedByTheDemo(new AccountDeletionRefused('network')));
+    await press(render(), 'account-delete');
+
+    expect(said()).toEqual([]);
     expect(auth.sessionEnded).not.toHaveBeenCalled();
   });
 });
