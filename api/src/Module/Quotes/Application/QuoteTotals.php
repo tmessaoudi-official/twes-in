@@ -66,7 +66,7 @@ final readonly class QuoteTotals
 
             return $this->of($quote);
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
-            throw new InvalidQuote('lines', $refused->getMessage());
+            throw new InvalidQuote($refused->field('quantity'), $refused->getMessage());
         }
     }
 

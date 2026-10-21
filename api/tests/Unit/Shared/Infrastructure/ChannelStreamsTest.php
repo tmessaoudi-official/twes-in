@@ -78,6 +78,29 @@ final class ChannelStreamsTest extends TestCase
         self::assertSame(['escape.log'], array_map('basename', glob($this->directory.'/*') ?: []));
     }
 
+    /** A link's token is a password for as long as it lives: no line keeps it, from the matched route to the exception. */
+    public function testALinksTokenNeverReachesALine(): void
+    {
+        $token = str_repeat('9f3a', 16);
+        $stream = $this->directory.'/stderr';
+        $handler = new ChannelStreams('', $stream);
+
+        $handler->handle(new LogRecord(new \DateTimeImmutable(), 'request', Level::Info, 'Matched route "api_invitation_accept".', [
+            'route_parameters' => ['_route' => 'api_invitation_accept', 'token' => $token],
+            'request_uri' => 'https://shop.example/api/invitations/'.$token.'/accept',
+            'exception' => new \RuntimeException('No route found for "GET /api/invitations/'.strtoupper($token).'"'),
+        ]));
+        $handler->close();
+
+        $written = (string) file_get_contents($stream);
+        self::assertStringNotContainsStringIgnoringCase($token, $written);
+        self::assertSame(3, substr_count($written, '[token]'), 'each place the token stood says so');
+        $line = $this->lines($stream)[0];
+        self::assertIsArray($line['context'] ?? null);
+        self::assertSame('https://shop.example/api/invitations/[token]/accept', $line['context']['request_uri'] ?? null, 'the rest of the address is kept');
+        self::assertSame('Matched route "api_invitation_accept".', $line['message']);
+    }
+
     private function record(string $channel, string $message): LogRecord
     {
         return new LogRecord(new \DateTimeImmutable(), $channel, Level::Error, $message);

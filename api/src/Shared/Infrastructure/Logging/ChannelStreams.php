@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Logging;
 
-use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Level;
@@ -21,7 +20,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * request that fails still brings every channel's context along. In a container, `LOG_DIRECTORY` is empty and every
  * record is one JSON line on STDERR, naming its channel, for the log driver to rotate. Self-hosted without
  * containers, it names a directory and each channel has its own JSON file there (`request.log`, `doctrine.log`…),
- * rotated by the shipped logrotate configuration.
+ * rotated by the shipped logrotate configuration. A link's token is masked on every line (SecretTokens).
  */
 final class ChannelStreams extends AbstractProcessingHandler
 {
@@ -71,7 +70,7 @@ final class ChannelStreams extends AbstractProcessingHandler
     private function open(string $path): StreamHandler
     {
         $handler = new StreamHandler($path, $this->level, true, null, false);
-        $handler->setFormatter(new JsonFormatter());
+        $handler->setFormatter(new TokenMaskingJsonFormatter());
 
         return $handler;
     }

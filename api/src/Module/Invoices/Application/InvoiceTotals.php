@@ -74,7 +74,7 @@ final readonly class InvoiceTotals
 
             return $this->of($invoice);
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
-            throw new InvalidInvoice('lines', $refused->getMessage());
+            throw new InvalidInvoice($refused->field('quantity'), $refused->getMessage());
         }
     }
 

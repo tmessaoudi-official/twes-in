@@ -40,6 +40,21 @@ final class ScrubPersonalDataTest extends TestCase
         self::assertStringNotContainsString('198.51.100.7', self::payload($scrubbed));
     }
 
+    public function testALinksTokenLeavesNeitherThePathNorTheMessage(): void
+    {
+        $token = str_repeat('c0ffee42', 8);
+        $event = Event::createEvent();
+        $event->setRequest(['url' => 'https://twes.test/api/signup/'.$token.'/complete', 'method' => 'POST']);
+        $event->setMessage('Sign-up '.$token.' refused', [], 'Sign-up '.$token.' refused');
+        $event->setExceptions([new ExceptionDataBag(new \RuntimeException('No route found for "GET /api/invitations/'.$token.'"'))]);
+
+        $scrubbed = self::scrub($event);
+
+        self::assertSame(['url' => 'https://twes.test/api/signup/[token]/complete', 'method' => 'POST'], $scrubbed->getRequest());
+        self::assertSame('Sign-up [token] refused', $scrubbed->getMessage());
+        self::assertStringNotContainsString($token, self::payload($scrubbed));
+    }
+
     public function testNoPersonIsAttached(): void
     {
         $event = Event::createEvent();

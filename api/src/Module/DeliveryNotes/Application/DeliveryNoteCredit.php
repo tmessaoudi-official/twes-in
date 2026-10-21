@@ -53,7 +53,7 @@ final readonly class DeliveryNoteCredit
         try {
             $total = Decimal::of($this->totals->of($note, $taken)->total);
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
-            throw new InvalidDeliveryNote('lines', $refused->getMessage());
+            throw new InvalidDeliveryNote($refused->field('quantity'), $refused->getMessage());
         }
         $after = $owed->add($total);
         $pending = \in_array($note->getStatus(), [DeliveryNoteStatus::Draft, DeliveryNoteStatus::Validated], true);

@@ -19,6 +19,12 @@ use BcMath\Number;
  */
 final class DocumentCalculator
 {
+    /**
+     * The most an amount column holds, NUMERIC(14,3) (docs/SPEC.md § 3 Money): a quantity and a price each within their
+     * own bounds can come to more, which is refused here, on its line, rather than by the database when a document is issued.
+     */
+    private const string LARGEST_AMOUNT = '99999999999.999';
+
     public function calculate(DocumentInput $document): DocumentTotals
     {
         $this->guard($document);
@@ -59,10 +65,14 @@ final class DocumentCalculator
 
         $lines = [];
         foreach ($document->lines as $i => $line) {
+            // A line's tax and what it comes to with it are figures of their own, kept with the line once issued.
+            $lineTax = Decimal::sum(array_map(static fn (array $levy): Number => $levy[2], $lineTaxes[$i]));
+            $net = $inclusive ? $nets[$i] : $typed[$i];
+            $this->bounded([$amounts[$i], $discounts[$i], $typed[$i], $net, $shares[$i], $lineTax, $net->add($lineTax), ...array_merge(...array_map(static fn (array $levy): array => [$levy[1], $levy[2]], $lineTaxes[$i]))], $i);
             $lines[] = new LineTotals(
                 Decimal::format($amounts[$i], $scale),
                 Decimal::format($discounts[$i], $scale),
-                Decimal::format($inclusive ? $nets[$i] : $typed[$i], $scale),
+                Decimal::format($net, $scale),
                 $inclusive ? Decimal::format($typed[$i], $scale) : null,
                 Decimal::format($shares[$i], $scale),
                 array_map(
@@ -119,6 +129,8 @@ final class DocumentCalculator
             $withholdings[] = new TaxTotal($tax->code, $tax->rate, Decimal::format($beforeCharges, $scale), Decimal::format(Decimal::zero(), $scale), Decimal::format($amount, $scale));
             $withheld = $withheld->add($amount);
         }
+
+        $this->bounded([$subtotalNet, Decimal::sum($typed), $documentDiscount, $netAfterDiscount, $totalTax, $total, $withheld, $total->sub($withheld), ...array_merge(...array_map(static fn (array $group): array => [$group[1], $group[2]], $groups))], null);
 
         return new DocumentTotals(
             $lines,
@@ -352,6 +364,21 @@ final class DocumentCalculator
     }
 
     /** A line's discount as an amount: said one way only, positive, money at the currency's scale, at most the line. */
+    /**
+     * @param list<Number> $figures what a line, or the whole document, comes to
+     *
+     * @throws InvalidDocument on the line given, or on the document when none is
+     */
+    private function bounded(array $figures, ?int $line): void
+    {
+        $largest = Decimal::of(self::LARGEST_AMOUNT);
+        foreach ($figures as $figure) {
+            if (Decimal::absolute($figure)->compare($largest) > 0) {
+                throw new InvalidDocument(null === $line ? \sprintf('The document comes to more than an amount holds, %s.', self::LARGEST_AMOUNT) : \sprintf('Line %d comes to more than an amount holds, %s: lower its quantity or its price.', $line + 1, self::LARGEST_AMOUNT), $line);
+            }
+        }
+    }
+
     private function guardDiscountAmount(LineInput $line, int $i, int $scale): void
     {
         $discount = (string) $line->discountAmount;
