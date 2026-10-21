@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
+import { requestState } from '../shared/feedback/request-state';
 import { InstrumentsApi } from './instruments-api';
 import type { InstrumentInput, InstrumentRow, InstrumentStep } from './instruments-types';
 import { InvoicesRefused } from './invoices-api';
 import type { InvoicesError } from './invoices-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * The cheques and traites of the one invoice a panel shows, so each panel has its own (provided by the component, not
@@ -14,15 +14,15 @@ import { QuietReads } from '../shared/feedback/quiet-reads';
 @Injectable()
 export class InstrumentsFacade {
   private readonly api = inject(InstrumentsApi);
-  private readonly quietReads = inject(QuietReads);
 
   private readonly itemsSignal = signal<readonly InstrumentRow[]>([]);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<InvoicesError | null>(null);
+  private readonly state = requestState<InvoicesError>((error) =>
+    error instanceof InvoicesRefused ? error.code : 'network',
+  );
 
   readonly items = this.itemsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   async load(companyId: string, invoiceId: string): Promise<void> {
     await this.run(async () => {
@@ -57,22 +57,11 @@ export class InstrumentsFacade {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
   private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
-    const marked = !(reading && this.quietReads.quiet());
-    if (marked) this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      await work();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(error instanceof InvoicesRefused ? error.code : 'network');
-      return false;
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    return reading ? this.state.read(work) : this.state.write(work);
   }
 }

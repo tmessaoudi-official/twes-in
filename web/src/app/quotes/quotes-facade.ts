@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import type {
   CustomerOption,
@@ -22,7 +23,6 @@ import type {
   QuoteStatusCounts,
 } from './quotes-types';
 import type { PreviewBody } from '../shared/documents/document-figures';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * The quotes of the company being worked in, the quote open on screen, its files and what its form offers. It is
@@ -31,18 +31,15 @@ import { QuietReads } from '../shared/feedback/quiet-reads';
 @Injectable({ providedIn: 'root' })
 export class QuotesFacade implements LineCatalogue {
   private readonly api = inject(QuotesApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly quotesSignal = signal<readonly QuoteRow[]>([]);
   private readonly optionsSignal = signal<InvoiceOptions | null>(null);
   private readonly quoteSignal = signal<QuoteRow | null>(null);
   private readonly attachmentsSignal = signal<readonly QuoteAttachment[]>([]);
   private readonly totalSignal = signal(0);
   private readonly statusCountsSignal = signal<QuoteStatusCounts | null>(null);
-  private pageRequest = 0;
-  private countsRequest = 0;
-  private readonly busySignal = signal(false);
-  private reads = 0;
-  private readonly errorSignal = signal<QuotesError | null>(null);
+  private readonly pageRequests = new LatestRequest();
+  private readonly countsRequests = new LatestRequest();
+  private readonly state = requestState(codeOf);
 
   readonly quotes = this.quotesSignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
@@ -54,8 +51,8 @@ export class QuotesFacade implements LineCatalogue {
   readonly quote = this.quoteSignal.asReadonly();
   /** The files attached to the quote open on screen, such as the copy the customer signed. */
   readonly attachments = this.attachmentsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   /** What the list needs besides its page: the currency's scale its totals are shown at. */
   async loadListContext(companyId: string): Promise<void> {
@@ -64,20 +61,20 @@ export class QuotesFacade implements LineCatalogue {
 
   /** One page of the quotes the search finds; only the latest search's answer is shown. */
   async loadPage(companyId: string, search: QuoteSearch): Promise<void> {
-    const request = ++this.pageRequest;
+    const current = this.pageRequests.next();
     await this.read(async () => {
       const page = await this.api.quotes(companyId, search);
-      if (request !== this.pageRequest) return;
+      if (!current()) return;
       this.quotesSignal.set(page.rows);
       this.totalSignal.set(page.total);
     });
   }
 
   async loadStatusCounts(companyId: string, search: QuoteSearch): Promise<void> {
-    const request = ++this.countsRequest;
+    const current = this.countsRequests.next();
     await this.read(async () => {
       const counts = await this.api.statusCounts(companyId, search);
-      if (request === this.countsRequest) this.statusCountsSignal.set(counts);
+      if (current()) this.statusCountsSignal.set(counts);
     });
   }
 
@@ -206,7 +203,7 @@ export class QuotesFacade implements LineCatalogue {
     try {
       return await this.api.draftsOf(companyId, customerId, establishmentId);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return null;
     }
   }
@@ -253,7 +250,7 @@ export class QuotesFacade implements LineCatalogue {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   /** A picker's own call: it never marks the screen busy, because a person is typing while it runs. */
@@ -261,43 +258,21 @@ export class QuotesFacade implements LineCatalogue {
     try {
       return await call();
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return [];
     }
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) {
-      this.reads++;
-      this.busySignal.set(true);
-    }
-    // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
-    this.errorSignal.set(null);
-    try {
-      await load();
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (marked && --this.reads === 0) this.busySignal.set(false);
-    }
+    await this.state.read(load);
   }
 
   private async step(call: () => Promise<QuoteRow>): Promise<QuoteRow | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.writeAnswer(async () => {
       const quote = await call();
       this.quoteSignal.set(quote);
       return quote;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 
   private async fileStep(
@@ -305,9 +280,7 @@ export class QuotesFacade implements LineCatalogue {
     id: string,
     call: () => Promise<unknown>,
   ): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await call();
       const [attachments, quote] = await Promise.all([
         this.api.attachments(companyId, id),
@@ -315,13 +288,7 @@ export class QuotesFacade implements LineCatalogue {
       ]);
       this.attachmentsSignal.set(attachments);
       this.quoteSignal.set(quote);
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 

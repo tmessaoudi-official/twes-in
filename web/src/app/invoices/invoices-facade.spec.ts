@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
 import { InvoicesFacade } from './invoices-facade';
 import type { InvoiceInput, InvoiceOptions, InvoiceRow } from './invoices-types';
@@ -249,6 +250,28 @@ describe('InvoicesFacade', () => {
     api.invoice.mockRejectedValueOnce(new InvoicesRefused('not_found'));
     expect(await facade.peek('c1', 'gone')).toBeNull();
     expect(facade.error()).toBeNull();
+    expect(facade.busy()).toBe(false);
+  });
+
+  it('marks a step busy until it answers, even during a quiet reload or when a read ends first', async () => {
+    let seen: boolean | null = null;
+    api.cancel.mockImplementationOnce(() => {
+      seen = facade.busy();
+      return Promise.resolve(draft);
+    });
+    await TestBed.inject(QuietReads).quietly(() => facade.cancel('c1', 'i1'));
+    expect(seen).toBe(true);
+    expect(facade.busy()).toBe(false);
+
+    let answer: (row: InvoiceRow) => void = () => undefined;
+    api.cancel.mockReturnValue(new Promise<InvoiceRow>((resolve) => (answer = resolve)));
+    api.options.mockResolvedValue(options);
+    const cancelling = facade.cancel('c1', 'i1');
+    await facade.loadListContext('c1');
+    // The read the person asked for ended; the cancel is still on its way, so nothing may be pressed again.
+    expect(facade.busy()).toBe(true);
+    answer(draft);
+    await cancelling;
     expect(facade.busy()).toBe(false);
   });
 

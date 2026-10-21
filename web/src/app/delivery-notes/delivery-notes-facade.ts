@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { DeliveryNotesApi, DeliveryNotesRefused } from './delivery-notes-api';
 import type { PickAsked } from '../shared/form/pick-api';
@@ -21,24 +22,20 @@ import type {
   InvoiceDraftOption,
   InvoicingCheck,
 } from './delivery-notes-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The delivery notes of the company being worked in, the note open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
 export class DeliveryNotesFacade {
   private readonly api = inject(DeliveryNotesApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly prices = inject(PriceListsApi);
   private readonly notesSignal = signal<readonly DeliveryNoteRow[]>([]);
   private readonly optionsSignal = signal<DeliveryNoteOptions | null>(null);
   private readonly noteSignal = signal<DeliveryNoteRow | null>(null);
   private readonly totalSignal = signal(0);
   private readonly statusCountsSignal = signal<DeliveryNoteStatusCounts | null>(null);
-  private pageRequest = 0;
-  private countsRequest = 0;
-  private readonly busySignal = signal(false);
-  private reads = 0;
-  private readonly errorSignal = signal<DeliveryNotesError | null>(null);
+  private readonly pageRequests = new LatestRequest();
+  private readonly countsRequests = new LatestRequest();
+  private readonly state = requestState(codeOf);
 
   readonly notes = this.notesSignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
@@ -48,8 +45,8 @@ export class DeliveryNotesFacade {
   readonly total = this.totalSignal.asReadonly();
   /** What each status chip of the list would show; null until read, and kept while a new count is on its way. */
   readonly statusCounts = this.statusCountsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   /** What the list screen needs besides its page: the options that name its drafts' customers. */
   async loadListContext(companyId: string): Promise<void> {
@@ -84,10 +81,10 @@ export class DeliveryNotesFacade {
    * keystroke and they need not come back in order.
    */
   async loadPage(companyId: string, search: DeliveryNoteSearch): Promise<void> {
-    const request = ++this.pageRequest;
+    const current = this.pageRequests.next();
     await this.read(async () => {
       const page = await this.api.notes(companyId, search);
-      if (request !== this.pageRequest) return;
+      if (!current()) return;
       this.notesSignal.set(page.rows);
       this.totalSignal.set(page.total);
     });
@@ -99,10 +96,10 @@ export class DeliveryNotesFacade {
 
   /** The chips' counts for the search, the latest search's answer only, as for its page. */
   async loadStatusCounts(companyId: string, search: DeliveryNoteSearch): Promise<void> {
-    const request = ++this.countsRequest;
+    const current = this.countsRequests.next();
     await this.read(async () => {
       const counts = await this.api.statusCounts(companyId, search);
-      if (request === this.countsRequest) this.statusCountsSignal.set(counts);
+      if (current()) this.statusCountsSignal.set(counts);
     });
   }
 
@@ -208,11 +205,11 @@ export class DeliveryNotesFacade {
 
   /** What of the note is still to invoice, or null with the reason in `error`. */
   async left(companyId: string, id: string): Promise<DeliveryNoteLeft | null> {
-    this.errorSignal.set(null);
+    this.state.clearError();
     try {
       return await this.api.left(companyId, id);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return null;
     }
   }
@@ -227,16 +224,7 @@ export class DeliveryNotesFacade {
     quantities?: Readonly<Record<string, string>>,
     intoDraftId?: string,
   ): Promise<string | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      return await this.api.invoice(companyId, [id], quantities, intoDraftId);
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.writeAnswer(() => this.api.invoice(companyId, [id], quantities, intoDraftId));
   }
 
   /*
@@ -283,7 +271,7 @@ export class DeliveryNotesFacade {
     try {
       return await this.api.draftsOf(companyId, customerId, establishmentId);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return null;
     }
   }
@@ -293,7 +281,7 @@ export class DeliveryNotesFacade {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   /** A picker's own call: it never marks the screen busy, because a person is typing while it runs. */
@@ -301,43 +289,21 @@ export class DeliveryNotesFacade {
     try {
       return await call();
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return [];
     }
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) {
-      this.reads++;
-      this.busySignal.set(true);
-    }
-    // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
-    this.errorSignal.set(null);
-    try {
-      await load();
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (marked && --this.reads === 0) this.busySignal.set(false);
-    }
+    await this.state.read(load);
   }
 
   private async step(call: () => Promise<DeliveryNoteRow>): Promise<DeliveryNoteRow | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.writeAnswer(async () => {
       const note = await call();
       this.noteSignal.set(note);
       return note;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 
