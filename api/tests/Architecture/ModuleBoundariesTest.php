@@ -113,6 +113,38 @@ final class ModuleBoundariesTest extends TestCase
         }
     }
 
+    /**
+     * The crossings above are kept for reading. A pair on the list lets every file of the module name the class, so
+     * without this a write or a row lock through it would pass unseen: changing or holding another module's rows is that
+     * module's to do, through a port the caller owns. What a regex cannot type, a mutator called on another module's
+     * entity, stays a matter for review.
+     */
+    public function testACrossingKeptForReadingNeverWritesOrLocks(): void
+    {
+        $violations = [];
+        $repositories = 0;
+        foreach ($this->files() as $relative => $path) {
+            $module = (string) strstr($relative, '/', true);
+            $content = (string) file_get_contents($path);
+            foreach ($this->foreignNames($content, $module) as $name => $short) {
+                if (str_contains($name, '\\Domain\\Repository\\')) {
+                    preg_match_all('/'.preg_quote($short, '/').'\s+\$(\w+)/', $content, $properties);
+                    foreach (array_unique($properties[1]) as $property) {
+                        ++$repositories;
+                        if (1 === preg_match('/\$(?:this->)?'.$property.'\??->(save|remove|lock\w*)\(/', $content, $call)) {
+                            $violations[] = "$relative calls $short::$call[1]()";
+                        }
+                    }
+                }
+                if (str_contains($name, '\\Domain\\Model\\') && 1 === preg_match('/from\(\s*'.preg_quote($short, '/').'::class[^;]*->setLockMode\(/', $content)) {
+                    $violations[] = "$relative locks $short in a query of its own";
+                }
+            }
+        }
+        self::assertGreaterThan(30, $repositories, 'the modules hold each other\'s repositories in some forty places: a scan finding few has stopped reading them');
+        self::assertSame([], $violations, "A crossing kept for reading reads; a write or a lock goes through a port the caller owns:\n".implode("\n", $violations));
+    }
+
     public function testAnotherModulesRepositoryIsNeverAContractThoughItIsAnInterface(): void
     {
         $contract = new \ReflectionMethod($this, 'isContract');

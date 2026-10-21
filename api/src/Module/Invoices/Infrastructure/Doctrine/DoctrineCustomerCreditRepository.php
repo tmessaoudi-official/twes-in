@@ -11,11 +11,11 @@ namespace App\Module\Invoices\Infrastructure\Doctrine;
 
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Invoices\Application\Credit\CustomerAccountsHeld;
 use App\Module\Invoices\Domain\Model\CustomerCreditEntry;
 use App\Module\Invoices\Domain\Repository\CustomerCreditRepository;
 use App\Module\Invoices\Domain\ValueObject\CreditEntryKind;
 use App\Shared\Infrastructure\Doctrine\Rows;
-use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -24,7 +24,7 @@ final readonly class DoctrineCustomerCreditRepository implements CustomerCreditR
     /** The entries of the customer kept and of every customer merged into it, merges being one level deep. */
     private const string HELD_BY = '(ec.id = :kept OR IDENTITY(ec.mergedInto) = :kept)';
 
-    public function __construct(private EntityManagerInterface $entityManager)
+    public function __construct(private EntityManagerInterface $entityManager, private CustomerAccountsHeld $held)
     {
     }
 
@@ -54,18 +54,9 @@ final readonly class DoctrineCustomerCreditRepository implements CustomerCreditR
     {
         // The customer's row is the lock every use of the balance takes, so two of them never both fit it. A deposit,
         // a refund given back or a payment deleted adds or removes entries without it, and none of them lowers the
-        // sum: it can grow before this transaction ends, never shrink below what was read.
-        // Doctrine refuses the lock outside a transaction.
-        $this->entityManager->createQueryBuilder()
-            ->select('c.id')
-            ->from(Customer::class, 'c')
-            ->where('c.id = :customer')
-            ->andWhere('c.company = :company')
-            ->setParameter('customer', $this->kept($customerId), 'uuid')
-            ->setParameter('company', $companyId, 'uuid')
-            ->getQuery()
-            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
-            ->getResult();
+        // sum: it can grow before this transaction ends, never shrink below what was read. The row is the customers'
+        // own, so they hold it; outside a transaction the hold refuses.
+        $this->held->hold($companyId, $customerId);
 
         return $this->balance($companyId, $customerId);
     }

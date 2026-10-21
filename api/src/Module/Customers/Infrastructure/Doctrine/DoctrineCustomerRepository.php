@@ -20,7 +20,9 @@ use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
@@ -121,6 +123,25 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
         $customer = $this->entityManager->find(Customer::class, $id);
 
         return null !== $customer && $customer->getCompany()->getId()->equals($companyId) ? $customer : null;
+    }
+
+    public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Customer
+    {
+        $customer = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Customer::class, 'c')
+            ->where('c.id = :id')
+            ->andWhere('c.company = :company')
+            ->setParameter('id', $id, 'uuid')
+            ->setParameter('company', $companyId, 'uuid')
+            ->getQuery()
+            // SELECT … FOR UPDATE, which Doctrine refuses outside a transaction; the refresh hint replaces whatever an
+            // earlier read of the row in this request left in memory with what the lock just read.
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+
+        return $customer instanceof Customer ? $customer : null;
     }
 
     public function pick(Uuid $companyId, string $words, int $limit): array
