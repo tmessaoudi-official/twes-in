@@ -146,6 +146,11 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
   wsl -d Ubuntu --cd ~ -- grep -E '^(APP_MFA_KEY|BACKUP_DATABASE_PASSPHRASE|BACKUP_FILES_PASSPHRASE|APP_SECRET|POSTGRES_PASSWORD)=' .twes-in/install.env
   ```
 
+- [ ] The restore drill with the person you named to restore the shop if you cannot (their name stays out of this
+  repository): give them the sealed copy of the two backup passphrases, then run the drill together on this machine,
+  never on the shop's data, `make backup-drill DRILL=local < /dev/null` (a shop's backup folder and off-site copy restored
+  into empty volumes, its own compose project, removed at the end), reading `docs/RUNBOOK.md` « Restore a shop » aloud as
+  it goes, so they know each step before they ever need it.
 - [ ] The client's Excel file, under `var/claude/client-excel/`, to map its columns into the importer (plan step 4).
 - [ ] Read `var/claude/client-excel/out/report.md` (on this machine only, never committed): how each sheet of the
   workbook was read and every doubt left, then answer the questions Claude asks about it. The five files beside it are

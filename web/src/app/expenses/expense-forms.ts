@@ -63,6 +63,7 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       // Who was paid: the vendor, else the payee written on the expense; the API sorts by the same.

@@ -105,6 +105,13 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
+    # WHY: the shop's iPhones run Safari's engine, which sends no `Secure` cookie over plain http, so the @phone
+    # scenarios run on WebKit through the stack's HTTPS door (the `lan` service), as `make up` starts it on a
+    # developer's machine. The door is named by this runner's own address, the same three values the Makefile derives.
+    env:
+      COMPOSE_PROFILES: lan
+      LAN_HOST: 127.0.0.1
+      LAN_ORIGIN: https://127.0.0.1:8443
     steps:
       # The images are built as the version git says each part is (scripts/build-version.sh), which counts the day's
       # changes: the whole history, not the one commit a checkout fetches.

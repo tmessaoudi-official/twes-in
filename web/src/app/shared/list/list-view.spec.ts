@@ -15,6 +15,7 @@ import {
   saveView,
   sortRows,
   withCustomColumns,
+  wrapWidths,
 } from './list-view';
 
 interface Customer {
@@ -401,5 +402,44 @@ describe('fittedWidth', () => {
 
   it('keeps a width a person chose, even one that cuts', () => {
     expect(fittedWidth(120, 214, true, 960)).toBe(120);
+  });
+});
+
+describe('wrapWidths', () => {
+  it('gives a column whose long values wrap whatever the card leaves beside the others', () => {
+    // 300 of other columns and actions on a 1000 card: the customer's name has 700 to wrap in.
+    expect(wrapWidths(new Map([['customer', 160]]), 300, 1000)).toEqual(
+      new Map([['customer', 700]]),
+    );
+  });
+
+  it('keeps its floor where the card leaves less, so its value takes another line and no column gives way', () => {
+    expect(wrapWidths(new Map([['customer', 160]]), 950, 1000)).toEqual(
+      new Map([['customer', 160]]),
+    );
+  });
+
+  it('shares what is left between several, each above its own floor, never past the card', () => {
+    const widths = wrapWidths(
+      new Map([
+        ['name', 200],
+        ['description', 100],
+      ]),
+      301,
+      1000,
+    );
+    // 699 left over 300 of floors: 399 to share, 199 each, the pixel that does not divide left unused.
+    expect(widths).toEqual(
+      new Map([
+        ['name', 399],
+        ['description', 299],
+      ]),
+    );
+  });
+
+  it('keeps the floors until the card is measured', () => {
+    expect(wrapWidths(new Map([['customer', 160]]), 300, null)).toEqual(
+      new Map([['customer', 160]]),
+    );
   });
 });

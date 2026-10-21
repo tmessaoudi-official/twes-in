@@ -345,7 +345,13 @@ export const REGIME_LIST: ListDescriptor<CustomerTaxRegimeRow> = {
   rowId: (row) => row.code,
   pageSizes: [25],
   columns: [
-    { id: 'label', label: 'fiscal.regimes.label', value: (row) => row.label, hideable: false },
+    {
+      id: 'label',
+      label: 'fiscal.regimes.label',
+      value: (row) => row.label,
+      hideable: false,
+      wraps: true,
+    },
     {
       id: 'excluded',
       label: 'fiscal.regimes.excluded',

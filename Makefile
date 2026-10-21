@@ -306,13 +306,13 @@ test-web: web-tools-image
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx ng test --watch=false'
 
 E2E_ARGS ?=
-# The browser build the project's own @playwright/test names (the image installs the same version: scripts/gates/version-pins.sh),
+# The browser builds (Chromium, and WebKit for the phone scenarios) the project's own @playwright/test names (the image installs the same version: scripts/gates/version-pins.sh),
 # kept in var/cache/ms-playwright (gitignored). Downloaded on Docker's default network, NOT the host's the toolchain runs on:
 # on the host network the download timed out in every try here (this machine's IPv6 route to Google's storage is dead,
 # docs/START.md); on the default network it took 23 s (measured 2026-10-03, no environment variable needed).
 playwright-browser: web-tools-image
 	mkdir -p var/cache/ms-playwright
-	docker run --rm -u $(HOST_UID):$(HOST_GID) -e HOME=/tmp -e PLAYWRIGHT_BROWSERS_PATH=$(HOST_REPO)/var/cache/ms-playwright -v $(HOST_REPO)/var/cache/ms-playwright:$(HOST_REPO)/var/cache/ms-playwright twes-in-web-tools playwright install chromium >/dev/null
+	docker run --rm -u $(HOST_UID):$(HOST_GID) -e HOME=/tmp -e PLAYWRIGHT_BROWSERS_PATH=$(HOST_REPO)/var/cache/ms-playwright -v $(HOST_REPO)/var/cache/ms-playwright:$(HOST_REPO)/var/cache/ms-playwright twes-in-web-tools playwright install chromium webkit >/dev/null
 
 e2e: playwright-browser   ## needs the full stack up; E2E_ARGS passes options through, e.g. E2E_ARGS=--shard=1/3
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx playwright test $(E2E_ARGS)'

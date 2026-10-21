@@ -613,39 +613,45 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
   }
 });
 
-test('on a phone a new invoice is saved from its bar, not only from « ⋮ »', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await signIn(page);
-  await inACompany(page, CSRF);
-  await page.goto('/invoices/new');
+test(
+  'on a phone a new invoice is saved from its bar, not only from « ⋮ »',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await inACompany(page, CSRF);
+    await page.goto('/invoices/new');
 
-  const save = page.getByTestId('document-action-save');
-  await expect(save).toBeVisible();
-  await expect(save).toHaveAccessibleName('Enregistrer le brouillon');
-});
+    const save = page.getByTestId('document-action-save');
+    await expect(save).toBeVisible();
+    await expect(save).toHaveAccessibleName('Enregistrer le brouillon');
+  },
+);
 
-test('on a phone the fields of a line stand apart, so no label is drawn on the field above', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await signIn(page);
-  await inACompany(page, CSRF);
-  await page.goto('/invoices/new');
-  await expect(page.getByTestId('line-0')).toBeVisible();
+test(
+  'on a phone the fields of a line stand apart, so no label is drawn on the field above',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await inACompany(page, CSRF);
+    await page.goto('/invoices/new');
+    await expect(page.getByTestId('line-0')).toBeVisible();
 
-  const gaps = await page
-    .getByTestId('line-0')
-    .locator('.mat-mdc-text-field-wrapper')
-    .evaluateAll((boxes) =>
-      boxes
-        .map((box) => box.getBoundingClientRect())
-        .filter((box) => box.height > 0)
-        .sort((a, b) => a.top - b.top)
-        .flatMap((box, index, all) => (index === 0 ? [] : [box.top - all[index - 1].bottom])),
-    );
-  expect(gaps.length).toBeGreaterThan(3);
-  expect(Math.min(...gaps)).toBeGreaterThanOrEqual(12);
-});
+    const gaps = await page
+      .getByTestId('line-0')
+      .locator('.mat-mdc-text-field-wrapper')
+      .evaluateAll((boxes) =>
+        boxes
+          .map((box) => box.getBoundingClientRect())
+          .filter((box) => box.height > 0)
+          .sort((a, b) => a.top - b.top)
+          .flatMap((box, index, all) => (index === 0 ? [] : [box.top - all[index - 1].bottom])),
+      );
+    expect(gaps.length).toBeGreaterThan(3);
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(12);
+  },
+);
 
 /** A customer of the run's own and two drafts for it, through the API, so the list holds exactly what is selected. */
 async function twoDrafts(

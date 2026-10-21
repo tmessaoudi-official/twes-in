@@ -263,6 +263,8 @@ services:
       # The browser build @playwright/test names, put there by `make playwright-browser` and kept in the tree's gitignored var/.
       # Passed through only when the caller sets it (`BASE_URL=… make e2e`): an empty one would defeat the config's default.
       BASE_URL:
+      # The HTTPS door's address, which the Makefile exports: the WebKit scenarios run through it (web/playwright.config.ts).
+      LAN_ORIGIN:
       # `make gallery`'s choices (web/e2e-gallery/gallery.spec.ts), passed through the same way.
       GALLERY_AS:
       GALLERY_AXE:

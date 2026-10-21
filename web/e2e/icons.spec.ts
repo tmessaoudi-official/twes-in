@@ -36,7 +36,7 @@ test('every icon on the main screens is drawn, none left as its name in letters'
   }
 });
 
-test.describe('on a phone', () => {
+test.describe('on a phone', { tag: '@phone' }, () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('no icon is squeezed narrower than it is drawn beside a long text', async ({ page }) => {

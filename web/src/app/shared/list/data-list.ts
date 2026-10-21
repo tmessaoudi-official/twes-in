@@ -78,6 +78,7 @@ import {
   filterRows,
   fitColumns,
   fittedWidth,
+  wrapWidths,
   isColumnVisible,
   orderColumns,
   paginate,
@@ -150,8 +151,8 @@ export const LIST_SEARCH_PAUSE_MS = 300;
 const clampWidth = (width: number): number => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
 
 /**
- * How wide a cell's value, or a header's label, draws whole, its padding included. A cell never wraps, so its text
- * lays out on one line however narrow the column: a range over each text measures it whole even where an ellipsis cuts
+ * How wide a cell's value, or a header's label, draws whole, its padding included. A cell that does not wrap lays its
+ * text out on one line however narrow the column: a range over each text measures it whole even where an ellipsis cuts
  * what is painted, and an inline box (a chip, an icon) by its own box. A block box would measure the column, not its
  * value.
  */
@@ -1103,8 +1104,29 @@ export class DataList<Row> implements OnInit {
   protected widthOf(column: ListColumn<Row>): number {
     const live = this.liveWidth();
     if (live?.id === column.id) return live.width;
-    return this.columnWidth(column);
+    return this.wrapped().get(column.id) ?? this.columnWidth(column);
   }
+
+  /**
+   * The columns shown whose long values wrap, at what the card leaves them beside the others; a width a person chose
+   * holds. Weighed after the fit, at their floors, so a long name takes another line before any column gives way.
+   */
+  private readonly wrapped = computed<ReadonlyMap<string, number>>(() => {
+    const chosen = this.preferences().widths;
+    const shown = this.shownColumns();
+    const wraps = shown.filter(
+      (column) => column.wraps === true && chosen[column.id] === undefined,
+    );
+    if (wraps.length === 0) return new Map();
+    const others = shown
+      .filter((column) => !wraps.includes(column))
+      .reduce((sum, column) => sum + this.columnWidth(column), 0);
+    return wrapWidths(
+      new Map(wraps.map((column) => [column.id, this.columnWidth(column)])),
+      others + this.selectWidth() + (this.hasRowControls() ? this.actionsWidth() : 0),
+      this.boxWidth(),
+    );
+  });
 
   /**
    * A cell its column cuts gets its whole text as a title on hover or focus, so the five serials an ellipsis made alike can
@@ -1132,8 +1154,9 @@ export class DataList<Row> implements OnInit {
    * Measures every column's header and the values its rows show; the columns not shown keep what they last measured.
    */
   private measureValues(box: HTMLElement): void {
+    // A cell that wraps draws as wide as its column, not its value: its header alone floors the column.
     const cells = box.querySelectorAll<HTMLElement>(
-      'tr.mat-mdc-header-row > th[data-column], tr.mat-mdc-row > td[data-column]',
+      'tr.mat-mdc-header-row > th[data-column], tr.mat-mdc-row > td[data-column]:not([data-wraps])',
     );
     if (cells.length === 0) return;
     const range = this.document.createRange();

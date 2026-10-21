@@ -64,7 +64,7 @@ The Makefile is the one entry point:
 
 The first run of each builds its image (`make tools-image`, `make web-tools-image`; both are no-ops when nothing
 changed) and installs the dependencies into the working tree's own `api/vendor` and `web/node_modules`, which are
-gitignored; Chromium is downloaded once into `var/cache/ms-playwright`. `make` hands the services your uid, the
+gitignored; Chromium and WebKit (Safari's engine, for the scenarios tagged `@phone`) are downloaded once into `var/cache/ms-playwright`. `make` hands the services your uid, the
 checkout's path, the Docker socket's group and a temporary directory outside the tree (`/tmp/twes-in-tools-<uid>`:
 a gate that builds a fixture in a directory git ignores would see nothing in it). A bare `docker compose --profile tools run …` falls back to
 uid 1000 and the current directory but not to a temporary directory the Makefile made: use `make`.

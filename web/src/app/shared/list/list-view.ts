@@ -271,3 +271,21 @@ export function fitColumns(
   }
   return hidden;
 }
+
+/**
+ * The widths of the columns whose long values wrap (`ListColumn.wraps`): each at least its floor, and what the card
+ * leaves beside the other columns shared between them, so a long name takes another line before any column gives way.
+ * Until the card is measured, the floors.
+ */
+export function wrapWidths(
+  floors: ReadonlyMap<string, number>,
+  others: number,
+  card: number | null,
+): ReadonlyMap<string, number> {
+  const floorSum = [...floors.values()].reduce((sum, width) => sum + width, 0);
+  const share =
+    card === null || floors.size === 0
+      ? 0
+      : Math.max(0, Math.floor((card - others - floorSum) / floors.size));
+  return new Map([...floors].map(([id, floor]) => [id, floor + share]));
+}

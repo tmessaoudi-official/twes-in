@@ -28,32 +28,34 @@ async function colours(entry: Locator): Promise<{ label: string; icon: string }>
   });
 }
 
-test('at phone width a toast that can be taken back keeps its sentence readable', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 400, height: 860 });
-  const number = `E2E-DEL-${runDigits()}`;
-  await signIn(page);
-  await inACompany(page, CSRF);
-  await page.goto('/vendors/new');
-  await page.getByTestId('field-number').fill(number);
-  await page.getByTestId('field-name').fill('Visserie du Cap Bon');
-  await page.getByTestId('record-save').click();
-  await expect(page).toHaveURL(/\/vendors\/[0-9a-f-]{36}$/);
-  await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
+test(
+  'at phone width a toast that can be taken back keeps its sentence readable',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 400, height: 860 });
+    const number = `E2E-DEL-${runDigits()}`;
+    await signIn(page);
+    await inACompany(page, CSRF);
+    await page.goto('/vendors/new');
+    await page.getByTestId('field-number').fill(number);
+    await page.getByTestId('field-name').fill('Visserie du Cap Bon');
+    await page.getByTestId('record-save').click();
+    await expect(page).toHaveURL(/\/vendors\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
 
-  await page.getByTestId('record-more').click();
-  await page.getByTestId('record-menu-delete').click();
-  const shown = toast(page);
-  await expect(shown).toContainText(number);
-  // The sentence takes the toast's whole width, its kind and « Annuler » on a row of their own: squeezed beside them,
-  // the vendor's name broke after every word.
-  const [message, whole] = await Promise.all([
-    shown.locator('.twes-toast-message').boundingBox(),
-    shown.boundingBox(),
-  ]);
-  expect((message?.width ?? 0) / (whole?.width ?? 1)).toBeGreaterThan(0.7);
-});
+    await page.getByTestId('record-more').click();
+    await page.getByTestId('record-menu-delete').click();
+    const shown = toast(page);
+    await expect(shown).toContainText(number);
+    // The sentence takes the toast's whole width, its kind and « Annuler » on a row of their own: squeezed beside them,
+    // the vendor's name broke after every word.
+    const [message, whole] = await Promise.all([
+      shown.locator('.twes-toast-message').boundingBox(),
+      shown.boundingBox(),
+    ]);
+    expect((message?.width ?? 0) / (whole?.width ?? 1)).toBeGreaterThan(0.7);
+  },
+);
 
 test('a vendor is deleted, taken back from its toast, and put back from « Récemment supprimés »', async ({
   page,

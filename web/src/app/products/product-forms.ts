@@ -114,6 +114,7 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'kind',

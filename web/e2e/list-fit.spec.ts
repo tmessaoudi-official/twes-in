@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { aCustomer, aProduct, aVendor, forget, retireVendor } from './catalogue';
 import { forgetPresentationChoices } from './presentation';
@@ -203,6 +203,66 @@ test.describe('no list cuts a value', () => {
     }
   });
 
+  // A customer's name a person typed may be longer than any laptop leaves it: it takes another line, and sends no column
+  // away that a short name keeps, the status, the column the list is read for beside it, first among them.
+  test('a long customer name takes another line and sends no column away', async ({ page }) => {
+    const digits = runDigits();
+    const longNamed = await aCustomerNamed(
+      page,
+      `L${digits}`,
+      'Société générale de quincaillerie, matériaux de construction et outillage du Sahel',
+    );
+    const shortNamed = await aCustomerNamed(page, `S${digits}`, 'Sahel');
+    const invoices = [await aDraft(page, longNamed), await aDraft(page, shortNamed)];
+    try {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      const squeezedFor = async (customerId: string): Promise<string[]> => {
+        await page.goto(`/invoices?customer=${customerId}`);
+        await expect(page.locator(RECORD_ROW)).toHaveCount(1);
+        await page.evaluate(() => document.fonts.ready);
+        return squeezedNow();
+      };
+      const squeezedNow = async (): Promise<string[]> => {
+        await page.getByTestId('list-columns').click();
+        await expect(page.getByTestId('list-columns-reset')).toBeVisible();
+        const squeezed = await page
+          .locator('[data-testid^="list-column-squeezed-"]')
+          .evaluateAll((entries) =>
+            entries.map((entry) => entry.getAttribute('data-testid') ?? ''),
+          );
+        await page.keyboard.press('Escape');
+        return squeezed;
+      };
+      const besideAShortName = await squeezedFor(shortNamed);
+      expect(besideAShortName).not.toContain('list-column-squeezed-status');
+      expect(await squeezedFor(longNamed)).toEqual(besideAShortName);
+      await expect(page.getByTestId('list-header-status')).toBeVisible();
+      const name = page.locator(`${RECORD_ROW} td[data-column="customer"] .twes-value`);
+      await expect.poll(() => drawnLines(name)).toBeGreaterThan(1);
+      expect((await cutValues(page)).cut).toEqual([]);
+      // A wrapping cell draws as wide as the room it is given, so measuring it would keep a wider window's room: the rows
+      // read on a wide window, then a narrower one, the list sends away no column a fresh page at that width keeps. At
+      // 1360 the card is narrower than at 1600 and no column has to give way, so a kept room would send one away.
+      await page.setViewportSize({ width: 1360, height: 900 });
+      const freshAt1360 = await squeezedFor(longNamed);
+      await page.setViewportSize({ width: 1600, height: 900 });
+      await page.reload();
+      await expect(page.locator(RECORD_ROW)).toHaveCount(1);
+      const tableWidth = (): Promise<number> =>
+        page.evaluate(() => document.querySelector('table.mat-mdc-table')?.clientWidth ?? 0);
+      await expect.poll(tableWidth).toBeGreaterThan(1050);
+      await page.evaluate(
+        () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+      );
+      await page.setViewportSize({ width: 1360, height: 900 });
+      await expect.poll(() => scrollsSideways(page)).toBe(false);
+      expect(await squeezedNow()).toEqual(freshAt1360);
+      expect((await cutValues(page)).cut).toEqual([]);
+    } finally {
+      for (const invoice of invoices) await cancelDraft(page, invoice);
+    }
+  });
+
   // The status floor is its longest label in any language, so on a laptop the room it does not need goes to the
   // customer's name before the status gives way; a wider floor sent the status away for no label.
   test('the invoice status column is as wide as its longest label, and no wider', async ({
@@ -367,4 +427,43 @@ async function cancelDraft(page: Page, id: string): Promise<void> {
     [CSRF, id] as const,
   );
   expect(status).toBe(200);
+}
+
+/** A customer of the run's own, with the name given. */
+async function aCustomerNamed(page: Page, number: string, name: string): Promise<string> {
+  return page.evaluate(
+    async ([csrf, customerNumber, customerName]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const created = await fetch(`/api/companies/${me.company.id}/customers`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({
+          number: customerNumber,
+          kind: 'individual',
+          taxRegime: 'standard',
+          name: customerName,
+        }),
+      });
+      if (!created.ok) throw new Error(`creating ${customerNumber} answered ${created.status}`);
+      return ((await created.json()) as { id: string }).id;
+    },
+    [CSRF, number, name] as const,
+  );
+}
+
+/** How many lines a box's text draws on, told by the tops of its line boxes. */
+function drawnLines(box: Locator): Promise<number> {
+  return box.evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
+  });
+}
+
+/** Whether the list's table is wider than its card, so its columns run past the edge. */
+function scrollsSideways(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const box = document.querySelector<HTMLElement>('.twes-list-table');
+    return box === null ? true : box.scrollWidth > box.clientWidth + 1;
+  });
 }

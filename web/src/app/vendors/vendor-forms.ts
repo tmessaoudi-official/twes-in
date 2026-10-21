@@ -48,6 +48,7 @@ export const VENDORS_LIST: ListDescriptor<VendorRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'city',

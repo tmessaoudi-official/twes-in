@@ -115,100 +115,110 @@ test('Escape closes « Créer » and leaves the sidebar where it is', async ({ p
   await expect(page.getByTestId('nav-home')).toBeInViewport();
 });
 
-test('the navigation follows the window: a rail of icons on a tablet, a bottom bar on a phone', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 900, height: 800 });
-  await signIn(page);
-  const nav = page.getByTestId('shell-nav');
-  await expect(nav).toHaveAttribute('data-window', 'medium');
-  await expect(nav).toHaveAttribute('data-sidebar', 'rail');
-  await expect(page.getByTestId('sidebar-toggle')).toHaveCount(0);
-  await expect(page.getByTestId('bottom-bar')).toHaveCount(0);
+test(
+  'the navigation follows the window: a rail of icons on a tablet, a bottom bar on a phone',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 800 });
+    await signIn(page);
+    const nav = page.getByTestId('shell-nav');
+    await expect(nav).toHaveAttribute('data-window', 'medium');
+    await expect(nav).toHaveAttribute('data-sidebar', 'rail');
+    await expect(page.getByTestId('sidebar-toggle')).toHaveCount(0);
+    await expect(page.getByTestId('bottom-bar')).toHaveCount(0);
 
-  await page.setViewportSize({ width: 390, height: 844 });
-  const bar = page.getByTestId('bottom-bar');
-  await expect(bar).toBeVisible();
-  await expect(page.getByTestId('bottom-nav-home')).toHaveAttribute('aria-current', 'page');
-  const box = await bar.boundingBox();
-  expect(box && box.y + box.height).toBeCloseTo(844, 0);
-  // Measured once the layout has settled: straight after the resize the rail is still leaving and the page reads
-  // 28 px too wide for a moment (CI 4ddf531c's last frame). A width that stays too wide still fails.
-  await expect.poll(() => sidewaysOverflow(page)).toBeLessThanOrEqual(0);
-});
+    await page.setViewportSize({ width: 390, height: 844 });
+    const bar = page.getByTestId('bottom-bar');
+    await expect(bar).toBeVisible();
+    await expect(page.getByTestId('bottom-nav-home')).toHaveAttribute('aria-current', 'page');
+    const box = await bar.boundingBox();
+    expect(box && box.y + box.height).toBeCloseTo(844, 0);
+    // Measured once the layout has settled: straight after the resize the rail is still leaving and the page reads
+    // 28 px too wide for a moment (CI 4ddf531c's last frame). A width that stays too wide still fails.
+    await expect.poll(() => sidewaysOverflow(page)).toBeLessThanOrEqual(0);
+  },
+);
 
-test('on the phone bar every icon stands centred over its word, in a pill 32 px tall', async ({
-  page,
-}) => {
-  // A tab is a link and « Créer » or « Plus » a button: only the buttons centred their glyph, so three icons stood
-  // left of their words.
-  await page.setViewportSize({ width: 390, height: 844 });
-  await signIn(page);
-  const bar = page.getByTestId('bottom-bar');
-  await expect(bar).toBeVisible();
-  const tabs = await bar.locator(':scope > a, :scope > button').evaluateAll((items) =>
-    items.map((item) => {
-      const pill = item.querySelector('.mat-icon')!.getBoundingClientRect();
-      const range = document.createRange();
-      range.selectNodeContents(item.querySelector('.mat-icon')!);
-      const glyph = range.getBoundingClientRect();
-      const word = item.querySelector('span')!.getBoundingClientRect();
-      return {
-        name: item.textContent?.trim() ?? '',
-        glyph: glyph.x + glyph.width / 2,
-        pill: pill.x + pill.width / 2,
-        word: word.x + word.width / 2,
-        height: pill.height,
-        glyphMiddle: glyph.y + glyph.height / 2,
-        pillMiddle: pill.y + pill.height / 2,
-      };
-    }),
-  );
-  expect(tabs.length).toBeGreaterThanOrEqual(4);
-  for (const tab of tabs) {
-    expect(Math.abs(tab.glyph - tab.pill), `${tab.name}: glyph in its pill`).toBeLessThanOrEqual(1);
-    expect(Math.abs(tab.pill - tab.word), `${tab.name}: pill over its word`).toBeLessThanOrEqual(1);
-    expect(
-      Math.abs(tab.glyphMiddle - tab.pillMiddle),
-      `${tab.name}: glyph mid-height`,
-    ).toBeLessThanOrEqual(1);
-    expect(tab.height, `${tab.name}: pill height`).toBeCloseTo(32, 0);
-  }
-});
+test(
+  'on the phone bar every icon stands centred over its word, in a pill 32 px tall',
+  { tag: '@phone' },
+  async ({ page }) => {
+    // A tab is a link and « Créer » or « Plus » a button: only the buttons centred their glyph, so three icons stood
+    // left of their words.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    const bar = page.getByTestId('bottom-bar');
+    await expect(bar).toBeVisible();
+    const tabs = await bar.locator(':scope > a, :scope > button').evaluateAll((items) =>
+      items.map((item) => {
+        const pill = item.querySelector('.mat-icon')!.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(item.querySelector('.mat-icon')!);
+        const glyph = range.getBoundingClientRect();
+        const word = item.querySelector('span')!.getBoundingClientRect();
+        return {
+          name: item.textContent?.trim() ?? '',
+          glyph: glyph.x + glyph.width / 2,
+          pill: pill.x + pill.width / 2,
+          word: word.x + word.width / 2,
+          height: pill.height,
+          glyphMiddle: glyph.y + glyph.height / 2,
+          pillMiddle: pill.y + pill.height / 2,
+        };
+      }),
+    );
+    expect(tabs.length).toBeGreaterThanOrEqual(4);
+    for (const tab of tabs) {
+      expect(Math.abs(tab.glyph - tab.pill), `${tab.name}: glyph in its pill`).toBeLessThanOrEqual(
+        1,
+      );
+      expect(Math.abs(tab.pill - tab.word), `${tab.name}: pill over its word`).toBeLessThanOrEqual(
+        1,
+      );
+      expect(
+        Math.abs(tab.glyphMiddle - tab.pillMiddle),
+        `${tab.name}: glyph mid-height`,
+      ).toBeLessThanOrEqual(1);
+      expect(tab.height, `${tab.name}: pill height`).toBeCloseTo(32, 0);
+    }
+  },
+);
 
-test('on a phone the settings list stands alone, a setting opens without it, and the way back returns to it', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await signIn(page);
-  // One way in, and on a phone the drawer IS "Plus": no gear in the bar, nothing in the account menu either
-  // (design review finding 8).
-  await expect(page.getByTestId('settings-gear')).toHaveCount(0);
-  await page.getByTestId('user-menu').click();
-  await expect(page.getByTestId('account-settings')).toHaveCount(0);
-  await page.keyboard.press('Escape');
-  await page.getByTestId('menu-toggle').click();
-  await page.getByTestId('nav-settings').click();
-  await expect(page).toHaveURL(/\/company$/);
-  const nav = page.getByTestId('settings-nav');
-  await expect(nav).toBeVisible();
-  await expect(page.getByTestId('settings-index')).toBeHidden();
+test(
+  'on a phone the settings list stands alone, a setting opens without it, and the way back returns to it',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    // One way in, and on a phone the drawer IS "Plus": no gear in the bar, nothing in the account menu either
+    // (design review finding 8).
+    await expect(page.getByTestId('settings-gear')).toHaveCount(0);
+    await page.getByTestId('user-menu').click();
+    await expect(page.getByTestId('account-settings')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await page.getByTestId('menu-toggle').click();
+    await page.getByTestId('nav-settings').click();
+    await expect(page).toHaveURL(/\/company$/);
+    const nav = page.getByTestId('settings-nav');
+    await expect(nav).toBeVisible();
+    await expect(page.getByTestId('settings-index')).toBeHidden();
 
-  await page.getByTestId('settings-filter').fill('membres');
-  await expect(page.getByTestId('nav-company-profile')).toHaveCount(0);
-  await page.getByTestId('nav-members').click();
-  await expect(page.getByTestId('members-title')).toBeVisible();
-  await expect(nav).toBeHidden();
-  expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
+    await page.getByTestId('settings-filter').fill('membres');
+    await expect(page.getByTestId('nav-company-profile')).toHaveCount(0);
+    await page.getByTestId('nav-members').click();
+    await expect(page.getByTestId('members-title')).toBeVisible();
+    await expect(nav).toBeHidden();
+    expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
 
-  await page.getByTestId('settings-back').click();
-  await expect(page).toHaveURL(/\/company$/);
-  await expect(nav).toBeVisible();
+    await page.getByTestId('settings-back').click();
+    await expect(page).toHaveURL(/\/company$/);
+    await expect(nav).toBeVisible();
 
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await expect(page.getByTestId('settings-back')).toBeHidden();
-  await expect(page.getByTestId('settings-index')).toBeVisible();
-});
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(page.getByTestId('settings-back')).toBeHidden();
+    await expect(page.getByTestId('settings-index')).toBeVisible();
+  },
+);
 
 test('the rail and the top bar keep every control clear of the next, down to the narrowest labelled window', async ({
   page,
