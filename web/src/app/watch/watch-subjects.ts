@@ -82,6 +82,16 @@ const OPEN_EXPENSE: RowAction<WatchRowView> = {
   shown: (view) => view.row.subjectId !== null,
 };
 
+/** The product page, whose notice says the margin before and now and settles it. */
+const REVIEW_PRICE: RowAction<WatchRowView> = {
+  id: 'review-price',
+  label: 'watch.actions.review_price',
+  labelParams: (view) => ({ name: String(view.cells['product'] ?? '') }),
+  icon: 'sell',
+  link: (view) => ['/products', view.row.subjectId],
+  shown: (view) => view.row.subjectId !== null,
+};
+
 /** The movements page, where a cost reader enters the cost of a receipt left « à compléter ». */
 const ENTER_RECEIPT_COST: RowAction<WatchRowView> = {
   id: 'enter-cost',
@@ -221,6 +231,19 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
         cell('receivedOn', { width: 140 }),
       ],
       actions: [ENTER_RECEIPT_COST],
+    },
+  },
+  // A margin a receipt's cost moved under a kept price: settled on the product, beside its form.
+  'product.margin_moved': {
+    icon: 'sell',
+    list: {
+      ...productList('margin-moved', [
+        cell('previousMargin', { align: 'end', width: 130 }),
+        cell('margin', { align: 'end', width: 130, priority: 'high' }),
+        cell('cost', { align: 'end', width: 150 }),
+        cell('price', { align: 'end', width: 150 }),
+      ]),
+      actions: [REVIEW_PRICE],
     },
   },
   'stock.lot_expiring': {

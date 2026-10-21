@@ -30,7 +30,7 @@ function text(params: WatchRow['params'], name: string): string {
 export function watchRowView(
   row: WatchRow,
   index: number,
-  figures: Pick<FormatFacade, 'amount' | 'day'>,
+  figures: Pick<FormatFacade, 'amount' | 'day' | 'decimal'>,
   say: (key: string) => string = (key) => key,
 ): WatchRowView {
   const params = row.params;
@@ -64,6 +64,13 @@ export function watchRowView(
   if ('amount' in params) {
     const currency = text(params, 'currency');
     cells['amount'] = `${figures.amount(text(params, 'amount'), null)} ${currency}`.trim();
+  }
+  // A moved margin: the prices as the screen writes amounts, the margins as it writes decimals, with their sign.
+  for (const name of ['price', 'cost', 'previousCost'] as const) {
+    if (name in params) cells[name] = figures.amount(text(params, name), null);
+  }
+  for (const name of ['previousMargin', 'margin'] as const) {
+    if (name in params) cells[name] = `${figures.decimal(text(params, name))} %`;
   }
   for (const name of ['quantity', 'onHand', 'point'] as const) {
     if (name in params) cells[name] = figures.amount(plainQuantity(text(params, name)), null);

@@ -307,6 +307,7 @@ describe('ProductsApi', () => {
       tracking: 'none',
       substitutionGroup: null,
       mainPhotoId: null,
+      priceReview: null,
       mergedInto: null,
     });
   });

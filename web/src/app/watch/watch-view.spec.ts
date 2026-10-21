@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { formatAmount, formatDay } from '../shared/i18n/format';
+import { decimalShown, formatAmount, formatDay } from '../shared/i18n/format';
 import { watchRowView } from './watch-view';
 
 const figures = {
   amount: (value: string, scale: number | null) => formatAmount(value, scale, 'fr-FR', 'auto'),
   day: (value: string) => formatDay(value, 'fr-FR', 'auto'),
+  decimal: (value: string) => decimalShown(value, 'fr-FR', 'auto'),
 };
 
 describe('watchRowView', () => {

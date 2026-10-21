@@ -675,3 +675,7 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - A toast check after a second save that says the same words passes on the first save's toast, still on screen: the
   read that follows sees the record before the second save (`fiscal.spec.ts`'s restore, red only beside other workers).
   Wait for the write's own response (`waitForResponse`, then `ok()`), then the toast (2026-10-21).
+- A day a test sends or counts from is the company's, `ApiTestCase::dayOf($company, '-3 days')`, never PHP's `date()` or
+  `new \DateTimeImmutable('today')`: between 23:00 and 00:00 UTC Tunis is already on the next day, the API reads the
+  company's, and five suites went red on CI only in that hour. Run the whole API suite inside that window to find the
+  class's members (2026-10-21).

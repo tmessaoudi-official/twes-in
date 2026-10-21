@@ -69,6 +69,16 @@
   >
     <mat-tab [label]="'products.tabs.record' | translate">
       <div class="flex flex-col gap-6 pt-4" data-testid="product-tab-record">
+        @if (priceReview(); as review) {
+          <app-product-price-review
+            [review]="review"
+            [scale]="currencyScale()"
+            [currency]="currency()"
+            [mayDecide]="editable()"
+            [busy]="busy()"
+            (decide)="settlePriceReview($event)"
+          />
+        }
         @if (form(); as form) {
           @if (sync.changedBy(); as changedBy) {
             <app-record-changed

@@ -73,6 +73,7 @@ const laptop: ProductRow = {
   substitutionGroup: null,
   mainPhotoId: null,
   mergedInto: null,
+  priceReview: null,
 };
 const warranty: CustomFieldDefinition = {
   id: 'f1',

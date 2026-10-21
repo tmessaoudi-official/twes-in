@@ -65,6 +65,7 @@ const laptop: ProductRow = {
   substitutionGroup: null,
   mainPhotoId: null,
   mergedInto: null,
+  priceReview: null,
 };
 
 const oldLaptop: ProductRow = { ...laptop, id: 'p2', reference: 'ART-001B', name: 'Portable' };

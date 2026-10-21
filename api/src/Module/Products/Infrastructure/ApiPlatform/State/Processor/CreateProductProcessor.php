@@ -11,6 +11,7 @@ namespace App\Module\Products\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Fiscal\Application\CurrencyScales;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductReferenceTaken;
@@ -25,7 +26,7 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 /** @implements ProcessorInterface<ProductResource, ProductResource> */
 final readonly class CreateProductProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageProducts $manage, private CompanyGuard $guard)
+    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private CurrencyScales $scales)
     {
     }
 
@@ -42,6 +43,6 @@ final readonly class CreateProductProcessor implements ProcessorInterface
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
-        return ProductResource::of($product, $seesCosts);
+        return ProductResource::of($product, $seesCosts, $this->scales->of($company->getCurrency()));
     }
 }

@@ -12,15 +12,23 @@ namespace App\Tests\Unit\Module\Products\Application;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Products\Application\ChangeProductCost;
 use App\Module\Products\Application\ManageProducts;
+use App\Module\Products\Application\ProductPriceSettings;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\CostChangeSource;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\ResolveSettings;
+use App\Settings\Application\SettingCatalog;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryProductCostChanges;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemorySettings;
+use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -30,6 +38,7 @@ final class ChangeProductCostTest extends TestCase
     private InMemoryProductCostChanges $history;
     private InMemoryAuditTrail $audit;
     private InMemoryProducts $products;
+    private InMemorySettings $settings;
     private ChangeProductCost $change;
     private Company $company;
     private Unit $piece;
@@ -72,20 +81,70 @@ final class ChangeProductCostTest extends TestCase
         self::assertSame([null, '7.0000'], [$this->history->changes[0]->getOldCost(), $this->history->changes[0]->getNewCost()]);
     }
 
+    public function testAReceiptMovingTheCostUnderTheKeptPriceOffersTheReviewByDefault(): void
+    {
+        $product = $this->product('12', '18.462');
+
+        $this->change->handle($this->company, $product, '13', CostChangeSource::Receipt, Uuid::v7(), null);
+
+        self::assertSame('18.4620', $product->getDetails()->unitPriceNet, 'the price is the company\'s to change');
+        self::assertSame('12.0000', $product->priceReview()?->previousCost);
+        self::assertSame(['fields' => ['costPrice']], $this->audit->entries[0]->changes);
+    }
+
+    public function testFollowingTheMarginSetsThePriceAtTheCurrencysDecimalsAndAuditsIt(): void
+    {
+        $this->choose('follow');
+        $product = $this->product('12', '18.462');
+
+        $this->change->handle($this->company, $product, '13', CostChangeSource::Receipt, Uuid::v7(), null);
+
+        self::assertSame('20.0010', $product->getDetails()->unitPriceNet, '18.462 × 13 ÷ 12, to the dinar\'s three decimals');
+        self::assertNull($product->priceReview());
+        self::assertSame(['fields' => ['costPrice', 'unitPriceNet']], $this->audit->entries[0]->changes);
+    }
+
+    public function testKeepingThePriceOpensNoReview(): void
+    {
+        $this->choose('keep');
+        $product = $this->product('12', '18.462');
+
+        $this->change->handle($this->company, $product, '13', CostChangeSource::Receipt, Uuid::v7(), null);
+
+        self::assertSame('18.4620', $product->getDetails()->unitPriceNet);
+        self::assertNull($product->priceReview());
+    }
+
+    public function testACostTypedInTheProductIsSeenBesideItsPriceAndOpensNoReview(): void
+    {
+        $product = $this->product('12', '18.462');
+
+        $this->change->handle($this->company, $product, '13', CostChangeSource::Edited, null, null);
+
+        self::assertNull($product->priceReview());
+    }
+
     protected function setUp(): void
     {
         $transactions = new FakeTransactions();
         $this->history = new InMemoryProductCostChanges();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->products = new InMemoryProducts();
-        $this->change = new ChangeProductCost($this->products, $this->history, $this->audit, new MockClock('2026-10-03 10:00:00'), $transactions);
+        $this->settings = new InMemorySettings();
+        $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new ProductPriceSettings()]), $this->settings));
+        $this->change = new ChangeProductCost($this->products, $this->history, $this->audit, new MockClock('2026-10-03 10:00:00'), $transactions, $read, ShippedFiscalPresets::scales());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, new \DateTimeImmutable());
     }
 
-    private function product(?string $cost): Product
+    private function choose(string $mode): void
     {
-        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '1250', $cost), $this->piece, null, [], new \DateTimeImmutable());
+        $this->settings->save(new Setting(SettingAddress::company($this->company), ProductPriceSettings::ON_COST_CHANGE, $mode, new \DateTimeImmutable()));
+    }
+
+    private function product(?string $cost, string $price = '1250'): Product
+    {
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, $price, $cost), $this->piece, null, [], new \DateTimeImmutable());
         $this->products->save($product);
 
         return $product;

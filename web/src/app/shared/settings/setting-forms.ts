@@ -155,6 +155,7 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'document.late_payment_rate': 'settings.document.late_payment_rate_hint',
   'document.exemption_reference': 'settings.document.exemption_reference_hint',
   'article.reference_format': 'settings.article.reference_format_hint',
+  'article.price_on_cost_change': 'settings.article.price_on_cost_change_hint',
   'reminders.enabled': 'settings.reminders.enabled_hint',
   'reminders.stages': 'settings.reminders.stages_hint',
   'reminders.hour': 'settings.reminders.hour_hint',

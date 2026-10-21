@@ -10,7 +10,8 @@ export type ProductsError =
   | 'name_taken'
   | 'invalid'
   | 'barcode_taken'
-  | 'record_changed';
+  | 'record_changed'
+  | 'settled';
 
 export type ProductKind = 'goods' | 'service';
 export const PRODUCT_KINDS: readonly ProductKind[] = ['goods', 'service'];
@@ -66,7 +67,25 @@ export interface ProductRow {
   mainPhotoId: string | null;
   /** The product kept when this one was merged into it: this one then stays only for what already names it. */
   mergedInto: ProductMergedInto | null;
+  /** The margin a receipt's cost moved under the price, until it is settled; null when nothing moved it, or for a non cost reader. */
+  priceReview: ProductPriceReview | null;
 }
+
+/**
+ * A price kept while the cost under it moved: the cost it was set against, the cost now, the price, the price that keeps
+ * the margin (at the currency's decimals) and the margin before and now, percentages of the price to one decimal.
+ */
+export interface ProductPriceReview {
+  previousCost: string;
+  cost: string;
+  price: string;
+  suggestedPrice: string;
+  previousMargin: string;
+  margin: string;
+}
+
+/** What settles a moved margin: the price that keeps it, or the price as it is. */
+export type PriceReviewDecision = 'adjust' | 'keep';
 
 /** The product a product merged away points at, which lists show in its place. */
 export interface ProductMergedInto {
@@ -118,7 +137,7 @@ export const LOT_CODE_PATTERN = /^[\x21-\x7E]{1,40}$/;
 /** What a save sends: the main photo is the gallery's to say, never the form's, and the merge only « Fusionner… »'s. */
 export type ProductInput = Omit<
   ProductRow,
-  'id' | 'version' | 'barcodes' | 'mainPhotoId' | 'mergedInto'
+  'id' | 'version' | 'barcodes' | 'mainPhotoId' | 'mergedInto' | 'priceReview'
 >;
 
 /**

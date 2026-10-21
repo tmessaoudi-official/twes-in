@@ -9,9 +9,11 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Domain\Model;
 
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\ValueObject\BarcodeLine;
+use App\Module\Products\Domain\ValueObject\PriceReview;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
@@ -77,6 +79,13 @@ class Product implements CompanyOwned
 
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 4, nullable: true)]
     private ?string $costPrice = null;
+
+    /**
+     * The cost the price was set against, kept while a cost that moved under the price waits for someone to adjust the
+     * price or keep it (PriceReview); null when the price and the cost agree.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 4, nullable: true)]
+    private ?string $priceReviewCost = null;
 
     #[ORM\ManyToOne(targetEntity: ProductCategory::class)]
     #[ORM\JoinColumn(name: 'category_id', nullable: true)]
@@ -189,8 +198,10 @@ class Product implements CompanyOwned
             return [];
         }
 
+        $priceBefore = $this->unitPriceNet;
         $this->reference = $reference;
         $this->apply($details);
+        $this->settlePriceReview($priceBefore);
         $this->unit = $unit;
         $this->category = $category;
         $this->defaultTaxComponentIds = $ids;
@@ -407,6 +418,66 @@ class Product implements CompanyOwned
             return false;
         }
         $this->apply($details);
+        $this->settlePriceReview($this->unitPriceNet);
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    /**
+     * The cost moved under a price that was kept: the product holds the cost the price was set against until someone
+     * adjusts the price or keeps it. A review already open keeps its first cost, so the whole drift is shown; a first
+     * cost, a cost of nothing or a price of nothing moves no margin.
+     *
+     * @return bool whether a review was opened
+     */
+    public function openPriceReview(?string $previousCost, \DateTimeImmutable $now): bool
+    {
+        if (null !== $this->priceReviewCost || null === $previousCost || null === $this->costPrice) {
+            return false;
+        }
+        if (Decimal::of($previousCost)->compare(0) <= 0 || Decimal::of($this->unitPriceNet)->compare(0) <= 0
+            || 0 === Decimal::of($previousCost)->compare(Decimal::of($this->costPrice))) {
+            return false;
+        }
+        $this->priceReviewCost = Decimal::format(Decimal::of($previousCost), 4);
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    public function priceReview(): ?PriceReview
+    {
+        if (null === $this->priceReviewCost || null === $this->costPrice) {
+            return null;
+        }
+
+        return new PriceReview($this->priceReviewCost, $this->costPrice, $this->unitPriceNet);
+    }
+
+    /**
+     * Sets the price that keeps the margin the product had, rounded to `$scale`, and closes the review.
+     *
+     * @return string the price set, at `$scale`
+     */
+    public function adjustPriceToReview(int $scale, \DateTimeImmutable $now): string
+    {
+        $review = $this->priceReview() ?? throw new \LogicException('No price waits for a review on this product.');
+        $price = $review->suggestedPrice($scale);
+        $this->apply($this->getDetails()->withUnitPriceNet($price));
+        $this->priceReviewCost = null;
+        $this->updatedAt = $now;
+
+        return $price;
+    }
+
+    /** Keeps the price as it is under the new cost, and closes the review. */
+    public function closePriceReview(\DateTimeImmutable $now): bool
+    {
+        if (null === $this->priceReviewCost) {
+            return false;
+        }
+        $this->priceReviewCost = null;
         $this->updatedAt = $now;
 
         return true;
@@ -419,6 +490,19 @@ class Product implements CompanyOwned
     public function touched(\DateTimeImmutable $now): void
     {
         $this->updatedAt = $now;
+    }
+
+    /** A typed price answers the review, as does the cost coming back to what the price was set against, or going. */
+    private function settlePriceReview(string $priceBefore): void
+    {
+        if (null === $this->priceReviewCost) {
+            return;
+        }
+        if (null === $this->costPrice
+            || 0 === Decimal::of($this->costPrice)->compare(Decimal::of($this->priceReviewCost))
+            || 0 !== Decimal::of($this->unitPriceNet)->compare(Decimal::of($priceBefore))) {
+            $this->priceReviewCost = null;
+        }
     }
 
     private function apply(ProductDetails $details): void

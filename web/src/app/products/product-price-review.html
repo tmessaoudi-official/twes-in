@@ -1,0 +1,58 @@
+<div
+  role="status"
+  data-testid="product-price-review"
+  class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-variant p-3"
+>
+  <div class="flex min-w-0 items-start gap-2">
+    <mat-icon aria-hidden="true">sell</mat-icon>
+    <div class="flex min-w-0 flex-col gap-1">
+      <p class="font-medium" data-testid="product-price-review-margin">
+        {{
+          'products.price_review.margin'
+            | translate
+              : {
+                  before: percent(review().previousMargin),
+                  after: percent(review().margin),
+                }
+        }}
+      </p>
+      <p class="text-sm opacity-80" data-testid="product-price-review-why">
+        {{
+          'products.price_review.why'
+            | translate
+              : {
+                  previousCost: review().previousCost | amount: scale(),
+                  cost: review().cost | amount: scale(),
+                  price: review().price | amount: scale(),
+                  currency: currency(),
+                }
+        }}
+      </p>
+    </div>
+  </div>
+  @if (mayDecide()) {
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        mat-flat-button
+        type="button"
+        data-testid="product-price-review-adjust"
+        [disabled]="busy()"
+        (click)="decide.emit('adjust')"
+      >
+        {{
+          'products.price_review.adjust'
+            | translate: { price: review().suggestedPrice | amount: scale(), currency: currency() }
+        }}
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        data-testid="product-price-review-keep"
+        [disabled]="busy()"
+        (click)="decide.emit('keep')"
+      >
+        {{ 'products.price_review.keep' | translate }}
+      </button>
+    </div>
+  }
+</div>

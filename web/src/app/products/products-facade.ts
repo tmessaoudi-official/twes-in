@@ -11,6 +11,7 @@ import { ProductsApi, ProductsRefused } from './products-api';
 import { trackingOf } from './products-types';
 import type {
   PricePreviewLine,
+  PriceReviewDecision,
   ProductBarcode,
   ProductCategoryInput,
   ProductCategoryRow,
@@ -138,6 +139,16 @@ export class ProductsFacade {
     version: number | null,
   ): Promise<ProductRow | null> {
     return this.save(() => this.api.reviseProduct(companyId, id, input, version));
+  }
+
+  /** The product with its moved margin settled, as the API kept it, or null with the reason in `error`. */
+  async settlePriceReview(
+    companyId: string,
+    id: string,
+    decision: PriceReviewDecision,
+    version: number,
+  ): Promise<ProductRow | null> {
+    return this.save(() => this.api.settlePriceReview(companyId, id, decision, version));
   }
 
   async createCategory(companyId: string, input: ProductCategoryInput): Promise<boolean> {

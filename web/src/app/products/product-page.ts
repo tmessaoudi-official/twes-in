@@ -36,6 +36,9 @@ import { ProductReorderPoints } from './product-reorder-points-facade';
 import { ProductReorderPointsSection } from './product-reorder-points';
 import { ProductCostHistory } from './product-cost-history-facade';
 import { ProductCostHistorySection } from './product-cost-history';
+import { ProductPriceReviewNotice } from './product-price-review';
+import type { PriceReviewDecision } from './products-types';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { RecordHistory } from '../activity/record-history';
 import { ProductSubstitutes } from './product-substitutes-facade';
 import { ProductPhotos } from './product-photos-facade';
@@ -71,6 +74,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     ProductReorderPointsSection,
     ProductSubstitutesSection,
     ProductCostHistorySection,
+    ProductPriceReviewNotice,
     RecordHistory,
     ProductBarcodesSection,
     ProductPhotosSection,
@@ -96,6 +100,7 @@ export class ProductPage {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly deletes = inject(RecordDeletes);
+  private readonly format = inject(FormatFacade);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `products/new`. */
   readonly productId = input<string | undefined>(undefined);
@@ -149,6 +154,8 @@ export class ProductPage {
   });
   /** The cost is read by whoever holds product.cost.read. */
   protected readonly showsCost = computed(() => this.auth.hasPermission('product.cost.read'));
+  /** The margin a receipt moved under the price, until someone settles it; the API sends it to cost readers only. */
+  protected readonly priceReview = computed(() => this.current()?.priceReview ?? null);
   protected readonly currencyScale = computed(() => this.facade.options()?.currencyScale ?? 2);
   protected readonly currency = computed(() => this.facade.options()?.currency ?? '');
   private readonly gallery = inject(ProductPhotos);
@@ -523,6 +530,36 @@ export class ProductPage {
       await this.sync.savedElsewhere();
     } else {
       this.showRefused();
+    }
+  }
+
+  /**
+   * Settles the moved margin: the price that keeps it, or the price as it is. The answer moves the product's version,
+   * which the form takes in beside what is typed, as a tab beside it does; one settled elsewhere since is read again.
+   */
+  protected async settlePriceReview(decision: PriceReviewDecision): Promise<void> {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    if (!companyId || !current || this.busy()) return;
+    const settled = await this.facade.settlePriceReview(
+      companyId,
+      current.id,
+      decision,
+      current.version,
+    );
+    if (settled !== null) {
+      await this.sync.savedBeside();
+      this.feedback.effect(
+        decision === 'adjust' ? 'products.price_review.adjusted' : 'products.price_review.kept',
+        {
+          name: settled.name,
+          price: this.format.amount(settled.unitPriceNet, this.currencyScale()),
+        },
+        'corrigeable',
+      );
+    } else if (this.facade.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.sync.savedElsewhere();
     }
   }
 
