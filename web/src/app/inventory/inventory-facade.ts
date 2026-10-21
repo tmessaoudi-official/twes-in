@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { InventoryApi, InventoryRefused } from './inventory-api';
 import type { PickAsked } from '../shared/form/pick-api';
@@ -33,7 +34,6 @@ import type {
   StockPlanSaved,
 } from './inventory-types';
 import type { PlanStep } from './stock-plan-draft';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** How many ids the stock product picker resolves in one question (its `ids` parameter's own bound). */
 const PICK_IDS_MOST = 20;
@@ -42,38 +42,35 @@ const PICK_IDS_MOST = 20;
 @Injectable({ providedIn: 'root' })
 export class InventoryFacade {
   private readonly api = inject(InventoryApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly optionsSignal = signal<StockOptions | null>(null);
   private readonly levelsSignal = signal<readonly StockLevelRow[]>([]);
   private readonly totalSignal = signal(0);
-  private pageRequest = 0;
+  private readonly pageRequests = new LatestRequest();
   /** What the list last asked for, so recording a movement reads that same page again. */
   private search: StockSearch | null = null;
   private readonly locationsSignal = signal<readonly StockLocationRow[]>([]);
   private readonly movementsSignal = signal<readonly StockMovementRow[]>([]);
   private readonly movementsTotalSignal = signal(0);
   private readonly valuationSignal = signal<StockValuation | null>(null);
-  private movementsRequest = 0;
+  private readonly movementsRequests = new LatestRequest();
   /** What the movements list last asked for, so a movement arriving elsewhere reads that same page again. */
   private movementsSearch: StockMovementSearch | null = null;
   private readonly floorsSignal = signal<readonly StockFloorRow[]>([]);
   private readonly drawingsSignal = signal<readonly StockDrawingRow[]>([]);
-  private drawingsRequest = 0;
+  private readonly drawingsRequests = new LatestRequest();
   private readonly holdingsSignal = signal<ReadonlyMap<string, number>>(new Map());
-  private holdingsRequest = 0;
+  private readonly holdingsRequests = new LatestRequest();
   /** Which floor's rectangles are in hand, so a live change reads that same floor again. */
   private drawingsFloorId: string | null = null;
   private readonly structuresSignal = signal<readonly StockStructureRow[]>([]);
-  private structuresRequest = 0;
+  private readonly structuresRequests = new LatestRequest();
   /** Which floor's building is in hand, so a live change reads that same floor again. */
   private structuresFloorId: string | null = null;
   private readonly contentsSignal = signal<LocationContents | null>(null);
-  private contentsRequest = 0;
+  private readonly contentsRequests = new LatestRequest();
   private readonly whereaboutsSignal = signal<MapSearch | null>(null);
-  private whereaboutsRequest = 0;
-  private readonly busySignal = signal(false);
-  private reads = 0;
-  private readonly errorSignal = signal<InventoryError | null>(null);
+  private readonly whereaboutsRequests = new LatestRequest();
+  private readonly state = requestState(codeOf);
   private readonly refusedEntrySignal = signal<string | null>(null);
 
   readonly options = this.optionsSignal.asReadonly();
@@ -97,8 +94,8 @@ export class InventoryFacade {
   readonly holdings = this.holdingsSignal.asReadonly();
   /** Where the goods searched on the map are; null while nothing is searched. */
   readonly whereabouts = this.whereaboutsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
   /** The entry of the last floor step the API refused by name (`moves[2].x`), so the screen can show that shape. */
   readonly refusedEntry = this.refusedEntrySignal.asReadonly();
 
@@ -124,7 +121,7 @@ export class InventoryFacade {
     try {
       return await this.api.pickProducts(companyId, asked);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return [];
     }
   }
@@ -134,7 +131,7 @@ export class InventoryFacade {
     try {
       return await this.api.pickVendors(companyId, asked);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return [];
     }
   }
@@ -185,11 +182,11 @@ export class InventoryFacade {
    * keystroke and they need not come back in order.
    */
   async loadStock(companyId: string, search: StockSearch): Promise<void> {
-    const request = ++this.pageRequest;
+    const current = this.pageRequests.next();
     this.search = search;
     await this.read(async () => {
       const page = await this.api.levels(companyId, search);
-      if (request !== this.pageRequest) return;
+      if (!current()) return;
       this.levelsSignal.set(page.rows);
       this.totalSignal.set(page.total);
     });
@@ -200,11 +197,11 @@ export class InventoryFacade {
    * stock list does it: typing sends one search per keystroke and they need not come back in order.
    */
   async loadMovements(companyId: string, search: StockMovementSearch): Promise<void> {
-    const request = ++this.movementsRequest;
+    const current = this.movementsRequests.next();
     this.movementsSearch = search;
     await this.read(async () => {
       const page = await this.api.movements(companyId, search);
-      if (request !== this.movementsRequest) return;
+      if (!current()) return;
       this.movementsSignal.set(page.rows);
       this.movementsTotalSignal.set(page.total);
     });
@@ -293,11 +290,11 @@ export class InventoryFacade {
 
   /** The files a loss keeps, or null when they could not be read (the reason is in `error`). */
   async lossFiles(companyId: string, movementId: string): Promise<StockLossFile[] | null> {
-    this.errorSignal.set(null);
+    this.state.clearError();
     try {
       return await this.api.lossFiles(companyId, movementId);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return null;
     }
   }
@@ -420,17 +417,17 @@ export class InventoryFacade {
 
   /** What is drawn on one floor. Only the latest floor asked for is shown, as the lists do it. */
   async loadDrawings(companyId: string, floorId: string): Promise<void> {
-    const request = ++this.drawingsRequest;
-    const counted = ++this.holdingsRequest;
+    const current = this.drawingsRequests.next();
+    const counted = this.holdingsRequests.next();
     this.drawingsFloorId = floorId;
     await this.read(async () => {
       const [drawings, holdings] = await Promise.all([
         this.api.drawings(companyId, floorId),
         this.api.holdings(companyId, floorId),
       ]);
-      if (request !== this.drawingsRequest) return;
+      if (!current()) return;
       this.drawingsSignal.set(drawings);
-      if (counted === this.holdingsRequest) this.holdingsSignal.set(holdings);
+      if (counted()) this.holdingsSignal.set(holdings);
     });
   }
 
@@ -438,10 +435,10 @@ export class InventoryFacade {
   async reloadHoldings(companyId: string): Promise<void> {
     const floorId = this.drawingsFloorId;
     if (floorId === null) return;
-    const counted = ++this.holdingsRequest;
+    const counted = this.holdingsRequests.next();
     await this.read(async () => {
       const holdings = await this.api.holdings(companyId, floorId);
-      if (counted === this.holdingsRequest) this.holdingsSignal.set(holdings);
+      if (counted()) this.holdingsSignal.set(holdings);
     });
   }
 
@@ -452,7 +449,7 @@ export class InventoryFacade {
    * more. Words narrow it on the API, through every place under it, as the stock list's search does.
    */
   async loadContents(companyId: string, locationId: string | null, q = ''): Promise<void> {
-    const request = ++this.contentsRequest;
+    const current = this.contentsRequests.next();
     if (locationId === null) {
       this.contentsSignal.set(null);
       return;
@@ -473,7 +470,7 @@ export class InventoryFacade {
         }),
         this.api.locationHomes(companyId, locationId),
       ]);
-      if (request !== this.contentsRequest) return;
+      if (!current()) return;
       this.contentsSignal.set({ locationId, q, levels: page.rows, total: page.total, homes });
     });
   }
@@ -485,7 +482,7 @@ export class InventoryFacade {
    * row to carry them; one no stock is kept of answers neither, and reads as not found.
    */
   async loadWhereabouts(companyId: string, productIds: readonly string[]): Promise<void> {
-    const request = ++this.whereaboutsRequest;
+    const current = this.whereaboutsRequests.next();
     if (productIds.length === 0) {
       this.whereaboutsSignal.set(null);
       return;
@@ -501,7 +498,7 @@ export class InventoryFacade {
           })),
         );
       }
-      if (request !== this.whereaboutsRequest) return;
+      if (!current()) return;
       this.whereaboutsSignal.set({
         productIds,
         products: productIds.map((id) => {
@@ -584,24 +581,22 @@ export class InventoryFacade {
     floorId: string,
     step: PlanStep,
   ): Promise<StockPlanSaved | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
     this.refusedEntrySignal.set(null);
-    try {
-      const saved = await this.api.changePlan(companyId, floorId, step);
-      await Promise.all([
-        this.afterDrawing(companyId, floorId),
-        this.loadStructures(companyId, floorId),
-        ...(step.newPlaces.length > 0 ? [this.reloadLocations(companyId)] : []),
-      ]);
-      return saved;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      this.refusedEntrySignal.set(error instanceof InventoryRefused ? error.entry : null);
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.writeAnswer(
+      async () => {
+        const saved = await this.api.changePlan(companyId, floorId, step);
+        await Promise.all([
+          this.afterDrawing(companyId, floorId),
+          this.loadStructures(companyId, floorId),
+          ...(step.newPlaces.length > 0 ? [this.reloadLocations(companyId)] : []),
+        ]);
+        return saved;
+      },
+      {
+        failed: (error) =>
+          this.refusedEntrySignal.set(error instanceof InventoryRefused ? error.entry : null),
+      },
+    );
   }
 
   /**
@@ -628,11 +623,11 @@ export class InventoryFacade {
    * between floors faster than two reads come back.
    */
   async loadStructures(companyId: string, floorId: string): Promise<void> {
-    const request = ++this.structuresRequest;
+    const current = this.structuresRequests.next();
     this.structuresFloorId = floorId;
     await this.read(async () => {
       const structures = await this.api.structures(companyId, floorId);
-      if (request !== this.structuresRequest) return;
+      if (!current()) return;
       this.structuresSignal.set(structures);
     });
   }
@@ -644,7 +639,7 @@ export class InventoryFacade {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   /** A rectangle written changes the floor's own count as well as what is on it, so both are read again. */
@@ -661,37 +656,14 @@ export class InventoryFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) {
-      this.reads++;
-      this.busySignal.set(true);
-    }
-    // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
-    this.errorSignal.set(null);
-    try {
-      await load();
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (marked && --this.reads === 0) this.busySignal.set(false);
-    }
+    await this.state.read(load);
   }
 
   private async write(call: () => Promise<unknown>, reload: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await call();
       await reload();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 

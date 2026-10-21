@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { ExpensesApi, ExpensesRefused } from './expenses-api';
 import type { FieldRefusal } from '../shared/form/field-refusals';
@@ -20,13 +21,11 @@ import type {
   ExpenseVendorOption,
   TejFileAnswer,
 } from './expenses-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The expenses of the company being worked in, their categories, and the expense open with its files. */
 @Injectable({ providedIn: 'root' })
 export class ExpensesFacade {
   private readonly api = inject(ExpensesApi);
-  private readonly quietReads = inject(QuietReads);
 
   private readonly expensesSignal = signal<readonly ExpenseRow[]>([]);
   private readonly optionsSignal = signal<ExpenseOptions | null>(null);
@@ -36,11 +35,9 @@ export class ExpensesFacade {
   private readonly totalSignal = signal(0);
   private readonly statusCountsSignal = signal<ExpenseStatusCounts | null>(null);
   private readonly summarySignal = signal<ExpenseSummary | null>(null);
-  private pageRequest = 0;
-  private countsRequest = 0;
-  private readonly busySignal = signal(false);
-  private reads = 0;
-  private readonly errorSignal = signal<ExpensesError | null>(null);
+  private readonly pageRequests = new LatestRequest();
+  private readonly countsRequests = new LatestRequest();
+  private readonly state = requestState(codeOf);
   private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
 
   readonly expenses = this.expensesSignal.asReadonly();
@@ -54,8 +51,8 @@ export class ExpensesFacade {
   readonly expense = this.expenseSignal.asReadonly();
   readonly attachments = this.attachmentsSignal.asReadonly();
   readonly categories = this.categoriesSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
   /** The fields the last save or recording was refused on, for the form and the bill to say under each. */
   readonly refusals = this.refusalsSignal.asReadonly();
 
@@ -68,10 +65,10 @@ export class ExpensesFacade {
    * keystroke and they need not come back in order.
    */
   async loadPage(companyId: string, search: ExpenseSearch): Promise<void> {
-    const request = ++this.pageRequest;
+    const current = this.pageRequests.next();
     await this.read(async () => {
       const page = await this.api.expenses(companyId, search);
-      if (request !== this.pageRequest) return;
+      if (!current()) return;
       this.expensesSignal.set(page.rows);
       this.totalSignal.set(page.total);
     });
@@ -79,10 +76,10 @@ export class ExpensesFacade {
 
   /** The chips' counts for the search, the latest search's answer only, as for its page. */
   async loadStatusCounts(companyId: string, search: ExpenseSearch): Promise<void> {
-    const request = ++this.countsRequest;
+    const current = this.countsRequests.next();
     await this.read(async () => {
       const counts = await this.api.statusCounts(companyId, search);
-      if (request === this.countsRequest) this.statusCountsSignal.set(counts);
+      if (current()) this.statusCountsSignal.set(counts);
     });
   }
 
@@ -145,22 +142,13 @@ export class ExpensesFacade {
     try {
       this.optionsSignal.set(await this.api.options(companyId));
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
     }
   }
 
   /** A month's TEJ file, or why it cannot be written; null when the call failed, with the error said. */
   async tejFile(companyId: string, month: string): Promise<TejFileAnswer | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      return await this.api.tejFile(companyId, month);
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.writeAnswer(() => this.api.tejFile(companyId, month));
   }
 
   async classifyWithholding(
@@ -249,13 +237,13 @@ export class ExpensesFacade {
     try {
       return await this.api.pickVendors(companyId, asked);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return [];
     }
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   private async reloadFiles(companyId: string, expenseId: string): Promise<void> {
@@ -268,54 +256,29 @@ export class ExpensesFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) {
-      this.reads++;
-      this.busySignal.set(true);
-    }
-    // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
-    this.errorSignal.set(null);
-    try {
-      await load();
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (marked && --this.reads === 0) this.busySignal.set(false);
-    }
+    await this.state.read(load);
   }
 
   private async save(call: () => Promise<ExpenseRow>): Promise<ExpenseRow | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
     this.refusalsSignal.set([]);
-    try {
-      const expense = await call();
-      this.expenseSignal.set(expense);
-      return expense;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      this.refusalsSignal.set(error instanceof ExpensesRefused ? error.refusals : []);
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.writeAnswer(
+      async () => {
+        const expense = await call();
+        this.expenseSignal.set(expense);
+        return expense;
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof ExpensesRefused ? error.refusals : []),
+      },
+    );
   }
 
   private async write(call: () => Promise<unknown>, reload: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await call();
       await reload();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 

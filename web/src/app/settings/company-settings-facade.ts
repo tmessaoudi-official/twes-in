@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import { SettingsFacade } from '../shared/settings/settings-facade';
@@ -9,34 +10,21 @@ import type {
   VersionedSettingChange,
 } from '../shared/settings/settings-types';
 import { COMPANY_CHAINS } from './settings-forms';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** A company's defaults, as its settings page reads and changes them: always at the company level. */
 @Injectable({ providedIn: 'root' })
 export class CompanySettings {
   private readonly api = inject(SettingsApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly live = inject(SettingsFacade);
   private readonly rowsSignal = signal<readonly SettingRow[]>([]);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<SettingsError | null>(null);
+  private readonly state = requestState(codeOf);
 
   readonly rows = this.rowsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   async load(companyId: string): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) this.busySignal.set(true);
-    try {
-      await this.fetch(companyId);
-      this.errorSignal.set(null);
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    await this.state.read(() => this.fetch(companyId));
   }
 
   /** True when the API accepted every change, together; the settings are read again after. */
@@ -50,7 +38,7 @@ export class CompanySettings {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   private async fetch(companyId: string): Promise<void> {
@@ -61,22 +49,14 @@ export class CompanySettings {
   }
 
   private async write(companyId: string, call: () => Promise<unknown>): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await call();
       await this.fetch(companyId);
       // What was just written is a value the whole application reads: the accent, the density, the language, the
       // company's defaults. A live change never comes back to the tab that caused it, so this tab reads the chain
       // again itself — otherwise the colour changed only after a refresh (developer, 2026-09-20).
       this.live.refresh();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 

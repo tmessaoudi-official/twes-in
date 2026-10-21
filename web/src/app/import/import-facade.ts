@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { Feedback } from '../shared/feedback/feedback';
 import { RecordDeletes } from '../shared/records/record-deletes';
@@ -16,7 +17,6 @@ import type {
   ImportUndone,
   TextEncoding,
 } from './import-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * What the import screen knows: the guide for the subject it is on, and the answer to the last run.
@@ -27,7 +27,6 @@ import { QuietReads } from '../shared/feedback/quiet-reads';
 @Injectable({ providedIn: 'root' })
 export class ImportFacade {
   private readonly api = inject(ImportApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly feedback = inject(Feedback);
   private readonly stepUp = inject(StepUp);
   private readonly records = inject(RecordDeletes);
@@ -35,16 +34,15 @@ export class ImportFacade {
   private readonly guideSignal = signal<ImportGuide | null>(null);
   private readonly reportSignal = signal<ImportReport | null>(null);
   private readonly refusalSignal = signal<ImportRefusal | null>(null);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<ImportError | null>(null);
+  private readonly state = requestState(codeOf);
   private readonly recentSignal = signal<readonly ImportRunSummary[]>([]);
   private readonly undoneSignal = signal<ImportUndone | null>(null);
 
   readonly guide = this.guideSignal.asReadonly();
   readonly report = this.reportSignal.asReadonly();
   readonly refusal = this.refusalSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
   /** « Imports récents »: empty until read, and when the person may write none of the subjects imported. */
   readonly recent = this.recentSignal.asReadonly();
   /** What the last « Annuler cet import » did, until another file is chosen. */
@@ -53,17 +51,9 @@ export class ImportFacade {
   async load(companyId: string, subject: string): Promise<void> {
     this.forget();
     this.guideSignal.set(null);
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) this.busySignal.set(true);
-    try {
-      this.guideSignal.set(await this.api.guide(companyId, subject));
-      this.errorSignal.set(null);
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    await this.state.read(async () =>
+      this.guideSignal.set(await this.api.guide(companyId, subject)),
+    );
   }
 
   /** Previews the file, or imports it. Says so with a toast only when something was actually stored. */
@@ -79,46 +69,45 @@ export class ImportFacade {
     choices: Readonly<Record<string, string>> = {},
   ): Promise<void> {
     this.forget();
-    this.busySignal.set(true);
-    try {
-      // A file changing a vendor's bank details waits for the person to prove who they are, then is sent again whole;
-      // a preview never asks (docs/SPEC.md § 7).
-      const report = await this.stepUp.retrying(
-        () =>
-          this.api.run(
-            companyId,
-            subject,
-            file,
-            mode,
-            dryRun,
-            switches,
-            encoding,
-            pairing,
-            choices,
-          ),
-        (error) => error instanceof ImportRefused && error.code === 'step_up_required',
-        'step_up.intro_sensitive',
-      );
-      this.reportSignal.set(report);
-      this.errorSignal.set(null);
-      if (report.committed) {
-        this.feedback.success('import.stored', {
-          created: report.created.length,
-          updated: report.updated.length,
-        });
-        await this.loadRecent(companyId);
-      }
-    } catch (error) {
-      if (error instanceof ImportNotKept) {
-        this.reportSignal.set(error.report);
-        this.refusalSignal.set(error.refusal);
-        this.errorSignal.set(null);
-      } else {
-        this.errorSignal.set(codeOf(error));
-      }
-    } finally {
-      this.busySignal.set(false);
-    }
+    await this.state.write(
+      async () => {
+        // A file changing a vendor's bank details waits for the person to prove who they are, then is sent again whole;
+        // a preview never asks (docs/SPEC.md § 7).
+        const report = await this.stepUp.retrying(
+          () =>
+            this.api.run(
+              companyId,
+              subject,
+              file,
+              mode,
+              dryRun,
+              switches,
+              encoding,
+              pairing,
+              choices,
+            ),
+          (error) => error instanceof ImportRefused && error.code === 'step_up_required',
+          'step_up.intro_sensitive',
+        );
+        this.reportSignal.set(report);
+        if (report.committed) {
+          this.feedback.success('import.stored', {
+            created: report.created.length,
+            updated: report.updated.length,
+          });
+          await this.loadRecent(companyId);
+        }
+      },
+      {
+        // A file read but not kept is no error: its report says, row by row, what stopped it.
+        code: (error) => (error instanceof ImportNotKept ? null : codeOf(error)),
+        failed: (error) => {
+          if (!(error instanceof ImportNotKept)) return;
+          this.reportSignal.set(error.report);
+          this.refusalSignal.set(error.refusal);
+        },
+      },
+    );
   }
 
   /** Reads « Imports récents » again; a list that cannot be read stays as it was, the page still working. */
@@ -136,38 +125,38 @@ export class ImportFacade {
    * Answers whether the import was taken back.
    */
   async undo(companyId: string, runId: string): Promise<boolean> {
-    this.busySignal.set(true);
-    try {
-      const undone = await this.stepUp.retrying(
-        () => this.api.undo(companyId, runId),
-        (error) => error instanceof ImportRefused && error.code === 'step_up_required',
-        'step_up.intro_change',
-      );
-      this.reportSignal.set(null);
-      this.refusalSignal.set(null);
-      this.undoneSignal.set(undone);
-      this.errorSignal.set(null);
-      const removal = undone.removal;
-      if (removal === null) {
-        this.feedback.effect('import.undo.done', {}, 'corrigeable');
-      } else {
-        this.feedback.effect('import.undo.done', {}, 'annulable', {
-          key: 'records.undo',
-          run: () =>
-            void this.records
-              .restore(companyId, { id: removal })
-              .then((back) => (back ? this.restored(companyId) : undefined)),
-        });
+    // Its failure is said by a toast, not on the page: the page's error is left as it is.
+    return this.state.marked(async () => {
+      try {
+        const undone = await this.stepUp.retrying(
+          () => this.api.undo(companyId, runId),
+          (error) => error instanceof ImportRefused && error.code === 'step_up_required',
+          'step_up.intro_change',
+        );
+        this.reportSignal.set(null);
+        this.refusalSignal.set(null);
+        this.undoneSignal.set(undone);
+        this.state.clearError();
+        const removal = undone.removal;
+        if (removal === null) {
+          this.feedback.effect('import.undo.done', {}, 'corrigeable');
+        } else {
+          this.feedback.effect('import.undo.done', {}, 'annulable', {
+            key: 'records.undo',
+            run: () =>
+              void this.records
+                .restore(companyId, { id: removal })
+                .then((back) => (back ? this.restored(companyId) : undefined)),
+          });
+        }
+        await this.loadRecent(companyId);
+        return true;
+      } catch (error) {
+        this.feedback.failure(`import.errors.${codeOf(error)}`);
+        await this.loadRecent(companyId);
+        return false;
       }
-      await this.loadRecent(companyId);
-      return true;
-    } catch (error) {
-      this.feedback.failure(`import.errors.${codeOf(error)}`);
-      await this.loadRecent(companyId);
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 
   /** Drops the last answer, so a new file is never read beside the one before it. */

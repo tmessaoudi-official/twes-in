@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
@@ -24,18 +25,16 @@ import type {
   ProductTracking,
   ProductVendor,
 } from './products-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The products of the company being worked in, their categories, the form's options and the company's fields for products. */
 @Injectable({ providedIn: 'root' })
 export class ProductsFacade {
   private readonly api = inject(ProductsApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly fields = inject(CustomFieldsApi);
   private readonly settings = inject(SettingsApi);
   private readonly productsSignal = signal<readonly ProductRow[]>([]);
   private readonly totalSignal = signal(0);
-  private pageRequest = 0;
+  private readonly pageRequests = new LatestRequest();
   private readonly categoriesSignal = signal<readonly ProductCategoryRow[]>([]);
   private readonly optionsSignal = signal<ProductOptions | null>(null);
   private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
@@ -43,9 +42,7 @@ export class ProductsFacade {
   private readonly substitutionGroupsSignal = signal<readonly string[]>([]);
   private readonly defaultUnitCodeSignal = signal<string | null>(null);
   private readonly defaultTrackingSignal = signal<ProductTracking>('none');
-  private readonly busySignal = signal(false);
-  private reads = 0;
-  private readonly errorSignal = signal<ProductsError | null>(null);
+  private readonly state = requestState(codeOf);
   private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
 
   readonly products = this.productsSignal.asReadonly();
@@ -62,8 +59,8 @@ export class ProductsFacade {
   readonly defaultUnitCode = this.defaultUnitCodeSignal.asReadonly();
   /** How `article.traceability` says a new product is followed, read with a new product's form. */
   readonly defaultTracking = this.defaultTrackingSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
   /** The fields the last save was refused on, for the form to say under each. */
   readonly refusals = this.refusalsSignal.asReadonly();
 
@@ -76,7 +73,7 @@ export class ProductsFacade {
     try {
       return await this.api.pickVendors(companyId, asked);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return [];
     }
   }
@@ -104,10 +101,10 @@ export class ProductsFacade {
    * pause, and an earlier one answering late would otherwise put back rows the words no longer find.
    */
   async loadPage(companyId: string, search: ProductSearch): Promise<void> {
-    const request = ++this.pageRequest;
+    const current = this.pageRequests.next();
     await this.read(async () => {
       const page = await this.api.products(companyId, search);
-      if (request !== this.pageRequest) return;
+      if (!current()) return;
       this.productsSignal.set(page.rows);
       this.totalSignal.set(page.total);
     });
@@ -218,7 +215,7 @@ export class ProductsFacade {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   private async reloadCategories(companyId: string): Promise<void> {
@@ -226,22 +223,7 @@ export class ProductsFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) {
-      this.reads++;
-      this.busySignal.set(true);
-    }
-    // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
-    this.errorSignal.set(null);
-    try {
-      await load();
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (marked && --this.reads === 0) this.busySignal.set(false);
-    }
+    await this.state.read(load);
   }
 
   /**
@@ -265,35 +247,25 @@ export class ProductsFacade {
   }
 
   private async save(call: () => Promise<ProductRow>): Promise<ProductRow | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
     this.refusalsSignal.set([]);
-    try {
-      const product = await call();
-      this.productSignal.set(product);
-      return product;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      this.refusalsSignal.set(error instanceof ProductsRefused ? error.refusals : []);
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.writeAnswer(
+      async () => {
+        const product = await call();
+        this.productSignal.set(product);
+        return product;
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof ProductsRefused ? error.refusals : []),
+      },
+    );
   }
 
   private async write(call: () => Promise<unknown>, reload: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await call();
       await reload();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 
