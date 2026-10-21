@@ -3,11 +3,13 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { CustomersApi, CustomersRefused } from './customers-api';
 import type { CustomersError, CustomerStatement } from './customers-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The statement of account being read: the customer's account over the period asked for, or why it is not there. */
 @Injectable({ providedIn: 'root' })
 export class CustomerStatementFacade {
   private readonly api = inject(CustomersApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly statementSignal = signal<CustomerStatement | null>(null);
   private readonly errorSignal = signal<CustomersError | null>(null);
   private readonly busySignal = signal(false);
@@ -27,7 +29,9 @@ export class CustomerStatementFacade {
     period: { from?: string; to?: string },
   ): Promise<void> {
     const request = ++this.request;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
       const statement = await this.api.statement(companyId, customerId, period);

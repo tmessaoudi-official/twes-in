@@ -5,11 +5,13 @@ import { AuthFacade } from '../auth/auth-facade';
 import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { ModulesApi, ModulesRefused, type ModulesError } from './modules-api';
 import type { ModuleRow } from './modules-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The modules of the company being worked in, and switching them. */
 @Injectable({ providedIn: 'root' })
 export class ModulesFacade {
   private readonly api = inject(ModulesApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly auth = inject(AuthFacade);
   private readonly modulesSignal = signal<readonly ModuleRow[]>([]);
   private readonly busySignal = signal(false);
@@ -20,14 +22,16 @@ export class ModulesFacade {
   readonly error = this.errorSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       this.modulesSignal.set(await this.api.list(companyId));
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 

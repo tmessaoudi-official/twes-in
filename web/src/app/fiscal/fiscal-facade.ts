@@ -10,11 +10,13 @@ import type {
   UnitInput,
   UnitRow,
 } from './fiscal-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The fiscal setup of one company: its taxes, its units and the regimes its customers may be under. */
 @Injectable({ providedIn: 'root' })
 export class FiscalFacade {
   private readonly api = inject(FiscalApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly taxesSignal = signal<readonly TaxComponentRow[]>([]);
   private readonly unitsSignal = signal<readonly UnitRow[]>([]);
   private readonly regimesSignal = signal<readonly CustomerTaxRegimeRow[]>([]);
@@ -87,8 +89,12 @@ export class FiscalFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    this.reads++;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) {
+      this.reads++;
+      this.busySignal.set(true);
+    }
     // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
     this.errorSignal.set(null);
     try {
@@ -97,7 +103,7 @@ export class FiscalFacade {
       this.errorSignal.set(codeOf(error));
     } finally {
       // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (--this.reads === 0) this.busySignal.set(false);
+      if (marked && --this.reads === 0) this.busySignal.set(false);
     }
   }
 

@@ -9,11 +9,13 @@ import {
   type CompanySecurityError,
   CompanySecurityRefused,
 } from './company-security-api';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** What the working company requires of its members' sign-in, and changing it. */
 @Injectable({ providedIn: 'root' })
 export class CompanySecurityFacade {
   private readonly api = inject(CompanySecurityApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
   private readonly securitySignal = signal<CompanySecurity | null>(null);
@@ -25,14 +27,16 @@ export class CompanySecurityFacade {
   readonly error = this.errorSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       this.securitySignal.set(await this.api.read(companyId));
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 

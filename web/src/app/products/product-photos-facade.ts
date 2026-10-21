@@ -4,6 +4,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { moved } from './product-home-order';
 import { ProductPhotosApi, ProductPhotosRefused } from './product-photos-api';
 import type { PhotoSize, ProductPhotoRefusal, ProductPhotoRow } from './product-photos-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * One product's photos: its gallery in order, one main. Its own facade, as each tab of the product has one: a gallery
@@ -12,6 +13,7 @@ import type { PhotoSize, ProductPhotoRefusal, ProductPhotoRow } from './product-
 @Injectable()
 export class ProductPhotos {
   private readonly api = inject(ProductPhotosApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly photosSignal = signal<readonly ProductPhotoRow[]>([]);
   private readonly busySignal = signal(false);
   private readonly refusalSignal = signal<ProductPhotoRefusal | null>(null);
@@ -29,7 +31,7 @@ export class ProductPhotos {
     await this.run(async () => {
       this.photosSignal.set(await this.api.list(companyId, productId));
       this.loadedForSignal.set(productId);
-    });
+    }, true);
   }
 
   /** A photo sent, last in the gallery; main when it is the first. */
@@ -94,8 +96,10 @@ export class ProductPhotos {
     });
   }
 
-  private async run(work: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
+  /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
+  private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
+    const marked = !(reading && this.quietReads.quiet());
+    if (marked) this.busySignal.set(true);
     this.refusalSignal.set(null);
     try {
       await work();
@@ -106,7 +110,7 @@ export class ProductPhotos {
       );
       return false;
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 }

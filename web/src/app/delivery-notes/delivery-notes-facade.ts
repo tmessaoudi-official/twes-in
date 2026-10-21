@@ -21,11 +21,13 @@ import type {
   InvoiceDraftOption,
   InvoicingCheck,
 } from './delivery-notes-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The delivery notes of the company being worked in, the note open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
 export class DeliveryNotesFacade {
   private readonly api = inject(DeliveryNotesApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly prices = inject(PriceListsApi);
   private readonly notesSignal = signal<readonly DeliveryNoteRow[]>([]);
   private readonly optionsSignal = signal<DeliveryNoteOptions | null>(null);
@@ -305,8 +307,12 @@ export class DeliveryNotesFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    this.reads++;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) {
+      this.reads++;
+      this.busySignal.set(true);
+    }
     // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
     this.errorSignal.set(null);
     try {
@@ -315,7 +321,7 @@ export class DeliveryNotesFacade {
       this.errorSignal.set(codeOf(error));
     } finally {
       // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (--this.reads === 0) this.busySignal.set(false);
+      if (marked && --this.reads === 0) this.busySignal.set(false);
     }
   }
 

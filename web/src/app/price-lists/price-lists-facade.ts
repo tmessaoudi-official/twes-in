@@ -8,6 +8,7 @@ import type { PickOption } from '../shared/form/pick-field';
 import { PriceListsApi, PriceListsRefused } from './price-lists-api';
 import type { ProductFigures } from './price-lists-figures';
 import type { PriceListInput, PriceListRow, PriceListsError } from './price-lists-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** How many products or customers a picker offers for the words typed. */
 const PICK_SIZE = 10;
@@ -19,6 +20,7 @@ const FIGURES_CAP = 100;
 @Injectable({ providedIn: 'root' })
 export class PriceListsFacade {
   private readonly api = inject(PriceListsApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly products = inject(ProductsApi);
   private readonly customers = inject(CustomersApi);
   private readonly listsSignal = signal<readonly PriceListRow[]>([]);
@@ -43,7 +45,7 @@ export class PriceListsFacade {
       this.listsSignal.set(lists);
       this.groupsSignal.set(groups);
       return true;
-    });
+    }, true);
   }
 
   /** The list with its prices, or null when it could not be read. */
@@ -52,7 +54,7 @@ export class PriceListsFacade {
     await this.run(async () => {
       found = await this.api.get(companyId, id);
       return true;
-    });
+    }, true);
     return found;
   }
 
@@ -167,8 +169,10 @@ export class PriceListsFacade {
     });
   }
 
-  private async run(work: () => Promise<boolean>): Promise<boolean> {
-    this.busySignal.set(true);
+  /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
+  private async run(work: () => Promise<boolean>, reading = false): Promise<boolean> {
+    const marked = !(reading && this.quietReads.quiet());
+    if (marked) this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
       return await work();
@@ -176,7 +180,7 @@ export class PriceListsFacade {
       this.errorSignal.set(error instanceof PriceListsRefused ? error.code : 'network');
       return false;
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 }

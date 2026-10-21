@@ -28,11 +28,13 @@ import type {
   ProductOption,
 } from './invoices-types';
 import type { PreviewBody } from '../shared/documents/document-figures';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
 export class InvoicesFacade {
   private readonly api = inject(InvoicesApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly invoicesSignal = signal<readonly InvoiceRow[]>([]);
   private readonly optionsSignal = signal<InvoiceOptions | null>(null);
   private readonly invoiceSignal = signal<InvoiceRow | null>(null);
@@ -305,8 +307,12 @@ export class InvoicesFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    this.reads++;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) {
+      this.reads++;
+      this.busySignal.set(true);
+    }
     // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
     this.errorSignal.set(null);
     try {
@@ -315,7 +321,7 @@ export class InvoicesFacade {
       this.errorSignal.set(codeOf(error));
     } finally {
       // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (--this.reads === 0) this.busySignal.set(false);
+      if (marked && --this.reads === 0) this.busySignal.set(false);
     }
   }
 

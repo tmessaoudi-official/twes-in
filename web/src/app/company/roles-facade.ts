@@ -5,11 +5,13 @@ import { AuthFacade } from '../auth/auth-facade';
 import { StepUp } from '../shared/step-up/step-up';
 import { RolesApi, RolesRefused, type RolesError } from './roles-api';
 import type { PermissionGroupRow, RoleRow } from './roles-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The roles of the company being worked in, the catalogue they are ticked from, and the writes. */
 @Injectable({ providedIn: 'root' })
 export class RolesFacade {
   private readonly api = inject(RolesApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
   private readonly rolesSignal = signal<readonly RoleRow[]>([]);
@@ -30,7 +32,9 @@ export class RolesFacade {
   readonly detail = this.detailSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       // The catalogue and the roles together: a matrix missing either half has nothing to draw.
       const [roles, groups] = await Promise.all([
@@ -43,7 +47,7 @@ export class RolesFacade {
     } catch (error) {
       this.fail(error);
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 

@@ -33,6 +33,7 @@ import type {
   StockPlanSaved,
 } from './inventory-types';
 import type { PlanStep } from './stock-plan-draft';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** How many ids the stock product picker resolves in one question (its `ids` parameter's own bound). */
 const PICK_IDS_MOST = 20;
@@ -41,6 +42,7 @@ const PICK_IDS_MOST = 20;
 @Injectable({ providedIn: 'root' })
 export class InventoryFacade {
   private readonly api = inject(InventoryApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly optionsSignal = signal<StockOptions | null>(null);
   private readonly levelsSignal = signal<readonly StockLevelRow[]>([]);
   private readonly totalSignal = signal(0);
@@ -659,8 +661,12 @@ export class InventoryFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    this.reads++;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) {
+      this.reads++;
+      this.busySignal.set(true);
+    }
     // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
     this.errorSignal.set(null);
     try {
@@ -669,7 +675,7 @@ export class InventoryFacade {
       this.errorSignal.set(codeOf(error));
     } finally {
       // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (--this.reads === 0) this.busySignal.set(false);
+      if (marked && --this.reads === 0) this.busySignal.set(false);
     }
   }
 

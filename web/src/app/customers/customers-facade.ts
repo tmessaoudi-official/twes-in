@@ -17,11 +17,13 @@ import type {
   CustomerSearch,
   CustomersError,
 } from './customers-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The customers of the company being worked in, their groups, the company's custom fields, and the open one's contacts. */
 @Injectable({ providedIn: 'root' })
 export class CustomersFacade {
   private readonly api = inject(CustomersApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly fields = inject(CustomFieldsApi);
   private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
   private readonly customersSignal = signal<readonly CustomerRow[]>([]);
@@ -193,8 +195,12 @@ export class CustomersFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    this.reads++;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) {
+      this.reads++;
+      this.busySignal.set(true);
+    }
     // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
     this.errorSignal.set(null);
     try {
@@ -203,7 +209,7 @@ export class CustomersFacade {
       this.errorSignal.set(codeOf(error));
     } finally {
       // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (--this.reads === 0) this.busySignal.set(false);
+      if (marked && --this.reads === 0) this.busySignal.set(false);
     }
   }
 

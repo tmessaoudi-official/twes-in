@@ -5,6 +5,7 @@ import { InstrumentsApi } from './instruments-api';
 import type { InstrumentInput, InstrumentRow, InstrumentStep } from './instruments-types';
 import { InvoicesRefused } from './invoices-api';
 import type { InvoicesError } from './invoices-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * The cheques and traites of the one invoice a panel shows, so each panel has its own (provided by the component, not
@@ -13,6 +14,7 @@ import type { InvoicesError } from './invoices-types';
 @Injectable()
 export class InstrumentsFacade {
   private readonly api = inject(InstrumentsApi);
+  private readonly quietReads = inject(QuietReads);
 
   private readonly itemsSignal = signal<readonly InstrumentRow[]>([]);
   private readonly busySignal = signal(false);
@@ -25,7 +27,7 @@ export class InstrumentsFacade {
   async load(companyId: string, invoiceId: string): Promise<void> {
     await this.run(async () => {
       this.itemsSignal.set(await this.api.list(companyId, invoiceId));
-    });
+    }, true);
   }
 
   async receive(companyId: string, invoiceId: string, input: InstrumentInput): Promise<boolean> {
@@ -58,8 +60,10 @@ export class InstrumentsFacade {
     this.errorSignal.set(null);
   }
 
-  private async run(work: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
+  /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
+  private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
+    const marked = !(reading && this.quietReads.quiet());
+    if (marked) this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
       await work();
@@ -68,7 +72,7 @@ export class InstrumentsFacade {
       this.errorSignal.set(error instanceof InvoicesRefused ? error.code : 'network');
       return false;
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 }

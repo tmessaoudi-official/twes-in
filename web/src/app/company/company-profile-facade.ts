@@ -5,11 +5,13 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, CompanyProfile, CompanyProfileChanges } from './company-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The profile of the company being worked in, and its revision. */
 @Injectable({ providedIn: 'root' })
 export class CompanyProfileFacade {
   private readonly api = inject(CompanyApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly stepUp = inject(StepUp);
   private readonly profileSignal = signal<CompanyProfile | null>(null);
   private readonly busySignal = signal(false);
@@ -23,14 +25,16 @@ export class CompanyProfileFacade {
   readonly refusals = this.refusalsSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       this.profileSignal.set(await this.api.profile(companyId));
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 

@@ -26,11 +26,13 @@ import {
   type PlatformSwitch,
   type PlatformSupport,
 } from './platform-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** What an operator runs the platform with: who may sign up, the companies (those waiting for a decision first), and accounts. */
 @Injectable({ providedIn: 'root' })
 export class PlatformFacade {
   private readonly api = inject(PlatformApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
   private readonly waitingSignal = signal<readonly PlatformCompanyRow[]>([]);
@@ -100,7 +102,9 @@ export class PlatformFacade {
    * messages the worker gave up on.
    */
   async load(): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       const [waiting, settings, every, accounts, demand, failed] = await Promise.all([
         this.api.companies(WAITING_SEARCH),
@@ -121,7 +125,7 @@ export class PlatformFacade {
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 

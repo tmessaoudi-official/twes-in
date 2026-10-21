@@ -13,6 +13,7 @@ import { type Subscription, take } from 'rxjs';
 import { HealthApi } from '../health/health-api';
 import { Session } from '../session/session';
 import { Feedback } from './feedback';
+import { QuietReads } from './quiet-reads';
 
 /** A request answered sooner than this shows nothing, so a fast page never flickers. */
 export const BUSY_AFTER_MS = 300;
@@ -35,6 +36,7 @@ const AUTH_PATHS = /^\/api\/auth\//;
 export class RequestActivity {
   private readonly health = inject(HealthApi);
   private readonly feedback = inject(Feedback);
+  private readonly quietReads = inject(QuietReads);
   // Read when a refusal arrives, not at construction: the session's own requests pass through here.
   private readonly injector = inject(Injector);
 
@@ -43,7 +45,6 @@ export class RequestActivity {
   private slowTimer: ReturnType<typeof setTimeout> | null = null;
   private retryTimer: ReturnType<typeof setInterval> | null = null;
   private attempt = 0;
-  private quietRuns = 0;
   private check: Subscription | null = null;
   private settledWaiters: (() => void)[] = [];
   private settleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -83,21 +84,16 @@ export class RequestActivity {
 
   /** Whether a quiet reload is running: what it requests is not shown as activity. */
   quiet(): boolean {
-    return this.quietRuns > 0;
+    return this.quietReads.quiet();
   }
 
   /**
-   * Runs work nobody on the screen asked for, such as reading a list again after another person changed it
-   * (docs/SPEC.md § 7, 2026-09-17): its requests never show the activity bar, while a failure to reach the API is
-   * still noticed. A request the person makes meanwhile is quiet too, a moment the bar can spare.
+   * Runs work nobody on the screen asked for, such as reading a list again after another person changed it: its
+   * requests never show the activity bar, nor mark the screen busy (`QuietReads`), while a failure to reach the
+   * API is still noticed. A request the person makes meanwhile is quiet too, a moment the bar can spare.
    */
-  async quietly<T>(work: () => Promise<T>): Promise<T> {
-    this.quietRuns++;
-    try {
-      return await work();
-    } finally {
-      this.quietRuns--;
-    }
+  quietly<T>(work: () => Promise<T>): Promise<T> {
+    return this.quietReads.quietly(work);
   }
 
   /** A request began; call what it returns when it ends, however it ends. */

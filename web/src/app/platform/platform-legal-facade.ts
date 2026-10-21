@@ -7,6 +7,7 @@ import { StepUp } from '../shared/step-up/step-up';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { PlatformLegalApi } from './platform-legal-api';
 import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-legal-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * The operator's legal pages (docs/SPEC.md § 8 row 148): where each page stands in each language, and the history of
@@ -15,6 +16,7 @@ import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-
 @Injectable({ providedIn: 'root' })
 export class PlatformLegalFacade {
   private readonly api = inject(PlatformLegalApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly stepUp = inject(StepUp);
   private readonly overviewSignal = signal<readonly LegalStatusRow[]>([]);
   private readonly versionsSignal = signal<readonly LegalVersionRow[]>([]);
@@ -39,7 +41,7 @@ export class PlatformLegalFacade {
       const [overview, identity] = await Promise.all([this.api.overview(), this.api.identity()]);
       this.overviewSignal.set(overview);
       this.holdIdentity(identity);
-    });
+    }, true);
   }
 
   /**
@@ -66,7 +68,10 @@ export class PlatformLegalFacade {
   async open(page: LegalPage, language: LegalLanguage): Promise<void> {
     this.opened = { page, language };
     this.versionsSignal.set([]);
-    await this.run(async () => this.versionsSignal.set(await this.api.versions(page, language)));
+    await this.run(
+      async () => this.versionsSignal.set(await this.api.versions(page, language)),
+      true,
+    );
   }
 
   /** @returns whether a new version was published */
@@ -108,8 +113,10 @@ export class PlatformLegalFacade {
     this.identityVersions = identity.versions;
   }
 
-  private async run(work: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
+  /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
+  private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
+    const marked = !(reading && this.quietReads.quiet());
+    if (marked) this.busySignal.set(true);
     try {
       await work();
       this.failedSignal.set(false);
@@ -118,7 +125,7 @@ export class PlatformLegalFacade {
       this.failedSignal.set(true);
       return false;
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 }

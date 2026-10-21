@@ -4,11 +4,13 @@ import { inject, Injectable, signal } from '@angular/core';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ActivityApi, ActivityRefused } from './activity-api';
 import type { ActivityError, ActivityRow, ActivitySearch } from './activity-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The page of the company's journal being read. */
 @Injectable({ providedIn: 'root' })
 export class ActivityFacade {
   private readonly api = inject(ActivityApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly rowsSignal = signal<readonly ActivityRow[]>([]);
   private readonly totalSignal = signal(0);
   private readonly errorSignal = signal<ActivityError | null>(null);
@@ -28,7 +30,9 @@ export class ActivityFacade {
   /** Only the latest search's answer is shown: an earlier one answering late would put back what the words left out. */
   async loadPage(companyId: string, search: ActivitySearch): Promise<void> {
     const request = ++this.request;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       const page = await this.api.entries(companyId, search);
       if (request !== this.request) return;

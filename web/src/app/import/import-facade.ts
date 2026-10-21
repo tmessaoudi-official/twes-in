@@ -16,6 +16,7 @@ import type {
   ImportUndone,
   TextEncoding,
 } from './import-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * What the import screen knows: the guide for the subject it is on, and the answer to the last run.
@@ -26,6 +27,7 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class ImportFacade {
   private readonly api = inject(ImportApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly feedback = inject(Feedback);
   private readonly stepUp = inject(StepUp);
   private readonly records = inject(RecordDeletes);
@@ -51,14 +53,16 @@ export class ImportFacade {
   async load(companyId: string, subject: string): Promise<void> {
     this.forget();
     this.guideSignal.set(null);
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       this.guideSignal.set(await this.api.guide(companyId, subject));
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 

@@ -9,6 +9,7 @@ import type {
   SettingsError,
   VersionedSettingChange,
 } from '../shared/settings/settings-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The level a product's, a product category's or an establishment's own values are stored at. */
 export const articleLevelOf = (subject: ArticleSubject): SettingLevel =>
@@ -22,6 +23,7 @@ export const articleLevelOf = (subject: ArticleSubject): SettingLevel =>
 @Injectable({ providedIn: 'root' })
 export class ArticleSettings {
   private readonly api = inject(SettingsApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly rowsSignal = signal<readonly SettingRow[]>([]);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<SettingsError | null>(null);
@@ -31,14 +33,16 @@ export class ArticleSettings {
   readonly error = this.errorSignal.asReadonly();
 
   async load(companyId: string, subject: ArticleSubject): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       this.rowsSignal.set(await this.api.chain(companyId, 'articles', subject));
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 
