@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\ApplyCreditProcessor;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
@@ -25,6 +26,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
     operations: [
         new Post(
             uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/apply-credit',
+            defaults: [Submissions::ROUTE_DEFAULT => true],
             processor: ApplyCreditProcessor::class,
             security: 'is_granted("ROLE_USER")',
             status: 200,

@@ -21,6 +21,7 @@ use App\Module\Inventory\Domain\ValueObject\ReceiptDocument;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Payload\StockMovementSearchReader;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\RecordStockMovementProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Provider\StockMovementCollectionProvider;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -61,6 +62,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/stock-movements',
+            defaults: [Submissions::ROUTE_DEFAULT => true],
             processor: RecordStockMovementProcessor::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: ['groups' => [self::READ]],

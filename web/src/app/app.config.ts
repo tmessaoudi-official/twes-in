@@ -4,6 +4,7 @@ import { ProductScanDetails } from './products/product-scan-details';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { SCAN_DETAILS } from './shared/scan/scan-details';
 import { tabInterceptor } from './shared/realtime/tab-interceptor';
+import { submissionInterceptor } from './shared/submissions/submission-interceptor';
 import { liveChangesInterceptor } from './shared/realtime/live-changes-interceptor';
 import { effectsInterceptor } from './shared/effects/effects-interceptor';
 import { EFFECT_SAYERS } from './shared/effects/effects';
@@ -64,6 +65,7 @@ export const appConfig: ApplicationConfig = {
       withInterceptors([
         csrfInterceptor,
         tabInterceptor,
+        submissionInterceptor,
         liveChangesInterceptor,
         effectsInterceptor,
         languageInterceptor,

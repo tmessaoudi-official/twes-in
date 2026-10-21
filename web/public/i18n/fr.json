@@ -2976,7 +2976,9 @@
     "retry": "Réessayer",
     "offline": "Vous êtes hors ligne : rien ne peut être enregistré pour l’instant.",
     "restored": "Connexion rétablie.",
-    "close": "Fermer"
+    "close": "Fermer",
+    "submission_in_progress": "Cet envoi est encore en cours d’enregistrement : attendez un instant, puis relisez la page.",
+    "submission_unanswered": "Cet envoi a déjà été enregistré, mais sa réponse s’est perdue : rechargez la page pour le voir."
   },
   "live": {
     "changed_by": "{{name}} a enregistré une autre version de cette fiche pendant que vous la modifiiez.",

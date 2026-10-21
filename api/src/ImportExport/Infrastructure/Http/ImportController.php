@@ -20,6 +20,7 @@ use App\Shared\Application\Spreadsheet\SpreadsheetReader;
 use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
 use App\Shared\Infrastructure\Http\LongRequest;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -59,7 +60,7 @@ final readonly class ImportController
     ) {
     }
 
-    #[Route('/api/companies/{companyId}/imports/{subject}', name: 'api_import', requirements: ['subject' => '[a-z-]+'], methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/imports/{subject}', name: 'api_import', requirements: ['subject' => '[a-z-]+'], defaults: [Submissions::ROUTE_DEFAULT => true], methods: ['POST'])]
     public function __invoke(string $companyId, string $subject, Request $request, #[Autowire(service: 'profiler')] ?Profiler $profiler = null): Response
     {
         // Symfony's documented way to keep one action out of the profiler, which only development has (null elsewhere): it keeps

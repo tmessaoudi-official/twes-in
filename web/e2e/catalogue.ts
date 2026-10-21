@@ -208,7 +208,11 @@ export async function receivedAt(page: Page, productId: string, unitCost: string
       const site = (Array.isArray(locations) ? locations : locations.member)[0];
       const received = await fetch(`${base}/stock-movements`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        headers: {
+          'content-type': 'application/json',
+          'csrf-token': csrf,
+          'idempotency-key': crypto.randomUUID(),
+        },
         body: JSON.stringify({
           operation: 'receive',
           productId: id,

@@ -505,34 +505,19 @@ describe('DeliveryNotePage', () => {
       expect(stock()).not.toContain('delivery_notes.lines.stock_left');
     });
 
-    it('says nothing and asks nothing without stock.read, with the module off, to a reader, or on a validated note', async () => {
-      granted.delete('stock.read');
+    // One page each: four pages in one case outran its five seconds under a loaded gate.
+    it.each([
+      ['without stock.read', () => granted.delete('stock.read')],
+      ['with the module off', () => modules.delete('inventory')],
+      ['to a reader', () => granted.delete('delivery_note.write')],
+      ['on a validated note', () => note.set(validated)],
+    ])('says nothing and asks nothing %s', async (_situation, arrange) => {
       note.set(draft);
+      arrange();
       await open('n1');
       await settle();
-      expect(q('line-0-stock')).toBeNull();
 
-      fixture.destroy();
-      granted.add('stock.read');
-      modules.delete('inventory');
-      await open('n1');
-      await settle();
       expect(q('line-0-stock')).toBeNull();
-
-      fixture.destroy();
-      modules.add('inventory');
-      granted.delete('delivery_note.write');
-      await open('n1');
-      await settle();
-      expect(q('line-0-stock')).toBeNull();
-
-      fixture.destroy();
-      granted.add('delivery_note.write');
-      note.set(validated);
-      await open('n1');
-      await settle();
-      expect(q('line-0-stock')).toBeNull();
-
       expect(inventory.onHand).not.toHaveBeenCalled();
     });
 

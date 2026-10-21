@@ -19,6 +19,7 @@ use App\Identity\Infrastructure\Security\CsrfRequestListener;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
@@ -177,12 +178,15 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
-     * @param array<string, mixed>|null $body
-     * @param array<string, string>     $server extra server parameters, such as `HTTP_X_TAB`
+     * Each POST names its own attempt, as the screen does (`Submissions`): a fresh `Idempotency-Key` unless `$server`
+     * names one, or names it null to send none.
+     *
+     * @param array<string, mixed>|null  $body
+     * @param array<string, string|null> $server extra server parameters, such as `HTTP_X_TAB`; null leaves one out
      */
     protected function postJson(string $path, ?array $body, bool $withCsrf = true, array $server = []): void
     {
-        $headers = ['CONTENT_TYPE' => 'application/json', ...$server];
+        $headers = array_filter(['CONTENT_TYPE' => 'application/json', Submissions::KEY_SERVER => Uuid::v4()->toRfc4122(), ...$server], static fn (?string $value): bool => null !== $value);
         if ($withCsrf) {
             $headers['HTTP_'.strtoupper(str_replace('-', '_', CsrfRequestListener::HEADER))] = self::CSRF_TOKEN;
         }
@@ -201,10 +205,11 @@ abstract class ApiTestCase extends WebTestCase
         $tmp = (string) tempnam(sys_get_temp_dir(), 'upload');
         file_put_contents($tmp, $contents);
         try {
-            $this->client->request('POST', $path, $parameters, [$field => new UploadedFile($tmp, $name, null, null, true)], [
+            $this->client->request('POST', $path, $parameters, [$field => new UploadedFile($tmp, $name, null, null, true)], $server + [
                 'HTTP_ACCEPT' => 'application/json',
                 'HTTP_'.strtoupper(str_replace('-', '_', CsrfRequestListener::HEADER)) => self::CSRF_TOKEN,
-            ] + $server);
+                Submissions::KEY_SERVER => Uuid::v4()->toRfc4122(),
+            ]);
         } finally {
             // The toolchain's TMPDIR outlives the run on the host's tmpfs: a file per upload adds up to its inodes.
             unlink($tmp);
@@ -214,7 +219,7 @@ abstract class ApiTestCase extends WebTestCase
     /** @param array<string, mixed>|null $body */
     protected function sendJson(string $method, string $path, ?array $body = null, bool $withCsrf = true): void
     {
-        $headers = ['CONTENT_TYPE' => 'application/json'];
+        $headers = ['CONTENT_TYPE' => 'application/json', Submissions::KEY_SERVER => Uuid::v4()->toRfc4122()];
         if ($withCsrf) {
             $headers['HTTP_'.strtoupper(str_replace('-', '_', CsrfRequestListener::HEADER))] = self::CSRF_TOKEN;
         }

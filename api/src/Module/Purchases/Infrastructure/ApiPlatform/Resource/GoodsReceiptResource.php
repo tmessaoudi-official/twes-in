@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Post;
 use App\Module\Purchases\Domain\Model\GoodsReceipt;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Module\Purchases\Infrastructure\ApiPlatform\State\Processor\ReceiveGoodsProcessor;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -29,6 +30,7 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new Post(
             uriTemplate: '/companies/{companyId}/purchase-orders/{purchaseOrderId}/receipts',
+            defaults: [Submissions::ROUTE_DEFAULT => true],
             status: 200,
             processor: ReceiveGoodsProcessor::class,
             security: 'is_granted("ROLE_USER")',

@@ -42,6 +42,7 @@ use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\SendQuoteProces
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Provider\QuoteCollectionProvider;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Provider\QuoteItemProvider;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -163,6 +164,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/quotes/{quoteId}/deposit-invoices',
+            defaults: [Submissions::ROUTE_DEFAULT => true],
             status: 200,
             processor: DepositQuoteProcessor::class,
             security: 'is_granted("ROLE_USER")',

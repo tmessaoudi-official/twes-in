@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Post;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\AddDeliveryNotesToDraftProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\DraftInvoiceFromDeliveryNotesProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -28,6 +29,7 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new Post(
             uriTemplate: '/companies/{companyId}/invoices/from-delivery-notes',
+            defaults: [Submissions::ROUTE_DEFAULT => true],
             processor: DraftInvoiceFromDeliveryNotesProcessor::class,
             security: 'is_granted("ROLE_USER")',
             output: InvoiceResource::class,
@@ -37,6 +39,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/delivery-notes',
+            defaults: [Submissions::ROUTE_DEFAULT => true],
             status: 200,
             processor: AddDeliveryNotesToDraftProcessor::class,
             security: 'is_granted("ROLE_USER")',

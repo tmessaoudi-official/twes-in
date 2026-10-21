@@ -344,7 +344,11 @@ test('a product whose stock has moved says on its tracking that it keeps it', as
         }[];
         const received = await fetch(`${base}/stock-movements`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          headers: {
+            'content-type': 'application/json',
+            'csrf-token': csrf,
+            'idempotency-key': crypto.randomUUID(),
+          },
           body: JSON.stringify({
             operation: 'receive',
             productId: id,
