@@ -184,7 +184,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | webmozart/assert | 2.5.0 | MIT | runtime |
 | willdurand/negotiation | 3.1.0 | MIT | runtime |
 
-## web (npm) — 40 runtime, 559 dev
+## web (npm) — 40 runtime, 576 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -371,6 +371,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | @oxc-parser/binding-win32-x64-msvc | 0.150.0 | MIT | dev |
 | @oxc-project/types | 0.149.0 | MIT | dev |
 | @oxc-project/types | 0.150.0 | MIT | dev |
+| @oxc-project/types | 0.154.0 | MIT | dev |
 | @parcel/watcher | 2.6.0 | MIT | dev |
 | @parcel/watcher-android-arm64 | 2.6.0 | MIT | dev |
 | @parcel/watcher-darwin-arm64 | 2.6.0 | MIT | dev |
@@ -394,20 +395,35 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | @protobufjs/path | 1.1.2 | BSD-3-Clause | runtime |
 | @protobufjs/pool | 1.1.0 | BSD-3-Clause | runtime |
 | @protobufjs/utf8 | 1.1.2 | BSD-3-Clause | runtime |
+| @rolldown/binding-android-arm-eabi | 1.2.14 | MIT | dev |
 | @rolldown/binding-android-arm-eabi | 1.2.8 | MIT | dev |
+| @rolldown/binding-android-arm64 | 1.2.14 | MIT | dev |
 | @rolldown/binding-android-arm64 | 1.2.8 | MIT | dev |
+| @rolldown/binding-darwin-arm64 | 1.2.14 | MIT | dev |
 | @rolldown/binding-darwin-arm64 | 1.2.8 | MIT | dev |
+| @rolldown/binding-darwin-x64 | 1.2.14 | MIT | dev |
 | @rolldown/binding-darwin-x64 | 1.2.8 | MIT | dev |
+| @rolldown/binding-freebsd-x64 | 1.2.14 | MIT | dev |
 | @rolldown/binding-freebsd-x64 | 1.2.8 | MIT | dev |
+| @rolldown/binding-linux-arm-gnueabihf | 1.2.14 | MIT | dev |
 | @rolldown/binding-linux-arm-gnueabihf | 1.2.8 | MIT | dev |
+| @rolldown/binding-linux-arm64-gnu | 1.2.14 | MIT | dev |
 | @rolldown/binding-linux-arm64-gnu | 1.2.8 | MIT | dev |
+| @rolldown/binding-linux-arm64-musl | 1.2.14 | MIT | dev |
 | @rolldown/binding-linux-arm64-musl | 1.2.8 | MIT | dev |
+| @rolldown/binding-linux-ppc64-gnu | 1.2.14 | MIT | dev |
 | @rolldown/binding-linux-ppc64-gnu | 1.2.8 | MIT | dev |
+| @rolldown/binding-linux-s390x-gnu | 1.2.14 | MIT | dev |
 | @rolldown/binding-linux-s390x-gnu | 1.2.8 | MIT | dev |
+| @rolldown/binding-linux-x64-gnu | 1.2.14 | MIT | dev |
 | @rolldown/binding-linux-x64-gnu | 1.2.8 | MIT | dev |
+| @rolldown/binding-linux-x64-musl | 1.2.14 | MIT | dev |
 | @rolldown/binding-linux-x64-musl | 1.2.8 | MIT | dev |
+| @rolldown/binding-openharmony-arm64 | 1.2.14 | MIT | dev |
 | @rolldown/binding-openharmony-arm64 | 1.2.8 | MIT | dev |
+| @rolldown/binding-win32-arm64-msvc | 1.2.14 | MIT | dev |
 | @rolldown/binding-win32-arm64-msvc | 1.2.8 | MIT | dev |
+| @rolldown/binding-win32-x64-msvc | 1.2.14 | MIT | dev |
 | @rolldown/binding-win32-x64-msvc | 1.2.8 | MIT | dev |
 | @rolldown/pluginutils | 1.0.1 | MIT | dev |
 | @schematics/angular | 22.2.3 | MIT | dev |
@@ -695,6 +711,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | require-from-string | 2.0.2 | MIT | dev |
 | resolve-pkg-maps | 1.0.0 | MIT | dev |
 | restore-cursor | 5.1.0 | MIT | dev |
+| rolldown | 1.2.14 | MIT | dev |
 | rolldown | 1.2.8 | MIT | dev |
 | run-applescript | 7.1.0 | MIT | dev |
 | rxjs | 7.8.2 | Apache-2.0 | runtime |
@@ -763,7 +780,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | validate-npm-package-name | 8.0.0 | ISC | dev |
 | varint | 6.0.0 | MIT | dev |
 | verkit | 0.3.2 | MIT | dev |
-| vite | 8.3.0 | MIT | dev |
+| vite | 8.3.3 | MIT | dev |
 | vitest | 5.0.5 | MIT | dev |
 | w3c-xmlserializer | 6.0.0 | MIT | dev |
 | wawoff2 | 2.0.1 | MIT | dev |
