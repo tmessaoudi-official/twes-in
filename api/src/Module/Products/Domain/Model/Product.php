@@ -359,7 +359,7 @@ class Product implements CompanyOwned
         $wanted = [];
         foreach ($vendors as $index => $vendor) {
             if (!$vendor->getCompany()->getId()->equals($this->company->getId())) {
-                throw new InvalidProduct("vendors.$index", 'A product\'s vendor is a vendor of its own company.');
+                throw new InvalidProduct("vendorIds.$index", 'A product\'s vendor is a vendor of its own company.', 'unknown_choice');
             }
             $wanted[$vendor->getId()->toRfc4122()] = $vendor;
         }
@@ -367,7 +367,7 @@ class Product implements CompanyOwned
             $named = $code->getSupplier();
             if (null !== $named && !isset($wanted[$named->getId()->toRfc4122()])) {
                 // The code itself is left unsaid: who may name vendors is not always who may read their codes.
-                throw new InvalidProduct('vendors', \sprintf('Vendor %s still has a code for this product: remove the code first.', $named->getNumber()), 'vendor_has_code', ['number' => $named->getNumber()]);
+                throw new InvalidProduct('vendorIds', \sprintf('Vendor %s still has a code for this product: remove the code first.', $named->getNumber()), 'vendor_has_code', ['number' => $named->getNumber()]);
             }
         }
 

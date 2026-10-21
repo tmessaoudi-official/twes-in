@@ -114,7 +114,7 @@ final readonly class ProductImport implements DeclaresImport
         'defaultTaxComponentIds' => ['default_tax_codes', 'unknown_tax_code'],
         'substitutionGroup' => ['substitution_group', 'invalid_text'],
         'tracking' => ['tracking', 'invalid_value'],
-        'vendors' => ['supplier_number', 'invalid_value'],
+        'vendorIds' => ['supplier_number', 'invalid_value'],
         'checkNote' => ['to_check', 'invalid_text'],
     ];
 

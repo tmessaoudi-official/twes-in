@@ -475,9 +475,9 @@ final readonly class ManageProducts
         $vendors = [];
         foreach ($ids as $index => $id) {
             $vendor = $this->vendors->ofIdInCompany($id, $company->getId())
-                ?? throw new InvalidProduct("vendors.$index", 'No vendor of this company has this id.');
+                ?? throw new InvalidProduct("vendorIds.$index", 'No vendor of this company has this id.', 'unknown_choice');
             if ($vendor->isMergedAway()) {
-                throw new InvalidProduct("vendors.$index", 'This vendor was merged into another: name that one.', 'unknown_choice');
+                throw new InvalidProduct("vendorIds.$index", 'This vendor was merged into another: name that one.', 'unknown_choice');
             }
             $vendors[] = $vendor;
         }
