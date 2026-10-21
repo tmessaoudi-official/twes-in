@@ -4,8 +4,8 @@ import { runDigits } from './run';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
 
-// docs/SPEC.md § 7, 2026-10-20 01:52: the categories a shop files its goods under come from a file of their own, offered
-// on the categories page and first in the products page's imports, before the products that name them.
+// The categories a shop files its goods under come from a file of their own, offered on the categories page and first
+// in the products page's imports, before the products that name them.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
 test('a file of categories, a subcategory under one named above, is offered where categories are and deleted together', async ({

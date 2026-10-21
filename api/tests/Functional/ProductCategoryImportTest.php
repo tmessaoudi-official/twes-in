@@ -14,9 +14,8 @@ use App\Module\Products\Domain\Model\ProductCategory;
 use App\Tenancy\Domain\Model\Company;
 
 /**
- * The product categories a shop already files its goods under, read from a file before its products are (docs/SPEC.md
- * § 7, 2026-10-20 01:52, universal imports): a name, found again by it, and the category it sits under, named on an
- * earlier row or already held.
+ * The product categories a shop already files its goods under, read from a file of their own before its products are:
+ * a name, found again by it, and the category it sits under, named on an earlier row or already held.
  */
 final class ProductCategoryImportTest extends ApiTestCase
 {
