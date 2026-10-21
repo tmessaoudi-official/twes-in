@@ -41,8 +41,10 @@ final readonly class DoctrineDeepHealthReader implements DeepHealthReader
     private function oldestWaitingSeconds(): ?int
     {
         $age = $this->connection->fetchOne(<<<'SQL'
+            -- database-clock: Messenger stamps available_at with the wall clock, and a health check measures real waiting
             SELECT floor(extract(epoch FROM (now() AT TIME ZONE 'UTC') - min(available_at)))
             FROM messenger_messages
+            -- database-clock: the same wall clock, so a retry scheduled for later is not counted as waiting
             WHERE queue_name <> 'failed' AND delivered_at IS NULL AND available_at <= now() AT TIME ZONE 'UTC'
             SQL);
 

@@ -25,21 +25,34 @@ final readonly class SchemaLinks
     /** @return list<string> */
     public function tables(): array
     {
-        return self::texts($this->connection->fetchFirstColumn('SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema()'));
+        return Rows::texts($this->connection->fetchFirstColumn('SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema()'));
     }
 
     /** @return list<string> every column, as `table.column` */
     public function columns(): array
     {
-        return self::texts($this->connection->fetchFirstColumn("SELECT table_name || '.' || column_name FROM information_schema.columns WHERE table_schema = current_schema()"));
+        return Rows::texts($this->connection->fetchFirstColumn("SELECT table_name || '.' || column_name FROM information_schema.columns WHERE table_schema = current_schema()"));
     }
 
-    /** @return list<array{table: string, column: string, target: string}> */
+    /**
+     * A key over several columns names a row by all of them together; read as its first column alone it would show a
+     * link that is not there, so it is refused until the engines that follow keys say how they read one.
+     *
+     * @return list<array{table: string, column: string, target: string}>
+     */
     public function foreignKeys(): array
     {
-        return array_map(static fn (array $key): array => ['table' => self::text($key['table']), 'column' => self::text($key['column']), 'target' => self::text($key['target'])], $this->connection->fetchAllAssociative(
-            "SELECT t.relname::text AS \"table\", a.attname::text AS \"column\", r.relname::text AS target FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid JOIN pg_class r ON r.oid = c.confrelid JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1] WHERE c.contype = 'f' AND c.connamespace = current_schema()::regnamespace ORDER BY 1, 2",
-        ));
+        $keys = [];
+        foreach ($this->connection->fetchAllAssociative(
+            "SELECT t.relname::text AS \"table\", a.attname::text AS \"column\", r.relname::text AS target, c.conname::text AS name, cardinality(c.conkey) AS width FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid JOIN pg_class r ON r.oid = c.confrelid JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1] WHERE c.contype = 'f' AND c.connamespace = current_schema()::regnamespace ORDER BY 1, 2",
+        ) as $key) {
+            if (1 !== Rows::int($key['width'])) {
+                throw new \UnexpectedValueException(\sprintf('The foreign key %s of %s spans several columns, which no engine following keys reads yet.', Rows::text($key['name']), Rows::text($key['table'])));
+            }
+            $keys[] = ['table' => Rows::text($key['table']), 'column' => Rows::text($key['column']), 'target' => Rows::text($key['target'])];
+        }
+
+        return $keys;
     }
 
     /**
@@ -49,7 +62,7 @@ final readonly class SchemaLinks
      */
     public function columnsOfType(string $type): array
     {
-        return array_map(static fn (array $column): array => ['table' => self::text($column['table']), 'column' => self::text($column['column'])], $this->connection->fetchAllAssociative(
+        return array_map(static fn (array $column): array => ['table' => Rows::text($column['table']), 'column' => Rows::text($column['column'])], $this->connection->fetchAllAssociative(
             "SELECT table_name::text AS \"table\", column_name::text AS \"column\" FROM information_schema.columns WHERE table_schema = current_schema() AND data_type = ? AND column_name NOT IN ('id', 'company_id') ORDER BY 1, 2",
             [$type],
         ));
@@ -64,20 +77,5 @@ final readonly class SchemaLinks
         $last = substr((string) strrchr('_'.$table, '_'), 1);
 
         return $column === $table.'_id' || str_ends_with($column, '_'.$table.'_id') || $column === $last.'_id';
-    }
-
-    /**
-     * @param list<mixed> $values
-     *
-     * @return list<string>
-     */
-    private static function texts(array $values): array
-    {
-        return array_map(self::text(...), $values);
-    }
-
-    private static function text(mixed $value): string
-    {
-        return \is_string($value) ? $value : throw new \LogicException('A catalogue name reads as text.');
     }
 }

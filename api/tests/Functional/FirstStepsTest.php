@@ -25,6 +25,9 @@ use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
+use Symfony\Component\Clock\Clock;
+use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -106,6 +109,30 @@ final class FirstStepsTest extends ApiTestCase
         $this->em()->getConnection()->executeStatement($insert, [Uuid::v7()->toRfc4122(), 'soon@twes.local', 'member', str_repeat('b', 64), '7 days', $this->company->getId()->toRfc4122()]);
         $this->getJson($this->path());
         self::assertContains('company.members', $this->done());
+    }
+
+    /** Open is what accepting it says: the application's clock, up to and including its last second. */
+    public function testAnInvitationIsOpenByTheApplicationsClockUpToItsLastSecond(): void
+    {
+        $this->signedIn(['*']);
+        // A few seconds ahead, so the database's own now() is still before it and only the application's clock tells.
+        $expires = new \DateTimeImmutable('@'.(time() + 5));
+        $this->em()->getConnection()->executeStatement(
+            'INSERT INTO invitation (id, email, role_name, token_hash, created_at, expires_at, accepted_at, company_id) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)',
+            [Uuid::v7()->toRfc4122(), 'edge@twes.local', 'member', str_repeat('c', 64), $expires->modify('-7 days')->format('Y-m-d H:i:s'), $expires->format('Y-m-d H:i:s'), $this->company->getId()->toRfc4122()],
+        );
+
+        try {
+            Clock::set(new MockClock($expires));
+            $this->getJson($this->path());
+            self::assertContains('company.members', $this->done(), 'an invitation still accepted at its last second');
+
+            Clock::set(new MockClock($expires->modify('+1 second')));
+            $this->getJson($this->path());
+            self::assertNotContains('company.members', $this->done(), 'an invitation the application already refuses');
+        } finally {
+            Clock::set(new NativeClock());
+        }
     }
 
     /** « Dessiner votre dépôt » asks the stock's writer, and only while the stock is kept. */

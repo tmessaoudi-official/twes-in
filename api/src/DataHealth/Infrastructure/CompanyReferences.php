@@ -11,6 +11,8 @@ namespace App\DataHealth\Infrastructure;
 
 use App\DataHealth\Application\DataFinding;
 use App\DataHealth\Application\DeclaresDataChecks;
+use App\Shared\Infrastructure\Doctrine\Rows;
+use App\Shared\Infrastructure\Doctrine\SchemaLinks;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 
@@ -55,10 +57,7 @@ final readonly class CompanyReferences implements DeclaresDataChecks
                 self::quote($key['target']),
                 self::quote($key['column']),
             )) as $row) {
-                if (!\is_string($row['company']) || !is_numeric($row['rows'])) {
-                    throw new \UnexpectedValueException('A count of references read something other than a company and a number.');
-                }
-                $found[] = [...$key, 'company' => $row['company'], 'rows' => (int) $row['rows']];
+                $found[] = [...$key, 'company' => Rows::text($row['company']), 'rows' => Rows::int($row['rows'])];
             }
         }
 
@@ -66,29 +65,25 @@ final readonly class CompanyReferences implements DeclaresDataChecks
     }
 
     /**
-     * Single-column foreign keys between two tables that each have a `company_id` column and a `uuid` primary key
-     * named `id`; `company` itself is excluded, where the column is the identity and not a reference.
+     * The foreign keys between two tables that each have a `company_id` column, as the schema's one reading of its keys
+     * gives them; `company` itself has none, where the column is the identity and not a reference.
      *
      * @return list<array{table: string, column: string, target: string}>
      */
     private function companyScopedForeignKeys(): array
     {
-        /** @var list<array{table: string, column: string, target: string}> $keys */
-        $keys = $this->connection->fetchAllAssociative(<<<'SQL'
-            SELECT t.relname::text AS "table", a.attname::text AS "column", r.relname::text AS target
-            FROM pg_constraint c
-            JOIN pg_class t ON t.oid = c.conrelid
-            JOIN pg_class r ON r.oid = c.confrelid
-            JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
-            WHERE c.contype = 'f' AND cardinality(c.conkey) = 1
-              AND c.connamespace = current_schema()::regnamespace
-              AND a.attname <> 'company_id'
-              AND EXISTS (SELECT 1 FROM pg_attribute x WHERE x.attrelid = c.conrelid AND x.attname = 'company_id' AND NOT x.attisdropped)
-              AND EXISTS (SELECT 1 FROM pg_attribute y WHERE y.attrelid = c.confrelid AND y.attname = 'company_id' AND NOT y.attisdropped)
-            ORDER BY 1, 2
-            SQL);
+        $schema = new SchemaLinks($this->connection);
+        $scoped = [];
+        foreach ($schema->columns() as $column) {
+            if (str_ends_with($column, '.company_id')) {
+                $scoped[substr($column, 0, -\strlen('.company_id'))] = true;
+            }
+        }
 
-        return $keys;
+        return array_values(array_filter(
+            $schema->foreignKeys(),
+            static fn (array $key): bool => 'company_id' !== $key['column'] && isset($scoped[$key['table']], $scoped[$key['target']]),
+        ));
     }
 
     private static function quote(string $identifier): string
