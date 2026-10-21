@@ -2,7 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import type { ExportFormat } from '../shared/list/export-address';
-import { requestState } from '../shared/feedback/request-state';
+import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { StepUp } from '../shared/step-up/step-up';
 import { VendorsApi, VendorsRefused } from './vendors-api';
@@ -21,7 +21,7 @@ export class VendorsFacade {
   private readonly stepUp = inject(StepUp);
   private readonly vendorsSignal = signal<readonly VendorRow[]>([]);
   private readonly totalSignal = signal(0);
-  private pageRequest = 0;
+  private readonly pageRequests = new LatestRequest();
   private readonly optionsSignal = signal<VendorOptions | null>(null);
   private readonly vendorSignal = signal<VendorRow | null>(null);
   private readonly state = requestState(codeOf);
@@ -46,10 +46,10 @@ export class VendorsFacade {
    * pause, and an earlier one answering late would otherwise put back rows the words no longer find.
    */
   async loadPage(companyId: string, search: VendorSearch): Promise<void> {
-    const request = ++this.pageRequest;
+    const current = this.pageRequests.next();
     await this.read(async () => {
       const page = await this.api.vendors(companyId, search);
-      if (request !== this.pageRequest) return;
+      if (!current()) return;
       this.vendorsSignal.set(page.rows);
       this.totalSignal.set(page.total);
     });

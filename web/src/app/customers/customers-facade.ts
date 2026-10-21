@@ -3,7 +3,7 @@
 import type { ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable, signal } from '@angular/core';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
-import { requestState } from '../shared/feedback/request-state';
+import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { CustomersApi, CustomersRefused } from './customers-api';
@@ -27,7 +27,7 @@ export class CustomersFacade {
   private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
   private readonly customersSignal = signal<readonly CustomerRow[]>([]);
   private readonly totalSignal = signal(0);
-  private pageRequest = 0;
+  private readonly pageRequests = new LatestRequest();
   private readonly groupsSignal = signal<readonly CustomerGroupRow[]>([]);
   private readonly optionsSignal = signal<CustomerOptions | null>(null);
   private readonly customerSignal = signal<CustomerRow | null>(null);
@@ -71,10 +71,10 @@ export class CustomersFacade {
    * pause, and an earlier one answering late would otherwise put back rows the words no longer find.
    */
   async loadPage(companyId: string, search: CustomerSearch): Promise<void> {
-    const request = ++this.pageRequest;
+    const current = this.pageRequests.next();
     await this.read(async () => {
       const page = await this.api.customers(companyId, search);
-      if (request !== this.pageRequest) return;
+      if (!current()) return;
       this.customersSignal.set(page.rows);
       this.totalSignal.set(page.total);
     });

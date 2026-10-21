@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
+import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable, signal } from '@angular/core';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
@@ -28,24 +29,20 @@ import type {
   ProductOption,
 } from './invoices-types';
 import type { PreviewBody } from '../shared/documents/document-figures';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
 export class InvoicesFacade {
   private readonly api = inject(InvoicesApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly invoicesSignal = signal<readonly InvoiceRow[]>([]);
   private readonly optionsSignal = signal<InvoiceOptions | null>(null);
   private readonly invoiceSignal = signal<InvoiceRow | null>(null);
   private readonly summarySignal = signal<InvoiceSummary | null>(null);
   private readonly totalSignal = signal(0);
   private readonly statusCountsSignal = signal<InvoiceStatusCounts | null>(null);
-  private pageRequest = 0;
-  private countsRequest = 0;
-  private readonly busySignal = signal(false);
-  private reads = 0;
-  private readonly errorSignal = signal<InvoicesError | null>(null);
+  private readonly pages = new LatestRequest();
+  private readonly counts = new LatestRequest();
+  private readonly state = requestState(codeOf);
 
   readonly invoices = this.invoicesSignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
@@ -57,8 +54,8 @@ export class InvoicesFacade {
   readonly invoice = this.invoiceSignal.asReadonly();
   /** The home page's figures; null until read, and again when the read is refused. */
   readonly summary = this.summarySignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   /** What the list screen needs besides its page: the options that name its drafts' customers. */
   async loadListContext(companyId: string): Promise<void> {
@@ -70,10 +67,10 @@ export class InvoicesFacade {
    * keystroke and they need not come back in order.
    */
   async loadPage(companyId: string, search: InvoiceSearch): Promise<void> {
-    const request = ++this.pageRequest;
+    const current = this.pages.next();
     await this.read(async () => {
       const page = await this.api.invoices(companyId, search);
-      if (request !== this.pageRequest) return;
+      if (!current()) return;
       this.invoicesSignal.set(page.rows);
       this.totalSignal.set(page.total);
     });
@@ -81,10 +78,10 @@ export class InvoicesFacade {
 
   /** The chips' counts for the search, the latest search's answer only, as for its page. */
   async loadStatusCounts(companyId: string, search: InvoiceSearch): Promise<void> {
-    const request = ++this.countsRequest;
+    const current = this.counts.next();
     await this.read(async () => {
       const counts = await this.api.statusCounts(companyId, search);
-      if (request === this.countsRequest) this.statusCountsSignal.set(counts);
+      if (current()) this.statusCountsSignal.set(counts);
     });
   }
 
@@ -280,20 +277,13 @@ export class InvoicesFacade {
     id: string,
     format: FacturXFormat,
   ): Promise<FacturXAnswer | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      return await this.api.facturX(companyId, id, format);
-    } catch (error) {
-      this.errorSignal.set(unlessDemoRefused(codeOf(error)));
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.writeAnswer(() => this.api.facturX(companyId, id, format), {
+      code: (error) => unlessDemoRefused(codeOf(error)),
+    });
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   /** A picker's own call: it never marks the screen busy, because a person is typing while it runs. */
@@ -301,43 +291,21 @@ export class InvoicesFacade {
     try {
       return await call();
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
       return [];
     }
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) {
-      this.reads++;
-      this.busySignal.set(true);
-    }
-    // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
-    this.errorSignal.set(null);
-    try {
-      await load();
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (marked && --this.reads === 0) this.busySignal.set(false);
-    }
+    await this.state.read(load);
   }
 
   private async step(call: () => Promise<InvoiceRow>): Promise<InvoiceRow | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.writeAnswer(async () => {
       const invoice = await call();
       this.invoiceSignal.set(invoice);
       return invoice;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 
   private async paymentStep(
