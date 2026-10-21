@@ -871,7 +871,8 @@
     "password": {
       "show": "Show password",
       "hide": "Hide password"
-    }
+    },
+    "remove_pick": "Remove {{name}}"
   },
   "fiscal": {
     "no_company": "Choose a company first.",
@@ -2105,7 +2106,8 @@
       "pricing": "Unit and prices",
       "taxes": "Default taxes",
       "description": "Description",
-      "custom": "Custom fields"
+      "custom": "Custom fields",
+      "buying": "Buying"
     },
     "fields": {
       "reference": "Reference",
@@ -2126,7 +2128,8 @@
       "checkNote": "Check note",
       "zeroPriceIntended": "Zero price meant",
       "unitToConfirm": "Unit to confirm",
-      "toCount": "To count"
+      "toCount": "To count",
+      "vendorIds": "Vendors"
     },
     "form": {
       "no_category": "No category",
@@ -2137,7 +2140,8 @@
       "description_hint": "Offered as the text of a new document line.",
       "tracking_hint": "Chosen before the first stock movement; a service is not tracked.",
       "substitution_group_hint": "Products sharing this name can stand in for one another when one is out of stock. Case is not told apart.",
-      "reference_hint_new": "The reference shown is given when you save; type another to replace it."
+      "reference_hint_new": "The reference shown is given when you save; type another to replace it.",
+      "vendors_hint": "Who you buy it from; search by number or name."
     },
     "errors": {
       "network": "The server could not be reached.",

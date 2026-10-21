@@ -281,7 +281,9 @@ export function productForm(
   options: ProductOptions,
   categories: readonly ProductCategoryRow[],
   fields: readonly CustomFieldDefinition[] = [],
-  shown: { readonly cost: boolean; readonly newProduct?: boolean } = { cost: true },
+  shown: { readonly cost: boolean; readonly newProduct?: boolean; readonly vendors?: boolean } = {
+    cost: true,
+  },
 ): FormDescriptor {
   const labels = categoryLabels(categories);
   const taxes: FormField[] = [
@@ -394,6 +396,20 @@ export function productForm(
         },
       ]),
       ...(taxes.length > 0 ? [section('taxes', taxes)] : []),
+      // Who it is bought from, while the company keeps a vendor book; a form without it keeps them as they are.
+      ...(shown.vendors === true
+        ? [
+            section('buying', [
+              {
+                id: 'vendorIds',
+                label: `${FIELDS}.vendorIds`,
+                kind: 'picks',
+                span: 2,
+                hint: 'products.form.vendors_hint',
+              },
+            ]),
+          ]
+        : []),
       {
         id: 'check',
         title: 'check.form.section',
@@ -472,6 +488,7 @@ export function productValues(
     toCheck: row?.toCheck ?? false,
     checkNote: row?.checkNote ?? '',
     zeroPriceIntended: row?.zeroPriceIntended ?? false,
+    vendorIds: [...(row?.vendorIds ?? [])],
   };
   // A new product starts with the company's default rate ticked, as a line naming no product is charged it; a product
   // already held keeps its own, none at all for an exempt good.
@@ -514,12 +531,21 @@ export function productInput(
     checkNote: values['toCheck'] === true ? text(values['checkNote']) : null,
     // Shown only under a price of nothing, and kept by the API only then.
     zeroPriceIntended: values['zeroPriceIntended'] === true,
+    // A form that did not show them keeps them, as the API does with a list left out.
+    vendorIds: 'vendorIds' in values ? ids(values['vendorIds']) : null,
     // A service holds no stock, so it tracks nothing; the API says the same.
     tracking:
       kind === 'service'
         ? 'none'
         : (PRODUCT_TRACKINGS.find((tracking) => tracking === values['tracking']) ?? 'none'),
   };
+}
+
+/** The ids a list of records holds, each once, in the order it holds them. */
+function ids(held: FieldValue | undefined): string[] {
+  return Array.isArray(held)
+    ? [...new Set(held.filter((id): id is string => typeof id === 'string'))]
+    : [];
 }
 
 /** The taxes the company offers that are held, in the order it offers them: a list a person ticked in any order. */

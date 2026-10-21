@@ -7,6 +7,7 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingsApi } from '../shared/settings/settings-api';
 import type { SettingRow } from '../shared/settings/settings-types';
 import type { ExportFormat } from '../shared/list/export-address';
+import type { PickAsked } from '../shared/form/pick-api';
 import { ProductsApi, ProductsRefused } from './products-api';
 import { trackingOf } from './products-types';
 import type {
@@ -21,6 +22,7 @@ import type {
   ProductSearch,
   ProductsError,
   ProductTracking,
+  ProductVendor,
 } from './products-types';
 import { QuietReads } from '../shared/feedback/quiet-reads';
 
@@ -64,6 +66,20 @@ export class ProductsFacade {
   readonly error = this.errorSignal.asReadonly();
   /** The fields the last save was refused on, for the form to say under each. */
   readonly refusals = this.refusalsSignal.asReadonly();
+
+  /**
+   * The few vendors a person means while typing, by id the ones a product names. A search that fails answers nothing
+   * and says so in `error`, rather than reading as "no such vendor".
+   */
+  async pickVendors(companyId: string, asked: PickAsked): Promise<ProductVendor[]> {
+    // A picker never marks the screen busy, because a person is typing while it runs.
+    try {
+      return await this.api.pickVendors(companyId, asked);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return [];
+    }
+  }
 
   /** What the list screen needs besides its page: the categories and units its rows name, and the custom fields it adds columns for. */
   async loadListContext(companyId: string): Promise<void> {

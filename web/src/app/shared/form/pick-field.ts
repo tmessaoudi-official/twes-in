@@ -163,6 +163,8 @@ export class PickField {
   readonly labelInside = input(true);
   /** The id the surrounding form's `<label for>` points at, when the label lives outside. */
   readonly inputId = input('');
+  /** Whether the box empties once a row is taken, ready for the next: a field holding several records adds each. */
+  readonly clearsAfterPick = input(false);
 
   readonly picked = output<PickOption | null>();
   /**
@@ -307,5 +309,6 @@ export class PickField {
   protected take(event: MatAutocompleteSelectedEvent): void {
     const option = event.option.value as PickOption | null;
     this.picked.emit(option);
+    if (this.clearsAfterPick()) this.typed.setValue('');
   }
 }

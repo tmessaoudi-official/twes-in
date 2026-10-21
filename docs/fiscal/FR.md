@@ -126,12 +126,13 @@ unsourced as law.
 | Identifier | Preset pattern | Source | Status |
 |---|---|---|---|
 | SIREN: 9 digits, the last a Luhn check digit | `^[0-9]{9}$` | INSEE, secondary sources | unvalidated |
-| SIRET: 14 digits (SIREN + 5-digit NIC), Luhn over all 14 (La Poste's establishments are an exception) | `^[0-9]{14}$` | INSEE, secondary sources | unvalidated |
+| SIRET: 14 digits (SIREN + 5-digit NIC), Luhn over all 14, or for La Poste's establishments a digit sum divisible by five | `^[0-9]{14}$` | INSEE (situation notices), secondary sources | unvalidated |
 | The NIC, the SIRET's last five digits, tells a company's establishments apart | `establishment.code_pattern` `^[0-9]{5}$`; a company's first establishment starts as `00001`, a placeholder the company corrects to its real NIC | INSEE, secondary sources | unvalidated |
 | Intra-EU VAT number: `FR`, a two-character key, the SIREN; key = (12 + 3 × (SIREN mod 97)) mod 97 | `^FR[0-9A-Z]{2}[0-9]{9}$` | secondary sources | unvalidated |
 
-The preset names each identifier's check beside its pattern: `luhn` for the SIREN, `siret` for the SIRET (Luhn, or for
-La Poste's SIREN 356000000 a digit sum divisible by five) and `fr_vat_key` for the VAT number, whose key is checked
+The preset names each identifier's check beside its pattern: `luhn` for the SIREN, `siret` for the SIRET (Luhn, or, for
+La Poste's SIREN 356000000, a digit sum divisible by five as a second way in: its head office 35600000000048 passes Luhn
+and not the sum, while 35600000009075 passes only the sum) and `fr_vat_key` for the VAT number, whose key is checked
 only when it is two digits. Unvalidated, like the rest of this section.
 
 Each identifier also carries an `example` the preset itself accepts (`123456782`, `12345678200010`, `FR11123456782`,
@@ -231,7 +232,8 @@ E-invoicing comes after the POC (docs/SPEC.md § 2).
 ## Known gaps
 
 - The CIBS article numbers replace the CGI references from 1 January 2027 (§ 2, § 3), not yet reflected.
-- La Poste's SIRET exception (§ 5) is taken from secondary sources; no primary INSEE text was found for it.
+- La Poste's SIRET exception (§ 5): INSEE states no rule; it is read from INSEE's situation notices of 35600000009075
+  and 35600000000048 (https://api-avis-situation-sirene.insee.fr/identification/pdf/35600000009075, read 2026-10-21).
 - The encaissements basis for services (§ 2a): the VAT on what was received in a period, not computed; the débits
   option is recorded on the company and printed (§ 4a), but nothing computes the VAT due from it.
 - The category of the operations and the débits option (§ 4a) are printed but not written into the Factur-X: where the

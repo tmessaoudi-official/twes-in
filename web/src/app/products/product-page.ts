@@ -19,7 +19,8 @@ import { MatCardModule } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { DescriptorForm } from '../shared/form/descriptor-form';
+import { DescriptorForm, type PickSource } from '../shared/form/descriptor-form';
+import type { PickOption } from '../shared/form/pick-field';
 import { liveRecord } from '../shared/form/live-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
@@ -38,7 +39,7 @@ import { ProductCostHistory } from './product-cost-history-facade';
 import { ProductCostHistorySection } from './product-cost-history';
 import { ProductPriceReviewNotice } from './product-price-review';
 import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
-import type { PriceReviewDecision } from './products-types';
+import type { PriceReviewDecision, ProductVendor } from './products-types';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { RecordHistory } from '../activity/record-history';
 import { ProductSubstitutes } from './product-substitutes-facade';
@@ -184,6 +185,8 @@ export class ProductPage {
     () => this.facade.options()?.photosPerProduct ?? 6,
   );
   protected readonly photoMaxBytes = computed(() => this.facade.options()?.photoMaxBytes ?? null);
+  /** Who it is bought from is named while the company keeps a vendor book; without it, the product keeps its own. */
+  protected readonly showsVendors = computed(() => this.auth.hasModule('vendors'));
   protected readonly descriptor = computed(() => {
     const options = this.facade.options();
     return options === null
@@ -191,7 +194,20 @@ export class ProductPage {
       : productForm(options, this.facade.categories(), this.facade.customFields(), {
           cost: this.showsCost(),
           newProduct: this.id() === null,
+          vendors: this.showsVendors(),
         });
+  });
+  /** The vendor book searched while naming who it is bought from, and the vendors it names as the product says them. */
+  protected readonly pickers = computed((): Record<string, PickSource> => {
+    if (!this.showsVendors()) return {};
+    return {
+      vendorIds: {
+        search: (words) => this.searchVendors(words),
+        searchable: this.editable(),
+        value: null,
+        values: (this.current()?.vendors ?? []).map(vendorPick),
+      },
+    };
   });
   /**
    * The reference a new product would be given if it were saved now, shown in its field so it can be kept or changed
@@ -487,6 +503,11 @@ export class ProductPage {
     void this.save(form.getRawValue());
   }
 
+  private async searchVendors(words: string): Promise<PickOption[]> {
+    const companyId = this.company()?.id;
+    return companyId ? (await this.facade.pickVendors(companyId, { words })).map(vendorPick) : [];
+  }
+
   protected revert(): void {
     const form = this.form();
     const saved = this.savedValues();
@@ -587,4 +608,9 @@ export class ProductPage {
     const refused = this.facade.refusals();
     if (refused.length > 0) this.mainForm()?.showRefused(refused);
   }
+}
+
+/** A vendor as a picker shows it: its number, then its name. */
+function vendorPick(vendor: ProductVendor): PickOption {
+  return { id: vendor.id, code: vendor.number, name: vendor.name };
 }

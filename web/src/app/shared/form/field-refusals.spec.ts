@@ -36,6 +36,18 @@ describe('refusalsIn', () => {
     ).toEqual(['identifier__matricule_fiscal', 'identifier__siren', 'custom__vip']);
   });
 
+  it('puts a refusal of one entry of a list on the list’s field, which is what the form shows', () => {
+    expect(
+      refusalsIn({
+        violations: [
+          { propertyPath: 'vendorIds.1', payload: { reason: 'unknown_choice' } },
+          { propertyPath: 'defaultTaxComponentIds[0]', payload: { reason: 'unknown_choice' } },
+          { propertyPath: 'barcodes.0.code', payload: { reason: 'invalid_value' } },
+        ],
+      }).map((refusal) => refusal.field),
+    ).toEqual(['vendorIds', 'defaultTaxComponentIds', 'barcodes.0.code']);
+  });
+
   it('keeps a refusal without a reason, for the screen to say generically', () => {
     expect(refusalsIn({ violations: [{ propertyPath: 'kind', code: 'abc' }] })).toEqual([
       { field: 'kind', reason: null, params: {} },

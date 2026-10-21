@@ -88,6 +88,8 @@ const laptop: ProductRow = {
   zeroPriceIntended: false,
   checkReasons: [],
   mergedInto: null,
+  vendorIds: [],
+  vendors: [],
 };
 
 describe('ProductPage', () => {
@@ -116,6 +118,7 @@ describe('ProductPage', () => {
     pricePreview: vi.fn(),
     referencePreview: vi.fn(),
     settlePriceReview: vi.fn(),
+    pickVendors: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -179,6 +182,7 @@ describe('ProductPage', () => {
     facade.pricePreview.mockReset().mockResolvedValue(null);
     facade.referencePreview.mockReset().mockResolvedValue(null);
     facade.settlePriceReview.mockReset();
+    facade.pickVendors.mockReset().mockResolvedValue([]);
     categories.set([]);
     auth.hasPermission.mockReset().mockReturnValue(true);
     auth.hasModule.mockReset().mockReturnValue(true);
@@ -274,6 +278,59 @@ describe('ProductPage', () => {
     // The form stands on the version the review left first, then the outcome is said.
     await vi.waitFor(() =>
       expect(effectToasts()).toEqual(['products.price_review.adjusted:corrigeable']),
+    );
+  });
+
+  it('names who a product is bought from, finds another in the vendor book, and saves exactly those', async () => {
+    product.set({
+      ...laptop,
+      vendorIds: ['v1'],
+      vendors: [{ id: 'v1', number: 'FRN-0001', name: 'Comptoir Sfax' }],
+    });
+    facade.pickVendors.mockResolvedValue([{ id: 'v2', number: 'FRN-0002', name: 'Sotumag' }]);
+    await open(laptop.id);
+    expect(q('field-vendorIds-held-v1')?.textContent?.trim()).toBe('FRN-0001 · Comptoir Sfax');
+
+    q('field-vendorIds')!.dispatchEvent(new Event('focusin'));
+    await settle();
+    const offered = Array.from(document.body.querySelectorAll<HTMLElement>('mat-option')).find(
+      (each) => each.textContent?.trim() === 'FRN-0002 · Sotumag',
+    );
+    expect(facade.pickVendors).toHaveBeenCalledWith('c1', expect.objectContaining({ words: '' }));
+    offered!.click();
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.reviseProduct).toHaveBeenCalledWith(
+      'c1',
+      'p1',
+      expect.objectContaining({ vendorIds: ['v1', 'v2'] }),
+      laptop.version,
+    );
+  });
+
+  it('leaves who a product is bought from alone while the company keeps no vendor book', async () => {
+    auth.hasModule.mockImplementation((module: string) => module !== 'vendors');
+    product.set({
+      ...laptop,
+      vendorIds: ['v1'],
+      vendors: [{ id: 'v1', number: 'FRN-0001', name: 'Sfax' }],
+    });
+    await open(laptop.id);
+    expect(q('field-vendorIds-held')).toBeNull();
+    expect(q('field-vendorIds')).toBeNull();
+
+    type('field-name', 'Portable 15"');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.reviseProduct).toHaveBeenCalledWith(
+      'c1',
+      'p1',
+      expect.objectContaining({ vendorIds: null }),
+      laptop.version,
     );
   });
 

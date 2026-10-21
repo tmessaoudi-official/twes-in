@@ -128,6 +128,69 @@
                       {{ error.key | translate: error.params }}
                     </span>
                   }
+                } @else if (field.kind === 'picks') {
+                  @if (heldPicks(field); as held) {
+                    @if (held.length > 0) {
+                      <ul
+                        class="flex flex-wrap gap-2"
+                        [attr.data-testid]="'field-' + field.id + '-held'"
+                      >
+                        @for (option of held; track option.id) {
+                          <li
+                            class="flex items-center gap-1 rounded-full border border-outline-variant ps-3"
+                          >
+                            <span
+                              class="text-sm"
+                              dir="auto"
+                              [attr.data-testid]="'field-' + field.id + '-held-' + option.id"
+                              >{{ pickText(option) }}</span
+                            >
+                            @if (!readOnly()) {
+                              <button
+                                mat-icon-button
+                                type="button"
+                                [appLabel]="
+                                  'form.remove_pick' | translate: { name: pickText(option) }
+                                "
+                                [attr.data-testid]="'field-' + field.id + '-remove-' + option.id"
+                                (click)="removePick(field, option.id)"
+                              >
+                                <mat-icon>close</mat-icon>
+                              </button>
+                            }
+                          </li>
+                        }
+                      </ul>
+                    } @else if (readOnly() || pickerFor(field)?.searchable === false) {
+                      <span class="text-sm" [attr.data-testid]="'field-' + field.id + '-none'"
+                        >—</span
+                      >
+                    }
+                  }
+                  @if (pickerFor(field); as picker) {
+                    @if (!readOnly() && picker.searchable !== false) {
+                      <app-pick-field
+                        [label]="field.label | translate: field.labelParams"
+                        [labelInside]="false"
+                        [inputId]="controlId(field)"
+                        [testId]="'field-' + field.id"
+                        [search]="picker.search"
+                        [clearsAfterPick]="true"
+                        [noneFoundLabel]="field.noneFoundLabel ?? 'form.none_found' | translate"
+                        [hint]="field.hint ? (field.hint | translate) : ''"
+                        (picked)="addPick(field, $event)"
+                      />
+                    }
+                  }
+                  @if (errorFor(field); as error) {
+                    <span
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      [attr.data-testid]="'field-error-' + field.id"
+                    >
+                      {{ error.key | translate: error.params }}
+                    </span>
+                  }
                 } @else if (field.kind === 'select' || field.kind === 'multiselect') {
                   <app-select
                     [inputId]="controlId(field)"

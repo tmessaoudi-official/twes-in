@@ -163,4 +163,13 @@ describe('unsavedChanges', () => {
 
     expect(count()).toBe(1);
   });
+
+  it('counts nothing for a saved value whose field the form does not show, which nobody can have changed', () => {
+    const { form, saved, count } = follow();
+    form.set(customer());
+    TestBed.tick();
+    saved.set({ ...SAVED, vendorIds: ['v1'], costPrice: '12.000' });
+
+    expect(count()).toBe(0);
+  });
 });

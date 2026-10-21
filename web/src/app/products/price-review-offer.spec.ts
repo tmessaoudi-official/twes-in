@@ -48,6 +48,8 @@ const moved: ProductRow = {
     previousMargin: '20.0',
     margin: '12.0',
   },
+  vendorIds: [],
+  vendors: [],
 };
 const unmoved: ProductRow = { ...moved, id: 'p2', priceReview: null };
 

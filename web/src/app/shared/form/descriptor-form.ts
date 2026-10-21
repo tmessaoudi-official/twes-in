@@ -38,7 +38,14 @@ import { applicableValues, applyVisibility, fieldApplies } from './form-visibili
 /** Where one `pick` field's rows come from, and the record it holds now as that record itself says it. */
 export interface PickSource {
   search: (words: string) => Promise<readonly PickOption[]>;
+  /**
+   * False where the person may not search the book: a `picks` field then offers no box to add one, and still shows
+   * what it holds, which may be taken off.
+   */
+  searchable?: boolean;
   value: PickOption | null;
+  /** For a `picks` field, the records it holds as the record itself names them. */
+  values?: readonly PickOption[];
 }
 
 /**
@@ -140,6 +147,48 @@ export class DescriptorForm {
   protected takePicked(field: FormField, option: PickOption | null): void {
     this.form().controls[field.id]?.setValue(option?.id ?? '');
     this.form().controls[field.id]?.markAsTouched();
+  }
+
+  /** The records picked here, by id, so one added is named as the list showed it until the record names it itself. */
+  private readonly addedPicks = signal<Readonly<Record<string, PickOption>>>({});
+
+  /** What a `picks` field holds, in its order, each named by the record, else as it was picked, else by its id. */
+  protected heldPicks(field: FormField): readonly PickOption[] {
+    this.revision();
+    const value: unknown = this.form().controls[field.id]?.value;
+    const ids = Array.isArray(value) ? value.map(String) : [];
+    const named = new Map((this.pickerFor(field)?.values ?? []).map((each) => [each.id, each]));
+    const added = this.addedPicks();
+    return ids.map((id) => named.get(id) ?? added[id] ?? { id, code: '', name: id });
+  }
+
+  protected addPick(field: FormField, option: PickOption | null): void {
+    if (option === null) return;
+    const ids = this.heldPicks(field).map((each) => each.id);
+    this.addedPicks.update((added) => ({ ...added, [option.id]: option }));
+    if (ids.includes(option.id)) return;
+    this.setPicks(field, [...ids, option.id]);
+  }
+
+  protected removePick(field: FormField, id: string): void {
+    this.setPicks(
+      field,
+      this.heldPicks(field)
+        .map((each) => each.id)
+        .filter((each) => each !== id),
+    );
+  }
+
+  private setPicks(field: FormField, ids: string[]): void {
+    const control = this.form().controls[field.id];
+    control?.setValue(ids);
+    control?.markAsDirty();
+    control?.markAsTouched();
+  }
+
+  /** How a held record reads: its code and name, as the list offered it. */
+  protected pickText(option: PickOption): string {
+    return option.code === '' ? option.name : `${option.code} · ${option.name}`;
   }
 
   protected applies(field: FormField): boolean {

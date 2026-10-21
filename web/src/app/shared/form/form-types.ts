@@ -19,6 +19,11 @@ export type FieldKind =
    * to `DescriptorForm` beside it.
    */
   | 'pick'
+  /**
+   * Several records out of such a book: the ones held, each with its button to take it off, then a box asking the API
+   * for one more. The control holds their ids in the order they were added.
+   */
+  | 'picks'
   | 'checkbox'
   /** A `#rrggbb` colour, picked with the browser's colour control. */
   | 'colour';

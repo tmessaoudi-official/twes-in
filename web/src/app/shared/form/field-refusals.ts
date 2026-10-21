@@ -38,12 +38,17 @@ export function refusalsIn(body: unknown): readonly FieldRefusal[] {
 }
 
 /**
- * The form field a property path lands on. A map's entry is written `identifiers.siren` by a domain rule and
- * `identifiers[siren]` by a constraint over each of its values; both are the one field the form shows for it.
+ * The form field a property path lands on. A list's entry lands on the list. A map's entry is written
+ * `identifiers.siren` by a domain rule and `identifiers[siren]` by a constraint over each of its values; both are the
+ * one field the form shows for it.
  */
 function fieldOf(path: string): string {
   const entry = /^(identifiers|customFields)(?:\.|\[)([^\]]+)\]?$/.exec(path);
-  if (entry === null) return path;
+  if (entry === null) {
+    // One entry of a list (`vendorIds.1`, `defaultTaxComponentIds[0]`) is refused on the one field the form shows for it.
+    const listed = /^([A-Za-z]\w*)(?:\.\d+|\[\d+\])$/.exec(path);
+    return listed === null ? path : listed[1];
+  }
   return (entry[1] === 'identifiers' ? IDENTIFIER_FIELD_PREFIX : CUSTOM_FIELD_PREFIX) + entry[2];
 }
 

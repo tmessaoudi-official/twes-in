@@ -871,7 +871,8 @@
     "password": {
       "show": "Afficher le mot de passe",
       "hide": "Masquer le mot de passe"
-    }
+    },
+    "remove_pick": "Retirer {{name}}"
   },
   "fiscal": {
     "no_company": "Choisissez d’abord une société.",
@@ -2105,7 +2106,8 @@
       "pricing": "Unité et prix",
       "taxes": "Taxes par défaut",
       "description": "Description",
-      "custom": "Champs personnalisés"
+      "custom": "Champs personnalisés",
+      "buying": "Achat"
     },
     "fields": {
       "reference": "Référence",
@@ -2126,7 +2128,8 @@
       "checkNote": "Note de vérification",
       "zeroPriceIntended": "Prix 0 voulu",
       "unitToConfirm": "Unité à confirmer",
-      "toCount": "À compter"
+      "toCount": "À compter",
+      "vendorIds": "Fournisseurs"
     },
     "form": {
       "no_category": "Aucune catégorie",
@@ -2137,7 +2140,8 @@
       "description_hint": "Proposée comme texte d’une nouvelle ligne de document.",
       "tracking_hint": "Choisi avant le premier mouvement de stock ; un service n’est pas suivi.",
       "substitution_group_hint": "Les produits qui portent ce nom peuvent se remplacer quand l’un est en rupture. La casse ne les distingue pas.",
-      "reference_hint_new": "La référence proposée est donnée à l’enregistrement ; tapez-en une autre pour la remplacer."
+      "reference_hint_new": "La référence proposée est donnée à l’enregistrement ; tapez-en une autre pour la remplacer.",
+      "vendors_hint": "Ceux chez qui vous l’achetez ; cherchez par numéro ou nom."
     },
     "errors": {
       "network": "Le serveur est injoignable.",
