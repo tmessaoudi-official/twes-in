@@ -132,6 +132,8 @@ export class ImportPage {
   );
   /** The switches of the file ticked for this run, by key; each is off until ticked. */
   protected readonly ticked = signal<readonly string[]>([]);
+  /** The answer chosen for each switch that is a choice, by key; one not chosen is its first. */
+  protected readonly chosen = signal<Readonly<Record<string, string>>>({});
   /** A preview that came back with nothing rejected: only then is importing more than a guess. */
   protected readonly previewed = signal(false);
   /**
@@ -247,6 +249,7 @@ export class ImportPage {
       this.file.set(null);
       this.previewed.set(false);
       this.ticked.set([]);
+      this.chosen.set({});
       void this.facade.load(companyId, subject);
       void this.facade.loadRecent(companyId);
     });
@@ -383,6 +386,13 @@ export class ImportPage {
     this.facade.forget();
   }
 
+  /** Another answer changes what the run does, as a switch does. */
+  protected choose(key: string, answer: string): void {
+    this.chosen.update((chosen) => ({ ...chosen, [key]: answer }));
+    this.previewed.set(false);
+    this.facade.forget();
+  }
+
   /** A heading paired anew: the preview before it no longer says what an import would do. */
   protected choosePairing(heading: string, value: string | string[] | null): void {
     if (typeof value !== 'string' || value === '') return;
@@ -486,6 +496,7 @@ export class ImportPage {
       this.ticked(),
       this.encoding(),
       this.pairing(),
+      this.chosen(),
     );
     this.askAbout(this.refusal());
   }

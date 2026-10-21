@@ -14,6 +14,7 @@ use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\ImportExport\Application\ImportCatalogue;
+use App\ImportExport\Application\ImportChoice;
 use App\ImportExport\Application\ImportHeading;
 use App\ImportExport\Application\ImportSettings;
 use App\Settings\Domain\Model\Setting;
@@ -104,14 +105,14 @@ final class ImportColumnsTest extends ApiTestCase
             }
             // A switch is worded by the screen alone, so it has nothing but these keys to show.
             foreach ($catalogue->declaration($subject)->subjectFor($this->company)->switches as $switch) {
-                foreach (array_filter([$switch->label, $switch->note]) as $key) {
+                foreach (array_filter([$switch->label, $switch->note, ...array_map(static fn (ImportChoice $choice): string => $choice->label, $switch->choices)]) as $key) {
                     $this->assertScreenKeyTranslated($key);
                     ++$switches;
                 }
             }
         }
         self::assertGreaterThan(40, $checked, 'the subjects were enumerated, not skipped');
-        self::assertGreaterThanOrEqual(4, $switches, 'the products file offers two switches with a note each, whatever its modules');
+        self::assertGreaterThanOrEqual(9, $switches, 'the products file offers two switches with a note each and a choice of three answers, whatever its modules');
     }
 
     /** A registration number is shown as the preset writes one, to whoever fills in a customer or a supplier file. */

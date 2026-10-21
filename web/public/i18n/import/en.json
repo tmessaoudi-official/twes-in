@@ -93,7 +93,12 @@
       "default_taxes_switch": "Give new products naming no tax the default taxes",
       "default_taxes_switch_note": "The taxes marked “default” in Taxes, as in a new product’s record. A product already held keeps its own.",
       "unpriced_inactive": "Import new products without a sale price switched off",
-      "unpriced_inactive_note": "They are created at 0 and switched off: no document sells them before their price is entered, and their stock can be counted."
+      "unpriced_inactive_note": "They are created at 0 and switched off: no document sells them before their price is entered, and their stock can be counted.",
+      "unreachable_gross": "Price including taxes that cannot be reached",
+      "unreachable_gross_note": "Some prices including taxes come from no price before taxes, the currency’s last digit falling between two. Each row concerned says the price kept.",
+      "unreachable_gross_below": "The nearest below",
+      "unreachable_gross_above": "The nearest above",
+      "unreachable_gross_refuse": "Refuse the row"
     },
     "vendors": {
       "number": "Vendor number",
@@ -233,7 +238,8 @@
       "default_taxes_given": "Default taxes given: {{codes}}.",
       "price_to_enter": "No sale price: created at 0 and switched off. Enter its price in its record, then switch it on.",
       "below_cost": "Sold under its cost price ({{cost}}).",
-      "unit_to_confirm": "No unit: created in {{code}}, the default unit. Confirm it on its page."
+      "unit_to_confirm": "No unit: created in {{code}}, the default unit. Confirm it on its page.",
+      "gross_reached": "Price including taxes {{gross}} cannot be reached: {{reached}} kept."
     },
     "stock": {
       "stock_add": "Quantity to add",

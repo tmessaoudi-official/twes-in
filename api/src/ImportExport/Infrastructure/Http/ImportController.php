@@ -34,7 +34,8 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Previews or imports one file (docs/SPEC.md § 7, 2026-09-17 and 2026-09-19): `file` a .csv or .xlsx, `mode` create or
- * upsert, `dryRun` 1 for the preview, `switches[]` each switch of the subject ticked, `pairing` a JSON object pairing
+ * upsert, `dryRun` 1 for the preview, `switches[]` each switch of the subject ticked, `choices[<switch>]` the answer of a
+ * switch that is a choice (its first when none is sent, 422 for one it does not offer), `pairing` a JSON object pairing
  * the file's own headings with column keys ('' for a column ignored), sent whole because a heading may hold any
  * character a form field's name would lose. A plain controller rather than a resource, because the body is a file.
  *
@@ -98,6 +99,17 @@ final readonly class ImportController
             }
             $switches[] = $switch;
         }
+        $named = [];
+        foreach ($request->request->all('choices') as $key => $answer) {
+            if (!\is_string($answer)) {
+                return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            $named[(string) $key] = $answer;
+        }
+        $answers = $columns->chosen($named);
+        if (null === $answers) {
+            return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
         $pairing = $this->pairing($request->request->getString('pairing'));
         if (null === $pairing) {
             return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -119,6 +131,7 @@ final readonly class ImportController
                 $contentHash,
                 $switches,
                 $pairing,
+                $answers,
             );
         } catch (UnreadableSpreadsheet) {
             return new JsonResponse(['error' => UnreadableImport::UNREADABLE, 'columns' => [], 'encoding' => $encoding?->value], Response::HTTP_UNPROCESSABLE_ENTITY);

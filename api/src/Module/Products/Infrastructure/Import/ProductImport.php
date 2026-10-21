@@ -23,6 +23,7 @@ use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\ImportExport\Application\DeclaresImport;
 use App\ImportExport\Application\ImportCells;
+use App\ImportExport\Application\ImportChoice;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportContext;
 use App\ImportExport\Application\ImportHeading;
@@ -97,6 +98,14 @@ final readonly class ProductImport implements DeclaresImport
     public const string DEFAULT_TAXES = 'default_taxes';
     /** Creates a new product the row gives no sale price at 0 and switched off, which no document then sells. */
     public const string UNPRICED_INACTIVE = 'unpriced_inactive';
+    /**
+     * « Prix TTC impossible à atteindre »: where no net price at four decimals comes to the price written taxes included,
+     * the row takes the nearest under it (the default), the nearest over it, or is refused, and says which it reached.
+     */
+    public const string UNREACHABLE_GROSS = 'unreachable_gross';
+    public const string GROSS_BELOW = 'below';
+    public const string GROSS_ABOVE = 'above';
+    public const string GROSS_REFUSE = 'refuse';
     /** The unit a new product the row gives none is sold in, as the product form offers it. */
     private const string DEFAULT_UNIT = 'article.default_unit';
 
@@ -216,6 +225,11 @@ final readonly class ProductImport implements DeclaresImport
             [
                 new ImportSwitch(self::DEFAULT_TAXES, 'import.products.default_taxes_switch', 'import.products.default_taxes_switch_note'),
                 new ImportSwitch(self::UNPRICED_INACTIVE, 'import.products.unpriced_inactive', 'import.products.unpriced_inactive_note'),
+                new ImportSwitch(self::UNREACHABLE_GROSS, 'import.products.unreachable_gross', 'import.products.unreachable_gross_note', [
+                    new ImportChoice(self::GROSS_BELOW, 'import.products.unreachable_gross_below'),
+                    new ImportChoice(self::GROSS_ABOVE, 'import.products.unreachable_gross_above'),
+                    new ImportChoice(self::GROSS_REFUSE, 'import.products.unreachable_gross_refuse'),
+                ]),
                 ...$stock ? [
                     new ImportSwitch(self::IGNORE_QUANTITIES, 'import.stock.ignore_quantities', 'import.stock.ignore_quantities_note'),
                     new ImportSwitch(self::RECOUNT, 'import.stock.recount', 'import.stock.recount_note'),
@@ -261,7 +275,7 @@ final readonly class ProductImport implements DeclaresImport
 
         $written = null;
         try {
-            $input = $this->input($company, $record, $existing, $faults, array_column($codes, 0), $vendor, $seesCosts, $context);
+            $input = $this->input($company, $record, $existing, $faults, array_column($codes, 0), $vendor, $seesCosts, $context, $notes);
             $faults->stopIfAny();
             \assert(false !== $home);
             // Rendered before the write, which changes the product in place.
@@ -532,13 +546,13 @@ final readonly class ProductImport implements DeclaresImport
      * @throws InvalidProduct
      */
     /** @param list<BarcodeInput> $codes */
-    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults, array $codes, ?Uuid $vendor, bool $seesCosts, ImportContext $context): ProductInput
+    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults, array $codes, ?Uuid $vendor, bool $seesCosts, ImportContext $context, RowNotes $notes): ProductInput
     {
         $held = $current?->getDetails();
         $kind = $record->value('kind');
         $taxIds = $faults->read(fn (): array => $this->taxIds($company, $record, $current, $context), false);
         $unpriced = $this->unpriced($record, $current, $context);
-        $price = $unpriced ? '0' : $faults->read(fn (): string => $this->priceOf($company, $record, $held, $taxIds), '0');
+        $price = $unpriced ? '0' : $faults->read(fn (): string => $this->priceOf($company, $record, $held, $taxIds, $context, $notes), '0');
         $productKind = null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods);
 
         return new ProductInput(
@@ -575,13 +589,14 @@ final readonly class ProductImport implements DeclaresImport
     /**
      * The net price the row sets: written as it is, or from the price taxes included a counter thinks in (F26), never
      * both, as the two could disagree. A price taxes included is counted over the row's taxes, else the product's;
-     * taxes the row names wrongly are refused on their own cell and leave it unjudged.
+     * taxes the row names wrongly are refused on their own cell and leave it unjudged. One no net price reaches is
+     * taken at the nearest under it, or over it, or refused, as « Prix TTC impossible à atteindre » says.
      *
      * @param list<Uuid>|false $taxIds false when the row's taxes were refused
      *
      * @throws RowRejected
      */
-    private function priceOf(Company $company, ImportRecord $record, ?ProductDetails $held, array|false $taxIds): string
+    private function priceOf(Company $company, ImportRecord $record, ?ProductDetails $held, array|false $taxIds, ImportContext $context, RowNotes $notes): string
     {
         $net = ImportCells::decimal($record, 'unit_price_net', 4);
         if (null === $record->value('unit_price_gross')) {
@@ -604,7 +619,15 @@ final readonly class ProductImport implements DeclaresImport
             // A tax charged on a document rather than on a line: the product's rules refuse it on its own cell.
             return $held->unitPriceNet ?? '0';
         } catch (GrossUnreachable $unreachable) {
-            throw new RowRejected('unit_price_gross', $unreachable->getMessage(), 'gross_unreachable', ['gross' => $gross, 'below' => $unreachable->below, 'above' => $unreachable->above]);
+            $reached = match ($context->chosen(self::UNREACHABLE_GROSS)) {
+                self::GROSS_ABOVE => $unreachable->above,
+                self::GROSS_REFUSE => throw new RowRejected('unit_price_gross', $unreachable->getMessage(), 'gross_unreachable', ['gross' => $gross, 'below' => $unreachable->below, 'above' => $unreachable->above]),
+                default => $unreachable->below,
+            };
+            $notes->note('unit_price_gross', 'gross_reached', ['gross' => $gross, 'reached' => $reached]);
+
+            // The nearest prices are those a net price reaches, so this one is found.
+            return $this->prices->netOf($company, array_map(static fn (Uuid $id): string => $id->toRfc4122(), $taxIds), $reached);
         }
     }
 

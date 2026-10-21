@@ -337,7 +337,7 @@ final class OpeningStockImportTest extends ApiTestCase
         $this->client->request('GET', '/api/companies/'.$this->company->getId()->toRfc4122().'/imports/opening-stock', server: ['HTTP_ACCEPT' => 'application/json']);
 
         self::assertResponseIsSuccessful();
-        self::assertSame([['key' => 'recount', 'labelKey' => 'import.stock.recount', 'noteKey' => 'import.stock.recount_note']], $this->json()['switches'] ?? null);
+        self::assertSame([['key' => 'recount', 'labelKey' => 'import.stock.recount', 'noteKey' => 'import.stock.recount_note', 'choices' => []]], $this->json()['switches'] ?? null);
     }
 
     /** The other stock keepers hear once that a file counted differences, not once per row (§ 7 2026-10-09 10:40 (10)). */

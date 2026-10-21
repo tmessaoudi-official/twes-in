@@ -30,14 +30,16 @@ final class ImportContext
     private array $created = [];
 
     /**
-     * @param list<string> $ticked  the keys of the subject's switches the person ticked
-     * @param list<string> $columns the subject's columns for this company and person
+     * @param list<string>          $ticked  the keys of the subject's switches the person ticked
+     * @param list<string>          $columns the subject's columns for this company and person
+     * @param array<string, string> $chosen  the answer of each of the subject's switches that is a choice, by its key
      */
     public function __construct(
         public readonly Uuid $runId,
         private readonly array $ticked = [],
         public readonly bool $dryRun = false,
         public readonly array $columns = [],
+        private readonly array $chosen = [],
     ) {
     }
 
@@ -60,6 +62,12 @@ final class ImportContext
     public function ticked(string $switch): bool
     {
         return \in_array($switch, $this->ticked, true);
+    }
+
+    /** The answer chosen for a switch that is a choice, null for one the subject does not offer. */
+    public function chosen(string $switch): ?string
+    {
+        return $this->chosen[$switch] ?? null;
     }
 
     /**

@@ -130,7 +130,22 @@ const GUIDE: ImportGuide = {
     },
   ],
   switches: [
-    { key: 'recount', labelKey: 'import.stock.recount', noteKey: 'import.stock.recount_note' },
+    {
+      key: 'recount',
+      labelKey: 'import.stock.recount',
+      noteKey: 'import.stock.recount_note',
+      choices: [],
+    },
+    {
+      key: 'unreachable_gross',
+      labelKey: 'import.products.unreachable_gross',
+      noteKey: null,
+      choices: [
+        { key: 'below', labelKey: 'import.products.unreachable_gross_below' },
+        { key: 'above', labelKey: 'import.products.unreachable_gross_above' },
+        { key: 'refuse', labelKey: 'import.products.unreachable_gross_refuse' },
+      ],
+    },
   ],
   lastPairing: [],
 };
@@ -353,6 +368,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
+      {},
     );
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
   });
@@ -380,6 +396,52 @@ describe('ImportPage', () => {
       ['recount'],
       null,
       [],
+      {},
+    );
+  });
+
+  // docs/SPEC.md § 7, 2026-10-21: « Prix TTC impossible à atteindre » is one answer of three, the first until another is chosen.
+  it('offers a switch that is a choice as its answers, the first chosen, and sends the one chosen', async () => {
+    chooseFile();
+    await settle();
+    const group = q('import-switch-unreachable_gross')!;
+    expect(group.getAttribute('role')).toBe('radiogroup');
+    const below = q('import-switch-unreachable_gross-below')!.querySelector(
+      'input',
+    ) as HTMLInputElement;
+    expect(below.checked).toBe(true);
+    facade.run.mockImplementation(async () => report.set(CLEAN));
+    await click('import-preview');
+    expect(facade.run).toHaveBeenLastCalledWith(
+      'c1',
+      'opening-stock',
+      expect.anything(),
+      'create',
+      true,
+      [],
+      null,
+      [],
+      {},
+    );
+    expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
+
+    (
+      q('import-switch-unreachable_gross-above')!.querySelector('input') as HTMLInputElement
+    ).click();
+    await settle();
+
+    expect((q('import-store') as HTMLButtonElement).disabled).toBe(true);
+    await click('import-preview');
+    expect(facade.run).toHaveBeenLastCalledWith(
+      'c1',
+      'opening-stock',
+      expect.anything(),
+      'create',
+      true,
+      [],
+      null,
+      [],
+      { unreachable_gross: 'above' },
     );
   });
 
@@ -402,6 +464,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
+      {},
     );
   });
 
@@ -426,6 +489,7 @@ describe('ImportPage', () => {
       [],
       'windows-1256',
       [],
+      {},
     );
 
     chooseFile('other.csv');
@@ -440,6 +504,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
+      {},
     );
   });
 
@@ -642,6 +707,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
+      {},
     );
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
       expect.objectContaining({ key: 'import.stored' }),
@@ -733,6 +799,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
+      {},
     );
   });
 
