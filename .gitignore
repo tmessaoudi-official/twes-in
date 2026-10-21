@@ -21,6 +21,8 @@
 # Playwright output
 /web/test-results/
 /web/playwright-report/
+# A scenario run on this machine only, such as one reading a client's own files kept under var/: never committed
+/web/e2e/*.local.spec.ts
 
 # Secrets: a credential file this list misses is one `git add -A` from being published
 *.pem

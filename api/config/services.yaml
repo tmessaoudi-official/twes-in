@@ -38,6 +38,11 @@ parameters:
     # What an imported workbook's parts may inflate to, together (64 MiB): a few kilobytes of zip can hold gigabytes, while
     # 5,000 rows (the row cap's ceiling) of twenty forty-character cells inflate to about 10 MB.
     app.import.max_inflated_bytes: 67108864
+    # The queries and the log records one request keeps for the profiler, in development (BoundedDebugQueries,
+    # BoundedDebugLogs): enough for any screen, while an import of thousands of rows would keep them all with their
+    # parameters and run out of memory.
+    app.debug.queries_kept: 2000
+    app.debug.logs_kept: 2000
     # The hour, in the server's time, at which the data checks run each day (CheckDataEveryNight).
     app.data_check.at: '02:30'
     # How long a failed sign-in keeps the address typed and the network address it came from (at least 12 months: the

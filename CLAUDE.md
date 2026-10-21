@@ -696,3 +696,7 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   `new \DateTimeImmutable('today')`: between 23:00 and 00:00 UTC Tunis is already on the next day, the API reads the
   company's, and five suites went red on CI only in that hour. Run the whole API suite inside that window to find the
   class's members (2026-10-21).
+- Measure a request's memory with `memory_reset_peak_usage()` first and `memory_get_peak_usage()` (not `true`) after: a
+  FrankenPHP worker thread keeps the memory earlier requests took, so the real size read 123 MB for 39 rows. In development
+  the profiler's collectors (Doctrine's queries, Monolog's records) hold most of a long request; they are capped now, and
+  production keeps none, so a development peak is an upper bound, never production's figure (2026-10-21).
