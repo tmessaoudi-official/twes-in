@@ -74,7 +74,8 @@ test('a screen in Arabic turns over and speaks Arabic', async ({ page }, testInf
 // A value cut short keeps its start in sight in either direction: its box cuts at the value's own end, so a Latin
 // number in an Arabic list loses its last characters, never its first (« …791728493868 » was a customer number
 // without its letters). A list sizes its columns to their values, so only a person cuts one: the number and name
-// columns are narrowed with their handles, from the keyboard. The run's customer is deleted at the end.
+// columns are narrowed with their handles, from the keyboard. The name, a typed name, takes another line rather than
+// lose its end; the number is cut. The run's customer is deleted at the end.
 test('a value cut short in Arabic keeps its start in sight', async ({ page }, testInfo) => {
   const number = `RTL-${Date.now()}-QUINCAILLERIE`;
   const id = await aCustomer(page, number);
@@ -110,8 +111,13 @@ test('a value cut short in Arabic keeps its start in sight', async ({ page }, te
   );
   expect(
     cut.map((each) => each.value),
-    'the number and the name are both cut',
-  ).toEqual([number, `Client ${number}`]);
+    'the number is cut, the name takes another line',
+  ).toEqual([number]);
+  const name = row.locator('td[data-column="name"]');
+  expect(
+    await name.evaluate((cell) => cell.scrollWidth <= cell.clientWidth + 1),
+    'the name is whole',
+  ).toBe(true);
   expect(cut.filter((each) => !each.firstInSight)).toEqual([]);
   await removed(page, 'customer', id);
 });

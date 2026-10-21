@@ -1406,6 +1406,32 @@ describe('DataList', () => {
       expect(header('name')).toBe('160px');
       expect(header('balance')).toBe('120px');
     });
+
+    it('widens a column that wraps from the width it is drawn at, never from its floor', async () => {
+      card = 1000;
+      host = TestBed.createComponent(DeclaredHost);
+      host.componentInstance.descriptor.set({
+        ...declared,
+        columns: declared.columns.map((column) =>
+          column.id === 'name' ? { ...column, wraps: true } : column,
+        ),
+      });
+      host.detectChanges();
+      await host.whenStable();
+      host.detectChanges();
+      const handle = host.nativeElement.querySelector(
+        '[data-testid="list-resize-name"]',
+      ) as HTMLElement;
+      // What the card leaves beside the other columns and the actions goes to the name: wider than its 160 px floor.
+      const drawn = Number(handle.getAttribute('aria-valuenow'));
+      expect(drawn).toBeGreaterThan(160);
+      expect(header('name')).toBe(`${drawn}px`);
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      host.detectChanges();
+      await host.whenStable();
+      host.detectChanges();
+      expect(header('name')).toBe(`${drawn + 16}px`);
+    });
   });
 
   describe('selecting rows', () => {

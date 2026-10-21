@@ -228,6 +228,7 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
       value: (row) => row.locationLabel,
       sortable: true,
       filterable: true,
+      wraps: true,
     },
     // The quantity is what the list is for, so it comes before the optional columns a narrow window cuts first.
     {
@@ -341,7 +342,6 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
       filterable: true,
       hideable: false,
       wraps: true,
-      width: 260,
     },
     {
       id: 'location',
@@ -349,7 +349,7 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
       value: (row) => row.locationLabel,
       sortable: true,
       filterable: true,
-      width: 220,
+      wraps: true,
     },
     {
       id: 'lot',
@@ -472,6 +472,7 @@ export const LOCATIONS_LIST: ListDescriptor<StockLocationListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'kind',

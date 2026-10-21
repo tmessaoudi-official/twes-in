@@ -830,6 +830,7 @@ export const EXPENSE_CATEGORIES_LIST: ListDescriptor<ExpenseCategoryListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'status',

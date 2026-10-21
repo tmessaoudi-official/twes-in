@@ -50,6 +50,48 @@ test('every column a list shows at first fits the widest page', async ({ page })
   }
 });
 
+// On a laptop (1280 px, the card 958 px) a list gives way only its columns of low priority: every other floor is what
+// its header needs in any language, its format's widest value or a typed name's 160 px, which then wraps, so a generous
+// floor never sends a column away. Read with no row, as above. The invoices keep their issue date only once a typed
+// name may wrap narrower than it does today, the developer's call (pt-floor on the questions page), so their date is
+// listed until then.
+const GIVE_WAY_AT_1280: Record<string, readonly string[]> = {
+  '/products': ['kind'],
+  '/invoices': ['issueDate'],
+  '/stock': ['useBy'],
+};
+
+test('on a laptop a list gives way only its columns of low priority', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page);
+  await inACompany(page, CSRF);
+  for (const language of ['fr', 'ar'] as const) {
+    await chooseLanguage(page, language);
+    for (const path of LISTS) {
+      await page.goto(`${path}?q=qjxzvwqjxzvw`);
+      await expect.poll(() => answered(page), { message: path }).toBe(true);
+      await page.evaluate(() => document.fonts.ready);
+      await page.getByTestId('list-columns').click();
+      await expect(page.getByTestId('list-columns-reset'), path).toBeVisible();
+      const squeezed = await page
+        .locator('[data-testid^="list-column-squeezed-"]')
+        .evaluateAll((entries) =>
+          entries.map((entry) =>
+            (entry.getAttribute('data-testid') ?? '').replace('list-column-squeezed-', ''),
+          ),
+        );
+      await page.keyboard.press('Escape');
+      expect
+        .soft(squeezed.sort(), `${path} in ${language}`)
+        .toEqual([...(GIVE_WAY_AT_1280[path] ?? [])].sort());
+      // What stays is wide enough for its header, which a column narrower than its floor would cut.
+      expect.soft((await cutValues(page)).cut, `${path} in ${language}, headers`).toEqual([]);
+    }
+  }
+  await chooseLanguage(page, 'fr');
+});
+
 /** Whether the list has answered: its rows, or the one line that says why there are none, once nothing is loading. */
 function answered(page: Page): Promise<boolean> {
   return page.evaluate(
