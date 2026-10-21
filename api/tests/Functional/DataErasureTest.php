@@ -32,6 +32,7 @@ use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Domain\Model\Schedule;
 use App\Shared\Domain\ValueObject\ScheduleAnchor;
 use App\Shared\Domain\ValueObject\ScheduleUnit;
+use App\Shared\Infrastructure\Realtime\LiveChangesAnswer;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tests\Unit\Files\Application\AttachmentsTest;
@@ -170,12 +171,19 @@ final class DataErasureTest extends ApiTestCase
         self::assertStringContainsString('"section": "Fournitures"', implode("\n", $before['invoice_line']));
 
         $this->getJson($this->path('data-erasure'));
-        $this->postJson($this->path('data-erasures'), ['parts' => ['stock_map', 'drafts']]);
+        // Every part the page offers: the largest erasure there is, whose answer must still name all it changed.
+        $offered = $this->json()['parts'];
+        self::assertIsArray($offered);
+        self::assertSame(['stock_map', 'drafts'], array_column($offered, 'part'));
+        $this->postJson($this->path('data-erasures'), ['parts' => ['stock_map', 'drafts']], server: ['HTTP_X_TAB' => 'tab-1']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $erasure = $this->json();
         self::assertSame(['stock_map', 'drafts'], $erasure['parts']);
-        self::assertEqualsCanonicalizing(['venue_area', 'venue_spot', 'venue_structure', 'stock_location', 'invoice', 'payment', 'delivery_note', 'quote'], $erasure['kinds'], 'what this tab reads again itself');
+        self::assertEqualsCanonicalizing(['venue_area', 'venue_spot', 'venue_structure', 'stock_location', 'invoice', 'payment', 'delivery_note', 'quote'], $erasure['kinds'], 'what the screens read again');
+        $kinds = $erasure['kinds'];
+        self::assertIsArray($kinds);
+        self::assertEqualsCanonicalizing([...$kinds, 'data_erasure'], $this->kindsNamed('data.erased'), 'the answer tells this tab every kind, and the erasure itself');
         self::assertSame(['stock_map' => ['floors' => 1, 'places' => 2, 'structures' => 1], 'drafts' => ['drafts' => 2, 'quotes' => 1]], $erasure['counts']);
         $erasureId = $this->stringAt($erasure, 'id');
         self::assertEqualsWithDelta(new \DateTimeImmutable('+24 hours'), new \DateTimeImmutable($this->stringAt($erasure, 'effectiveAt')), 5);
@@ -200,10 +208,11 @@ final class DataErasureTest extends ApiTestCase
         $this->getJson($this->path('data-erasure'));
         self::assertSame($erasureId, $this->stringAt($this->section($this->json(), 'pending'), 'id'));
 
-        $this->postJson($this->path("data-erasures/$erasureId/undo"), null);
+        $this->postJson($this->path("data-erasures/$erasureId/undo"), null, server: ['HTTP_X_TAB' => 'tab-1']);
 
         self::assertResponseIsSuccessful();
         self::assertSame('undone', $this->stringAt($this->json(), 'state'));
+        self::assertEqualsCanonicalizing([...$kinds, 'data_erasure'], $this->kindsNamed('data.erasure_undone'), 'and every kind that came back');
         self::assertSame($before, $this->snapshot(), 'every row back as it was, the place drawn again');
         self::assertSame(0, $this->rowsOf('SELECT COUNT(*) FROM data_erasure_row'), 'and the copy gone');
         self::assertSame(1, $this->rowsOf("SELECT COUNT(*) FROM audit_log WHERE action = 'data.erasure_undone'"));
@@ -396,6 +405,23 @@ final class DataErasureTest extends ApiTestCase
         $other = $this->otherCompanyId;
 
         return $this->texts("SELECT to_jsonb(v)::text FROM venue_area v WHERE company_id = '$other' ORDER BY id");
+    }
+
+    /** @return list<string> the kinds the last answer names as changed by `$action`, for the tab that asked */
+    private function kindsNamed(string $action): array
+    {
+        $named = json_decode($this->client->getResponse()->headers->get(LiveChangesAnswer::HEADER) ?? '[]', true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($named);
+        $kinds = [];
+        foreach ($named as $change) {
+            self::assertIsArray($change);
+            if ($action === ($change['action'] ?? null)) {
+                self::assertIsString($change['kind']);
+                $kinds[] = $change['kind'];
+            }
+        }
+
+        return $kinds;
     }
 
     /** @return array<string, list<string>> every row of the company in the tables the parts reach, by table */

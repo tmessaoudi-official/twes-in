@@ -416,10 +416,10 @@ export class AppShell {
     // sign in with a word of why, instead of leaving every screen failing one request at a time. A refusal that landed
     // after the last redirect, while no shell was open, belongs to that ended session and must not eject a new one.
     this.activity.acknowledgeExpiry();
-    // What ANOTHER person changed about this session (a role, a module switched, the company approved, suspended
-    // or its subscription changed) shows at once. Not the company's name: nothing writes it — `reviseProfile`
-    // sets `legalName` and the name is constructor-only (sweep, 2026-09-20). A change made in THIS tab never
-    // arrives here at all, so each screen that writes something global refreshes the session itself.
+    // What changed about this session (a role, a module switched, the company approved, suspended or its
+    // subscription changed) shows at once, whoever changed it: another person's change through the connection, this
+    // tab's own through its request's answer (`liveChangesInterceptor`). Not the company's name: nothing writes it,
+    // `reviseProfile` sets `legalName` and the name is constructor-only.
     effect(() => {
       const companyId = this.watchedCompany();
       if (companyId) untracked(() => void this.watch.load(companyId));

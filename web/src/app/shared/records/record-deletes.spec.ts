@@ -8,7 +8,6 @@ import {
 } from '@ngx-translate/core';
 import { Feedback } from '../feedback/feedback';
 import { PluralCompiler } from '../i18n/plural-compiler';
-import { LiveChanges } from '../realtime/live-changes';
 import {
   effectToasts,
   failureToasts,
@@ -62,7 +61,6 @@ describe('RecordDeletes', () => {
   const stepUp = { request: vi.fn(), retrying: StepUp.prototype.retrying };
   const texts = { open: vi.fn() };
   let deletes: RecordDeletes;
-  let heard: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     api.remove.mockReset();
@@ -85,7 +83,6 @@ describe('RecordDeletes', () => {
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('fr', FR);
     translate.use('fr');
-    heard = vi.spyOn(TestBed.inject(LiveChanges), 'changedHere');
     deletes = TestBed.inject(RecordDeletes);
   });
 
@@ -101,17 +98,15 @@ describe('RecordDeletes', () => {
     expect(api.remove).toHaveBeenCalledWith('c1', 'vendor', ['v1']);
     expect(effectToasts()).toEqual(['records.deleted_one:annulable']);
     expect(lastParams()).toEqual({ name: 'F-001 Sotumag' });
-    expect(heard).toHaveBeenCalledWith(['vendor', 'record_removal'], 'vendor.deleted');
 
     const undo = offeredNext();
     expect(undo?.key).toBe('records.undo');
     undo?.run();
     await vi.waitFor(() => expect(successToasts().at(-1)).toBe('records.restored_one'));
     expect(api.restore).toHaveBeenCalledWith('c1', 'r1');
-    expect(heard).toHaveBeenCalledWith(['vendor', 'record_removal'], 'vendor.restored');
   });
 
-  it('puts an undone import back with its stock, and tells the stock screens as well as its own', async () => {
+  it('puts an undone import back with its stock', async () => {
     api.restore.mockResolvedValue({
       ...REMOVAL,
       subject: 'product',
@@ -123,7 +118,6 @@ describe('RecordDeletes', () => {
 
     expect(api.restore).toHaveBeenCalledWith('c1', 'r1');
     expect(successToasts()).toEqual(['records.import_restored']);
-    expect(heard).toHaveBeenCalledWith(['product', 'record_removal', 'stock'], 'import.restored');
   });
 
   it('opens its own words before it asks the API, so a screen that never opened them says the delete in words', async () => {
@@ -183,7 +177,6 @@ describe('RecordDeletes', () => {
       records:
         '«\u00a0F-001 Sotumag\u00a0» figure dans 2 mouvements de stock, 1 commande fournisseur et 1 autre fiche',
     });
-    expect(heard).not.toHaveBeenCalled();
   });
 
   it('says why a restore was refused', async () => {
@@ -192,7 +185,6 @@ describe('RecordDeletes', () => {
     expect(await deletes.restore('c1', REMOVAL)).toBe(false);
 
     expect(failureToasts()).toEqual(['records.errors.restore_conflict']);
-    expect(heard).not.toHaveBeenCalled();
   });
 
   const KEPT = { id: 'k1', label: 'Visserie' };
@@ -220,19 +212,11 @@ describe('RecordDeletes', () => {
     expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_change');
     expect(effectToasts()).toEqual(['records.merged_one:annulable']);
     expect(lastParams()).toEqual({ name: 'Vis', kept: 'Visserie' });
-    expect(heard).toHaveBeenCalledWith(
-      ['product_category', 'record_removal'],
-      'product_category.merged',
-    );
 
     offeredNext()?.run();
     await vi.waitFor(() => expect(successToasts().at(-1)).toBe('records.merge_undone'));
     expect(lastParams()).toEqual({ kept: 'Visserie' });
     expect(api.restore).toHaveBeenCalledTimes(2);
-    expect(heard).toHaveBeenCalledWith(
-      ['product_category', 'record_removal'],
-      'product_category.merge_undone',
-    );
   });
 
   it('counts several records merged, and merges nothing when the proof is not given', async () => {
@@ -307,7 +291,6 @@ describe('RecordDeletes', () => {
 
     expect(failureToasts()).toEqual(['records.traded_since']);
     expect(lastParams()).toEqual({ uses: '2 mouvements de stock et 1 commande fournisseur' });
-    expect(heard).not.toHaveBeenCalled();
   });
 
   it('merges the records but the one the dialog kept, and nothing when it is closed', async () => {

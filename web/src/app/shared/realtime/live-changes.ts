@@ -8,10 +8,11 @@ import { tabId } from './tab-interceptor';
 export const LIVE_BATCH_MS = 150;
 
 /**
- * That something another tab or person changed, never what it now holds: a screen reads it again through the API,
- * under this session's permissions (docs/SPEC.md § 7, 2026-09-17). The kind is the API's audit entity type
- * (`customer`, `invoice`, `setting`…), plus `stock` for a stock movement. A change of many records at once, as a
- * file's import makes, is `bulk`: it names none of them, only how many.
+ * That something changed, never what it now holds: a screen reads it again through the API, under this session's
+ * permissions (docs/SPEC.md § 7, 2026-09-17). The kind is the API's audit entity type (`customer`, `invoice`,
+ * `setting`…), plus `stock` for a stock movement. A change of many records at once, as a file's import makes, is
+ * `bulk`: it names none of them, only how many. A change this tab made itself is `own`: every panel of the tab hears
+ * it, as the outcome of an action shows at once wherever its subject appears, but nobody is told that someone changed it.
  */
 export interface LiveChange {
   readonly kind: string;
@@ -20,6 +21,7 @@ export interface LiveChange {
   readonly actor: { readonly id: string; readonly name: string | null } | null;
   readonly bulk?: true;
   readonly count?: number;
+  readonly own?: true;
 }
 
 /** The change a realtime publication announces, or null for a notification, this tab's own echo, or anything malformed. */
@@ -43,6 +45,25 @@ export function readLiveChange(data: unknown, tab: string): LiveChange | null {
   return bulk === true && typeof count === 'number' ? { ...change, bulk, count } : change;
 }
 
+/** The changes the API's answer names for this tab's own request (`X-Live-Changes`), each read as a publication is. */
+export function readOwnChanges(header: string | null): LiveChange[] {
+  if (header === null || header === '') return [];
+  let named: unknown;
+  try {
+    named = JSON.parse(header);
+  } catch {
+    // An answer a proxy or an older API mangled names nothing this tab can act on; its screens read again on their own.
+    return [];
+  }
+  if (!Array.isArray(named)) return [];
+  return named.flatMap((item: unknown) => {
+    const change = isRecord(item)
+      ? readLiveChange({ ...item, type: 'changed', actor: null, origin: null }, '')
+      : null;
+    return change === null ? [] : [{ ...change, own: true as const }];
+  });
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -63,7 +84,19 @@ export class LiveChanges {
 
   receive(data: unknown): void {
     const change = readLiveChange(data, tabId());
-    if (change === null) return;
+    if (change !== null) this.deliver(change);
+  }
+
+  /**
+   * What this tab's own request changed, as the API's answer names it: the connection says a change to every tab but
+   * the one that made it, so without this the acting tab's other panels (a count, the bell, another list) would wait
+   * for a reload.
+   */
+  heardHere(header: string | null): void {
+    for (const change of readOwnChanges(header)) this.deliver(change);
+  }
+
+  private deliver(change: LiveChange): void {
     for (const listener of this.listeners) {
       if (!listener.kinds.has(change.kind)) continue;
       listener.pending.push(change);
@@ -88,16 +121,6 @@ export class LiveChanges {
       if (listener.timer !== null) clearTimeout(listener.timer);
       this.listeners.delete(listener);
     });
-  }
-
-  /**
-   * What this tab changed itself, for its own screens: the API says a change to every tab but the one that made it,
-   * which is right for a save its screen shows already, not for an erasure the page on screen knows nothing of.
-   */
-  changedHere(kinds: readonly string[], action: string): void {
-    for (const kind of kinds) {
-      this.receive({ type: 'changed', origin: null, kind, id: null, action, actor: null });
-    }
   }
 
   /** Reads a screen's data again when one of these kinds changes, quietly, since nobody on it asked for the reload. */

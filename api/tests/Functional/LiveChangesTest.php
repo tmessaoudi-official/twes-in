@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Shared\Application\RealtimePublisher;
+use App\Shared\Infrastructure\Realtime\LiveChangesAnswer;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\RecordingRealtimePublisher;
 use Symfony\Component\HttpFoundation\Response;
@@ -56,12 +57,35 @@ final class LiveChangesTest extends ApiTestCase
         self::assertSame(1, is_numeric($stored) ? (int) $stored : null, 'the row was stored when the change was said');
     }
 
+    /**
+     * The connection says a change to every tab but the one that made it, so the answer names it to that tab, whose
+     * other panels (a count, the bell, another list) hear it as they would hear another tab's.
+     */
+    public function testTheAnswerNamesWhatTheRequestChangedToTheTabThatMadeIt(): void
+    {
+        $this->postJson($this->path(), ['name' => 'Grossistes'], server: ['HTTP_X_TAB' => 'tab-1']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $header = $this->client->getResponse()->headers->get(LiveChangesAnswer::HEADER);
+        self::assertNotNull($header);
+        self::assertSame([['kind' => 'customer_group', 'id' => $this->json()['id'], 'action' => 'customer_group.created']], json_decode($header, true));
+    }
+
+    public function testARequestNamingNoTabIsAnsweredWithoutTheList(): void
+    {
+        $this->postJson($this->path(), ['name' => 'Grossistes']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertFalse($this->client->getResponse()->headers->has(LiveChangesAnswer::HEADER));
+    }
+
     public function testARefusedChangeSaysNothing(): void
     {
-        $this->postJson($this->path(), ['name' => '  ']);
+        $this->postJson($this->path(), ['name' => '  '], server: ['HTTP_X_TAB' => 'tab-1']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame([], $this->publisher->pushed);
+        self::assertFalse($this->client->getResponse()->headers->has(LiveChangesAnswer::HEADER));
     }
 
     private function path(): string

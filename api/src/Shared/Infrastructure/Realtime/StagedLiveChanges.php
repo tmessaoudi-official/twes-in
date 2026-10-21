@@ -24,7 +24,8 @@ use Symfony\Contracts\Service\ResetInterface;
  * the request names itself in an `X-Tab` header, echoed as `origin`, so it can tell its own change from another's.
  * Past ten changes of one kind and action by one person, as a file's import makes, they are said once as a bulk change
  * naming how many, so a screen reads its list again once; a deletion is always said record by record, since an open
- * editor must hear that its own record is gone.
+ * editor must hear that its own record is gone. The tab itself never hears its echo through the connection, so what a
+ * request from a tab said is kept for its answer (`LiveChangesAnswer`), and its own screens hear it there.
  */
 final class StagedLiveChanges implements LiveChanges, ResetInterface
 {
@@ -36,6 +37,9 @@ final class StagedLiveChanges implements LiveChanges, ResetInterface
 
     /** @var array<string, LiveChange> */
     private array $staged = [];
+
+    /** @var list<array{kind: string, id: ?string, action: string, bulk?: true, count?: int}> */
+    private array $said = [];
 
     public function __construct(
         private readonly RealtimePublisher $publisher,
@@ -85,8 +89,10 @@ final class StagedLiveChanges implements LiveChanges, ResetInterface
 
     public function rollBack(): void
     {
+        // What an earlier unit of the same request committed and said stays said.
         if (--$this->depth <= 0) {
-            $this->reset();
+            $this->depth = 0;
+            $this->staged = [];
         }
     }
 
@@ -94,6 +100,17 @@ final class StagedLiveChanges implements LiveChanges, ResetInterface
     {
         $this->depth = 0;
         $this->staged = [];
+        $this->said = [];
+    }
+
+    /**
+     * What this request said, for the tab that made it, in the order it was said; nothing for a request naming no tab.
+     *
+     * @return list<array{kind: string, id: ?string, action: string, bulk?: true, count?: int}>
+     */
+    public function saidHere(): array
+    {
+        return $this->said;
     }
 
     private function groupOf(LiveChange $change): string
@@ -115,18 +132,28 @@ final class StagedLiveChanges implements LiveChanges, ResetInterface
         if (null === $channel) {
             return;
         }
-        $this->publisher->push($channel, [
-            'type' => 'changed',
+        $said = [
             'kind' => $change->kind,
             'id' => null === $count ? $change->id?->toRfc4122() : null,
             'action' => $change->action,
+            ...(null === $count ? [] : ['bulk' => true, 'count' => $count]),
+        ];
+        $origin = $this->origin();
+        $this->publisher->push($channel, [
+            'type' => 'changed',
+            'kind' => $said['kind'],
+            'id' => $said['id'],
+            'action' => $said['action'],
             'actor' => null === $change->actorUserId ? null : [
                 'id' => $change->actorUserId->toRfc4122(),
                 'name' => $this->nameOf($change->actorUserId, $names),
             ],
-            'origin' => $this->origin(),
+            'origin' => $origin,
             ...(null === $count ? [] : ['bulk' => true, 'count' => $count]),
         ]);
+        if (null !== $origin) {
+            $this->said[] = $said;
+        }
     }
 
     /** @param array<string, ?string> $names */

@@ -6,7 +6,6 @@ import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { Feedback } from '../feedback/feedback';
 import { TextsParts } from '../i18n/texts-part';
-import { LiveChanges } from '../realtime/live-changes';
 import { StepUp } from '../step-up/step-up';
 import {
   RecordRemovalsApi,
@@ -58,7 +57,6 @@ export class RecordDeletes {
   private readonly api = inject(RecordRemovalsApi);
   private readonly feedback = inject(Feedback);
   private readonly translate = inject(TranslateService);
-  private readonly live = inject(LiveChanges);
   private readonly stepUp = inject(StepUp);
   private readonly dialog = inject(MatDialog);
   private readonly texts = inject(TextsParts);
@@ -76,7 +74,6 @@ export class RecordDeletes {
         subject,
         items.map((item) => item.id),
       );
-      this.live.changedHere([subject, 'record_removal'], `${subject}.deleted`);
       // Each key written out in full: the outcome gate reads them in the call.
       const one = this.only(removal);
       this.feedback.effect(
@@ -162,7 +159,6 @@ export class RecordDeletes {
           items.map((item) => item.id),
         ),
       );
-      this.live.changedHere([subject, 'record_removal'], `${subject}.merged`);
       const one = this.only(merge);
       this.feedback.effect(
         one === null ? 'records.merged_many' : 'records.merged_one',
@@ -189,19 +185,13 @@ export class RecordDeletes {
       await this.words();
       const restored = await this.proved(() => this.api.restore(companyId, removal.id));
       if (restored.kind === 'merge') {
-        this.live.changedHere(
-          [restored.subject, 'record_removal'],
-          `${restored.subject}.merge_undone`,
-        );
         this.feedback.success('records.merge_undone', { kept: restored.kept.label });
         return true;
       }
       if (restored.kind === 'import') {
-        this.live.changedHere([restored.subject, 'record_removal', 'stock'], 'import.restored');
         this.feedback.success('records.import_restored');
         return true;
       }
-      this.live.changedHere([restored.subject, 'record_removal'], `${restored.subject}.restored`);
       this.feedback.success(
         this.only(restored) === null ? 'records.restored_many' : 'records.restored_one',
         this.params(restored),

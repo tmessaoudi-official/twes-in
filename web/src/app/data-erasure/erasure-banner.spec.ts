@@ -9,7 +9,6 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
-import { LiveChanges } from '../shared/realtime/live-changes';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -88,19 +87,17 @@ describe('ErasureBanner', () => {
     expect(q('erasure-banner')).toBeNull();
   });
 
-  it('offers the undo, puts everything back, and tells this tab’s screens what came back', async () => {
+  it('offers the undo and puts everything back', async () => {
     api.pending.mockResolvedValue(ERASURE);
     fixture = TestBed.createComponent(ErasureBanner);
     await settle();
     expect(q('erasure-banner')?.textContent).toContain('data_erasure.banner.text');
-    const heard = vi.spyOn(TestBed.inject(LiveChanges), 'changedHere');
     api.undo.mockResolvedValue({ ...ERASURE, state: 'undone' });
 
     q('erasure-undo')!.click();
     await settle();
 
     expect(api.undo).toHaveBeenCalledWith('c1', 'e1');
-    expect(heard).toHaveBeenCalledWith(['venue_area', 'quote'], 'data.erasure_undone');
     expect(successToasts()).toEqual(['data_erasure.undone']);
     expect(q('erasure-banner')).toBeNull();
   });
