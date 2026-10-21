@@ -14,6 +14,7 @@ use App\Audit\Application\ActivityJournal;
 use App\Audit\Application\ActivitySearch;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
@@ -101,7 +102,7 @@ final readonly class DbalActivityJournal implements ActivityJournal
             \is_string($entityId) ? Uuid::fromString($entityId) : null,
             \is_string($actorId) ? Uuid::fromString($actorId) : null,
             \is_string($name) ? $name : null,
-            ActivityEntry::fieldsOf(\is_array($changes) ? $changes : []),
+            ActivityEntry::fieldsOf(Rows::row($changes)),
             \is_string($ip) ? $ip : null,
         );
     }

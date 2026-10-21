@@ -20,6 +20,7 @@ use App\Settings\Application\SettingContext;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\KeptRecords;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
 use App\Watch\Application\DeclaresWatch;
 use App\Watch\Application\WatchItem;
@@ -202,8 +203,8 @@ final readonly class InvoiceWatch implements DeclaresWatch
             'customer' => self::text($row['name']),
             'invoice' => self::text($row['invoice']),
             'kind' => self::text($row['kind']),
-            'number' => \is_scalar($row['number']) ? (string) $row['number'] : '',
-            'bank' => \is_scalar($row['bank']) ? (string) $row['bank'] : '',
+            'number' => Rows::textOrNull($row['number']) ?? '',
+            'bank' => Rows::textOrNull($row['bank']) ?? '',
             'amount' => self::text($row['amount']),
             'currency' => $company->getCurrency(),
             'days' => self::daysPast(new \DateTimeImmutable(self::text($row['due_on'])), $today),

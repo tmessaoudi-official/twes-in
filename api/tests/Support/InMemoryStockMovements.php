@@ -150,10 +150,10 @@ final class InMemoryStockMovements implements StockMovementRepository
         ));
     }
 
-    public function countedSince(Uuid $productId, Uuid $locationId, \DateTimeImmutable $since, Uuid $exceptRunId): bool
+    public function countedSince(Uuid $productId, Uuid $locationId, \DateTimeImmutable $since, Uuid $exceptRunId, Uuid $companyId): bool
     {
         foreach ($this->movements as $m) {
-            if ($m->getProduct()->getId()->equals($productId) && $m->getLocation()->getId()->equals($locationId) && StockMovement::SOURCE_COUNT === $m->getSourceType() && $m->getAt() >= $since && !($m->getImportRunId()?->equals($exceptRunId) ?? false)) {
+            if ($m->getCompany()->getId()->equals($companyId) && $m->getProduct()->getId()->equals($productId) && $m->getLocation()->getId()->equals($locationId) && StockMovement::SOURCE_COUNT === $m->getSourceType() && $m->getAt() >= $since && !($m->getImportRunId()?->equals($exceptRunId) ?? false)) {
                 return true;
             }
         }
@@ -161,9 +161,9 @@ final class InMemoryStockMovements implements StockMovementRepository
         return false;
     }
 
-    public function movedSinceLastCount(Uuid $productId, Uuid $locationId): bool
+    public function movedSinceLastCount(Uuid $productId, Uuid $locationId, Uuid $companyId): bool
     {
-        $here = array_filter($this->movements, static fn (StockMovement $m) => $m->getProduct()->getId()->equals($productId) && $m->getLocation()->getId()->equals($locationId));
+        $here = array_filter($this->movements, static fn (StockMovement $m) => $m->getCompany()->getId()->equals($companyId) && $m->getProduct()->getId()->equals($productId) && $m->getLocation()->getId()->equals($locationId));
         $counted = null;
         foreach ($here as $m) {
             if (StockMovement::SOURCE_COUNT === $m->getSourceType() && (null === $counted || $m->getAt() > $counted)) {

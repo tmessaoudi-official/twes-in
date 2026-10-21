@@ -18,6 +18,7 @@ use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
@@ -152,7 +153,7 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
             ->getQuery()
             ->getResult();
 
-        return array_values(array_filter(\is_array($notes) ? $notes : [], static fn (mixed $note): bool => $note instanceof DeliveryNote));
+        return Rows::entities($notes, DeliveryNote::class);
     }
 
     public function lockedOfIdsInCompany(array $ids, Uuid $companyId): array
@@ -200,6 +201,6 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
             ->setHint(Query::HINT_REFRESH, true)
             ->getResult();
 
-        return array_values(array_filter(\is_array($notes) ? $notes : [], static fn (mixed $note): bool => $note instanceof DeliveryNote));
+        return Rows::entities($notes, DeliveryNote::class);
     }
 }

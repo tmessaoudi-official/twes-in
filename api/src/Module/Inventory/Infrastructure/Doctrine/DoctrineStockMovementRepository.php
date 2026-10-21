@@ -29,6 +29,7 @@ use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use BcMath\Number;
 use Doctrine\DBAL\ArrayParameterType;
@@ -107,16 +108,14 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->getArrayResult();
 
         $values = [];
-        foreach ($rows as $row) {
-            if (!\is_array($row) || !\is_string($row['product'] ?? null)) {
-                continue;
-            }
-            $quantity = self::decimal($row['quantity'] ?? 0);
-            $value = new Number('0.0000000')->add(self::amount($row['value'] ?? 0))->value;
+        foreach ($rows as $each) {
+            $row = Rows::row($each);
+            $quantity = self::decimal($row['quantity']);
+            $value = new Number('0.0000000')->add(Rows::sum($row['value']))->value;
             if (0 === new Number($quantity)->compare(0) && 0 === new Number($value)->compare(0)) {
                 continue;
             }
-            $values[] = new StockValue(Uuid::fromString($row['product']), $quantity, $value, self::decimal($row['unvalued'] ?? 0));
+            $values[] = new StockValue(Uuid::fromString(Rows::text($row['product'])), $quantity, $value, self::decimal($row['unvalued']));
         }
 
         return $values;
@@ -144,9 +143,9 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->setParameter('id', $movement->getId(), 'uuid')
             ->getQuery()
             ->getSingleResult();
-        $row = \is_array($row) ? $row : [];
+        $row = Rows::row($row);
 
-        return ['quantity' => self::decimal($row['quantity'] ?? 0), 'amount' => new Number('0.0000000')->add(self::amount($row['amount'] ?? 0))->value];
+        return ['quantity' => self::decimal($row['quantity']), 'amount' => new Number('0.0000000')->add(Rows::sum($row['amount']))->value];
     }
 
     public function valuedAfter(StockMovement $movement): array
@@ -165,7 +164,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->getQuery()
             ->getResult();
 
-        return array_values(array_filter(\is_array($after) ? $after : [], static fn (mixed $each): bool => $each instanceof StockMovement));
+        return Rows::entities($after, StockMovement::class);
     }
 
     public function saveValued(StockMovement $movement): void
@@ -191,9 +190,9 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->setParameter('product', $product->getId(), 'uuid')
             ->getQuery()
             ->getSingleResult();
-        $row = \is_array($row) ? $row : [];
+        $row = Rows::row($row);
 
-        return ['quantity' => self::decimal($row['quantity'] ?? 0), 'amount' => new Number('0.0000000')->add(self::amount($row['amount'] ?? 0))->value];
+        return ['quantity' => self::decimal($row['quantity']), 'amount' => new Number('0.0000000')->add(Rows::sum($row['amount']))->value];
     }
 
     public function lastTypedCostOf(Product $product): ?TypedCost
@@ -214,12 +213,6 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return null === $cost ? null : new TypedCost($cost, $receipt->getAt());
     }
 
-    /** @return int|numeric-string */
-    private static function amount(mixed $sum): int|string
-    {
-        return \is_int($sum) || (\is_string($sum) && is_numeric($sum)) ? $sum : 0;
-    }
-
     public function ofSource(string $sourceType, Uuid $sourceId, Uuid $companyId): array
     {
         return $this->entityManager->getRepository(StockMovement::class)->findBy(['sourceType' => $sourceType, 'sourceId' => $sourceId, 'company' => $companyId], ['at' => 'ASC', 'id' => 'ASC']);
@@ -230,27 +223,29 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $this->entityManager->getRepository(StockMovement::class)->findBy(['importRunId' => $runId, 'company' => $companyId], ['at' => 'ASC', 'id' => 'ASC']);
     }
 
-    public function movedSinceLastCount(Uuid $productId, Uuid $locationId): bool
+    public function movedSinceLastCount(Uuid $productId, Uuid $locationId, Uuid $companyId): bool
     {
-        // `at` keeps the second only, so a movement in the very second of the count is taken as after it: asking again is
+        // Plain SQL, which the company filter does not reach: nothing ties a movement's product to its company, so only
+        // the company's own rows answer. `at` keeps the second only, so a movement in the very second of the count is taken as after it: asking again is
         // the safe side of a tie. A cost correction moves no goods.
         $moved = $this->entityManager->getConnection()->fetchOne(
-            'SELECT EXISTS (SELECT 1 FROM stock_movement m WHERE m.product_id = :product AND m.location_id = :location'
+            'SELECT EXISTS (SELECT 1 FROM stock_movement m WHERE m.company_id = :company AND m.product_id = :product AND m.location_id = :location'
             .' AND m.source_type NOT IN (:count, :correction) AND m.quantity <> 0'
-            .' AND m.at >= COALESCE((SELECT MAX(c.at) FROM stock_movement c WHERE c.product_id = :product AND c.location_id = :location AND c.source_type = :count), \'-infinity\'))',
-            ['product' => $productId->toRfc4122(), 'location' => $locationId->toRfc4122(), 'count' => StockMovement::SOURCE_COUNT, 'correction' => StockMovement::SOURCE_COST_CORRECTION],
+            .' AND m.at >= COALESCE((SELECT MAX(c.at) FROM stock_movement c WHERE c.company_id = :company AND c.product_id = :product AND c.location_id = :location AND c.source_type = :count), \'-infinity\'))',
+            ['company' => $companyId->toRfc4122(), 'product' => $productId->toRfc4122(), 'location' => $locationId->toRfc4122(), 'count' => StockMovement::SOURCE_COUNT, 'correction' => StockMovement::SOURCE_COST_CORRECTION],
         );
 
         return true === $moved;
     }
 
-    public function countedSince(Uuid $productId, Uuid $locationId, \DateTimeImmutable $since, Uuid $exceptRunId): bool
+    public function countedSince(Uuid $productId, Uuid $locationId, \DateTimeImmutable $since, Uuid $exceptRunId, Uuid $companyId): bool
     {
-        // `at` keeps the second only, so a count in the same second is taken as after: the safe side of a tie.
+        // Plain SQL: only the company's own counts answer, as above. `at` keeps the second only, so a count in the same
+        // second is taken as after: the safe side of a tie.
         $counted = $this->entityManager->getConnection()->fetchOne(
-            'SELECT EXISTS (SELECT 1 FROM stock_movement m WHERE m.product_id = :product AND m.location_id = :location'
+            'SELECT EXISTS (SELECT 1 FROM stock_movement m WHERE m.company_id = :company AND m.product_id = :product AND m.location_id = :location'
             .' AND m.source_type = :count AND m.at >= :since AND m.import_run_id IS DISTINCT FROM :run)',
-            ['product' => $productId->toRfc4122(), 'location' => $locationId->toRfc4122(), 'count' => StockMovement::SOURCE_COUNT, 'since' => $since, 'run' => $exceptRunId->toRfc4122()],
+            ['company' => $companyId->toRfc4122(), 'product' => $productId->toRfc4122(), 'location' => $locationId->toRfc4122(), 'count' => StockMovement::SOURCE_COUNT, 'since' => $since, 'run' => $exceptRunId->toRfc4122()],
             ['since' => Types::DATETIME_IMMUTABLE],
         );
 
@@ -431,9 +426,8 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         }
         $rows = $query->getQuery()->getArrayResult();
         foreach ($rows as $row) {
-            if (\is_array($row) && \is_string($row['product'] ?? null)) {
-                $totals[Uuid::fromString($row['product'])->toRfc4122()] = self::decimal($row['quantity'] ?? 0);
-            }
+            $row = Rows::row($row);
+            $totals[Uuid::fromString(Rows::text($row['product']))->toRfc4122()] = self::decimal($row['quantity']);
         }
 
         return $totals;
@@ -659,6 +653,6 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
      */
     private static function decimal(mixed $sum): string
     {
-        return new Number('0.000')->add(\is_int($sum) || (\is_string($sum) && is_numeric($sum)) ? $sum : 0)->value;
+        return new Number('0.000')->add(Rows::sum($sum))->value;
     }
 }

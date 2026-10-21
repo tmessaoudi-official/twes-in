@@ -13,6 +13,7 @@ use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\Module\Expenses\Infrastructure\Module\ExpensesModule;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
 use App\Watch\Application\DeclaresWatch;
 use App\Watch\Application\WatchItem;
@@ -76,7 +77,7 @@ final readonly class ExpenseWatch implements DeclaresWatch
 
         return new Page(array_map(static fn (array $row): WatchItem => new WatchItem(self::AMOUNT_TO_CHECK, self::text($row['id']), [
             'description' => self::text($row['description']),
-            'payee' => \is_scalar($row['payee']) ? (string) $row['payee'] : '',
+            'payee' => Rows::textOrNull($row['payee']) ?? '',
             'amount' => self::text($row['amount_gross']),
             'currency' => self::text($row['currency']),
             'date' => self::text($row['expense_date']),

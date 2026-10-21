@@ -82,7 +82,7 @@ final readonly class UndoImportedStock implements ImportedStock
      */
     private function standingOn(StockMovement $movement, \DateTimeImmutable $at, Uuid $runId, string $quantity): ?string
     {
-        if ($this->movements->countedSince($movement->getProduct()->getId(), $movement->getLocation()->getId(), $at, $runId)) {
+        if ($this->movements->countedSince($movement->getProduct()->getId(), $movement->getLocation()->getId(), $at, $runId, $movement->getCompany()->getId())) {
             return 'counted_since';
         }
         $left = new Number($this->movements->onHand($movement->getProduct()->getId(), $movement->getLocation()->getId(), $movement->getLot()?->getId()))->sub($quantity);

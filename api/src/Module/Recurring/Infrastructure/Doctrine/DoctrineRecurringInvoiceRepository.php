@@ -11,6 +11,7 @@ namespace App\Module\Recurring\Infrastructure\Doctrine;
 
 use App\Module\Recurring\Domain\Model\RecurringInvoice;
 use App\Module\Recurring\Domain\Repository\RecurringInvoiceRepository;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
@@ -73,7 +74,7 @@ final readonly class DoctrineRecurringInvoiceRepository implements RecurringInvo
             ->getQuery()
             ->getResult();
 
-        return array_values(array_filter(\is_array($found) ? $found : [], static fn (mixed $row): bool => $row instanceof RecurringInvoice));
+        return Rows::entities($found, RecurringInvoice::class);
     }
 
     public function dueOn(Uuid $companyId, \DateTimeImmutable $day): array

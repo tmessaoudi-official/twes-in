@@ -11,6 +11,7 @@ namespace App\Files\Infrastructure\Doctrine;
 
 use App\Files\Domain\Model\StoredFile;
 use App\Files\Domain\Repository\StoredFileRepository;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -55,7 +56,7 @@ final readonly class DoctrineStoredFileRepository implements StoredFileRepositor
     {
         $bytes = $this->entityManager->getConnection()->fetchOne('SELECT COALESCE(SUM(size), 0) FROM file WHERE company_id = ?', [$companyId->toRfc4122()]);
 
-        return is_numeric($bytes) ? (int) $bytes : 0;
+        return Rows::int($bytes);
     }
 
     public function storageKeysOfCompany(Uuid $companyId): array

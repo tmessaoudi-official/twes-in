@@ -104,13 +104,13 @@ interface StockMovementRepository
      * at or after the latest count there, or at all when it was never counted. A count taken before them, imported
      * now, would erase them.
      */
-    public function movedSinceLastCount(Uuid $productId, Uuid $locationId): bool;
+    public function movedSinceLastCount(Uuid $productId, Uuid $locationId, Uuid $companyId): bool;
 
     /**
      * Whether the place was counted at or after that moment, by a count no import named `$exceptRunId` wrote: what a
      * count found replaced what was there before it, so nothing written before it is taken back over it.
      */
-    public function countedSince(Uuid $productId, Uuid $locationId, \DateTimeImmutable $since, Uuid $exceptRunId): bool;
+    public function countedSince(Uuid $productId, Uuid $locationId, \DateTimeImmutable $since, Uuid $exceptRunId, Uuid $companyId): bool;
 
     /**
      * Holds the stock of a product at a location until the current transaction ends, so a count that reads it and a
