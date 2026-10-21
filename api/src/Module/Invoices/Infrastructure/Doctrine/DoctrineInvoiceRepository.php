@@ -150,9 +150,9 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             $query->setParameter('statuses', array_map(static fn (InvoiceStatus $each): string => $each->value, $search->statuses), ArrayParameterType::STRING);
         }
         if (null !== $search->overdueOn) {
-            $status[] = '(i.documentType = :overdueType AND i.status IN (:overdueStatuses) AND i.dueDate IS NOT NULL AND i.dueDate < :overdueOn)';
+            $status[] = '(i.documentType = :overdueType AND '.InvoiceRules::OPEN_DQL.' AND i.dueDate IS NOT NULL AND i.dueDate < :overdueOn)';
             $query->setParameter('overdueType', InvoiceType::Invoice->value)
-                ->setParameter('overdueStatuses', [InvoiceStatus::Issued->value, InvoiceStatus::PartiallyPaid->value])
+                ->setParameter('open', InvoiceRules::OPEN_STATUSES, ArrayParameterType::STRING)
                 ->setParameter('overdueOn', $search->overdueOn);
         }
         if ([] !== $status) {

@@ -128,6 +128,11 @@ final class InvoiceReportsTest extends KernelTestCase
         self::assertNull($result->rows[0]['row']->drill, 'a day without takings has no documents to open');
         $summary = $this->summary();
         self::assertSame(['845.500', '845.500'], [$result->totals['total'], $summary->collectedMonth]);
+        // An overpayment and a refund each carry the invoice they arose on, so a report narrowed to that invoice's
+        // establishment keeps them: here every document is the one establishment's.
+        $narrowed = $this->report(TakingsReport::class, '2026-09-01', '2026-09-21', establishment: $this->establishment($this->company));
+        self::assertSame([$result->totals['total'], $result->totals['overpaid'], $result->totals['refunded']], [$narrowed->totals['total'], $narrowed->totals['overpaid'], $narrowed->totals['refunded']]);
+        self::assertSame(['50.000', '-30.000'], [$narrowed->totals['overpaid'], $narrowed->totals['refunded']]);
 
         // The documents of one day add up to that day's figure, each with what it brought.
         self::assertSame([['FAC-S', '25.500'], ['FAC-S', '200.000']], $this->documents(TakingsReport::class, '2026-09-01', '2026-09-21', 'd1'));

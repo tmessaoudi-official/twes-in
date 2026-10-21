@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Watch;
 
-use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
+use App\Module\Invoices\Infrastructure\Doctrine\InvoiceRules;
 use App\Module\Invoices\Infrastructure\Watch\InvoiceWatch;
 use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use Doctrine\DBAL\ArrayParameterType;
@@ -53,10 +53,10 @@ final class OpenInvoiceIndexTest extends KernelTestCase
                 [
                     'company' => '01a0ecf8-8931-7d54-9164-5792991ac309',
                     'type' => InvoiceType::Invoice->value,
-                    'statuses' => [InvoiceStatus::Issued->value, InvoiceStatus::PartiallyPaid->value],
+                    'open' => InvoiceRules::OPEN_STATUSES,
                     'cutoff' => '2026-09-01',
                 ],
-                ['statuses' => ArrayParameterType::STRING],
+                ['open' => ArrayParameterType::STRING],
             ) as $line) {
                 self::assertIsString($line);
                 $plan .= $line."\n";

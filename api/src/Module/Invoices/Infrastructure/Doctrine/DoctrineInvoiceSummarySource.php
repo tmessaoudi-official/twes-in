@@ -12,7 +12,6 @@ namespace App\Module\Invoices\Infrastructure\Doctrine;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Invoices\Application\InvoiceSummarySource;
 use App\Module\Invoices\Domain\ValueObject\CreditEntryKind;
-use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
@@ -21,13 +20,11 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * The home page's sums in SQL. Plain SQL is not scoped by the company filter, so every statement names the company
- * itself. An issued document is one whose amount due issuing wrote.
+ * itself. An issued document is one whose amount due issuing wrote; an open one still has some of it to pay.
  */
 final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySource
 {
-    private const string OPEN = <<<'SQL'
-        i.company_id = :company AND i.document_type = :invoice AND i.status IN (:open) AND i.amount_due IS NOT NULL
-        SQL;
+    private const string OPEN = 'i.company_id = :company AND i.document_type = :invoice AND '.InvoiceRules::OPEN;
 
     private Connection $connection;
 
@@ -100,7 +97,7 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
      * invoice on the day it came in; and what was refunded, taken off on the day it left.
      */
     private const string MONEY_RECEIVED = 'SELECT p.payment_date AS day, p.amount FROM payment p JOIN invoice i ON i.id = p.invoice_id
-         WHERE i.company_id = :company AND i.document_type = :invoice AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+         WHERE i.company_id = :company AND i.document_type = :invoice AND '.InvoiceRules::ISSUED.'
            AND NOT EXISTS (SELECT 1 FROM customer_credit_entry applied WHERE applied.payment_id = p.id)
          UNION ALL
          SELECT e.entry_date, e.amount FROM customer_credit_entry e WHERE e.company_id = :company AND e.kind IN (:overpayment, :refunded)';
@@ -111,7 +108,7 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
         return [
             'company' => $companyId->toRfc4122(),
             'invoice' => InvoiceType::Invoice->value,
-            'cancelled' => InvoiceStatus::Cancelled->value,
+            'cancelled' => InvoiceRules::CANCELLED,
             'overpayment' => CreditEntryKind::Overpayment->value,
             'refunded' => CreditEntryKind::Refunded->value,
         ];
@@ -129,7 +126,7 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
                        SUM(l.line_net) OVER (PARTITION BY i.id) AS lines_net,
                        ROW_NUMBER() OVER (PARTITION BY i.id) AS nth
                 FROM invoice i JOIN invoice_line l ON l.invoice_id = i.id
-                WHERE i.company_id = :company AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+                WHERE i.company_id = :company AND '.InvoiceRules::ISSUED.'
                   AND i.issue_date >= :from AND i.issue_date < :until
              )
              SELECT COALESCE(SUM(total_net) FILTER (WHERE nth = 1), 0) AS net,
@@ -137,7 +134,7 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
                     COALESCE(SUM(CASE WHEN document_type = :credit THEN -1 ELSE 1 END * quantity * unit_cost), 0) AS cost,
                     COUNT(*) FILTER (WHERE unit_cost IS NOT NULL) AS costed_lines
              FROM lines',
-            ['company' => $companyId->toRfc4122(), 'credit' => InvoiceType::CreditNote->value, 'cancelled' => InvoiceStatus::Cancelled->value, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')],
+            ['company' => $companyId->toRfc4122(), 'credit' => InvoiceType::CreditNote->value, 'cancelled' => InvoiceRules::CANCELLED, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')],
         );
         \assert(false !== $row);
 
@@ -147,10 +144,10 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
     public function withheldBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string
     {
         $sum = $this->connection->fetchOne(
-            'SELECT COALESCE(SUM(withholding_amount), 0) FROM invoice
-             WHERE company_id = :company AND status <> :cancelled AND amount_due IS NOT NULL
-               AND issue_date >= :from AND issue_date < :until',
-            ['company' => $companyId->toRfc4122(), 'cancelled' => InvoiceStatus::Cancelled->value, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')],
+            'SELECT COALESCE(SUM(withholding_amount), 0) FROM invoice i
+             WHERE i.company_id = :company AND '.InvoiceRules::ISSUED.'
+               AND i.issue_date >= :from AND i.issue_date < :until',
+            ['company' => $companyId->toRfc4122(), 'cancelled' => InvoiceRules::CANCELLED, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')],
         );
 
         return self::text($sum);
@@ -166,7 +163,7 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
              FROM (
              SELECT t ->> \'code\' AS code, t ->> \'rate\' AS rate, SUM((t ->> \'amount\')::numeric) AS amount
              FROM invoice i CROSS JOIN LATERAL jsonb_array_elements(i.tax_breakdown) t
-             WHERE i.company_id = :company AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+             WHERE i.company_id = :company AND '.InvoiceRules::ISSUED.'
                AND i.issue_date >= :from AND i.issue_date < :until
                AND EXISTS (
                    SELECT 1 FROM invoice_line l JOIN invoice_line_tax lt ON lt.line_id = l.id JOIN tax_component c ON c.id = lt.tax_component_id
@@ -174,7 +171,7 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
                )
              GROUP BY 1, 2
              ) v',
-            ['company' => $companyId->toRfc4122(), 'cancelled' => InvoiceStatus::Cancelled->value, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d'), 'vat' => TaxFamily::Vat->value],
+            ['company' => $companyId->toRfc4122(), 'cancelled' => InvoiceRules::CANCELLED, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d'), 'vat' => TaxFamily::Vat->value],
         );
 
         return array_map(static fn (array $row): array => ['code' => self::text($row['code']), 'rate' => self::text($row['rate']), 'name' => null === $row['name'] ? null : self::text($row['name']), 'amount' => self::text($row['amount'])], $rows);
@@ -184,7 +181,7 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
     private function open(Uuid $companyId): array
     {
         return [
-            ['company' => $companyId->toRfc4122(), 'invoice' => InvoiceType::Invoice->value, 'open' => [InvoiceStatus::Issued->value, InvoiceStatus::PartiallyPaid->value]],
+            ['company' => $companyId->toRfc4122(), 'invoice' => InvoiceType::Invoice->value, 'open' => InvoiceRules::OPEN_STATUSES],
             ['open' => ArrayParameterType::STRING],
         ];
     }

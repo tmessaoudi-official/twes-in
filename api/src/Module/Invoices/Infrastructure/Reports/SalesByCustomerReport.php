@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Infrastructure\Reports;
 
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Module\Invoices\Infrastructure\Doctrine\InvoiceRules;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Module\Reports\Application\DeclaresReport;
 use App\Module\Reports\Application\ReportColumn;
@@ -34,7 +35,7 @@ use Symfony\Component\Uid\Uuid;
 final readonly class SalesByCustomerReport implements DeclaresReport
 {
     /** Every issued document of the period: issuing writes the amount due, and a cancelled one was a withdrawn draft. */
-    private const string ISSUED = 'i.company_id = :company AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+    private const string ISSUED = 'i.company_id = :company AND '.InvoiceRules::ISSUED.'
           AND i.issue_date BETWEEN :from AND :to';
 
     public function __construct(private Connection $connection)
@@ -143,7 +144,7 @@ final readonly class SalesByCustomerReport implements DeclaresReport
     {
         $params = [
             'company' => $context->company->getId()->toRfc4122(),
-            'cancelled' => InvoiceStatus::Cancelled->value,
+            'cancelled' => InvoiceRules::CANCELLED,
             'from' => $period->from->format('Y-m-d'),
             'to' => $period->to->format('Y-m-d'),
         ];

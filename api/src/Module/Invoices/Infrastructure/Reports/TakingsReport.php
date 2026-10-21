@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Reports;
 
 use App\Module\Invoices\Domain\ValueObject\CreditEntryKind;
-use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Module\Invoices\Infrastructure\Doctrine\InvoiceRules;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Module\Reports\Application\DeclaresReport;
 use App\Module\Reports\Application\ReportColumn;
@@ -45,7 +45,7 @@ final readonly class TakingsReport implements DeclaresReport
      */
     private const string MONEY = 'SELECT p.payment_date AS day, p.method AS means, p.amount, i.id AS document, i.number, i.customer_snapshot ->> \'name\' AS party
            FROM payment p JOIN invoice i ON i.id = p.invoice_id
-          WHERE i.company_id = :company AND i.document_type = :invoice AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+          WHERE i.company_id = :company AND i.document_type = :invoice AND '.InvoiceRules::ISSUED.'
             AND NOT EXISTS (SELECT 1 FROM customer_credit_entry applied WHERE applied.payment_id = p.id)
             AND p.payment_date BETWEEN :from AND :to %1$s
          UNION ALL
@@ -136,8 +136,8 @@ final readonly class TakingsReport implements DeclaresReport
             self::text($row['day']),
             self::text($row['amount']),
         ), $this->connection->fetchAllAssociative(
-            // A refund to a customer's balance belongs to no invoice: it is in the figure, and has no document to open, so
-            // it is left out before the limit counts.
+            // Every entry names the invoice it arose on, an overpayment and a refund included; the guard keeps a row
+            // naming none out of the documents before the limit counts, as it has nothing to open.
             'SELECT * FROM ('.$sql.') money WHERE document IS NOT NULL ORDER BY means, number, document LIMIT :limit',
             $params + ['limit' => self::DOCUMENTS_SHOWN + 1],
             ['limit' => ParameterType::INTEGER],
@@ -156,7 +156,7 @@ final readonly class TakingsReport implements DeclaresReport
         $params = [
             'company' => $context->company->getId()->toRfc4122(),
             'invoice' => InvoiceType::Invoice->value,
-            'cancelled' => InvoiceStatus::Cancelled->value,
+            'cancelled' => InvoiceRules::CANCELLED,
             'overpayment' => CreditEntryKind::Overpayment->value,
             'refunded' => CreditEntryKind::Refunded->value,
             'from' => $period->from->format('Y-m-d'),

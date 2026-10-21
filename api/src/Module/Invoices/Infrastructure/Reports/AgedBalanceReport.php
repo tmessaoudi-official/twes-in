@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Reports;
 
 use App\Module\Invoices\Application\AgedBalanceSettings;
-use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Module\Invoices\Infrastructure\Doctrine\InvoiceRules;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Module\Reports\Application\DeclaresReport;
 use App\Module\Reports\Application\ReportColumn;
@@ -40,7 +40,7 @@ use Symfony\Component\Uid\Uuid;
 final readonly class AgedBalanceReport implements DeclaresReport
 {
     /** Still to be paid: what the invoices list's open statuses show, with something left on it. */
-    private const string OPEN = 'i.company_id = :company AND i.document_type = :invoice AND i.status IN (:open) AND i.amount_due > 0';
+    private const string OPEN = 'i.company_id = :company AND i.document_type = :invoice AND '.InvoiceRules::OPEN;
 
     public function __construct(private Connection $connection, private ReadSetting $settings)
     {
@@ -120,8 +120,8 @@ final readonly class AgedBalanceReport implements DeclaresReport
             $cells['invoices'] = (int) self::text($row['invoices']);
 
             // The invoices list's own address: its customer, its open statuses (an overdue one is still issued), invoices and
-            // deposits but no credit note, and something left to pay, as an invoice credited in full keeps its status. The
-            // list has no establishment to narrow by, so a report narrowed to one lists its own documents instead.
+            // deposits but no credit note, and something left to pay, as an invoice issued with nothing to pay keeps its
+            // status. The list has no establishment to narrow by, so a report narrowed to one lists its own documents instead.
             return new ReportRow($customer, $cells, $narrowed ? new ReportDrill() : new ReportDrill('invoices', [
                 'customer' => $customer,
                 'status' => 'issued,partially_paid',
@@ -199,7 +199,7 @@ final readonly class AgedBalanceReport implements DeclaresReport
         $params = [
             'company' => $context->company->getId()->toRfc4122(),
             'invoice' => InvoiceType::Invoice->value,
-            'open' => [InvoiceStatus::Issued->value, InvoiceStatus::PartiallyPaid->value],
+            'open' => InvoiceRules::OPEN_STATUSES,
         ];
         if (null === $context->establishmentId) {
             return [self::OPEN, $params];

@@ -14,6 +14,7 @@ use App\Module\Invoices\Domain\ValueObject\InstrumentStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Module\Invoices\Infrastructure\Doctrine\InvoiceRules;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
@@ -52,7 +53,7 @@ final readonly class InvoiceWatch implements DeclaresWatch
     public const string INSTRUMENTS_WHERE = 'pi.company_id = :company AND pi.status IN (:open) AND pi.due_on <= :until';
 
     /** What late means, shared by the count and the rows so the number on the home is the number of rows behind it. */
-    public const string LATE_WHERE = 'i.company_id = :company AND i.document_type = :type AND i.status IN (:statuses) AND i.amount_due > 0 AND i.due_date < :cutoff';
+    public const string LATE_WHERE = 'i.company_id = :company AND i.document_type = :type AND '.InvoiceRules::OPEN.' AND i.due_date < :cutoff';
 
     public function __construct(private Connection $connection, private ReadSetting $settings)
     {
@@ -240,10 +241,10 @@ final readonly class InvoiceWatch implements DeclaresWatch
             [
                 'company' => $company->getId()->toRfc4122(),
                 'type' => InvoiceType::Invoice->value,
-                'statuses' => [InvoiceStatus::Issued->value, InvoiceStatus::PartiallyPaid->value],
+                'open' => InvoiceRules::OPEN_STATUSES,
                 'cutoff' => $today->modify("-$days days")->format('Y-m-d'),
             ],
-            ['statuses' => ArrayParameterType::STRING],
+            ['open' => ArrayParameterType::STRING],
         ];
     }
 
