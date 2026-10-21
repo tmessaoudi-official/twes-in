@@ -277,6 +277,17 @@ describe('CustomerGroupsPage', () => {
     expect(q('customer-groups-error')?.textContent).toContain('encore dans ce groupe');
   });
 
+  it('offers a writer who may not remove customers the edit of a group but not its delete', async () => {
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'customer.remove');
+    fixture = TestBed.createComponent(CustomerGroupsPage);
+    await settle();
+
+    expect(q('customer-group-add')).not.toBeNull();
+    expect(q('row-action-edit-g1')).not.toBeNull();
+    // The delete was the menu's one entry, so no "⋮" is drawn.
+    expect(q('row-more-g1')).toBeNull();
+  });
+
   it('offers no change to a reader', async () => {
     auth.hasPermission.mockReturnValue(false);
     fixture = TestBed.createComponent(CustomerGroupsPage);

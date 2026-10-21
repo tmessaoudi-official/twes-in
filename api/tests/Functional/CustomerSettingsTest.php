@@ -175,7 +175,7 @@ final class CustomerSettingsTest extends ApiTestCase
         $this->em()->persist($empty);
         $this->em()->flush();
         $emptyId = $empty->getId()->toRfc4122();
-        $this->signedIn(['company.read', 'customer.read', 'customer.write']);
+        $this->signedIn(['company.read', 'customer.read', 'customer.write', 'customer.remove']);
         $this->sendJson('PUT', $this->path(self::TERMS), ['level' => 'customer_group', 'customerGroupId' => $emptyId, 'value' => 45]);
         self::assertResponseIsSuccessful();
 

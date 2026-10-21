@@ -20,6 +20,6 @@ final readonly class CustomersModule implements DeclaresModule
 
     public function manifest(): ModuleManifest
     {
-        return new ModuleManifest(self::KEY, 'modules.customers', [], [CustomerPermission::READ, CustomerPermission::WRITE]);
+        return new ModuleManifest(self::KEY, 'modules.customers', [], [CustomerPermission::READ, CustomerPermission::WRITE, CustomerPermission::REMOVE]);
     }
 }

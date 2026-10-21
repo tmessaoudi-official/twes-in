@@ -30,7 +30,7 @@ final readonly class DeleteCustomerGroupProcessor implements ProcessorInterface
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): null
     {
-        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CustomerPermission::WRITE);
+        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CustomerPermission::REMOVE);
 
         try {
             $this->manage->delete($company, CompanyPath::identifier($uriVariables, 'groupId'), $this->guard->account()->getId());

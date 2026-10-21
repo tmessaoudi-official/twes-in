@@ -25,8 +25,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * A company's customer groups. Read with customer.read, changed with customer.write; a group still holding customers
- * answers 409 to a DELETE, and each row says how many it holds.
+ * A company's customer groups. Read with customer.read, added and changed with customer.write, deleted with
+ * customer.remove; a group still holding customers answers 409 to a DELETE, and each row says how many it holds.
  */
 #[ApiResource(
     shortName: 'CustomerGroup',

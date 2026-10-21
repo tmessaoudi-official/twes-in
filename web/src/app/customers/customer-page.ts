@@ -318,7 +318,8 @@ export class CustomerPage {
         undoable: true,
         disabled: busy,
         run: () => void this.remove(),
-        shown: may && this.current() != null,
+        // Deleting is its own permission: a clerk adds and revises customers but leaves removing them to a manager.
+        shown: may && this.current() != null && this.auth.hasPermission('customer.remove'),
       },
     ];
   });

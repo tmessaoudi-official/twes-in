@@ -117,7 +117,8 @@
     },
     "customer": {
       "read": "See customers",
-      "write": "Create and edit customers"
+      "write": "Create and edit customers",
+      "remove": "Delete and merge customers"
     },
     "delivery_note": {
       "read": "See delivery notes",

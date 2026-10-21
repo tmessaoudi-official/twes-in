@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * The built-in clerk, « Caissier / Vendeur » (docs/SPEC.md § 7, audit 2026-10-06 B-12): they sell, which is issuing an
  * invoice and taking its payment, and draft delivery notes; a credit note, which reverses revenue, a validated delivery
- * note, a customer's record and a product's cost stay a manager's.
+ * note, deleting or merging a customer and a product's cost stay a manager's.
  */
 final class ClerkRoleTest extends ApiTestCase
 {
@@ -96,17 +96,56 @@ final class ClerkRoleTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_OK, 'a manager does');
     }
 
-    public function testAClerkReadsCustomersButWritesNoneAndSeesNoMembers(): void
+    /**
+     * A clerk adds a customer at the counter, and may add one twice: deleting or merging customers stays a manager's,
+     * and so does deleting a customer group.
+     */
+    public function testAClerkAddsCustomersButNeitherDeletesNorMergesThemAndSeesNoMembers(): void
     {
         $this->login('clerk@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         $company = '/api/companies/'.$this->company->getId()->toRfc4122();
 
         $this->client->request('GET', $company.'/customers/'.$this->customerId);
         self::assertResponseIsSuccessful();
         $this->postJson($company.'/customers', ['number' => 'CLI-0002', 'kind' => 'individual', 'name' => 'Sonia Ben Ali', 'taxRegime' => 'standard', 'defaultTaxComponentIds' => [], 'isActive' => true]);
-        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a customer\'s record is a manager\'s');
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'a clerk adds a customer at the counter');
+        $added = $this->stringAt($this->json(), 'id');
+
+        $this->postJson($company.'/record-removals', ['subject' => 'customer', 'ids' => [$added]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'deleting a customer is a manager\'s');
+        $this->postJson($company.'/record-merges', ['subject' => 'customer', 'keptId' => $this->customerId, 'ids' => [$added]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'so is merging customers');
+        $this->client->request('GET', $company.'/record-merges/preview?subject=customer&ids[]='.$added.'&ids[]='.$this->customerId);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'and what a merge would move');
+        self::assertSame(2, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM customer WHERE company_id = ? AND is_active', [$this->company->getId()->toRfc4122()]));
+
+        $this->postJson($company.'/customer-groups', ['name' => 'Grossistes', 'description' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->sendJson('DELETE', $company.'/customer-groups/'.$this->stringAt($this->json(), 'id'));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'deleting a group is a manager\'s');
+
         $this->client->request('GET', $company.'/members');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor who the members are');
+    }
+
+    /** Putting back a customer a manager deleted takes nothing away, so a clerk who sees it gone may restore it. */
+    public function testAClerkPutsBackACustomerAManagerDeleted(): void
+    {
+        $company = '/api/companies/'.$this->company->getId()->toRfc4122();
+        $this->login('manager@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
+        $this->postJson($company.'/record-removals', ['subject' => 'customer', 'ids' => [$this->customerId]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'a manager deletes');
+        $removal = $this->stringAt($this->json(), 'id');
+
+        $this->login('clerk@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
+        $this->client->request('GET', $company.'/record-removals');
+        self::assertSame([$removal], array_column($this->jsonList(), 'id'), 'the clerk sees what was deleted');
+        $this->postJson($company.'/record-removals/'.$removal.'/restore', null);
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM customer WHERE id = ?', [$this->customerId]));
     }
 
     private function path(string $id): string
