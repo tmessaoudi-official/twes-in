@@ -17,7 +17,7 @@ enum IdentifierCheck: string
 {
     /** The Luhn check digit: a French SIREN. */
     case Luhn = 'luhn';
-    /** Luhn over all fourteen digits, except La Poste's establishments, whose digits add up to a multiple of five. */
+    /** Luhn over all fourteen digits, or, for La Poste's establishments, digits adding up to a multiple of five. */
     case Siret = 'siret';
     /** A French intra-EU VAT number: its two-digit key is (12 + 3 × (SIREN mod 97)) mod 97. */
     case FrenchVatKey = 'fr_vat_key';
@@ -28,9 +28,10 @@ enum IdentifierCheck: string
     {
         return match ($this) {
             self::Luhn => self::luhn($value),
-            self::Siret => str_starts_with($value, self::LA_POSTE_SIREN) && ctype_digit($value)
-                ? 0 === array_sum(array_map('intval', str_split($value))) % 5
-                : self::luhn($value),
+            // La Poste's sum is a second way in, never a replacement: its head office passes Luhn and not the sum.
+            self::Siret => self::luhn($value)
+                || (str_starts_with($value, self::LA_POSTE_SIREN) && ctype_digit($value)
+                    && 0 === array_sum(array_map('intval', str_split($value))) % 5),
             self::FrenchVatKey => self::frenchVatKey($value),
         };
     }

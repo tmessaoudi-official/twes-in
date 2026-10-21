@@ -107,6 +107,7 @@
                   [updated]="sync.updated()"
                   [conflicts]="sync.conflicts()"
                   [suggestions]="suggestions()"
+                  [pickers]="pickers()"
                   (resolved)="sync.resolve(form, $event)"
                   testId="product-form"
                   #mainForm

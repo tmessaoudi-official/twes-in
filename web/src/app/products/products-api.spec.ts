@@ -38,6 +38,7 @@ const laptop: ProductInput = {
   toCheck: false,
   checkNote: null,
   zeroPriceIntended: false,
+  vendorIds: null,
 };
 
 describe('ProductsApi', () => {
@@ -321,6 +322,8 @@ describe('ProductsApi', () => {
       checkNote: null,
       zeroPriceIntended: false,
       checkReasons: [],
+      vendorIds: [],
+      vendors: [],
       mergedInto: null,
     });
   });

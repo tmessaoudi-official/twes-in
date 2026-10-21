@@ -75,6 +75,15 @@ function isRecord(candidate: unknown): candidate is Record<string, unknown> {
  * reaches nothing on its own: this follows `valueChanges` of whichever form is on screen, and re-follows the next
  * one when the page opens another record.
  */
+/**
+ * The saved values of the fields the form shows: one it leaves out (a cost hidden from who may not read it, a field
+ * of a module switched off) is nothing a person can have changed, and counting it would hold every way out.
+ */
+function shownOnly(saved: unknown, current: unknown): unknown {
+  if (!isRecord(saved) || !isRecord(current)) return saved;
+  return Object.fromEntries(Object.entries(saved).filter(([field]) => field in current));
+}
+
 export function unsavedChanges(
   form: Signal<AbstractControl | null>,
   saved: Signal<unknown>,
@@ -104,7 +113,8 @@ export function unsavedChanges(
     if (control === null) return 0;
     const record = saved();
     const baseline = record ?? (opened?.control === control ? opened.values : null);
-    return dirtyCount(control.getRawValue(), baseline);
+    const current: unknown = control.getRawValue();
+    return dirtyCount(current, shownOnly(baseline, current));
   });
   // Declared here rather than on each page (row 45): a page that counts its unsaved fields at all is guarded
   // against being left, and one added later cannot forget to take part.

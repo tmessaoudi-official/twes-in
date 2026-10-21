@@ -25,7 +25,9 @@ final class IdentifierCheckTest extends TestCase
         yield 'a SIRET with its check digit' => [IdentifierCheck::Siret, '73282932000074', true];
         yield 'a SIRET one digit off' => [IdentifierCheck::Siret, '73282932000075', false];
         yield "La Poste's SIRET adding up to a multiple of five, which Luhn refuses" => [IdentifierCheck::Siret, '35600000000015', true];
-        yield "La Poste's SIRET that Luhn accepts but does not add up to a multiple of five" => [IdentifierCheck::Siret, '35600000000048', false];
+        yield "La Poste's head office, which Luhn accepts though its digits do not add up to a multiple of five" => [IdentifierCheck::Siret, '35600000000048', true];
+        yield "La Poste's SIRET from INSEE's notice, which only its sum accepts" => [IdentifierCheck::Siret, '35600000009075', true];
+        yield 'a La Poste SIRET that neither Luhn nor its sum accepts' => [IdentifierCheck::Siret, '35600000009076', false];
         yield 'a VAT number with its key' => [IdentifierCheck::FrenchVatKey, 'FR44732829320', true];
         yield 'a VAT number with a wrong key' => [IdentifierCheck::FrenchVatKey, 'FR45732829320', false];
         yield 'a VAT number with a key of letters, issued without a SIREN' => [IdentifierCheck::FrenchVatKey, 'FRAB732829320', true];

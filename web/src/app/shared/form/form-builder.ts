@@ -94,7 +94,7 @@ function assertValidField(field: FormField): void {
 
 function emptyValue(field: FormField): FieldValue {
   if (field.kind === 'number') return null;
-  if (field.kind === 'multiselect') return [];
+  if (field.kind === 'multiselect' || field.kind === 'picks') return [];
   return field.kind === 'checkbox' ? false : '';
 }
 

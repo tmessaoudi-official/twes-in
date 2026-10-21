@@ -104,6 +104,16 @@ export interface ProductRow {
   zeroPriceIntended: boolean;
   /** What the product lacks, as the API says it to this reader; never written. */
   checkReasons: ProductCheckReason[];
+  /** Who it is bought from, by number: the ids a save sends back, and each one as the product page shows it. */
+  vendorIds: string[];
+  vendors: ProductVendor[];
+}
+
+/** A vendor a product is bought from, as the product names it. */
+export interface ProductVendor {
+  id: string;
+  number: string;
+  name: string;
 }
 
 /**
@@ -172,8 +182,19 @@ export const LOT_CODE_PATTERN = /^[\x21-\x7E]{1,40}$/;
 /** What a save sends: the main photo is the gallery's to say, never the form's, and the merge only « Fusionner… »'s. */
 export type ProductInput = Omit<
   ProductRow,
-  'id' | 'version' | 'barcodes' | 'mainPhotoId' | 'mergedInto' | 'priceReview' | 'checkReasons'
->;
+  | 'id'
+  | 'version'
+  | 'barcodes'
+  | 'mainPhotoId'
+  | 'mergedInto'
+  | 'priceReview'
+  | 'checkReasons'
+  | 'vendorIds'
+  | 'vendors'
+> & {
+  /** Exactly the vendors it is bought from; null keeps them, as a form that did not show them sends. */
+  vendorIds: string[] | null;
+};
 
 /**
  * What a code stands for (docs/SPEC.md § 7, 2026-09-22 11:05): the piece it is sold by, a pack entering several at

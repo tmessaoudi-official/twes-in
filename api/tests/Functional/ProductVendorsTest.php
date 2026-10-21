@@ -19,6 +19,7 @@ use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
+use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -128,6 +129,35 @@ final class ProductVendorsTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame([$this->id($this->other)], $this->json()['vendorIds']);
+    }
+
+    public function testTheProductFormsVendorPickerFindsTheCompanysVendorsForAWriterWhileVendorsIsOn(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $theirs = Vendor::create($this->createCompany('Ailleurs'), 'FRN-0009', new VendorProfile('Sotumag Sud'), new \DateTimeImmutable());
+        $this->em()->persist($theirs);
+        $this->em()->flush();
+
+        $this->getJson($this->companyPath().'/product-options/vendors?q=sotum');
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$this->id($this->coded), 'FRN-0002', 'Sotumag']], array_map(static fn (array $row): array => [$row['id'], $row['number'], $row['name']], $this->jsonList()), 'only this company\'s vendors');
+
+        $this->getJson($this->companyPath().'/product-options/vendors?ids[]='.$this->id($this->other));
+        self::assertSame(['Comptoir Sfax'], array_column($this->jsonList(), 'name'), 'a vendor the product names is read back by id');
+
+        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? $this->company, 'vendors', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->getJson($this->companyPath().'/product-options/vendors');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'no vendor book, nothing to pick from');
+    }
+
+    public function testTheVendorPickerIsForWhoeverMayNameAProductsVendorsNotJustReadIt(): void
+    {
+        $this->signedIn(['product.read']);
+
+        $this->getJson($this->companyPath().'/product-options/vendors');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
     /**

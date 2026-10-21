@@ -84,6 +84,8 @@ const laptop: ProductRow = {
   checkNote: null,
   zeroPriceIntended: false,
   checkReasons: [],
+  vendorIds: [],
+  vendors: [],
 };
 const warranty: CustomFieldDefinition = {
   id: 'f1',
@@ -354,7 +356,32 @@ describe('product forms', () => {
       toCheck: false,
       checkNote: null,
       zeroPriceIntended: false,
+      vendorIds: [],
     });
+  });
+
+  it('asks who a product is bought from only while the company keeps a vendor book', () => {
+    const sections = (vendors: boolean) =>
+      productForm(options, [], [], { cost: true, vendors }).sections.map((each) => each.id);
+    expect(sections(true)).toContain('buying');
+    expect(sections(false)).not.toContain('buying');
+    expect(
+      productForm(options, [], [], { cost: true, vendors: true })
+        .sections.find((each) => each.id === 'buying')
+        ?.fields.map((field) => [field.id, field.kind]),
+    ).toEqual([['vendorIds', 'picks']]);
+  });
+
+  it('sends exactly the vendors held, each once, and keeps them when the form did not show them', () => {
+    const values = productValues({ ...laptop, vendorIds: ['v1'] }, options);
+    expect(values['vendorIds']).toEqual(['v1']);
+    expect(productInput({ ...values, vendorIds: ['v2', 'v1', 'v2'] }, options).vendorIds).toEqual([
+      'v2',
+      'v1',
+    ]);
+    const withoutField = { ...values };
+    delete withoutField['vendorIds'];
+    expect(productInput(withoutField, options).vendorIds).toBeNull();
   });
 
   // docs/SPEC.md § 7, 2026-10-20 01:40: « à vérifier » by hand with a note, and « prix 0 voulu » under a price of nothing.

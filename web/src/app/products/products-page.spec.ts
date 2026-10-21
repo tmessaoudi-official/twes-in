@@ -70,6 +70,8 @@ const laptop: ProductRow = {
   checkNote: null,
   zeroPriceIntended: false,
   checkReasons: [],
+  vendorIds: [],
+  vendors: [],
 };
 
 const oldLaptop: ProductRow = { ...laptop, id: 'p2', reference: 'ART-001B', name: 'Portable' };

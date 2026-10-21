@@ -34,10 +34,12 @@ import type {
   ProductSubstitutionGroupProductSubstitutionGroupRead,
   StockTotalStockTotalRead,
   ProductLabelProductLabelRead,
+  ProductVendorPickProductVendorPickRead,
 } from '../api/types.gen';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import {
@@ -64,6 +66,7 @@ import {
   type ProductSearch,
   type PriceReviewDecision,
   type ProductsError,
+  type ProductVendor,
 } from './products-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -100,6 +103,26 @@ export class ProductsApi {
         ),
       ),
     );
+  }
+
+  /**
+   * The few vendors a person means while naming who a product is bought from, or — given ids — exactly those. A person
+   * who may not change products, or a company without the vendors module, is answered 404.
+   */
+  async pickVendors(companyId: string, asked: PickAsked): Promise<ProductVendor[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<ProductVendorPickProductVendorPickRead[]>(
+          `${path(companyId, 'product-options')}/vendors`,
+          { params: pickParams(asked) },
+        ),
+      );
+      return rows.map((vendor) => ({
+        id: vendor.id ?? '',
+        number: vendor.number,
+        name: vendor.name,
+      }));
+    });
   }
 
   /** One page of the products the search finds, as Hydra carries it: the rows and the total. */
@@ -636,6 +659,12 @@ function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductR
     checkNote: raw.checkNote ?? null,
     zeroPriceIntended: raw.zeroPriceIntended ?? false,
     checkReasons: checkReasonsOf(raw.checkReasons),
+    vendorIds: [...(raw.vendorIds ?? [])],
+    vendors: (raw.vendors ?? []).map((vendor) => ({
+      id: vendor.id,
+      number: vendor.number,
+      name: vendor.name,
+    })),
   };
 }
 
@@ -649,6 +678,7 @@ function toProductBody(input: ProductInput): ProductProductWrite {
     ...input,
     defaultTaxComponentIds: [...input.defaultTaxComponentIds],
     customFields: { ...input.customFields },
+    vendorIds: input.vendorIds === null ? null : [...input.vendorIds],
   };
 }
 

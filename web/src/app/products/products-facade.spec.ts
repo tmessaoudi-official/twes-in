@@ -46,6 +46,7 @@ const input: ProductInput = {
   toCheck: false,
   checkNote: null,
   zeroPriceIntended: false,
+  vendorIds: null,
 };
 const laptop: ProductRow = {
   ...input,
@@ -60,6 +61,8 @@ const laptop: ProductRow = {
   zeroPriceIntended: false,
   checkReasons: [],
   mergedInto: null,
+  vendorIds: [],
+  vendors: [],
 };
 const hardware: ProductCategoryRow = {
   id: 'k1',
