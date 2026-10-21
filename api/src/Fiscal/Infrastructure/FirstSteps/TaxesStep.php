@@ -10,19 +10,17 @@ declare(strict_types=1);
 namespace App\Fiscal\Infrastructure\FirstSteps;
 
 use App\FirstSteps\Application\DeclaresFirstStep;
-use App\Fiscal\Application\TaxComponent\ManageTaxComponents;
+use App\Fiscal\Application\TaxComponent\TaxRevisions;
 use App\Fiscal\Infrastructure\ApiPlatform\Security\FiscalPermission;
 use App\Tenancy\Domain\Model\Company;
-use Doctrine\DBAL\Connection;
 
 /**
  * « Vérifier vos taxes »: the preset provisions the taxes when the company is created, so their existing proves
- * nothing. The step is done once a person has created or revised one — the audit log keeps that, with its author;
- * provisioning records none.
+ * nothing. The step is done once a person has created or revised one, which only the activity log keeps.
  */
 final readonly class TaxesStep implements DeclaresFirstStep
 {
-    public function __construct(private Connection $connection)
+    public function __construct(private TaxRevisions $revisions)
     {
     }
 
@@ -48,9 +46,6 @@ final readonly class TaxesStep implements DeclaresFirstStep
 
     public function isDone(Company $company): bool
     {
-        return true === $this->connection->fetchOne(
-            'SELECT EXISTS (SELECT 1 FROM audit_log WHERE company_id = :company AND entity_type = :type AND actor_user_id IS NOT NULL)',
-            ['company' => $company->getId()->toRfc4122(), 'type' => ManageTaxComponents::ENTITY_TYPE],
-        );
+        return $this->revisions->revisedByAPerson($company->getId());
     }
 }
