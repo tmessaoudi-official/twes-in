@@ -26,10 +26,12 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The stock a company already has, imported from a file (docs/SPEC.md § 8 row 59, § 7 2026-10-09 10:40 (6)). A row
@@ -335,6 +337,34 @@ final class OpeningStockImportTest extends ApiTestCase
         ), 'the stock of that product at that place is locked');
     }
 
+    /**
+     * A file sent again under the key it was first sent with (the answer was lost) is answered as the first time and
+     * adds nothing more; another file under that key is refused. The browser writes the form's boundary anew each time,
+     * so what is compared is the fields and each file's name and contents, never the raw body.
+     */
+    public function testTheSameFileSentAgainUnderItsKeyIsAnsweredOnceAndAnotherFileIsRefused(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $key = [Submissions::KEY_SERVER => Uuid::v4()->toRfc4122()];
+        $this->import(self::HEADER."\nVIS-6X40,,000,5,\n", server: $key);
+        self::assertResponseIsSuccessful();
+        $first = $this->json();
+
+        $this->import(self::HEADER."\nVIS-6X40,,000,5,\n", server: $key);
+
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame(Submissions::REPLAYED_HEADER, 'true');
+        self::assertSame($first, $this->json());
+        self::assertSame('5.000', $this->onHand('VIS-6X40', '000'), 'added once');
+        self::assertSame(1, $this->number('SELECT COUNT(*) FROM import_run WHERE company_id = ?', [$this->company->getId()->toRfc4122()]));
+
+        $this->import(self::HEADER."\nVIS-6X40,,000,6,\n", server: $key);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(Submissions::KEY_REUSED, $this->json()['type'] ?? null);
+        self::assertSame('5.000', $this->onHand('VIS-6X40', '000'));
+    }
+
     /** A count taken before a receipt or a sale, imported after it, would erase it: it is asked to be ticked first. */
     public function testACountWhereGoodsMovedSinceTheLastCountWaitsForRecompter(): void
     {
@@ -405,8 +435,11 @@ final class OpeningStockImportTest extends ApiTestCase
         return self::HEADER."\nVIS-6X40,,000,,120\nFIL-2,,Z1,,\"7,5\"\n";
     }
 
-    /** @param list<string> $switches */
-    private function import(string $contents, string $mode = 'create', bool $dryRun = false, array $switches = []): void
+    /**
+     * @param list<string>          $switches
+     * @param array<string, string> $server   such as the `Idempotency-Key` an attempt is sent with again
+     */
+    private function import(string $contents, string $mode = 'create', bool $dryRun = false, array $switches = [], array $server = []): void
     {
         $this->uploadFile(
             '/api/companies/'.$this->company->getId()->toRfc4122().'/imports/opening-stock',
@@ -414,6 +447,7 @@ final class OpeningStockImportTest extends ApiTestCase
             $contents,
             'file',
             ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0', 'switches' => $switches],
+            $server,
         );
     }
 
@@ -441,7 +475,7 @@ final class OpeningStockImportTest extends ApiTestCase
         return $rows;
     }
 
-    private function productId(string $reference): \Symfony\Component\Uid\Uuid
+    private function productId(string $reference): Uuid
     {
         $product = $this->em()->getRepository(Product::class)->findOneBy(['reference' => $reference, 'company' => $this->company->getId()]);
         self::assertInstanceOf(Product::class, $product);
