@@ -59,7 +59,7 @@
       "unit_code": "Unité",
       "unit_code_note": "Le code d’une unité de l’entreprise (H87 pièce, HUR heure). Vide pour un nouvel article : l’unité par défaut, à confirmer dans sa fiche.",
       "category": "Catégorie",
-      "category_note": "Le nom d’une catégorie existante ; créez-la avant l’import.",
+      "category_note": "Le nom d’une catégorie existante ; créez-la ou importez le fichier des catégories avant celui-ci.",
       "unit_price_net": "Prix de vente HT",
       "price_note": "Montant avec une virgule ou un point. Obligatoire pour un nouvel article.",
       "unit_price_gross": "Prix de vente TTC",
@@ -149,7 +149,8 @@
       "products": "produits",
       "vendors": "fournisseurs",
       "opening_stock": "stocks de départ",
-      "product_vendors": "fournisseurs des produits"
+      "product_vendors": "fournisseurs des produits",
+      "product_categories": "catégories de produits"
     },
     "identity": "Une ligne est retrouvée par : {{columns}}. Au plus {{rows}} lignes par fichier.",
     "no_company": "Choisissez une entreprise pour importer un fichier.",
@@ -284,6 +285,12 @@
       "counts": "{{created}} {created, plural, one {créée} other {créées}}, {{updated}} {updated, plural, one {modifiée} other {modifiées}}",
       "until": "Annulable jusqu’au {{moment}}",
       "undone": "Annulé le {{moment}}"
+    },
+    "product_categories": {
+      "name": "Nom",
+      "name_note": "Une catégorie est retrouvée par son nom au prochain import.",
+      "parent": "Catégorie parente",
+      "parent_note": "Le nom d’une catégorie existante ou d’une ligne plus haut dans le fichier ; vide, la catégorie est au premier niveau."
     }
   }
 }

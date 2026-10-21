@@ -35,7 +35,8 @@ interface RecordStore
     public function labels(Uuid $companyId, RecordSubject $subject, array $ids): array;
 
     /**
-     * What names each record, by the references that make it used.
+     * What names each record, by the references that make it used, leaving out the rows among the records themselves:
+     * those go in the same delete.
      *
      * @param list<Uuid>            $ids
      * @param list<RecordReference> $references

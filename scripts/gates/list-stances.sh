@@ -104,7 +104,6 @@ price-lists/price-lists-page|import=not-ruled
 price-lists/price-lists-page#list|bulk=not-ruled
 price-lists/price-lists-page#list|selection=not-ruled
 products/product-categories-page|export=not-ruled
-products/product-categories-page|import=not-ruled
 products/products-page#list|row-actions=row-260
 purchases/purchases-page|export=not-ruled
 purchases/purchases-page|import=not-ruled

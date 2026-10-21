@@ -5,6 +5,15 @@
         {{ 'products.categories.title' | translate }}
       </h1>
       <div class="flex flex-wrap gap-2">
+        @if (mayWrite() && company()) {
+          <a
+            mat-stroked-button
+            routerLink="/imports/product-categories"
+            data-testid="product-categories-import"
+          >
+            {{ 'import.action' | translate }}
+          </a>
+        }
         @if (mayWrite() && editing() === null && company()) {
           <button
             mat-flat-button

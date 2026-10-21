@@ -59,7 +59,7 @@
       "unit_code": "Unit",
       "unit_code_note": "The code of one of the company’s units (H87 piece, HUR hour). Blank for a new product: the default unit, to confirm on its page.",
       "category": "Category",
-      "category_note": "The name of an existing category; create it before importing.",
+      "category_note": "The name of an existing category; create it, or import the categories file, before this one.",
       "unit_price_net": "Net unit price",
       "price_note": "An amount written with a comma or a point. Required for a new product.",
       "unit_price_gross": "Price including taxes",
@@ -149,7 +149,8 @@
       "products": "products",
       "vendors": "vendors",
       "opening_stock": "opening stock",
-      "product_vendors": "product vendors"
+      "product_vendors": "product vendors",
+      "product_categories": "product categories"
     },
     "identity": "A row is found again by: {{columns}}. At most {{rows}} rows per file.",
     "no_company": "Choose a company to import a file.",
@@ -284,6 +285,12 @@
       "counts": "{{created}} created, {{updated}} changed",
       "until": "Can be undone until {{moment}}",
       "undone": "Undone on {{moment}}"
+    },
+    "product_categories": {
+      "name": "Name",
+      "name_note": "A category is found again by its name on the next import.",
+      "parent": "Parent category",
+      "parent_note": "The name of an existing category or of one on an earlier row of the file; left blank, the category is at the top level."
     }
   }
 }

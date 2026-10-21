@@ -208,27 +208,36 @@ describe('ProductsPage', () => {
     expect(q('product-categories-link')).not.toBeNull();
   });
 
-  it('offers the file of who sells each product beside the products one, while vendors are kept', async () => {
-    q('products-import')?.click();
+  it('offers the files in the order they go: categories, products, then who sells each while vendors are kept', async () => {
+    const entries = async (): Promise<(string | null | undefined)[]> => {
+      q('products-import')?.click();
+      await settle();
+      return Array.from(document.querySelectorAll('[data-testid^="products-import-"]')).map(
+        (entry) => entry.getAttribute('href'),
+      );
+    };
+    expect(await entries()).toEqual([
+      '/imports/product-categories',
+      '/imports/products',
+      '/imports/product-vendors',
+    ]);
+
+    // Who sells a product is a file of its own, whoever may read its cost or not.
+    fixture.destroy();
+    auth.hasPermission.mockImplementation((name: string) => name !== 'product.cost.read');
+    fixture = TestBed.createComponent(ProductsPage);
     await settle();
-    const entry = (id: string): string | null | undefined =>
-      document.querySelector(`[data-testid="${id}"]`)?.getAttribute('href');
-    expect([entry('products-import-products'), entry('products-import-vendors')]).toEqual([
+    expect(await entries()).toEqual([
+      '/imports/product-categories',
       '/imports/products',
       '/imports/product-vendors',
     ]);
 
     fixture.destroy();
-    auth.hasPermission.mockImplementation((name: string) => name !== 'product.cost.read');
-    fixture = TestBed.createComponent(ProductsPage);
-    await settle();
-    expect(q('products-import')?.getAttribute('href')).toBeNull();
-
-    fixture.destroy();
     auth.hasModule.mockReturnValue(false);
     fixture = TestBed.createComponent(ProductsPage);
     await settle();
-    expect(q('products-import')?.getAttribute('href')).toBe('/imports/products');
+    expect(await entries()).toEqual(['/imports/product-categories', '/imports/products']);
   });
 
   it('leads to the categories through the tabs of the products screens', () => {

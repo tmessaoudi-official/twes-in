@@ -345,11 +345,21 @@ describe('ProductCategoriesPage', () => {
     expect(articleSettings.load).toHaveBeenCalledWith('c1', { productCategoryId: 'k2' });
   });
 
+  it('offers the file of categories to a writer, the form open or not', async () => {
+    expect(q('product-categories-import')?.getAttribute('href')).toBe(
+      '/imports/product-categories',
+    );
+    q('product-category-add')?.click();
+    await settle();
+    expect(q('product-categories-import')).not.toBeNull();
+  });
+
   it('offers no change to a reader', async () => {
     auth.hasPermission.mockReturnValue(false);
     fixture = TestBed.createComponent(ProductCategoriesPage);
     await settle();
 
+    expect(q('product-categories-import')).toBeNull();
     expect(q('product-category-add')).toBeNull();
     expect(q('row-action-edit-k2')).toBeNull();
     expect(q('row-more-k2')).toBeNull();

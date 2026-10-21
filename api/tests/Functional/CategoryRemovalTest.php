@@ -68,6 +68,35 @@ final class CategoryRemovalTest extends ApiTestCase
     }
 
     /** A delete that went for good would leave nothing to put back: only the records engine deletes a category now. */
+    /**
+     * A row deleted in the same delete names nothing any more: a category goes with the subcategory chosen beside it,
+     * and both come back. A file of categories undone takes them this way too.
+     */
+    public function testACategoryGoesWithTheSubcategoryChosenBesideItAndBothComeBack(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'expense.read', 'expense.write']);
+        $tools = $this->aProductCategory('Outillage');
+        $keys = $this->aProductCategory('Clés', $tools);
+        $this->aProductCategory('Clés plates', $keys);
+        $rent = $this->anExpenseCategory('Locaux');
+        $office = $this->anExpenseCategory('Loyer du local', $rent);
+
+        // The grandchild left out still names its parent, which is kept, so nothing goes.
+        $this->postJson($this->path('record-removals'), ['subject' => 'product_category', 'ids' => [$tools, $keys]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['Clés'], array_column($this->arrayAt($this->json(), 'records'), 'label'), 'only the subcategory a row left out names is in use');
+        self::assertSame([['table' => 'product_category', 'column' => 'parent_id', 'count' => 1]], $this->usesOf($this->json()));
+
+        $this->postJson($this->path('record-removals'), ['subject' => 'expense_category', 'ids' => [$office, $rent]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $removal = $this->stringAt($this->json(), 'id');
+        self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM expense_category WHERE id IN (?, ?)', [$rent, $office]));
+
+        $this->postJson($this->path("record-removals/$removal/restore"), null);
+        self::assertResponseIsSuccessful();
+        self::assertSame($rent, $this->em()->getConnection()->fetchOne('SELECT parent_id FROM expense_category WHERE id = ?', [$office]));
+    }
+
     public function testTheDeleteThatWentForGoodIsGone(): void
     {
         $this->signedIn(['product.read', 'product.write']);
