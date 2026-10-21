@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import type { ExportFormat } from '../shared/list/export-address';
+import { requestState } from '../shared/feedback/request-state';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { StepUp } from '../shared/step-up/step-up';
 import { VendorsApi, VendorsRefused } from './vendors-api';
@@ -12,22 +13,18 @@ import type {
   VendorSearch,
   VendorsError,
 } from './vendors-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The vendors of the company being worked in, and the one open in the form. */
 @Injectable({ providedIn: 'root' })
 export class VendorsFacade {
   private readonly api = inject(VendorsApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly stepUp = inject(StepUp);
   private readonly vendorsSignal = signal<readonly VendorRow[]>([]);
   private readonly totalSignal = signal(0);
   private pageRequest = 0;
   private readonly optionsSignal = signal<VendorOptions | null>(null);
   private readonly vendorSignal = signal<VendorRow | null>(null);
-  private readonly busySignal = signal(false);
-  private reads = 0;
-  private readonly errorSignal = signal<VendorsError | null>(null);
+  private readonly state = requestState(codeOf);
   private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
 
   readonly vendors = this.vendorsSignal.asReadonly();
@@ -35,8 +32,8 @@ export class VendorsFacade {
   readonly total = this.totalSignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
   readonly vendor = this.vendorSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
   /** The fields the last save was refused on, each with the reason the screens translate. */
   readonly refusals = this.refusalsSignal.asReadonly();
 
@@ -85,48 +82,31 @@ export class VendorsFacade {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) {
-      this.reads++;
-      this.busySignal.set(true);
-    }
-    // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
-    this.errorSignal.set(null);
-    try {
-      await load();
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (marked && --this.reads === 0) this.busySignal.set(false);
-    }
+    await this.state.read(load);
   }
 
   private async save(call: () => Promise<VendorRow>): Promise<VendorRow | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
     this.refusalsSignal.set([]);
-    try {
-      // A vendor's bank details, set or changed, wait for the person to prove who they are again (docs/SPEC.md § 7).
-      const vendor = await this.stepUp.retrying(
-        call,
-        (error) => error instanceof VendorsRefused && error.code === 'step_up_required',
-        'step_up.intro_sensitive',
-      );
-      this.vendorSignal.set(vendor);
-      return vendor;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      this.refusalsSignal.set(error instanceof VendorsRefused ? error.refusals : []);
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.writeAnswer(
+      async () => {
+        // A vendor's bank details, set or changed, wait for the person to prove who they are again (docs/SPEC.md § 7).
+        const vendor = await this.stepUp.retrying(
+          call,
+          (error) => error instanceof VendorsRefused && error.code === 'step_up_required',
+          'step_up.intro_sensitive',
+        );
+        this.vendorSignal.set(vendor);
+        return vendor;
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof VendorsRefused ? error.refusals : []),
+      },
+    );
   }
 }
 
