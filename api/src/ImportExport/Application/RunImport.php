@@ -48,16 +48,18 @@ final readonly class RunImport
      * @param list<string>                $ticked      the switches the request ticks; those the subject does not offer are ignored
      * @param array<string, string>       $pairing     a file's own headings, as a person paired them, by the column key each is
      *                                                 read as, or '' for a column ignored; a heading the file lacks is left aside
+     * @param array<string, string>       $chosen      the answer of each of the subject's switches that is a choice, as
+     *                                                 `ImportSubject::chosen` reads the request
      *
      * @throws UnreadableImport
      * @throws StepUpRequired   when a row changes what asks who is at the screen again, without a recent proof: the
      *                          whole file is rolled back, and kept once the proof is given
      */
-    public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId, string $contentHash, array $ticked = [], array $pairing = []): ImportReport
+    public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId, string $contentHash, array $ticked = [], array $pairing = [], array $chosen = []): ImportReport
     {
         [$records, $paired] = $this->records($subject, $rows, $pairing);
         $already = $this->runs->lastOf($company->getId(), $declaration->key(), $contentHash)?->getAt();
-        $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun, $subject->keys());
+        $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun, $subject->keys(), $chosen);
 
         try {
             return $this->transactions->run(function () use ($declaration, $subject, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $already, $paired): ImportReport {

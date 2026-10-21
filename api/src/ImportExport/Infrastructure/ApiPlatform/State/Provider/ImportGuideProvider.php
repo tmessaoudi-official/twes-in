@@ -12,6 +12,7 @@ namespace App\ImportExport\Infrastructure\ApiPlatform\State\Provider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\ImportExport\Application\ImportCatalogue;
+use App\ImportExport\Application\ImportChoice;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportHeading;
 use App\ImportExport\Application\ImportSettings;
@@ -73,7 +74,12 @@ final readonly class ImportGuideProvider implements ProviderInterface
             $column->example,
             $column->note,
         ), $subject->columns);
-        $guide->switches = array_map(static fn (ImportSwitch $switch): ImportGuideSwitch => new ImportGuideSwitch($switch->key, $switch->label, $switch->note), $subject->switches);
+        $guide->switches = array_map(static fn (ImportSwitch $switch): ImportGuideSwitch => new ImportGuideSwitch(
+            $switch->key,
+            $switch->label,
+            $switch->note,
+            array_map(static fn (ImportChoice $choice): array => ['key' => $choice->key, 'labelKey' => $choice->label], $switch->choices),
+        ), $subject->switches);
         $guide->lastPairing = [];
         foreach ($this->runs->lastPairingOf($company->getId(), $declaration->key()) as $heading => $column) {
             $guide->lastPairing[] = ['heading' => (string) $heading, 'column' => $column];

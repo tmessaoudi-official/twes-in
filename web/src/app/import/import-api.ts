@@ -74,12 +74,15 @@ export class ImportApi {
     switches: readonly string[] = [],
     encoding: TextEncoding | null = null,
     pairing: readonly ImportPairing[] = [],
+    choices: Readonly<Record<string, string>> = {},
   ): Promise<ImportReport> {
     const body = new FormData();
     body.append('file', file, file.name);
     body.append('mode', mode);
     body.append('dryRun', dryRun ? '1' : '0');
     for (const key of switches) body.append('switches[]', key);
+    // A choice not sent is its first answer.
+    for (const [key, answer] of Object.entries(choices)) body.append(`choices[${key}]`, answer);
     // None chosen: the API finds it on the file.
     if (encoding !== null) body.append('encoding', encoding);
     // One object of headings to columns, which the API reads whole; none sent, each heading names its column itself.
@@ -232,6 +235,7 @@ function toGuide(answer: ImportGuideImportGuideRead): ImportGuide {
       key: choice.key,
       labelKey: choice.labelKey,
       noteKey: choice.noteKey,
+      choices: choice.choices.map((answer) => ({ key: answer.key, labelKey: answer.labelKey })),
     })),
     lastPairing: answer.lastPairing.map((pair) => ({ heading: pair.heading, column: pair.column })),
   };

@@ -668,7 +668,7 @@ Cheville 10 mm,6191234567897
     {
         $this->signedIn(['product.read', 'product.write']);
 
-        $this->import("reference,name,unit_code,unit_price_net,unit_price_gross,default_tax_codes\nVIS-1,Vis 1,H87,,9.999,TVA19\nVIS-2,Vis 2,H87,1,1.19,TVA19\nVIS-3,Vis 3,H87,,1.1901,TVA19\nVIS-4,Vis 4,H87,,cher,TVA19\nVIS-5,Vis 5,H87,,-1,TVA19\nVIS-6,Vis 6,H87,,9.999,NOPE\nVIS-7,Vis 7,H87,,9.999,TIMBRE\n", dryRun: true);
+        $this->import("reference,name,unit_code,unit_price_net,unit_price_gross,default_tax_codes\nVIS-1,Vis 1,H87,,9.999,TVA19\nVIS-2,Vis 2,H87,1,1.19,TVA19\nVIS-3,Vis 3,H87,,1.1901,TVA19\nVIS-4,Vis 4,H87,,cher,TVA19\nVIS-5,Vis 5,H87,,-1,TVA19\nVIS-6,Vis 6,H87,,9.999,NOPE\nVIS-7,Vis 7,H87,,9.999,TIMBRE\n", dryRun: true, choices: ['unreachable_gross' => 'refuse']);
 
         self::assertResponseIsSuccessful();
         $rejections = $this->rejections();
@@ -796,13 +796,57 @@ Cheville 10 mm,6191234567897
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $this->signedIn(['product.read', 'product.write']);
 
-        $this->import("reference,name,unit_code,unit_price_gross,default_tax_codes\nA-1,Pièce 1,H87,\"12,00\",TVA20\nA-2,Pièce 2,H87,9.99,TVA20\nA-3,Pièce 3,H87,9.999,TVA20\n", dryRun: true);
+        $this->import("reference,name,unit_code,unit_price_gross,default_tax_codes\nA-1,Pièce 1,H87,\"12,00\",TVA20\nA-2,Pièce 2,H87,9.99,TVA20\nA-3,Pièce 3,H87,9.999,TVA20\n", dryRun: true, choices: ['unreachable_gross' => 'refuse']);
 
         self::assertResponseIsSuccessful();
         self::assertSame([
             [3, 'unit_price_gross', 'gross_unreachable', ['gross' => '9.99', 'below' => '9.98', 'above' => '10.00']],
             [4, 'unit_price_gross', 'too_many_decimals', ['max' => 2]],
         ], $this->rejections());
+    }
+
+    /**
+     * A price taxes included that no net price reaches is taken at the nearest under it unless the person chose the
+     * nearest over it, or the row refused: « Prix TTC impossible à atteindre ». Taken, the row says which price it came
+     * to; a choice the switch does not offer is no request of this file.
+     */
+    public function testAPriceTaxesIncludedNoNetReachesIsTakenAsTheChoiceSays(): void
+    {
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->em()->persist($this->company);
+        $this->em()->flush();
+        static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
+        $this->signedIn(['product.read', 'product.write']);
+        $file = "reference,name,unit_code,unit_price_gross,default_tax_codes\nA-2,Pièce 2,H87,9.99,TVA20\n";
+
+        $this->client->request('GET', $this->companyPath().'/imports/products', server: ['HTTP_ACCEPT' => 'application/json']);
+        $offered = array_values(array_filter($this->arrayAt($this->json(), 'switches'), static fn (mixed $switch): bool => \is_array($switch) && 'unreachable_gross' === ($switch['key'] ?? null)));
+        self::assertSame([[
+            'key' => 'unreachable_gross',
+            'labelKey' => 'import.products.unreachable_gross',
+            'noteKey' => 'import.products.unreachable_gross_note',
+            'choices' => [
+                ['key' => 'below', 'labelKey' => 'import.products.unreachable_gross_below'],
+                ['key' => 'above', 'labelKey' => 'import.products.unreachable_gross_above'],
+                ['key' => 'refuse', 'labelKey' => 'import.products.unreachable_gross_refuse'],
+            ],
+        ]], $offered, 'the guide offers the choice, its first answer the one taken');
+
+        $this->import($file, dryRun: true, choices: ['unreachable_gross' => 'refuse']);
+        self::assertSame([[2, 'unit_price_gross', 'gross_unreachable', ['gross' => '9.99', 'below' => '9.98', 'above' => '10.00']]], $this->rejections());
+
+        $this->import($file, dryRun: true, choices: ['unreachable_gross' => 'sideways']);
+        self::assertResponseStatusCodeSame(422);
+
+        $this->import($file, dryRun: true, choices: ['unreachable_gross' => 'above']);
+        self::assertSame([[2], [], [['line' => 2, 'column' => 'unit_price_gross', 'code' => 'gross_reached', 'params' => ['gross' => '9.99', 'reached' => '10.00']]]], [$this->json()['created'], $this->json()['rejected'], $this->json()['notes']]);
+
+        $this->import($file);
+        self::assertResponseIsSuccessful();
+        self::assertSame([[2], [['line' => 2, 'column' => 'unit_price_gross', 'code' => 'gross_reached', 'params' => ['gross' => '9.99', 'reached' => '9.98']]]], [$this->json()['created'], $this->json()['notes']], 'the nearest under it when nothing is chosen');
+        $this->em()->clear();
+        self::assertSame('8.3167', $this->product('A-2')->getDetails()->unitPriceNet, 'the net price nearest the price reached');
+        self::assertSame('9.98', static::getContainer()->get(CustomerPrice::class)->of($this->product('A-2'), 1));
     }
 
     /**
@@ -1284,10 +1328,13 @@ Cheville 10 mm,6191234567897
         return new ProductCheckScope(keepsStock: true, chargesVat: true, seesCosts: true);
     }
 
-    /** @param list<string> $switches */
-    private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'products.csv', array $switches = []): void
+    /**
+     * @param list<string>          $switches
+     * @param array<string, string> $choices
+     */
+    private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'products.csv', array $switches = [], array $choices = []): void
     {
-        $this->uploadFile($this->companyPath().'/imports/products', $name, $contents, 'file', ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0', 'switches' => $switches]);
+        $this->uploadFile($this->companyPath().'/imports/products', $name, $contents, 'file', ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0', 'switches' => $switches, 'choices' => $choices]);
     }
 
     /** The company keeps stock of its goods. */

@@ -35,13 +35,33 @@ describe('ImportApi', () => {
           noteKey: null,
         },
       ],
-      switches: [{ key: 'recount', labelKey: 'import.stock.recount', noteKey: null }],
+      switches: [
+        { key: 'recount', labelKey: 'import.stock.recount', noteKey: null, choices: [] },
+        {
+          key: 'unreachable_gross',
+          labelKey: 'import.products.unreachable_gross',
+          noteKey: null,
+          choices: [
+            { key: 'below', labelKey: 'import.products.unreachable_gross_below' },
+            { key: 'above', labelKey: 'import.products.unreachable_gross_above' },
+          ],
+        },
+      ],
       lastPairing: [],
     });
 
     const guide = await pending;
     expect(guide.switches).toEqual([
-      { key: 'recount', labelKey: 'import.stock.recount', noteKey: null },
+      { key: 'recount', labelKey: 'import.stock.recount', noteKey: null, choices: [] },
+      {
+        key: 'unreachable_gross',
+        labelKey: 'import.products.unreachable_gross',
+        noteKey: null,
+        choices: [
+          { key: 'below', labelKey: 'import.products.unreachable_gross_below' },
+          { key: 'above', labelKey: 'import.products.unreachable_gross_above' },
+        ],
+      },
     ]);
     expect(guide.identity).toEqual(['reference', 'location_code']);
     expect(guide.maxRows).toBe(2000);
@@ -94,10 +114,13 @@ describe('ImportApi', () => {
 
   it('sends each switch ticked as switches[], and reads when the same file was imported', async () => {
     const file = new File(['reference,stock_count\n'], 'stocks.csv', { type: 'text/csv' });
-    const pending = api.run('c1', 'opening-stock', file, 'upsert', true, ['recount']);
+    const pending = api.run('c1', 'opening-stock', file, 'upsert', true, ['recount'], null, [], {
+      unreachable_gross: 'above',
+    });
 
     const request = http.expectOne('/api/companies/c1/imports/opening-stock');
     expect((request.request.body as FormData).getAll('switches[]')).toEqual(['recount']);
+    expect((request.request.body as FormData).get('choices[unreachable_gross]')).toBe('above');
     request.flush({
       committed: false,
       created: [2],

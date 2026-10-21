@@ -67,13 +67,25 @@ export interface ImportColumn {
   noteKey: string | null;
 }
 
-/** A choice the file offers for one run, off unless ticked: « Recompter ». */
+/**
+ * A choice the file offers for one run, off unless ticked: « Recompter »; or, given answers, one of them, the first
+ * unless another is chosen: « Prix TTC impossible à atteindre ».
+ */
 export interface ImportSwitch {
   key: string;
   /** A key of this screen's catalogue. */
   labelKey: string;
   /** A key of this screen's catalogue saying when to tick it. */
   noteKey: string | null;
+  /** Its answers, the first taken when none is chosen; none for a tick. */
+  choices: readonly ImportSwitchChoice[];
+}
+
+/** One answer of a switch that is a choice. */
+export interface ImportSwitchChoice {
+  key: string;
+  /** A key of this screen's catalogue. */
+  labelKey: string;
 }
 
 /** What one subject's file holds, for one company: its columns, what a row is found again by, and the row cap. */

@@ -129,7 +129,9 @@ describe('ImportFacade', () => {
     api.run.mockResolvedValueOnce(report([]));
     const file = new File(['x'], 'f.csv');
 
-    await facade.run('c1', 'opening-stock', file, 'upsert', true, ['recount']);
+    await facade.run('c1', 'opening-stock', file, 'upsert', true, ['recount'], null, [], {
+      unreachable_gross: 'above',
+    });
 
     expect(api.run).toHaveBeenCalledWith(
       'c1',
@@ -140,6 +142,7 @@ describe('ImportFacade', () => {
       ['recount'],
       null,
       [],
+      { unreachable_gross: 'above' },
     );
   });
 
@@ -158,6 +161,7 @@ describe('ImportFacade', () => {
       [],
       'windows-1256',
       [],
+      {},
     );
   });
 
@@ -177,6 +181,7 @@ describe('ImportFacade', () => {
       [],
       null,
       pairing,
+      {},
     );
   });
 
@@ -205,7 +210,17 @@ describe('ImportFacade', () => {
 
     expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_sensitive');
     expect(api.run).toHaveBeenCalledTimes(2);
-    expect(api.run).toHaveBeenLastCalledWith('c1', 'vendors', file, 'upsert', false, [], null, []);
+    expect(api.run).toHaveBeenLastCalledWith(
+      'c1',
+      'vendors',
+      file,
+      'upsert',
+      false,
+      [],
+      null,
+      [],
+      {},
+    );
     expect(facade.report()).toEqual(kept);
   });
 

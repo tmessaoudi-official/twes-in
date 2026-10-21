@@ -115,6 +115,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
                     'mode' => ['type' => 'string', 'enum' => ['create', 'upsert'], 'default' => 'create'],
                     'dryRun' => ['type' => 'boolean', 'default' => false, 'description' => 'A preview: the same run, rolled back.'],
                     'switches' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'The keys of the subject’s switches ticked, as its guide lists them; any other is ignored.'],
+                    'choices' => ['type' => 'object', 'additionalProperties' => ['type' => 'string'], 'description' => 'The answer of each switch that is a choice, by its key, as its guide lists them; its first answer when none is sent, 422 for an answer it does not offer.'],
                 ],
             ]))]), true),
         )));

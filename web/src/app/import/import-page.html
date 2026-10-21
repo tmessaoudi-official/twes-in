@@ -78,16 +78,39 @@
         >
           @for (choice of guide.switches; track choice.key) {
             <div class="flex flex-col">
-              <mat-checkbox
-                [checked]="ticked().includes(choice.key)"
-                (change)="tick(choice.key, $event.checked)"
-                [attr.data-testid]="'import-switch-' + choice.key"
-                >{{ choice.labelKey | translate }}</mat-checkbox
-              >
-              @if (choice.noteKey) {
-                <span class="ms-10 text-sm text-on-surface-variant">{{
-                  choice.noteKey | translate
+              @if (choice.choices.length === 0) {
+                <mat-checkbox
+                  [checked]="ticked().includes(choice.key)"
+                  (change)="tick(choice.key, $event.checked)"
+                  [attr.data-testid]="'import-switch-' + choice.key"
+                  >{{ choice.labelKey | translate }}</mat-checkbox
+                >
+              } @else {
+                <span [id]="'import-switch-label-' + choice.key" class="text-sm font-medium">{{
+                  choice.labelKey | translate
                 }}</span>
+                <mat-radio-group
+                  class="flex flex-wrap gap-x-4 gap-y-1"
+                  [value]="chosen()[choice.key] ?? choice.choices[0].key"
+                  (change)="choose(choice.key, $event.value)"
+                  [attr.aria-labelledby]="'import-switch-label-' + choice.key"
+                  [attr.data-testid]="'import-switch-' + choice.key"
+                >
+                  @for (answer of choice.choices; track answer.key) {
+                    <mat-radio-button
+                      [value]="answer.key"
+                      [attr.data-testid]="'import-switch-' + choice.key + '-' + answer.key"
+                      >{{ answer.labelKey | translate }}</mat-radio-button
+                    >
+                  }
+                </mat-radio-group>
+              }
+              @if (choice.noteKey) {
+                <span
+                  class="text-sm text-on-surface-variant"
+                  [class.ms-10]="choice.choices.length === 0"
+                  >{{ choice.noteKey | translate }}</span
+                >
               }
             </div>
           }

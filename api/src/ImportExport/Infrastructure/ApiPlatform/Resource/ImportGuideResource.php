@@ -82,14 +82,26 @@ final class ImportGuideResource
     /** @var list<ImportGuideSwitch> */
     #[ApiProperty(required: true, schema: [
         'type' => 'array',
-        'description' => 'The choices this file offers for one run, each off unless sent ticked in `switches[]`.',
+        'description' => 'The choices this file offers for one run: a tick, off unless sent in `switches[]`, or a choice of answers, its first unless another is sent in `choices[<key>]`.',
         'items' => [
             'type' => 'object',
-            'required' => ['key', 'labelKey', 'noteKey'],
+            'required' => ['key', 'labelKey', 'noteKey', 'choices'],
             'properties' => [
                 'key' => ['type' => 'string', 'description' => 'What the import request names it by.'],
                 'labelKey' => ['type' => 'string', 'description' => 'A key of the screen’s catalogue.'],
                 'noteKey' => ['type' => ['string', 'null'], 'description' => 'A key of the screen’s catalogue saying when to tick it.'],
+                'choices' => [
+                    'type' => 'array',
+                    'description' => 'Its answers, the first taken when none is sent; empty for a tick.',
+                    'items' => [
+                        'type' => 'object',
+                        'required' => ['key', 'labelKey'],
+                        'properties' => [
+                            'key' => ['type' => 'string', 'description' => 'What `choices[<switch>]` names it by.'],
+                            'labelKey' => ['type' => 'string', 'description' => 'A key of the screen’s catalogue.'],
+                        ],
+                    ],
+                ],
             ],
         ],
     ])]

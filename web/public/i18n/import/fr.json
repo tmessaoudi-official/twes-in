@@ -93,7 +93,12 @@
       "default_taxes_switch": "Donner les taxes par défaut aux nouveaux produits qui n’en nomment pas",
       "default_taxes_switch_note": "Les taxes marquées « par défaut » dans Taxes, comme dans la fiche d’un nouveau produit. Un produit déjà enregistré garde les siennes.",
       "unpriced_inactive": "Importer désactivés les nouveaux produits sans prix de vente",
-      "unpriced_inactive_note": "Ils sont créés au prix 0 et désactivés : aucun document ne les vend avant que leur prix soit saisi, et leur stock peut être compté."
+      "unpriced_inactive_note": "Ils sont créés au prix 0 et désactivés : aucun document ne les vend avant que leur prix soit saisi, et leur stock peut être compté.",
+      "unreachable_gross": "Prix TTC impossible à atteindre",
+      "unreachable_gross_note": "Certains prix TTC ne s’obtiennent avec aucun prix HT, le dernier chiffre de la devise tombant entre deux. Chaque ligne concernée dit le prix retenu.",
+      "unreachable_gross_below": "Le plus proche en dessous",
+      "unreachable_gross_above": "Le plus proche au-dessus",
+      "unreachable_gross_refuse": "Refuser la ligne"
     },
     "vendors": {
       "number": "Numéro fournisseur",
@@ -233,7 +238,8 @@
       "default_taxes_given": "Taxes par défaut données : {{codes}}.",
       "price_to_enter": "Sans prix de vente : créé au prix 0 et désactivé. Saisissez son prix dans sa fiche, puis activez-le.",
       "below_cost": "Vendu sous son prix de revient ({{cost}}).",
-      "unit_to_confirm": "Sans unité : créé en {{code}}, l’unité par défaut. Confirmez-la dans sa fiche."
+      "unit_to_confirm": "Sans unité : créé en {{code}}, l’unité par défaut. Confirmez-la dans sa fiche.",
+      "gross_reached": "Prix TTC {{gross}} impossible à atteindre : {{reached}} retenu."
     },
     "stock": {
       "stock_add": "Quantité à ajouter",

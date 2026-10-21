@@ -45,9 +45,34 @@ final readonly class ImportSubject
      */
     public function ticked(array $named): array
     {
-        $offered = array_map(static fn (ImportSwitch $switch): string => $switch->key, $this->switches);
+        $offered = array_map(static fn (ImportSwitch $switch): string => $switch->key, array_filter($this->switches, static fn (ImportSwitch $switch): bool => [] === $switch->choices));
 
         return array_values(array_intersect($offered, $named));
+    }
+
+    /**
+     * The answer of every switch of this subject that is a choice, as the request names it or its first; a key that
+     * names no such switch is no choice of this file. Null when the request names an answer a switch does not offer.
+     *
+     * @param array<string, string> $named
+     *
+     * @return array<string, string>|null
+     */
+    public function chosen(array $named): ?array
+    {
+        $chosen = [];
+        foreach ($this->switches as $switch) {
+            if ([] === $switch->choices) {
+                continue;
+            }
+            $answer = $switch->answer($named[$switch->key] ?? null);
+            if (null === $answer) {
+                return null;
+            }
+            $chosen[$switch->key] = $answer;
+        }
+
+        return $chosen;
     }
 
     public function column(string $key): ?ImportColumn
