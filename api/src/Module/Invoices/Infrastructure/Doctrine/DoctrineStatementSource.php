@@ -9,8 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
+use App\Module\Invoices\Application\Statement\MergedCustomers;
 use App\Module\Invoices\Application\Statement\StatementSource;
-use App\Shared\Infrastructure\Doctrine\KeptRecords;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -27,25 +28,27 @@ final readonly class DoctrineStatementSource implements StatementSource
      * gave back of money already paid on the day it did: that leaves the invoice's account for the customer's credit
      * balance or their own hands, so the account does not stay below what the invoices have due.
      */
+    private const array TYPES = ['customers' => ArrayParameterType::STRING];
+
     private const string ACCOUNT = <<<'SQL'
         SELECT i.issue_date AS day, i.document_type AS kind, i.number, i.id AS document_id, NULL::text AS reference,
                i.total_gross - i.withholding_amount AS amount,
                CASE i.document_type WHEN 'invoice' THEN 1 ELSE 2 END AS rank
           FROM invoice i
-         WHERE i.company_id = :company AND %1$s AND %3$s
+         WHERE i.company_id = :company AND i.customer_id IN (:customers) AND %1$s
         UNION ALL
         SELECT p.payment_date, 'payment', i.number, i.id, p.reference, -p.amount, 3
           FROM payment p JOIN invoice i ON i.id = p.invoice_id
-         WHERE i.company_id = :company AND %1$s AND %3$s
+         WHERE i.company_id = :company AND i.customer_id IN (:customers) AND %1$s
         UNION ALL
         SELECT c.entry_date, 'credit_transfer', i.number, i.id, c.reference, c.amount, 4
           FROM customer_credit_entry c JOIN invoice i ON i.id = c.invoice_id
-         WHERE c.company_id = :company AND %2$s AND c.kind = 'credited'
+         WHERE c.company_id = :company AND c.customer_id IN (:customers) AND c.kind = 'credited'
         SQL;
 
     private Connection $connection;
 
-    public function __construct(EntityManagerInterface $entityManager)
+    public function __construct(EntityManagerInterface $entityManager, private MergedCustomers $mergedCustomers)
     {
         $this->connection = $entityManager->getConnection();
     }
@@ -55,6 +58,7 @@ final readonly class DoctrineStatementSource implements StatementSource
         $sum = $this->connection->fetchOne(
             'SELECT COALESCE(SUM(e.amount), 0) FROM ('.self::account().') e WHERE e.day < :day',
             $this->parameters($companyId, $customerId) + ['day' => $day->format('Y-m-d')],
+            self::TYPES,
         );
 
         return self::text($sum);
@@ -66,6 +70,7 @@ final readonly class DoctrineStatementSource implements StatementSource
             'SELECT e.* FROM ('.self::account().') e WHERE e.day >= :from AND e.day <= :to
              ORDER BY e.day, e.rank, e.number COLLATE "C", e.document_id, e.reference COLLATE "C" NULLS FIRST',
             $this->parameters($companyId, $customerId) + ['from' => $from->format('Y-m-d'), 'to' => $to->format('Y-m-d')],
+            self::TYPES,
         );
 
         return array_map(static fn (array $row): array => [
@@ -78,16 +83,19 @@ final readonly class DoctrineStatementSource implements StatementSource
         ], $rows);
     }
 
-    /** The account of the customer kept, with what was made out to the customers merged into it. */
     private static function account(): string
     {
-        return \sprintf(self::ACCOUNT, KeptRecords::among('i.customer_id', 'customer', ':customer'), KeptRecords::among('c.customer_id', 'customer', ':customer'), InvoiceRules::ISSUED);
+        return \sprintf(self::ACCOUNT, InvoiceRules::ISSUED);
     }
 
-    /** @return array<string, string> */
+    /**
+     * The account of the customer kept, with what was made out to the customers merged into it.
+     *
+     * @return array<string, string|list<string>>
+     */
     private function parameters(Uuid $companyId, Uuid $customerId): array
     {
-        return ['company' => $companyId->toRfc4122(), 'customer' => $customerId->toRfc4122(), 'cancelled' => InvoiceRules::CANCELLED];
+        return ['company' => $companyId->toRfc4122(), 'customers' => $this->mergedCustomers->accountOf($companyId, $customerId), 'cancelled' => InvoiceRules::CANCELLED];
     }
 
     private static function text(mixed $value): string
