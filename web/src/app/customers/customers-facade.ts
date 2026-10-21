@@ -3,6 +3,7 @@
 import type { ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable, signal } from '@angular/core';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
+import { requestState } from '../shared/feedback/request-state';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { CustomersApi, CustomersRefused } from './customers-api';
@@ -17,13 +18,11 @@ import type {
   CustomerSearch,
   CustomersError,
 } from './customers-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The customers of the company being worked in, their groups, the company's custom fields, and the open one's contacts. */
 @Injectable({ providedIn: 'root' })
 export class CustomersFacade {
   private readonly api = inject(CustomersApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly fields = inject(CustomFieldsApi);
   private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
   private readonly customersSignal = signal<readonly CustomerRow[]>([]);
@@ -33,9 +32,7 @@ export class CustomersFacade {
   private readonly optionsSignal = signal<CustomerOptions | null>(null);
   private readonly customerSignal = signal<CustomerRow | null>(null);
   private readonly contactsSignal = signal<readonly ContactRow[]>([]);
-  private readonly busySignal = signal(false);
-  private reads = 0;
-  private readonly errorSignal = signal<CustomersError | null>(null);
+  private readonly state = requestState(codeOf);
   private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
 
   readonly customers = this.customersSignal.asReadonly();
@@ -47,8 +44,8 @@ export class CustomersFacade {
   readonly options = this.optionsSignal.asReadonly();
   readonly customer = this.customerSignal.asReadonly();
   readonly contacts = this.contactsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
   /** The fields the last save was refused on, each with the reason the screens translate. */
   readonly refusals = this.refusalsSignal.asReadonly();
 
@@ -178,7 +175,7 @@ export class CustomersFacade {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   private async reloadGroups(companyId: string): Promise<void> {
@@ -195,54 +192,29 @@ export class CustomersFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) {
-      this.reads++;
-      this.busySignal.set(true);
-    }
-    // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
-    this.errorSignal.set(null);
-    try {
-      await load();
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (marked && --this.reads === 0) this.busySignal.set(false);
-    }
+    await this.state.read(load);
   }
 
   private async save(call: () => Promise<CustomerRow>): Promise<CustomerRow | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
     this.refusalsSignal.set([]);
-    try {
-      const customer = await call();
-      this.customerSignal.set(customer);
-      return customer;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      this.refusalsSignal.set(error instanceof CustomersRefused ? error.refusals : []);
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.writeAnswer(
+      async () => {
+        const customer = await call();
+        this.customerSignal.set(customer);
+        return customer;
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof CustomersRefused ? error.refusals : []),
+      },
+    );
   }
 
   private async write(call: () => Promise<unknown>, reload: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await call();
       await reload();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 

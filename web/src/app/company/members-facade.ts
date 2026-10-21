@@ -3,39 +3,28 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
+import { requestState } from '../shared/feedback/request-state';
 import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, MemberRole, MemberRow } from './company-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The member list of one company, and the two things an administrator does to it. */
 @Injectable({ providedIn: 'root' })
 export class MembersFacade {
   private readonly api = inject(CompanyApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
   private readonly membersSignal = signal<readonly MemberRow[]>([]);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<CompanyError | null>(null);
+  private readonly state = requestState(codeOf);
 
   readonly members = this.membersSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   async load(companyId: string): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) this.busySignal.set(true);
-    try {
-      this.membersSignal.set(await this.api.members(companyId));
-      this.errorSignal.set(null);
-    } catch (error) {
-      this.membersSignal.set([]);
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    await this.state.read(async () => this.membersSignal.set(await this.api.members(companyId)), {
+      failed: () => this.membersSignal.set([]),
+    });
   }
 
   /**
@@ -51,27 +40,23 @@ export class MembersFacade {
   }
 
   private async mutate<T>(companyId: string, call: () => Promise<T>): Promise<T | null> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      // Adding or removing somebody waits for the person to prove who they are again.
-      const result = await this.stepUp.retrying(
-        call,
-        (error) => error instanceof CompanyRefused && error.code === 'step_up_required',
-        'step_up.intro_sensitive',
-      );
-      this.membersSignal.set(await this.api.members(companyId));
-      // What was just written can be this person's OWN rights: the session is read again so the menu, the
-      // permission-gated controls and the record bars follow at once (developer, 2026-09-20). `refresh`, never
-      // `load`: a moment without the API after a successful write is not a sign-out.
-      await this.auth.refresh();
-      return result;
-    } catch (error) {
-      this.errorSignal.set(unlessDemoRefused(codeOf(error)));
-      return null;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.writeAnswer(
+      async () => {
+        // Adding or removing somebody waits for the person to prove who they are again.
+        const result = await this.stepUp.retrying(
+          call,
+          (error) => error instanceof CompanyRefused && error.code === 'step_up_required',
+          'step_up.intro_sensitive',
+        );
+        this.membersSignal.set(await this.api.members(companyId));
+        // What was just written can be this person's OWN rights: the session is read again so the menu, the
+        // permission-gated controls and the record bars follow at once (developer, 2026-09-20). `refresh`, never
+        // `load`: a moment without the API after a successful write is not a sign-out.
+        await this.auth.refresh();
+        return result;
+      },
+      { code: (error) => unlessDemoRefused(codeOf(error)) },
+    );
   }
 }
 

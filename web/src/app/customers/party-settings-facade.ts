@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
+import { requestState } from '../shared/feedback/request-state';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import type {
   SettingLevel,
@@ -9,7 +10,6 @@ import type {
   PartySubject,
   VersionedSettingChange,
 } from '../shared/settings/settings-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The level a customer's or a customer group's own values are stored at. */
 export const levelOf = (subject: PartySubject): SettingLevel =>
@@ -19,27 +19,17 @@ export const levelOf = (subject: PartySubject): SettingLevel =>
 @Injectable({ providedIn: 'root' })
 export class PartySettings {
   private readonly api = inject(SettingsApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly rowsSignal = signal<readonly SettingRow[]>([]);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<SettingsError | null>(null);
+  private readonly state = requestState(codeOf);
 
   readonly rows = this.rowsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   async load(companyId: string, subject: PartySubject): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) this.busySignal.set(true);
-    try {
-      this.rowsSignal.set(await this.api.chain(companyId, 'parties', subject));
-      this.errorSignal.set(null);
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    await this.state.read(async () =>
+      this.rowsSignal.set(await this.api.chain(companyId, 'parties', subject)),
+    );
   }
 
   /** True when the API accepted every change, together; the chain is read again after. */
@@ -61,7 +51,7 @@ export class PartySettings {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   private async write(
@@ -69,18 +59,10 @@ export class PartySettings {
     subject: PartySubject,
     call: () => Promise<unknown>,
   ): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await call();
       this.rowsSignal.set(await this.api.chain(companyId, 'parties', subject));
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 

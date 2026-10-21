@@ -2,6 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { AuthFacade } from '../auth/auth-facade';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { MemberRow } from './company-types';
@@ -44,6 +45,26 @@ describe('MembersFacade', () => {
       ],
     });
     facade = TestBed.inject(MembersFacade);
+  });
+
+  it('marks no reload busy that nobody asked for, and always marks a write', async () => {
+    const quiet = TestBed.inject(QuietReads);
+    const seen: boolean[] = [];
+    api.members.mockImplementation(() => {
+      seen.push(facade.busy());
+      return Promise.resolve([owner]);
+    });
+    api.removeMember.mockImplementation(() => {
+      seen.push(facade.busy());
+      return Promise.resolve(undefined);
+    });
+
+    await quiet.quietly(() => facade.load('c1'));
+    await quiet.quietly(() => facade.remove('c1', 'u1'));
+
+    // The reload, then the write and the list it reads again inside it.
+    expect(seen).toEqual([false, true, true]);
+    expect(facade.busy()).toBe(false);
   });
 
   it('reads the signed-in state again after a membership changed, which can be your own', async () => {

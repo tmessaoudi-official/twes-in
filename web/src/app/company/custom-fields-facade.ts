@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
+import { requestState } from '../shared/feedback/request-state';
 import {
   CustomFieldsApi,
   CustomFieldsRefused,
@@ -11,33 +12,22 @@ import type {
   CustomFieldEntity,
   CustomFieldInput,
 } from '../shared/custom-fields/custom-fields-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The custom fields the company being worked in adds to one kind of record, retired ones included. */
 @Injectable({ providedIn: 'root' })
 export class CustomFieldsFacade {
   private readonly api = inject(CustomFieldsApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly fieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<CustomFieldsError | null>(null);
+  private readonly state = requestState(codeOf);
 
   readonly fields = this.fieldsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   async load(companyId: string, entity: CustomFieldEntity): Promise<void> {
-    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) this.busySignal.set(true);
-    try {
-      this.fieldsSignal.set(await this.api.list(companyId, entity));
-      this.errorSignal.set(null);
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    await this.state.read(async () =>
+      this.fieldsSignal.set(await this.api.list(companyId, entity)),
+    );
   }
 
   /** True when the API accepted it; the fields of its kind of record are read again. */
@@ -57,7 +47,7 @@ export class CustomFieldsFacade {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   private async write(
@@ -65,18 +55,10 @@ export class CustomFieldsFacade {
     entity: CustomFieldEntity,
     call: () => Promise<unknown>,
   ): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await call();
       this.fieldsSignal.set(await this.api.list(companyId, entity));
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 
