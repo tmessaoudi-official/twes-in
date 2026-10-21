@@ -82,6 +82,24 @@ final class RecordRemovalTest extends ApiTestCase
     }
 
     /**
+     * A second « Rétablir » (a double click, a retry after a lost answer) finds the records back already: it says so,
+     * never that the day is over, and puts nothing back twice.
+     */
+    public function testARestoreSentAgainSaysTheRecordsAreBackAlready(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $removal = $this->removed('F-001');
+        $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('removal_restored', $this->json()['error']);
+        self::assertSame(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action = 'vendor.restored' AND entity_id = ?", [$this->vendorId('F-001')]));
+    }
+
+    /**
      * A movement's foreign key would empty its vendor and let the delete through: the refusal comes before any delete,
      * from the declaration, and leaves the movement naming its vendor.
      */

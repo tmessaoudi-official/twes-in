@@ -124,10 +124,22 @@ class RecordRemoval implements CompanyOwned
     public function restore(\DateTimeImmutable $now): void
     {
         if (!$this->isRestorableAt($now)) {
-            throw new RemovalNoLongerPending('This delete can no longer be undone.');
+            throw $this->noLongerPending();
         }
         $this->state = RemovalState::Restored;
         $this->endedAt = $now;
+    }
+
+    /** Why it can no longer be undone: undone already, which a second « Rétablir » finds, or its day over. */
+    public function noLongerPending(): RemovalNoLongerPending
+    {
+        if (RemovalState::Restored === $this->state) {
+            return RemovalKind::Merge === $this->kind
+                ? new RemovalNoLongerPending(RemovalNoLongerPending::MERGE_UNDONE, 'This merge was undone already.')
+                : new RemovalNoLongerPending(RemovalNoLongerPending::RESTORED, 'This delete was undone already.');
+        }
+
+        return new RemovalNoLongerPending(RemovalNoLongerPending::FINAL, 'This delete can no longer be undone.');
     }
 
     public function end(\DateTimeImmutable $now): void

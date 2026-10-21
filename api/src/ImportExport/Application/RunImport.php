@@ -155,7 +155,7 @@ final readonly class RunImport
         $records = [];
         $blank = 0;
         foreach ($rows as $line => $cells) {
-            $cells = array_map(trim(...), $cells);
+            $cells = array_map(self::trimmed(...), $cells);
             if ('' === implode('', $cells)) {
                 // Skipped, not free: a file of nothing but blank lines, or a workbook whose one cell sits on its millionth
                 // row, would otherwise be read to the end.
@@ -215,7 +215,7 @@ final readonly class RunImport
         // A person's pairing comes first: it may set aside a heading that happens to be a column's own key.
         $choices = [];
         foreach ($pairing as $heading => $choice) {
-            $choices[mb_strtolower(trim((string) $heading))] = trim($choice);
+            $choices[mb_strtolower(self::trimmed((string) $heading))] = self::trimmed($choice);
         }
 
         $header = $paired = $unknown = $invalid = $twice = [];
@@ -268,5 +268,19 @@ final readonly class RunImport
         }
 
         return [$header, $paired];
+    }
+
+    /**
+     * A cell without the spaces at its ends, the invisible ones too: a paste from a web page or another program brings
+     * no-break, narrow no-break and zero-width spaces nobody sees, and a reference so written would be another product.
+     */
+    private static function trimmed(string $cell): string
+    {
+        // Bytes that are no UTF-8 are kept for the encoding's own refusal, which names the line they sit on.
+        if (!mb_check_encoding($cell, 'UTF-8')) {
+            return trim($cell);
+        }
+
+        return (string) preg_replace('/^[\s\x{00A0}\x{202F}\x{200B}\x{FEFF}]+|[\s\x{00A0}\x{202F}\x{200B}\x{FEFF}]+$/u', '', $cell);
     }
 }

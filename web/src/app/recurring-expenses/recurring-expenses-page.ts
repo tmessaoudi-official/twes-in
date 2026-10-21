@@ -43,6 +43,7 @@ import {
   type RecurringExpenseError,
   type RecurringExpenseRow,
 } from './recurring-expenses-types';
+import { requestState } from '../shared/feedback/request-state';
 
 const TEXTS = 'expenses.recurring';
 
@@ -78,7 +79,11 @@ export class RecurringExpensesPage implements OnInit {
   );
   protected readonly rows = signal<readonly RecurringExpenseRow[]>([]);
   protected readonly loading = signal(true);
-  protected readonly error = signal<RecurringExpenseError | null>(null);
+  /** What was refused; a reload after another person's change leaves a refused write on the screen. */
+  private readonly requests = requestState<RecurringExpenseError>((error) =>
+    error instanceof RecurringExpenseRefused ? error.code : 'network',
+  );
+  protected readonly error = this.requests.error;
   protected readonly busy = signal(false);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('expense.write'));
@@ -250,14 +255,10 @@ export class RecurringExpensesPage implements OnInit {
   }
 
   private async refresh(companyId: string): Promise<void> {
-    try {
+    await this.requests.read(async () => {
       this.rows.set(await this.api.list(companyId));
-      this.error.set(null);
-    } catch (error) {
-      this.error.set(error instanceof RecurringExpenseRefused ? error.code : 'network');
-    } finally {
-      this.loading.set(false);
-    }
+    });
+    this.loading.set(false);
   }
 
   private replace(saved: RecurringExpenseRow): void {
@@ -331,6 +332,7 @@ export class RecurringExpensesPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
     this.busy.set(true);
+    this.requests.clearError();
     try {
       this.replace(
         await this.api.revise(companyId, row.id, {
@@ -350,7 +352,7 @@ export class RecurringExpensesPage implements OnInit {
         await this.refresh(companyId);
         this.feedback.failure('live.saved_since');
       } else {
-        this.error.set(error instanceof RecurringExpenseRefused ? error.code : 'network');
+        this.requests.refuse(error);
       }
     } finally {
       this.busy.set(false);
@@ -361,12 +363,13 @@ export class RecurringExpensesPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
     this.busy.set(true);
+    this.requests.clearError();
     try {
       await this.api.delete(companyId, row.id);
       this.rows.update((rows) => rows.filter((one) => one.id !== row.id));
       this.feedback.effect(`${TEXTS}.deleted`, { description: row.description }, 'definitif');
     } catch (error) {
-      this.error.set(error instanceof RecurringExpenseRefused ? error.code : 'network');
+      this.requests.refuse(error);
     } finally {
       this.busy.set(false);
     }

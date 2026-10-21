@@ -175,8 +175,8 @@ final readonly class RecordRemovalController
             return new JsonResponse(['error' => 'no_record'], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (RecordsInUse $used) {
             return new JsonResponse(['error' => 'record_used', 'records' => $used->records], Response::HTTP_CONFLICT);
-        } catch (RemovalNoLongerPending) {
-            return new JsonResponse(['error' => 'removal_final'], Response::HTTP_CONFLICT);
+        } catch (RemovalNoLongerPending $over) {
+            return new JsonResponse(['error' => $over->reason], Response::HTTP_CONFLICT);
         } catch (RemovalConflict $conflict) {
             return new JsonResponse(['error' => 'restore_conflict', 'table' => $conflict->table], Response::HTTP_CONFLICT);
         } catch (MergeIntoItself) {

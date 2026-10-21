@@ -18,7 +18,6 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { runAction } from '../shared/actions/run-action';
-import { saidAlready } from '../shared/errors/said-already';
 import { Feedback } from '../shared/feedback/feedback';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
@@ -29,6 +28,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import type { ActionConfirm } from '../shared/actions/screen-action';
 import { ClosingApi, type ClosingError, ClosingRefused, type CompanyClosing } from './closing-api';
+import { requestState } from '../shared/feedback/request-state';
 
 /**
  * « Clôture des comptes »: the last day of the closed period, and closing through a later one. Once closed, no
@@ -61,7 +61,11 @@ export class ClosingPage implements OnInit {
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly closing = signal<CompanyClosing | null>(null);
-  protected readonly error = signal<ClosingError | null>(null);
+  /** What was refused; a reload after another person's change leaves a refused closing on the screen. */
+  private readonly requests = requestState<ClosingError>((error) =>
+    error instanceof ClosingRefused ? error.code : 'network',
+  );
+  protected readonly error = this.requests.error;
   protected readonly busy = signal(false);
   /** The last day that may be closed: yesterday, on the company's own calendar. */
   protected readonly latest = computed(() => dayBefore(todayIn(this.company()?.timezone)));
@@ -110,26 +114,22 @@ export class ClosingPage implements OnInit {
 
   private async closeThrough(companyId: string, day: string): Promise<void> {
     this.busy.set(true);
-    this.error.set(null);
+    this.requests.clearError();
     try {
       this.closing.set(await this.api.closeThrough(companyId, day));
       this.form.reset();
       this.feedback.effect('company.closing.closed', {}, 'definitif');
     } catch (error) {
-      if (!saidAlready(error))
-        this.error.set(error instanceof ClosingRefused ? error.code : 'network');
+      this.requests.refuse(error);
     } finally {
       this.busy.set(false);
     }
   }
 
   private async load(companyId: string): Promise<void> {
-    try {
+    await this.requests.read(async () => {
       this.closing.set(await this.api.read(companyId));
-      this.error.set(null);
-    } catch (error) {
-      this.error.set(error instanceof ClosingRefused ? error.code : 'network');
-    }
+    });
   }
 }
 

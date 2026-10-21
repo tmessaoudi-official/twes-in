@@ -12,6 +12,7 @@ import {
   RemovalRefused,
   type RecordInUse,
   type RecordRemoval,
+  type RemovalError,
   type MergePreview,
   type RemovedItem,
   type TableCount,
@@ -32,6 +33,12 @@ export const DELETABLE_SUBJECTS = [
   'quote',
   'delivery_note',
 ] as const;
+
+/** The refusals of an undo sent again, each the outcome it already had. */
+const ALREADY_UNDONE: Partial<Record<RemovalError, string>> = {
+  removal_restored: 'records.restored_already',
+  merge_undone: 'records.merge_undone_already',
+};
 
 /** The columns a merge refusal names in words, each saying how the records differ; any other gets the plain refusal. */
 const MISMATCH_COLUMNS = ['identifiers'] as const;
@@ -199,6 +206,13 @@ export class RecordDeletes {
       );
       return true;
     } catch (error) {
+      // A second « Rétablir » (a double click, a retry after a lost answer) finds it undone already: that is the
+      // outcome the person asked for, said as such, and the page reloads to show it.
+      const already = error instanceof RemovalRefused ? ALREADY_UNDONE[error.code] : undefined;
+      if (already !== undefined) {
+        this.feedback.success(already);
+        return true;
+      }
       this.refused(error, true);
       return false;
     }

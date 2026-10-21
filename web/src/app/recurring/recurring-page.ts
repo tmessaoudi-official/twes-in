@@ -24,6 +24,7 @@ import { StatusBadge } from '../shared/ui/status-badge';
 import { RecurringApi, RecurringRefused } from './recurring-api';
 import { RECURRING_TABS } from './recurring-nav';
 import { recurringState, type RecurringError, type RecurringInvoiceRow } from './recurring-types';
+import { requestState } from '../shared/feedback/request-state';
 
 const STATE_TONES: Record<ReturnType<typeof recurringState>, StatusTone> = {
   active: 'success',
@@ -54,7 +55,11 @@ export class RecurringPage implements OnInit {
   protected readonly tabs = RECURRING_TABS;
   protected readonly rows = signal<readonly RecurringInvoiceRow[]>([]);
   protected readonly loading = signal(true);
-  protected readonly error = signal<RecurringError | null>(null);
+  /** What was refused; a reload after another person's change leaves a refused write on the screen. */
+  private readonly requests = requestState<RecurringError>((error) =>
+    error instanceof RecurringRefused ? error.code : 'network',
+  );
+  protected readonly error = this.requests.error;
   protected readonly busy = signal(false);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('invoice.write'));
@@ -203,20 +208,17 @@ export class RecurringPage implements OnInit {
   }
 
   private async refresh(companyId: string): Promise<void> {
-    try {
+    await this.requests.read(async () => {
       this.rows.set(await this.api.list(companyId));
-      this.error.set(null);
-    } catch (error) {
-      this.error.set(error instanceof RecurringRefused ? error.code : 'network');
-    } finally {
-      this.loading.set(false);
-    }
+    });
+    this.loading.set(false);
   }
 
   private async setPaused(row: RecurringInvoiceRow, paused: boolean): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
     this.busy.set(true);
+    this.requests.clearError();
     try {
       const saved = await this.api.revise(companyId, row.id, {
         schedule: row.schedule,
@@ -234,7 +236,7 @@ export class RecurringPage implements OnInit {
         await this.refresh(companyId);
         this.feedback.failure('live.saved_since');
       } else {
-        this.error.set(error instanceof RecurringRefused ? error.code : 'network');
+        this.requests.refuse(error);
       }
     } finally {
       this.busy.set(false);
@@ -245,12 +247,13 @@ export class RecurringPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
     this.busy.set(true);
+    this.requests.clearError();
     try {
       await this.api.delete(companyId, row.id);
       this.rows.update((rows) => rows.filter((one) => one.id !== row.id));
       this.feedback.effect('recurring.deleted', { customer: row.customerName }, 'definitif');
     } catch (error) {
-      this.error.set(error instanceof RecurringRefused ? error.code : 'network');
+      this.requests.refuse(error);
     } finally {
       this.busy.set(false);
     }

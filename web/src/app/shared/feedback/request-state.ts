@@ -24,13 +24,17 @@ export interface WriteOptions<E> {
  * for (`error`, a code the screen translates). One count over every marked request, so busy holds until the last one
  * answers and a press is never sent twice. A read nobody asked for, run inside `QuietReads`, is not marked: marked, the
  * screen's actions would turn disabled for its moment and a click already on its way would be refused unseen. A write
- * is always marked. An error is cleared when the next request starts, and kept until then. A failure an interceptor
+ * is always marked. An error is cleared when the next request starts, and kept until then, but for a write's: a reload
+ * nobody asked for (another member's change heard) is no act of the person, so it clears and replaces only what a read
+ * said, and a refused save stays on the screen until they act again. A failure an interceptor
  * has already said in words (`saidAlready`: the demo's refusal, a write still being made or whose answer was lost)
  * sets no error, so the screen never says it a second time, nor something else; `failed` still runs.
  */
 export class RequestState<E> {
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<E | null>(null);
+  /** Whether the error shown was a write's refusal, which only the person's own next request takes away. */
+  private writeRefused = false;
   private running = 0;
 
   readonly busy: Signal<boolean> = this.busySignal.asReadonly();
@@ -43,14 +47,16 @@ export class RequestState<E> {
 
   /** Reads; never throws. False when the read failed or was no longer the latest. */
   async read(load: () => Promise<void>, options: ReadOptions = {}): Promise<boolean> {
-    const end = this.quietReads.quiet() ? () => undefined : this.begin();
-    this.errorSignal.set(null);
+    const quiet = this.quietReads.quiet();
+    const end = quiet ? () => undefined : this.begin();
+    const keepsRefusal = quiet && this.writeRefused;
+    if (!keepsRefusal) this.say(null, false);
     try {
       await load();
       return options.current?.() ?? true;
     } catch (error) {
       if (options.current?.() === false) return false;
-      this.errorSignal.set(this.shown(error, this.code));
+      if (!keepsRefusal) this.say(this.shown(error, this.code), false);
       options.failed?.(error);
       return false;
     } finally {
@@ -81,11 +87,19 @@ export class RequestState<E> {
 
   /** A failure outside a marked request, such as a picker's search: said, busy left as it is. */
   fail(error: unknown): void {
-    this.errorSignal.set(this.shown(error, this.code));
+    this.say(this.shown(error, this.code), false);
+  }
+
+  /**
+   * A write's refusal a screen caught itself, around a call it marks on its own: said as `write` says one, so a reload
+   * nobody asked for leaves it on the screen.
+   */
+  refuse(error: unknown): void {
+    this.say(this.shown(error, this.code), true);
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.say(null, false);
   }
 
   private async attempt<T>(
@@ -93,16 +107,21 @@ export class RequestState<E> {
     options: WriteOptions<E>,
   ): Promise<{ kept: true; answer: T } | { kept: false }> {
     const end = this.begin();
-    this.errorSignal.set(null);
+    this.say(null, false);
     try {
       return { kept: true, answer: await call() };
     } catch (error) {
-      this.errorSignal.set(this.shown(error, options.code ?? this.code));
+      this.say(this.shown(error, options.code ?? this.code), true);
       options.failed?.(error);
       return { kept: false };
     } finally {
       end();
     }
+  }
+
+  private say(error: E | null, fromWrite: boolean): void {
+    this.errorSignal.set(error);
+    this.writeRefused = fromWrite && error !== null;
   }
 
   /** What the screen says of a failure: nothing when an interceptor already said it. */

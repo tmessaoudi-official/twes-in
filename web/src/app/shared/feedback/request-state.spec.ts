@@ -125,6 +125,39 @@ describe('requestState', () => {
     expect(state.error()).toBeNull();
   });
 
+  it('keeps a refused write’s error through a reload nobody asked for, which clears only what a read said', async () => {
+    expect(await state.write(() => Promise.reject(new Refused('not_found')))).toBe(false);
+    expect(state.error()).toBe('not_found');
+
+    // Another member's change reloads the screen: the person has not acted, so their refusal stays.
+    const reload = pending<void>();
+    const reloading = quiet.quietly(() => state.read(() => reload.promise));
+    expect(state.error()).toBe('not_found');
+    reload.answer();
+    await reloading;
+    expect(state.error()).toBe('not_found');
+    await quiet.quietly(() => state.read(() => Promise.reject(new Error('unreachable'))));
+    expect(state.error()).toBe('not_found');
+
+    // A read the person asks for is acting.
+    await state.read(async () => undefined);
+    expect(state.error()).toBeNull();
+
+    // What a read said, a reload says again or clears.
+    await state.read(() => Promise.reject(new Refused('not_found')));
+    await quiet.quietly(() => state.read(async () => undefined));
+    expect(state.error()).toBeNull();
+  });
+
+  it('keeps a refusal a screen caught itself as a write’s, and says none an interceptor said', async () => {
+    state.refuse(new Refused('not_found'));
+    await quiet.quietly(() => state.read(async () => undefined));
+    expect(state.error()).toBe('not_found');
+
+    state.refuse(refusedFor(demoAnswer(), new Refused('not_found')));
+    expect(state.error()).toBeNull();
+  });
+
   it('drops the outcome of a read that is no longer the latest, its failure included', async () => {
     const pages = new LatestRequest();
     const first = pages.next();
