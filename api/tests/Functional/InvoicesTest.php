@@ -1857,7 +1857,8 @@ final class InvoicesTest extends ApiTestCase
         self::assertIsNumeric($secondDue);
         $total = bcadd($firstDue, $secondDue, 3);
 
-        $this->postJson($this->path().'/bulk-payments', ['method' => 'transfer', 'date' => $today, 'reference' => 'VIR-42', 'rows' => array_map(static fn (array $row): array => ['id' => $row['id'], 'amount' => $row['amount']], $rows)]);
+        $body = ['method' => 'transfer', 'date' => $today, 'reference' => 'VIR-42', 'rows' => array_map(static fn (array $row): array => ['id' => $row['id'], 'amount' => $row['amount']], $rows)];
+        $this->postJson($this->path().'/bulk-payments', $body);
 
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         self::assertSame([2, $total], [$this->json()['recorded'] ?? null, $this->json()['total'] ?? null]);
@@ -1870,6 +1871,14 @@ final class InvoicesTest extends ApiTestCase
             self::assertSame(['transfer', 'VIR-42', $today], [$last['method'], $last['reference'], $last['date']]);
         }
         self::assertSame(3, $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM audit_log WHERE action = 'payment.recorded'"), 'each payment recorded on its invoice, as one by one');
+
+        // The same run sent again, as a retry after a lost answer would: the invoices it paid are paid now, so the rows
+        // no longer hold and nothing is paid twice. This is why the route needs no Idempotency-Key (a transition).
+        $this->postJson($this->path().'/bulk-payments', $body);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertStringStartsWith('bulk_changed:', $this->stringAt($this->json(), 'detail'));
+        self::assertSame(3, $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM audit_log WHERE action = 'payment.recorded'"), 'nothing recorded a second time');
     }
 
     public function testABulkPaymentIsRefusedWholeWhenAnInvoiceChangedSinceItsPreview(): void
