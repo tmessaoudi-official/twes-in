@@ -416,7 +416,7 @@ class Expense implements CompanyOwned
         try {
             $totals = new DocumentCalculator()->calculate(new DocumentInput($currencyScale, false, TaxBasis::Exclusive, $rounding, $lines, null, array_values($charges)));
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
-            throw new InvalidExpense('lines', $refused->getMessage());
+            throw new InvalidExpense($refused->field('amountNet'), $refused->getMessage());
         }
 
         $unit = Decimal::of('1')->div(10 ** $currencyScale, $currencyScale);

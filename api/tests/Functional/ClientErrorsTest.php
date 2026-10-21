@@ -55,6 +55,19 @@ final class ClientErrorsTest extends ApiTestCase
         self::assertStringNotContainsString('1234567890', $line);
     }
 
+    /** The page a link opened (an invitation, a sign-up, a reset) is kept without its token, in any case it is written. */
+    public function testAPageUnderALinksTokenIsLoggedWithoutIt(): void
+    {
+        $token = str_repeat('ab12', 16);
+        $this->postJson(self::PATH, ['message' => 'TypeError at /reset-password/'.strtoupper($token), 'page' => '/invitation/'.$token, 'build' => '2026.10.21.1']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $line = self::logged()[0]->message;
+        self::assertStringNotContainsStringIgnoringCase($token, $line);
+        self::assertStringContainsString('Web error on /invitation/[token] ', $line);
+        self::assertStringContainsString('TypeError at /reset-password/[token]', $line);
+    }
+
     public function testAMessageAndAStackAreCutToTheirLengths(): void
     {
         $this->postJson(self::PATH, ['message' => str_repeat('m', 900), 'stack' => str_repeat('s', 9000)] + self::REPORT);

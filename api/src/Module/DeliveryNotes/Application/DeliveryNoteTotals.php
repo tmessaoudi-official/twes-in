@@ -47,7 +47,7 @@ final readonly class DeliveryNoteTotals
         try {
             return $this->of($note);
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
-            throw new InvalidDeliveryNote('lines', $refused->getMessage());
+            throw new InvalidDeliveryNote($refused->field('quantity'), $refused->getMessage());
         }
     }
 

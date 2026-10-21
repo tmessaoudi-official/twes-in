@@ -69,7 +69,7 @@ checkout's path, the Docker socket's group and a temporary directory outside the
 a gate that builds a fixture in a directory git ignores would see nothing in it). A bare `docker compose --profile tools run …` falls back to
 uid 1000 and the current directory but not to a temporary directory the Makefile made: use `make`.
 
-The Docker-driving gates (`compose-log-rotation`, `forwarded-proto`, `live-proxy`) start containers through the host's
+The Docker-driving gates (`compose-log-rotation`, `forwarded-proto`, `access-log`, `live-proxy`) start containers through the host's
 socket, which is why the tree is mounted at its own path: a path the gate gives the daemon is one the daemon sees.
 The repository's git directory is mounted beside it (`HOST_GIT`): in a linked worktree (the snapshot gate's, § 7, or a
 writer's) `.git` is a file naming a directory outside the tree, and every gate asking git what is tracked or ignored
