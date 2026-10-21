@@ -33,8 +33,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - **Gate a snapshot, keep working** (developer ruling, docs/SPEC.md § 7): stage, `make gate-snapshot` in the background,
   go on with the next thing here (never in the gate's worktree), then `make commit-gated MSG=<file>`, which commits only
   the tree that went green. A red one is fixed on top and gated again. `make e2e` stays serial, the touched specs only.
-- **One `advisor()` call at goal start and one at goal end**, not per commit. One three-lens
-  reviewer panel once, when the POC works, against a frozen commit; reviewers write to
+- **One `advisor()` call at goal start and one at goal end**, not per commit. One reviewer panel
+  once, when the POC works, against a frozen commit, of four lenses in two waves of two (`.claude/agents/`:
+  domain correctness, tenancy and security, completeness, usability and misuse); reviewers write to
   `var/claude/` and return one line; spawn them unnamed.
 - **Say what was and was not certified by execution** in a goal's completion note, in one
   sentence each. "Tests pass" is not a claim about a container coming up.
