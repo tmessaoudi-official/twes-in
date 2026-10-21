@@ -332,6 +332,9 @@ on and updates itself at night, so nothing done after it may break what exists o
 - [2026-10-21 01:38] ASSUMED (review): #121: the margin is shown on the price (gross margin rate), one decimal, its sign kept — rule: one canon, a shop reads margin on the selling price. Alternatives: markup on cost.
 - [2026-10-21 01:38] ASSUMED (review): #121: « À surveiller » lists the moved margins by reference, to cost readers only, and a non cost reader gets 404 on the settle endpoint — rule: product.cost.read is the only way to cost. Alternatives: 403.
 - [2026-10-21 01:38] ASSUMED (review): #121: the receipt's toast offers « Ajuster le prix » straight away to whoever writes products, and the product page shows the notice with both choices until settled — rule: every action wherever its subject appears, every outcome shown at once. Alternatives: the notice only.
+- [2026-10-21 02:19] AGREED: Local gates run on a frozen snapshot: the staged tree written as a commit object not on master, gated in a throwaway worktree while work continues in the main tree beside the live stack; green commits that exact tree, red is fixed on top; the shared postgres is made safe for a worktree's API tests first, with its test.
+- [2026-10-21 02:19] AGREED: Local e2e stays serial: only the specs a change touches, run with no edits meanwhile; CI runs the full suite.
+- [2026-10-21 02:19] AGREED: The snapshot gate is built now, before #120 class fix 1.
 
 ## Formal Plan
 No fixed date (2026-10-20 00:49, replacing the Wednesday 10:00 deadline): the release is tagged once every step below
@@ -409,7 +412,7 @@ was and was not certified by execution.
 | 24 | PHPStan's Doctrine loader measured, then the 32 habit statements moved to DQL | M | todo | - | api/phpstan.dist.neon api/src/** |
 | 25 | Release decisions built: D12 ports without Product, D13 invoices' activity columns, D16 category merge screen, D18 « ailleurs », D19 links cleared on delete | L | todo | - | api/src/** web/src/** |
 | 26 | Deleted freely (00:36 third class) with the 24 h undo: drafts of invoices, quotes and delivery notes first, then unsent orders, cheques held, contacts, files, barcodes, the stock map, recurring templates | L | doing | - | api/src/** web/src/app/** web/e2e/** |
-| 27 | Cost and price on receipt (#121): article.price_on_cost_change keep / offer / follow, the margin notice and « Ajuster le prix » on the receipt's toast, the product page and « À surveiller », live in every tab | M | doing | - | api/src/Module/Products/** api/src/Module/Inventory/** web/src/app/products/** web/e2e/price-review.spec.ts |
+| 27 | Cost and price on receipt (#121): article.price_on_cost_change keep / offer / follow, the margin notice and « Ajuster le prix » on the receipt's toast, the product page and « À surveiller », live in every tab | M | done | 28f086d8 | api/src/Module/Products/** api/src/Module/Inventory/** web/src/app/products/** web/e2e/price-review.spec.ts |
 | 28 | Under follow, the receipt says the price it moved: the stock movement answers its effects, the screen toasts them (hunt class 6) | S | todo | - | api/src/Module/Inventory/** web/src/app/inventory/** |
 | 29 | Decide whether a cost an import moves opens a price review (CostChangeSource::Edited today opens none) | S | todo | - | api/src/Module/Products/** |
 <!-- /progress-block -->
@@ -609,3 +612,11 @@ was and was not certified by execution.
   `list-fit.spec.ts` « comes back for the rows left » (red first, mutant killed).
 - Step 1 on Windows: `install.ps1` is checked by PowerShell's parser and PSScriptAnalyzer and its `$verify` line runs in
   `twes.test.sh`; the rest is untried until the developer's test.
+- #121's class (an outcome said wherever a receipt moves a cost): every screen that records a receipt offers the price
+  review once it answers. Search: `git grep -n "\.record(\|receiveSplit(\|enterReceiptCost(\|\.receive(" -- web/src
+  ':!*.spec.ts'`, read against `InventoryFacade.record`, `.receiveSplit`, `.enterReceiptCost` and
+  `PurchasesFacade.receive`, each of which calls `PriceReviewOffer.after`: the stock page (one place and split), a
+  place's « Réceptionner », a late cost on the movements page and an order's receipt. The stock count records counts
+  only, which move no cost. On the API, `CostChangeSource::Receipt` is the one source opening a review
+  (`git grep -n "CostChangeSource::" -- api/src`): `KeepStock` for the stock and the orders alike. The import's cost
+  is row 29.

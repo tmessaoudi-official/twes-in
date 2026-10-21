@@ -213,6 +213,8 @@ services:
   #  - host networking, so 127.0.0.1:5433 (api/.env) and 127.0.0.1:8090 (Playwright) mean what they meant on the host;
   #  - the developer's uid, so a file written into the tree is theirs. HOST_UID, HOST_GID, DOCKER_GID and HOST_REPO
   #    come from the Makefile (docs/START.md § 1); a bare `docker compose` falls back to uid 1000 and the current directory.
+  # The repository's git directory is mounted too (HOST_GIT): a linked worktree's `.git` is a file naming a directory
+  # outside it, and without that directory every gate asking git which files are tracked or ignored fails there.
   tools:
     logging: *logging
     profiles: [tools]
@@ -240,6 +242,7 @@ services:
       COMPOSER_ALLOW_SUPERUSER: "0"
     volumes:
       - "${HOST_REPO:-${PWD}}:${HOST_REPO:-${PWD}}"
+      - "${HOST_GIT:-${PWD}/.git}:${HOST_GIT:-${PWD}/.git}"
       - "${TOOLS_TMP:-/tmp/twes-in-tools}:${TOOLS_TMP:-/tmp/twes-in-tools}"
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -273,6 +276,7 @@ services:
       PLAYWRIGHT_BROWSERS_PATH: "${HOST_REPO:-${PWD}}/var/cache/ms-playwright"
     volumes:
       - "${HOST_REPO:-${PWD}}:${HOST_REPO:-${PWD}}"
+      - "${HOST_GIT:-${PWD}/.git}:${HOST_GIT:-${PWD}/.git}"
       - "${TOOLS_TMP:-/tmp/twes-in-tools}:${TOOLS_TMP:-/tmp/twes-in-tools}"
 
 volumes:

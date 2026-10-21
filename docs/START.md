@@ -71,6 +71,9 @@ uid 1000 and the current directory but not to a temporary directory the Makefile
 
 The Docker-driving gates (`compose-log-rotation`, `forwarded-proto`, `live-proxy`) start containers through the host's
 socket, which is why the tree is mounted at its own path: a path the gate gives the daemon is one the daemon sees.
+The repository's git directory is mounted beside it (`HOST_GIT`): in a linked worktree (the snapshot gate's, § 7, or a
+writer's) `.git` is a file naming a directory outside the tree, and every gate asking git what is tracked or ignored
+would fail there.
 
 ## 2. Bring it up
 
@@ -468,7 +471,27 @@ run, and the file put back byte for byte; the summary says which were killed, su
   each mutant while it is in place: use neither the app nor `make e2e` during a run. A mutated migration mutates its
   `down()` too: migrate the test database down first, by hand.
 - Both start the shared database when a PHP test is in play, and `compose.yaml` names the project: from a linked
-  worktree they would recreate the main tree's `postgres` over the worktree's files. Run them from the main tree.
+  worktree compose would recreate the main tree's `postgres` over the worktree's files, so every start here passes
+  `--no-recreate`. A worktree still shares the main tree's test databases unless its `api/.env.test.local` names a
+  `TEST_TOKEN` of its own: run them from the main tree.
+
+`make gate-snapshot` gates what is staged without holding the tree (`scripts/gate/snapshot-gate.sh`). The staged tree is
+written as a commit object no branch names, checked out in `.claude/worktrees/gate` and gated there with
+`make gate`, on test databases of its own (`twes_test_gate`, made the first time) and a temporary directory of its own,
+under the lock every heavy run takes (a second gate is refused: two side by side starve each other). Meanwhile work goes
+on here, `make check` included, beside the live stack. The result is recorded by the tree's hash in `var/claude/gates/`
+with the gate's log.
+
+```sh
+git add -A                                 # what is staged is what is gated
+make gate-snapshot                         # exits as the gate did; 3 when another gate runs
+make commit-gated MSG=<message file>       # commits exactly the last green tree onto HEAD
+```
+
+- `commit-gated` refuses a red tree, and a snapshot taken before master moved: gate again on top. What was staged or
+  typed after the snapshot stays as it is, staged or not, for the next one.
+- The worktree is kept between runs, so `vendor/`, `node_modules/` and the caches are installed once; the first run
+  takes a few minutes more. `make e2e` still runs here, alone: the live stack serves this tree.
 
 - **Stage new files before running the gates** (`git add`): the SPDX and executable-bit gates read `git ls-files`.
 - After changing an API resource, run `make tools CMD='cd api && bin/console cache:clear && bin/console cache:pool:clear --all'`

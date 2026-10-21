@@ -30,6 +30,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   components and state transitions always. Tests are executed, and their output is pasted.
 - **Done means CI green** against the definition of done in `docs/SPEC.md` § 5. Never commit
   red. Never chain a verification step onto `git commit` through a pipe or `&&`.
+- **Gate a snapshot, keep working** (developer ruling, docs/SPEC.md § 7): stage, `make gate-snapshot` in the background,
+  go on with the next thing here (never in the gate's worktree), then `make commit-gated MSG=<file>`, which commits only
+  the tree that went green. A red one is fixed on top and gated again. `make e2e` stays serial, the touched specs only.
 - **One `advisor()` call at goal start and one at goal end**, not per commit. One three-lens
   reviewer panel once, when the POC works, against a frozen commit; reviewers write to
   `var/claude/` and return one line; spawn them unnamed.

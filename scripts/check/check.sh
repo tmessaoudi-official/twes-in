@@ -70,7 +70,7 @@ host() {
   echo "$p"
   local status=0
   if grep -q '^api-format ' <<<"$p"; then
-    if grep -q '^api-test ' <<<"$p"; then sh -c "${CHECK_POSTGRES:-docker compose up -d --wait postgres}" || return 1; fi
+    if grep -q '^api-test ' <<<"$p"; then sh -c "${CHECK_POSTGRES:-docker compose up -d --wait --no-recreate postgres}" || return 1; fi
     sh -c "${CHECK_TOOLS:?run through make check} bash scripts/check/check.sh api$fix ${files[*]}" || status=1
   fi
   if grep -q '^web-format ' <<<"$p"; then

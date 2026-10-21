@@ -208,7 +208,7 @@ host() {
   for i in "${!names[@]}"; do
     case "$(kind "${tests[$i]}")" in phpunit) api=1; db=1 ;; bash) api=1 ;; vitest) web=1 ;; esac
   done
-  if ((db)); then sh -c "${MUTANTS_POSTGRES:-docker compose up -d --wait postgres}" || return 2; fi
+  if ((db)); then sh -c "${MUTANTS_POSTGRES:-docker compose up -d --wait --no-recreate postgres}" || return 2; fi
   if ((api)); then sh -c "${MUTANTS_TOOLS:?run through make mutants} bash scripts/mutants/mutants.sh run api $spec" || status=1; fi
   if ((web)); then
     sh -c "${MUTANTS_WEB_TOOLS:?run through make mutants} sh -c '${MUTANTS_NPM_INSTALL:?run through make mutants} && bash ../scripts/mutants/mutants.sh run web $spec'" || status=1
