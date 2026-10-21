@@ -22,6 +22,8 @@ use App\Module\Products\Domain\ValueObject\CostChangeSource;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
+use App\Module\Vendors\Domain\Model\Vendor;
+use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -389,9 +391,12 @@ final class ProductsTest extends ApiTestCase
     public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
     {
         $this->signedIn(['product.read', 'product.write']);
-        // Each its own unit and codes, so the identity map cannot hide a read per row.
+        // Each its own unit, codes and vendor, so the identity map cannot hide a read per row.
         foreach (['C62', 'H87', 'HUR', 'DAY', 'KGM', 'MTR'] as $n => $unit) {
-            $id = $this->created($this->product(['reference' => 'ART-10'.$n, 'unitId' => $this->unitId($unit)]));
+            $vendor = Vendor::create($this->em()->find(Company::class, $this->company->getId()) ?? $this->company, 'FRN-000'.$n, new VendorProfile('Fournisseur '.$n), new \DateTimeImmutable());
+            $this->em()->persist($vendor);
+            $this->em()->flush();
+            $id = $this->created($this->product(['reference' => 'ART-10'.$n, 'unitId' => $this->unitId($unit), 'vendorIds' => [$vendor->getId()->toRfc4122()]]));
             $this->sendJson('PUT', $this->path($id).'/barcodes', ['version' => $this->storedVersion('product', $id), 'barcodes' => [['role' => 'unit', 'code' => 'CODE-'.$n, 'quantity' => 1]]]);
             self::assertResponseIsSuccessful();
         }

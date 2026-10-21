@@ -206,6 +206,28 @@ final class ProductResource
     #[Groups([self::READ, self::WRITE])]
     public array $defaultTaxComponentIds = [];
 
+    /**
+     * The vendors it is bought from, by number; whoever reads the product reads them, whoever writes it names them,
+     * only their codes stay with costs. Written, it is exactly these, each supplier code's vendor among them; left out,
+     * it keeps them.
+     *
+     * @var list<string>|null
+     */
+    #[ApiProperty(schema: ['type' => ['array', 'null'], 'items' => ['type' => 'string', 'format' => 'uuid']])]
+    #[Assert\Type('list', groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
+    #[Assert\All([new Assert\Uuid(payload: ['reason' => 'invalid_value'])], groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?array $vendorIds = null;
+
+    /**
+     * The same vendors as they are named, by number, so a screen shows them without reading the vendor book.
+     *
+     * @var list<array{id: string, number: string, name: string}>
+     */
+    #[ApiProperty(writable: false, schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['id', 'number', 'name'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'number' => ['type' => 'string'], 'name' => ['type' => 'string']]]])]
+    #[Groups([self::READ])]
+    public array $vendors = [];
+
     /** @var array<string, string|int|float|bool> values by the company's custom field keys (GET .../custom-fields?entity=product) */
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['oneOf' => [['type' => 'string'], ['type' => 'number'], ['type' => 'boolean']]]])]
     #[Groups([self::READ, self::WRITE])]
@@ -276,6 +298,8 @@ final class ProductResource
         $resource->substitutionGroup = $details->substitutionGroup;
         $resource->barcodes = ProductBarcodeRow::listOf($product, $withCosts);
         $resource->defaultTaxComponentIds = $product->getDefaultTaxComponentIds();
+        $resource->vendors = array_map(static fn ($vendor): array => ['id' => $vendor->getId()->toRfc4122(), 'number' => $vendor->getNumber(), 'name' => $vendor->getProfile()->name], $product->getVendors());
+        $resource->vendorIds = array_column($resource->vendors, 'id');
         $resource->customFields = $product->getCustomFields();
         $resource->isActive = $product->isActive();
         $resource->mainPhotoId = $mainPhotoId;
@@ -304,6 +328,7 @@ final class ProductResource
             tracking: null === $this->tracking ? null : ProductTracking::from($this->tracking),
             seesCosts: $seesCosts,
             check: new ProductCheckInput(new CheckMark($this->toCheck, $this->checkNote), $this->zeroPriceIntended),
+            vendorIds: null === $this->vendorIds ? null : array_map(static fn (string $id): Uuid => Uuid::fromString($id), $this->vendorIds),
             unitNamed: true,
         );
     }

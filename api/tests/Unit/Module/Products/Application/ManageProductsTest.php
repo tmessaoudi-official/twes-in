@@ -529,7 +529,7 @@ final class ManageProductsTest extends TestCase
             $this->manage->create($this->company, $this->input(reference: 'ART-002', vendorIds: [$ours->getId(), $theirs->getId()]), null);
             self::fail('accepted another company\'s vendor');
         } catch (InvalidProduct $refused) {
-            self::assertSame('vendors.1', $refused->field);
+            self::assertSame('vendorIds.1', $refused->field);
         }
         try {
             $this->manage->addVendor($this->company, $product->getId(), $ours->getId(), 'SOT-1', null, seesCosts: false);

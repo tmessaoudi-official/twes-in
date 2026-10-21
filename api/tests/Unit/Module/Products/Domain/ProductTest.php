@@ -279,7 +279,7 @@ final class ProductTest extends TestCase
             $product->replaceVendors([], $this->now);
             self::fail('a vendor its code names was unlinked');
         } catch (InvalidProduct $refused) {
-            self::assertSame('vendors', $refused->field);
+            self::assertSame('vendorIds', $refused->field);
         }
         self::assertSame([$sotupa], $product->getVendors());
     }

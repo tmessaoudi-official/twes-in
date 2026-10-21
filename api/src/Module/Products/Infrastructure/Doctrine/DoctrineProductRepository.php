@@ -125,7 +125,7 @@ final readonly class DoctrineProductRepository implements ProductRepository
     }
 
     /**
-     * A row answers its unit, its codes and whether it has a vendor, as « À vérifier » asks. Read in one statement for the whole page, they cost the same for 1 row or
+     * A row answers its unit, its codes and its vendors by name, which « À vérifier » also asks. Read in one statement for the whole page, they cost the same for 1 row or
      * 100, where walking them row by row cost 17 statements for 6 rows (Doctrine, "Improving performance": fetch joins;
      * audit PF-07). The query only fills products already in memory.
      *
@@ -137,7 +137,7 @@ final readonly class DoctrineProductRepository implements ProductRepository
             return;
         }
         $this->entityManager
-            ->createQuery('SELECT p, u, b, v FROM '.Product::class.' p JOIN p.unit u LEFT JOIN p.barcodes b LEFT JOIN p.vendors v WHERE p.id IN (:ids)')
+            ->createQuery('SELECT p, u, b, v, vv FROM '.Product::class.' p JOIN p.unit u LEFT JOIN p.barcodes b LEFT JOIN p.vendors v LEFT JOIN v.vendor vv WHERE p.id IN (:ids)')
             ->setParameter('ids', array_map(static fn (Product $product): string => $product->getId()->toRfc4122(), $products), ArrayParameterType::STRING)
             ->getResult();
     }
