@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { PasswordResetApi, PasswordResetRefused } from './password-reset-api';
 import type { PasswordResetError } from './password-reset-types';
@@ -8,12 +9,13 @@ import type { PasswordResetError } from './password-reset-types';
 @Injectable({ providedIn: 'root' })
 export class PasswordResetFacade {
   private readonly api = inject(PasswordResetApi);
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<PasswordResetError | null>(null);
+  private readonly state = requestState<PasswordResetError>((error) =>
+    error instanceof PasswordResetRefused ? error.code : 'refused',
+  );
   private readonly requestedSignal = signal(false);
 
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
   readonly requested = this.requestedSignal.asReadonly();
 
   /** Asks for a link. The page says the same afterwards whether or not the address has an account. */
@@ -27,16 +29,6 @@ export class PasswordResetFacade {
   }
 
   private async run(call: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      await call();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(error instanceof PasswordResetRefused ? error.code : 'refused');
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    return this.state.write(call);
   }
 }

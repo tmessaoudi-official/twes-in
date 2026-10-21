@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { requestState } from '../shared/feedback/request-state';
 import type { LegalLanguage } from '../shared/legal/legal-api';
 import type { LegalPage } from '../shared/legal/legal-pages';
 import { StepUp } from '../shared/step-up/step-up';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { PlatformLegalApi } from './platform-legal-api';
 import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-legal-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * The operator's legal pages (docs/SPEC.md § 8 row 148): where each page stands in each language, and the history of
@@ -16,12 +16,11 @@ import { QuietReads } from '../shared/feedback/quiet-reads';
 @Injectable({ providedIn: 'root' })
 export class PlatformLegalFacade {
   private readonly api = inject(PlatformLegalApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly stepUp = inject(StepUp);
   private readonly overviewSignal = signal<readonly LegalStatusRow[]>([]);
   private readonly versionsSignal = signal<readonly LegalVersionRow[]>([]);
-  private readonly busySignal = signal(false);
-  private readonly failedSignal = signal(false);
+  /** A failure is one thing here, the API not reached or refusing: the page says so without a reason. */
+  private readonly state = requestState<true>(() => true);
   private readonly identitySignal = signal<Readonly<Record<string, string>>>({});
   private opened: { page: LegalPage; language: LegalLanguage } | null = null;
   /** The version of each placeholder's row when read, which a save sends back. */
@@ -30,11 +29,11 @@ export class PlatformLegalFacade {
   readonly overview = this.overviewSignal.asReadonly();
   /** The open page's versions in its language, the latest first. */
   readonly versions = this.versionsSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
+  readonly busy = this.state.busy;
   /** The publisher's and host's identity, by placeholder, the empty ones included, in the API's order. */
   readonly identity = this.identitySignal.asReadonly();
   /** Whether the last read or write did not reach the API. */
-  readonly failed = this.failedSignal.asReadonly();
+  readonly failed = computed(() => this.state.error() !== null);
 
   async load(): Promise<void> {
     await this.run(async () => {
@@ -115,17 +114,6 @@ export class PlatformLegalFacade {
 
   /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
   private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
-    const marked = !(reading && this.quietReads.quiet());
-    if (marked) this.busySignal.set(true);
-    try {
-      await work();
-      this.failedSignal.set(false);
-      return true;
-    } catch {
-      this.failedSignal.set(true);
-      return false;
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    return reading ? this.state.read(work) : this.state.write(work);
   }
 }

@@ -26,13 +26,12 @@ import {
   type PlatformSwitch,
   type PlatformSupport,
 } from './platform-types';
-import { QuietReads } from '../shared/feedback/quiet-reads';
+import { LatestRequest, requestState } from '../shared/feedback/request-state';
 
 /** What an operator runs the platform with: who may sign up, the companies (those waiting for a decision first), and accounts. */
 @Injectable({ providedIn: 'root' })
 export class PlatformFacade {
   private readonly api = inject(PlatformApi);
-  private readonly quietReads = inject(QuietReads);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
   private readonly waitingSignal = signal<readonly PlatformCompanyRow[]>([]);
@@ -43,8 +42,7 @@ export class PlatformFacade {
   private readonly importsSignal = signal<PlatformImports | null>(null);
   /** The version of each platform key's row when read, which a form's save sends back. */
   private versions: Readonly<Record<string, number>> = {};
-  private readonly busySignal = signal(false);
-  private readonly errorSignal = signal<PlatformError | null>(null);
+  private readonly state = requestState(codeOf);
 
   private readonly accountsSignal = signal<readonly PlatformAccountRow[]>([]);
   private readonly accountsTotalSignal = signal(0);
@@ -76,8 +74,8 @@ export class PlatformFacade {
   readonly companiesTotal = this.companiesTotalSignal.asReadonly();
   private companySearch: PlatformCompanySearch | null = null;
   private accountSearch: PlatformAccountSearch | null = null;
-  private companyRequest = 0;
-  private accountRequest = 0;
+  private readonly companyPages = new LatestRequest();
+  private readonly accountPages = new LatestRequest();
   /** Null until read. */
   readonly signup = this.signupSignal.asReadonly();
   /** How companies reach the operators, null until read. */
@@ -94,8 +92,8 @@ export class PlatformFacade {
   readonly subscription = this.subscriptionSignal.asReadonly();
   /** The company whose subscription panel is open. */
   readonly openedSubscription = this.openedSignal.asReadonly();
-  readonly busy = this.busySignal.asReadonly();
-  readonly error = this.errorSignal.asReadonly();
+  readonly busy = this.state.busy;
+  readonly error = this.state.error;
 
   /**
    * What the overview shows: the switches, the companies waiting, the counts, the demand for planned modules and the
@@ -103,9 +101,7 @@ export class PlatformFacade {
    */
   async load(): Promise<void> {
     // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
-    const marked = !this.quietReads.quiet();
-    if (marked) this.busySignal.set(true);
-    try {
+    await this.state.read(async () => {
       const [waiting, settings, every, accounts, demand, failed] = await Promise.all([
         this.api.companies(WAITING_SEARCH),
         this.api.settings(),
@@ -121,12 +117,7 @@ export class PlatformFacade {
       this.everyCompanySignal.set(every.total);
       this.everyAccountSignal.set(accounts.total);
       this.holdSettings(settings);
-      this.errorSignal.set(null);
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-    } finally {
-      if (marked) this.busySignal.set(false);
-    }
+    });
   }
 
   /**
@@ -135,30 +126,30 @@ export class PlatformFacade {
    */
   async loadCompanies(search: PlatformCompanySearch): Promise<void> {
     this.companySearch = search;
-    const request = ++this.companyRequest;
-    this.errorSignal.set(null);
+    const current = this.companyPages.next();
+    this.state.clearError();
     try {
       const page = await this.api.companies(search);
-      if (request !== this.companyRequest) return;
+      if (!current()) return;
       this.companiesSignal.set(page.rows);
       this.companiesTotalSignal.set(page.total);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
     }
   }
 
   /** One page of accounts, each with its companies. */
   async loadAccounts(search: PlatformAccountSearch): Promise<void> {
     this.accountSearch = search;
-    const request = ++this.accountRequest;
-    this.errorSignal.set(null);
+    const current = this.accountPages.next();
+    this.state.clearError();
     try {
       const page = await this.api.accounts(search);
-      if (request !== this.accountRequest) return;
+      if (!current()) return;
       this.accountsSignal.set(page.rows);
       this.accountsTotalSignal.set(page.total);
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
     }
   }
 
@@ -169,7 +160,7 @@ export class PlatformFacade {
   async openSubscription(companyId: string): Promise<void> {
     this.openedSignal.set(companyId);
     this.subscriptionSignal.set(null);
-    await this.write(async () => {
+    await this.state.write(async () => {
       this.subscriptionSignal.set(await this.api.subscription(companyId));
     });
   }
@@ -188,7 +179,7 @@ export class PlatformFacade {
     terms: SubscriptionTerms,
     version: number,
   ): Promise<boolean> {
-    const saved = await this.write(async () => {
+    const saved = await this.state.write(async () => {
       this.subscriptionSignal.set(
         await this.proven(() => this.api.setSubscription(companyId, terms, version)),
       );
@@ -197,11 +188,11 @@ export class PlatformFacade {
 
       return true;
     });
-    if (saved === false && this.errorSignal() === 'record_changed') {
+    if (saved === false && this.state.error() === 'record_changed') {
       try {
         this.subscriptionSignal.set(await this.api.subscription(companyId));
       } catch (error) {
-        this.errorSignal.set(codeOf(error));
+        this.state.fail(error);
       }
     }
 
@@ -209,7 +200,7 @@ export class PlatformFacade {
   }
 
   async stopSubscription(companyId: string): Promise<boolean> {
-    return this.write(async () => {
+    return this.state.write(async () => {
       await this.proven(() => this.api.stopSubscription(companyId));
       this.subscriptionSignal.set(null);
       await this.refreshCompanies();
@@ -219,37 +210,15 @@ export class PlatformFacade {
     });
   }
 
-  private async write<T>(work: () => Promise<T>): Promise<T | false> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
-      return await work();
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
-  }
-
   /** The account is shown as the platform answers it, so a refused action leaves it as it was. */
   async actOnAccount(userId: string, action: AccountAction): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       const updated = await this.proven(() => this.api.actOnAccount(userId, action));
       // The answer to an action does not carry the companies, which the row already holds.
       this.accountsSignal.update((rows) =>
         rows.map((row) => (row.id === updated.id ? { ...updated, companies: row.companies } : row)),
       );
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 
   /**
@@ -261,41 +230,33 @@ export class PlatformFacade {
     countryCode: CompanyCountry,
     ownerEmail: string,
   ): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    let opened = false;
-    try {
-      const companyId = await this.proven(() =>
-        this.api.createCompany({ name, countryCode, ...COMPANY_COUNTRIES[countryCode] }),
-      );
-      opened = true;
-      await this.proven(() => this.api.inviteOwner(companyId, ownerEmail));
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      if (opened) {
-        await this.readCompanies();
+    return this.state.marked(async () => {
+      this.state.clearError();
+      let opened = false;
+      try {
+        const companyId = await this.proven(() =>
+          this.api.createCompany({ name, countryCode, ...COMPANY_COUNTRIES[countryCode] }),
+        );
+        opened = true;
+        await this.proven(() => this.api.inviteOwner(companyId, ownerEmail));
+        return true;
+      } catch (error) {
+        this.state.fail(error);
+        return false;
+      } finally {
+        if (opened) {
+          await this.readCompanies();
+        }
       }
-      this.busySignal.set(false);
-    }
+    });
   }
 
   /** An owner joins only once they accept, so the list read again shows the same owners until then. */
   async inviteOwner(companyId: string, email: string): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await this.proven(() => this.api.inviteOwner(companyId, email));
       await this.readCompanies();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 
   approve(companyId: string): Promise<boolean> {
@@ -308,7 +269,7 @@ export class PlatformFacade {
 
   /** The switch shows the new value only once the platform holds it. */
   async setSwitch(key: PlatformSwitch, value: boolean): Promise<void> {
-    this.errorSignal.set(null);
+    this.state.clearError();
     try {
       await this.proven(() => this.api.setSwitch(key, value));
       const signup = this.signupSignal();
@@ -323,7 +284,7 @@ export class PlatformFacade {
         );
       }
     } catch (error) {
-      this.errorSignal.set(codeOf(error));
+      this.state.fail(error);
     }
   }
 
@@ -359,7 +320,7 @@ export class PlatformFacade {
   }
 
   clearError(): void {
-    this.errorSignal.set(null);
+    this.state.clearError();
   }
 
   /**
@@ -369,7 +330,7 @@ export class PlatformFacade {
   private async saveSettings(
     changes: readonly { key: string; value: FieldValue }[],
   ): Promise<boolean> {
-    const saved = await this.write(async () => {
+    const saved = await this.state.write(async () => {
       await this.proven(() =>
         this.api.saveSettings(
           changes.map(({ key, value }) => {
@@ -382,11 +343,11 @@ export class PlatformFacade {
       this.holdSettings(await this.api.settings());
       return true;
     });
-    if (!saved && this.errorSignal() === 'record_changed') {
+    if (!saved && this.state.error() === 'record_changed') {
       try {
         this.holdSettings(await this.api.settings());
       } catch (error) {
-        this.errorSignal.set(codeOf(error));
+        this.state.fail(error);
       }
     }
     return saved;
@@ -425,21 +386,13 @@ export class PlatformFacade {
 
   /** A decided company leaves the waiting list, so the list is read again rather than edited in place. */
   private async decide(call: () => Promise<unknown>): Promise<boolean> {
-    this.busySignal.set(true);
-    this.errorSignal.set(null);
-    try {
+    return this.state.write(async () => {
       await this.proven(call);
       await this.readCompanies();
       // An operator can act on the company they are themselves working in, and its status, access and
       // subscription are read from the session by the shell (developer sweep, 2026-09-20).
       await this.auth.refresh();
-      return true;
-    } catch (error) {
-      this.errorSignal.set(codeOf(error));
-      return false;
-    } finally {
-      this.busySignal.set(false);
-    }
+    });
   }
 }
 
