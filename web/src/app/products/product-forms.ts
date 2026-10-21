@@ -130,8 +130,11 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
       value: (row) => row.categoryName ?? '',
       sortable: true,
       filterable: true,
+      // What its header needs in any language; a longer category widens it, as every value does.
+      width: 118,
     },
-    { id: 'unit', label: `${FIELDS}.unit`, value: (row) => row.unitName, width: 100 },
+    // What its header needs in any language; a longer unit widens it.
+    { id: 'unit', label: `${FIELDS}.unit`, value: (row) => row.unitName, width: 72 },
     {
       id: 'price',
       priority: 'high',
@@ -583,6 +586,7 @@ export const CATEGORIES_LIST: ListDescriptor<ProductCategoryListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'childCount',

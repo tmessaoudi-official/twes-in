@@ -1360,9 +1360,10 @@ export class DataList<Row> implements OnInit {
     if (delta === 0) return;
     event.preventDefault();
     event.stopPropagation();
-    // The column as it stands now, not as the header last drew it: a held key repeats faster than the redraw.
+    // The column as it stands now, not as the header last drew it: a held key repeats faster than the redraw. From
+    // the width drawn, which for a column that wraps is its share of the card, never the floor under it.
     const current = this.columns().find((each) => each.id === column.id) ?? column;
-    this.saveWidth(column.id, this.columnWidth(current) + delta);
+    this.saveWidth(column.id, this.widthOf(current) + delta);
   }
 
   protected startResize(event: PointerEvent, column: ListColumn<Row>): void {
