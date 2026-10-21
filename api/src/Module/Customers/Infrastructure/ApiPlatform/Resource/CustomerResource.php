@@ -40,7 +40,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * A company's customers (docs/SPEC.md § 4 customer). Read with customer.read, added and revised with customer.write;
- * never deleted, deactivated instead. The shape is checked here, the company's preset and the rest by the use case.
+ * deleted while unused or merged through the records engine with customer.remove, never through this resource. The shape is checked here, the company's preset and the rest by the use case.
  * An address left without a country is in the company's own; a shipping address left empty is the billing address.
  */
 #[ApiResource(

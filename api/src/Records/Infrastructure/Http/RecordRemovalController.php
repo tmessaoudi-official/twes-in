@@ -79,7 +79,7 @@ final readonly class RecordRemovalController
         } catch (UnknownRecords $unknown) {
             throw new NotFoundHttpException($unknown->getMessage(), $unknown);
         }
-        $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $subject->writePermission);
+        $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $subject->removePermission);
         $this->moduleOn($company, $subject);
 
         return $this->answer(fn (): Response => new JsonResponse($this->described($this->remove->handle($company, $subject, $body['ids'] ?? null, $this->guard->account()->getId())), Response::HTTP_CREATED));
@@ -98,7 +98,7 @@ final readonly class RecordRemovalController
         } catch (UnknownRecords $unknown) {
             throw new NotFoundHttpException($unknown->getMessage(), $unknown);
         }
-        $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $subject->writePermission);
+        $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $subject->removePermission);
         $this->moduleOn($company, $subject);
 
         return $this->answer(fn (): Response => new JsonResponse($this->described($this->merge->handle($company, $subject, $body['keptId'] ?? null, $body['ids'] ?? null, new MergeActor($this->guard->account()->getId(), fn (string $permission): bool => $this->guard->may($company, $permission)))), Response::HTTP_CREATED));
@@ -113,7 +113,7 @@ final readonly class RecordRemovalController
         } catch (UnknownRecords $unknown) {
             throw new NotFoundHttpException($unknown->getMessage(), $unknown);
         }
-        $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $subject->writePermission);
+        $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $subject->removePermission);
         $this->moduleOn($company, $subject);
         $ids = $request->query->all()['ids'] ?? null;
 

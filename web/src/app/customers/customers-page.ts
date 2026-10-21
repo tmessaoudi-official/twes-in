@@ -58,14 +58,15 @@ export class CustomersPage implements OnInit {
   private readonly auth = inject(AuthFacade);
   private readonly deletes = inject(RecordDeletes);
 
-  // Customers are selected to be merged, which only a person who may change them can do.
+  // Customers are selected to be merged, which only a person who may remove them can do: a clerk adds customers, and a
+  // duplicate it makes is merged by a manager.
   protected readonly list = computed<ListDescriptor<CustomerListRow>>(() => {
     const list = customersList(
       this.facade.customFields(),
       this.facade.groups(),
       this.facade.options()?.regimes ?? [],
     );
-    return this.mayWrite() ? { ...list, selection: { countKey: 'customers.selected' } } : list;
+    return this.mayRemove() ? { ...list, selection: { countKey: 'customers.selected' } } : list;
   });
   /** The customers ticked on the page shown, by id, in the order they were ticked. */
   protected readonly selected = signal<readonly string[]>([]);
@@ -77,6 +78,7 @@ export class CustomersPage implements OnInit {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
+  protected readonly mayRemove = computed(() => this.auth.hasPermission('customer.remove'));
   protected readonly rowTestId = (row: CustomerListRow): string => `customer-${row.number}`;
 
   /** The page the list shows last asked for; a change elsewhere reads it again. */

@@ -234,6 +234,15 @@ describe('CustomersPage', () => {
     expect(q('customers-merge')).toBeNull();
   });
 
+  it('offers a writer who may not remove customers a new one but no ticks to merge with', async () => {
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'customer.remove');
+    fixture = TestBed.createComponent(CustomersPage);
+    await settle();
+
+    expect(q('customer-add')).not.toBeNull();
+    expect(q('list-select-row-k1')).toBeNull();
+  });
+
   it('keeps the ticks when the person merges nothing', async () => {
     deletes.offerMergeOf.mockResolvedValue(false);
     await tick('k2');

@@ -943,14 +943,14 @@ describe('CustomerPage', () => {
     entry!.click();
     await settle();
 
-    expect(auth.hasPermission).toHaveBeenCalledWith('customer.write');
+    expect(auth.hasPermission).toHaveBeenCalledWith('customer.remove');
     expect(deletes.remove).toHaveBeenCalledWith('c1', 'customer', [
       { id: 'k1', label: 'CLI-0001 Carthage Conseil' },
     ]);
     expect(navigate).toHaveBeenCalledWith(['/customers']);
   });
 
-  it('stays on the customer when the delete is refused, and offers none to whoever may not write customers', async () => {
+  it('stays on the customer when the delete is refused, and offers none to whoever may not remove customers', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     deletes.remove.mockResolvedValue(false);
     customer.set(carthage);
@@ -960,9 +960,10 @@ describe('CustomerPage', () => {
     expect(navigate).not.toHaveBeenCalled();
 
     fixture.destroy();
-    auth.hasPermission.mockImplementation((permission: string) => permission !== 'customer.write');
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'customer.remove');
     await open('k1');
     expect(await menuEntry('delete')).toBeNull();
+    expect(q('record-save')).not.toBeNull();
   });
 
   it('offers no delete while a customer is new', async () => {

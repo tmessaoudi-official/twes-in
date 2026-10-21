@@ -30,7 +30,7 @@ final class CustomerGroupsTest extends ApiTestCase
 
     public function testAWriterCreatesRevisesAndDeletesAGroup(): void
     {
-        $this->signedIn(['customer.read', 'customer.write']);
+        $this->signedIn(['customer.read', 'customer.write', 'customer.remove']);
 
         $this->postJson($this->path(), ['name' => 'Grossistes', 'description' => 'Remise de volume']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -109,7 +109,7 @@ final class CustomerGroupsTest extends ApiTestCase
         self::assertNotNull($regime);
         $this->em()->persist(Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Individual, 'Amel'), $group, $regime, [], new \DateTimeImmutable()));
         $this->em()->flush();
-        $this->signedIn(['customer.read', 'customer.write']);
+        $this->signedIn(['customer.read', 'customer.write', 'customer.remove']);
 
         $this->getJson($this->path());
         self::assertSame(1, $this->jsonList()[0]['customerCount']);

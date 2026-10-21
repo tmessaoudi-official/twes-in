@@ -117,7 +117,8 @@
     },
     "customer": {
       "read": "Voir les clients",
-      "write": "Créer et modifier les clients"
+      "write": "Créer et modifier les clients",
+      "remove": "Supprimer et fusionner les clients"
     },
     "delivery_note": {
       "read": "Voir les bons de livraison",

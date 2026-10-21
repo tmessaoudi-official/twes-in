@@ -77,7 +77,7 @@ export class CustomerGroupsPage implements OnInit {
         destructive: true,
         run: (row) => void this.remove(row),
         disabled: () => this.busy(),
-        shown: () => this.mayWrite(),
+        shown: () => this.mayRemove(),
         confirm: (row) => ({
           kind: 'definitif',
           title: 'customers.groups.delete_title',
@@ -95,6 +95,7 @@ export class CustomerGroupsPage implements OnInit {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
+  protected readonly mayRemove = computed(() => this.auth.hasPermission('customer.remove'));
   protected readonly rowTestId = (row: CustomerGroupRow): string => `customer-group-${row.name}`;
 
   protected readonly editing = signal<CustomerGroupRow | 'new' | null>(null);

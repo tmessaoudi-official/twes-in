@@ -49,7 +49,7 @@ final class ModulesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame([
             ['key' => 'accounting_export', 'labelKey' => 'modules.accounting_export', 'dependencies' => ['invoices'], 'permissions' => ['accounting.export'], 'enabled' => true],
-            ['key' => 'customers', 'labelKey' => 'modules.customers', 'dependencies' => [], 'permissions' => ['customer.read', 'customer.write'], 'enabled' => true],
+            ['key' => 'customers', 'labelKey' => 'modules.customers', 'dependencies' => [], 'permissions' => ['customer.read', 'customer.write', 'customer.remove'], 'enabled' => true],
             ['key' => 'delivery_notes', 'labelKey' => 'modules.delivery_notes', 'dependencies' => ['customers', 'products'], 'permissions' => ['delivery_note.read', 'delivery_note.write', 'delivery_note.validate'], 'enabled' => true],
             ['key' => 'expenses', 'labelKey' => 'modules.expenses', 'dependencies' => [], 'permissions' => ['expense.read', 'expense.write'], 'enabled' => true],
             ['key' => 'fixture_ledger', 'labelKey' => 'modules.fixture_ledger', 'dependencies' => ['customers'], 'permissions' => [], 'enabled' => true],

@@ -749,7 +749,7 @@ final class CustomerMergeTest extends ApiTestCase
 
     private function signedIn(bool $prove = true): void
     {
-        $permissions = ['company.read', 'customer.read', 'customer.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'product.read', 'product.write'];
+        $permissions = ['company.read', 'customer.read', 'customer.write', 'customer.remove', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'product.read', 'product.write'];
         $this->createUser('shop@twes.local', self::PASSWORD, $this->company, $permissions, 'member');
         $this->login('shop@twes.local', self::PASSWORD);
         self::assertResponseIsSuccessful();

@@ -11,7 +11,8 @@ namespace App\Records\Application;
 
 /**
  * A kind of record a person may delete while nothing uses it, restore, and merge: its table, which its references name,
- * the permission that writes it, which deleting and restoring need, the module it belongs to, switched off with it, and
+ * the permission that writes it, which restoring needs, and the one deleting and merging need, the same unless the
+ * subject keeps removing apart, the module it belongs to, switched off with it, and
  * the columns that name one record to a person (« F-001 Sotumag »), joined by a space where they hold something.
  * It is merged only once it says how: as an alias, switched off (`is_active`) and pointing at the record kept
  * (`merged_into_id`), which its table must hold, or removed. One that says nothing is not merged, and a merge of it is
@@ -24,6 +25,9 @@ namespace App\Records\Application;
  */
 final readonly class RecordSubject
 {
+    /** What deleting and merging its records needs: the permission that writes them, unless a subject keeps removing apart. */
+    public string $removePermission;
+
     /**
      * @param non-empty-list<string> $labelColumns
      * @param list<string>           $mustAgree
@@ -42,7 +46,9 @@ final readonly class RecordSubject
         public ?string $labelTable = null,
         public ?string $labelKey = null,
         public array $labelTableColumns = [],
+        ?string $removePermission = null,
     ) {
+        $this->removePermission = $removePermission ?? $writePermission;
         if ((null === $whereColumn) !== ([] === $whereValues)) {
             throw new \InvalidArgumentException(\sprintf('%s: the rows that are its records are named by a column and at least one of its values.', $table));
         }

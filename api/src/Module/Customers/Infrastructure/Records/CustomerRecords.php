@@ -18,8 +18,8 @@ use App\Records\Application\RecordReference;
 use App\Records\Application\RecordSubject;
 
 /**
- * A customer is deleted while nothing names it, with its contacts and settings, restored, and merged into another;
- * whoever writes customers does it. Merged, it stays as the kept one's alias for what was sent or issued to it. Two
+ * A customer is deleted while nothing names it, with its contacts and settings, and merged into another, by whoever may
+ * remove customers; whoever writes them restores it. Merged, it stays as the kept one's alias for what was sent or issued to it. Two
  * customers registered under different numbers, taxed under different regimes, or one a business and the other a
  * person, are not the same customer and are not merged.
  */
@@ -27,7 +27,7 @@ final readonly class CustomerRecords implements DeclaresRecordReferences
 {
     public function subjects(): array
     {
-        return [new RecordSubject('customer', CustomerPermission::WRITE, CustomersModule::KEY, ['number', 'name'], MergedAway::Aliased, ['identifiers', 'tax_regime_id', 'kind'])];
+        return [new RecordSubject('customer', CustomerPermission::WRITE, CustomersModule::KEY, ['number', 'name'], MergedAway::Aliased, ['identifiers', 'tax_regime_id', 'kind'], removePermission: CustomerPermission::REMOVE)];
     }
 
     public function references(): array
