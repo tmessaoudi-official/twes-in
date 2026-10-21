@@ -4,6 +4,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { ProductsApi, ProductsRefused } from './products-api';
 import { ProductsFacade } from './products-facade';
 import type { ProductReorderPointRow, ProductsError } from './products-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** What became of a write: `changed` is a product saved since, which the product page reads again and says. */
 export type ReorderPointWrite = 'saved' | 'refused' | 'changed';
@@ -15,6 +16,7 @@ export type ReorderPointWrite = 'saved' | 'refused' | 'changed';
 @Injectable()
 export class ProductReorderPoints {
   private readonly api = inject(ProductsApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly products = inject(ProductsFacade);
   private readonly rowsSignal = signal<readonly ProductReorderPointRow[]>([]);
   private readonly busySignal = signal(false);
@@ -25,8 +27,9 @@ export class ProductReorderPoints {
   readonly error = this.errorSignal.asReadonly();
 
   async load(companyId: string, productId: string): Promise<void> {
-    await this.run(async () =>
-      this.rowsSignal.set(await this.api.reorderPoints(companyId, productId)),
+    await this.run(
+      async () => this.rowsSignal.set(await this.api.reorderPoints(companyId, productId)),
+      true,
     );
   }
 
@@ -57,8 +60,10 @@ export class ProductReorderPoints {
     return 'changed';
   }
 
-  private async run(work: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
+  /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
+  private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
+    const marked = !(reading && this.quietReads.quiet());
+    if (marked) this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
       await work();
@@ -67,7 +72,7 @@ export class ProductReorderPoints {
       this.errorSignal.set(error instanceof ProductsRefused ? error.code : 'network');
       return false;
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 }

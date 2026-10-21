@@ -22,11 +22,13 @@ import type {
   ProductsError,
   ProductTracking,
 } from './products-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The products of the company being worked in, their categories, the form's options and the company's fields for products. */
 @Injectable({ providedIn: 'root' })
 export class ProductsFacade {
   private readonly api = inject(ProductsApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly fields = inject(CustomFieldsApi);
   private readonly settings = inject(SettingsApi);
   private readonly productsSignal = signal<readonly ProductRow[]>([]);
@@ -208,8 +210,12 @@ export class ProductsFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    this.reads++;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) {
+      this.reads++;
+      this.busySignal.set(true);
+    }
     // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
     this.errorSignal.set(null);
     try {
@@ -218,7 +224,7 @@ export class ProductsFacade {
       this.errorSignal.set(codeOf(error));
     } finally {
       // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (--this.reads === 0) this.busySignal.set(false);
+      if (marked && --this.reads === 0) this.busySignal.set(false);
     }
   }
 

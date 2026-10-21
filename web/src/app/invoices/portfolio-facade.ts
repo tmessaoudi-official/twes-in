@@ -5,11 +5,13 @@ import { InvoicesRefused } from './invoices-api';
 import type { InvoicesError } from './invoices-types';
 import { PortfolioApi } from './portfolio-api';
 import type { PortfolioRow, PortfolioSearch } from './portfolio-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The page of the company's cheques and traites the portfolio screen shows. */
 @Injectable({ providedIn: 'root' })
 export class PortfolioFacade {
   private readonly api = inject(PortfolioApi);
+  private readonly quietReads = inject(QuietReads);
 
   private readonly rowsSignal = signal<readonly PortfolioRow[]>([]);
   private readonly totalSignal = signal(0);
@@ -27,7 +29,9 @@ export class PortfolioFacade {
   /** One page of the search. Only the latest search's answer is shown: pages may come back out of order. */
   async loadPage(companyId: string, search: PortfolioSearch): Promise<void> {
     const request = ++this.request;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       const page = await this.api.portfolio(companyId, search);
       if (request !== this.request) return;

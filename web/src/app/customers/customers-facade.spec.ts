@@ -2,6 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import { CustomersApi, CustomersRefused } from './customers-api';
 import { CustomersFacade } from './customers-facade';
@@ -165,6 +166,33 @@ describe('CustomersFacade', () => {
     await page;
 
     expect(facade.busy()).toBe(false);
+  });
+
+  it('marks no read busy that nobody asked for, and a read a person asked for stays marked until it answers', async () => {
+    let answerPage: (page: { rows: CustomerRow[]; total: number }) => void = () => undefined;
+    api.customers.mockReturnValue(new Promise((resolve) => (answerPage = resolve)));
+    api.groups.mockResolvedValue([wholesalers]);
+    const quiet = TestBed.inject(QuietReads);
+
+    const asked = facade.loadPage('c1', everyCustomer);
+    // Another tab's change reads the groups again while the person's page is on its way.
+    await quiet.quietly(async () => {
+      const reload = facade.loadGroups('c1');
+      expect(facade.busy()).toBe(true);
+      await reload;
+    });
+    expect(facade.busy()).toBe(true);
+    answerPage({ rows: [amel], total: 1 });
+    await asked;
+    expect(facade.busy()).toBe(false);
+
+    let seen: boolean | null = null;
+    api.groups.mockImplementation(() => {
+      seen = facade.busy();
+      return Promise.resolve([wholesalers]);
+    });
+    await quiet.quietly(() => facade.loadGroups('c1'));
+    expect(seen).toBe(false);
   });
 
   it('reads one page of customers with the total the paginator counts', async () => {

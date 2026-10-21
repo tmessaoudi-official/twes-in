@@ -9,11 +9,13 @@ import type {
   VersionedSettingChange,
 } from '../shared/settings/settings-types';
 import { COMPANY_CHAINS } from './settings-forms';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** A company's defaults, as its settings page reads and changes them: always at the company level. */
 @Injectable({ providedIn: 'root' })
 export class CompanySettings {
   private readonly api = inject(SettingsApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly live = inject(SettingsFacade);
   private readonly rowsSignal = signal<readonly SettingRow[]>([]);
   private readonly busySignal = signal(false);
@@ -24,14 +26,16 @@ export class CompanySettings {
   readonly error = this.errorSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       await this.fetch(companyId);
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 

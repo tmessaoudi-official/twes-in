@@ -20,11 +20,13 @@ import type {
   ExpenseVendorOption,
   TejFileAnswer,
 } from './expenses-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The expenses of the company being worked in, their categories, and the expense open with its files. */
 @Injectable({ providedIn: 'root' })
 export class ExpensesFacade {
   private readonly api = inject(ExpensesApi);
+  private readonly quietReads = inject(QuietReads);
 
   private readonly expensesSignal = signal<readonly ExpenseRow[]>([]);
   private readonly optionsSignal = signal<ExpenseOptions | null>(null);
@@ -266,8 +268,12 @@ export class ExpensesFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    this.reads++;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) {
+      this.reads++;
+      this.busySignal.set(true);
+    }
     // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
     this.errorSignal.set(null);
     try {
@@ -276,7 +282,7 @@ export class ExpensesFacade {
       this.errorSignal.set(codeOf(error));
     } finally {
       // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (--this.reads === 0) this.busySignal.set(false);
+      if (marked && --this.reads === 0) this.busySignal.set(false);
     }
   }
 

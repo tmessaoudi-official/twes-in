@@ -11,6 +11,7 @@ import type {
   SubscriptionView,
   WaitingPayment,
 } from './subscription-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * The working company's subscription, and the payments it declares. A declaration changes what the company may do —
@@ -20,6 +21,7 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class SubscriptionFacade {
   private readonly api = inject(SubscriptionApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
   private readonly subscriptionSignal = signal<SubscriptionView | null>(null);
@@ -36,7 +38,9 @@ export class SubscriptionFacade {
   readonly managed = this.managedSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       const view = await this.api.ofCompany(companyId);
       this.subscriptionSignal.set(view);
@@ -45,7 +49,7 @@ export class SubscriptionFacade {
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 
@@ -67,14 +71,16 @@ export class SubscriptionFacade {
 
   /** An operator's queue: every payment waiting for a decision, across all companies. */
   async loadWaiting(): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       this.waitingSignal.set(await this.api.waiting());
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 

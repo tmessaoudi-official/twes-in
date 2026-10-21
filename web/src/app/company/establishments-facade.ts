@@ -9,11 +9,13 @@ import type {
   NumberingChanges,
   NumberingSeriesRow,
 } from './company-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The establishments of the company being worked in, and how each of them numbers its documents. */
 @Injectable({ providedIn: 'root' })
 export class EstablishmentsFacade {
   private readonly api = inject(CompanyApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly establishmentsSignal = signal<readonly EstablishmentRow[]>([]);
   private readonly seriesSignal = signal<readonly NumberingSeriesRow[]>([]);
   private readonly busySignal = signal(false);
@@ -72,8 +74,12 @@ export class EstablishmentsFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    this.reads++;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) {
+      this.reads++;
+      this.busySignal.set(true);
+    }
     // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
     this.errorSignal.set(null);
     try {
@@ -82,7 +88,7 @@ export class EstablishmentsFacade {
       this.errorSignal.set(codeOf(error));
     } finally {
       // Several reads run at once (a list and what its filters name): busy until the last one answers.
-      if (--this.reads === 0) this.busySignal.set(false);
+      if (marked && --this.reads === 0) this.busySignal.set(false);
     }
   }
 

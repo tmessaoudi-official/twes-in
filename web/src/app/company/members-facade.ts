@@ -6,11 +6,13 @@ import { unlessDemoRefused } from '../shared/demo/demo-refused-interceptor';
 import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, MemberRole, MemberRow } from './company-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The member list of one company, and the two things an administrator does to it. */
 @Injectable({ providedIn: 'root' })
 export class MembersFacade {
   private readonly api = inject(CompanyApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
   private readonly membersSignal = signal<readonly MemberRow[]>([]);
@@ -22,7 +24,9 @@ export class MembersFacade {
   readonly error = this.errorSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       this.membersSignal.set(await this.api.members(companyId));
       this.errorSignal.set(null);
@@ -30,7 +34,7 @@ export class MembersFacade {
       this.membersSignal.set([]);
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 

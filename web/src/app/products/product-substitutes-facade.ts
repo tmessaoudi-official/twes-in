@@ -3,6 +3,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductsError, ProductSubstituteRow } from './products-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * The products that can stand in for one, each with what is on hand of it. Its own facade, as the homes have theirs: a
@@ -11,6 +12,7 @@ import type { ProductsError, ProductSubstituteRow } from './products-types';
 @Injectable()
 export class ProductSubstitutes {
   private readonly api = inject(ProductsApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly rowsSignal = signal<readonly ProductSubstituteRow[]>([]);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<ProductsError | null>(null);
@@ -24,7 +26,9 @@ export class ProductSubstitutes {
    * no quantity, rather than an error about a number they were never meant to read.
    */
   async load(companyId: string, productId: string): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
       const substitutes = await this.api.substitutes(companyId, productId);
@@ -43,7 +47,7 @@ export class ProductSubstitutes {
     } catch (error) {
       this.errorSignal.set(error instanceof ProductsRefused ? error.code : 'network');
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 }

@@ -7,6 +7,7 @@ import { ProductsApi, ProductsRefused } from './products-api';
 import { ProductsFacade } from './products-facade';
 import { appended, groupByEstablishment, moved, without } from './product-home-order';
 import type { ProductHomeRow, ProductsError } from './products-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /**
  * Where one product normally lives, per establishment (docs/SPEC.md row 101), with the locations it may be given.
@@ -24,6 +25,7 @@ export type HomesWrite = 'saved' | 'refused' | 'changed';
 @Injectable()
 export class ProductHomes {
   private readonly api = inject(ProductsApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly stock = inject(InventoryApi);
   private readonly products = inject(ProductsFacade);
   private readonly homesSignal = signal<readonly ProductHomeRow[]>([]);
@@ -49,7 +51,7 @@ export class ProductHomes {
       ]);
       this.homesSignal.set(homes);
       this.locationsSignal.set(locations);
-    });
+    }, true);
   }
 
   /** Where it lives, establishment by establishment, each in its order: the first of each is the main home. */
@@ -129,8 +131,10 @@ export class ProductHomes {
     return 'changed';
   }
 
-  private async run(work: () => Promise<void>): Promise<boolean> {
-    this.busySignal.set(true);
+  /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
+  private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
+    const marked = !(reading && this.quietReads.quiet());
+    if (marked) this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
       await work();
@@ -139,7 +143,7 @@ export class ProductHomes {
       this.errorSignal.set(error instanceof ProductsRefused ? error.code : 'network');
       return false;
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 }

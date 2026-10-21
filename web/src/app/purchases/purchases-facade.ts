@@ -14,11 +14,13 @@ import type {
   Receiving,
   VendorOption,
 } from './purchases-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The orders to vendors of the company being worked in, and the order open on screen. */
 @Injectable({ providedIn: 'root' })
 export class PurchasesFacade {
   private readonly api = inject(PurchasesApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly ordersSignal = signal<readonly PurchaseOrderRow[]>([]);
   private readonly orderSignal = signal<PurchaseOrderRow | null>(null);
   private readonly totalSignal = signal(0);
@@ -169,8 +171,12 @@ export class PurchasesFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
-    this.reads++;
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) {
+      this.reads++;
+      this.busySignal.set(true);
+    }
     // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
     this.errorSignal.set(null);
     try {
@@ -179,7 +185,7 @@ export class PurchasesFacade {
       this.errorSignal.set(codeOf(error));
     } finally {
       // Several reads run at once (a list and its counts): busy until the last one answers.
-      if (--this.reads === 0) this.busySignal.set(false);
+      if (marked && --this.reads === 0) this.busySignal.set(false);
     }
   }
 

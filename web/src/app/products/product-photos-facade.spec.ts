@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 import { ProductPhotosApi, ProductPhotosRefused } from './product-photos-api';
 import { ProductPhotos } from './product-photos-facade';
 import type { ProductPhotoRow } from './product-photos-types';
@@ -43,6 +44,26 @@ describe('ProductPhotos', () => {
     expect(gallery.photos().map((each) => each.id)).toEqual(['a', 'b', 'c']);
     expect(gallery.main()?.id).toBe('a');
     expect(gallery.loadedFor()).toBe('p1');
+  });
+
+  it('leaves its buttons as they are while a reload nobody asked for reads the gallery, and marks a change', async () => {
+    let seen: boolean | null = null;
+    api.list.mockImplementation(() => {
+      seen = gallery.busy();
+      return Promise.resolve([photo('a', true)]);
+    });
+    const quiet = TestBed.inject(QuietReads);
+
+    await quiet.quietly(() => gallery.load('c1', 'p1'));
+    expect(seen).toBe(false);
+
+    // A change made while such a reload runs is the person's own, and is marked so it is never sent twice.
+    api.markMain.mockImplementation(() => {
+      seen = gallery.busy();
+      return Promise.resolve(undefined);
+    });
+    await quiet.quietly(() => gallery.markMain('c1', 'p1', 'a'));
+    expect(seen).toBe(true);
   });
 
   it('moves a photo one step by sending the whole order, and nothing past an end', async () => {

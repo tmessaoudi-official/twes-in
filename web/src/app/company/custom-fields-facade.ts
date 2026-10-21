@@ -11,11 +11,13 @@ import type {
   CustomFieldEntity,
   CustomFieldInput,
 } from '../shared/custom-fields/custom-fields-types';
+import { QuietReads } from '../shared/feedback/quiet-reads';
 
 /** The custom fields the company being worked in adds to one kind of record, retired ones included. */
 @Injectable({ providedIn: 'root' })
 export class CustomFieldsFacade {
   private readonly api = inject(CustomFieldsApi);
+  private readonly quietReads = inject(QuietReads);
   private readonly fieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<CustomFieldsError | null>(null);
@@ -25,14 +27,16 @@ export class CustomFieldsFacade {
   readonly error = this.errorSignal.asReadonly();
 
   async load(companyId: string, entity: CustomFieldEntity): Promise<void> {
-    this.busySignal.set(true);
+    // A reload nobody asked for leaves busy as it is, so no action turns disabled under a pointer (QuietReads).
+    const marked = !this.quietReads.quiet();
+    if (marked) this.busySignal.set(true);
     try {
       this.fieldsSignal.set(await this.api.list(companyId, entity));
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      if (marked) this.busySignal.set(false);
     }
   }
 
