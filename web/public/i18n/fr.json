@@ -2079,6 +2079,7 @@
     "title": "Produits",
     "add": "Nouveau produit",
     "imports": {
+      "categories": "Catégories",
       "products": "Produits",
       "vendors": "Fournisseurs des produits"
     },

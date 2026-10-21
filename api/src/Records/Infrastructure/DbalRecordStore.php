@@ -93,6 +93,11 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
         $uses = [];
         foreach ($references as $reference) {
             [$naming, $parameters, $named] = $this->naming($reference, $companyId, $ids);
+            // A row of the records' own table that goes in the same delete names nothing any more: a category goes with
+            // the subcategory chosen beside it. Its foreign key is checked once the one statement has deleted both.
+            if ($reference->table === $reference->subject && null === $reference->belowTable && RecordLink::Id === $reference->link) {
+                $naming .= ' AND NOT (id = ANY(CAST(:ids AS uuid[])))';
+            }
             $rows = $this->connection->fetchAllAssociative(
                 \sprintf('SELECT %1$s AS id, count(*)::int AS rows FROM %2$s WHERE %3$s GROUP BY 1', $named, $this->name($reference->table), $naming),
                 $parameters,

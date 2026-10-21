@@ -12,6 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -48,6 +49,7 @@ import { RecordDeletes } from '../shared/records/record-deletes';
   imports: [
     PageTabs,
     RecordChanged,
+    RouterLink,
     MatButtonModule,
     MatCardModule,
     MatIconModule,

@@ -95,8 +95,8 @@ final readonly class RemoveRecords
 
     /**
      * Takes back the records of one subject an import created, all those nothing uses and none of the others: the rows
-     * that import wrote naming one (the goods it brought) belong to it for this, and go with it. One deleted or merged
-     * away since stays as it is. Runs inside the undo's transaction, which locks the records first.
+     * that import wrote naming one (the goods it brought) belong to it for this, and go with it. What a record kept names
+     * is kept too, a category under which a kept one sits. One deleted or merged away since stays as it is. Runs inside the undo's transaction, which locks the records first.
      *
      * @param list<Uuid> $ids
      */
@@ -115,20 +115,35 @@ final readonly class RemoveRecords
                 }
             }
             $byImport = array_map(static fn (RecordReference $reference): RecordReference => $reference->rowsOfImport($runId->toRfc4122()), array_values(array_filter($naming, static fn (RecordReference $reference): bool => null !== $reference->importRunColumn)));
-            $used = $this->store->uses($company->getId(), $present, self::of($naming, RecordUse::Uses));
-            $own = [] === $byImport ? [] : $this->store->uses($company->getId(), $present, $byImport);
-            $merged = MergedAway::Aliased === $subject->mergedAway ? $this->store->mergedAwayAmong($company->getId(), $subject, $present) : [];
+            // A record kept names others as any row does: what it names is kept too, until nothing more is. The rows among
+            // those still going are left out of each count, since they go with them.
+            $using = [];
+            $going = $present;
+            do {
+                $used = $this->store->uses($company->getId(), $going, self::of($naming, RecordUse::Uses));
+                $own = [] === $byImport ? [] : $this->store->uses($company->getId(), $going, $byImport);
+                $merged = MergedAway::Aliased === $subject->mergedAway ? $this->store->mergedAwayAmong($company->getId(), $subject, $going) : [];
+                $found = [];
+                foreach ($going as $id) {
+                    $key = $id->toRfc4122();
+                    $uses = self::lessOwn($used[$key] ?? [], $own[$key] ?? []);
+                    // An alias stands for what the books and the stock still name: it goes only with the merge's undo.
+                    if (\in_array($key, $merged, true)) {
+                        $uses[] = ['table' => $subject->table, 'column' => 'merged_into_id', 'count' => 1];
+                    }
+                    if ([] !== $uses) {
+                        $found[$key] = $uses;
+                    }
+                }
+                $using += $found;
+                $going = array_values(array_filter($going, static fn (Uuid $id): bool => !isset($found[$id->toRfc4122()])));
+            } while ([] !== $found && [] !== $going);
 
             $removable = $removed = $kept = [];
             foreach ($present as $id) {
                 $key = $id->toRfc4122();
-                $uses = self::lessOwn($used[$key] ?? [], $own[$key] ?? []);
-                // An alias stands for what the books and the stock still name: it goes only with the merge's undo.
-                if (\in_array($key, $merged, true)) {
-                    $uses[] = ['table' => $subject->table, 'column' => 'merged_into_id', 'count' => 1];
-                }
-                if ([] !== $uses) {
-                    $kept[] = ['id' => $key, 'label' => $labels[$key], 'uses' => $uses];
+                if (isset($using[$key])) {
+                    $kept[] = ['id' => $key, 'label' => $labels[$key], 'uses' => $using[$key]];
                     continue;
                 }
                 $removable[] = $id;

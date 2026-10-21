@@ -7,22 +7,22 @@
       <div class="flex flex-wrap gap-2">
         <app-list-export [address]="exporter()" testId="products-export" />
         @if (mayWrite() && company()) {
-          @if (mayImportVendors()) {
-            <button
-              mat-stroked-button
-              [matMenuTriggerFor]="importMenu"
-              data-testid="products-import"
+          <button mat-stroked-button [matMenuTriggerFor]="importMenu" data-testid="products-import">
+            {{ 'import.action' | translate }}
+          </button>
+          <mat-menu #importMenu="matMenu">
+            <!-- In the order the files go: a product names its category, and its vendors name it. -->
+            <a
+              mat-menu-item
+              routerLink="/imports/product-categories"
+              data-testid="products-import-categories"
             >
-              {{ 'import.action' | translate }}
-            </button>
-            <mat-menu #importMenu="matMenu">
-              <a
-                mat-menu-item
-                routerLink="/imports/products"
-                data-testid="products-import-products"
-              >
-                {{ 'products.imports.products' | translate }}
-              </a>
+              {{ 'products.imports.categories' | translate }}
+            </a>
+            <a mat-menu-item routerLink="/imports/products" data-testid="products-import-products">
+              {{ 'products.imports.products' | translate }}
+            </a>
+            @if (mayImportVendors()) {
               <a
                 mat-menu-item
                 routerLink="/imports/product-vendors"
@@ -30,12 +30,8 @@
               >
                 {{ 'products.imports.vendors' | translate }}
               </a>
-            </mat-menu>
-          } @else {
-            <a mat-stroked-button routerLink="/imports/products" data-testid="products-import">
-              {{ 'import.action' | translate }}
-            </a>
-          }
+            }
+          </mat-menu>
           <a mat-flat-button routerLink="/products/new" data-testid="product-add">
             {{ 'products.add' | translate }}
           </a>
