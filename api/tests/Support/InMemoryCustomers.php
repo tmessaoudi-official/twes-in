@@ -79,6 +79,11 @@ final class InMemoryCustomers implements CustomerRepository
         return null;
     }
 
+    public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Customer
+    {
+        return $this->ofIdInCompany($id, $companyId);
+    }
+
     public function ofNumberInCompany(string $number, Uuid $companyId): ?Customer
     {
         foreach ($this->ofCompany($companyId) as $customer) {

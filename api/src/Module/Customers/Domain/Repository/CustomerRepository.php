@@ -45,6 +45,12 @@ interface CustomerRepository
     /** Null for a customer that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Customer;
 
+    /**
+     * The customer read again under a row lock held until the transaction ends; null when the company has none by this
+     * id. Outside a transaction it refuses.
+     */
+    public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Customer;
+
     public function ofNumberInCompany(string $number, Uuid $companyId): ?Customer;
 
     /** How many customers, active or not, belong to the group. */
