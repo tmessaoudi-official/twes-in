@@ -2437,6 +2437,13 @@ app-signed-out-layout {
   margin-inline-start: auto;
 }
 
+/* A name a column lets wrap (`ListColumn.wraps`) takes further lines, a word longer than the column broken where it
+   must: what is cut reads as another value. */
+.twes-value.twes-value-wraps {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 td.twes-row-actions {
   position: sticky;
   inset-inline-end: 0;

@@ -120,6 +120,7 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'issueDate',

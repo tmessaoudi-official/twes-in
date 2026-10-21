@@ -9,51 +9,57 @@ import { inACompany, signIn } from './session';
 // of the same context: BroadcastChannel never reaches another browser profile.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
-test('the customer display shows what the counter scans onto a sale, and waits again once it leaves', async ({
-  page,
-}) => {
-  const run = Date.now().toString(36).toUpperCase();
-  const code = gtin(`202${String(Date.now() % 1_000_000_000).padStart(9, '0')}`);
-  await signIn(page);
-  await inACompany(page, CSRF);
-  const ids: string[] = [];
-  try {
-    ids.push(await aProduct(page, `CD-${run}`));
-    await withCodes(page, ids[0], [code]);
+test(
+  'the customer display shows what the counter scans onto a sale, and waits again once it leaves',
+  { tag: '@phone' },
+  async ({ page }) => {
+    const run = Date.now().toString(36).toUpperCase();
+    const code = gtin(`202${String(Date.now() % 1_000_000_000).padStart(9, '0')}`);
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const ids: string[] = [];
+    try {
+      ids.push(await aProduct(page, `CD-${run}`));
+      await withCodes(page, ids[0], [code]);
 
-    const display = await page.context().newPage();
-    await display.goto('/customer-display');
-    await expect(display.getByTestId('customer-display-waiting')).toBeVisible();
+      const display = await page.context().newPage();
+      await display.goto('/customer-display');
+      await expect(display.getByTestId('customer-display-waiting')).toBeVisible();
 
-    await page.goto(`/invoices/new?scan=${code}`);
-    await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis CD-${run}`);
+      await page.goto(`/invoices/new?scan=${code}`);
+      await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis CD-${run}`);
 
-    await expect(display.getByTestId('customer-display-name')).toHaveText(`Vis CD-${run}`);
-    await expect(display.getByTestId('customer-display-line')).toContainText('1 ×');
-    await expect(display.getByTestId('customer-display-line')).toContainText('TND');
-    await expect(display.getByTestId('customer-display-price-kind')).toContainText('Prix affiché');
-    expect(await wcagViolations(display)).toEqual([]);
+      await expect(display.getByTestId('customer-display-name')).toHaveText(`Vis CD-${run}`);
+      await expect(display.getByTestId('customer-display-line')).toContainText('1 ×');
+      await expect(display.getByTestId('customer-display-line')).toContainText('TND');
+      await expect(display.getByTestId('customer-display-price-kind')).toContainText(
+        'Prix affiché',
+      );
+      expect(await wcagViolations(display)).toEqual([]);
 
-    // Once the sale is for someone, its figures are worked out and the display shows the price the line charges.
-    await aCustomer(page, `CD-${run}`);
-    await page.getByTestId('invoice-customer').fill(`CD-${run}`);
-    await page.getByRole('option', { name: new RegExp(`^CD-${run} · `) }).click();
-    await expect(display.getByTestId('customer-display-price-kind')).toContainText('Prix unitaire');
-    await expect(display.getByTestId('customer-display-total')).toContainText('TND');
+      // Once the sale is for someone, its figures are worked out and the display shows the price the line charges.
+      await aCustomer(page, `CD-${run}`);
+      await page.getByTestId('invoice-customer').fill(`CD-${run}`);
+      await page.getByRole('option', { name: new RegExp(`^CD-${run} · `) }).click();
+      await expect(display.getByTestId('customer-display-price-kind')).toContainText(
+        'Prix unitaire',
+      );
+      await expect(display.getByTestId('customer-display-total')).toContainText('TND');
 
-    // Leaving the sale inside the app empties the display…
-    await page.getByTestId('nav-products').click();
-    // The scanned line is unsaved work, so leaving asks first (RCH-01).
-    await page.getByTestId('confirm-run').click();
-    await expect(display.getByTestId('customer-display-waiting')).toBeVisible();
+      // Leaving the sale inside the app empties the display…
+      await page.getByTestId('nav-products').click();
+      // The scanned line is unsaved work, so leaving asks first (RCH-01).
+      await page.getByTestId('confirm-run').click();
+      await expect(display.getByTestId('customer-display-waiting')).toBeVisible();
 
-    // …and so does leaving the page itself, where no screen is destroyed.
-    await page.goto(`/invoices/new?scan=${code}`);
-    await expect(display.getByTestId('customer-display-name')).toHaveText(`Vis CD-${run}`);
-    await page.goto('/products');
-    await expect(display.getByTestId('customer-display-waiting')).toBeVisible();
-    await display.close();
-  } finally {
-    await forget(page, ids);
-  }
-});
+      // …and so does leaving the page itself, where no screen is destroyed.
+      await page.goto(`/invoices/new?scan=${code}`);
+      await expect(display.getByTestId('customer-display-name')).toHaveText(`Vis CD-${run}`);
+      await page.goto('/products');
+      await expect(display.getByTestId('customer-display-waiting')).toBeVisible();
+      await display.close();
+    } finally {
+      await forget(page, ids);
+    }
+  },
+);

@@ -186,6 +186,7 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'issueDate',

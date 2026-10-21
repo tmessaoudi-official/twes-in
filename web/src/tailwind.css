@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
-@import 'tailwindcss';
+/* The screens are under src/ alone: scanning the whole web/ read the end-to-end specs' locators as class names and
+   emitted rules that do not parse. */
+@import 'tailwindcss' source('.');
 
 /*
  * Tailwind utilities read the same Material 3 system variables as the components (styles.scss), so a runtime

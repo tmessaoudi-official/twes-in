@@ -573,6 +573,26 @@ describe('DataList', () => {
     expect(balance?.classList.contains('twes-value-end')).toBe(true);
   });
 
+  it('lets a column that wraps take further lines, and cuts every other column', async () => {
+    fixture.componentInstance.descriptor.set({
+      ...descriptor,
+      columns: descriptor.columns.map((column) =>
+        column.id === 'city' ? { ...column, wraps: true } : column,
+      ),
+    });
+    await settle();
+    const city = q('customer-1')!.querySelector<HTMLElement>('td[data-column="city"]')!;
+    expect(city.classList.contains('truncate')).toBe(false);
+    expect(city.hasAttribute('data-wraps')).toBe(true);
+    expect(city.querySelector('.twes-value')?.classList.contains('twes-value-wraps')).toBe(true);
+    const balance = q('customer-1')!.querySelector<HTMLElement>('td[data-column="balance"]')!;
+    expect(balance.classList.contains('truncate')).toBe(true);
+    expect(balance.hasAttribute('data-wraps')).toBe(false);
+    expect(balance.querySelector('.twes-value')?.classList.contains('twes-value-wraps')).toBe(
+      false,
+    );
+  });
+
   describe('right to left', () => {
     beforeEach(async () => {
       document.documentElement.dir = 'rtl';

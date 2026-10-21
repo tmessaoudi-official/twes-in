@@ -10,92 +10,93 @@ import { inACompany, signIn } from './session';
 // realtime channels in both directions and the choices sent back — is exercised.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
-test('a phone scans for the computer with no sign-in, sees what it did, and its taps act there', async ({
-  page,
-  browser,
-}) => {
-  const run = Date.now().toString(36).toUpperCase();
-  const code = gtin(`201${String(Date.now() % 1_000_000_000).padStart(9, '0')}`);
-  await signIn(page);
-  await inACompany(page, CSRF);
-  const ids: string[] = [];
-  // Locally the link names the stack's HTTPS address on the network (`make up`, the lan service), whose certificate
-  // comes from Caddy's own authority; in CI there is none and the link is the tab's own address.
-  const phone = await browser.newContext({ ignoreHTTPSErrors: true });
-  try {
-    ids.push(await aProduct(page, `PHN-${run}`));
-    await withCodes(page, ids[0], [code]);
+test(
+  'a phone scans for the computer with no sign-in, sees what it did, and its taps act there',
+  { tag: '@phone' },
+  async ({ page, browser }) => {
+    const run = Date.now().toString(36).toUpperCase();
+    const code = gtin(`201${String(Date.now() % 1_000_000_000).padStart(9, '0')}`);
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const ids: string[] = [];
+    // Locally the link names the stack's HTTPS address on the network (`make up`, the lan service), whose certificate
+    // comes from Caddy's own authority; in CI there is none and the link is the tab's own address.
+    const phone = await browser.newContext({ ignoreHTTPSErrors: true });
+    try {
+      ids.push(await aProduct(page, `PHN-${run}`));
+      await withCodes(page, ids[0], [code]);
 
-    await page.goto('/invoices/new');
-    await expect(page.getByTestId('line-0-description')).toBeVisible();
-    await page.getByTestId('phone-pair').click();
-    const url = (await page.getByTestId('phone-pair-url').textContent())?.trim() ?? '';
-    expect(url).toMatch(/\/pair#[0-9a-f]{64}$/);
-    await expect(page.getByTestId('phone-pair-status')).toContainText('En attente du téléphone');
+      await page.goto('/invoices/new');
+      await expect(page.getByTestId('line-0-description')).toBeVisible();
+      await page.getByTestId('phone-pair').click();
+      const url = (await page.getByTestId('phone-pair-url').textContent())?.trim() ?? '';
+      expect(url).toMatch(/\/pair#[0-9a-f]{64}$/);
+      await expect(page.getByTestId('phone-pair-status')).toContainText('En attente du téléphone');
 
-    const screen = await phone.newPage();
-    await screen.goto(url);
-    await expect(screen.getByTestId('phone-code')).toBeVisible();
-    // The link is off the phone's address the moment it is read.
-    expect(screen.url()).not.toContain('#');
-    await expect(page.getByTestId('phone-pair-status')).toContainText('Téléphone relié');
-    expect(await wcagViolations(page)).toEqual([]);
-    await page.getByTestId('phone-pair-close').click();
+      const screen = await phone.newPage();
+      await screen.goto(url);
+      await expect(screen.getByTestId('phone-code')).toBeVisible();
+      // The link is off the phone's address the moment it is read.
+      expect(screen.url()).not.toContain('#');
+      await expect(page.getByTestId('phone-pair-status')).toContainText('Téléphone relié');
+      expect(await wcagViolations(page)).toEqual([]);
+      await page.getByTestId('phone-pair-close').click();
 
-    await screen.getByTestId('phone-code').fill(code);
-    await screen.getByTestId('phone-send').click();
+      await screen.getByTestId('phone-code').fill(code);
+      await screen.getByTestId('phone-send').click();
 
-    await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis PHN-${run}`);
-    await expect(page.getByTestId('line-0-quantity')).toHaveValue('1');
-    await expect(screen.getByTestId('phone-echo')).toContainText(`Vis PHN-${run}`);
-    // The customer price as the computer writes it; the cost is never sent.
-    await expect(screen.getByTestId('phone-echo')).toContainText('1,000');
-    expect(await wcagViolations(screen)).toEqual([]);
+      await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis PHN-${run}`);
+      await expect(page.getByTestId('line-0-quantity')).toHaveValue('1');
+      await expect(screen.getByTestId('phone-echo')).toContainText(`Vis PHN-${run}`);
+      // The customer price as the computer writes it; the cost is never sent.
+      await expect(screen.getByTestId('phone-echo')).toContainText('1,000');
+      expect(await wcagViolations(screen)).toEqual([]);
 
-    // A short drop (the bad-network standard): a scan the network lost is kept and said unsent,
-    // never « Envoyé », and goes with « Renvoyer » once the API answers again, counted once on the computer.
-    const scans = '**/api/scan-pairings/*/scans';
-    await screen.route(scans, (route) => route.abort('internetdisconnected'));
-    await screen.getByTestId('phone-code').fill(code);
-    await screen.getByTestId('phone-send').click();
-    await expect(screen.getByTestId('phone-unsent')).toContainText(code);
-    expect(await wcagViolations(screen)).toEqual([]);
-    await screen.unroute(scans);
-    await screen.getByTestId('phone-resend').click();
-    await expect(page.getByTestId('line-0-quantity')).toHaveValue('2');
-    await expect(screen.getByTestId('phone-unsent')).toHaveCount(0);
-    await expect(screen.getByTestId('phone-sent')).toContainText(code);
+      // A short drop (the bad-network standard): a scan the network lost is kept and said unsent,
+      // never « Envoyé », and goes with « Renvoyer » once the API answers again, counted once on the computer.
+      const scans = '**/api/scan-pairings/*/scans';
+      await screen.route(scans, (route) => route.abort('internetdisconnected'));
+      await screen.getByTestId('phone-code').fill(code);
+      await screen.getByTestId('phone-send').click();
+      await expect(screen.getByTestId('phone-unsent')).toContainText(code);
+      expect(await wcagViolations(screen)).toEqual([]);
+      await screen.unroute(scans);
+      await screen.getByTestId('phone-resend').click();
+      await expect(page.getByTestId('line-0-quantity')).toHaveValue('2');
+      await expect(screen.getByTestId('phone-unsent')).toHaveCount(0);
+      await expect(screen.getByTestId('phone-sent')).toContainText(code);
 
-    // The phone itself offline, then back: what it kept goes by itself.
-    await phone.setOffline(true);
-    await screen.getByTestId('phone-code').fill(code);
-    await screen.getByTestId('phone-send').click();
-    await expect(screen.getByTestId('phone-unsent')).toContainText(code);
-    await phone.setOffline(false);
-    await expect(page.getByTestId('line-0-quantity')).toHaveValue('3');
-    await expect(screen.getByTestId('phone-unsent')).toHaveCount(0);
+      // The phone itself offline, then back: what it kept goes by itself.
+      await phone.setOffline(true);
+      await screen.getByTestId('phone-code').fill(code);
+      await screen.getByTestId('phone-send').click();
+      await expect(screen.getByTestId('phone-unsent')).toContainText(code);
+      await phone.setOffline(false);
+      await expect(page.getByTestId('line-0-quantity')).toHaveValue('3');
+      await expect(screen.getByTestId('phone-unsent')).toHaveCount(0);
 
-    // A code nobody holds opens the computer's card, whose choices the phone offers; a tap acts on the computer.
-    const unknown = `NEW-${run}`;
-    await screen.getByTestId('phone-code').fill(unknown);
-    await screen.getByTestId('phone-send').click();
-    await expect(page.getByTestId('product-scan-none')).toBeVisible();
-    await screen.getByTestId('phone-choice-create').click();
-    // The sale on the computer holds a scanned line, so leaving it for the new product asks there first.
-    await page.getByTestId('confirm-run').click();
-    await expect(page).toHaveURL(new RegExp(`/products/new\\?barcode=${unknown}`));
+      // A code nobody holds opens the computer's card, whose choices the phone offers; a tap acts on the computer.
+      const unknown = `NEW-${run}`;
+      await screen.getByTestId('phone-code').fill(unknown);
+      await screen.getByTestId('phone-send').click();
+      await expect(page.getByTestId('product-scan-none')).toBeVisible();
+      await screen.getByTestId('phone-choice-create').click();
+      // The sale on the computer holds a scanned line, so leaving it for the new product asks there first.
+      await page.getByTestId('confirm-run').click();
+      await expect(page).toHaveURL(new RegExp(`/products/new\\?barcode=${unknown}`));
 
-    // Letting the phone go on the computer stops it.
-    await page.getByTestId('phone-pair').click();
-    await page.getByTestId('phone-pair-end').click();
-    await expect(screen.getByTestId('phone-ended')).toBeVisible();
-  } finally {
-    await phone.close();
-    await forget(page, ids);
-  }
-});
+      // Letting the phone go on the computer stops it.
+      await page.getByTestId('phone-pair').click();
+      await page.getByTestId('phone-pair-end').click();
+      await expect(screen.getByTestId('phone-ended')).toBeVisible();
+    } finally {
+      await phone.close();
+      await forget(page, ids);
+    }
+  },
+);
 
-test('a link is claimed by one phone only', async ({ page, browser }) => {
+test('a link is claimed by one phone only', { tag: '@phone' }, async ({ page, browser }) => {
   await signIn(page);
   await inACompany(page, CSRF);
   const first = await browser.newContext({ ignoreHTTPSErrors: true });
@@ -119,45 +120,46 @@ test('a link is claimed by one phone only', async ({ page, browser }) => {
   }
 });
 
-test('a photo the phone takes lands in the gallery of the product open on the computer', async ({
-  page,
-  browser,
-}) => {
-  const reference = `PHP-${Date.now().toString(36).toUpperCase()}`;
-  await signIn(page);
-  await inACompany(page, CSRF);
-  const phone = await browser.newContext({ ignoreHTTPSErrors: true });
-  const ids: string[] = [];
-  try {
-    ids.push(await aProduct(page, reference));
-    await page.goto(`/products/${ids[0]}`);
-    await page.getByRole('tab', { name: 'Photos' }).click();
-    await expect(page.getByTestId('product-photos-none')).toBeVisible();
-    await page.getByTestId('phone-pair').click();
-    const url = (await page.getByTestId('phone-pair-url').textContent())?.trim() ?? '';
-    const screen = await phone.newPage();
-    await screen.goto(url);
-    await expect(page.getByTestId('phone-pair-status')).toContainText('Téléphone relié');
-    await page.getByTestId('phone-pair-close').click();
-    await expect(page.getByTestId('product-photos-phone')).toBeVisible();
+test(
+  'a photo the phone takes lands in the gallery of the product open on the computer',
+  { tag: '@phone' },
+  async ({ page, browser }) => {
+    const reference = `PHP-${Date.now().toString(36).toUpperCase()}`;
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const phone = await browser.newContext({ ignoreHTTPSErrors: true });
+    const ids: string[] = [];
+    try {
+      ids.push(await aProduct(page, reference));
+      await page.goto(`/products/${ids[0]}`);
+      await page.getByRole('tab', { name: 'Photos' }).click();
+      await expect(page.getByTestId('product-photos-none')).toBeVisible();
+      await page.getByTestId('phone-pair').click();
+      const url = (await page.getByTestId('phone-pair-url').textContent())?.trim() ?? '';
+      const screen = await phone.newPage();
+      await screen.goto(url);
+      await expect(page.getByTestId('phone-pair-status')).toContainText('Téléphone relié');
+      await page.getByTestId('phone-pair-close').click();
+      await expect(page.getByTestId('product-photos-phone')).toBeVisible();
 
-    // A 2x1 PNG stands for what the camera took: the phone draws it again as a JPEG before sending it.
-    await screen.getByTestId('phone-photo-input').setInputFiles({
-      name: 'IMG_0001.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAADUlEQVR4nGP4zwAE/wEHAAH/4iOeWQAAAABJRU5ErkJggg==',
-        'base64',
-      ),
-    });
+      // A 2x1 PNG stands for what the camera took: the phone draws it again as a JPEG before sending it.
+      await screen.getByTestId('phone-photo-input').setInputFiles({
+        name: 'IMG_0001.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAADUlEQVR4nGP4zwAE/wEHAAH/4iOeWQAAAABJRU5ErkJggg==',
+          'base64',
+        ),
+      });
 
-    await expect(page.getByTestId('product-photos-list').locator('li')).toHaveCount(1);
-    await expect(screen.getByTestId('phone-echo')).toContainText(
-      `Photo ajoutée à Vis ${reference}`,
-    );
-    expect(await wcagViolations(screen)).toEqual([]);
-  } finally {
-    await phone.close();
-    await forget(page, ids);
-  }
-});
+      await expect(page.getByTestId('product-photos-list').locator('li')).toHaveCount(1);
+      await expect(screen.getByTestId('phone-echo')).toContainText(
+        `Photo ajoutée à Vis ${reference}`,
+      );
+      expect(await wcagViolations(screen)).toEqual([]);
+    } finally {
+      await phone.close();
+      await forget(page, ids);
+    }
+  },
+);

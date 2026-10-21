@@ -2,13 +2,26 @@
 import { defineConfig } from '@playwright/test';
 
 const baseURL = process.env['BASE_URL'] ?? 'http://127.0.0.1:8090';
+// The stack's HTTPS door (the `lan` service), the address a phone in a shop reaches the app at. WebKit sends no
+// `Secure` cookie over plain http, not even to 127.0.0.1, so Safari's engine is driven through it or not at all.
+const lanOrigin = process.env['LAN_ORIGIN'] || undefined;
+if (lanOrigin === undefined) {
+  const why =
+    'LAN_ORIGIN is not set, so the @phone scenarios cannot run on WebKit (make up starts the HTTPS door).';
+  if (process.env['CI']) throw new Error(why);
+  console.warn(why);
+}
 
 // A scenario is not a first visit: the cookie notice (row 149) starts closed, on the address the suite uses and on
 // localhost, which passkeys.spec.ts talks to. A context a scenario opens itself starts empty; `signIn` closes it there,
 // and legal.spec.ts opens a truly fresh one to test the notice.
 const noticeClosed = {
   cookies: [],
-  origins: [baseURL, baseURL.replace('127.0.0.1', 'localhost')].map((origin) => ({
+  origins: [
+    baseURL,
+    baseURL.replace('127.0.0.1', 'localhost'),
+    ...(lanOrigin ? [lanOrigin] : []),
+  ].map((origin) => ({
     origin: new URL(origin).origin,
     localStorage: [{ name: 'twes.cookie-notice', value: 'closed' }],
   })),
@@ -49,5 +62,23 @@ export default defineConfig({
         storageState: noticeClosed,
       },
     },
+    // Safari's engine, which every iPhone runs whatever its browser: the scenarios tagged @phone, the pages a shop's
+    // staff open on a phone (the scanner lent to a computer, the bottom bar, the customer screen), run on it too,
+    // through the HTTPS door, whose certificate comes from the stack's own authority.
+    ...(lanOrigin === undefined
+      ? []
+      : [
+          {
+            name: 'webkit',
+            dependencies: ['setup'],
+            grep: /@phone/,
+            use: {
+              browserName: 'webkit' as const,
+              baseURL: lanOrigin,
+              ignoreHTTPSErrors: true,
+              storageState: noticeClosed,
+            },
+          },
+        ]),
   ],
 });

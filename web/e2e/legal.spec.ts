@@ -240,7 +240,7 @@ test.describe('on a page shorter than the window', () => {
   });
 });
 
-test.describe('on a phone', () => {
+test.describe('on a phone', { tag: '@phone' }, () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('the notice stands on the bottom bar, never under it', async ({ page }) => {
@@ -418,7 +418,7 @@ test('the security contact the operator fills in is published in security.txt', 
   expect(text).toMatch(/^Expires: \d{4}-\d{2}-\d{2}T00:00:00Z$/m);
 });
 
-test.describe('signed out on a phone', () => {
+test.describe('signed out on a phone', { tag: '@phone' }, () => {
   test.use({ viewport: { width: 390, height: 844 }, storageState: { cookies: [], origins: [] } });
 
   test('the brand sits under the language and scheme row, its arrow clear of it', async ({

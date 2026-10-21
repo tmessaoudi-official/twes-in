@@ -19,6 +19,7 @@ export const PRICE_LISTS_LIST: ListDescriptor<PriceListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     { id: 'scope', label: `${FIELDS}.scope`, value: (row) => scopeOf(row), sortable: true },
     { id: 'validity', label: `${FIELDS}.validity`, value: (row) => row.validFrom ?? '' },

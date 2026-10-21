@@ -36,6 +36,11 @@ export interface ListColumn<Row> {
    */
   priority?: 'high' | 'normal' | 'low';
   width?: number;
+  /**
+   * A long value takes further lines rather than send a column away: for a name a person typed, never a code. The column
+   * keeps at least its width, takes what the card leaves beside the others, and is never widened by its values.
+   */
+  wraps?: boolean;
   align?: 'start' | 'end';
 }
 

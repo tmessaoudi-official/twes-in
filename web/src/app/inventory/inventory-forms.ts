@@ -220,6 +220,7 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'location',
@@ -339,6 +340,7 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
       width: 260,
     },
     {

@@ -88,6 +88,7 @@ export const QUOTES_LIST: ListDescriptor<QuoteListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'issueDate',

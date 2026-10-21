@@ -534,9 +534,10 @@
             <td
               mat-cell
               *matCellDef="let row"
-              class="truncate"
               [class]="column.align === 'end' ? '!text-end tabular-nums' : ''"
+              [class.truncate]="column.wraps !== true"
               [attr.data-column]="column.id"
+              [attr.data-wraps]="column.wraps === true ? '' : null"
             >
               <!-- A real link, so a middle click, a copied address and a screen reader's list of links all work; an
                  (click) on the row gives none of those (design review finding 1). It WRAPS the cell rather than
@@ -563,6 +564,7 @@
                     class="twes-row-link twes-value"
                     dir="auto"
                     [class.twes-value-end]="column.align === 'end'"
+                    [class.twes-value-wraps]="column.wraps === true"
                     [attr.data-testid]="'list-link-' + descriptor().rowId(row)"
                     >{{ column.value(row) }}</a
                   >
@@ -574,6 +576,7 @@
                   class="twes-value"
                   dir="auto"
                   [class.twes-value-end]="column.align === 'end'"
+                  [class.twes-value-wraps]="column.wraps === true"
                   >{{ column.value(row) }}</span
                 >
               }

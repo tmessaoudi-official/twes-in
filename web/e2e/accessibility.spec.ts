@@ -92,23 +92,27 @@ test('the shell keeps its content in landmarks, each named once', async ({ page 
   await expectLandmarks('settings');
 });
 
-test("at phone width the full navigation is a drawer behind the bottom bar's Plus button", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await signIn(page);
-  await page.goto('/members');
-  await expect(page.getByTestId('members-title')).toBeVisible();
-  // The settings navigation is one row above the page, not a column that pushes it off the screen.
-  expect((await page.getByTestId('members-title').boundingBox())?.y ?? Infinity).toBeLessThan(300);
-  expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
+test(
+  "at phone width the full navigation is a drawer behind the bottom bar's Plus button",
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await page.goto('/members');
+    await expect(page.getByTestId('members-title')).toBeVisible();
+    // The settings navigation is one row above the page, not a column that pushes it off the screen.
+    expect((await page.getByTestId('members-title').boundingBox())?.y ?? Infinity).toBeLessThan(
+      300,
+    );
+    expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
 
-  await expect(page.getByTestId('nav-home')).toBeHidden();
-  await page.getByTestId('menu-toggle').click();
-  await page.getByTestId('nav-home').click();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByTestId('nav-home')).toBeHidden();
-});
+    await expect(page.getByTestId('nav-home')).toBeHidden();
+    await page.getByTestId('menu-toggle').click();
+    await page.getByTestId('nav-home').click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByTestId('nav-home')).toBeHidden();
+  },
+);
 
 test('the language switch translates the shell and the page', async ({ page }) => {
   await signIn(page);
@@ -385,54 +389,58 @@ test('every page names itself in its tab, and moving to another page puts focus 
 // A floated label is drawn at three quarters of a box a third wider than its field (Material's own sizing), so on a
 // phone a long one reached past the field: the platform page scrolled sideways by 44 px, and its delays' labels were
 // cut mid-word (« … le soit défini »).
-test('at phone width a field’s label never widens the page, and the platform’s delays read in full', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await signIn(page);
-  await page.goto('/platform');
-  const delays = page.getByTestId('platform-delays');
-  await expect(delays.locator('input')).not.toHaveCount(0);
-  expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
-  const cut = await delays.locator('mat-form-field').evaluateAll((fields) =>
-    fields
-      .map((field) => ({
-        text: field.querySelector('mat-label')?.textContent?.trim() ?? '',
-        label: field.querySelector('.mdc-floating-label')?.getBoundingClientRect(),
-        words: field.querySelector('mat-label')?.getBoundingClientRect(),
-      }))
-      .filter(
-        ({ label, words }) =>
-          label === undefined || words === undefined || words.right > label.right + 1,
-      )
-      .map(({ text }) => text),
-  );
-  expect(cut).toEqual([]);
-  // Any label, however long, stays inside its field: the page keeps the window's width.
-  await delays
-    .locator('mat-label')
-    .first()
-    .evaluate(
-      (label) => (label.textContent = 'Un libellé bien trop long pour un téléphone '.repeat(4)),
+test(
+  'at phone width a field’s label never widens the page, and the platform’s delays read in full',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await page.goto('/platform');
+    const delays = page.getByTestId('platform-delays');
+    await expect(delays.locator('input')).not.toHaveCount(0);
+    expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
+    const cut = await delays.locator('mat-form-field').evaluateAll((fields) =>
+      fields
+        .map((field) => ({
+          text: field.querySelector('mat-label')?.textContent?.trim() ?? '',
+          label: field.querySelector('.mdc-floating-label')?.getBoundingClientRect(),
+          words: field.querySelector('mat-label')?.getBoundingClientRect(),
+        }))
+        .filter(
+          ({ label, words }) =>
+            label === undefined || words === undefined || words.right > label.right + 1,
+        )
+        .map(({ text }) => text),
     );
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
-  );
-  expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
-});
+    expect(cut).toEqual([]);
+    // Any label, however long, stays inside its field: the page keeps the window's width.
+    await delays
+      .locator('mat-label')
+      .first()
+      .evaluate(
+        (label) => (label.textContent = 'Un libellé bien trop long pour un téléphone '.repeat(4)),
+      );
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+    expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
+  },
+);
 
 // Every feature's tabs swipe sideways and keep the open one in view (`PageTabs`); the platform's alone drew Material's
 // chevrons, and on a phone its open tab could sit past the window's edge.
-test('at phone width the platform’s tabs swipe like every other page’s, the open one in view', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await signIn(page);
-  await page.goto('/platform?tab=demand');
-  await expect(page.getByTestId('platform-tab-demand')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('.mat-mdc-tab-header-pagination:visible')).toHaveCount(0);
-  await expect(page.getByTestId('platform-tab-demand')).toBeInViewport({ ratio: 0.95 });
-  await page.getByTestId('platform-tab-overview').evaluate((tab) => tab.scrollIntoView());
-  await page.getByTestId('platform-tab-overview').click();
-  await expect(page.getByTestId('platform-tab-overview')).toBeInViewport({ ratio: 0.95 });
-});
+test(
+  'at phone width the platform’s tabs swipe like every other page’s, the open one in view',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await page.goto('/platform?tab=demand');
+    await expect(page.getByTestId('platform-tab-demand')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.mat-mdc-tab-header-pagination:visible')).toHaveCount(0);
+    await expect(page.getByTestId('platform-tab-demand')).toBeInViewport({ ratio: 0.95 });
+    await page.getByTestId('platform-tab-overview').evaluate((tab) => tab.scrollIntoView());
+    await page.getByTestId('platform-tab-overview').click();
+    await expect(page.getByTestId('platform-tab-overview')).toBeInViewport({ ratio: 0.95 });
+  },
+);

@@ -79,6 +79,7 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     { id: 'kind', label: `${FIELDS}.kind`, value: (row) => row.kind, sortable: true, width: 140 },
     {
@@ -503,6 +504,7 @@ export const GROUPS_LIST: ListDescriptor<CustomerGroupRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'description',
@@ -561,6 +563,7 @@ export const CONTACTS_LIST: ListDescriptor<ContactRow> = {
       label: `${CONTACT_FIELDS}.name`,
       value: (row) => [row.firstName, row.lastName].filter((part) => part !== null).join(' '),
       hideable: false,
+      wraps: true,
     },
     { id: 'role', label: `${CONTACT_FIELDS}.role`, value: (row) => row.role ?? '' },
     { id: 'email', label: `${CONTACT_FIELDS}.email`, value: (row) => row.email ?? '' },

@@ -90,6 +90,7 @@ export class RecurringPage implements OnInit {
         sortable: true,
         filterable: true,
         hideable: false,
+        wraps: true,
       },
       {
         id: 'model',

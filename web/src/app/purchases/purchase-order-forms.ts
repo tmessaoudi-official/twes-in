@@ -95,6 +95,7 @@ export const PURCHASES_LIST: ListDescriptor<PurchaseOrderRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      wraps: true,
     },
     {
       id: 'issueDate',

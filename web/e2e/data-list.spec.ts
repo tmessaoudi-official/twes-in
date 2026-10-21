@@ -221,48 +221,54 @@ test('compact density follows the person into a fresh browser', async ({ page, b
   }
 });
 
-test('at phone width the members list and its chooser are accessible and fit the screen', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await signIn(page);
-  await openMembers(page);
+test(
+  'at phone width the members list and its chooser are accessible and fit the screen',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await openMembers(page);
 
-  await page.getByTestId('list-columns').click();
-  await expect(page.getByTestId('list-column-toggle-role')).toBeVisible();
-  await expectAccessible(page, 'members, phone, chooser open');
-  expect(
-    await sidewaysOverflow(page),
-    'the page itself must not scroll sideways',
-  ).toBeLessThanOrEqual(0);
-});
+    await page.getByTestId('list-columns').click();
+    await expect(page.getByTestId('list-column-toggle-role')).toBeVisible();
+    await expectAccessible(page, 'members, phone, chooser open');
+    expect(
+      await sidewaysOverflow(page),
+      'the page itself must not scroll sideways',
+    ).toBeLessThanOrEqual(0);
+  },
+);
 
 // The « Filtres » button joined the toolbar of the invoices and delivery notes lists, and on a phone the search, it and
 // the two tool buttons no longer fitted one line: the whole page panned sideways and « Vues » and « Colonnes » sat off
 // screen (visual audit 2026-10-06, V-26). Every paged list is walked, one with a filter chosen so its count shows.
-test('at phone width no paged list makes the page scroll sideways, a filter chosen or not', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await logIn(page);
-  await inACompany(page, '0123456789abcdef0123456789abcdef');
-  for (const path of [
-    '/invoices',
-    '/invoices?status=draft,overdue',
-    '/delivery-notes',
-    '/instruments',
-    '/customers',
-    '/products',
-    '/vendors',
-    '/expenses',
-    '/stock',
-    '/stock/movements',
-  ]) {
-    await page.goto(path);
-    await expect(page.getByTestId('list-columns')).toBeVisible();
-    expect(await sidewaysOverflow(page), `${path} must not scroll sideways`).toBeLessThanOrEqual(0);
-  }
-});
+test(
+  'at phone width no paged list makes the page scroll sideways, a filter chosen or not',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await logIn(page);
+    await inACompany(page, '0123456789abcdef0123456789abcdef');
+    for (const path of [
+      '/invoices',
+      '/invoices?status=draft,overdue',
+      '/delivery-notes',
+      '/instruments',
+      '/customers',
+      '/products',
+      '/vendors',
+      '/expenses',
+      '/stock',
+      '/stock/movements',
+    ]) {
+      await page.goto(path);
+      await expect(page.getByTestId('list-columns')).toBeVisible();
+      expect(await sidewaysOverflow(page), `${path} must not scroll sideways`).toBeLessThanOrEqual(
+        0,
+      );
+    }
+  },
+);
 
 // The stock list put its quantity after the lot and use-by columns, so on a laptop the pinned row actions covered it
 // (« Qu » at 1440, nothing at 1280): the one figure the list exists for was the one not seen (visual audit, V-13).
