@@ -18,7 +18,7 @@ use App\Settings\Domain\ValueObject\SettingType;
 /**
  * How many rows one imported file may hold, header excluded, which the platform's operators set: they know what their
  * machine bears, a shop does not. A file is one unit of work run inside its request, so the ceiling is what one request
- * was measured to bear within app.import.max_seconds: 5,000 product rows took 35 s on a developer's machine.
+ * was measured to bear within app.long_request.max_seconds: 5,000 product rows took 35 s on a developer's machine.
  */
 final readonly class ImportSettings implements DeclaresSettings
 {

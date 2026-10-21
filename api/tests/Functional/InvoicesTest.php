@@ -1718,6 +1718,33 @@ final class InvoicesTest extends ApiTestCase
         self::assertStringContainsString('BROUILLON', $entries['invoice-'.$draft.'.pdf']);
     }
 
+    /**
+     * A selection renders each draft it holds one by one: 100 drafts took 37 s on a developer's machine, so the request is
+     * given app.long_request.max_seconds, as a PDF and as a zip; LongRequestRoutesTest holds nginx's wait on its route.
+     */
+    public function testAPrintedSelectionIsGivenALongRequestsTime(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->stepUp('password-1234');
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $draft = $this->stringAt($this->json(), 'id');
+        $allowed = (string) static::getContainer()->getParameter('app.long_request.max_seconds');
+
+        $given = [];
+        try {
+            foreach (['pdf', 'zip'] as $format) {
+                set_time_limit(30);
+                $this->client->request('GET', $this->companyPath().'/exports/invoices.'.$format.'?id[]='.$draft.'&drafts=1');
+                self::assertResponseIsSuccessful();
+                $given[] = \ini_get('max_execution_time');
+            }
+        } finally {
+            set_time_limit(0);
+        }
+
+        self::assertSame([$allowed, $allowed], $given);
+    }
+
     public function testAPrintedSelectionAsksForAStepUpIsRecordedAndNeedsSomethingToPrint(): void
     {
         $this->createUser('nobody@twes.local', 'password-1234', $this->company, [], 'nobody');

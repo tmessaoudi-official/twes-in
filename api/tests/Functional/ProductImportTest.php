@@ -139,13 +139,13 @@ final class ProductImportTest extends ApiTestCase
 
     /**
      * The largest file allowed takes about 35 seconds on a developer's machine and may take several times that on a
-     * shop's small computer, past PHP's 30: an import alone is given app.import.max_seconds, and the web server in front
-     * waits as long for its answer.
+     * shop's small computer, past PHP's 30: an import is given app.long_request.max_seconds, as its undo and restore are
+     * (ImportUndoTest); LongRequestRoutesTest holds the web server in front to wait as long for its answer.
      */
     public function testAnImportIsGivenTheTimeTheLargestFileTakes(): void
     {
         $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
-        $allowed = static::getContainer()->getParameter('app.import.max_seconds');
+        $allowed = static::getContainer()->getParameter('app.long_request.max_seconds');
 
         set_time_limit(30);
         try {
@@ -157,8 +157,6 @@ final class ProductImportTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSame((string) $allowed, $given);
-        $nginx = (string) file_get_contents(\dirname(__DIR__, 3).'/infra/web/nginx.conf');
-        self::assertMatchesRegularExpression('#location ~ \^/api/companies/\[\^/\]\+/imports/\[a-z-\]\+\$ \{\s+proxy_pass http://api;\s+proxy_read_timeout '.$allowed.'s;#', $nginx, 'nginx waits as long as the import is given');
     }
 
     /** Every flush walks every managed entity, so a written row must leave the unit of work (row 59, customers). */
