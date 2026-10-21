@@ -186,6 +186,49 @@ final class StagedLiveChangesTest extends TestCase
         self::assertSame(['id' => $stranger->toRfc4122(), 'name' => null], $this->publisher->pushed[0]['data']['actor']);
     }
 
+    /**
+     * The tab that made a request hears its own changes in the answer, as every other tab hears them through the
+     * connection: what the request said is kept for that answer, a later unit rolled back takes none of it away, and
+     * the next request starts with nothing.
+     */
+    public function testWhatARequestSaidIsKeptForItsAnswerUntilTheNextRequest(): void
+    {
+        $request = new Request();
+        $request->headers->set('X-Tab', 'tab-1');
+        $this->requests->push($request);
+        $customer = Uuid::v7();
+        $this->changes->begin();
+        $this->changes->stage(new LiveChange('customer', $customer, 'customer.revised', $this->nadia->getId(), $this->company));
+        $this->changes->commit();
+        $this->changes->begin();
+        for ($i = 0; $i < 11; ++$i) {
+            $this->changes->stage(new LiveChange('product', Uuid::v7(), 'product.created', $this->nadia->getId(), $this->company));
+        }
+        $this->changes->commit();
+        $this->changes->begin();
+        $this->changes->stage(new LiveChange('vendor', Uuid::v7(), 'vendor.created', null, $this->company));
+        $this->changes->rollBack();
+
+        self::assertSame([
+            ['kind' => 'customer', 'id' => $customer->toRfc4122(), 'action' => 'customer.revised'],
+            ['kind' => 'product', 'id' => null, 'action' => 'product.created', 'bulk' => true, 'count' => 11],
+        ], $this->changes->saidHere());
+
+        $this->changes->reset();
+        self::assertSame([], $this->changes->saidHere());
+    }
+
+    public function testARequestNamingNoTabKeepsNothingForItsAnswer(): void
+    {
+        $this->requests->push(new Request());
+        $this->changes->begin();
+        $this->changes->stage(new LiveChange('customer', Uuid::v7(), 'customer.revised', null, $this->company));
+        $this->changes->commit();
+
+        self::assertCount(1, $this->publisher->pushed);
+        self::assertSame([], $this->changes->saidHere(), 'only a tab of the app reads its own changes from the answer');
+    }
+
     public function testResetBetweenRequestsForgetsWhatAnAbandonedUnitStaged(): void
     {
         $this->changes->begin();

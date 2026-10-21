@@ -240,6 +240,24 @@ describe('liveRecord', () => {
     });
   });
 
+  it('takes what this tab changed from another place, such as a toast’s action, without saying who', async () => {
+    const page = setUp();
+
+    await page.savedElsewhere({ ...saved, phone: '0698' }, { actor: null, own: true });
+
+    expect(reloads).toBe(1);
+    expect(page.form()?.controls['phone'].value).toBe('0698');
+    expect(page.feedback.said).toEqual([]);
+  });
+
+  it('says nothing of a deletion this tab made, which the screen that made it says', async () => {
+    const page = setUp();
+
+    await page.savedElsewhere(null, { action: 'customer.deleted', actor: null, own: true });
+
+    expect(page.feedback.said).toEqual([]);
+  });
+
   it('says the record was deleted, and merges nothing', async () => {
     const page = setUp();
 

@@ -232,15 +232,18 @@ export function liveRecord<V = number | null>(options: LiveRecordOptions<V>): Li
     if (change === undefined || (options.matches === undefined && id === null)) return;
     const name = change.actor?.name;
     const said = name ? { name } : {};
+    // This tab's own change is taken in as another's is, but nobody is told that someone changed it: the action that
+    // made it says its outcome where it was done.
+    const fromHere = change.own === true;
     if (change.action.endsWith('.deleted')) {
-      feedback.notice(name ? 'live.deleted' : 'live.deleted_someone', said);
+      if (!fromHere) feedback.notice(name ? 'live.deleted' : 'live.deleted_someone', said);
       return;
     }
     await activity.quietly(options.reload);
     const form = options.form();
     const incoming = options.saved();
     if (form === null || incoming === null) return;
-    if (sync.merge(form, incoming, change.actor) === 'updated') {
+    if (sync.merge(form, incoming, change.actor) === 'updated' && !fromHere) {
       feedback.notice(name ? 'live.notice' : 'live.notice_someone', said);
     }
   };

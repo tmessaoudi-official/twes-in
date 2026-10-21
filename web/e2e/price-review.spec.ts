@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
-import { aProduct, forget, stockKept } from './catalogue';
+import { aProduct, forget, receivedAt, stockKept } from './catalogue';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { runDigits } from './run';
@@ -9,33 +8,6 @@ import { runDigits } from './run';
 // docs/SPEC.md § 7, cost and price: a receipt that moves a product's cost under a kept price says the margin it moved,
 // offers the price that keeps the margin, and every open screen shows it at once, with no reload.
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-/** Receives goods at a cost through the API, as another tab or member would: the open page hears it live. */
-async function receivedAt(page: Page, productId: string, unitCost: string): Promise<void> {
-  await page.evaluate(
-    async ([csrf, id, cost]) => {
-      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const base = `/api/companies/${me.company.id}`;
-      const locations = (await (await fetch(`${base}/stock-locations`)).json()) as
-        { id: string }[] | { member: { id: string }[] };
-      const site = (Array.isArray(locations) ? locations : locations.member)[0];
-      const received = await fetch(`${base}/stock-movements`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-        body: JSON.stringify({
-          operation: 'receive',
-          productId: id,
-          locationId: site.id,
-          quantity: '1',
-          unitCost: cost,
-          applyCost: 'last',
-        }),
-      });
-      if (!received.ok) throw new Error(`receiving ${id} at ${cost} answered ${received.status}`);
-    },
-    [CSRF, productId, unitCost] as const,
-  );
-}
 
 test('a receipt that moves the margin offers the price that keeps it, and the product page shows it live', async ({
   page,

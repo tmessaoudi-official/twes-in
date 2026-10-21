@@ -196,3 +196,30 @@ export async function stockKept(page: Page, productId: string, kept: boolean): P
     [CSRF, productId, kept] as const,
   );
 }
+
+/** Receives goods at a cost through the API, as another tab or member would: the open page hears it live. */
+export async function receivedAt(page: Page, productId: string, unitCost: string): Promise<void> {
+  await page.evaluate(
+    async ([csrf, id, cost]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}`;
+      const locations = (await (await fetch(`${base}/stock-locations`)).json()) as
+        { id: string }[] | { member: { id: string }[] };
+      const site = (Array.isArray(locations) ? locations : locations.member)[0];
+      const received = await fetch(`${base}/stock-movements`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({
+          operation: 'receive',
+          productId: id,
+          locationId: site.id,
+          quantity: '1',
+          unitCost: cost,
+          applyCost: 'last',
+        }),
+      });
+      if (!received.ok) throw new Error(`receiving ${id} at ${cost} answered ${received.status}`);
+    },
+    [CSRF, productId, unitCost] as const,
+  );
+}

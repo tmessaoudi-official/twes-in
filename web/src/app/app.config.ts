@@ -4,6 +4,7 @@ import { ProductScanDetails } from './products/product-scan-details';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { SCAN_DETAILS } from './shared/scan/scan-details';
 import { tabInterceptor } from './shared/realtime/tab-interceptor';
+import { liveChangesInterceptor } from './shared/realtime/live-changes-interceptor';
 import { languageInterceptor } from './shared/i18n/language-interceptor';
 import { provideHttpClient, withInterceptors, withNoXsrfProtection } from '@angular/common/http';
 import {
@@ -60,6 +61,7 @@ export const appConfig: ApplicationConfig = {
       withInterceptors([
         csrfInterceptor,
         tabInterceptor,
+        liveChangesInterceptor,
         languageInterceptor,
         activityInterceptor,
         customerScreenInterceptor,

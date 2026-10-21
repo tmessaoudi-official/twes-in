@@ -114,19 +114,47 @@ describe('LiveChanges', () => {
     expect(handler.mock.calls[0][0].map((change: LiveChange) => change.id)).toEqual(['c1', 'g1']);
   });
 
-  it('tells this tab’s own screens what this tab changed behind them, as an erasure does', () => {
+  it('tells this tab’s screens what its own request changed, as the API’s answer names it', () => {
     const handler = vi.fn();
-    listen(['venue_area', 'quote'], handler);
+    listen(['customer', 'stock'], handler);
 
-    live.changedHere(['venue_area', 'quote', 'invoice'], 'data.erased');
+    live.heardHere(
+      JSON.stringify([
+        { kind: 'customer', id: 'c1', action: 'customer.revised' },
+        { kind: 'stock', id: null, action: 'stock.received', bulk: true, count: 12 },
+        { kind: 'invoice', id: 'i1', action: 'invoice.issued' },
+      ]),
+    );
     vi.advanceTimersByTime(LIVE_BATCH_MS);
 
-    expect(
-      handler.mock.calls[0][0].map((change: LiveChange) => [change.kind, change.action]),
-    ).toEqual([
-      ['venue_area', 'data.erased'],
-      ['quote', 'data.erased'],
+    expect(handler.mock.calls[0][0]).toEqual<LiveChange[]>([
+      { kind: 'customer', id: 'c1', action: 'customer.revised', actor: null, own: true },
+      {
+        kind: 'stock',
+        id: null,
+        action: 'stock.received',
+        actor: null,
+        own: true,
+        bulk: true,
+        count: 12,
+      },
     ]);
+  });
+
+  it('reads what it can of an answer and nothing of one it cannot read', () => {
+    const handler = vi.fn();
+    listen(['customer'], handler);
+
+    for (const header of [null, '', 'not json', '{"kind":"customer"}', '[{"kind":3}]', '[null]']) {
+      live.heardHere(header);
+    }
+    live.heardHere(
+      '[{"kind":"customer","id":7,"action":"customer.revised"},{"kind":"customer","id":"c2","action":"customer.revised"}]',
+    );
+    vi.advanceTimersByTime(LIVE_BATCH_MS);
+
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler.mock.calls[0][0].map((change: LiveChange) => change.id)).toEqual(['c2']);
   });
 
   it('says nothing about this tab’s own changes', () => {
