@@ -19,6 +19,7 @@ use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetReader;
 use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
+use App\Shared\Infrastructure\Http\LongRequest;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -53,8 +54,7 @@ final readonly class ImportController
         private RunImport $import,
         private SpreadsheetReader $reader,
         private CompanyGuard $guard,
-        #[Autowire(param: 'app.import.max_seconds')]
-        private int $maxSeconds,
+        private LongRequest $time,
     ) {
     }
 
@@ -64,12 +64,8 @@ final readonly class ImportController
         // Symfony's documented way to keep one action out of the profiler, which only development has (null elsewhere): it keeps
         // every query of the request, and saving them for 2000 rows ran past the memory limit after the answer was sent.
         $profiler?->disable();
-        // One file is one unit of work, run inside this request; PHP's limit (none is 0) is lifted to what the largest
-        // file allowed may take, never shortened.
-        $limit = (int) \ini_get('max_execution_time');
-        if (0 !== $limit && $limit < $this->maxSeconds) {
-            set_time_limit($this->maxSeconds);
-        }
+        // One file is one unit of work, run inside this request.
+        $this->time->lift();
 
         try {
             $declaration = $this->catalogue->declaration($subject);

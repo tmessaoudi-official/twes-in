@@ -32,6 +32,7 @@ use App\Records\Application\RestoreRecords;
 use App\Records\Application\UnknownRecords;
 use App\Records\Domain\Exception\RemovalNoLongerPending;
 use App\Records\Domain\Model\RecordRemoval;
+use App\Shared\Infrastructure\Http\LongRequest;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -63,6 +64,7 @@ final readonly class RecordRemovalController
         private RestoreRecords $restore,
         private ReadRemovals $read,
         private PreviewMerge $preview,
+        private LongRequest $time,
     ) {
     }
 
@@ -134,6 +136,8 @@ final readonly class RecordRemovalController
     {
         $company = $this->company($companyId);
         $id = CompanyPath::identifier(['removalId' => $removalId], 'removalId');
+        // What an import's undo took is put back whole, in this request.
+        $this->time->lift();
 
         return $this->answer(function () use ($company, $id): Response {
             $subject = $this->catalogue->subject($this->read->one($company, $id)->getSubject());

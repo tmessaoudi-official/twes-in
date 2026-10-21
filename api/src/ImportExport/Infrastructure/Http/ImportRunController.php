@@ -18,6 +18,7 @@ use App\ImportExport\Application\Undo\UndoImport;
 use App\ImportExport\Application\Undo\UnknownImportRun;
 use App\ImportExport\Application\UnknownImportSubject;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Shared\Infrastructure\Http\LongRequest;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -46,6 +47,7 @@ final readonly class ImportRunController
         private ReadImportRuns $read,
         private UndoImport $undo,
         private ModuleStates $modules,
+        private LongRequest $time,
     ) {
     }
 
@@ -72,6 +74,8 @@ final readonly class ImportRunController
     {
         $company = $this->company($companyId);
         $id = CompanyPath::identifier(['runId' => $runId], 'runId');
+        // The undo takes back every row the file wrote, in this request.
+        $this->time->lift();
         try {
             if (!$this->mayWrite($company, $this->read->subjectOf($company, $id))) {
                 throw new UnknownImportRun('The person may not write what this import wrote.');

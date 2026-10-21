@@ -18,6 +18,7 @@ use App\Module\Invoices\Application\Print\NothingToPrint;
 use App\Module\Invoices\Application\Print\PrintedInvoice;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Infrastructure\Http\LongRequest;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -47,6 +48,7 @@ final readonly class InvoiceSelectionPdfController
         private Security $security,
         private ConfirmStepUp $stepUp,
         private AuditTrail $audit,
+        private LongRequest $time,
     ) {
     }
 
@@ -73,6 +75,8 @@ final readonly class InvoiceSelectionPdfController
         }
         $drafts = $request->query->getBoolean('drafts');
         $cancelled = $request->query->getBoolean('cancelled');
+        // Each draft is rendered in turn: 100 of them took 37 s on a developer's machine.
+        $this->time->lift();
 
         try {
             $response = 'pdf' === $format

@@ -120,6 +120,33 @@ final class ImportUndoTest extends ApiTestCase
         self::assertSame(['CLI-0001'], $this->customerNumbers());
     }
 
+    /**
+     * An undo and the restore of what it took write every row the file wrote, inside their request: each is given what an
+     * import is (app.long_request.max_seconds), past PHP's 30; LongRequestRoutesTest holds nginx's wait on their routes.
+     */
+    public function testAnUndoAndItsRestoreAreGivenAnImportsTime(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $run = $this->imported('customers', "number,name\nCLI-0001,Carthage Conseil\n");
+        $allowed = (string) static::getContainer()->getParameter('app.long_request.max_seconds');
+
+        set_time_limit(30);
+        try {
+            $this->undo($run);
+            $givenUndo = \ini_get('max_execution_time');
+            self::assertResponseIsSuccessful();
+            $removal = $this->stringAt($this->json(), 'removal');
+            set_time_limit(30);
+            $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+            $givenRestore = \ini_get('max_execution_time');
+        } finally {
+            set_time_limit(0);
+        }
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([$allowed, $allowed], [$givenUndo, $givenRestore]);
+    }
+
     public function testAnImportIsUndoneOnlyWithinItsDay(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);
