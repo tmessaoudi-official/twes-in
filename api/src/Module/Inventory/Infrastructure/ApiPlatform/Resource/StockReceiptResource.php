@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Post;
 use App\Module\Inventory\Domain\Model\StockLot;
 use App\Module\Inventory\Domain\ValueObject\ReceiptDocument;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\RecordStockReceiptProcessor;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -29,6 +30,7 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new Post(
             uriTemplate: '/companies/{companyId}/stock-receipts',
+            defaults: [Submissions::ROUTE_DEFAULT => true],
             processor: RecordStockReceiptProcessor::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: ['groups' => [self::READ]],

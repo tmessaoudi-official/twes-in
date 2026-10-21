@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Post;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\OverpaymentProcessor;
 use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -29,6 +30,7 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new Post(
             uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/overpayments',
+            defaults: [Submissions::ROUTE_DEFAULT => true],
             processor: OverpaymentProcessor::class,
             security: 'is_granted("ROLE_USER")',
             status: 204,

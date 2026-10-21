@@ -313,6 +313,28 @@ final class OpeningStockImportTest extends ApiTestCase
         self::assertSame(['120.000', '7.500'], [$this->onHand('VIS-6X40', '000'), $this->onHand('FIL-2', 'Z1')], 'a count says what is there, so the same file twice leaves the same stock');
     }
 
+    /**
+     * Two files in « create » mode at once, each adding the same product at the same place, would both read nothing
+     * there and both add: what a row finds there is read under the lock every movement of that stock takes, held until
+     * the file commits, so the second file reads the first's goods and is refused. The test's own transaction outlives
+     * the request, so the lock the import took is still there to read.
+     */
+    public function testARowReadsWhatIsThereUnderTheLockOfThatStock(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+
+        $this->import(self::HEADER."\nVIS-6X40,,000,5,\n");
+
+        self::assertResponseIsSuccessful();
+        $place = $this->em()->getConnection()->fetchOne('SELECT id FROM stock_location WHERE code = ? AND company_id = ?', ['000', $this->company->getId()->toRfc4122()]);
+        self::assertIsString($place);
+        self::assertSame(1, $this->number(
+            "SELECT COUNT(*) FROM pg_locks l, (SELECT hashtextextended(?, 0) AS k) h WHERE l.locktype = 'advisory' AND l.pid = pg_backend_pid()"
+            .' AND l.classid::bigint = ((h.k >> 32) & 4294967295) AND l.objid::bigint = (h.k & 4294967295)',
+            ['stock:'.$this->productId('VIS-6X40')->toRfc4122().':'.$place],
+        ), 'the stock of that product at that place is locked');
+    }
+
     /** A count taken before a receipt or a sale, imported after it, would erase it: it is asked to be ticked first. */
     public function testACountWhereGoodsMovedSinceTheLastCountWaitsForRecompter(): void
     {

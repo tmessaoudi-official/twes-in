@@ -270,7 +270,11 @@ test('a line says what is on hand where the invoice is made, and what the invoic
         }[];
         const received = await fetch(`${base}/stock-movements`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          headers: {
+            'content-type': 'application/json',
+            'csrf-token': csrf,
+            'idempotency-key': crypto.randomUUID(),
+          },
           body: JSON.stringify({
             operation: 'receive',
             productId: id,

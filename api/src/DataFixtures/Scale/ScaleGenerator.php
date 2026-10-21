@@ -96,6 +96,7 @@ final class ScaleGenerator
         'recurring_expense' => 'a schedule copying a model expense: expenses are not cloned, so it has none to copy',
         'recurring_invoice' => 'a schedule copying a model invoice: a clone drafts nothing by itself',
         'stock_movement' => 'stock movements: a follow-up slice',
+        'submission_claim' => 'the keys sent with writes that add, forgotten after a day: a clone sent none',
         'support_grant' => 'the windows an owner opened to support: a clone opened none',
     ];
 

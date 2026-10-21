@@ -37,15 +37,19 @@ final readonly class DoctrineTransactions implements Transactions
     {
         $connection = $this->entityManager->getConnection();
         $connection->beginTransaction();
-        foreach ($this->staged as $staged) {
-            $staged->begin();
-        }
+        // A begin may write inside the transaction (ClaimedSubmission marks its claim done), so one that fails is rolled
+        // back with the work, and only the levels that began are told so.
+        $begun = [];
         try {
+            foreach ($this->staged as $staged) {
+                $staged->begin();
+                $begun[] = $staged;
+            }
             $result = $work();
             $this->entityManager->flush();
             $connection->commit();
         } catch (\Throwable $failure) {
-            foreach ($this->staged as $staged) {
+            foreach ($begun as $staged) {
                 $staged->rollBack();
             }
             if ($connection->isTransactionActive()) {

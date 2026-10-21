@@ -332,7 +332,11 @@ test('a line says what is on hand where the note is made, and what the note woul
         }[];
         const received = await fetch(`${base}/stock-movements`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          headers: {
+            'content-type': 'application/json',
+            'csrf-token': csrf,
+            'idempotency-key': crypto.randomUUID(),
+          },
           body: JSON.stringify({
             operation: 'receive',
             productId: id,

@@ -257,6 +257,27 @@ company's subscription, and a confirmation holds its declaration, so one decided
 twice. The platform panel is a descriptor form: a save refused so takes their terms where nothing was typed, keeps
 what was typed, and offers both ways a term both changed, as the page editors do.
 
+**One submission, one write** (§ 7 2026-10-21 21:19). A write that adds to what is there rather than moving a state or
+setting a value (a payment, money kept to a customer's credit, a cheque received, a credit applied, goods taken in, an
+order's receipt, an invoice drafted from delivery notes or a quote's deposit, an import's rows) is held to an
+`Idempotency-Key`, the screen's name for one attempt, as Stripe set the convention and the IETF draft
+(draft-ietf-httpapi-idempotency-key-header, expired unpublished) wrote it down: a route takes part by its default
+`Submissions::ROUTE_DEFAULT`; `SubmissionGuard` claims the key per account in `submission_claim` (its own statement,
+before the work), `ClaimedSubmission` marks it done inside the work's outermost transaction, and the answer is kept
+once written, so the same key and body answer what the first answered with `Idempotent-Replayed: true`. A missing key
+is 400 (`/problems/submission-key-missing`), one that is not a UUID 400, a key sent with another body 422, a key still
+being worked on 409 `/problems/submission-in-progress`, and a key whose work was made but whose answer was lost (the
+process stopped, or a server error after the commit) 409 `/problems/submission-unanswered`; a claim whose work made
+nothing is freed, and one older than `app.long_request.max_seconds` and never made is taken back. Each claim names its
+attempt, so a request whose claim was taken back never touches the one that took it. Keys are forgotten after
+`app.submissions.kept_hours` (24) by `PurgeSubmissionsEveryHour`. The web names every POST with a key
+(`shared/submissions/`), the same while the same write waits for a definite answer (no answer, a server error, still
+being made; for 15 minutes) and a new one after, and says the two 409s in a toast wherever they come from.
+`tests/Architecture/SubmissionStancesTest` reads every POST from the router and requires its stance (adds, creates,
+creates under a unique key, moves a state, sets, the session's own, reads, keeps nothing), and the key's default on
+exactly those that add; a create is not held to a key until ruled (§ 7). Concurrency between two requests holding the
+same key is argued from PostgreSQL's row locks, not certified by execution.
+
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,
 money, tax rate); they are stored through custom DBAL types or embeddables, Doctrine's documented ways.
@@ -5509,6 +5530,12 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-21 14:07] AGREED: The first shop's restore is drilled before the release by a person the developer names, who holds the sealed envelope of its keys and restores once from it (answer s1b); the person's name never enters the repository, and the step is in `TODO.md`.
 - [2026-10-21 14:07] AGREED: WebKit, Safari's engine, joins the phone e2e before the frozen-commit panel (answer s1f), since the shop's phones include iPhones.
 - [2026-10-21 14:07] AGREED: The 26 technical entries the 2026-10-06 audit of `ASSUMED (review)` picks listed as safe to ratify in bulk (its § (d): #1–7, #32, #41, #42, #55–68, #81, #96; the « Go » of 2026-10-03 10:44 did cover deleting the flagged host-toolchain notes, which closes #60) now read « AGREED (ratified ASSUMED, 2026-10-21, questions page hd) » where they stand (answer hd).
+- [2026-10-21 20:31] AGREED: A floor's 2D plan is drawn from a file, not read as one (the developer's answers q1–q9 on the floor-plan research page, 2026-10-21 18:28–18:30, each the recommended option; research in `var/claude/floor-import/`): option A, a background image under the board, calibrated by two points a known distance apart and traced over with the existing tools, comes first, as slice 8 of the stock map after the release freeze (q7); the first shop holds a paper plan, a photo or a sketch at best (q1), and where an architect or a racking supplier exists we ask for a PDF at a known scale, 1/100 (q2).
+- [2026-10-21 20:31] AGREED: Option A's file chooser takes a raster image, a PDF (turned into an image in the browser by pdf.js, Apache-2.0, recorded in THIRD-PARTY-NOTICES when added) and an SVG uploaded as an image (q4); a phone may upload the plan from the floor's settings, the calibration is done on a computer or a tablet (q3); a PDF's printed scale is offered as a suggestion (« au 1/100 ? ») and the two points still confirm it (q5).
+- [2026-10-21 20:31] AGREED: The stock-locations list takes an import: places, each with an optional floor level and rectangle, walls left out (q6; its list stance moves from « not-ruled » to a built import with slice 8). Option C, reading walls from a DXF, is built only once a client hands over a real DXF, and tested against it (q8); when a file is read, a wall's thickness is asked once per import (0,20 m by default) and heights come from the palette's defaults (q9).
+- [2026-10-21 21:19] ASSUMED (review): A write that adds is held to an `Idempotency-Key` (§ 3 « One submission, one write », plan row 51, the security hunt's F3): the eleven POSTs whose second sending adds again (payments, overpayments, instruments, apply-credit, stock movements, stock receipts, an order's receipts, a quote's deposit invoice, the two invoicings from delivery notes, imports), found by reading all 143 POSTs (`var/claude/f3/post-stances.json`); the header and its answers follow Stripe's convention as the expired IETF draft wrote it (400 missing, 422 another body, 409 in progress), since no published standard exists. Rule: a fix is a class; `advisor()` agreed at goal start.
+- [2026-10-21 21:19] ASSUMED (review): The 36 POSTs that create a record (19 plain, 17 under a unique key) are not held to a key: a second sending makes a second draft the person sees and deletes with its undo, or is refused by its unique key. Holding them too is one line each and the stance gate already lists them; ruling asked (plan row). Rule: undo first.
+- [2026-10-21 21:19] ASSUMED (review): The web names every POST with a key, the same while the same address and body wait for a definite answer (none, a server error, still in progress; at most 15 minutes) and a new one after, rather than a key minted per dialog (`HttpContext`): a person who closes the dialog after a lost answer and sends the same again is answered the first, not charged twice, and no caller changes. The two 409s are said in a toast (« notice ») wherever they come from; the screens' own message for them goes quiet in W2's shared request state once integrated. Rule: undo first, every outcome shown at once.
 
 ## 8. Status
 

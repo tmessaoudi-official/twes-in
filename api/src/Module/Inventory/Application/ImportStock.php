@@ -133,9 +133,15 @@ final readonly class ImportStock
         return self::change($product, $place, $movement, $before);
     }
 
-    /** Whether anything at all ever moved this product at this place: a row there is then not a new one. */
+    /**
+     * Whether anything at all ever moved this product at this place: a row there is then not a new one. Read under the
+     * lock every movement of that stock takes, held until the file commits: two files in « create » mode at once
+     * would otherwise both read nothing there and both add.
+     */
     public function held(Product $product, StockLocation $place): bool
     {
+        $this->movements->lockStockOf($product->getId(), $place->getId());
+
         return 0 !== $this->movements->countOf($product->getId(), $place->getId());
     }
 

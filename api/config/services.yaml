@@ -36,6 +36,10 @@ parameters:
     # machine, release kernel, and 100 drafts printed 37 s; a shop's small computer may take several times that. PHP's own
     # limit is lifted to it on those routes alone, never shortened, and infra/web/nginx.conf waits as long for the answer.
     app.long_request.max_seconds: 240
+    # The hours a key sent with a write that adds is kept, with what the write answered, for a retry to be answered again
+    # rather than made again (SubmissionGuard): a lost answer is retried within minutes; the hourly purge forgets the rest.
+    # A claim whose work never committed is taken back once it is older than app.long_request.max_seconds.
+    app.submissions.kept_hours: 24
     # What an imported workbook's parts may inflate to, together (64 MiB): a few kilobytes of zip can hold gigabytes, while
     # 5,000 rows (the row cap's ceiling) of twenty forty-character cells inflate to about 10 MB.
     app.import.max_inflated_bytes: 67108864

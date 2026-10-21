@@ -19,6 +19,7 @@ use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\DeletePaymentProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\RecordPaymentProcessor;
 use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -33,6 +34,7 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new Post(
             uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/payments',
+            defaults: [Submissions::ROUTE_DEFAULT => true],
             processor: RecordPaymentProcessor::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: self::NORMALIZATION,

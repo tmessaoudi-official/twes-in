@@ -22,6 +22,7 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\AdvanceInstru
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\DeleteInstrumentProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\ReceiveInstrumentProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider\InvoiceInstrumentsProvider;
+use App\Shared\Infrastructure\Submissions\Submissions;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -45,6 +46,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/instruments',
+            defaults: [Submissions::ROUTE_DEFAULT => true],
             processor: ReceiveInstrumentProcessor::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: self::NORMALIZATION,

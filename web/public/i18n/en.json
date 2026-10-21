@@ -2976,7 +2976,9 @@
     "retry": "Try again",
     "offline": "You are offline: nothing can be saved for now.",
     "restored": "Connection restored.",
-    "close": "Close"
+    "close": "Close",
+    "submission_in_progress": "This is still being saved: wait a moment, then read the page again.",
+    "submission_unanswered": "This was already saved, but its answer was lost: reload the page to see it."
   },
   "live": {
     "changed_by": "{{name}} saved another version of this record while you were editing it.",
