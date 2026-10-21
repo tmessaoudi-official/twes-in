@@ -5,6 +5,9 @@ import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { SCAN_DETAILS } from './shared/scan/scan-details';
 import { tabInterceptor } from './shared/realtime/tab-interceptor';
 import { liveChangesInterceptor } from './shared/realtime/live-changes-interceptor';
+import { effectsInterceptor } from './shared/effects/effects-interceptor';
+import { EFFECT_SAYERS } from './shared/effects/effects';
+import { PriceEffects } from './products/price-effects';
 import { languageInterceptor } from './shared/i18n/language-interceptor';
 import { provideHttpClient, withInterceptors, withNoXsrfProtection } from '@angular/common/http';
 import {
@@ -62,6 +65,7 @@ export const appConfig: ApplicationConfig = {
         csrfInterceptor,
         tabInterceptor,
         liveChangesInterceptor,
+        effectsInterceptor,
         languageInterceptor,
         activityInterceptor,
         customerScreenInterceptor,
@@ -84,6 +88,8 @@ export const appConfig: ApplicationConfig = {
     // Shared code reads the session through its port; the auth feature answers it.
     { provide: Session, useExisting: AuthFacade },
     { provide: SCAN_DETAILS, useExisting: ProductScanDetails },
+    // What a request did beyond its subject is said by the feature it concerns, whichever page sent the request.
+    { provide: EFFECT_SAYERS, useExisting: PriceEffects, multi: true },
     // Proving who is at the screen again is the auth feature's too.
     { provide: StepUpProof, useExisting: AuthFacade },
     // So is holding the sign-in on the customer screen, which the API keeps in the session.

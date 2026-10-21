@@ -15,6 +15,7 @@ import type { RecordedFeedback } from '../shared/testing/feedback';
 import { PriceReviewOffer } from './price-review-offer';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductRow } from './products-types';
+import type { SaidEffect } from '../shared/effects/effects';
 
 const moved: ProductRow = {
   id: 'p1',
@@ -46,6 +47,10 @@ const moved: ProductRow = {
 };
 const unmoved: ProductRow = { ...moved, id: 'p2', priceReview: null };
 
+function marginMoved(id: string): SaidEffect {
+  return { kind: 'product.margin_moved', id, params: {} };
+}
+
 describe('PriceReviewOffer', () => {
   let permissions: Set<string>;
   const api = { product: vi.fn(), settlePriceReview: vi.fn() };
@@ -57,7 +62,10 @@ describe('PriceReviewOffer', () => {
         { provide: ProductsApi, useValue: api },
         {
           provide: AuthFacade,
-          useValue: { hasPermission: (name: string) => permissions.has(name) },
+          useValue: {
+            hasPermission: (name: string) => permissions.has(name),
+            me: () => ({ company: { id: 'c1' } }),
+          },
         },
         {
           provide: FormatFacade,
@@ -84,7 +92,7 @@ describe('PriceReviewOffer', () => {
   });
 
   it('says each margin a receipt moved, once per product, before and after', async () => {
-    await offer().after('c1', ['p1', 'p2', 'p1']);
+    await offer().said([marginMoved('p1'), marginMoved('p2'), marginMoved('p1')]);
 
     expect(api.product).toHaveBeenCalledTimes(2);
     expect(successToasts()).toEqual(['products.price_review.moved']);
@@ -92,7 +100,7 @@ describe('PriceReviewOffer', () => {
   });
 
   it('offers to adjust, which settles the review on the version read and says the new price', async () => {
-    await offer().after('c1', ['p1']);
+    await offer().said([marginMoved('p1')]);
     const next = offeredNext();
     expect(next?.key).toBe('products.price_review.adjust_short');
 
@@ -106,7 +114,7 @@ describe('PriceReviewOffer', () => {
 
   it('says why an adjustment was refused', async () => {
     api.settlePriceReview.mockRejectedValue(new ProductsRefused('record_changed', []));
-    await offer().after('c1', ['p1']);
+    await offer().said([marginMoved('p1')]);
 
     offeredNext()?.run();
     await vi.waitFor(() => expect(failureToasts()).toEqual(['products.errors.record_changed']));
@@ -114,7 +122,7 @@ describe('PriceReviewOffer', () => {
 
   it('only says the margin to someone who reads costs but does not write products', async () => {
     permissions.delete('product.write');
-    await offer().after('c1', ['p1']);
+    await offer().said([marginMoved('p1')]);
 
     expect(successToasts()).toEqual(['products.price_review.moved']);
     expect(offeredNext()).toBeNull();
@@ -125,14 +133,14 @@ describe('PriceReviewOffer', () => {
       ...moved,
       mergedInto: { id: 'p9', reference: 'ART-009', name: 'Perceuse 2' },
     });
-    await offer().after('c1', ['p1']);
+    await offer().said([marginMoved('p1')]);
 
     expect(offeredNext()).toBeNull();
   });
 
   it('reads nothing and says nothing to someone who cannot read costs', async () => {
     permissions.delete('product.cost.read');
-    await offer().after('c1', ['p1']);
+    await offer().said([marginMoved('p1')]);
 
     expect(api.product).not.toHaveBeenCalled();
     expect(said()).toEqual([]);
@@ -140,8 +148,37 @@ describe('PriceReviewOffer', () => {
 
   it('stays quiet about a product it could not read, the receipt being recorded', async () => {
     api.product.mockRejectedValue(new Error('offline'));
-    await offer().after('c1', ['p1']);
+    await offer().said([marginMoved('p1')]);
 
     expect(said()).toEqual([]);
+  });
+
+  it('says a price that followed its cost, from the price it had to the one it has', async () => {
+    api.product.mockResolvedValue({ ...unmoved, unitPriceNet: '1375.0000' });
+    await offer().said([
+      { kind: 'product.price_followed', id: 'p2', params: { previousPrice: '1250.0000' } },
+    ]);
+
+    expect(api.product).toHaveBeenCalledWith('c1', 'p2');
+    expect(successToasts()).toEqual(['products.price_review.followed']);
+    expect(said()[0]?.params).toEqual({
+      name: 'Perceuse',
+      before: '1250.0000 TND',
+      after: '1375.0000 TND',
+    });
+  });
+
+  it('says a count when the answer folded too many effects to name each product', async () => {
+    await offer().said([
+      { kind: 'product.price_followed', id: null, params: {}, count: 30 },
+      { kind: 'product.margin_moved', id: null, params: {}, count: 2 },
+    ]);
+
+    expect(api.product).not.toHaveBeenCalled();
+    expect(successToasts()).toEqual([
+      'products.price_review.followed_many',
+      'products.price_review.moved_many',
+    ]);
+    expect(said().map((toast) => toast.params)).toEqual([{ count: 30 }, { count: 2 }]);
   });
 });

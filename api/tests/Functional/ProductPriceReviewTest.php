@@ -16,6 +16,7 @@ use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Infrastructure\Effects\EffectsAnswer;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -165,6 +166,27 @@ final class ProductPriceReviewTest extends ApiTestCase
         self::assertContains(['costPrice', 'unitPriceNet'], $this->revisedFields());
     }
 
+    /**
+     * The receipt that moved the price or the margin says so in its own answer, whichever screen sent it, and a receipt
+     * at the same cost moved nothing and says nothing, though a review is still open.
+     */
+    public function testTheReceiptThatMovedThePriceOrTheMarginSaysItInItsAnswer(): void
+    {
+        $this->signedIn(['company.read', 'product.read', 'product.cost.read', 'stock.read', 'stock.write']);
+        $this->receive('1000');
+        self::assertSame([], $this->effects(), 'a first cost moves no margin');
+
+        $this->receive('1100');
+        self::assertSame([['kind' => 'product.margin_moved', 'id' => $this->productId, 'params' => []]], $this->effects());
+        $this->receive('1100');
+        self::assertSame([], $this->effects());
+
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'article.price_on_cost_change', 'follow', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->receive('1200');
+        self::assertSame([['kind' => 'product.price_followed', 'id' => $this->productId, 'params' => ['previousPrice' => '1250.0000']]], $this->effects(), 'the price it had, for « Annuler »');
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -187,6 +209,19 @@ final class ProductPriceReviewTest extends ApiTestCase
         $site = $this->stringAt($this->jsonList()[0], 'id');
         $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->productId, 'locationId' => $site, 'quantity' => '2', 'unitCost' => $unitCost, 'applyCost' => 'last']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
+    /** @return list<mixed> what the last answer said the request did beyond its subject */
+    private function effects(): array
+    {
+        $header = $this->client->getResponse()->headers->get(EffectsAnswer::HEADER);
+        if (null === $header) {
+            return [];
+        }
+        $effects = json_decode($header, true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsList($effects);
+
+        return $effects;
     }
 
     private function settle(string $decision, int $version): void

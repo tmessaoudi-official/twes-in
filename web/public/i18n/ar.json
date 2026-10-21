@@ -2372,7 +2372,10 @@
       "adjust_short": "تعديل السعر",
       "moved": "انتقل هامش {{name}} من {{before}}% إلى {{after}}%.",
       "adjusted": "تم تعديل سعر {{name}} إلى {{price}}.",
-      "kept": "تم الإبقاء على سعر {{name}} عند {{price}}."
+      "kept": "تم الإبقاء على سعر {{name}} عند {{price}}.",
+      "followed": "انتقل سعر {{name}} من {{before}} إلى {{after}} مع كلفته.",
+      "followed_many": "{count, plural, zero {لم يتبع أي سعر كلفته} one {تبع سعر واحد كلفته} two {تبع سعران كلفتهما} few {تبعت {{count}} أسعار كلفتها} many {تبع {{count}} سعرًا كلفته} other {تبع {{count}} سعر كلفته}}.",
+      "moved_many": "{count, plural, zero {لم يتغير هامش أي منتج} one {تغيّر هامش منتج واحد} two {تغيّر هامش منتجين} few {تغيّر هامش {{count}} منتجات} many {تغيّر هامش {{count}} منتجًا} other {تغيّر هامش {{count}} منتج}}."
     }
   },
   "inventory": {
