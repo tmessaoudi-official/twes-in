@@ -21,6 +21,7 @@ use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
@@ -62,7 +63,7 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->orderBy('p.reference')
             ->getQuery()->getResult();
 
-        return array_values(array_filter(\is_array($found) ? $found : [], static fn (mixed $each): bool => $each instanceof Product));
+        return Rows::entities($found, Product::class);
     }
 
     public function substitutionGroups(Uuid $companyId): array
@@ -72,7 +73,7 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ['company' => $companyId->toRfc4122()],
         );
 
-        return array_map(static fn (array $row): array => ['name' => \is_string($row['name']) ? $row['name'] : '', 'products' => is_numeric($row['products']) ? (int) $row['products'] : 0], $rows);
+        return array_map(static fn (array $row): array => ['name' => Rows::text($row['name']), 'products' => Rows::int($row['products'])], $rows);
     }
 
     public function ofCompany(Uuid $companyId): array

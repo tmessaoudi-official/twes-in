@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Vendors\Infrastructure\Doctrine;
 
 use App\Module\Vendors\Application\ExpenseCategoryDirectory;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 
@@ -42,9 +43,7 @@ final readonly class DbalExpenseCategoryDirectory implements ExpenseCategoryDire
     {
         $categories = [];
         foreach ($this->connection->fetchAllAssociative('SELECT id, name, is_active FROM expense_category WHERE company_id = ? ORDER BY name', [$companyId->toRfc4122()]) as $row) {
-            if (\is_string($row['id']) && \is_string($row['name']) && \is_bool($row['is_active'])) {
-                $categories[$row['id']] = ['name' => $row['name'], 'active' => $row['is_active']];
-            }
+            $categories[Rows::text($row['id'])] = ['name' => Rows::text($row['name']), 'active' => Rows::bool($row['is_active'])];
         }
 
         return $categories;

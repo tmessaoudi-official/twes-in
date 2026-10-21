@@ -11,6 +11,7 @@ namespace App\Module\Scanning\Infrastructure\Doctrine;
 
 use App\Module\Scanning\Domain\Model\ScanPhoto;
 use App\Module\Scanning\Domain\Repository\ScanPhotoRepository;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -67,6 +68,6 @@ final readonly class DoctrineScanPhotoRepository implements ScanPhotoRepository
             ->getQuery()
             ->execute();
 
-        return \is_int($cleared) ? $cleared : 0;
+        return Rows::int($cleared);
     }
 }

@@ -16,6 +16,7 @@ use App\Module\AccountingExport\Application\PurchaseEntry;
 use App\Module\Expenses\Domain\Model\Expense;
 use App\Module\Expenses\Domain\Model\ExpenseTax;
 use App\Module\Expenses\Domain\ValueObject\ExpenseStatus;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -40,7 +41,7 @@ final readonly class ExpensePurchaseEntries implements PurchaseEntries
                 ->orderBy('e.date')->addOrderBy('e.createdAt')->addOrderBy('e.id')
                 ->setFirstResult($offset)->setMaxResults(self::BATCH)
                 ->getQuery()->getResult();
-            $expenses = array_values(array_filter(\is_array($found) ? $found : [], static fn (mixed $row): bool => $row instanceof Expense));
+            $expenses = Rows::entities($found, Expense::class);
             foreach ($expenses as $expense) {
                 yield new PurchaseEntry(
                     $expense->getDate(),

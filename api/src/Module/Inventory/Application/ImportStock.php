@@ -124,7 +124,7 @@ final readonly class ImportStock
      */
     public function count(Company $company, Product $product, StockLocation $place, string $counted, bool $recount, ?Uuid $actorUserId, Uuid $runId): StockChange
     {
-        if (!$recount && $this->movements->movedSinceLastCount($product->getId(), $place->getId())) {
+        if (!$recount && $this->movements->movedSinceLastCount($product->getId(), $place->getId(), $company->getId())) {
             throw new StockImportRefused(StockImportRefused::QUANTITY, 'moved_since_count', \sprintf('Goods came in or went out of %s at %s since it was last counted: tick « Recompter » to count it again.', $product->getReference(), $place->getCode()), ['location' => $place->getCode()]);
         }
         $before = $this->movements->onHand($product->getId(), $place->getId());

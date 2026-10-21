@@ -20,6 +20,7 @@ use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
@@ -295,7 +296,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ->getQuery()
             ->getResult();
 
-        return array_values(array_filter(\is_array($invoices) ? $invoices : [], static fn (mixed $invoice): bool => $invoice instanceof Invoice));
+        return Rows::entities($invoices, Invoice::class);
     }
 
     public function depositsOfQuotes(Uuid $companyId, array $quoteIds): array
@@ -316,7 +317,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ->getQuery()
             ->getResult();
 
-        return array_values(array_filter(\is_array($invoices) ? $invoices : [], static fn (mixed $invoice): bool => $invoice instanceof Invoice));
+        return Rows::entities($invoices, Invoice::class);
     }
 
     public function carryingDeliveryNoteLines(Uuid $companyId, array $deliveryNoteLineIds): array
@@ -342,7 +343,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ->getQuery()
             ->getResult();
 
-        return array_values(array_filter(\is_array($invoices) ? $invoices : [], static fn (mixed $invoice): bool => $invoice instanceof Invoice));
+        return Rows::entities($invoices, Invoice::class);
     }
 
     public function invoicedQuantities(Uuid $companyId, array $deliveryNoteLineIds, bool $issuedOnly = false, ?Uuid $except = null): array

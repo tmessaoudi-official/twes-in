@@ -9,10 +9,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\DataFixtures\Scale\Rows;
 use App\DataFixtures\Scale\ScaleGenerator;
 use App\DataHealth\Infrastructure\CompanyReferences;
 use App\Module\Invoices\Application\Chain\VerifyInvoiceChains;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\NumberingSeries;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Console\Application;

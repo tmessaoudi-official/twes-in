@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\DataFixtures\Scale;
 
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Shared\Infrastructure\Doctrine\ScaleDatabase;
 use App\Tenancy\Domain\Model\NumberingSeries;
 use Doctrine\DBAL\Connection;

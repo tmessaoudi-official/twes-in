@@ -11,6 +11,7 @@ namespace App\Module\RecurringExpenses\Infrastructure\Doctrine;
 
 use App\Module\RecurringExpenses\Domain\Model\RecurringExpense;
 use App\Module\RecurringExpenses\Domain\Repository\RecurringExpenseRepository;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
@@ -73,7 +74,7 @@ final readonly class DoctrineRecurringExpenseRepository implements RecurringExpe
             ->getQuery()
             ->getResult();
 
-        return array_values(array_filter(\is_array($found) ? $found : [], static fn (mixed $row): bool => $row instanceof RecurringExpense));
+        return Rows::entities($found, RecurringExpense::class);
     }
 
     public function dueOn(Uuid $companyId, \DateTimeImmutable $day): array

@@ -13,6 +13,7 @@ use App\Module\AccountingExport\Application\JournalPeriod;
 use App\Module\AccountingExport\Application\PaymentEntries;
 use App\Module\AccountingExport\Application\PaymentEntry;
 use App\Module\Invoices\Domain\Model\Payment;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -36,7 +37,7 @@ final readonly class InvoicePaymentEntries implements PaymentEntries
                 ->orderBy('p.date')->addOrderBy('p.createdAt')->addOrderBy('p.id')
                 ->setFirstResult($offset)->setMaxResults(self::BATCH)
                 ->getQuery()->getResult();
-            $payments = array_values(array_filter(\is_array($found) ? $found : [], static fn (mixed $row): bool => $row instanceof Payment));
+            $payments = Rows::entities($found, Payment::class);
             foreach ($payments as $payment) {
                 $invoice = $payment->getInvoice();
                 $snapshot = $invoice->getCustomerSnapshot();

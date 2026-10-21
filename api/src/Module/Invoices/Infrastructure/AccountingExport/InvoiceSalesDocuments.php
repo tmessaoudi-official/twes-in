@@ -18,6 +18,7 @@ use App\Module\AccountingExport\Application\SalesDocuments;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -48,7 +49,7 @@ final readonly class InvoiceSalesDocuments implements SalesDocuments
                 ->orderBy('i.issueDate')->addOrderBy('i.number')->addOrderBy('i.id')
                 ->setFirstResult($offset)->setMaxResults(self::BATCH)
                 ->getQuery()->getResult();
-            $invoices = array_values(array_filter(\is_array($found) ? $found : [], static fn (mixed $row): bool => $row instanceof Invoice));
+            $invoices = Rows::entities($found, Invoice::class);
             foreach ($invoices as $invoice) {
                 yield $this->document($invoice, $scale);
             }

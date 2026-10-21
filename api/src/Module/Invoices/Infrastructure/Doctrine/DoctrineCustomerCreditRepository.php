@@ -14,6 +14,7 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Invoices\Domain\Model\CustomerCreditEntry;
 use App\Module\Invoices\Domain\Repository\CustomerCreditRepository;
 use App\Module\Invoices\Domain\ValueObject\CreditEntryKind;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -85,7 +86,7 @@ final readonly class DoctrineCustomerCreditRepository implements CustomerCreditR
             ->getQuery()
             ->getResult();
 
-        return array_values(array_filter(\is_array($entries) ? $entries : [], static fn (mixed $entry): bool => $entry instanceof CustomerCreditEntry));
+        return Rows::entities($entries, CustomerCreditEntry::class);
     }
 
     public function appliedByPayment(Uuid $companyId, Uuid $paymentId): ?CustomerCreditEntry
