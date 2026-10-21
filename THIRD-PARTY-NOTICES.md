@@ -184,7 +184,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | webmozart/assert | 2.5.0 | MIT | runtime |
 | willdurand/negotiation | 3.1.0 | MIT | runtime |
 
-## web (npm) — 40 runtime, 576 dev
+## web (npm) — 40 runtime, 578 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -201,35 +201,35 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | @angular-eslint/template-parser | 22.6.0 | MIT | dev |
 | @angular-eslint/utils | 22.6.0 | MIT | dev |
 | @angular/build | 22.2.3 | MIT | dev |
-| @angular/cdk | 22.2.3 | MIT | runtime |
+| @angular/cdk | 22.2.4 | MIT | runtime |
 | @angular/cli | 22.2.3 | MIT | dev |
 | @angular/common | 22.2.3 | MIT | runtime |
 | @angular/compiler | 22.2.3 | MIT | runtime |
 | @angular/compiler-cli | 22.2.3 | MIT | dev |
 | @angular/core | 22.2.3 | MIT | runtime |
 | @angular/forms | 22.2.3 | MIT | runtime |
-| @angular/material | 22.2.3 | MIT | runtime |
+| @angular/material | 22.2.4 | MIT | runtime |
 | @angular/platform-browser | 22.2.3 | MIT | runtime |
 | @angular/router | 22.2.3 | MIT | runtime |
-| @asamuzakjp/css-color | 7.1.3 | MIT | dev |
-| @asamuzakjp/dom-selector | 10.0.3 | MIT | dev |
+| @asamuzakjp/css-color | 7.1.7 | MIT | dev |
+| @asamuzakjp/dom-selector | 10.0.4 | MIT | dev |
 | @axe-core/playwright | 4.14.0 | MPL-2.0 | dev |
 | @babel/code-frame | 8.0.6 | MIT | dev |
 | @babel/compat-data | 8.0.5 | MIT | dev |
 | @babel/core | 8.0.1 | MIT | dev |
 | @babel/core | 8.0.5 | MIT | dev |
 | @babel/generator | 8.0.6 | MIT | dev |
-| @babel/helper-compilation-targets | 8.0.6 | MIT | dev |
+| @babel/helper-compilation-targets | 8.0.7 | MIT | dev |
 | @babel/helper-globals | 8.0.6 | MIT | dev |
 | @babel/helper-string-parser | 8.0.6 | MIT | dev |
 | @babel/helper-validator-identifier | 8.0.6 | MIT | dev |
 | @babel/helper-validator-option | 8.0.0 | MIT | dev |
-| @babel/helpers | 8.0.5 | MIT | dev |
-| @babel/parser | 8.0.6 | MIT | dev |
+| @babel/helpers | 8.0.7 | MIT | dev |
+| @babel/parser | 8.0.7 | MIT | dev |
 | @babel/template | 8.0.0 | MIT | dev |
-| @babel/traverse | 8.0.6 | MIT | dev |
+| @babel/traverse | 8.0.7 | MIT | dev |
 | @babel/types | 8.0.6 | MIT | dev |
-| @bramus/specificity | 2.4.2 | MIT | dev |
+| @bramus/specificity | 2.4.3 | MIT | dev |
 | @bufbuild/protobuf | 2.16.0 | (Apache-2.0 AND BSD-3-Clause) | dev |
 | @cacheable/memory | 2.2.0 | MIT | dev |
 | @cacheable/utils | 2.5.0 | MIT | dev |
@@ -275,7 +275,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | @eslint/object-schema | 3.0.5 | Apache-2.0 | dev |
 | @eslint/plugin-kit | 0.7.3 | Apache-2.0 | dev |
 | @exodus/bytes | 1.16.0 | MIT | dev |
-| @harperfast/extended-iterable | 1.0.3 | Apache-2.0 | dev |
+| @harperfast/extended-iterable | 1.0.5 | Apache-2.0 | dev |
 | @hey-api/codegen-core | 0.9.1 | MIT | dev |
 | @hey-api/json-schema-ref-parser | 1.4.4 | MIT | dev |
 | @hey-api/openapi-ts | 0.99.0 | MIT | dev |
@@ -287,22 +287,23 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | @humanfs/types | 0.15.0 | Apache-2.0 | dev |
 | @humanwhocodes/module-importer | 1.0.1 | Apache-2.0 | dev |
 | @humanwhocodes/retry | 0.4.3 | Apache-2.0 | dev |
-| @inquirer/ansi | 2.0.8 | MIT | dev |
-| @inquirer/checkbox | 5.2.5 | MIT | dev |
+| @inquirer/ansi | 2.0.9 | MIT | dev |
+| @inquirer/checkbox | 5.2.7 | MIT | dev |
 | @inquirer/confirm | 6.3.2 | MIT | dev |
-| @inquirer/core | 12.0.3 | MIT | dev |
-| @inquirer/editor | 5.3.3 | MIT | dev |
-| @inquirer/expand | 5.1.5 | MIT | dev |
-| @inquirer/external-editor | 3.0.5 | MIT | dev |
+| @inquirer/core | 12.0.5 | MIT | dev |
+| @inquirer/editor | 5.3.5 | MIT | dev |
+| @inquirer/expand | 5.1.7 | MIT | dev |
+| @inquirer/external-editor | 3.0.6 | MIT | dev |
 | @inquirer/figures | 2.0.9 | MIT | dev |
-| @inquirer/input | 5.1.6 | MIT | dev |
-| @inquirer/number | 4.2.3 | MIT | dev |
-| @inquirer/password | 5.2.2 | MIT | dev |
+| @inquirer/input | 5.1.8 | MIT | dev |
+| @inquirer/number | 4.2.5 | MIT | dev |
+| @inquirer/password | 5.2.4 | MIT | dev |
 | @inquirer/prompts | 8.7.2 | MIT | dev |
-| @inquirer/rawlist | 5.3.5 | MIT | dev |
-| @inquirer/search | 4.3.3 | MIT | dev |
-| @inquirer/select | 5.2.5 | MIT | dev |
+| @inquirer/rawlist | 5.3.7 | MIT | dev |
+| @inquirer/search | 4.3.5 | MIT | dev |
+| @inquirer/select | 5.2.7 | MIT | dev |
 | @inquirer/type | 4.1.1 | MIT | dev |
+| @inquirer/type | 4.2.0 | MIT | dev |
 | @jridgewell/gen-mapping | 0.3.13 | MIT | dev |
 | @jridgewell/gen-mapping | 0.4.0-beta.0 | MIT | dev |
 | @jridgewell/remapping | 2.3.5 | MIT | dev |
@@ -371,7 +372,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | @oxc-parser/binding-win32-x64-msvc | 0.150.0 | MIT | dev |
 | @oxc-project/types | 0.149.0 | MIT | dev |
 | @oxc-project/types | 0.150.0 | MIT | dev |
-| @oxc-project/types | 0.154.0 | MIT | dev |
+| @oxc-project/types | 0.155.0 | MIT | dev |
 | @parcel/watcher | 2.6.0 | MIT | dev |
 | @parcel/watcher-android-arm64 | 2.6.0 | MIT | dev |
 | @parcel/watcher-darwin-arm64 | 2.6.0 | MIT | dev |
@@ -395,35 +396,35 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | @protobufjs/path | 1.1.2 | BSD-3-Clause | runtime |
 | @protobufjs/pool | 1.1.0 | BSD-3-Clause | runtime |
 | @protobufjs/utf8 | 1.1.2 | BSD-3-Clause | runtime |
-| @rolldown/binding-android-arm-eabi | 1.2.14 | MIT | dev |
+| @rolldown/binding-android-arm-eabi | 1.2.15 | MIT | dev |
 | @rolldown/binding-android-arm-eabi | 1.2.8 | MIT | dev |
-| @rolldown/binding-android-arm64 | 1.2.14 | MIT | dev |
+| @rolldown/binding-android-arm64 | 1.2.15 | MIT | dev |
 | @rolldown/binding-android-arm64 | 1.2.8 | MIT | dev |
-| @rolldown/binding-darwin-arm64 | 1.2.14 | MIT | dev |
+| @rolldown/binding-darwin-arm64 | 1.2.15 | MIT | dev |
 | @rolldown/binding-darwin-arm64 | 1.2.8 | MIT | dev |
-| @rolldown/binding-darwin-x64 | 1.2.14 | MIT | dev |
+| @rolldown/binding-darwin-x64 | 1.2.15 | MIT | dev |
 | @rolldown/binding-darwin-x64 | 1.2.8 | MIT | dev |
-| @rolldown/binding-freebsd-x64 | 1.2.14 | MIT | dev |
+| @rolldown/binding-freebsd-x64 | 1.2.15 | MIT | dev |
 | @rolldown/binding-freebsd-x64 | 1.2.8 | MIT | dev |
-| @rolldown/binding-linux-arm-gnueabihf | 1.2.14 | MIT | dev |
+| @rolldown/binding-linux-arm-gnueabihf | 1.2.15 | MIT | dev |
 | @rolldown/binding-linux-arm-gnueabihf | 1.2.8 | MIT | dev |
-| @rolldown/binding-linux-arm64-gnu | 1.2.14 | MIT | dev |
+| @rolldown/binding-linux-arm64-gnu | 1.2.15 | MIT | dev |
 | @rolldown/binding-linux-arm64-gnu | 1.2.8 | MIT | dev |
-| @rolldown/binding-linux-arm64-musl | 1.2.14 | MIT | dev |
+| @rolldown/binding-linux-arm64-musl | 1.2.15 | MIT | dev |
 | @rolldown/binding-linux-arm64-musl | 1.2.8 | MIT | dev |
-| @rolldown/binding-linux-ppc64-gnu | 1.2.14 | MIT | dev |
+| @rolldown/binding-linux-ppc64-gnu | 1.2.15 | MIT | dev |
 | @rolldown/binding-linux-ppc64-gnu | 1.2.8 | MIT | dev |
-| @rolldown/binding-linux-s390x-gnu | 1.2.14 | MIT | dev |
+| @rolldown/binding-linux-s390x-gnu | 1.2.15 | MIT | dev |
 | @rolldown/binding-linux-s390x-gnu | 1.2.8 | MIT | dev |
-| @rolldown/binding-linux-x64-gnu | 1.2.14 | MIT | dev |
+| @rolldown/binding-linux-x64-gnu | 1.2.15 | MIT | dev |
 | @rolldown/binding-linux-x64-gnu | 1.2.8 | MIT | dev |
-| @rolldown/binding-linux-x64-musl | 1.2.14 | MIT | dev |
+| @rolldown/binding-linux-x64-musl | 1.2.15 | MIT | dev |
 | @rolldown/binding-linux-x64-musl | 1.2.8 | MIT | dev |
-| @rolldown/binding-openharmony-arm64 | 1.2.14 | MIT | dev |
+| @rolldown/binding-openharmony-arm64 | 1.2.15 | MIT | dev |
 | @rolldown/binding-openharmony-arm64 | 1.2.8 | MIT | dev |
-| @rolldown/binding-win32-arm64-msvc | 1.2.14 | MIT | dev |
+| @rolldown/binding-win32-arm64-msvc | 1.2.15 | MIT | dev |
 | @rolldown/binding-win32-arm64-msvc | 1.2.8 | MIT | dev |
-| @rolldown/binding-win32-x64-msvc | 1.2.14 | MIT | dev |
+| @rolldown/binding-win32-x64-msvc | 1.2.15 | MIT | dev |
 | @rolldown/binding-win32-x64-msvc | 1.2.8 | MIT | dev |
 | @rolldown/pluginutils | 1.0.1 | MIT | dev |
 | @schematics/angular | 22.2.3 | MIT | dev |
@@ -452,24 +453,24 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | @types/gensync | 1.0.5 | MIT | dev |
 | @types/jsesc | 2.5.1 | MIT | dev |
 | @types/json-schema | 7.0.15 | MIT | dev |
-| @types/node | 26.6.4 | MIT | runtime |
+| @types/node | 26.6.5 | MIT | runtime |
 | @types/stats.js | 0.17.4 | MIT | dev |
 | @types/three | 0.186.0 | MIT | dev |
 | @types/webxr | 0.5.24 | MIT | dev |
-| @typescript-eslint/eslint-plugin | 8.71.2 | MIT | dev |
-| @typescript-eslint/parser | 8.71.2 | MIT | dev |
-| @typescript-eslint/project-service | 8.71.2 | MIT | dev |
-| @typescript-eslint/scope-manager | 8.71.2 | MIT | dev |
-| @typescript-eslint/tsconfig-utils | 8.71.2 | MIT | dev |
-| @typescript-eslint/type-utils | 8.71.2 | MIT | dev |
-| @typescript-eslint/types | 8.71.2 | MIT | dev |
-| @typescript-eslint/typescript-estree | 8.71.2 | MIT | dev |
-| @typescript-eslint/utils | 8.71.2 | MIT | dev |
-| @typescript-eslint/visitor-keys | 8.71.2 | MIT | dev |
+| @typescript-eslint/eslint-plugin | 8.72.0 | MIT | dev |
+| @typescript-eslint/parser | 8.72.0 | MIT | dev |
+| @typescript-eslint/project-service | 8.72.0 | MIT | dev |
+| @typescript-eslint/scope-manager | 8.72.0 | MIT | dev |
+| @typescript-eslint/tsconfig-utils | 8.72.0 | MIT | dev |
+| @typescript-eslint/type-utils | 8.72.0 | MIT | dev |
+| @typescript-eslint/types | 8.72.0 | MIT | dev |
+| @typescript-eslint/typescript-estree | 8.72.0 | MIT | dev |
+| @typescript-eslint/utils | 8.72.0 | MIT | dev |
+| @typescript-eslint/visitor-keys | 8.72.0 | MIT | dev |
 | @vitejs/plugin-basic-ssl | 2.3.0 | MIT | dev |
 | @vitest/mocker | 5.0.5 | MIT | dev |
 | @vitest/spy | 5.0.5 | MIT | dev |
-| acorn | 8.18.0 | MIT | dev |
+| acorn | 8.19.0 | MIT | dev |
 | acorn-jsx | 5.3.2 | MIT | dev |
 | agent-base | 9.0.0 | MIT | dev |
 | ajv | 6.15.0 | MIT | dev |
@@ -486,18 +487,18 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | axe-core | 4.14.0 | MPL-2.0 | dev |
 | axobject-query | 4.1.0 | Apache-2.0 | dev |
 | balanced-match | 4.0.4 | MIT | dev |
-| baseline-browser-mapping | 2.11.27 | Apache-2.0 | dev |
+| baseline-browser-mapping | 2.11.30 | Apache-2.0 | dev |
 | beasties | 0.5.4 | Apache-2.0 | dev |
 | bidi-js | 1.1.0 | MIT | dev |
 | boolbase | 2.0.0 | ISC | dev |
 | brace-expansion | 5.0.12 | MIT | dev |
-| browserslist | 4.29.3 | MIT | dev |
+| browserslist | 4.29.4 | MIT | dev |
 | buffer-from | 1.1.2 | MIT | dev |
 | bundle-name | 4.1.1 | MIT | dev |
 | c12 | 3.3.4 | MIT | dev |
 | cacheable | 2.5.0 | MIT | dev |
-| caniuse-lite | 1.0.30001814 | CC-BY-4.0 | dev |
-| centrifuge | 5.7.4 | MIT | runtime |
+| caniuse-lite | 1.0.30001818 | CC-BY-4.0 | dev |
+| centrifuge | 5.8.0 | MIT | runtime |
 | chai | 6.3.0 | MIT | dev |
 | chalk | 5.6.2 | MIT | dev |
 | chardet | 2.2.0 | MIT | dev |
@@ -533,7 +534,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | domhandler | 6.0.1 | BSD-2-Clause | dev |
 | domutils | 4.0.2 | BSD-2-Clause | dev |
 | dotenv | 17.4.2 | BSD-2-Clause | dev |
-| electron-to-chromium | 1.5.444 | ISC | dev |
+| electron-to-chromium | 1.5.463 | ISC | dev |
 | emoji-regex | 10.6.0 | MIT | dev |
 | empathic | 2.1.0 | MIT | dev |
 | enhanced-resolve | 5.26.0 | MIT | dev |
@@ -555,13 +556,13 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | esutils | 2.0.3 | BSD-2-Clause | dev |
 | events | 3.3.0 | MIT | runtime |
 | expect-type | 1.4.0 | Apache-2.0 | dev |
-| exsolve | 1.1.2 | MIT | dev |
+| exsolve | 1.1.3 | MIT | dev |
 | fast-deep-equal | 3.1.3 | MIT | dev |
 | fast-json-stable-stringify | 2.1.0 | MIT | dev |
 | fast-levenshtein | 2.0.6 | MIT | dev |
 | fast-string-truncated-width | 3.0.3 | MIT | dev |
 | fast-string-width | 3.0.2 | MIT | dev |
-| fast-uri | 3.1.8 | BSD-3-Clause | dev |
+| fast-uri | 3.1.9 | BSD-3-Clause | dev |
 | fast-wrap-ansi | 0.2.2 | MIT | dev |
 | fdir | 6.5.0 | MIT | dev |
 | fflate | 0.8.3 | MIT | dev |
@@ -652,7 +653,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | magic-string | 1.4.1 | MIT | dev |
 | magic-string | 1.4.3 | MIT | dev |
 | marked | 18.1.1 | MIT | runtime |
-| material-symbols | 0.48.0 | Apache-2.0 | runtime |
+| material-symbols | 0.48.1 | Apache-2.0 | runtime |
 | mdn-data | 2.27.1 | CC0-1.0 | dev |
 | meshoptimizer | 1.1.1 | MIT | dev |
 | mimic-function | 5.0.1 | MIT | dev |
@@ -667,7 +668,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | node-addon-api | 6.1.0 | MIT | dev |
 | node-addon-api | 7.1.1 | MIT | dev |
 | node-gyp-build-optional-packages | 5.2.2 | MIT | dev |
-| node-releases | 2.0.57 | MIT | dev |
+| node-releases | 2.0.59 | MIT | dev |
 | npm-package-arg | 14.0.0 | ISC | dev |
 | nth-check | 3.0.1 | BSD-2-Clause | dev |
 | obug | 2.2.1 | MIT | dev |
@@ -677,7 +678,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | open | 11.0.0 | MIT | dev |
 | optionator | 0.9.4 | MIT | dev |
 | ora | 9.4.1 | MIT | dev |
-| ordered-binary | 1.6.2 | MIT | dev |
+| ordered-binary | 1.6.3 | MIT | dev |
 | oxc-parser | 0.150.0 | MIT | dev |
 | p-limit | 3.1.0 | MIT | dev |
 | p-locate | 5.0.0 | MIT | dev |
@@ -691,10 +692,10 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | picocolors | 1.1.1 | ISC | dev |
 | picomatch | 4.0.7 | MIT | dev |
 | piscina | 5.3.2 | MIT | dev |
-| pkg-types | 2.3.3 | MIT | dev |
+| pkg-types | 2.4.0 | MIT | dev |
 | playwright | 1.64.1 | Apache-2.0 | dev |
 | playwright-core | 1.64.1 | Apache-2.0 | dev |
-| postcss | 8.5.30 | MIT | dev |
+| postcss | 8.5.31 | MIT | dev |
 | postcss-media-query-parser | 0.2.3 | MIT | dev |
 | postcss-safe-parser | 7.1.0 | MIT | dev |
 | powershell-utils | 0.1.0 | MIT | dev |
@@ -711,7 +712,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | require-from-string | 2.0.2 | MIT | dev |
 | resolve-pkg-maps | 1.0.0 | MIT | dev |
 | restore-cursor | 5.1.0 | MIT | dev |
-| rolldown | 1.2.14 | MIT | dev |
+| rolldown | 1.2.15 | MIT | dev |
 | rolldown | 1.2.8 | MIT | dev |
 | run-applescript | 7.1.0 | MIT | dev |
 | rxjs | 7.8.2 | Apache-2.0 | runtime |
@@ -754,7 +755,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | strip-ansi | 7.2.0 | MIT | dev |
 | strip-json-comments | 3.1.1 | MIT | dev |
 | supports-color | 8.1.1 | MIT | dev |
-| sync-child-process | 1.0.2 | MIT | dev |
+| sync-child-process | 1.1.0 | MIT | dev |
 | sync-message-port | 1.2.0 | MIT | dev |
 | tagged-tag | 1.0.0 | MIT | runtime |
 | tailwindcss | 4.3.3 | MIT | dev |
@@ -763,8 +764,8 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | tinybench | 6.2.2 | MIT | dev |
 | tinyexec | 1.3.1 | MIT | dev |
 | tinyglobby | 0.2.17 | MIT | dev |
-| tldts | 7.4.16 | MIT | dev |
-| tldts-core | 7.4.16 | MIT | dev |
+| tldts | 7.4.19 | MIT | dev |
+| tldts-core | 7.4.19 | MIT | dev |
 | tough-cookie | 6.0.2 | BSD-3-Clause | dev |
 | tr46 | 7.0.0 | MIT | dev |
 | ts-api-utils | 2.5.0 | MIT | dev |
@@ -772,14 +773,15 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | type-check | 0.4.0 | MIT | dev |
 | type-fest | 5.10.0 | (MIT OR CC0-1.0) | runtime |
 | typescript | 6.0.3 | Apache-2.0 | dev |
-| typescript-eslint | 8.71.2 | MIT | dev |
-| undici | 8.12.2 | MIT | dev |
+| typescript-eslint | 8.72.0 | MIT | dev |
+| undici | 8.12.3 | MIT | dev |
 | undici-types | 8.9.0 | MIT | runtime |
-| update-browserslist-db | 1.3.3 | MIT | dev |
+| update-browserslist-db | 1.3.4 | MIT | dev |
 | uri-js | 4.4.1 | BSD-2-Clause | dev |
 | validate-npm-package-name | 8.0.0 | ISC | dev |
 | varint | 6.0.0 | MIT | dev |
 | verkit | 0.3.2 | MIT | dev |
+| verkit | 0.5.0 | MIT | dev |
 | vite | 8.3.3 | MIT | dev |
 | vitest | 5.0.5 | MIT | dev |
 | w3c-xmlserializer | 6.0.0 | MIT | dev |
@@ -803,7 +805,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | yocto-queue | 0.1.0 | MIT | dev |
 | yoctocolors | 2.2.0 | MIT | dev |
 | zod | 4.6.6 | MIT | runtime |
-| zxing-wasm | 3.1.5 | MIT | runtime |
+| zxing-wasm | 3.1.6 | MIT | runtime |
 
 ## Vendored fonts — 3
 
@@ -815,7 +817,7 @@ Shipped unmodified, each with its licence text in the same directory.
 | web/public/fonts/manrope | OFL-1.1 | manrope-latin-ext-wght-normal.woff2, manrope-latin-wght-normal.woff2 |
 | web/public/fonts/noto-sans-arabic | OFL-1.1 | noto-sans-arabic-arabic-wght-normal.woff2 |
 
-## Compiled into zxing-wasm 3.1.5 — dist/reader/zxing_reader.wasm
+## Compiled into zxing-wasm 3.1.6 — dist/reader/zxing_reader.wasm
 
 The package's lock entry names its own licence only. What its WebAssembly compiles in, as audited from that tarball
 (`web/src/third-party/zxing-reader/COMPONENTS.json`); each licence text ships beside the wasm.
