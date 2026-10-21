@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Doctrine;
 
+use App\Module\Inventory\Application\Merge\MergedProducts;
 use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\Model\StockLot;
 use App\Module\Inventory\Domain\Model\StockMovement;
@@ -27,7 +28,6 @@ use App\Module\Products\Domain\Model\Product;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
-use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Shared\Infrastructure\Doctrine\SearchText;
@@ -56,7 +56,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     ];
     private const array SORTED_BY = ['reference' => 'p.reference', 'product' => 'p.name', 'location' => 'l.code', 'quantity' => 'SUM(m.quantity)'];
 
-    public function __construct(private EntityManagerInterface $entityManager)
+    public function __construct(private EntityManagerInterface $entityManager, private MergedProducts $mergedProducts)
     {
     }
 
@@ -71,11 +71,8 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         foreach ($products as $productId) {
             $this->lockValueOf($productId);
         }
-        // Read under the locks, from the table: a merge holds them while it carries the stock away and aliases the product.
-        $merged = $this->entityManager->getConnection()->fetchFirstColumn(
-            'SELECT p.id::text FROM product p WHERE p.id = ANY(CAST(:ids AS uuid[])) AND '.KeptRecords::mergedAway('p'),
-            ['ids' => '{'.implode(',', array_keys($products)).'}'],
-        );
+        // Read under the locks: a merge holds them while it carries the stock away and aliases the product.
+        $merged = $this->mergedProducts->mergedAway(array_values($products));
         foreach ($movements as $movement) {
             if (\in_array($movement->getProduct()->getId()->toRfc4122(), $merged, true)) {
                 throw new InvalidStockMovement('productId', \sprintf('The product %s was merged into another: its stock is that product\'s now.', $movement->getProduct()->getReference()), reason: 'product_merged');

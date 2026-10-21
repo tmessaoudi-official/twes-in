@@ -7,14 +7,14 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Vendors\Infrastructure\Doctrine;
+namespace App\Module\Expenses\Infrastructure\Vendors;
 
 use App\Module\Vendors\Application\ExpenseCategoryDirectory;
 use App\Shared\Infrastructure\Doctrine\Rows;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 
-/** Reads the expense_category table directly, so vendors import nothing from the expenses module. */
+/** The expenses module's answer to the vendors' question about its categories, read from its own table. */
 final readonly class DbalExpenseCategoryDirectory implements ExpenseCategoryDirectory
 {
     public function __construct(private Connection $connection)
