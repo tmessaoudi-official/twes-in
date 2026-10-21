@@ -208,6 +208,19 @@ docker_ready() {
   ((tries == 0)) || say "Docker answered after $tries tries"
 }
 
+# A command run on the pinned keys (gpg, git verify-tag). gpg puts its agent's sockets in the keys' folder where the
+# system gives no /run/user, and a socket's path holds 107 bytes at most, so a shop folder deep enough made every import
+# fail: the command is handed a short link to the folder instead, and the agent it started is stopped after.
+keyring() {
+  local link status=0
+  link=$(mktemp -d /tmp/twes-gpg.XXXXXX)
+  ln -s "$keys" "$link/k"
+  GNUPGHOME=$link/k "$@" || status=$?
+  GNUPGHOME=$link/k gpgconf --kill all
+  rm -rf "$link"
+  return "$status"
+}
+
 # The public key every release tag must be signed with; a file holding any secret key is refused, so none is ever kept.
 pin_key() {
   local listing fingerprints
@@ -217,7 +230,7 @@ pin_key() {
   fingerprints=$(awk -F: '$1 == "pub" { want = 1; next } want && $1 == "fpr" { print $10; want = 0 }' <<<"$listing")
   [[ -n "$fingerprints" ]] || refuse "$1 holds no public key"
   mkdir -p "$keys"; chmod 700 "$keys"
-  GNUPGHOME=$keys gpg --batch --quiet --import "$1" 2>/dev/null || refuse "gpg could not import $1"
+  keyring gpg --batch --quiet --import "$1" 2>/dev/null || refuse "gpg could not import $1"
   say "release key pinned: $(tr '\n' ' ' <<<"$fingerprints")— compare it with the developer's before trusting it"
 }
 # Why a release tag cannot be taken, or nothing when the pinned key verifies it.
@@ -236,9 +249,9 @@ verified() { # tag, the release running, once
   return 1
 }
 unsigned() {
-  GNUPGHOME=$keys gpg --batch --with-colons --list-keys 2>/dev/null | grep -q '^pub:' \
+  keyring gpg --batch --with-colons --list-keys 2>/dev/null | grep -q '^pub:' \
     || { echo "no release key is pinned here (twes pin-key <the developer's public key>)"; return 0; }
-  GNUPGHOME=$keys git -C "$root" verify-tag "$1" >/dev/null 2>&1 || echo "$1 is not signed by the release key pinned here"
+  keyring git -C "$root" verify-tag "$1" >/dev/null 2>&1 || echo "$1 is not signed by the release key pinned here"
 }
 
 # A question on the terminal; its answer on stdout. A secret is read without echo.
@@ -274,7 +287,7 @@ install() {
       set_value BACKUP_DIRECTORY "$folder"
     fi
   fi
-  if ! GNUPGHOME=$keys gpg --batch --with-colons --list-keys 2>/dev/null | grep -q '^pub:'; then
+  if ! keyring gpg --batch --with-colons --list-keys 2>/dev/null | grep -q '^pub:'; then
     listing=$(gpg --batch --with-colons --show-keys "$root/infra/onprem/release-key.asc" 2>/dev/null) || listing=''
     fingerprint=$(awk -F: '$1 == "pub" { want = 1; next } want && $1 == "fpr" { print $10; exit }' <<<"$listing")
     [[ -n "$fingerprint" ]] || refuse "the checkout holds no release key at infra/onprem/release-key.asc"

@@ -110,6 +110,8 @@ origin() {
 }
 shop() { # the clone, and its values beside it under its own folder
   local o d; o=$(origin); d=$(mktemp -d)
+  # DEEP: a folder whose keyring path is longer than a socket's, as a shop's own folder may be.
+  [[ -z "${DEEP:-}" ]] || { d=$d/$(printf 'deep%.0s' {1..20}); mkdir -p "$d"; }
   git clone -q "$o" "$d/twes-in"
   mkdir -p "$d/etc"; bash "$HERE/deploy/new-instance.sh" --onprem "$d/etc/install.env" >/dev/null
   sed -i -e 's|^MAILER_DSN=.*|MAILER_DSN=smtp://shop%40gmail.com:abcd%20efgh@smtp.gmail.com:587|' \
@@ -272,6 +274,10 @@ out=$(twes "$d" pin-key "$TMPDIR/secret-key.asc"); check "pin-key: a file holdin
 out=$(twes "$d" pin-key "$TMPDIR/release-key.asc.none"); check "pin-key: no such file refused" $? 1 "$out" "no key file"
 printf 'not a key\n' > "$TMPDIR/nothing.asc"
 out=$(twes "$d" pin-key "$TMPDIR/nothing.asc"); check "pin-key: a file holding no key refused" $? 1 "$out" "no public key"
+d=$(DEEP=1 UNPINNED=1 shop)
+out=$(twes "$d" pin-key "$TMPDIR/release-key.asc"); check "pin-key in a deep folder: pinned all the same" $? 0 "$out" "$DEV"
+out=$(BACKUP_LABEL=$LABEL twes "$d" update); check "  and a release verified and taken there" $? 0 "$(deployed)" "--release"
+leftover=$(compgen -G '/tmp/twes-gpg.*'); check "  no link to the keys left behind" $? 1 "$leftover" ""
 d=$(UNPINNED=1 shop)
 out=$(twes "$d" update); check "no key pinned: nothing installed, saying how to pin one" $? 1 "$out" "twes pin-key"
 [[ "$(deployed)" != *--release* ]]; check "  nothing deployed" $? 0 "$(deployed)" ""

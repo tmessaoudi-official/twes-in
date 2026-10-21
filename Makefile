@@ -17,11 +17,13 @@ COMPOSE_FILE ?= compose.yaml:compose.live.yaml
 # own tools, the Docker CLI) and `web-tools` (Node, Playwright's Chromium), compose.yaml, profile `tools`. They run as
 # the host user, with the working tree mounted at its own path (see compose.yaml for why); these are what they read.
 HOST_REPO := $(CURDIR)
+# The repository's own git directory, which a linked worktree's `.git` file names outside the tree (compose.yaml).
+HOST_GIT := $(or $(shell git -C $(CURDIR) rev-parse --path-format=absolute --git-common-dir 2>/dev/null),$(CURDIR)/.git)
 HOST_UID := $(shell id -u)
 HOST_GID := $(shell id -g)
 DOCKER_GID := $(shell stat -c %g /var/run/docker.sock 2>/dev/null)
 TOOLS_TMP := /tmp/twes-in-tools-$(HOST_UID)
-export HOST_REPO HOST_UID HOST_GID DOCKER_GID TOOLS_TMP
+export HOST_REPO HOST_GIT HOST_UID HOST_GID DOCKER_GID TOOLS_TMP
 export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES COMPOSE_FILE
 # WEB_ and API_BUILD_VERSION and _COMMIT for the images' build arguments, worked out only where an image is built.
 BUILD_ENV = $(shell bash scripts/build-version.sh --env)
@@ -31,7 +33,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-image gate-powershell in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-image gate-powershell in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -162,6 +164,11 @@ gate:          ## everything CI checks except e2e: the api half, the web half, t
 	$(MAKE) --no-print-directory gate-web-checks
 	$(MAKE) --no-print-directory gate-licences
 
+gate-snapshot: ## the gate on what is STAGED, in a worktree of its own (.claude/worktrees/gate), while work goes on here; green trees recorded in var/claude/gates
+	@bash scripts/gate/snapshot-gate.sh run
+commit-gated:  ## MSG=<file>: commit exactly the last green snapshot's tree onto HEAD; refused when it is red or master moved since
+	@bash scripts/gate/snapshot-gate.sh commit $(MSG)
+
 gate-licences: tools-image
 	$(TOOLS) make --no-print-directory in-gate-licences
 	$(MAKE) --no-print-directory gate-powershell
@@ -207,6 +214,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/stored-items.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/check.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/mutants.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gate/tests/snapshot-gate.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
@@ -270,7 +278,7 @@ in-gate-licences:
 
 gate-api:      ## the postgres service is started for it (the tests need a real database)
 gate-api: tools-image
-	docker compose up -d --wait postgres
+	docker compose up -d --wait --no-recreate postgres
 	$(TOOLS) make --no-print-directory in-gate-api
 in-gate-api:
 	mkdir -p api/vendor api/var var/tmp var/cache
@@ -283,7 +291,7 @@ gate-web-checks: web-tools-image   # gate-web on the OpenAPI document already ex
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate'
 
 test-api: tools-image
-	docker compose up -d --wait postgres
+	docker compose up -d --wait --no-recreate postgres
 	$(TOOLS) make --no-print-directory in-test-api
 in-test-api:   # composer test: the test database migrated, then the suite on paratest, a database copy a worker (api/tests/parallel.php)
 	cd api && composer test
