@@ -15,7 +15,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | api-platform/core | 5.0.4 | MIT | runtime |
 | async-aws/core | 1.30.0 | MIT | runtime |
 | async-aws/s3 | 3.5.0 | MIT | runtime |
-| brianium/paratest | 7.27.2 | MIT | dev |
+| brianium/paratest | 7.27.3 | MIT | dev |
 | brick/math | 1.0.0 | MIT | runtime |
 | clue/ndjson-react | 1.3.0 | MIT | dev |
 | composer/pcre | 3.4.0 | MIT | dev |
@@ -42,7 +42,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | evenement/evenement | 3.0.2 | MIT | dev |
 | fidry/cpu-core-counter | 1.4.1 | MIT | dev |
 | friendsofphp/php-cs-fixer | 3.95.27 | MIT | dev |
-| guzzlehttp/psr7 | 3.1.0 | MIT | runtime |
+| guzzlehttp/psr7 | 3.2.0 | MIT | runtime |
 | jean85/pretty-package-versions | 2.1.1 | MIT | runtime |
 | league/flysystem | 3.36.0 | MIT | runtime |
 | league/flysystem-async-aws-s3 | 3.31.0 | MIT | runtime |
@@ -91,7 +91,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | sebastian/environment | 9.3.3 | BSD-3-Clause | dev |
 | sebastian/exporter | 8.2.1 | BSD-3-Clause | dev |
 | sebastian/file-filter | 1.0.0 | BSD-3-Clause | dev |
-| sebastian/git-state | 1.0.0 | BSD-3-Clause | dev |
+| sebastian/git-state | 1.1.0 | BSD-3-Clause | dev |
 | sebastian/global-state | 9.0.1 | BSD-3-Clause | dev |
 | sebastian/lines-of-code | 5.0.2 | BSD-3-Clause | dev |
 | sebastian/object-enumerator | 8.1.0 | BSD-3-Clause | dev |
