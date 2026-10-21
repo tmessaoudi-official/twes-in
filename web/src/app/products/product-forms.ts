@@ -20,10 +20,13 @@ import { filterValues, idValues, rangeParams } from '../shared/list/list-filters
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { AMOUNT_WIDTH, withCustomColumns } from '../shared/list/list-view';
 import {
+  CHECK_NOTE_MAX,
+  PRODUCT_CHECK_REASONS,
   PRODUCT_KINDS,
   PRODUCT_TRACKINGS,
   SUBSTITUTION_GROUP_MAX,
   type ProductCategoryInput,
+  type ProductCheckReason,
   type ProductCategoryRow,
   type ProductInput,
   type ProductKind,
@@ -178,7 +181,6 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
   ],
 };
 
-/** The products list with a hidden column per active custom field of the company for products. */
 /** The column a person sorts by, as the API names what it sorts products by. */
 const SORT_KEYS: Readonly<Record<string, ProductSortKey>> = {
   reference: 'reference',
@@ -197,10 +199,15 @@ const INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[
  * What the API is asked for the page of products the list shows: every filter is sent, none applied here, since the
  * list shows the page the API answered and a filter kept on this side would narrow that page alone.
  */
-export function productSearch(query: ListQuery): ProductSearch {
+export function productSearch(
+  query: ListQuery,
+  offered: readonly ProductCheckReason[] = [],
+): ProductSearch {
   const kinds = filterValues(query.filters['kind']);
   const trackings = filterValues(query.filters['tracking']);
   const status = query.filters['status'];
+  const toCheck = query.filters['toCheck'];
+  const reasons = filterValues(query.filters['checkReason']);
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
@@ -210,16 +217,53 @@ export function productSearch(query: ListQuery): ProductSearch {
     trackings: PRODUCT_TRACKINGS.filter((known) => trackings.includes(known)),
     categoryIds: idValues(query.filters['category']),
     isActive: status === 'active' ? true : status === 'inactive' ? false : null,
+    toCheck: toCheck === 'yes' ? true : toCheck === 'no' ? false : null,
+    // Only a reason the API says to this reader: a link naming another would be refused whole.
+    checkReasons: offered.filter((reason) => reasons.includes(reason)),
     intervals: rangeParams(query.filters, INTERVALS),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };
 }
 
+/**
+ * The products list with a hidden column per active custom field of the company for products, and « À vérifier »'s
+ * filters: marked or lacking something, and what is lacking, among the reasons the API says to this reader.
+ */
 export function productsList(
   fields: readonly CustomFieldDefinition[],
+  offered: readonly ProductCheckReason[] = [],
 ): ListDescriptor<ProductListRow> {
-  return withCustomColumns(PRODUCTS_LIST, customListColumns<ProductListRow>(fields));
+  const reasons = PRODUCT_CHECK_REASONS.filter((reason) => offered.includes(reason));
+  return withCustomColumns(
+    {
+      ...PRODUCTS_LIST,
+      filters: [
+        ...(PRODUCTS_LIST.filters ?? []),
+        {
+          id: 'toCheck',
+          label: 'check.filter.to_check',
+          value: (row) => (row.toCheck || row.checkReasons.length > 0 ? 'yes' : 'no'),
+          options: ['yes', 'no'].map((value) => ({ value, label: `check.filter.${value}` })),
+        },
+        ...(reasons.length === 0
+          ? []
+          : [
+              {
+                id: 'checkReason',
+                label: 'check.filter.reasons',
+                multiple: true,
+                value: (row: ProductListRow) => row.checkReasons,
+                options: reasons.map((reason) => ({
+                  value: reason,
+                  label: `check.reasons.${reason}`,
+                })),
+              },
+            ]),
+      ],
+    },
+    customListColumns<ProductListRow>(fields),
+  );
 }
 
 const section = (id: string, fields: FormField[]): FormSection => ({
@@ -341,8 +385,35 @@ export function productForm(
               } satisfies FormField,
             ]
           : []),
+        {
+          id: 'zeroPriceIntended',
+          label: `${FIELDS}.zeroPriceIntended`,
+          kind: 'checkbox',
+          hint: 'check.form.zero_price_hint',
+          visibleWhen: { field: 'unitPriceNet', zero: true },
+        },
       ]),
       ...(taxes.length > 0 ? [section('taxes', taxes)] : []),
+      {
+        id: 'check',
+        title: 'check.form.section',
+        fields: [
+          {
+            id: 'toCheck',
+            label: `${FIELDS}.toCheck`,
+            kind: 'checkbox',
+            hint: 'check.form.to_check_hint',
+          },
+          {
+            id: 'checkNote',
+            label: `${FIELDS}.checkNote`,
+            kind: 'textarea',
+            maxLength: CHECK_NOTE_MAX,
+            span: 2,
+            visibleWhen: { field: 'toCheck', oneOf: ['true'] },
+          },
+        ],
+      },
       section('description', [
         {
           id: 'description',
@@ -398,6 +469,9 @@ export function productValues(
     description: row?.description ?? '',
     substitutionGroup: row?.substitutionGroup ?? '',
     tracking: row?.tracking ?? defaultTracking,
+    toCheck: row?.toCheck ?? false,
+    checkNote: row?.checkNote ?? '',
+    zeroPriceIntended: row?.zeroPriceIntended ?? false,
   };
   // A new product starts with the company's default rate ticked, as a line naming no product is charged it; a product
   // already held keeps its own, none at all for an exempt good.
@@ -435,6 +509,11 @@ export function productInput(
     defaultTaxComponentIds: offeredTaxes(options, values['defaultTaxComponentIds']),
     isActive: values['isActive'] === true,
     customFields: customFieldInput(fields, values),
+    toCheck: values['toCheck'] === true,
+    // A note is kept only with its mark: unticking clears both, as the form hides the note with the box.
+    checkNote: values['toCheck'] === true ? text(values['checkNote']) : null,
+    // Shown only under a price of nothing, and kept by the API only then.
+    zeroPriceIntended: values['zeroPriceIntended'] === true,
     // A service holds no stock, so it tracks nothing; the API says the same.
     tracking:
       kind === 'service'

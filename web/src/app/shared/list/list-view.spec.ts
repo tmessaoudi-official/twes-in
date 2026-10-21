@@ -254,6 +254,31 @@ describe('applyFilters', () => {
     ).toEqual(['a']);
   });
 
+  it('keeps a row holding several values when one of them is chosen', () => {
+    const lacking = [
+      { id: 'a', lacks: ['price', 'barcode'] },
+      { id: 'b', lacks: ['barcode'] },
+      { id: 'c', lacks: [] },
+    ];
+    const filters: ListFilter<(typeof lacking)[number]>[] = [
+      {
+        id: 'lacks',
+        label: 'l',
+        multiple: true,
+        value: (row) => row.lacks,
+        options: ['price', 'barcode'].map((value) => ({ value, label: value })),
+      },
+    ];
+    expect(applyFilters(lacking, filters, { lacks: 'price' }).map((row) => row.id)).toEqual(['a']);
+    expect(applyFilters(lacking, filters, { lacks: 'barcode' }).map((row) => row.id)).toEqual([
+      'a',
+      'b',
+    ]);
+    expect(applyFilters(lacking, filters, { lacks: 'price,barcode' }).map((row) => row.id)).toEqual(
+      ['a', 'b'],
+    );
+  });
+
   it('ignores a filter nobody declared and an option that no longer exists, as a stale view may carry', () => {
     expect(applyFilters(accounts, accountFilters, { gone: 'x', country: 'DE' })).toEqual(accounts);
   });

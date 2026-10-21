@@ -14,6 +14,7 @@ use ApiPlatform\State\ProviderInterface;
 use App\Fiscal\Application\CurrencyScales;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\Photo\ProductPhotos;
+use App\Module\Products\Application\ProductCheckScopes;
 use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
@@ -24,7 +25,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /** @implements ProviderInterface<ProductResource> */
 final readonly class ProductItemProvider implements ProviderInterface
 {
-    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private ProductPhotos $photos, private CurrencyScales $scales)
+    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private ProductPhotos $photos, private CurrencyScales $scales, private ProductCheckScopes $checkScopes)
     {
     }
 
@@ -35,7 +36,7 @@ final readonly class ProductItemProvider implements ProviderInterface
         try {
             $product = $this->manage->get($company, CompanyPath::identifier($uriVariables, 'productId'));
 
-            return ProductResource::of($product, $this->guard->may($company, ProductPermission::COST_READ), $this->scales->of($company->getCurrency()), $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null);
+            return ProductResource::of($product, $this->checkScopes->of($company, $this->guard->may($company, ProductPermission::COST_READ)), $this->scales->of($company->getCurrency()), $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null);
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException('No such product.', $absent);
         }

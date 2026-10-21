@@ -14,6 +14,8 @@ const everyProduct: ProductSearch = {
   trackings: [],
   categoryIds: [],
   isActive: null,
+  toCheck: null,
+  checkReasons: [],
   intervals: {},
   order: null,
 };
@@ -33,6 +35,9 @@ const laptop: ProductInput = {
   customFields: { warranty: 24 },
   tracking: 'none',
   substitutionGroup: null,
+  toCheck: false,
+  checkNote: null,
+  zeroPriceIntended: false,
 };
 
 describe('ProductsApi', () => {
@@ -94,6 +99,8 @@ describe('ProductsApi', () => {
       trackings: [],
       categoryIds: [],
       isActive: false,
+      toCheck: null,
+      checkReasons: [],
       intervals: { 'unitPriceNet.min': '10' },
       order: { key: 'name' as const, direction: 'asc' as const },
     };
@@ -252,6 +259,7 @@ describe('ProductsApi', () => {
       ],
       photosPerProduct: 6,
       photoMaxBytes: 5242880,
+      checkReasons: [],
     });
 
     expect(await pending).toEqual({
@@ -261,6 +269,7 @@ describe('ProductsApi', () => {
       taxes: [{ id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat', isDefault: true }],
       photosPerProduct: 6,
       photoMaxBytes: 5242880,
+      checkReasons: [],
     });
   });
 
@@ -308,8 +317,43 @@ describe('ProductsApi', () => {
       substitutionGroup: null,
       mainPhotoId: null,
       priceReview: null,
+      toCheck: false,
+      checkNote: null,
+      zeroPriceIntended: false,
+      checkReasons: [],
       mergedInto: null,
     });
+  });
+
+  it('reads « À vérifier » as the API says it, leaving out a reason this screen does not know', async () => {
+    const pending = api.product('c1', 'p1');
+    http.expectOne('/api/companies/c1/products/p1').flush({
+      ...laptop,
+      id: 'p1',
+      toCheck: true,
+      checkNote: 'Prix à confirmer',
+      zeroPriceIntended: true,
+      checkReasons: ['to_count', 'from_the_future', 'price_missing'],
+    });
+    expect(await pending).toEqual(
+      expect.objectContaining({
+        toCheck: true,
+        checkNote: 'Prix à confirmer',
+        zeroPriceIntended: true,
+        checkReasons: ['price_missing', 'to_count'],
+      }),
+    );
+  });
+
+  it('asks for what is to check, and for what is missing, each reason named', () => {
+    const search = {
+      ...everyProduct,
+      toCheck: true,
+      checkReasons: ['price_missing' as const, 'to_count' as const],
+    };
+    expect(api.exportUrl('c1', search, 'csv')).toBe(
+      '/api/companies/c1/exports/products.csv?toCheck=true&checkReason%5B%5D=price_missing&checkReason%5B%5D=to_count',
+    );
   });
 
   it('reads the product a product merged away points at', async () => {
@@ -503,6 +547,8 @@ describe('ProductsApi', () => {
       trackings: ['lot', 'serial'],
       categoryIds: ['k1'],
       isActive: false,
+      toCheck: null,
+      checkReasons: [],
       intervals: { 'unitPriceNet.min': '5', 'unitPriceNet.max': '99.5' },
       order: { key: 'category', direction: 'desc' },
     });

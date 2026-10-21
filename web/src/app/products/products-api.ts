@@ -42,12 +42,14 @@ import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import {
   BARCODE_ROLES,
+  PRODUCT_CHECK_REASONS,
   PRODUCT_KINDS,
   PRODUCT_TRACKINGS,
   type BarcodesRefusal,
   type LabelledProduct,
   type LineTaxFamily,
   type ProductBarcode,
+  type ProductCheckReason,
   type ProductCategoryInput,
   type ProductCategoryRow,
   type ProductHomeRow,
@@ -596,6 +598,8 @@ function toSearchParams(search: ProductSearch): HttpParams {
   for (const tracking of search.trackings) params = params.append('tracking[]', tracking);
   for (const id of search.categoryIds) params = params.append('categoryId[]', id);
   if (search.isActive !== null) params = params.set('isActive', search.isActive);
+  if (search.toCheck !== null) params = params.set('toCheck', search.toCheck);
+  for (const reason of search.checkReasons) params = params.append('checkReason[]', reason);
   for (const [key, value] of Object.entries(search.intervals)) {
     params = params.set(apiRangeKey(key), value);
   }
@@ -628,7 +632,16 @@ function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductR
     mainPhotoId: raw.mainPhotoId ?? null,
     mergedInto: raw.mergedInto ?? null,
     priceReview: raw.priceReview ?? null,
+    toCheck: raw.toCheck ?? false,
+    checkNote: raw.checkNote ?? null,
+    zeroPriceIntended: raw.zeroPriceIntended ?? false,
+    checkReasons: checkReasonsOf(raw.checkReasons),
   };
+}
+
+/** The reasons the API named that this screen knows, in its order; an unknown one is left out rather than shown raw. */
+function checkReasonsOf(raw: readonly string[] | undefined): ProductCheckReason[] {
+  return PRODUCT_CHECK_REASONS.filter((reason) => (raw ?? []).includes(reason));
 }
 
 function toProductBody(input: ProductInput): ProductProductWrite {
@@ -704,6 +717,7 @@ function toOptions(raw: ProductOptionsProductOptionsRead): ProductOptions {
     }),
     photosPerProduct: raw.photosPerProduct ?? 0,
     photoMaxBytes: raw.photoMaxBytes ?? 0,
+    checkReasons: checkReasonsOf(raw.checkReasons),
   };
 }
 

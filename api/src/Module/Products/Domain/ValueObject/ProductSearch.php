@@ -29,6 +29,9 @@ final readonly class ProductSearch
      * @param list<ProductTracking>       $trackings    any of them
      * @param list<Uuid>                  $categories   any of them
      * @param DecimalRange|null           $unitPriceNet the selling price before tax, each end inclusive
+     * @param bool|null                   $toCheck      marked by a person or lacking anything the scope says, or neither
+     * @param list<ProductCheckReason>    $checkReasons lacking any of them
+     * @param ProductCheckScope|null      $checkScope   what may be said to whoever asks, set by the use case
      */
     public function __construct(
         public ?string $text = null,
@@ -38,6 +41,9 @@ final readonly class ProductSearch
         public array $trackings = [],
         public array $categories = [],
         public ?DecimalRange $unitPriceNet = null,
+        public ?bool $toCheck = null,
+        public array $checkReasons = [],
+        public ?ProductCheckScope $checkScope = null,
     ) {
     }
 
@@ -48,6 +54,12 @@ final readonly class ProductSearch
      */
     public function withCategories(array $categories): self
     {
-        return new self($this->text, $this->kinds, $this->active, $this->order, $this->trackings, $categories, $this->unitPriceNet);
+        return new self($this->text, $this->kinds, $this->active, $this->order, $this->trackings, $categories, $this->unitPriceNet, $this->toCheck, $this->checkReasons, $this->checkScope);
+    }
+
+    /** The same search told what its reader may be told of what a product lacks. */
+    public function withCheckScope(ProductCheckScope $scope): self
+    {
+        return new self($this->text, $this->kinds, $this->active, $this->order, $this->trackings, $this->categories, $this->unitPriceNet, $this->toCheck, $this->checkReasons, $scope);
     }
 }

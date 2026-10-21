@@ -159,11 +159,14 @@ export interface ListFilterOption {
   capitalize?: boolean;
 }
 
-/** One faceted filter of a list screen: the rows whose value equals the option a person picked. */
+/**
+ * One faceted filter of a list screen: the rows whose value equals the option a person picked, or, for a row holding
+ * several (what a product lacks), one of whose values does.
+ */
 export interface ListFilter<Row> {
   id: string;
   label: string;
-  value: (row: Row) => string | null;
+  value: (row: Row) => string | readonly string[] | null;
   options: ListFilterOption[];
   /**
    * Whether several options can be chosen at once (docs/SPEC.md § 7, 2026-10-06): the rows holding ANY of them are

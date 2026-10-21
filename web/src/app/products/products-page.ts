@@ -5,9 +5,11 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   OnInit,
   signal,
+  untracked,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,6 +22,7 @@ import { AmountPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell, DataListSelection } from '../shared/list/data-list';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
+import { filterValues } from '../shared/list/list-filters';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { ListPickSource, ListQuery } from '../shared/list/list-types';
 import { RecordDeletes } from '../shared/records/record-deletes';
@@ -69,7 +72,7 @@ export class ProductsPage implements OnInit {
 
   /** Rows are selected for what the selection bar offers on them: their labels on one sheet, and a merge. */
   protected readonly list = computed(() => ({
-    ...productsList(this.facade.customFields()),
+    ...productsList(this.facade.customFields(), this.offeredReasons() ?? []),
     selection: { countKey: 'products.selected' },
   }));
   /** The rows ticked on the page shown, by id: what the selection bar's actions act on. */
@@ -106,6 +109,10 @@ export class ProductsPage implements OnInit {
     }));
   }
 
+  /** What « À vérifier » may say to this reader here; null until the product options are read. */
+  private readonly offeredReasons = computed(() => this.facade.options()?.checkReasons ?? null);
+  /** What the list last asked for, as the list said it: asked again once the reasons it may name are known. */
+  private query: ListQuery | null = null;
   /** The page the list shows last asked for; a change elsewhere reads it again. */
   private search: ProductSearch | null = null;
   private readonly searched = signal<ProductSearch | null>(null);
@@ -153,10 +160,28 @@ export class ProductsPage implements OnInit {
     }
   }
 
+  constructor() {
+    // A list opened from a link naming what is lacking asks before the reasons it may name are read: it asks again then.
+    effect(() => {
+      const offered = this.offeredReasons();
+      untracked(() => {
+        const query = this.query;
+        if (
+          offered !== null &&
+          query !== null &&
+          filterValues(query.filters['checkReason']).length > 0
+        ) {
+          this.onQuery(query);
+        }
+      });
+    });
+  }
+
   protected onQuery(query: ListQuery): void {
     const companyId = this.company()?.id;
     if (!companyId) return;
-    this.search = productSearch(query);
+    this.query = query;
+    this.search = productSearch(query, this.offeredReasons() ?? []);
     this.searched.set(this.search);
     void this.facade.loadPage(companyId, this.search);
   }

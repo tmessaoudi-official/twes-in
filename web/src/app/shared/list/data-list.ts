@@ -74,6 +74,7 @@ import { labelOn, rareOn } from './list-types';
 import {
   applyFilters,
   FIT_PRIORITY,
+  filterHolds,
   filterRows,
   fitColumns,
   fittedWidth,
@@ -598,7 +599,7 @@ export class DataList<Row> implements OnInit {
         total: base.length,
         options: filter.options.map((option) => ({
           option,
-          count: base.filter((row) => filter.value(row) === option.value).length,
+          count: base.filter((row) => filterHolds(filter, row, option.value)).length,
         })),
       };
     });

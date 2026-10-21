@@ -19,6 +19,33 @@ export const PRODUCT_KINDS: readonly ProductKind[] = ['goods', 'service'];
 /** The families of tax charged on a line; a stamp or a withholding belongs to the document. */
 export type LineTaxFamily = 'vat' | 'levy';
 
+/**
+ * What « À vérifier » says a product lacks, in the API's order. A reader is told only those the product options list:
+ * the cost to a cost reader, the count while stock is kept, the VAT where the company charges it.
+ */
+export type ProductCheckReason =
+  | 'price_missing'
+  | 'vendor_missing'
+  | 'vat_missing'
+  | 'cost_missing'
+  | 'barcode_missing'
+  | 'category_missing'
+  | 'unit_to_confirm'
+  | 'to_count';
+export const PRODUCT_CHECK_REASONS: readonly ProductCheckReason[] = [
+  'price_missing',
+  'vendor_missing',
+  'vat_missing',
+  'cost_missing',
+  'barcode_missing',
+  'category_missing',
+  'unit_to_confirm',
+  'to_count',
+];
+
+/** The longest note « À vérifier » keeps, as the API does. */
+export const CHECK_NOTE_MAX = 500;
+
 /** What the API sorts products by. */
 export type ProductSortKey = 'reference' | 'name' | 'kind' | 'category' | 'isActive';
 
@@ -35,6 +62,10 @@ export interface ProductSearch {
   /** Each with every category under it, which the API adds. */
   categoryIds: readonly string[];
   isActive: boolean | null;
+  /** Marked or lacking something (true), neither (false), or either (null). */
+  toCheck: boolean | null;
+  /** Any of these, OR'd; only reasons the product options list. */
+  checkReasons: readonly ProductCheckReason[];
   /** The ends of the price interval, `unitPriceNet.min` and `unitPriceNet.max`, each already a valid decimal. */
   intervals: Readonly<Record<string, string>>;
   order: { key: ProductSortKey; direction: 'asc' | 'desc' } | null;
@@ -69,6 +100,13 @@ export interface ProductRow {
   mergedInto: ProductMergedInto | null;
   /** The margin a receipt's cost moved under the price, until it is settled; null when nothing moved it, or for a non cost reader. */
   priceReview: ProductPriceReview | null;
+  /** « À vérifier » as a person set it, with why. */
+  toCheck: boolean;
+  checkNote: string | null;
+  /** A price of nothing meant (a gift, a sample): the price is then not asked for, until it moves. */
+  zeroPriceIntended: boolean;
+  /** What the product lacks, as the API says it to this reader; never written. */
+  checkReasons: ProductCheckReason[];
 }
 
 /**
@@ -137,7 +175,7 @@ export const LOT_CODE_PATTERN = /^[\x21-\x7E]{1,40}$/;
 /** What a save sends: the main photo is the gallery's to say, never the form's, and the merge only « Fusionner… »'s. */
 export type ProductInput = Omit<
   ProductRow,
-  'id' | 'version' | 'barcodes' | 'mainPhotoId' | 'mergedInto' | 'priceReview'
+  'id' | 'version' | 'barcodes' | 'mainPhotoId' | 'mergedInto' | 'priceReview' | 'checkReasons'
 >;
 
 /**
@@ -248,6 +286,8 @@ export interface ProductOptions {
   /** How many photos a product may have, and how large one may be in bytes: the API's parameters. */
   photosPerProduct: number;
   photoMaxBytes: number;
+  /** The reasons « À vérifier » may say to this reader in this company, which a list offers to narrow by. */
+  checkReasons: ProductCheckReason[];
 }
 
 /**

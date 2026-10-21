@@ -61,6 +61,7 @@ export const ICONS = [
   'expand_less',
   'expand_more',
   'extension',
+  'fact_check',
   'fiber_new',
   'filter_list',
   'fingerprint',

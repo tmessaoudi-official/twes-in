@@ -48,6 +48,7 @@ export function watchRowView(
     'email',
     'description',
     'payee',
+    'note',
   ] as const) {
     if (name in params) cells[name] = text(params, name);
   }
@@ -58,6 +59,16 @@ export function watchRowView(
       Number(params['roleBuiltIn'] ?? 0) === 1
         ? new CapitalizePipe().transform(say(`roles.${role}`))
         : role;
+  }
+  // What a product lacks, by code, and whether a person marked it, as the product's page names them.
+  if ('reasons' in params) {
+    cells['reasons'] = [
+      ...(Number(params['marked'] ?? 0) === 1 ? [say('check.marked')] : []),
+      ...text(params, 'reasons')
+        .split(',')
+        .filter((reason) => reason !== '')
+        .map((reason) => say(`check.reasons.${reason}`)),
+    ].join(', ');
   }
   if ('kind' in params) cells['kind'] = say(`invoices.instruments.kinds.${text(params, 'kind')}`);
   if ('invoices' in params) cells['invoices'] = Number(params['invoices']);

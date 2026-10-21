@@ -193,6 +193,15 @@ final readonly class ManageProducts
             if (!$input->isActive) {
                 $product->revise($reference, $details, $unit, $category, $input->defaultTaxComponentIds, false, $now);
             }
+            if (null !== $input->check) {
+                $product->reviseCheck($input->check->mark, $input->check->zeroPriceIntended, $now);
+            }
+            if (!$input->unitNamed) {
+                $product->awaitUnitConfirmation();
+            }
+            if ($input->awaitsCount) {
+                $product->awaitCount();
+            }
             $this->products->save($product);
             $this->record($company, $product->getId(), self::CREATED, [], $actorUserId);
             $this->keepCostChange($product, null, CostChangeSource::Created, $actorUserId, $now);
@@ -245,6 +254,13 @@ final readonly class ManageProducts
             // After the codes, which link their own vendors: a vendor a code still names stays linked.
             if (null !== $vendors && $product->replaceVendors($vendors, $now)) {
                 $changed[] = 'vendors';
+            }
+            // After the price, which decides whether a price of nothing may be meant.
+            if (null !== $input->check) {
+                $changed = [...$changed, ...$product->reviseCheck($input->check->mark, $input->check->zeroPriceIntended, $now)];
+            }
+            if ($input->unitNamed && $product->confirmUnit($now)) {
+                $changed[] = 'unitToConfirm';
             }
             if ([] !== $changed) {
                 $this->products->save($product);

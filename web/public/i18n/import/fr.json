@@ -55,7 +55,7 @@
       "substitution_group": "Groupe de substitution",
       "substitution_group_note": "Les articles qui portent ce nom peuvent se remplacer quand l’un est en rupture.",
       "unit_code": "Unité",
-      "unit_code_note": "Le code d’une unité de l’entreprise (H87 pièce, HUR heure). Obligatoire pour un nouvel article.",
+      "unit_code_note": "Le code d’une unité de l’entreprise (H87 pièce, HUR heure). Vide pour un nouvel article : l’unité par défaut, à confirmer dans sa fiche.",
       "category": "Catégorie",
       "category_note": "Le nom d’une catégorie existante ; créez-la avant l’import.",
       "unit_price_net": "Prix de vente HT",
@@ -77,6 +77,8 @@
       "default_taxes": "Taxes par défaut",
       "default_taxes_note": "Codes de taxes séparés par des virgules (TVA19).",
       "active": "Actif",
+      "to_check": "À vérifier",
+      "to_check_note": "Une note marque l’article « À vérifier » avec elle, 500 caractères au plus ; vide, la marque reste comme elle est.",
       "home_location": "Emplacement habituel",
       "home_location_note": "Le code d’un emplacement de stock : c’est celui que la réception proposera.",
       "reorder_point": "Seuil de réapprovisionnement",
@@ -223,7 +225,8 @@
       "no_taxes": "Sans taxe : chaque document le vendra sans TVA. Donnez son taux dans le fichier, ou dans sa fiche.",
       "default_taxes_given": "Taxes par défaut données : {{codes}}.",
       "price_to_enter": "Sans prix de vente : créé au prix 0 et désactivé. Saisissez son prix dans sa fiche, puis activez-le.",
-      "below_cost": "Vendu sous son prix de revient ({{cost}})."
+      "below_cost": "Vendu sous son prix de revient ({{cost}}).",
+      "unit_to_confirm": "Sans unité : créé en {{code}}, l’unité par défaut. Confirmez-la dans sa fiche."
     },
     "stock": {
       "stock_add": "Quantité à ajouter",

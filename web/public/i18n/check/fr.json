@@ -1,0 +1,30 @@
+{
+  "check": {
+    "reasons": {
+      "price_missing": "Prix de vente manquant",
+      "vendor_missing": "Fournisseur manquant",
+      "vat_missing": "TVA manquante",
+      "cost_missing": "Prix de revient manquant",
+      "barcode_missing": "Code-barres manquant",
+      "category_missing": "Catégorie manquante",
+      "unit_to_confirm": "Unité à confirmer",
+      "to_count": "À compter"
+    },
+    "marked": "Marqué à la main",
+    "filter": {
+      "to_check": "À vérifier",
+      "yes": "À vérifier",
+      "no": "Rien à vérifier",
+      "reasons": "Ce qui manque"
+    },
+    "form": {
+      "section": "À vérifier",
+      "to_check_hint": "Marque l’article pour y revenir ; la note dit pourquoi.",
+      "zero_price_hint": "Un prix de 0 voulu (cadeau, échantillon) n’est plus signalé, jusqu’à ce que le prix change."
+    },
+    "panel": {
+      "title": "À vérifier",
+      "missing": "Il manque à cet article :"
+    }
+  }
+}

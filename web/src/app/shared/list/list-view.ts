@@ -137,11 +137,14 @@ export function applyFilters<Row>(
     );
   const active = filters.filter((filter) => held(filter).length > 0);
   return rows.filter((row) =>
-    active.every((filter) => {
-      const value = filter.value(row);
-      return value !== null && held(filter).includes(value);
-    }),
+    active.every((filter) => held(filter).some((value) => filterHolds(filter, row, value))),
   );
+}
+
+/** Whether a row holds one option of a filter: its value is that option, or one of its values is. */
+export function filterHolds<Row>(filter: ListFilter<Row>, row: Row, option: string): boolean {
+  const value = filter.value(row);
+  return value !== null && (typeof value === 'string' ? value === option : value.includes(option));
 }
 
 export interface Page<Row> {

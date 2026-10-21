@@ -1,0 +1,30 @@
+{
+  "check": {
+    "reasons": {
+      "price_missing": "Selling price missing",
+      "vendor_missing": "Vendor missing",
+      "vat_missing": "VAT missing",
+      "cost_missing": "Cost price missing",
+      "barcode_missing": "Barcode missing",
+      "category_missing": "Category missing",
+      "unit_to_confirm": "Unit to confirm",
+      "to_count": "To count"
+    },
+    "marked": "Marked by hand",
+    "filter": {
+      "to_check": "To check",
+      "yes": "To check",
+      "no": "Nothing to check",
+      "reasons": "What is missing"
+    },
+    "form": {
+      "section": "To check",
+      "to_check_hint": "Marks the product to come back to; the note says why.",
+      "zero_price_hint": "A price of 0 meant (a gift, a sample) is no longer flagged, until the price changes."
+    },
+    "panel": {
+      "title": "To check",
+      "missing": "This product lacks:"
+    }
+  }
+}

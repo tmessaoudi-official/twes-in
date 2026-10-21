@@ -37,6 +37,7 @@ import { ProductReorderPointsSection } from './product-reorder-points';
 import { ProductCostHistory } from './product-cost-history-facade';
 import { ProductCostHistorySection } from './product-cost-history';
 import { ProductPriceReviewNotice } from './product-price-review';
+import { ProductCheck } from './product-check';
 import type { PriceReviewDecision } from './products-types';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { RecordHistory } from '../activity/record-history';
@@ -75,6 +76,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     ProductSubstitutesSection,
     ProductCostHistorySection,
     ProductPriceReviewNotice,
+    ProductCheck,
     RecordHistory,
     ProductBarcodesSection,
     ProductPhotosSection,

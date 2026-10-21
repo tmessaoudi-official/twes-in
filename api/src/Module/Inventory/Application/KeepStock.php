@@ -69,6 +69,7 @@ final readonly class KeepStock
         private ?RaiseStockAlerts $alerts = null,
         private ?ReceiptCosts $receiptCosts = null,
         private ?ProductCategoryRepository $productCategories = null,
+        private ?CountedProducts $counted = null,
     ) {
     }
 
@@ -376,6 +377,7 @@ final readonly class KeepStock
         }
         $this->inStockOnce($movement);
         $this->save($movement);
+        $this->counted?->counted($company, $product, $actorUserId);
         $this->liveChanges->stage(new LiveChange('stock', $product->getId(), 'stock.counted', $actorUserId, $company->getId()));
 
         return $movement;

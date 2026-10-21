@@ -246,6 +246,15 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       actions: [REVIEW_PRICE],
     },
   },
+  // Marked by a person or lacking what a product needs here: completed on its page, where each reason is named.
+  'product.to_check': {
+    icon: 'fact_check',
+    // What it lacks is the subject itself and runs as long as its reasons: kept and scrolled to, never given way.
+    list: productList('to-check', [
+      cell('reasons', { priority: 'high', hideable: false }),
+      cell('note'),
+    ]),
+  },
   'stock.lot_expiring': {
     icon: 'event_note',
     list: productList('lot-expiring', [

@@ -2118,7 +2118,12 @@
       "description": "Description",
       "tracking": "Traceability",
       "substitutionGroup": "Substitution group",
-      "defaultTaxComponentIds": "Default taxes"
+      "defaultTaxComponentIds": "Default taxes",
+      "toCheck": "To check",
+      "checkNote": "Check note",
+      "zeroPriceIntended": "Zero price meant",
+      "unitToConfirm": "Unit to confirm",
+      "toCount": "To count"
     },
     "form": {
       "no_category": "No category",
@@ -3346,6 +3351,10 @@
         "margin_moved": {
           "title": "Margins to review",
           "hint": "A receipt changed the cost price under a selling price that stayed the same: adjust the price or keep it."
+        },
+        "to_check": {
+          "title": "Products to check",
+          "hint": "A product marked « To check », or lacking what a product needs here: complete its page."
         }
       }
     },
@@ -3382,7 +3391,9 @@
       "previousMargin": "Margin before",
       "margin": "Margin",
       "price": "Net unit price",
-      "cost": "Cost price"
+      "cost": "Cost price",
+      "reasons": "To check",
+      "note": "Note"
     },
     "actions": {
       "see_invoices": "See {{name}}'s overdue invoices",

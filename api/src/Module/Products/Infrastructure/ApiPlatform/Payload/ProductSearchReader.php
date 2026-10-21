@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\ApiPlatform\Payload;
 
+use App\Module\Products\Domain\ValueObject\ProductCheckReason;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductSearch;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
@@ -33,6 +34,7 @@ final class ProductSearchReader
         // `true` and `false` as a query string says them, `1` and `0` as an older client sent them.
         $active = $filters->choices('isActive', ['true', 'false', '1', '0']);
         $price = $filters->decimalRange('unitPriceNet');
+        $toCheck = $filters->choices('toCheck', ['true', 'false', '1', '0']);
 
         return new ProductSearch(
             $text,
@@ -42,6 +44,8 @@ final class ProductSearchReader
             array_map(ProductTracking::from(...), $filters->choices('tracking', array_column(ProductTracking::cases(), 'value'))),
             $filters->uuids('categoryId'),
             $price->isOpen() ? null : $price,
+            [] === $toCheck ? null : \in_array($toCheck[0], ['true', '1'], true),
+            array_map(ProductCheckReason::from(...), $filters->choices('checkReason', array_column(ProductCheckReason::cases(), 'value'))),
         );
     }
 }

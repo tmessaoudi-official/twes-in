@@ -13,6 +13,7 @@ use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\ImportExport\Application\Export\DeclaresExport;
 use App\ImportExport\Application\Export\ExportQuery;
 use App\Module\Products\Application\ManageProducts;
+use App\Module\Products\Application\ProductCheckScopes;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductSearch;
 use App\Module\Products\Infrastructure\ApiPlatform\Payload\ProductSearchReader;
@@ -22,6 +23,7 @@ use App\Module\Products\Infrastructure\Import\ProductInFile;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
  * The products list as a file, under the columns the import reads (docs/SPEC.md § 7, row 60), so what a company exports
@@ -41,6 +43,8 @@ final readonly class ProductExport implements DeclaresExport
         private ProductImport $columns,
         private ManageProducts $manage,
         private TaxComponentRepository $taxes,
+        private ProductCheckScopes $checkScopes,
+        private CompanyGuard $guard,
     ) {
     }
 
@@ -67,6 +71,7 @@ final readonly class ProductExport implements DeclaresExport
     public function rows(Company $company, ExportQuery $query): iterable
     {
         $search = ProductSearchReader::read($query->parameters(), $query->text(), $query->order(ProductSearch::SORTS));
+        $search = $this->checkScopes->scoped($company, $search, $this->guard->may($company, ProductPermission::COST_READ));
         $columns = $this->columns($company);
         $codes = [];
         foreach ($this->taxes->ofCompany($company->getId()) as $tax) {

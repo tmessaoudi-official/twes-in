@@ -79,6 +79,15 @@
             (decide)="settlePriceReview($event)"
           />
         }
+        @if (current(); as product) {
+          @if (product.toCheck || product.checkReasons.length > 0) {
+            <app-product-check
+              [reasons]="product.checkReasons"
+              [marked]="product.toCheck"
+              [note]="product.checkNote"
+            />
+          }
+        }
         @if (form(); as form) {
           @if (sync.changedBy(); as changedBy) {
             <app-record-changed

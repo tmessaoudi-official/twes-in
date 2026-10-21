@@ -43,6 +43,34 @@ const tax: FormDescriptor = {
 };
 
 describe('form visibility', () => {
+  it('shows a field under any writing of nothing in a decimal field, and under nothing else', () => {
+    const priced: FormDescriptor = {
+      id: 'priced',
+      sections: [
+        {
+          id: 'main',
+          title: 't.main',
+          fields: [
+            { id: 'price', label: 't.price', kind: 'decimal' },
+            {
+              id: 'meant',
+              label: 't.meant',
+              kind: 'checkbox',
+              visibleWhen: { field: 'price', zero: true },
+            },
+          ],
+        },
+      ],
+    };
+    const meant = priced.sections[0].fields[1];
+    for (const price of ['0', '0.000', '00.0', '-0', '.0', '0.']) {
+      expect(fieldApplies(meant, { price }), price).toBe(true);
+    }
+    for (const price of ['', '0.001', '10', '1.000', '-1', 'abc', '.']) {
+      expect(fieldApplies(meant, { price }), price).toBe(false);
+    }
+  });
+
   it('keeps a read-only field disabled and still hands its value over', () => {
     const establishment: FormDescriptor = {
       id: 'establishment',

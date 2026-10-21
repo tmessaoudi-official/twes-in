@@ -26,6 +26,10 @@ final readonly class ProductInput
      *                                                        those stored
      * @param list<Uuid>|null         $vendorIds              the vendors it is bought from, exactly these and each
      *                                                        supplier code's vendor among them; null keeps them
+     * @param ProductCheckInput|null  $check                  « À vérifier » as written; null keeps it
+     * @param bool                    $unitNamed              whether the writer named the unit, which confirms it; a
+     *                                                        file's row that named none was given its company's default
+     * @param bool                    $awaitsCount            a new product whose stock nobody knows yet, until counted
      */
     public function __construct(
         public string $reference,
@@ -39,6 +43,9 @@ final readonly class ProductInput
         public ?ProductTracking $tracking = null,
         public bool $seesCosts = true,
         public ?array $vendorIds = null,
+        public ?ProductCheckInput $check = null,
+        public bool $unitNamed = true,
+        public bool $awaitsCount = false,
     ) {
     }
 }

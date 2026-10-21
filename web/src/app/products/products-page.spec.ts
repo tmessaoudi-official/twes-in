@@ -66,6 +66,10 @@ const laptop: ProductRow = {
   mainPhotoId: null,
   mergedInto: null,
   priceReview: null,
+  toCheck: false,
+  checkNote: null,
+  zeroPriceIntended: false,
+  checkReasons: [],
 };
 
 const oldLaptop: ProductRow = { ...laptop, id: 'p2', reference: 'ART-001B', name: 'Portable' };
@@ -86,6 +90,7 @@ describe('ProductsPage', () => {
       taxes: [],
       photosPerProduct: 6,
       photoMaxBytes: 5242880,
+      checkReasons: [],
     }).asReadonly(),
     customFields: signal<readonly CustomFieldDefinition[]>([]).asReadonly(),
     total: signal(1).asReadonly(),
@@ -166,6 +171,8 @@ describe('ProductsPage', () => {
       trackings: [],
       categoryIds: [],
       isActive: null,
+      toCheck: null,
+      checkReasons: [],
       intervals: {},
       order: { key: 'reference', direction: 'asc' },
     });

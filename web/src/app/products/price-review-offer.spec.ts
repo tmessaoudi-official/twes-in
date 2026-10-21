@@ -36,6 +36,10 @@ const moved: ProductRow = {
   tracking: 'none',
   mainPhotoId: null,
   mergedInto: null,
+  toCheck: false,
+  checkNote: null,
+  zeroPriceIntended: false,
+  checkReasons: [],
   priceReview: {
     previousCost: '1000.0000',
     cost: '1100.0000',
