@@ -41,7 +41,9 @@
       "exemption_reference": "Texte d’exonération de TVA",
       "exemption_reference_note": "Imprimé pour ce client s’il est exonéré, par exemple « article 261-4-4° du CGI ».",
       "notes": "Notes",
-      "active": "Actif"
+      "active": "Actif",
+      "to_check": "À vérifier",
+      "to_check_note": "Une note marque le client « À vérifier » avec elle, 500 caractères au plus ; vide, la marque reste comme elle est."
     },
     "products": {
       "reference": "Référence",
@@ -113,7 +115,11 @@
       "expense_category": "Rubrique de dépense",
       "expense_category_note": "Le nom d’une rubrique active ; créez-la avant l’import.",
       "notes": "Notes",
-      "active": "Actif"
+      "active": "Actif",
+      "to_check": "À vérifier",
+      "to_check_note": "Une note marque le fournisseur « À vérifier » avec elle, 500 caractères au plus ; vide, la marque reste comme elle est.",
+      "name_doubtful": "Nom douteux",
+      "name_doubtful_note": "« oui » quand le fichier n’est pas sûr du nom : le fournisseur reste « À vérifier » jusqu’à ce qu’on le renomme ou qu’on dise le nom juste ; « non » ôte le doute ; vide, il reste comme il est."
     },
     "opening_stock": {
       "reference": "Référence produit",

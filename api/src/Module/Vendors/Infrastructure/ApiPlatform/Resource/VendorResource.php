@@ -19,12 +19,14 @@ use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Vendors\Application\VendorInput;
 use App\Module\Vendors\Domain\Exception\InvalidVendor;
 use App\Module\Vendors\Domain\Model\Vendor;
+use App\Module\Vendors\Domain\ValueObject\VendorCheckReason;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Processor\CreateVendorProcessor;
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Processor\ReviseVendorProcessor;
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Provider\VendorCollectionProvider;
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Provider\VendorItemProvider;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Domain\Model\Company;
@@ -51,6 +53,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             parameters: [
                 'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, name, legal name, email, address or registration numbers, whatever their case and accents; under three characters, the exact number only.'),
                 'isActive' => new QueryParameter(schema: ['type' => 'boolean']),
+                'toCheck' => new QueryParameter(schema: ['type' => 'boolean'], description: '« À vérifier »: marked by a person or with a name in doubt; false, neither.'),
                 'paymentTermsDays[min]' => new QueryParameter(schema: ['type' => 'string', 'pattern' => '^[0-9]{1,4}$'], description: 'Payment terms of at least this many days; a vendor with none is left out.'),
                 'paymentTermsDays[max]' => new QueryParameter(schema: ['type' => 'string', 'pattern' => '^[0-9]{1,4}$'], description: 'Payment terms of at most this many days; a vendor with none is left out.'),
                 'createdAt[from]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Created on or after this day, in the company\'s own calendar.'),
@@ -183,6 +186,28 @@ final class VendorResource
     #[Groups([self::READ, self::WRITE])]
     public bool $isActive = true;
 
+    /** « À vérifier » as a person set it, on the form or through a file's row. */
+    #[Groups([self::READ, self::WRITE])]
+    public bool $toCheck = false;
+
+    /** What to look at, kept while the mark is on; dropped when it is taken off. */
+    #[Assert\Length(max: CheckMark::NOTE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => CheckMark::NOTE_MAX]])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $checkNote = null;
+
+    /** « Nom douteux », set by a file; a rename clears it, and so does a person sending false. True never sets it. */
+    #[Groups([self::READ, self::WRITE])]
+    public bool $nameDoubtful = false;
+
+    /**
+     * What the vendor lacks, each clearing itself once fixed.
+     *
+     * @var list<string>
+     */
+    #[ApiProperty(writable: false, schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['name_doubtful']]])]
+    #[Groups([self::READ])]
+    public array $checkReasons = [];
+
     /** The expense category this vendor's expenses usually go to. */
     #[Assert\Uuid(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
@@ -216,6 +241,11 @@ final class VendorResource
         $resource->paymentTermsDays = $profile->paymentTermsDays;
         $resource->notes = $profile->notes;
         $resource->isActive = $vendor->isActive();
+        $mark = $vendor->getCheckMark();
+        $resource->toCheck = $mark->marked;
+        $resource->checkNote = $mark->note;
+        $resource->nameDoubtful = $vendor->isNameDoubtful();
+        $resource->checkReasons = array_map(static fn (VendorCheckReason $reason): string => $reason->value, $vendor->checkReasons());
         $resource->defaultExpenseCategoryId = $profile->defaultExpenseCategoryId?->toRfc4122();
         $kept = $vendor->getMergedInto();
         $resource->mergedInto = null === $kept ? null : ['id' => $kept->getId()->toRfc4122(), 'number' => $kept->getNumber(), 'name' => $kept->getProfile()->name];
@@ -248,6 +278,8 @@ final class VendorResource
                 null === $this->defaultExpenseCategoryId ? null : Uuid::fromString($this->defaultExpenseCategoryId),
             ),
             $this->isActive,
+            new CheckMark($this->toCheck, $this->checkNote),
+            $this->nameDoubtful,
         );
     }
 

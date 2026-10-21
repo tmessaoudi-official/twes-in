@@ -14,6 +14,7 @@ const everyCustomer: CustomerSearch = {
   groupIds: [],
   regimes: [],
   isActive: null,
+  toCheck: null,
   intervals: {},
   order: null,
 };
@@ -42,6 +43,8 @@ const carthage: CustomerInput = {
   notes: null,
   isActive: true,
   customFields: {},
+  toCheck: false,
+  checkNote: null,
 };
 
 describe('CustomersApi', () => {
@@ -75,7 +78,48 @@ describe('CustomersApi', () => {
       isActive: true,
     });
 
-    expect(await pending).toEqual({ ...carthage, id: 'k 1', version: 4, mergedInto: null });
+    expect(await pending).toEqual({
+      ...carthage,
+      id: 'k 1',
+      version: 4,
+      mergedInto: null,
+      checkReasons: [],
+      missingIdentifiers: [],
+    });
+  });
+
+  it('reads « À vérifier »: the mark, its note, what the customer lacks, and no reason it does not know', async () => {
+    const pending = api.customer('c1', 'k1');
+    http.expectOne('/api/companies/c1/customers/k1').flush({
+      id: 'k1',
+      version: 2,
+      ...carthage,
+      toCheck: true,
+      checkNote: 'à relancer',
+      checkReasons: ['identifier_missing', 'something_new'],
+      missingIdentifiers: ['matricule_fiscal'],
+    });
+
+    expect(await pending).toMatchObject({
+      toCheck: true,
+      checkNote: 'à relancer',
+      checkReasons: ['identifier_missing'],
+      missingIdentifiers: ['matricule_fiscal'],
+    });
+  });
+
+  it('writes the mark and its note, and never what the API works out', async () => {
+    const created = api.createCustomer('c1', {
+      ...carthage,
+      toCheck: true,
+      checkNote: 'à relancer',
+    });
+    const request = http.expectOne('/api/companies/c1/customers');
+    expect(request.request.body).toMatchObject({ toCheck: true, checkNote: 'à relancer' });
+    expect(request.request.body).not.toHaveProperty('checkReasons');
+    expect(request.request.body).not.toHaveProperty('missingIdentifiers');
+    request.flush({ id: 'k1', version: 1, ...carthage });
+    await created;
   });
 
   it('reads the customer a customer merged away points at', async () => {
@@ -320,13 +364,14 @@ describe('CustomersApi', () => {
       groupIds: ['g1', 'g2'],
       regimes: ['exempt'],
       isActive: false,
+      toCheck: true,
       intervals: { 'createdAt.from': '2026-03-01' },
       order: { key: 'customerGroup', direction: 'desc' },
     });
     const request = http.expectOne((req) => req.url === '/api/companies/c1/customers');
     expect(request.request.headers.get('Accept')).toBe('application/ld+json');
     expect(request.request.params.toString()).toBe(
-      'page=2&itemsPerPage=50&q=carthag%C3%A9&kind%5B%5D=company&kind%5B%5D=individual&customerGroupId%5B%5D=g1&customerGroupId%5B%5D=g2&taxRegime%5B%5D=exempt&isActive=false&createdAt%5Bfrom%5D=2026-03-01&order%5BcustomerGroup%5D=desc',
+      'page=2&itemsPerPage=50&q=carthag%C3%A9&kind%5B%5D=company&kind%5B%5D=individual&customerGroupId%5B%5D=g1&customerGroupId%5B%5D=g2&taxRegime%5B%5D=exempt&isActive=false&toCheck=true&createdAt%5Bfrom%5D=2026-03-01&order%5BcustomerGroup%5D=desc',
     );
     request.flush({ member: [{ id: 'k1', ...carthage }], totalItems: 51 });
 

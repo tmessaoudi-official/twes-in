@@ -1,0 +1,31 @@
+<section
+  [attr.data-testid]="testId()"
+  [attr.aria-labelledby]="testId() + '-title'"
+  class="flex items-start gap-2 rounded-lg border border-outline-variant p-3"
+>
+  <mat-icon aria-hidden="true">fact_check</mat-icon>
+  <div class="flex min-w-0 flex-col gap-1">
+    <h2 [id]="testId() + '-title'" class="font-medium">{{ 'check.panel.title' | translate }}</h2>
+    @if (marked()) {
+      <p [attr.data-testid]="testId() + '-marked'">
+        {{ 'check.marked' | translate }}
+        @if (note(); as note) {
+          — <bdi dir="auto" [attr.data-testid]="testId() + '-note'">{{ note }}</bdi>
+        }
+      </p>
+    }
+    @if (items().length > 0) {
+      <p class="text-sm opacity-80">{{ heading() | translate }}</p>
+      <ul class="flex flex-wrap gap-2" [attr.data-testid]="testId() + '-reasons'">
+        @for (item of items(); track item.id) {
+          <li
+            class="rounded-full border border-outline-variant px-2 py-0.5 text-sm"
+            [attr.data-reason]="item.id"
+          >
+            {{ item.key | translate: item.params }}
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</section>

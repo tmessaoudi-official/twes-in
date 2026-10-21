@@ -25,7 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** The empty file a person fills in to import customers (docs/SPEC.md § 7, 2026-09-17). */
 final class ImportTemplatesTest extends ApiTestCase
 {
-    private const array FIXED = ['number', 'kind', 'name', 'legal_name', 'email', 'phone', 'website', 'billing_line1', 'billing_line2', 'billing_postal_code', 'billing_city', 'billing_country_code', 'shipping_line1', 'shipping_line2', 'shipping_postal_code', 'shipping_city', 'shipping_country_code', 'customer_group', 'tax_regime_code', 'default_tax_codes', 'default_discount_rate', 'payment_terms_days', 'credit_limit', 'document_language', 'exemption_reference', 'notes', 'active'];
+    private const array FIXED = ['number', 'kind', 'name', 'legal_name', 'email', 'phone', 'website', 'billing_line1', 'billing_line2', 'billing_postal_code', 'billing_city', 'billing_country_code', 'shipping_line1', 'shipping_line2', 'shipping_postal_code', 'shipping_city', 'shipping_country_code', 'customer_group', 'tax_regime_code', 'default_tax_codes', 'default_discount_rate', 'payment_terms_days', 'credit_limit', 'document_language', 'exemption_reference', 'notes', 'active', 'to_check'];
 
     private Company $company;
 

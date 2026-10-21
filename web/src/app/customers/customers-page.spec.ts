@@ -62,6 +62,10 @@ const amel: CustomerRow = {
   isActive: false,
   customFields: {},
   mergedInto: null,
+  toCheck: false,
+  checkNote: null,
+  checkReasons: [],
+  missingIdentifiers: [],
 };
 const amelSousse: CustomerRow = { ...amel, id: 'k2', number: 'CLI-0002', name: 'Amel T.' };
 const wholesalers: CustomerGroupRow = {
@@ -157,6 +161,7 @@ describe('CustomersPage', () => {
       groupIds: [],
       regimes: [],
       isActive: null,
+      toCheck: null,
       intervals: {},
       order: { key: 'number', direction: 'asc' },
     });

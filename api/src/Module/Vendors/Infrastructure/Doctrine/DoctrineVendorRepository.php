@@ -26,6 +26,8 @@ final readonly class DoctrineVendorRepository implements VendorRepository
 {
     /** The words of `:text`, found through idx_vendor_search: the index is built on this very SEARCH_TEXT expression. */
     public const string MATCHES_WORDS = "SEARCH_TEXT(v.number, v.name, v.legalName, v.email, v.address.line1, v.address.postalCode, v.address.city, JSON_VALUES(v.identifiers)) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    /** « À vérifier », as `Vendor::getCheckMark()` and `checkReasons()` say it of each vendor. */
+    private const string TO_CHECK = '(v.toCheck = true OR v.nameDoubtful = true)';
     private const array SORTED_BY = ['number' => 'v.number', 'name' => 'v.name', 'city' => 'v.address.city', 'paymentTermsDays' => 'v.paymentTermsDays', 'isActive' => 'v.isActive'];
 
     public function __construct(private EntityManagerInterface $entityManager)
@@ -63,6 +65,9 @@ final readonly class DoctrineVendorRepository implements VendorRepository
             $query->andWhere('v.paymentTermsDays <= :termsMax')->setParameter('termsMax', $search->termsAtMost, Types::INTEGER);
         }
         Intervals::moments($query, 'v.createdAt', 'created', $search->createdOn, $search->timezone);
+        if (null !== $search->toCheck) {
+            $query->andWhere($search->toCheck ? self::TO_CHECK : 'NOT '.self::TO_CHECK);
+        }
         ListOrder::apply($query, $search->order, self::SORTED_BY, ['city', 'paymentTermsDays'], 'v.number')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 

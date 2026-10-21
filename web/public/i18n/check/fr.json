@@ -8,7 +8,9 @@
       "barcode_missing": "Code-barres manquant",
       "category_missing": "Catégorie manquante",
       "unit_to_confirm": "Unité à confirmer",
-      "to_count": "À compter"
+      "to_count": "À compter",
+      "name_doubtful": "Nom douteux",
+      "identifier_missing": "Numéro d’identification manquant"
     },
     "marked": "Marqué à la main",
     "filter": {
@@ -20,11 +22,17 @@
     "form": {
       "section": "À vérifier",
       "to_check_hint": "Marque l’article pour y revenir ; la note dit pourquoi.",
-      "zero_price_hint": "Un prix de 0 voulu (cadeau, échantillon) n’est plus signalé, jusqu’à ce que le prix change."
+      "zero_price_hint": "Un prix de 0 voulu (cadeau, échantillon) n’est plus signalé, jusqu’à ce que le prix change.",
+      "to_check_hint_vendor": "Marque le fournisseur pour y revenir ; la note dit pourquoi.",
+      "to_check_hint_customer": "Marque le client pour y revenir ; la note dit pourquoi.",
+      "name_doubtful_hint": "Un fichier n’était pas sûr de ce nom : décochez quand il est juste. Le renommer ôte aussi le doute."
     },
     "panel": {
       "title": "À vérifier",
-      "missing": "Il manque à cet article :"
-    }
+      "missing": "Il manque à cet article :",
+      "missing_vendor": "À revoir sur ce fournisseur :",
+      "missing_customer": "Il manque à ce client :"
+    },
+    "identifier_named": "Manque : {{identifier}}"
   }
 }

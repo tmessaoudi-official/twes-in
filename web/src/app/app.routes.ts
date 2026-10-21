@@ -27,6 +27,7 @@ import { customerScreenLock } from './customer-screen/customer-screen-lock';
 import { moduleGuard } from './shell/module-guard';
 import { textsOpened, textsPart } from './shared/i18n/texts-part';
 import { CHECK_TEXTS } from './shared/check/check-texts';
+import { WATCH_TEXTS } from './watch/watch-texts';
 import { RECORDS_TEXTS } from './shared/records/records-texts';
 import { SCHEDULE_TEXTS } from './shared/schedule/schedule-texts';
 
@@ -168,12 +169,13 @@ export const routes: Routes = [
       {
         path: 'watch',
         title: 'watch.title',
+        canActivate: [textsOpened(WATCH_TEXTS)],
         loadComponent: () => import('./watch/watch-page').then((m) => m.WatchPage),
       },
       {
         path: 'watch/:kind',
         title: 'watch.title',
-        canActivate: [textsOpened(CHECK_TEXTS)],
+        canActivate: [textsOpened(WATCH_TEXTS), textsOpened(CHECK_TEXTS)],
         loadComponent: () => import('./watch/watch-subject-page').then((m) => m.WatchSubjectPage),
       },
       {
@@ -199,14 +201,18 @@ export const routes: Routes = [
       {
         path: 'customers',
         title: 'nav.customers',
-        canActivate: [moduleGuard(CUSTOMERS_MODULE), textsOpened(RECORDS_TEXTS)],
+        canActivate: [
+          moduleGuard(CUSTOMERS_MODULE),
+          textsOpened(RECORDS_TEXTS),
+          textsOpened(CHECK_TEXTS),
+        ],
         loadComponent: () => import('./customers/customers-page').then((m) => m.CustomersPage),
       },
       {
         // Before ':customerId', which would otherwise take "new" and "groups" for identifiers.
         path: 'customers/new',
         title: 'titles.new_customer',
-        canActivate: [moduleGuard(CUSTOMERS_MODULE)],
+        canActivate: [moduleGuard(CUSTOMERS_MODULE), textsOpened(CHECK_TEXTS)],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
       },
       {
@@ -219,7 +225,11 @@ export const routes: Routes = [
       {
         path: 'customers/:customerId',
         title: 'titles.customer',
-        canActivate: [moduleGuard(CUSTOMERS_MODULE), textsOpened(RECORDS_TEXTS)],
+        canActivate: [
+          moduleGuard(CUSTOMERS_MODULE),
+          textsOpened(RECORDS_TEXTS),
+          textsOpened(CHECK_TEXTS),
+        ],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
       },
       {
@@ -396,19 +406,27 @@ export const routes: Routes = [
       {
         path: 'vendors',
         title: 'nav.vendors',
-        canActivate: [moduleGuard(VENDORS_MODULE), textsOpened(RECORDS_TEXTS)],
+        canActivate: [
+          moduleGuard(VENDORS_MODULE),
+          textsOpened(RECORDS_TEXTS),
+          textsOpened(CHECK_TEXTS),
+        ],
         loadComponent: () => import('./vendors/vendors-page').then((m) => m.VendorsPage),
       },
       {
         path: 'vendors/new',
         title: 'titles.new_vendor',
-        canActivate: [moduleGuard(VENDORS_MODULE)],
+        canActivate: [moduleGuard(VENDORS_MODULE), textsOpened(CHECK_TEXTS)],
         loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
       },
       {
         path: 'vendors/:vendorId',
         title: 'titles.vendor',
-        canActivate: [moduleGuard(VENDORS_MODULE), textsOpened(RECORDS_TEXTS)],
+        canActivate: [
+          moduleGuard(VENDORS_MODULE),
+          textsOpened(RECORDS_TEXTS),
+          textsOpened(CHECK_TEXTS),
+        ],
         loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
       },
       {

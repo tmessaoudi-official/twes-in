@@ -33,6 +33,7 @@ final class VendorSearchReader
         $active = $filters->choices('isActive', ['true', 'false', '1', '0']);
         $terms = $filters->decimalRange('paymentTermsDays');
         $createdOn = $filters->dateRange('createdAt');
+        $toCheck = $filters->choices('toCheck', ['true', 'false', '1', '0']);
 
         return new VendorSearch(
             $text,
@@ -42,6 +43,7 @@ final class VendorSearchReader
             self::days($terms->max),
             $createdOn->isOpen() ? null : $createdOn,
             $company->getTimezone(),
+            [] === $toCheck ? null : \in_array($toCheck[0], ['true', '1'], true),
         );
     }
 

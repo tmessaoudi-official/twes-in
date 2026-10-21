@@ -16,6 +16,7 @@ import { MatCardModule } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { RecordChanged } from '../shared/form/record-changed';
 import { liveRecord } from '../shared/form/live-record';
@@ -66,6 +67,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     CustomerAccountView,
     RecordChanged,
     RecordHistory,
+    CheckPanel,
   ],
   templateUrl: './customer-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -98,6 +100,28 @@ export class CustomerPage {
     if (id === null) return null;
     const customer = this.facade.customer();
     return customer?.id === id ? customer : undefined;
+  });
+  /**
+   * What « À vérifier » says the customer lacks: each number its preset requires, by the name the preset gives it, or
+   * the reason alone when the options naming it are not read yet.
+   */
+  protected readonly checkItems = computed<readonly CheckItem[]>(() => {
+    const customer = this.current();
+    if (!customer) return [];
+    const labels = new Map(
+      (this.facade.options()?.identifiers ?? []).map((identifier) => [
+        identifier.key,
+        identifier.label,
+      ]),
+    );
+    const named = customer.missingIdentifiers.map((key) => ({
+      id: key,
+      key: 'check.identifier_named',
+      params: { identifier: labels.get(key) ?? key },
+    }));
+    return named.length > 0
+      ? named
+      : customer.checkReasons.map((reason) => ({ id: reason, key: `check.reasons.${reason}` }));
   });
   /** The customer kept when this one was merged into it: this one stays only for what was sent or issued to it. */
   protected readonly mergedAway = computed(() => this.current()?.mergedInto ?? null);

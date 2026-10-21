@@ -41,6 +41,8 @@ final class VendorInFile
             'expense_category' => null === $profile->defaultExpenseCategoryId ? '' : ($categories[$profile->defaultExpenseCategoryId->toRfc4122()] ?? ''),
             'notes' => $profile->notes ?? '',
             'active' => $vendor->isActive() ? 'yes' : 'no',
+            'to_check' => $vendor->getCheckMark()->note ?? '',
+            'name_doubtful' => $vendor->isNameDoubtful() ? 'yes' : 'no',
             default => $profile->identifiers[$column] ?? '',
         };
     }

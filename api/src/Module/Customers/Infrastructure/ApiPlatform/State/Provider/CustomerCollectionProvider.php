@@ -14,6 +14,7 @@ use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\Fiscal\Application\Regime\ListCustomerTaxRegimes;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
+use App\Module\Customers\Application\CustomerCheckScopes;
 use App\Module\Customers\Application\ManageCustomers;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerSearch;
@@ -37,6 +38,7 @@ final readonly class CustomerCollectionProvider implements ProviderInterface
         private ListCustomerTaxRegimes $regimes,
         private CompanyGuard $guard,
         private Paging $paging,
+        private CustomerCheckScopes $checkScopes,
     ) {
     }
 
@@ -47,9 +49,11 @@ final readonly class CustomerCollectionProvider implements ProviderInterface
         $regimes = array_map(static fn (CustomerTaxRegime $regime): string => $regime->getCode(), $this->regimes->for($company));
         $search = CustomerSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, CustomerSearch::SORTS), $company, $regimes);
 
+        $scope = $this->checkScopes->of($company);
+
         return $this->paging->paginator(
             $this->manage->search($company, $search, $this->paging->request($operation, $context)),
-            static fn (Customer $customer): CustomerResource => CustomerResource::of($customer),
+            static fn (Customer $customer): CustomerResource => CustomerResource::of($customer, $scope),
         );
     }
 }

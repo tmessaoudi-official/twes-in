@@ -11,6 +11,7 @@ namespace App\Module\Customers\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Module\Customers\Application\CustomerCheckScopes;
 use App\Module\Customers\Application\CustomerMergedAway;
 use App\Module\Customers\Application\CustomerNotFound;
 use App\Module\Customers\Application\CustomerNumberTaken;
@@ -28,7 +29,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /** @implements ProcessorInterface<CustomerResource, CustomerResource> */
 final readonly class ReviseCustomerProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageCustomers $manage, private CompanyGuard $guard)
+    public function __construct(private ManageCustomers $manage, private CompanyGuard $guard, private CustomerCheckScopes $checkScopes)
     {
     }
 
@@ -49,6 +50,6 @@ final readonly class ReviseCustomerProcessor implements ProcessorInterface
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
-        return CustomerResource::of($customer);
+        return CustomerResource::of($customer, $this->checkScopes->of($company));
     }
 }

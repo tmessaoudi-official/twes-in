@@ -81,8 +81,10 @@
         }
         @if (current(); as product) {
           @if (product.toCheck || product.checkReasons.length > 0) {
-            <app-product-check
-              [reasons]="product.checkReasons"
+            <app-check-panel
+              testId="product-check"
+              heading="check.panel.missing"
+              [items]="checkItems()"
               [marked]="product.toCheck"
               [note]="product.checkNote"
             />

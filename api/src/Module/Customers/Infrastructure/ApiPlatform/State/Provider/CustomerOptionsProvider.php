@@ -50,7 +50,7 @@ final readonly class CustomerOptionsProvider implements ProviderInterface
                 $identifier->key,
                 $this->translator->trans($identifier->labelKey, [], 'fiscal'),
                 $identifier->patternFor(IdentifierRules::BUSINESS_CUSTOMER),
-                \in_array(IdentifierRules::BUSINESS_CUSTOMER, $identifier->requiredFor, true),
+                $identifier->isRequiredOf(IdentifierRules::BUSINESS_CUSTOMER),
             );
         }
         $options->regimes = array_map(fn (CustomerTaxRegime $regime) => new CustomerRegimeOption(

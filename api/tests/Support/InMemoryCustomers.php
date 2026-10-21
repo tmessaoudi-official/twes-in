@@ -41,7 +41,8 @@ final class InMemoryCustomers implements CustomerRepository
                 && ([] === $search->kinds || \in_array($profile->kind, $search->kinds, true))
                 && ([] === $search->groups || \in_array($c->getGroup()?->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->groups), true))
                 && ([] === $search->regimes || \in_array($c->getTaxRegime()->getCode(), $search->regimes, true))
-                && (null === $search->active || $c->isActive() === $search->active);
+                && (null === $search->active || $c->isActive() === $search->active)
+                && (null === $search->toCheck || null === $search->checkScope || ($c->getCheckMark()->marked || [] !== $c->checkReasons($search->checkScope)) === $search->toCheck);
         }));
 
         return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);

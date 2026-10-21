@@ -41,7 +41,9 @@
       "exemption_reference": "VAT exemption provision",
       "exemption_reference_note": "Printed for this customer when it is exempt, e.g. « article 261-4-4° du CGI ».",
       "notes": "Notes",
-      "active": "Active"
+      "active": "Active",
+      "to_check": "To check",
+      "to_check_note": "A note marks the customer « To check » with it, 500 characters at most; left blank, the mark stays as it is."
     },
     "products": {
       "reference": "Reference",
@@ -113,7 +115,11 @@
       "expense_category": "Expense category",
       "expense_category_note": "The name of an active category; create it before importing.",
       "notes": "Notes",
-      "active": "Active"
+      "active": "Active",
+      "to_check": "To check",
+      "to_check_note": "A note marks the vendor « To check » with it, 500 characters at most; left blank, the mark stays as it is.",
+      "name_doubtful": "Name in doubt",
+      "name_doubtful_note": "« yes » when the file is unsure of the name: the vendor stays « To check » until it is renamed or the name is said to be right; « no » clears the doubt; left blank, it stays as it is."
     },
     "opening_stock": {
       "reference": "Product reference",

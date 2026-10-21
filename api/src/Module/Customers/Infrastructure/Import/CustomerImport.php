@@ -14,7 +14,6 @@ use App\CustomFields\Domain\Repository\CustomFieldDefinitionRepository;
 use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\ImportExport\Application\DeclaresImport;
 use App\ImportExport\Application\ImportCells;
@@ -30,6 +29,7 @@ use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
 use App\ImportExport\Infrastructure\Validation\ResourceRules;
+use App\Module\Customers\Application\CustomerCheckScopes;
 use App\Module\Customers\Application\CustomerInput;
 use App\Module\Customers\Application\CustomerNumberTaken;
 use App\Module\Customers\Application\ManageCustomers;
@@ -43,6 +43,7 @@ use App\Module\Customers\Infrastructure\ApiPlatform\Resource\CustomerResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -77,6 +78,7 @@ final readonly class CustomerImport implements DeclaresImport
         'customerGroupId' => 'customer_group',
         'defaultTaxComponentIds' => 'default_tax_codes',
         'defaultDiscountRate' => 'default_discount_rate',
+        'checkNote' => 'to_check',
     ];
 
     /**
@@ -111,6 +113,7 @@ final readonly class CustomerImport implements DeclaresImport
 
     public function __construct(
         private FiscalPresets $presets,
+        private CustomerCheckScopes $checkScopes,
         private CustomFieldDefinitionRepository $customFields,
         private ManageCustomers $manage,
         private CustomerRepository $customers,
@@ -279,20 +282,15 @@ final readonly class CustomerImport implements DeclaresImport
             $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
             $this->customValues($company, $record, $current, $faults),
             identifiersMayFollow: true,
+            mark: $faults->read(static fn (): ?CheckMark => ImportCells::checkMark($record, 'to_check')),
         );
     }
 
     /** A business customer stored without the number the preset requires of one: it cannot be invoiced until it has it. */
     private function noteMissingIdentifiers(Company $company, Customer $written, RowNotes $notes): void
     {
-        $profile = $written->getProfile();
-        if (!$profile->isDomesticBusiness($company->getCountryCode())) {
-            return;
-        }
-        foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
-            if (\in_array(IdentifierRules::BUSINESS_CUSTOMER, $identifier->requiredFor, true) && !isset($profile->identifiers[$identifier->key])) {
-                $notes->note($identifier->key, 'identifier_missing', ['identifier' => $identifier->key]);
-            }
+        foreach ($written->missingIdentifiers($this->checkScopes->of($company)) as $key) {
+            $notes->note($key, 'identifier_missing', ['identifier' => $key]);
         }
     }
 
@@ -398,6 +396,7 @@ final readonly class CustomerImport implements DeclaresImport
             ...$this->settingCells->columns(),
             new ImportColumn('notes', 'import.customers.notes'),
             new ImportColumn('active', 'import.customers.active', false, 'yes', 'import.boolean_note'),
+            new ImportColumn('to_check', 'import.customers.to_check', false, null, 'import.customers.to_check_note'),
         ];
     }
 

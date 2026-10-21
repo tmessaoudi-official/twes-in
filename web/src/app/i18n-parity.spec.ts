@@ -32,6 +32,9 @@ import frPlatform from '../../public/i18n/platform/fr.json';
 import arCheck from '../../public/i18n/check/ar.json';
 import enCheck from '../../public/i18n/check/en.json';
 import frCheck from '../../public/i18n/check/fr.json';
+import arWatch from '../../public/i18n/watch/ar.json';
+import enWatch from '../../public/i18n/watch/en.json';
+import frWatch from '../../public/i18n/watch/fr.json';
 import arSchedule from '../../public/i18n/schedule/ar.json';
 import enSchedule from '../../public/i18n/schedule/en.json';
 import frSchedule from '../../public/i18n/schedule/fr.json';
@@ -63,6 +66,7 @@ function keysOf(value: unknown, prefix = ''): string[] {
 const parts: Record<string, Record<string, unknown>> = {
   account: { fr: frAccount, en: enAccount, ar: arAccount },
   check: { fr: frCheck, en: enCheck, ar: arCheck },
+  watch: { fr: frWatch, en: enWatch, ar: arWatch },
   'data-erasure': { fr: frDataErasure, en: enDataErasure, ar: arDataErasure },
   'demo-mails': { fr: frDemoMails, en: enDemoMails, ar: arDemoMails },
   expense: { fr: frExpense, en: enExpense, ar: arExpense },

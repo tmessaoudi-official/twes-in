@@ -48,7 +48,14 @@ const sotumag: VendorRow = {
   isActive: false,
   defaultExpenseCategoryId: 'k2',
   mergedInto: null,
+  toCheck: false,
+  checkNote: null,
+  nameDoubtful: false,
+  checkReasons: [],
 };
+
+const fieldIds = (descriptor: ReturnType<typeof vendorForm>, section: string) =>
+  descriptor.sections.find((each) => each.id === section)?.fields.map((field) => field.id);
 
 const categoryField = (descriptor: ReturnType<typeof vendorForm>) =>
   descriptor.sections
@@ -75,6 +82,7 @@ describe('vendor forms', () => {
       itemsPerPage: 50,
       q: 'sotu',
       isActive: false,
+      toCheck: null,
       intervals: { 'paymentTermsDays.min': '30', 'createdAt.from': '2026-03-01' },
       order: { key: 'isActive', direction: 'desc' },
     });
@@ -90,6 +98,62 @@ describe('vendor forms', () => {
         }).order,
       ).not.toBeNull();
     }
+  });
+
+  it('narrows the list to the vendors to check, or to the others, as the API does', () => {
+    const asked = (toCheck?: string) =>
+      vendorSearch({
+        query: '',
+        filters: toCheck === undefined ? {} : { toCheck },
+        sort: null,
+        pageIndex: 0,
+        pageSize: 25,
+      }).toCheck;
+    expect([asked('yes'), asked('no'), asked()]).toEqual([true, false, null]);
+
+    const filter = VENDORS_LIST.filters?.find((each) => each.id === 'toCheck');
+    expect(filter?.options?.map((option) => option.label)).toEqual([
+      'check.filter.yes',
+      'check.filter.no',
+    ]);
+    expect(filter?.value({ ...sotumag, toCheck: true })).toBe('yes');
+    expect(filter?.value({ ...sotumag, nameDoubtful: true, checkReasons: ['name_doubtful'] })).toBe(
+      'yes',
+    );
+    expect(filter?.value(sotumag)).toBe('no');
+  });
+
+  it('marks a vendor « À vérifier » with its note, and asks about its name only while it is in doubt', () => {
+    expect(fieldIds(vendorForm(options), 'check')).toEqual(['toCheck', 'checkNote']);
+    expect(fieldIds(vendorForm(options, null, true), 'check')).toEqual([
+      'toCheck',
+      'nameDoubtful',
+      'checkNote',
+    ]);
+    // Without its box, no value: one would read as an unsaved change for ever.
+    expect(vendorValues(sotumag, options)).not.toHaveProperty('nameDoubtful');
+    const doubtful = { ...sotumag, nameDoubtful: true, checkReasons: ['name_doubtful' as const] };
+    expect(vendorValues(doubtful, options)).toMatchObject({ nameDoubtful: true });
+    expect(vendorInput(vendorValues(doubtful, options), options).nameDoubtful).toBe(true);
+    expect(
+      vendorInput({ ...vendorValues(doubtful, options), nameDoubtful: false }, options)
+        .nameDoubtful,
+    ).toBe(false);
+  });
+
+  it('keeps a note only with its mark', () => {
+    const marked = { ...sotumag, toCheck: true, checkNote: 'RIB à confirmer' };
+    expect(vendorValues(marked, options)).toMatchObject({
+      toCheck: true,
+      checkNote: 'RIB à confirmer',
+    });
+    expect(vendorInput(vendorValues(marked, options), options)).toMatchObject({
+      toCheck: true,
+      checkNote: 'RIB à confirmer',
+    });
+    expect(
+      vendorInput({ ...vendorValues(marked, options), toCheck: false }, options),
+    ).toMatchObject({ toCheck: false, checkNote: null });
   });
 
   it('offers the intervals ruled for the list', () => {
@@ -122,6 +186,7 @@ describe('vendor forms', () => {
       'address',
       'payment',
       'notes',
+      'check',
     ]);
     const identifier = form.sections[1]!.fields[0]!;
     expect([identifier.id, identifier.required ?? false, identifier.pattern]).toEqual([

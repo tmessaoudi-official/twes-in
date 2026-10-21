@@ -53,6 +53,17 @@
   <mat-tab-group data-testid="customer-tabs" [preserveContent]="true">
     <mat-tab [label]="'customers.tabs.record' | translate">
       <div class="flex flex-col gap-6 pt-4" data-testid="customer-tab-record">
+        @if (current(); as customer) {
+          @if (customer.toCheck || customer.checkReasons.length > 0) {
+            <app-check-panel
+              testId="customer-check"
+              heading="check.panel.missing_customer"
+              [items]="checkItems()"
+              [marked]="customer.toCheck"
+              [note]="customer.checkNote"
+            />
+          }
+        }
         @if (form(); as form) {
           @if (sync.changedBy(); as changedBy) {
             <app-record-changed

@@ -1,0 +1,124 @@
+{
+  "watch": {
+    "subjects": {
+      "invoices": {
+        "instruments_due": {
+          "title": "Cheques and traites due",
+          "hint": "Cheques and traites falling due within a week, or already past their day, that are still held or deposited. Deposit them, then cash them."
+        },
+        "late_customer": {
+          "title": "Customers late paying",
+          "hint": "Customers with invoices past due for longer than the threshold. Chase them."
+        },
+        "unsold_products": {
+          "title": "Products not selling",
+          "hint": "Active goods that have not been sold for longer than the threshold."
+        }
+      },
+      "stock": {
+        "reorder_point": {
+          "title": "To reorder",
+          "hint": "Products whose stock is at its reorder point, or under it."
+        },
+        "running_out": {
+          "title": "Running out soon",
+          "hint": "Products whose stock, at the pace of the last 30 days, lasts fewer days than it takes to restock."
+        },
+        "lot_expired": {
+          "title": "Expired lots",
+          "hint": "Lots still in stock whose expiry date has passed."
+        },
+        "lot_expiring": {
+          "title": "Lots expiring soon",
+          "hint": "Lots in stock whose expiry date is close: sell them first."
+        },
+        "receipt_cost_to_complete": {
+          "title": "Receipt costs to complete",
+          "hint": "Receipts recorded by someone who cannot see costs: their cost is still to be entered."
+        }
+      },
+      "members": {
+        "invitation_unsent": {
+          "title": "Invitations not sent",
+          "hint": "Invitations whose mail did not go out, even after several tries: the person received no link. Invite them again from Members."
+        }
+      },
+      "expenses": {
+        "amount_to_check": {
+          "title": "Amounts to check",
+          "hint": "Drafts prepared by a recurring expense of variable amount. Check each amount against the bill, then record the expense."
+        }
+      },
+      "product": {
+        "margin_moved": {
+          "title": "Margins to review",
+          "hint": "A receipt changed the cost price under a selling price that stayed the same: adjust the price or keep it."
+        },
+        "to_check": {
+          "title": "Products to check",
+          "hint": "A product marked « To check », or lacking what a product needs here: complete its page."
+        }
+      },
+      "vendor": {
+        "to_check": {
+          "title": "Vendors to check",
+          "hint": "A vendor marked « To check », or whose name a file was unsure of: look at its page again."
+        }
+      },
+      "customer": {
+        "to_check": {
+          "title": "Customers to check",
+          "hint": "A customer marked « To check », or a business without the number an invoice asks of it: complete its page."
+        }
+      }
+    },
+    "columns": {
+      "customer": "Customer",
+      "invoices": "Invoices",
+      "amount": "Amount due",
+      "late_days": "Late (days)",
+      "product": "Product",
+      "reference": "Reference",
+      "unsold_days": "Not sold for (days)",
+      "establishment": "Establishment",
+      "onHand": "On hand",
+      "point": "Reorder point",
+      "days_left": "Days left",
+      "lot": "Lot",
+      "quantity": "Quantity",
+      "expiresOn": "Expiry date",
+      "expired_days": "Expired for (days)",
+      "in_days": "In (days)",
+      "invoice": "Invoice",
+      "kind": "Kind",
+      "number": "Number",
+      "bank": "Bank",
+      "due_days": "Due in (days)",
+      "location": "Location",
+      "receivedOn": "Received on",
+      "email": "Address",
+      "role": "Role",
+      "invitedOn": "Invited on",
+      "description": "Description",
+      "payee": "Paid to",
+      "date": "Date",
+      "previousMargin": "Margin before",
+      "margin": "Margin",
+      "price": "Net unit price",
+      "cost": "Cost price",
+      "reasons": "To check",
+      "note": "Note",
+      "vendor": "Vendor"
+    },
+    "actions": {
+      "see_invoices": "See {{name}}'s overdue invoices",
+      "open_product": "Open {{name}}",
+      "open_invoice": "Open {{name}}",
+      "enter_cost": "Enter the cost of {{name}}",
+      "open_expense": "Open {{name}}",
+      "review_price": "Review the price of {{name}}",
+      "open_vendor": "Open {{name}}",
+      "open_customer": "Open {{name}}"
+    }
+  }
+}

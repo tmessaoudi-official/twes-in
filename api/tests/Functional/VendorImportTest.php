@@ -13,6 +13,7 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Module\Expenses\Domain\Model\ExpenseCategory;
 use App\Module\Vendors\Domain\Model\Vendor;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -288,6 +289,33 @@ final class VendorImportTest extends ApiTestCase
         $rejected = $this->arrayAt($this->json(), 'rejected');
         self::assertIsArray($rejected[0] ?? null);
         self::assertSame([2, 'email', 'invalid_email'], [$rejected[0]['line'] ?? null, $rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null]);
+    }
+
+    /**
+     * A note in « to_check » marks the vendor with it and a blank cell keeps the mark; « name_doubtful » puts the name in
+     * doubt with a yes, takes the doubt away with a no and leaves it with a blank; a note past its maximum is the cell's
+     * refusal.
+     */
+    public function testAFileMarksAVendorToCheckAndPutsItsNameInDoubt(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+
+        $this->import("number,name,to_check\nFRN-0009,Sotupa,".str_repeat('a', CheckMark::NOTE_MAX + 1)."\n", dryRun: true);
+        $rejected = $this->json()['rejected'] ?? null;
+        self::assertIsArray($rejected);
+        self::assertSame([[2, 'to_check', 'invalid_text', ['max' => CheckMark::NOTE_MAX]]], array_map(static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null, $row['params'] ?? null] : [], $rejected));
+
+        $this->import("number,name,to_check,name_doubtful\nFRN-0009,Sotupa,RIB à demander,oui\n");
+        self::assertResponseIsSuccessful();
+        $vendor = $this->vendor('FRN-0009');
+        self::assertEquals([new CheckMark(true, 'RIB à demander'), true], [$vendor->getCheckMark(), $vendor->isNameDoubtful()]);
+
+        $this->import("number,name,to_check,name_doubtful\nFRN-0009,Sotupa,,\n", mode: 'upsert');
+        self::assertSame([[], [2]], [$this->json()['updated'] ?? null, $this->json()['unchanged'] ?? null], 'blank cells keep the mark and the doubt');
+        $this->import("number,name,name_doubtful\nFRN-0009,Sotupa,non\n", mode: 'upsert');
+        $this->em()->clear();
+        $vendor = $this->vendor('FRN-0009');
+        self::assertEquals([new CheckMark(true, 'RIB à demander'), false], [$vendor->getCheckMark(), $vendor->isNameDoubtful()], 'a no takes the doubt away and leaves the mark');
     }
 
     private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'vendors.csv'): void

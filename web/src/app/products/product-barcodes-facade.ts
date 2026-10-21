@@ -43,6 +43,7 @@ export class ProductBarcodes {
         itemsPerPage: 100,
         q: '',
         isActive: true,
+        toCheck: null,
         intervals: {},
         order: null,
       });

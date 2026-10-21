@@ -11,6 +11,7 @@ namespace App\Module\Customers\Infrastructure\Doctrine;
 
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
+use App\Module\Customers\Domain\ValueObject\CustomerCheckScope;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerSearch;
 use App\Shared\Domain\ValueObject\Page;
@@ -20,6 +21,7 @@ use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
@@ -76,6 +78,10 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
         if (null !== $search->active) {
             $query->andWhere('c.isActive = :active')->setParameter('active', $search->active);
         }
+        if (null !== $search->toCheck && null !== $search->checkScope) {
+            $toCheck = self::toCheck($query, $search->checkScope);
+            $query->andWhere($search->toCheck ? $toCheck : 'NOT '.$toCheck);
+        }
         ListOrder::apply($query, $search->order, self::SORTED_BY, ['customerGroup', 'city'], 'c.number')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
@@ -84,6 +90,25 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
         $customers = iterator_to_array($paginator, false);
 
         return new Page($customers, \count($paginator), $page);
+    }
+
+    /**
+     * « À vérifier », as `Customer::getCheckMark()` and `checkReasons()` say it of each customer: marked, or a business
+     * of the seller's country (or of none named) without a number the scope requires.
+     */
+    private static function toCheck(QueryBuilder $query, CustomerCheckScope $scope): string
+    {
+        if ([] === $scope->requiredOfBusiness) {
+            return '(c.toCheck = true)';
+        }
+        $missing = [];
+        foreach ($scope->requiredOfBusiness as $index => $key) {
+            $missing[] = "JSON_HAS_KEY(c.identifiers, :checkKey$index) = false";
+            $query->setParameter("checkKey$index", $key);
+        }
+        $query->setParameter('checkKind', CustomerKind::Company->value)->setParameter('checkCountry', $scope->countryCode);
+
+        return '(c.toCheck = true OR (c.kind = :checkKind AND (c.billingAddress.countryCode IS NULL OR c.billingAddress.countryCode = :checkCountry) AND ('.implode(' OR ', $missing).')))';
     }
 
     public function ofIdsInCompany(array $ids, Uuid $companyId): array

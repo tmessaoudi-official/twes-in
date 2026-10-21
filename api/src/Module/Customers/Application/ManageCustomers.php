@@ -60,6 +60,7 @@ final readonly class ManageCustomers
         private CustomFieldDefinitionRepository $customFields,
         private Transactions $transactions,
         private RecordVersions $versions,
+        private CustomerCheckScopes $checkScopes,
     ) {
     }
 
@@ -72,7 +73,7 @@ final readonly class ManageCustomers
     /** @return Page<Customer> */
     public function search(Company $company, CustomerSearch $search, PageRequest $page): Page
     {
-        return $this->customers->search($company->getId(), $search, $page);
+        return $this->customers->search($company->getId(), $search->withCheckScope($this->checkScopes->of($company)), $page);
     }
 
     /** @throws CustomerNotFound */
@@ -97,6 +98,9 @@ final readonly class ManageCustomers
             $customer->reviseCustomFields($values, $this->clock->now());
             if (!$input->isActive) {
                 $customer->revise($input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, false, $this->clock->now());
+            }
+            if (null !== $input->mark) {
+                $customer->reviseCheck($input->mark, $this->clock->now());
             }
             $this->customers->save($customer);
             $this->record($company, $customer->getId(), self::CREATED, [], $actorUserId);
@@ -133,6 +137,9 @@ final readonly class ManageCustomers
 
             $changed = $customer->revise($input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, $input->isActive, $this->clock->now());
             $changed = [...$changed, ...$customer->reviseCustomFields($values, $this->clock->now())];
+            if (null !== $input->mark) {
+                $changed = [...$changed, ...$customer->reviseCheck($input->mark, $this->clock->now())];
+            }
             if ([] !== $changed) {
                 $this->customers->save($customer);
                 $this->record($company, $customer->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
@@ -178,7 +185,10 @@ final readonly class ManageCustomers
 
         $domesticBusiness = $input->profile->isDomesticBusiness($company->getCountryCode());
         $requiredOf = $domesticBusiness && !$input->identifiersMayFollow ? IdentifierRules::BUSINESS_CUSTOMER : '';
-        $refusal = IdentifierRules::refusal($preset, $input->profile->identifiers, $requiredOf);
+        // A number the customer already lacked is « À vérifier », not a reason to refuse every other change: the
+        // invoice is where the law asks for it. One it held may not be taken away.
+        $excused = $current?->missingIdentifiers($this->checkScopes->of($company)) ?? [];
+        $refusal = IdentifierRules::refusal($preset, $input->profile->identifiers, $requiredOf, $excused);
         if (null !== $refusal) {
             throw new InvalidCustomer($refusal->field, $refusal->message, $refusal->reason, $refusal->params);
         }

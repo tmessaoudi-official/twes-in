@@ -37,7 +37,7 @@ import { ProductReorderPointsSection } from './product-reorder-points';
 import { ProductCostHistory } from './product-cost-history-facade';
 import { ProductCostHistorySection } from './product-cost-history';
 import { ProductPriceReviewNotice } from './product-price-review';
-import { ProductCheck } from './product-check';
+import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 import type { PriceReviewDecision } from './products-types';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { RecordHistory } from '../activity/record-history';
@@ -76,7 +76,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     ProductSubstitutesSection,
     ProductCostHistorySection,
     ProductPriceReviewNotice,
-    ProductCheck,
+    CheckPanel,
     RecordHistory,
     ProductBarcodesSection,
     ProductPhotosSection,
@@ -132,6 +132,14 @@ export class ProductPage {
     const product = this.facade.product();
     return product?.id === id ? product : undefined;
   });
+  /** What the product lacks, as « À vérifier » names each reason on its page. */
+  protected readonly checkItems = computed<readonly CheckItem[]>(
+    () =>
+      this.current()?.checkReasons.map((reason) => ({
+        id: reason,
+        key: `check.reasons.${reason}`,
+      })) ?? [],
+  );
   /** The product kept when this one was merged into it: this one stays only for what already names it. */
   protected readonly mergedAway = computed(() => this.current()?.mergedInto ?? null);
   /** A product merged away is kept as it was, whoever looks at it. */

@@ -50,6 +50,7 @@ import {
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      check: { identifier_named: 'Manque : {{identifier}}' },
       customers: {
         errors: { number_taken: 'Un autre client porte déjà ce numéro.' },
         tabs: {
@@ -106,6 +107,10 @@ const carthage: CustomerRow = {
   isActive: true,
   customFields: {},
   mergedInto: null,
+  toCheck: false,
+  checkNote: null,
+  checkReasons: [],
+  missingIdentifiers: [],
 };
 const leila: ContactRow = {
   id: 'p1',
@@ -526,6 +531,51 @@ describe('CustomerPage', () => {
     await settle();
     expect((q('field-email') as HTMLInputElement).value).toBe('');
     expect(q('record-changed')).toBeNull();
+  });
+
+  it('names each number a customer lacks by its preset name, and the mark put on it with its note', async () => {
+    customer.set({
+      ...carthage,
+      identifiers: {},
+      toCheck: true,
+      checkNote: 'à relancer',
+      checkReasons: ['identifier_missing'],
+      missingIdentifiers: ['matricule_fiscal', 'registre_commerce'],
+    });
+    await open('k1');
+
+    expect(q('customer-check-marked')?.textContent).toContain('check.marked');
+    expect(q('customer-check-note')?.textContent).toContain('à relancer');
+    const reasons = [...(q('customer-check-reasons')?.querySelectorAll('li') ?? [])];
+    expect(reasons.map((each) => each.getAttribute('data-reason'))).toEqual([
+      'matricule_fiscal',
+      'registre_commerce',
+    ]);
+    // A number the options do not name is said by its key rather than left out.
+    expect(reasons.map((each) => each.textContent?.trim())).toEqual([
+      'Manque : Matricule fiscal',
+      'Manque : registre_commerce',
+    ]);
+  });
+
+  it('says the reason alone while the options naming the numbers are not read', async () => {
+    optionsSignal.set(null);
+    customer.set({
+      ...carthage,
+      checkReasons: ['identifier_missing'],
+      missingIdentifiers: [],
+    });
+    await open('k1');
+
+    const reasons = [...(q('customer-check-reasons')?.querySelectorAll('li') ?? [])];
+    expect(reasons.map((each) => each.getAttribute('data-reason'))).toEqual(['identifier_missing']);
+  });
+
+  it('shows nothing to check on a customer that lacks nothing and is not marked', async () => {
+    customer.set(carthage);
+    await open('k1');
+
+    expect(q('customer-check')).toBeNull();
   });
 
   it('splits a long record into tabs, each holding its own section and its own save', async () => {

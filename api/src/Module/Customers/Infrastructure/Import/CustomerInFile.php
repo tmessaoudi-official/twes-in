@@ -41,6 +41,7 @@ final class CustomerInFile
             'default_discount_rate' === $column => $profile->defaultDiscountRate ?? '',
             'notes' === $column => $profile->notes ?? '',
             'active' === $column => $customer->isActive() ? 'yes' : 'no',
+            'to_check' === $column => $customer->getCheckMark()->note ?? '',
             str_starts_with($column, CustomerImport::CUSTOM_PREFIX) => self::custom($customer->getCustomFields()[substr($column, \strlen(CustomerImport::CUSTOM_PREFIX))] ?? null),
             default => $profile->identifiers[$column] ?? '',
         };

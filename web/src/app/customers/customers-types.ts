@@ -2,6 +2,13 @@
 
 import type { CustomFieldValue } from '../shared/custom-fields/custom-fields-types';
 
+/**
+ * What « À vérifier » says a customer lacks: a business of the company's country without a number its preset requires
+ * for one, which an invoice to it is refused for.
+ */
+export type CustomerCheckReason = 'identifier_missing';
+export const CUSTOMER_CHECK_REASONS: readonly CustomerCheckReason[] = ['identifier_missing'];
+
 /** Why the API refused, as the customers screens translate it. */
 export type CustomersError =
   'network' | 'not_found' | 'number_taken' | 'name_taken' | 'in_use' | 'invalid' | 'record_changed';
@@ -25,6 +32,8 @@ export interface CustomerSearch {
   /** Tax regime codes, among those of the company's fiscal preset. */
   regimes: readonly string[];
   isActive: boolean | null;
+  /** Marked or lacking something (true), neither (false), or either (null). */
+  toCheck: boolean | null;
   /** The ends of the creation day interval, `createdAt.from` and `createdAt.to`, in the company's own calendar. */
   intervals: Readonly<Record<string, string>>;
   order: { key: CustomerSortKey; direction: 'asc' | 'desc' } | null;
@@ -66,6 +75,13 @@ export interface CustomerRow {
   customFields: Record<string, CustomFieldValue>;
   /** The customer kept when this one was merged into it: this one then stays only for what already names it. */
   mergedInto: CustomerMergedInto | null;
+  /** « À vérifier » as a person set it, with why. */
+  toCheck: boolean;
+  checkNote: string | null;
+  /** What the customer lacks, as the API says it; never written. */
+  checkReasons: CustomerCheckReason[];
+  /** The keys of the identifiers its preset requires and it lacks, which the options' identifiers name. */
+  missingIdentifiers: string[];
 }
 
 /** The customer a customer merged away points at, which lists and documents show in its place. */
@@ -75,8 +91,11 @@ export interface CustomerMergedInto {
   name: string;
 }
 
-/** What a form writes: never the merge, which only « Fusionner… » does. */
-export type CustomerInput = Omit<CustomerRow, 'id' | 'version' | 'mergedInto'>;
+/** What a form writes: never the merge, which only « Fusionner… » does, nor what the API works out. */
+export type CustomerInput = Omit<
+  CustomerRow,
+  'id' | 'version' | 'mergedInto' | 'checkReasons' | 'missingIdentifiers'
+>;
 
 export interface CustomerGroupRow {
   id: string;

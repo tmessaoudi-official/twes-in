@@ -19,8 +19,8 @@ import type {
 import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { AMOUNT_WIDTH, withCustomColumns } from '../shared/list/list-view';
+import { CHECK_NOTE_MAX } from '../shared/check/check-note';
 import {
-  CHECK_NOTE_MAX,
   PRODUCT_CHECK_REASONS,
   PRODUCT_KINDS,
   PRODUCT_TRACKINGS,

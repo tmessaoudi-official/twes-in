@@ -1280,7 +1280,9 @@
       "defaultDiscountRate": "Remise par défaut (%)",
       "notes": "Notes",
       "defaultTaxComponentIds": "Taxes par défaut",
-      "createdAt": "Créé le"
+      "createdAt": "Créé le",
+      "toCheck": "À vérifier",
+      "checkNote": "Note de vérification"
     },
     "form": {
       "no_group": "Aucun groupe",
@@ -2692,7 +2694,10 @@
       "paymentTermsDays": "Délai de paiement (jours)",
       "defaultExpenseCategoryId": "Catégorie de dépenses habituelle",
       "notes": "Notes",
-      "createdAt": "Créé le"
+      "createdAt": "Créé le",
+      "toCheck": "À vérifier",
+      "checkNote": "Note de vérification",
+      "nameDoubtful": "Nom douteux"
     },
     "form": {
       "number_hint": "Lettres, chiffres et . _ / -, 32 caractères au plus, unique dans l’entreprise.",
@@ -3297,112 +3302,7 @@
     },
     "open": "Ouvrir",
     "gone": "Plus rien à surveiller ici : tout a été traité.",
-    "unknown": "Ce sujet n’existe pas ou n’est pas à votre portée.",
-    "subjects": {
-      "invoices": {
-        "instruments_due": {
-          "title": "Chèques et traites à échéance",
-          "hint": "Des chèques et traites qui arrivent à échéance dans la semaine, ou dont le jour est passé, et qui sont encore en portefeuille ou remis en banque. Remettez-les, puis encaissez-les."
-        },
-        "late_customer": {
-          "title": "Clients en retard de paiement",
-          "hint": "Les clients dont des factures sont échues depuis plus longtemps que le seuil. Relancez-les."
-        },
-        "unsold_products": {
-          "title": "Produits sans vente",
-          "hint": "Des marchandises actives qui n’ont pas été vendues depuis plus longtemps que le seuil."
-        }
-      },
-      "stock": {
-        "reorder_point": {
-          "title": "À réapprovisionner",
-          "hint": "Des produits dont le stock est au seuil de réapprovisionnement, ou en dessous."
-        },
-        "running_out": {
-          "title": "Bientôt en rupture",
-          "hint": "Des produits dont le stock, au rythme des 30 derniers jours, dure moins que le délai de réapprovisionnement."
-        },
-        "lot_expired": {
-          "title": "Lots périmés",
-          "hint": "Des lots encore en stock dont la date limite est dépassée."
-        },
-        "lot_expiring": {
-          "title": "Lots bientôt périmés",
-          "hint": "Des lots en stock dont la date limite approche : à vendre en priorité."
-        },
-        "receipt_cost_to_complete": {
-          "title": "Coûts de réception à compléter",
-          "hint": "Des réceptions saisies par quelqu’un qui ne voit pas les coûts : leur coût reste à saisir."
-        }
-      },
-      "members": {
-        "invitation_unsent": {
-          "title": "Invitations non envoyées",
-          "hint": "Des invitations dont le mail n’est pas parti, même après plusieurs essais : la personne n’a reçu aucun lien. Invitez-la de nouveau depuis Membres."
-        }
-      },
-      "expenses": {
-        "amount_to_check": {
-          "title": "Montants à vérifier",
-          "hint": "Des brouillons préparés par une dépense récurrente au montant variable. Vérifiez chaque montant sur la facture, puis enregistrez la dépense."
-        }
-      },
-      "product": {
-        "margin_moved": {
-          "title": "Marges à revoir",
-          "hint": "Une réception a changé le prix de revient sous un prix de vente resté le même : ajustez le prix ou gardez-le."
-        },
-        "to_check": {
-          "title": "Articles à vérifier",
-          "hint": "Un article marqué « À vérifier », ou auquel il manque ce qu’un article demande ici : complétez sa fiche."
-        }
-      }
-    },
-    "columns": {
-      "customer": "Client",
-      "invoices": "Factures",
-      "amount": "Montant dû",
-      "late_days": "Retard (jours)",
-      "product": "Produit",
-      "reference": "Référence",
-      "unsold_days": "Sans vente depuis (jours)",
-      "establishment": "Établissement",
-      "onHand": "En stock",
-      "point": "Seuil",
-      "days_left": "Jours restants",
-      "lot": "Lot",
-      "quantity": "Quantité",
-      "expiresOn": "Date limite",
-      "expired_days": "Dépassée depuis (jours)",
-      "in_days": "Dans (jours)",
-      "invoice": "Facture",
-      "kind": "Type",
-      "number": "Numéro",
-      "bank": "Banque",
-      "due_days": "Échéance dans (jours)",
-      "location": "Emplacement",
-      "receivedOn": "Reçue le",
-      "email": "Adresse",
-      "role": "Rôle",
-      "invitedOn": "Invitée le",
-      "description": "Description",
-      "payee": "Payé à",
-      "date": "Date",
-      "previousMargin": "Marge avant",
-      "margin": "Marge",
-      "price": "Prix unitaire HT",
-      "cost": "Prix de revient",
-      "reasons": "À vérifier",
-      "note": "Note"
-    },
-    "actions": {
-      "see_invoices": "Voir les factures en retard de {{name}}",
-      "open_product": "Ouvrir {{name}}",
-      "open_invoice": "Ouvrir {{name}}",
-      "enter_cost": "Saisir le coût de {{name}}",
-      "open_expense": "Ouvrir {{name}}",
-      "review_price": "Revoir le prix de {{name}}"
-    }
+    "unknown": "Ce sujet n’existe pas ou n’est pas à votre portée."
   },
   "coming": {
     "version": {
