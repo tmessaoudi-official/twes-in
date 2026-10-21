@@ -36,6 +36,7 @@ use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
 use App\Module\Products\Application\BarcodeInput;
+use App\Module\Products\Application\Cost\PurchaseCost;
 use App\Module\Products\Application\CustomerPrice;
 use App\Module\Products\Application\GrossUnreachable;
 use App\Module\Products\Application\ManageProducts;
@@ -72,7 +73,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What a product file holds, for one company, and what one of its rows does (docs/SPEC.md § 8 row 59).
+ * What a product file holds, for one company, and what one of its rows does.
  *
  * A row names its unit by the code its company knows it under and its category by name, because that is what a person
  * filling in a spreadsheet has in front of them; ids belong to the API, not to a file. The custom fields a company has
@@ -225,8 +226,7 @@ final readonly class ProductImport implements DeclaresImport
 
     public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
     {
-        // Found again by the reference written in the row, else by the unit code written in it, never by its name
-        // (docs/SPEC.md § 7, 2026-09-17 (3)).
+        // Found again by the reference written in the row, else by the unit code written in it, never by its name.
         $reference = $record->value('reference');
         $existing = null === $reference ? $this->ofUnitCode($company, $record->value('barcode')) : $this->products->ofReferenceInCompany($reference, $company->getId());
         if (null !== $existing && ImportMode::Create === $mode) {
@@ -358,7 +358,7 @@ final readonly class ProductImport implements DeclaresImport
     }
 
     /**
-     * Where the row says this product normally lives (docs/SPEC.md row 101), as a location the company has. A blank
+     * Where the row says this product normally lives, as a location the company has. A blank
      * cell keeps whatever home the product has, like every other cell in upsert mode: a file that does not mention
      * homes does not clear them.
      *
@@ -448,7 +448,7 @@ final readonly class ProductImport implements DeclaresImport
 
     /**
      * The product as the file writes it, over the columns this person's file has but those of the stock, which the
-     * inventory answers for (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 5).
+     * inventory answers for.
      *
      * @return array<string, string> by column
      */
@@ -471,7 +471,7 @@ final readonly class ProductImport implements DeclaresImport
     }
 
     /**
-     * The reorder point the row sets, and the establishment it is kept for (docs/SPEC.md § 7, 2026-09-24 11:40): the
+     * The reorder point the row sets, and the establishment it is kept for: the
      * establishment of the row's home location when it names one, else the company's only establishment. A company
      * with several and a row naming no home cannot say which, so the row is rejected naming the cell rather than
      * the point landing in a building nobody chose (PROVISIONAL, § 7). A blank cell keeps what is there.
@@ -637,7 +637,7 @@ final readonly class ProductImport implements DeclaresImport
     }
 
     /**
-     * The codes the product is written with (docs/SPEC.md § 7, 2026-09-22 11:05, F26): the unit code the row gives
+     * The codes the product is written with: the unit code the row gives
      * replaces the unit row and comes first; the pack and the supplier's code it gives are added, or update the one the
      * product holds under that code; nothing the row does not name is removed. A supplier's code is only for somebody
      * who sees costs: for anybody else the product's are left out here and kept as stored by the use case.
@@ -817,8 +817,8 @@ final readonly class ProductImport implements DeclaresImport
 
     /**
      * The cost the row sets: written as it is, or from the cost taxes included as the vendor invoiced it, never both.
-     * Taxes included, it is the figure less the VAT at the product's rate, which a liable company gets back; a levy
-     * such as FODEC is no VAT and stays in it. A company whose regime charges no VAT gets none back, so its cost is the
+     * Taxes included, it is the figure less the VAT at the product's rate, which a liable company gets back, by the one
+     * purchase cost rule (`PurchaseCost`). A company whose regime charges no VAT gets none back, so its cost is the
      * figure as it stands (docs/fiscal/TN.md § 9a).
      *
      * @param list<Uuid>|false $taxIds false when the row's taxes were refused
@@ -839,7 +839,7 @@ final readonly class ProductImport implements DeclaresImport
             throw new RowRejected('cost_price_gross', 'A cost is a number from 0.', 'invalid_price');
         }
         if (\in_array(TaxFamily::Vat, $this->excluded->companyRegime($company)->excludedFamilies ?? [], true)) {
-            return Decimal::round(Decimal::of($gross), 4)->value;
+            return PurchaseCost::fromGross(Decimal::of($gross), false, Decimal::zero());
         }
         if (false === $taxIds) {
             return null;
@@ -855,7 +855,7 @@ final readonly class ProductImport implements DeclaresImport
             throw new RowRejected('cost_price_gross', 'A cost taxes included needs the VAT rate it carries: name the product\'s taxes.', 'cost_gross_without_vat');
         }
 
-        return Decimal::round(Decimal::of($gross)->div(1 + $rate / 100, Decimal::WORKING_SCALE), 4)->value;
+        return PurchaseCost::fromGross(Decimal::of($gross), true, $rate);
     }
 
     /**
@@ -954,7 +954,7 @@ final readonly class ProductImport implements DeclaresImport
      * `home_location` is offered only to a company that holds stock, since a company without it has nowhere to put a
      * product: its file is not asked for a shelf, and a file naming one is refused for the column rather than having
      * the cell quietly dropped. `cost_price` is offered, the same way, only to someone who may read costs
-     * (product.cost.read, docs/SPEC.md § 7, 2026-09-23 09:45): a file from anyone else naming it is refused for the
+     * (product.cost.read): a file from anyone else naming it is refused for the
      * column, and every cost stays as it is.
      *
      * @return list<ImportColumn>

@@ -30,10 +30,10 @@ use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The categories a shop files its goods under, before its products name them (docs/SPEC.md § 7, 2026-10-20 01:52,
- * universal imports). A row is a category found again by its name, and the category it sits under: one already held
- * or named on an earlier row, since a file lists a category before what sits under it. Written through the use case
- * the categories page uses, so a file is held to its rules: a name used once, never under itself.
+ * The categories a shop files its goods under, read from a file of their own before its products name them. A row is
+ * a category found again by its name, and the category it sits under: one already held or named on an earlier row,
+ * since a file lists a category before what sits under it. Written through the use case the categories page uses, so
+ * a file is held to its rules: a name used once, never under itself.
  */
 final readonly class ProductCategoryImport implements DeclaresImport
 {
