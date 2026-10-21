@@ -14,9 +14,11 @@ wanted_js() { jq -r --arg n "$1" '(.dependencies + .devDependencies)[$n] // "-"'
 
 echo "Images (docker)"
 while read -r file line; do row "${line##* }" "$file" ""; done < <(
-  grep -HoE '^[[:space:]]*image: [^[:space:]]+' compose.yaml .github/workflows/ci.yml scripts/backup/drill.compose.yaml | sed 's/:[[:space:]]*image:/ image:/' | sort -u
-  grep -HoE '^FROM [^[:space:]]+:[^[:space:]]+|COPY --from=[^[:space:]]+:[^[:space:]]+' infra/api/Dockerfile infra/web/Dockerfile infra/postgres/Dockerfile \
-    | sed -E 's/:(FROM |COPY --from=)/ /')
+  grep -HoE '^[[:space:]]*image: [^[:space:]]+:[^[:space:]]+' compose*.yaml infra/monitor/compose.yaml .github/workflows/*.yml scripts/backup/drill.compose.yaml \
+    | grep -v '[$]' | sed 's/:[[:space:]]*image:/ image:/' | sort -u
+  grep -HoE '^FROM [^[:space:]]+:[^[:space:]]+|COPY --from=[^[:space:]]+:[^[:space:]]+' infra/api/Dockerfile infra/web/Dockerfile infra/web/tools.Dockerfile \
+    infra/postgres/Dockerfile infra/powershell/Dockerfile | sed -E 's/:(FROM |COPY --from=)/ /'
+  grep -HoE '^REGISTRY_IMAGE=[^[:space:]]+' scripts/onprem/onprem-check.sh scripts/staging/staging-check.sh | sed 's/:REGISTRY_IMAGE=/ /')
 
 echo
 echo "Runtimes"

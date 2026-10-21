@@ -136,7 +136,7 @@ services:
   # and a phone paired to a tab as a scanner (docs/SPEC.md § 7, 2026-09-23 09:45).
   centrifugo:
     logging: *logging
-    image: centrifugo/centrifugo:v6.9.7
+    image: centrifugo/centrifugo:v6.10.1
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
       CENTRIFUGO_HTTP_API_KEY: "${REALTIME_API_KEY:-twes-in-development-realtime-api-key}"

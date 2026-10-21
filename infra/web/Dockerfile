@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # twes-in web: the Angular bundle built once, then served by nginx, which also proxies /api to the API container.
 # Node is named once here (scripts/gates/version-pins.sh reads this line); both stages that run it start from it.
-FROM node:26.12.0-alpine AS node-base
+FROM node:26.12.1-alpine AS node-base
 
 FROM node-base AS build
 WORKDIR /app

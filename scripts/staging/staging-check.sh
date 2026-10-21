@@ -27,7 +27,7 @@ PROJECT=twes-staging-check
 REGISTRY_PORT=5099
 PREFIX=localhost:$REGISTRY_PORT/twes-check
 REGISTRY_NAME=$PROJECT-registry
-REGISTRY_IMAGE=registry:3.0.0
+REGISTRY_IMAGE=registry:3.1.2
 HOST=staging-check.twes.test
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${COMPOSE_PROJECT_NAME:-$PROJECT}" == "$PROJECT" ]] || { echo "staging-check: refuses COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME, it runs as $PROJECT only" >&2; exit 2; }

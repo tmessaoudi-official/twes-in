@@ -29,7 +29,7 @@ PROJECT=twes-onprem-check
 REGISTRY_PORT=5099
 PREFIX=localhost:$REGISTRY_PORT/twes-onprem-check
 REGISTRY_NAME=$PROJECT-registry
-REGISTRY_IMAGE=registry:3.0.0
+REGISTRY_IMAGE=registry:3.1.2
 A=v2026.10.20.1 B=v2026.10.21.1
 OPERATOR=operator@onprem-check.twes.test
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
