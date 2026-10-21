@@ -24,6 +24,8 @@ files, the actual tests. If you catch yourself writing "the change appears to…
 
 1. *No request can ever read or write another tenant's data.*
 2. *No secret, card number, or personal datum leaves this system anywhere it was not meant to go.*
+3. *No file or input, hostile or mistaken, corrupts data, runs as code, acts twice, or changes an issued
+   document.*
 
 In a multi-tenant billing SaaS these are the two promises whose breach is unrecoverable — you cannot
 un-leak a client list, and a cross-tenant read is a reportable data breach under the GDPR, not a bug.
@@ -112,6 +114,26 @@ un-leak a client list, and a cross-tenant read is a reportable data breach under
     soft-deleted (and if soft, is it excluded from every read)? Cross-border: does the change send
     personal data to a new third party (a gateway, an e-invoicing access point), and is that
     recorded?
+11. **Hostile files and misuse.** What a careless person or a crafted file can send, each probed with
+    a request or a file you actually sent, and what came back:
+    - **Import files** (`ImportExport`, `RunImport`, the CSV transcoder, openspout). An XLSX is a zip: a
+      decompression bomb (a few KB expanding to gigabytes of sheet XML), entity expansion in its XML, a
+      shared-strings index past the table's end. A huge file or row count against the upload limit and
+      `memory_limit`. Encodings: UTF-16 without a byte-order mark, Windows-1256, NUL bytes, mixed line
+      endings, the header row repeated mid-file. The same file committed twice, and from two tabs at once.
+    - **Formula injection** on every CSV and XLSX the API writes (lists, reports, the accountant's files):
+      a cell a person typed that starts with `=`, `+`, `-`, `@`, a tab or a carriage return opens as a
+      formula in Excel ([Source: OWASP, CSV Injection]). A typed value must reach the file as text.
+    - **Double submits.** Every write a person can trigger twice (issue, record a payment, receive goods,
+      commit an import, merge, delete, restore): a second click, a retry after a timeout, two tabs. Find
+      what makes the repeat harmless (the record version, a unique constraint, a lock) or prove it is
+      harmless with a test; a write with none is a finding.
+    - **Absurd values.** A negative or zero quantity or price where the domain forbids it, an amount past
+      `NUMERIC(14,3)`, a day in year 1 or 9999, a rolled-over day (`2026-13-45`, see CLAUDE.md
+      Lessons), a 10,000-character name, a right-to-left override (U+202E) in a name printed on a PDF.
+    - **Fiscal undo attempts.** An issued document reached through any path that would change it (PUT,
+      PATCH, an import, a merge, an import's undo, a restore from « Récemment supprimés »); a numbering
+      gap made by deleting or merging; an issued document's stock or figures moved by a later merge.
 
 ## Evidence-grade angle
 

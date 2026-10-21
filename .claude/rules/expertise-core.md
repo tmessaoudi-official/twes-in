@@ -1,10 +1,11 @@
 # EXPERTISE - twes-in   (L4 core; loaded every session in this project)
-Review date: 2026-10-09 10:40   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
+Review date: 2026-10-09 10:40   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci, domain-identifiers
 Scope: the DELTA over CLAUDE.md (its Process, Licensing invariants, Git rules and ~70 "Lessons" are loaded every session and are NOT repeated). This core keeps only what prevents the worst mistakes. The full 18-section file is EXPERTISE-REFERENCE.md: read the section named in the pointer table below WHEN the task touches that topic; do not load it whole. Tags: [Ruled: user <date>] = AGREED in SPEC §7; [Source: ...] = a document; [Observed: ...]; [Unverified]. `SPEC §7 <date>` = the Decisions Log entry of that date.
 
 ## Domains this project touches
 | Domain | Pack | Detail in REFERENCE |
 |---|---|---|
+| A business identifier's format, check or refusal (matricule, RIB, IBAN, BIC, GTIN, phone, e-mail, SIREN/SIRET, VAT, postal code) | domain-identifiers | §6 |
 | Tunisian / French tax, invoicing, till certification | domain-twes-business-fiscal | §6, §14, §15 |
 | Symfony 8 / API Platform / Doctrine, hexagonal DDD | domain-symfony-api-platform | §4, §5, §13 |
 | Angular 22 web, design system, i18n | domain-angular-web | §3 |
