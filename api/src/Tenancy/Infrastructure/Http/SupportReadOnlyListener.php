@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\Http;
 
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Shared\Infrastructure\Http\BulkFile;
 use App\Shared\Infrastructure\Http\RoutedPath;
 use App\Tenancy\Application\Support\RecordSupportVisit;
 use App\Tenancy\Application\Support\SupportAccess;
@@ -35,11 +36,6 @@ final readonly class SupportReadOnlyListener
 {
     private const string COMPANY_PATH = '#^/api/companies/([0-9a-fA-F-]{36})(/|$)#';
     private const string GRANT = '_support_grant';
-    /**
-     * What carries the company's data out whole: the exports, and the month's withholding declaration (TEJ), every
-     * payment withheld at once by another path (docs/SPEC.md § 7). Each expense and its withholding stay readable.
-     */
-    private const string BULK_PATH = '#/exports/|/withholding-declarations/tej/#';
 
     public function __construct(private Security $security, private SupportAccess $support, private RecordSupportVisit $visits)
     {
@@ -61,12 +57,27 @@ final readonly class SupportReadOnlyListener
         if (null === $grant) {
             return;
         }
-        if (!$request->isMethod('GET') || 1 === preg_match(self::BULK_PATH, RoutedPath::of($request))) {
+        if (!$request->isMethod('GET') || self::isBulkFile($request->attributes->get('_controller'))) {
             $event->setResponse(new JsonResponse(['error' => SupportAccess::READ_ONLY], Response::HTTP_FORBIDDEN));
 
             return;
         }
         $request->attributes->set(self::GRANT, [$grant->getId(), $grant->getCompany()->getId(), $account->getId()]);
+    }
+
+    /**
+     * What carries the company's data out whole (BulkFile): the exports, a report's file, a printed selection, the
+     * month's withholding declaration (TEJ, every payment withheld at once). Each record stays readable on its own. The
+     * router has run (32) and named the controller, an invokable one by its class alone.
+     */
+    private static function isBulkFile(mixed $controller): bool
+    {
+        if (!\is_string($controller)) {
+            return false;
+        }
+        $class = explode('::', $controller, 2)[0];
+
+        return class_exists($class) && is_subclass_of($class, BulkFile::class);
     }
 
     #[AsEventListener(event: KernelEvents::RESPONSE)]

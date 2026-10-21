@@ -77,9 +77,10 @@ final class DemoAccountGuardTest extends ApiTestCase
 
     /**
      * The account's own routes, and a company's that change who belongs to it, call on the platform's operators or hand
-     * an invoice over as Factur-X, a file meant for a real customer's books.
+     * an invoice over as Factur-X, a file meant for a real customer's books, or the month's withholding declaration,
+     * a file meant for the tax authority's platform.
      */
-    private const string SWEPT = '#^/api/(auth/|me/|companies$|companies/\{companyId\}/(members|support-access|close-down|closing|subscription|modules/\{moduleKey\}/interest|invoices/\{invoiceId\}/factur-x))#';
+    private const string SWEPT = '#^/api/(auth/|me/|companies$|companies/\{companyId\}/(members|support-access|close-down|closing|subscription|modules/\{moduleKey\}/interest|invoices/\{invoiceId\}/factur-x|withholding-declarations/))#';
 
     /** The files an accountant's software takes in as the company's books, refused to a visitor with Factur-X. */
     private const array BOOKS = [
@@ -142,6 +143,9 @@ final class DemoAccountGuardTest extends ApiTestCase
                 $answered["$subject.$format"] = [$this->client->getResponse()->getStatusCode(), $this->errorAnswered()];
             }
         }
+        // The month's withholding declaration goes to the tax authority's platform as it is, with no band to say demo.
+        $this->client->request('GET', \sprintf('/api/companies/%s/withholding-declarations/tej/2026-10', $companyId));
+        $answered['tej'] = [$this->client->getResponse()->getStatusCode(), $this->errorAnswered()];
         self::assertSame(array_fill_keys(array_keys($answered), [Response::HTTP_FORBIDDEN, DemoAccountGuard::REFUSED]), $answered);
 
         $this->client->request('GET', \sprintf('/api/companies/%s/exports/ledgers.csv', $companyId));

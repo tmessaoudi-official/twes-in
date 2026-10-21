@@ -159,6 +159,10 @@ final class SupportAccessTest extends ApiTestCase
         $this->getJson($this->path('/withholding-declarations/tej/2026-10'));
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
         self::assertSame('support_read_only', $this->json()['error']);
+        // A report's file carries every customer's figures at once, as a list's export does.
+        $this->getJson($this->path('/reports/sales-by-customer/export.csv?from=2026-01-01&to=2026-12-31'));
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('support_read_only', $this->json()['error']);
 
         $this->getJson($this->path('/products/'.$this->productId));
         self::assertResponseIsSuccessful();
