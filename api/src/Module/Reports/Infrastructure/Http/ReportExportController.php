@@ -24,6 +24,7 @@ use App\Module\Reports\Infrastructure\ApiPlatform\Payload\ReportRequest;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
+use App\Shared\Infrastructure\Http\BulkFile;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -46,7 +47,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * for the person to have proved who they are in the last few minutes, and every file handed out is on record.
  */
 #[AsController]
-final readonly class ReportExportController
+final readonly class ReportExportController implements BulkFile
 {
     public function __construct(
         private ReportContexts $contexts,

@@ -13,6 +13,7 @@ use App\Module\Expenses\Application\Tej\DeclareTejWithholdings;
 use App\Module\Expenses\Application\Tej\TejDeclarationRefused;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\Module\Expenses\Infrastructure\Tej\TejDeclarationXml;
+use App\Shared\Infrastructure\Http\BulkFile;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -28,7 +29,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * namespace. Documented in ExpensesOpenApi.
  */
 #[AsController]
-final readonly class TejDeclarationController
+final readonly class TejDeclarationController implements BulkFile
 {
     public function __construct(private DeclareTejWithholdings $declare, private TejDeclarationXml $xml, private CompanyGuard $guard)
     {

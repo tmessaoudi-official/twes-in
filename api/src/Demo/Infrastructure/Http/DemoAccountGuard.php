@@ -57,6 +57,8 @@ final readonly class DemoAccountGuard
         '_api_/companies/{companyId}/modules/{moduleKey}/interest_put',
         'api_invoice_factur_x_xml',
         'api_invoice_factur_x_pdf',
+        // The month's withholding declaration, taken in by the tax authority's platform as it is, with no band.
+        'api_expense_tej_declaration',
     ];
 
     private const string EXPORT_ROUTE = 'api_export';

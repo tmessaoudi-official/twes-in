@@ -18,6 +18,7 @@ use App\Module\Invoices\Application\Print\NothingToPrint;
 use App\Module\Invoices\Application\Print\PrintedInvoice;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Infrastructure\Http\BulkFile;
 use App\Shared\Infrastructure\Http\LongRequest;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -40,7 +41,7 @@ use Symfony\Component\Uid\Uuid;
  * A plain controller rather than a resource: the answer is bytes, not JSON. Documented in InvoicesOpenApi.
  */
 #[AsController]
-final readonly class InvoiceSelectionPdfController
+final readonly class InvoiceSelectionPdfController implements BulkFile
 {
     public function __construct(
         private PrintInvoicesInBulk $print,

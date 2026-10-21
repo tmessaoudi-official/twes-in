@@ -170,7 +170,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   version and validates the latest through `/api/platform/legal-texts`, from `/platform/legal`),
   `Tenancy` also holds « Accès du support » (the owner's `SupportGrant`; `Application/Support/SupportAccess`, which `CompanyGuard`
   and `PermissionVoter` ask for an operator's read-only way in; `SupportReadOnlyListener`, which refuses anything but a GET
-  and every export under a grant, and records each page read),
+  and every file a controller marked `BulkFile` answers under a grant (`BulkFilesTest`: every action recording
+  `export.downloaded` carries the mark), and records each page read),
   `FirstSteps` (« Premiers pas »: a context declares its step with `DeclaresFirstStep` in its own
   `Infrastructure/FirstSteps/`, done worked out from what is there, shown to whoever may do it),
   `DataHealth` (the data checks: a context declares what no constraint states with `DeclaresDataChecks` in its own
@@ -198,8 +199,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `demo` transport, which the `demo-worker` container alone consumes, so no mail waits behind one; `DemoAccountGuard`
   refuses what would make the account a real one (403 `demo_refused`); a mail to a sandbox's owner is kept by
   `CaptureDemoMailListener` for « Courriers de la démo », never sent, and `DemoMailReachTest` names every mail writer;
-  every PDF carries the « DÉMO » band, and Factur-X and every export declared `ExportForTheBooks` (the accountant's
-  journals and tax summary) are refused; a sandbox goes at sign-out or after `app.demo.idle_ttl`
+  every PDF carries the « DÉMO » band, and Factur-X, the TEJ withholding declaration and every export declared
+  `ExportForTheBooks` (the accountant's journals and tax summary) are refused; a sandbox goes at sign-out or after `app.demo.idle_ttl`
   away, taken by `TendDemoSandboxesEveryFiveMinutes`; operators' lists and the data checks leave sandboxes out through
   the `DemoCompanies` and `DemoAccounts` ports; `demo.enabled` and `demo.sandboxes_max` are the platform's « Démo » card),
   and the modules one level down in `api/src/Module/<Name>/`, the scanner among them (`Module/Scanning`: a phone lent

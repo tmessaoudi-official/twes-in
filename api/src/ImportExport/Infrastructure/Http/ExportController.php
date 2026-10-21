@@ -20,6 +20,7 @@ use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
 use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Infrastructure\Http\BulkFile;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -44,7 +45,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * `export`, which no screen reloads on.
  */
 #[AsController]
-final readonly class ExportController
+final readonly class ExportController implements BulkFile
 {
     public function __construct(
         private ExportCatalogue $catalogue,
