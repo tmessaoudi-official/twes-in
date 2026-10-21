@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Reports;
 
-use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
+use App\Module\Invoices\Infrastructure\Doctrine\InvoiceRules;
 use App\Module\Reports\Application\ReportContext;
 use App\Module\Reports\Application\ReportPeriod;
 use App\Shared\Infrastructure\Doctrine\KeptRecords;
@@ -33,7 +33,7 @@ final class IssuedLines
                 CASE WHEN i.document_type = :credit THEN -1 ELSE 1 END * l.quantity * l.unit_cost AS cost
            FROM invoice i JOIN invoice_line l ON l.invoice_id = i.id
            LEFT JOIN product named ON named.id = l.product_id
-          WHERE i.company_id = :company AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+          WHERE i.company_id = :company AND '.InvoiceRules::ISSUED.'
             AND i.issue_date BETWEEN :from AND :to %1$s';
     }
 
@@ -47,7 +47,7 @@ final class IssuedLines
         $params = [
             'company' => $context->company->getId()->toRfc4122(),
             'credit' => InvoiceType::CreditNote->value,
-            'cancelled' => InvoiceStatus::Cancelled->value,
+            'cancelled' => InvoiceRules::CANCELLED,
             'from' => $period->from->format('Y-m-d'),
             'to' => $period->to->format('Y-m-d'),
         ];

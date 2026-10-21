@@ -31,6 +31,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceFigures;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\InvoiceIssue;
 use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
+use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
 use App\Shared\Domain\ValueObject\PaymentMethod;
 use App\Shared\Domain\ValueObject\PrintSettings;
@@ -148,6 +149,28 @@ final class SummarizeInvoicesTest extends KernelTestCase
 
         self::assertSame(['FAC-C', 'FAC-b', 'FAC-A', 'FAC-D'], array_column($summary->toChase, 'number'));
         self::assertSame([5, '50.000'], [$summary->toChaseCount, $summary->toChaseAmount]);
+    }
+
+    /** Open is something left to pay, as the aged balance and the late invoices' watch say: a free part invoiced at 0 waits for nothing. */
+    public function testAnInvoiceIssuedWithNothingToPayIsNeitherLateNorToChase(): void
+    {
+        $offered = $this->issued('FAC-0', 'Pièce offerte', '2026-08-01', 0, '0.000');
+        $this->issued('FAC-1', 'Pièce payante', '2026-08-01', 0, '10.000');
+
+        $summary = $this->summarize->handle($this->company);
+
+        self::assertSame(['10.000', 1, '10.000'], [$summary->overdue, $summary->overdueCount, $summary->toChaseAmount]);
+        self::assertSame(['FAC-1'], array_column($summary->toChase, 'number'));
+        self::assertSame(1, $summary->toChaseCount);
+        self::assertSame(1, array_sum(array_column($summary->aging, 'count')));
+        // The list's « En retard » chip, the customer's account and the reminders read the same rule.
+        $invoices = static::getContainer()->get(InvoiceRepository::class);
+        $today = new \DateTimeImmutable('2026-09-21');
+        self::assertSame(['FAC-1'], array_column($invoices->overdueRows($this->company->getId(), $today), 'number'));
+        self::assertSame(1, $invoices->statusCounts($this->company->getId(), new InvoiceSearch(), $today)['statuses']['overdue']);
+        $customer = $offered->getCustomer()->getId();
+        $owed = $invoices->overdueOf($this->company->getId(), $customer, $today);
+        self::assertSame(['0.000', 0, null], [Decimal::format(Decimal::of($owed['amount']), 3), $owed['count'], $owed['oldestDueDate']]);
     }
 
     public function testACompanyWithoutInvoicesReadsZeros(): void

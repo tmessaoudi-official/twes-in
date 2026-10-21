@@ -32,11 +32,11 @@ final readonly class DoctrineStatementSource implements StatementSource
                i.total_gross - i.withholding_amount AS amount,
                CASE i.document_type WHEN 'invoice' THEN 1 ELSE 2 END AS rank
           FROM invoice i
-         WHERE i.company_id = :company AND %1$s AND i.amount_due IS NOT NULL
+         WHERE i.company_id = :company AND %1$s AND %3$s
         UNION ALL
         SELECT p.payment_date, 'payment', i.number, i.id, p.reference, -p.amount, 3
           FROM payment p JOIN invoice i ON i.id = p.invoice_id
-         WHERE i.company_id = :company AND %1$s AND i.amount_due IS NOT NULL
+         WHERE i.company_id = :company AND %1$s AND %3$s
         UNION ALL
         SELECT c.entry_date, 'credit_transfer', i.number, i.id, c.reference, c.amount, 4
           FROM customer_credit_entry c JOIN invoice i ON i.id = c.invoice_id
@@ -81,13 +81,13 @@ final readonly class DoctrineStatementSource implements StatementSource
     /** The account of the customer kept, with what was made out to the customers merged into it. */
     private static function account(): string
     {
-        return \sprintf(self::ACCOUNT, KeptRecords::among('i.customer_id', 'customer', ':customer'), KeptRecords::among('c.customer_id', 'customer', ':customer'));
+        return \sprintf(self::ACCOUNT, KeptRecords::among('i.customer_id', 'customer', ':customer'), KeptRecords::among('c.customer_id', 'customer', ':customer'), InvoiceRules::ISSUED);
     }
 
     /** @return array<string, string> */
     private function parameters(Uuid $companyId, Uuid $customerId): array
     {
-        return ['company' => $companyId->toRfc4122(), 'customer' => $customerId->toRfc4122()];
+        return ['company' => $companyId->toRfc4122(), 'customer' => $customerId->toRfc4122(), 'cancelled' => InvoiceRules::CANCELLED];
     }
 
     private static function text(mixed $value): string

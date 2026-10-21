@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Reports;
 
 use App\Fiscal\Domain\ValueObject\TaxFamily;
-use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Module\Invoices\Infrastructure\Doctrine\InvoiceRules;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Module\Reports\Application\DeclaresReport;
 use App\Module\Reports\Application\ReportColumn;
@@ -36,7 +36,7 @@ final readonly class VatByRateReport implements DeclaresReport
     private const string VAT = 'SELECT i.id AS document, i.number, i.customer_snapshot ->> \'name\' AS party, i.issue_date,
                 t ->> \'code\' AS code, t ->> \'rate\' AS rate, (t ->> \'base\')::numeric AS base, (t ->> \'amount\')::numeric AS amount
            FROM invoice i CROSS JOIN LATERAL jsonb_array_elements(i.tax_breakdown) t
-          WHERE i.company_id = :company AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+          WHERE i.company_id = :company AND '.InvoiceRules::ISSUED.'
             AND i.issue_date BETWEEN :from AND :to %1$s
             AND EXISTS (
                 SELECT 1 FROM invoice_line l JOIN invoice_line_tax lt ON lt.line_id = l.id JOIN tax_component c ON c.id = lt.tax_component_id
@@ -148,7 +148,7 @@ final readonly class VatByRateReport implements DeclaresReport
     {
         $params = [
             'company' => $context->company->getId()->toRfc4122(),
-            'cancelled' => InvoiceStatus::Cancelled->value,
+            'cancelled' => InvoiceRules::CANCELLED,
             'vat' => TaxFamily::Vat->value,
             'from' => $period->from->format('Y-m-d'),
             'to' => $period->to->format('Y-m-d'),
