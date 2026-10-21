@@ -21,7 +21,6 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
-use App\Module\Products\Infrastructure\Watch\ProductCheckWatch;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
@@ -340,14 +339,14 @@ final class WatchTest extends ApiTestCase
     }
 
     /**
-     * Each subject of the summary as kind and count, but « À vérifier »: the products here lack the codes, categories and
-     * vendors it asks for, and ProductCheckTest reads that subject.
+     * Each subject of the summary as kind and count, but every « À vérifier »: the records here lack what it asks for
+     * (a product its codes, a business customer its number), and each subject's own check test reads it.
      *
      * @return list<array{mixed, mixed}>
      */
     private function subjects(): array
     {
-        return array_values(array_filter($this->everySubject(), static fn (array $subject): bool => ProductCheckWatch::TO_CHECK !== $subject[0]));
+        return array_values(array_filter($this->everySubject(), static fn (array $subject): bool => !self::isCheck($subject[0])));
     }
 
     /** The summary's count less what « À vérifier » adds to it, which {@see subjects()} leaves out. */
@@ -356,13 +355,19 @@ final class WatchTest extends ApiTestCase
         $count = $this->json()['count'] ?? null;
         self::assertIsInt($count);
         foreach ($this->everySubject() as [$kind, $subjectCount]) {
-            if (ProductCheckWatch::TO_CHECK === $kind) {
+            if (self::isCheck($kind)) {
                 self::assertIsInt($subjectCount);
                 $count -= $subjectCount;
             }
         }
 
         return $count;
+    }
+
+    /** Whether a kind is one of the « À vérifier » subjects, which every subject that has one names `<subject>.to_check`. */
+    private static function isCheck(mixed $kind): bool
+    {
+        return \is_string($kind) && str_ends_with($kind, '.to_check');
     }
 
     /** @return list<array{mixed, mixed}> each subject of the summary as kind and count */

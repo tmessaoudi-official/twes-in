@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { CHECK_NOTE_MAX } from '../shared/check/check-note';
 import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import {
   customFieldInput,
@@ -143,6 +144,12 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
       value: (row) => row.taxRegime,
       options: [],
     },
+    {
+      id: 'toCheck',
+      label: 'check.filter.to_check',
+      value: (row) => (row.toCheck || row.checkReasons.length > 0 ? 'yes' : 'no'),
+      options: ['yes', 'no'].map((value) => ({ value, label: `check.filter.${value}` })),
+    },
   ],
 };
 
@@ -191,6 +198,7 @@ export function customersList(
 export function customerSearch(query: ListQuery): CustomerSearch {
   const kinds = filterValues(query.filters['kind']);
   const status = query.filters['status'];
+  const toCheck = query.filters['toCheck'];
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
@@ -200,6 +208,7 @@ export function customerSearch(query: ListQuery): CustomerSearch {
     groupIds: idValues(query.filters['group']),
     regimes: filterValues(query.filters['regime']),
     isActive: status === 'active' ? true : status === 'inactive' ? false : null,
+    toCheck: toCheck === 'yes' ? true : toCheck === 'no' ? false : null,
     intervals: rangeParams(query.filters, INTERVALS),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
@@ -358,6 +367,26 @@ export function customerForm(
             ]
           : []),
       ]),
+      {
+        id: 'check',
+        title: 'check.form.section',
+        fields: [
+          {
+            id: 'toCheck',
+            label: `${FIELDS}.toCheck`,
+            kind: 'checkbox',
+            hint: 'check.form.to_check_hint_customer',
+          },
+          {
+            id: 'checkNote',
+            label: `${FIELDS}.checkNote`,
+            kind: 'textarea',
+            maxLength: CHECK_NOTE_MAX,
+            span: 2,
+            visibleWhen: { field: 'toCheck', oneOf: ['true'] },
+          },
+        ],
+      },
       section('notes', [
         {
           id: 'notes',
@@ -399,6 +428,8 @@ export function customerValues(
     taxRegime: row?.taxRegime ?? options.regimes[0]?.code ?? '',
     defaultDiscountRate: row?.defaultDiscountRate ?? '',
     notes: row?.notes ?? '',
+    toCheck: row?.toCheck ?? false,
+    checkNote: row?.checkNote ?? '',
     ...addressValues(
       'billing',
       row?.billingAddress ?? null,
@@ -451,6 +482,9 @@ export function customerInput(
     notes: text(values['notes']),
     isActive: values['isActive'] === true,
     customFields: customFieldInput(fields, values),
+    toCheck: values['toCheck'] === true,
+    // A note is kept only with its mark: unticking clears both, as the form hides the note with the box.
+    checkNote: values['toCheck'] === true ? text(values['checkNote']) : null,
   };
 }
 

@@ -15,12 +15,14 @@ import { type ExportFormat, exportAddress } from '../shared/list/export-address'
 import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
-import type {
-  VendorInput,
-  VendorOptions,
-  VendorRow,
-  VendorSearch,
-  VendorsError,
+import {
+  VENDOR_CHECK_REASONS,
+  type VendorCheckReason,
+  type VendorInput,
+  type VendorOptions,
+  type VendorRow,
+  type VendorSearch,
+  type VendorsError,
 } from './vendors-types';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
@@ -141,6 +143,7 @@ function toSearchParams(search: VendorSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
   if (search.isActive !== null) params = params.set('isActive', search.isActive);
+  if (search.toCheck !== null) params = params.set('toCheck', search.toCheck);
   for (const [key, value] of Object.entries(search.intervals)) {
     params = params.set(apiRangeKey(key), value);
   }
@@ -175,6 +178,13 @@ function toVendor(raw: VendorVendorRead | VendorJsonldVendorRead): VendorRow {
     isActive: raw.isActive ?? true,
     defaultExpenseCategoryId: raw.defaultExpenseCategoryId ?? null,
     mergedInto: raw.mergedInto ?? null,
+    toCheck: raw.toCheck ?? false,
+    checkNote: raw.checkNote ?? null,
+    nameDoubtful: raw.nameDoubtful ?? false,
+    // A reason this screen does not know is left out rather than shown raw.
+    checkReasons: VENDOR_CHECK_REASONS.filter((reason: VendorCheckReason) =>
+      (raw.checkReasons ?? []).includes(reason),
+    ),
   };
 }
 

@@ -15,6 +15,8 @@ export interface VendorSearch {
   /** Words found in the number, name, legal name, email, address or registration numbers; empty finds all. */
   q: string;
   isActive: boolean | null;
+  /** Marked or lacking something (true), neither (false), or either (null). */
+  toCheck: boolean | null;
   /**
    * The ends of the intervals (row 197): `paymentTermsDays.min` and `.max` in whole days, `createdAt.from` and `.to`
    * in the company's own calendar, each already valid.
@@ -54,7 +56,18 @@ export interface VendorRow {
   defaultExpenseCategoryId: string | null;
   /** The vendor kept when this one was merged into it: this one then stays only for what already names it. */
   mergedInto: VendorMergedInto | null;
+  /** « À vérifier » as a person set it, with why. */
+  toCheck: boolean;
+  checkNote: string | null;
+  /** The name as read from a file, not yet confirmed by a person; confirming it is unticking this. */
+  nameDoubtful: boolean;
+  /** What the vendor lacks, as the API says it; never written. */
+  checkReasons: VendorCheckReason[];
 }
+
+/** What « À vérifier » says a vendor lacks, in the API's order. */
+export type VendorCheckReason = 'name_doubtful';
+export const VENDOR_CHECK_REASONS: readonly VendorCheckReason[] = ['name_doubtful'];
 
 /** The vendor a vendor merged away points at, which lists show in its place. */
 export interface VendorMergedInto {
@@ -64,7 +77,7 @@ export interface VendorMergedInto {
 }
 
 /** What a form writes: never the merge, which only « Fusionner… » does. */
-export type VendorInput = Omit<VendorRow, 'id' | 'version' | 'mergedInto'>;
+export type VendorInput = Omit<VendorRow, 'id' | 'version' | 'mergedInto' | 'checkReasons'>;
 
 export interface VendorIdentifierOption {
   key: string;

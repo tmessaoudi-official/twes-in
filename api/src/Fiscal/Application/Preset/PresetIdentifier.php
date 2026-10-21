@@ -33,6 +33,12 @@ final readonly class PresetIdentifier
     ) {
     }
 
+    /** @param string $holder one of the IdentifierRules holder constants, or '' for someone the preset requires nothing of */
+    public function isRequiredOf(string $holder): bool
+    {
+        return '' !== $holder && \in_array($holder, $this->requiredFor, true);
+    }
+
     /**
      * Another state's pattern when the value carries that state's prefix and its holder may hold one; null when the
      * preset's own pattern and check apply.

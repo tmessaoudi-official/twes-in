@@ -8,7 +8,9 @@
       "barcode_missing": "Barcode missing",
       "category_missing": "Category missing",
       "unit_to_confirm": "Unit to confirm",
-      "to_count": "To count"
+      "to_count": "To count",
+      "name_doubtful": "Name in doubt",
+      "identifier_missing": "Registration number missing"
     },
     "marked": "Marked by hand",
     "filter": {
@@ -20,11 +22,17 @@
     "form": {
       "section": "To check",
       "to_check_hint": "Marks the product to come back to; the note says why.",
-      "zero_price_hint": "A price of 0 meant (a gift, a sample) is no longer flagged, until the price changes."
+      "zero_price_hint": "A price of 0 meant (a gift, a sample) is no longer flagged, until the price changes.",
+      "to_check_hint_vendor": "Marks the vendor to come back to; the note says why.",
+      "to_check_hint_customer": "Marks the customer to come back to; the note says why.",
+      "name_doubtful_hint": "A file was unsure of this name: untick it once it is right. Renaming the vendor clears the doubt too."
     },
     "panel": {
       "title": "To check",
-      "missing": "This product lacks:"
-    }
+      "missing": "This product lacks:",
+      "missing_vendor": "To look at on this vendor:",
+      "missing_customer": "This customer lacks:"
+    },
+    "identifier_named": "Missing: {{identifier}}"
   }
 }

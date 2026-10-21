@@ -58,6 +58,10 @@ const sotumag: VendorRow = {
   isActive: false,
   defaultExpenseCategoryId: null,
   mergedInto: null,
+  toCheck: false,
+  checkNote: null,
+  nameDoubtful: false,
+  checkReasons: [],
 };
 
 const sfax: VendorRow = { ...sotumag, id: 'v2', number: 'FRN-0002', name: 'Sotumag Sfax' };
@@ -134,6 +138,7 @@ describe('VendorsPage', () => {
       itemsPerPage: 25,
       q: '',
       isActive: null,
+      toCheck: null,
       intervals: {},
       order: { key: 'number', direction: 'asc' },
     });

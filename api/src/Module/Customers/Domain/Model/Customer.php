@@ -11,10 +11,13 @@ namespace App\Module\Customers\Domain\Model;
 
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Module\Customers\Domain\Exception\InvalidCustomer;
+use App\Module\Customers\Domain\ValueObject\CustomerCheckReason;
+use App\Module\Customers\Domain\ValueObject\CustomerCheckScope;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -98,6 +101,14 @@ class Customer implements CompanyOwned
 
     #[ORM\Column]
     private bool $isActive = true;
+
+    /** « À vérifier » as a person set it, on the form or through a file's row. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $toCheck = false;
+
+    /** What to look at, kept while the mark is on. */
+    #[ORM\Column(length: CheckMark::NOTE_MAX, nullable: true)]
+    private ?string $checkNote = null;
 
     /**
      * The customer this one was merged into, which lists, pickers and reports show in its place; written by the records
@@ -184,6 +195,60 @@ class Customer implements CompanyOwned
         $this->updatedAt = $now;
 
         return $changed;
+    }
+
+    /**
+     * The mark and its note as a person writes them.
+     *
+     * @return list<string> the fields that changed
+     *
+     * @throws InvalidCustomer
+     */
+    public function reviseCheck(CheckMark $mark, \DateTimeImmutable $now): array
+    {
+        $refusal = CheckMark::noteRefusal($mark->note);
+        if (null !== $refusal) {
+            throw new InvalidCustomer('checkNote', $refusal->message, $refusal->reason, $refusal->params);
+        }
+        $changed = [];
+        if ($mark->marked !== $this->toCheck) {
+            $changed[] = 'toCheck';
+        }
+        if ($mark->note !== $this->checkNote) {
+            $changed[] = 'checkNote';
+        }
+        if ([] !== $changed) {
+            $this->toCheck = $mark->marked;
+            $this->checkNote = $mark->note;
+            $this->updatedAt = $now;
+        }
+
+        return $changed;
+    }
+
+    public function getCheckMark(): CheckMark
+    {
+        return new CheckMark($this->toCheck, $this->checkNote);
+    }
+
+    /**
+     * The numbers the scope requires that this customer lacks: none unless it is a business of the seller's country.
+     *
+     * @return list<string> identifier keys, in the preset's order
+     */
+    public function missingIdentifiers(CustomerCheckScope $scope): array
+    {
+        if (!$this->getProfile()->isDomesticBusiness($scope->countryCode)) {
+            return [];
+        }
+
+        return array_values(array_filter($scope->requiredOfBusiness, fn (string $key): bool => !isset($this->identifiers[$key])));
+    }
+
+    /** @return list<CustomerCheckReason> what the customer lacks, in the order a screen lists it */
+    public function checkReasons(CustomerCheckScope $scope): array
+    {
+        return [] === $this->missingIdentifiers($scope) ? [] : [CustomerCheckReason::IdentifierMissing];
     }
 
     /**

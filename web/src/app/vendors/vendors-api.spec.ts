@@ -11,6 +11,7 @@ const everyVendor: VendorSearch = {
   itemsPerPage: 25,
   q: '',
   isActive: null,
+  toCheck: null,
   intervals: {},
   order: null,
 };
@@ -36,6 +37,9 @@ const sotumag: VendorInput = {
   notes: null,
   isActive: true,
   defaultExpenseCategoryId: 'k2',
+  toCheck: false,
+  checkNote: null,
+  nameDoubtful: false,
 };
 
 describe('VendorsApi', () => {
@@ -58,6 +62,7 @@ describe('VendorsApi', () => {
       itemsPerPage: 50,
       q: ' acier ',
       isActive: true,
+      toCheck: null,
       intervals: { 'createdAt.from': '2026-01-01' },
       order: { key: 'city' as const, direction: 'desc' as const },
     };
@@ -84,7 +89,47 @@ describe('VendorsApi', () => {
       defaultExpenseCategoryId: 'k2',
     });
 
-    expect(await pending).toEqual({ ...sotumag, id: 'v 1', version: 4, mergedInto: null });
+    expect(await pending).toEqual({
+      ...sotumag,
+      id: 'v 1',
+      version: 4,
+      mergedInto: null,
+      checkReasons: [],
+    });
+  });
+
+  it('reads « À vérifier » on a vendor, leaving out a reason this screen does not know', async () => {
+    const pending = api.vendor('c1', 'v1');
+    http.expectOne('/api/companies/c1/vendors/v1').flush({
+      id: 'v1',
+      version: 1,
+      number: 'FRN-0001',
+      name: 'Sotumag',
+      toCheck: true,
+      checkNote: 'RIB à confirmer',
+      nameDoubtful: true,
+      checkReasons: ['later_reason', 'name_doubtful'],
+    });
+
+    expect(await pending).toMatchObject({
+      toCheck: true,
+      checkNote: 'RIB à confirmer',
+      nameDoubtful: true,
+      checkReasons: ['name_doubtful'],
+    });
+  });
+
+  it('narrows the list to the vendors to check, or to the others', async () => {
+    for (const [toCheck, query] of [
+      [true, 'toCheck=true'],
+      [false, 'toCheck=false'],
+    ] as const) {
+      const pending = api.vendors('c1', { ...everyVendor, toCheck });
+      const request = http.expectOne((req) => req.url === '/api/companies/c1/vendors');
+      expect(request.request.params.toString()).toBe(`page=1&itemsPerPage=25&${query}`);
+      request.flush({ member: [], totalItems: 0 });
+      await pending;
+    }
   });
 
   it('reads the vendor a vendor merged away points at', async () => {
@@ -103,6 +148,7 @@ describe('VendorsApi', () => {
       itemsPerPage: 50,
       q: ' générale ',
       isActive: true,
+      toCheck: null,
       intervals: { 'paymentTermsDays.min': '30', 'paymentTermsDays.max': '60' },
       order: { key: 'paymentTermsDays', direction: 'desc' },
     });

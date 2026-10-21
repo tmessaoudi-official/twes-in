@@ -10,9 +10,11 @@ declare(strict_types=1);
 namespace App\Module\Vendors\Domain\Model;
 
 use App\Module\Vendors\Domain\Exception\InvalidVendor;
+use App\Module\Vendors\Domain\ValueObject\VendorCheckReason;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -82,6 +84,18 @@ class Vendor implements CompanyOwned
     #[ORM\Column]
     private bool $isActive = true;
 
+    /** « À vérifier » as a person set it, on the form or through a file's row. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $toCheck = false;
+
+    /** What to look at, kept while the mark is on. */
+    #[ORM\Column(length: CheckMark::NOTE_MAX, nullable: true)]
+    private ?string $checkNote = null;
+
+    /** « Nom douteux »: a name a file could not vouch for, until the vendor is renamed or a person says it is right. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $nameDoubtful = false;
+
     /**
      * The vendor this one was merged into, which lists, pickers and reports show in its place; written by the records
      * engine, which also switches it off, and emptied again by « Annuler la fusion ».
@@ -130,6 +144,11 @@ class Vendor implements CompanyOwned
 
         $changed = $number === $this->number ? [] : ['number'];
         $changed = [...$changed, ...$profile->differencesFrom($this->getProfile())];
+        // A rename is the owner settling the name a file was unsure of.
+        if ($this->nameDoubtful && $profile->name !== $this->name) {
+            $this->nameDoubtful = false;
+            $changed[] = 'nameDoubtful';
+        }
         if ($isActive !== $this->isActive) {
             $changed[] = 'isActive';
         }
@@ -143,6 +162,66 @@ class Vendor implements CompanyOwned
         $this->updatedAt = $now;
 
         return $changed;
+    }
+
+    /**
+     * The mark and its note as a person writes them, and whether the name is still in doubt: a person may say it is
+     * right, never put a doubt back, which only a file's row does.
+     *
+     * @return list<string> the fields that changed
+     *
+     * @throws InvalidVendor
+     */
+    public function reviseCheck(CheckMark $mark, bool $nameDoubtful, \DateTimeImmutable $now): array
+    {
+        $refusal = CheckMark::noteRefusal($mark->note);
+        if (null !== $refusal) {
+            throw new InvalidVendor('checkNote', $refusal->message, $refusal->reason, $refusal->params);
+        }
+        $nameDoubtful = $nameDoubtful && $this->nameDoubtful;
+        $changed = [];
+        if ($mark->marked !== $this->toCheck) {
+            $changed[] = 'toCheck';
+        }
+        if ($mark->note !== $this->checkNote) {
+            $changed[] = 'checkNote';
+        }
+        if ($nameDoubtful !== $this->nameDoubtful) {
+            $changed[] = 'nameDoubtful';
+        }
+        if ([] !== $changed) {
+            $this->toCheck = $mark->marked;
+            $this->checkNote = $mark->note;
+            $this->nameDoubtful = $nameDoubtful;
+            $this->updatedAt = $now;
+        }
+
+        return $changed;
+    }
+
+    /** A file's row naming a vendor it cannot vouch for; the owner renames, merges or confirms it. */
+    public function markNameDoubtful(\DateTimeImmutable $now): void
+    {
+        if (!$this->nameDoubtful) {
+            $this->nameDoubtful = true;
+            $this->updatedAt = $now;
+        }
+    }
+
+    public function getCheckMark(): CheckMark
+    {
+        return new CheckMark($this->toCheck, $this->checkNote);
+    }
+
+    public function isNameDoubtful(): bool
+    {
+        return $this->nameDoubtful;
+    }
+
+    /** @return list<VendorCheckReason> what the vendor lacks, in the order a screen lists it */
+    public function checkReasons(): array
+    {
+        return $this->nameDoubtful ? [VendorCheckReason::NameDoubtful] : [];
     }
 
     public function getProfile(): VendorProfile

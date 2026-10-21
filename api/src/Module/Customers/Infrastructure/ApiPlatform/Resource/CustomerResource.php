@@ -19,6 +19,8 @@ use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Customers\Application\CustomerInput;
 use App\Module\Customers\Domain\Exception\InvalidCustomer;
 use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\ValueObject\CustomerCheckReason;
+use App\Module\Customers\Domain\ValueObject\CustomerCheckScope;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\CreateCustomerProcessor;
@@ -26,6 +28,7 @@ use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\ReviseCustom
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\CustomerCollectionProvider;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\CustomerItemProvider;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Domain\Model\Company;
@@ -55,6 +58,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 'customerGroupId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid']], description: 'Several groups, OR\'d; a single `customerGroupId=…` still works.', constraints: []),
                 'taxRegime[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string']], description: 'Several tax regimes by code, OR\'d, among those of the company\'s fiscal preset (`GET …/customer-options`).', constraints: []),
                 'isActive' => new QueryParameter(schema: ['type' => 'boolean']),
+                'toCheck' => new QueryParameter(schema: ['type' => 'boolean'], description: '« À vérifier »: marked by a person, or a business of the company\'s country without a number its preset requires; false, neither.'),
                 'createdAt[from]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Created on or after this day, in the company\'s own calendar.'),
                 'createdAt[to]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Created on or before this day, in the company\'s own calendar.'),
                 'order[number]' => new QueryParameter(schema: self::DIRECTION),
@@ -223,6 +227,34 @@ final class CustomerResource
     #[Groups([self::READ, self::WRITE])]
     public bool $isActive = true;
 
+    /** « À vérifier » as a person set it, on the form or through a file's row. */
+    #[Groups([self::READ, self::WRITE])]
+    public bool $toCheck = false;
+
+    /** What to look at, kept while the mark is on; dropped when it is taken off. */
+    #[Assert\Length(max: CheckMark::NOTE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => CheckMark::NOTE_MAX]])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $checkNote = null;
+
+    /**
+     * What the customer lacks, each clearing itself once fixed.
+     *
+     * @var list<string>
+     */
+    #[ApiProperty(writable: false, schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['identifier_missing']]])]
+    #[Groups([self::READ])]
+    public array $checkReasons = [];
+
+    /**
+     * The registration numbers a business of the company's country lacks, by the preset's identifier key, which the
+     * customer options name: what `identifier_missing` is about.
+     *
+     * @var list<string>
+     */
+    #[ApiProperty(writable: false, schema: ['type' => 'array', 'items' => ['type' => 'string']])]
+    #[Groups([self::READ])]
+    public array $missingIdentifiers = [];
+
     /**
      * The customer kept when this one was merged away: lists, reports and pickers show that one wherever this one is named.
      *
@@ -232,7 +264,8 @@ final class CustomerResource
     #[Groups([self::READ])]
     public ?array $mergedInto = null;
 
-    public static function of(Customer $customer): self
+    /** @param CustomerCheckScope $scope what « À vérifier » asks of the company's customers */
+    public static function of(Customer $customer, CustomerCheckScope $scope): self
     {
         $profile = $customer->getProfile();
         $resource = new self();
@@ -255,6 +288,11 @@ final class CustomerResource
         $resource->notes = $profile->notes;
         $resource->customFields = $customer->getCustomFields();
         $resource->isActive = $customer->isActive();
+        $mark = $customer->getCheckMark();
+        $resource->toCheck = $mark->marked;
+        $resource->checkNote = $mark->note;
+        $resource->checkReasons = array_map(static fn (CustomerCheckReason $reason): string => $reason->value, $customer->checkReasons($scope));
+        $resource->missingIdentifiers = $customer->missingIdentifiers($scope);
         $kept = $customer->getMergedInto();
         $resource->mergedInto = null === $kept ? null : ['id' => $kept->getId()->toRfc4122(), 'number' => $kept->getNumber(), 'name' => $kept->getProfile()->name];
 
@@ -287,6 +325,7 @@ final class CustomerResource
             array_map(static fn (string $id): Uuid => Uuid::fromString($id), $this->defaultTaxComponentIds),
             $this->isActive,
             $this->customFields,
+            mark: new CheckMark($this->toCheck, $this->checkNote),
         );
     }
 

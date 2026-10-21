@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Application;
 
+use App\Shared\Domain\ValueObject\CheckMark;
+
 /**
  * A cell read as the spreadsheets of the people filling it in write it: a French or Tunisian sheet writes « 1 234,500 »
  * and « 15/03/2026 », and a computed price comes out of Excel as 14.875000000000002. What is no number or no day is
@@ -57,6 +59,26 @@ final class ImportCells
         }
 
         throw new RowRejected($column, \sprintf('At most %d decimals.', $decimals), 'too_many_decimals', ['max' => $decimals]);
+    }
+
+    /**
+     * « À vérifier » as a row writes it, the same for every subject: its note sets the mark with that note, and a blank
+     * cell keeps the mark as it is.
+     *
+     * @throws RowRejected when the note is longer than a mark keeps
+     */
+    public static function checkMark(ImportRecord $record, string $column): ?CheckMark
+    {
+        $note = $record->value($column);
+        if (null === $note) {
+            return null;
+        }
+        $refusal = CheckMark::noteRefusal($note);
+        if (null !== $refusal) {
+            throw new RowRejected($column, $refusal->message, $refusal->reason, $refusal->params);
+        }
+
+        return new CheckMark(true, $note);
     }
 
     /** A day written day first, as French and Tunisian people write one, in the notation a date field keeps. */

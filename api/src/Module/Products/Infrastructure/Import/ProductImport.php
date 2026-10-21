@@ -65,7 +65,6 @@ use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
-use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -617,16 +616,12 @@ final readonly class ProductImport implements DeclaresImport
      */
     private static function check(ImportRecord $record, ?Product $current): ?ProductCheckInput
     {
-        $note = $record->value('to_check');
-        if (null === $note) {
+        $mark = ImportCells::checkMark($record, 'to_check');
+        if (null === $mark) {
             return null;
         }
-        $refusal = CheckMark::noteRefusal($note);
-        if (null !== $refusal) {
-            throw new RowRejected('to_check', $refusal->message, $refusal->reason, $refusal->params);
-        }
 
-        return new ProductCheckInput(new CheckMark(true, $note), $current?->isZeroPriceIntended() ?? false);
+        return new ProductCheckInput($mark, $current?->isZeroPriceIntended() ?? false);
     }
 
     /** @throws RowRejected */

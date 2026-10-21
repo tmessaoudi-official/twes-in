@@ -22,6 +22,7 @@ const everyCustomer: CustomerSearch = {
   groupIds: [],
   regimes: [],
   isActive: null,
+  toCheck: null,
   intervals: {},
   order: null,
 };
@@ -51,6 +52,8 @@ const input: CustomerInput = {
   notes: null,
   isActive: true,
   customFields: {},
+  toCheck: false,
+  checkNote: null,
 };
 const sector: CustomFieldDefinition = {
   id: 'f1',
@@ -64,7 +67,14 @@ const sector: CustomFieldDefinition = {
   isActive: true,
   version: 1,
 };
-const amel: CustomerRow = { ...input, id: 'k1', version: 1, mergedInto: null };
+const amel: CustomerRow = {
+  ...input,
+  id: 'k1',
+  version: 1,
+  mergedInto: null,
+  checkReasons: [],
+  missingIdentifiers: [],
+};
 const wholesalers: CustomerGroupRow = {
   id: 'g1',
   name: 'Grossistes',

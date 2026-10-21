@@ -82,6 +82,7 @@ final readonly class ManageVendors
             if (!$input->isActive) {
                 $vendor->revise($input->number, $input->profile, false, $this->clock->now());
             }
+            $this->writeCheck($vendor, $input);
             $this->vendors->save($vendor);
             $this->record($company, $vendor->getId(), self::CREATED, [], $actorUserId);
 
@@ -114,7 +115,8 @@ final readonly class ManageVendors
             }
             $this->check($company, $input, $vendor);
 
-            $changed = $vendor->revise($input->number, $input->profile, $input->isActive, $this->clock->now());
+            // After the name, whose rename settles a doubt about it.
+            $changed = [...$vendor->revise($input->number, $input->profile, $input->isActive, $this->clock->now()), ...$this->writeCheck($vendor, $input)];
             if ([] !== $changed) {
                 $this->vendors->save($vendor);
                 $this->record($company, $vendor->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
@@ -122,6 +124,26 @@ final readonly class ManageVendors
 
             return $vendor;
         });
+    }
+
+    /**
+     * @return list<string> the fields that changed
+     *
+     * @throws InvalidVendor
+     */
+    private function writeCheck(Vendor $vendor, VendorInput $input): array
+    {
+        $now = $this->clock->now();
+        $changed = null === $input->mark ? [] : $vendor->reviseCheck($input->mark, $input->nameDoubtful ?? true, $now);
+        if (null === $input->mark && false === $input->nameDoubtful) {
+            $changed = $vendor->reviseCheck($vendor->getCheckMark(), false, $now);
+        }
+        if ($input->doubtsName && !$vendor->isNameDoubtful()) {
+            $vendor->markNameDoubtful($now);
+            $changed[] = 'nameDoubtful';
+        }
+
+        return array_values(array_unique($changed));
     }
 
     private function check(Company $company, VendorInput $input, ?Vendor $current): void

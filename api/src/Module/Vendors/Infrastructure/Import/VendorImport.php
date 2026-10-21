@@ -13,6 +13,7 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Application\DeclaresImport;
+use App\ImportExport\Application\ImportCells;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportContext;
 use App\ImportExport\Application\ImportHeading;
@@ -37,6 +38,7 @@ use App\Module\Vendors\Infrastructure\ApiPlatform\Resource\VendorResource;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Security\VendorPermission;
 use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -65,6 +67,7 @@ final readonly class VendorImport implements DeclaresImport
         'name' => 'name',
         'paymentTermsDays' => 'payment_terms_days',
         'defaultExpenseCategoryId' => 'expense_category',
+        'checkNote' => 'to_check',
     ];
 
     /**
@@ -195,6 +198,8 @@ final readonly class VendorImport implements DeclaresImport
     private function input(Company $company, ImportRecord $record, ?Vendor $current, RowFaults $faults): VendorInput
     {
         $held = $current?->getProfile();
+        // A « yes » puts the name in doubt, a « no » takes the doubt away, a blank leaves it as it is.
+        $doubt = $faults->read(static fn (): ?bool => self::yesNo($record, 'name_doubtful'));
         $identifiers = $held->identifiers ?? [];
         foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
             $identifiers[$identifier->key] = $record->value($identifier->key) ?? $identifiers[$identifier->key] ?? null;
@@ -217,6 +222,9 @@ final readonly class VendorImport implements DeclaresImport
                 $faults->read(fn (): ?Uuid => $this->expenseCategoryId($company, $record, $held), $held?->defaultExpenseCategoryId),
             ),
             $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
+            $faults->read(static fn (): ?CheckMark => ImportCells::checkMark($record, 'to_check')),
+            false === $doubt ? false : null,
+            true === $doubt,
         );
     }
 
@@ -305,6 +313,8 @@ final readonly class VendorImport implements DeclaresImport
             new ImportColumn('expense_category', 'import.vendors.expense_category', false, null, 'import.vendors.expense_category_note'),
             new ImportColumn('notes', 'import.vendors.notes'),
             new ImportColumn('active', 'import.vendors.active', false, 'yes', 'import.boolean_note'),
+            new ImportColumn('to_check', 'import.vendors.to_check', false, null, 'import.vendors.to_check_note'),
+            new ImportColumn('name_doubtful', 'import.vendors.name_doubtful', false, null, 'import.vendors.name_doubtful_note'),
         ];
     }
 

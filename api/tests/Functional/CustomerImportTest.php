@@ -22,6 +22,7 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutWriter;
 use App\Tenancy\Domain\Model\Company;
 use OpenSpout\Common\Entity\Cell;
@@ -583,6 +584,19 @@ final class CustomerImportTest extends ApiTestCase
         return self::HEADER
             ."\nCLI-0001,Carthage Conseil,company,".self::MATRICULE.',Grossistes,TVA19,"5,5",non,compta@carthage.tn,12'
             ."\nCLI-0002,Sonia Ben Ali,individual,,,,,,,\n";
+    }
+
+    /** A note in « to_check » marks the customer with it, and a blank cell keeps the mark. */
+    public function testTheToCheckColumnMarksACustomerWithItsNoteAndABlankCellKeepsIt(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import("number,name,kind,to_check\nCLI-0009,Sonia Ben Ali,individual,adresse à confirmer\n");
+        self::assertResponseIsSuccessful();
+        self::assertEquals(new CheckMark(true, 'adresse à confirmer'), $this->customer('CLI-0009')->getCheckMark());
+
+        $this->import("number,name,to_check\nCLI-0009,Sonia Ben Ali,\n", mode: 'upsert');
+        self::assertSame([[], [2]], [$this->json()['updated'] ?? null, $this->json()['unchanged'] ?? null], 'a blank cell keeps the mark');
     }
 
     /** @param array<string, string>|null $pairing */

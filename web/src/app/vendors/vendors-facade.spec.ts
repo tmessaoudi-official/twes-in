@@ -11,6 +11,7 @@ const everyVendor: VendorSearch = {
   itemsPerPage: 25,
   q: '',
   isActive: null,
+  toCheck: null,
   intervals: {},
   order: null,
 };
@@ -30,8 +31,11 @@ const input: VendorInput = {
   notes: null,
   isActive: true,
   defaultExpenseCategoryId: null,
+  toCheck: false,
+  checkNote: null,
+  nameDoubtful: false,
 };
-const sotumag: VendorRow = { ...input, id: 'v1', version: 1, mergedInto: null };
+const sotumag: VendorRow = { ...input, id: 'v1', version: 1, mergedInto: null, checkReasons: [] };
 const options: VendorOptions = { countryCode: 'TN', identifiers: [], expenseCategories: null };
 
 // The proof dialog is answered by the test; `retrying` itself is StepUp's own.

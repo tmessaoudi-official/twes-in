@@ -27,6 +27,7 @@ final readonly class VendorSearch
      * @param int|null                    $termsAtLeast days, inclusive
      * @param int|null                    $termsAtMost  days, inclusive
      * @param string                      $timezone     the company's, which the creation day is read in
+     * @param bool|null                   $toCheck      marked by a person or with a name in doubt, or neither
      */
     public function __construct(
         public ?string $text = null,
@@ -36,6 +37,7 @@ final readonly class VendorSearch
         public ?int $termsAtMost = null,
         public ?DateRange $createdOn = null,
         public string $timezone = 'UTC',
+        public ?bool $toCheck = null,
     ) {
     }
 }

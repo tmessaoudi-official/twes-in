@@ -74,6 +74,10 @@ const sotumag: VendorRow = {
   isActive: true,
   defaultExpenseCategoryId: null,
   mergedInto: null,
+  toCheck: false,
+  checkNote: null,
+  nameDoubtful: false,
+  checkReasons: [],
 };
 
 describe('VendorPage', () => {
@@ -453,6 +457,74 @@ describe('VendorPage', () => {
     expect(q('field-defaultExpenseCategoryId')).not.toBeNull();
     // The vendor's own category, archived since, is still what the form shows: opening it is no change.
     expect(q('record-save')?.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('says above the form what the vendor lacks and why it was marked', async () => {
+    vendor.set({
+      ...sotumag,
+      toCheck: true,
+      checkNote: 'RIB à confirmer',
+      nameDoubtful: true,
+      checkReasons: ['name_doubtful'],
+    });
+    await open('v1');
+
+    expect(q('vendor-check-marked')?.textContent).toContain('check.marked');
+    expect(q('vendor-check-note')?.textContent).toContain('RIB à confirmer');
+    const reasons = [...(q('vendor-check-reasons')?.querySelectorAll('li') ?? [])];
+    expect(reasons.map((each) => each.getAttribute('data-reason'))).toEqual(['name_doubtful']);
+  });
+
+  it('shows nothing to check on a vendor that lacks nothing and is not marked', async () => {
+    vendor.set(sotumag);
+    await open('v1');
+
+    expect(q('vendor-check')).toBeNull();
+    expect(q('field-nameDoubtful')).toBeNull();
+  });
+
+  it('confirms a name in doubt by unticking its box, which the save sends', async () => {
+    vendor.set({ ...sotumag, nameDoubtful: true, checkReasons: ['name_doubtful'] });
+    await open('v1');
+
+    (q('field-nameDoubtful')?.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.reviseVendor).toHaveBeenCalledWith(
+      'c1',
+      'v1',
+      expect.objectContaining({ nameDoubtful: false }),
+      1,
+    );
+  });
+
+  it('drops the box of a doubt another person settled, and the panel with it', async () => {
+    vendor.set({ ...sotumag, nameDoubtful: true, checkReasons: ['name_doubtful'] });
+    await open('v1');
+    expect(q('field-nameDoubtful')).not.toBeNull();
+    facade.loadVendor.mockImplementation(async () => {
+      vendor.set({ ...sotumag, version: 2 });
+    });
+
+    await announceSaved('vendor', 'v1');
+    await settle();
+
+    expect(q('field-nameDoubtful')).toBeNull();
+    expect(q('vendor-check')).toBeNull();
+    // The form is rebuilt without the box's control: nothing reads as unsaved, and a save never sends the doubt back.
+    expect(q('record-save')?.hasAttribute('disabled')).toBe(true);
+    type('field-email', 'compta@sotumag.tn');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseVendor).toHaveBeenCalledWith(
+      'c1',
+      'v1',
+      expect.objectContaining({ email: 'compta@sotumag.tn', nameDoubtful: false }),
+      2,
+    );
   });
 
   it('takes what another person saved into the open vendor, and keeps what is typed', async () => {

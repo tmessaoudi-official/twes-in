@@ -43,9 +43,6 @@ export const PRODUCT_CHECK_REASONS: readonly ProductCheckReason[] = [
   'to_count',
 ];
 
-/** The longest note « À vérifier » keeps, as the API does. */
-export const CHECK_NOTE_MAX = 500;
-
 /** What the API sorts products by. */
 export type ProductSortKey = 'reference' | 'name' | 'kind' | 'category' | 'isActive';
 

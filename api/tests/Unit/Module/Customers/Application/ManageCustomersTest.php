@@ -14,6 +14,7 @@ use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
+use App\Module\Customers\Application\CustomerCheckScopes;
 use App\Module\Customers\Application\CustomerInput;
 use App\Module\Customers\Application\CustomerNotFound;
 use App\Module\Customers\Application\CustomerNumberTaken;
@@ -63,7 +64,7 @@ final class ManageCustomersTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->fields = new InMemoryCustomFieldDefinitions();
-        $this->manage = new ManageCustomers(new InMemoryCustomers(), $this->groups, $regimes, $this->taxes, ShippedFiscalPresets::presets(), $this->audit, $clock, $this->fields, $transactions, new InMemoryRecordVersions());
+        $this->manage = new ManageCustomers(new InMemoryCustomers(), $this->groups, $regimes, $this->taxes, ShippedFiscalPresets::presets(), $this->audit, $clock, $this->fields, $transactions, new InMemoryRecordVersions(), new CustomerCheckScopes(ShippedFiscalPresets::presets()));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);

@@ -34,6 +34,7 @@ final class CustomerSearchReader
         // `true` and `false` as a query string says them, `1` and `0` as an older client sent them.
         $active = $filters->choices('isActive', ['true', 'false', '1', '0']);
         $createdOn = $filters->dateRange('createdAt');
+        $toCheck = $filters->choices('toCheck', ['true', 'false', '1', '0']);
 
         return new CustomerSearch(
             $text,
@@ -44,6 +45,7 @@ final class CustomerSearchReader
             $filters->choices('taxRegime', $regimes),
             $createdOn->isOpen() ? null : $createdOn,
             $company->getTimezone(),
+            [] === $toCheck ? null : \in_array($toCheck[0], ['true', '1'], true),
         );
     }
 }

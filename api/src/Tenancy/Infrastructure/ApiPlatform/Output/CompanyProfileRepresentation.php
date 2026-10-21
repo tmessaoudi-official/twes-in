@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\ApiPlatform\Output;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyProfileResource;
@@ -60,7 +61,7 @@ final readonly class CompanyProfileRepresentation
                 $identifier->key,
                 $this->translator->trans($identifier->labelKey, [], 'fiscal'),
                 $identifier->pattern,
-                \in_array('company', $identifier->requiredFor, true),
+                $identifier->isRequiredOf(IdentifierRules::COMPANY),
             );
         }
         foreach ($preset->companyVatRegimes as $regime) {

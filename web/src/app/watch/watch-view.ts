@@ -37,6 +37,7 @@ export function watchRowView(
   const cells: Record<string, string | number> = {};
   for (const name of [
     'customer',
+    'vendor',
     'product',
     'reference',
     'establishment',
@@ -60,7 +61,7 @@ export function watchRowView(
         ? new CapitalizePipe().transform(say(`roles.${role}`))
         : role;
   }
-  // What a product lacks, by code, and whether a person marked it, as the product's page names them.
+  // What a record lacks, by code, and whether a person marked it, as its page names them.
   if ('reasons' in params) {
     cells['reasons'] = [
       ...(Number(params['marked'] ?? 0) === 1 ? [say('check.marked')] : []),

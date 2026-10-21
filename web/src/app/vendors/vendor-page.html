@@ -48,6 +48,18 @@
     </p>
   }
 
+  @if (current(); as vendor) {
+    @if (vendor.toCheck || vendor.checkReasons.length > 0) {
+      <app-check-panel
+        testId="vendor-check"
+        heading="check.panel.missing_vendor"
+        [items]="checkItems()"
+        [marked]="vendor.toCheck"
+        [note]="vendor.checkNote"
+      />
+    }
+  }
+
   @if (form(); as form) {
     @if (sync.changedBy(); as changedBy) {
       <app-record-changed

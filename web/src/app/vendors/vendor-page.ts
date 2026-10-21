@@ -30,6 +30,7 @@ import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { PURCHASES_MODULE } from '../purchases/purchases-nav';
 import { RecordDeletes } from '../shared/records/record-deletes';
+import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
 
@@ -43,6 +44,7 @@ import { RecordDeletes } from '../shared/records/record-deletes';
     DescriptorForm,
     RecordBar,
     RecordChanged,
+    CheckPanel,
   ],
   templateUrl: './vendor-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -79,8 +81,16 @@ export class VendorPage {
     const options = this.facade.options();
     return options === null
       ? null
-      : vendorForm(options, this.current()?.defaultExpenseCategoryId ?? null);
+      : vendorForm(
+          options,
+          this.current()?.defaultExpenseCategoryId ?? null,
+          this.current()?.nameDoubtful === true,
+        );
   });
+  /** What « À vérifier » says the vendor lacks, each as the panel above the form names it. */
+  protected readonly checkItems = computed<readonly CheckItem[]>(
+    () => this.current()?.checkReasons.map((id) => ({ id, key: `check.reasons.${id}` })) ?? [],
+  );
   /**
    * What the form is of: the vendor and the fields shown. Reading the vendor again yields new objects with the same
    * content, and must not rebuild the form over what is being typed; another vendor or other fields must.
@@ -90,8 +100,9 @@ export class VendorPage {
     const current = this.current();
     if (options === null || current === undefined) return null;
     // Without the category the vendor holds: another person's save that moves it off an archived one changes the
-    // choices offered, not the fields, and is merged as a change like any other.
-    return `${current?.id ?? 'new'}|${JSON.stringify(vendorForm(options))}`;
+    // choices offered, not the fields, and is merged as a change like any other. A doubt settled elsewhere is a field
+    // fewer, so it is part of what the form is of.
+    return `${current?.id ?? 'new'}|${JSON.stringify(vendorForm(options, null, current?.nameDoubtful === true))}`;
   });
   protected readonly form = computed(() => {
     if (this.formKey() === null) return null;

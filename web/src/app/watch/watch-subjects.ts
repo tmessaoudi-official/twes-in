@@ -126,6 +126,52 @@ function productList(
   };
 }
 
+/** A vendor's page, where its name and its mark are seen to. */
+const OPEN_VENDOR: RowAction<WatchRowView> = {
+  id: 'open-vendor',
+  label: 'watch.actions.open_vendor',
+  labelParams: (view) => ({ name: String(view.cells['vendor'] ?? '') }),
+  icon: 'storefront',
+  link: (view) => ['/vendors', view.row.subjectId],
+  shown: (view) => view.row.subjectId !== null,
+};
+
+/** A customer's page, where its numbers and its mark are seen to. */
+const OPEN_CUSTOMER: RowAction<WatchRowView> = {
+  id: 'open-customer',
+  label: 'watch.actions.open_customer',
+  labelParams: (view) => ({ name: String(view.cells['customer'] ?? '') }),
+  icon: 'contacts',
+  link: (view) => ['/customers', view.row.subjectId],
+  shown: (view) => view.row.subjectId !== null,
+};
+
+/**
+ * What a record of a subject lacks, beside its name and number: the reasons are the subject itself and run as long as
+ * there are, kept and scrolled to, never given way; the note gives way first.
+ */
+function checkList(
+  id: string,
+  subject: 'vendor' | 'customer',
+  link: string,
+  action: RowAction<WatchRowView>,
+): ListDescriptor<WatchRowView> {
+  return {
+    id: `watch-${id}`,
+    rowId: (view) => view.id,
+    pageSizes: PAGE_SIZES,
+    link: (view) => [link, view.row.subjectId],
+    linkColumn: subject,
+    columns: [
+      cell(subject, { hideable: false }),
+      cell('number', { width: 140 }),
+      cell('reasons', { priority: 'high', hideable: false }),
+      cell('note'),
+    ],
+    actions: [action],
+  };
+}
+
 /** Every subject the API can name, in the order the overview lists them when it names several. */
 export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
   'invoices.instruments_due': {
@@ -254,6 +300,16 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       cell('reasons', { priority: 'high', hideable: false }),
       cell('note'),
     ]),
+  },
+  // Marked by a person or named by a file unsure of it: seen to on the vendor's page.
+  'vendor.to_check': {
+    icon: 'fact_check',
+    list: checkList('vendor-to-check', 'vendor', '/vendors', OPEN_VENDOR),
+  },
+  // Marked by a person or a business without the number its invoices need: completed on the customer's page.
+  'customer.to_check': {
+    icon: 'fact_check',
+    list: checkList('customer-to-check', 'customer', '/customers', OPEN_CUSTOMER),
   },
   'stock.lot_expiring': {
     icon: 'event_note',

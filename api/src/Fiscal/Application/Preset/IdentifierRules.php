@@ -22,12 +22,30 @@ final class IdentifierRules
     private const array HOLDERS = [self::COMPANY => 'a company', self::BUSINESS_CUSTOMER => 'a business customer'];
 
     /**
+     * The keys of the numbers the preset requires of a holder, in the preset's order: the one reading of `required_for`.
+     *
+     * @return list<string>
+     */
+    public static function requiredOf(FiscalPreset $preset, string $holder): array
+    {
+        $keys = [];
+        foreach ($preset->identifiers as $identifier) {
+            if ($identifier->isRequiredOf($holder)) {
+                $keys[] = $identifier->key;
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
      * The first rule the values break; null when they break none.
      *
-     * @param array<string, string> $values registration numbers by identifier key, blank ones already left out
-     * @param string                $holder one of the holder constants, or '' for someone the preset requires nothing of
+     * @param array<string, string> $values  registration numbers by identifier key, blank ones already left out
+     * @param string                $holder  one of the holder constants, or '' for someone the preset requires nothing of
+     * @param list<string>          $excused required keys the holder may go on lacking, as a record that already did
      */
-    public static function refusal(FiscalPreset $preset, array $values, string $holder): ?IdentifierRefusal
+    public static function refusal(FiscalPreset $preset, array $values, string $holder, array $excused = []): ?IdentifierRefusal
     {
         $known = [];
         foreach ($preset->identifiers as $identifier) {
@@ -35,7 +53,7 @@ final class IdentifierRules
             $field = "identifiers.$identifier->key";
             $value = $values[$identifier->key] ?? null;
             if (null === $value) {
-                if ('' !== $holder && \in_array($holder, $identifier->requiredFor, true)) {
+                if ($identifier->isRequiredOf($holder) && !\in_array($identifier->key, $excused, true)) {
                     return new IdentifierRefusal($field, \sprintf('The %s preset requires %s to carry its %s.', $preset->country, self::HOLDERS[$holder] ?? $holder, $identifier->key), 'identifier_required', ['identifier' => $identifier->key]);
                 }
                 continue;

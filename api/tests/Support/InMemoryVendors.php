@@ -39,7 +39,8 @@ final class InMemoryVendors implements VendorRepository
             return InMemorySearch::finds($search->text, $v->getNumber(), [$profile->name, $profile->legalName, $profile->email, $address->line1, $address->postalCode, $address->city, ...array_values($profile->identifiers)])
                 && (null === $search->active || $v->isActive() === $search->active)
                 && (null === $search->termsAtLeast || (null !== $profile->paymentTermsDays && $profile->paymentTermsDays >= $search->termsAtLeast))
-                && (null === $search->termsAtMost || (null !== $profile->paymentTermsDays && $profile->paymentTermsDays <= $search->termsAtMost));
+                && (null === $search->termsAtMost || (null !== $profile->paymentTermsDays && $profile->paymentTermsDays <= $search->termsAtMost))
+                && (null === $search->toCheck || ($v->getCheckMark()->marked || [] !== $v->checkReasons()) === $search->toCheck);
         }));
 
         return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);

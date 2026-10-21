@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { CHECK_NOTE_MAX } from '../shared/check/check-note';
 import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import type {
   FieldValue,
@@ -93,6 +94,12 @@ export const VENDORS_LIST: ListDescriptor<VendorRow> = {
         label: `vendors.statuses.${status}`,
       })),
     },
+    {
+      id: 'toCheck',
+      label: 'check.filter.to_check',
+      value: (row) => (row.toCheck || row.checkReasons.length > 0 ? 'yes' : 'no'),
+      options: ['yes', 'no'].map((value) => ({ value, label: `check.filter.${value}` })),
+    },
   ],
 };
 
@@ -114,12 +121,14 @@ const INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[
 /** What the API is asked for the page of vendors the list shows: every filter is sent, none applied here. */
 export function vendorSearch(query: ListQuery): VendorSearch {
   const status = query.filters['status'];
+  const toCheck = query.filters['toCheck'];
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     q: query.query,
     isActive: status === 'active' ? true : status === 'inactive' ? false : null,
+    toCheck: toCheck === 'yes' ? true : toCheck === 'no' ? false : null,
     intervals: rangeParams(query.filters, INTERVALS),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
@@ -135,9 +144,15 @@ const section = (id: string, fields: FormField[]): FormSection => ({
 /**
  * The vendor form, from what the company's preset offers: its registration numbers, none of them required of a
  * vendor, each in its shape. While the expenses module is on, the vendor's usual expense category among the active
- * ones, and the one it holds though archived since, which the API keeps. The API checks everything again.
+ * ones, and the one it holds though archived since, which the API keeps. « À vérifier » last: the mark and its note,
+ * and, while the vendor's name is in `doubt` from a file, the box that confirms it, which only a file sets. The API
+ * checks everything again.
  */
-export function vendorForm(options: VendorOptions, held: string | null = null): FormDescriptor {
+export function vendorForm(
+  options: VendorOptions,
+  held: string | null = null,
+  doubt = false,
+): FormDescriptor {
   const identifiers: FormField[] = options.identifiers.map((identifier) => ({
     id: IDENTIFIER_PREFIX + identifier.key,
     label: identifier.label,
@@ -272,6 +287,36 @@ export function vendorForm(options: VendorOptions, held: string | null = null): 
           hint: 'vendors.form.notes_hint',
         },
       ]),
+      {
+        id: 'check',
+        title: 'check.form.section',
+        fields: [
+          {
+            id: 'toCheck',
+            label: `${FIELDS}.toCheck`,
+            kind: 'checkbox',
+            hint: 'check.form.to_check_hint_vendor',
+          },
+          ...(doubt
+            ? [
+                {
+                  id: 'nameDoubtful',
+                  label: `${FIELDS}.nameDoubtful`,
+                  kind: 'checkbox' as const,
+                  hint: 'check.form.name_doubtful_hint',
+                },
+              ]
+            : []),
+          {
+            id: 'checkNote',
+            label: `${FIELDS}.checkNote`,
+            kind: 'textarea',
+            maxLength: CHECK_NOTE_MAX,
+            span: 2,
+            visibleWhen: { field: 'toCheck', oneOf: ['true'] },
+          },
+        ],
+      },
     ],
   };
 }
@@ -296,7 +341,13 @@ export function vendorValues(row: VendorRow | null, options: VendorOptions): For
     paymentTermsDays:
       row === null || row.paymentTermsDays === null ? '' : String(row.paymentTermsDays),
     notes: row?.notes ?? '',
+    toCheck: row?.toCheck ?? false,
+    checkNote: row?.checkNote ?? '',
   };
+  // Only while the form shows its box: a saved value with no field would read as an unsaved change forever.
+  if (row?.nameDoubtful === true) {
+    values['nameDoubtful'] = true;
+  }
   for (const identifier of options.identifiers) {
     values[IDENTIFIER_PREFIX + identifier.key] = row?.identifiers[identifier.key] ?? '';
   }
@@ -348,6 +399,11 @@ export function vendorInput(
     isActive: values['isActive'] === true,
     defaultExpenseCategoryId:
       options.expenseCategories === null ? held : text(values['defaultExpenseCategoryId']),
+    toCheck: values['toCheck'] === true,
+    // A note is kept only with its mark: unticking clears both, as the form hides the note with the box.
+    checkNote: values['toCheck'] === true ? text(values['checkNote']) : null,
+    // The box shows only while the name is in doubt; with none, false clears nothing the API holds.
+    nameDoubtful: values['nameDoubtful'] === true,
   };
 }
 

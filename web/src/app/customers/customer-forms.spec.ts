@@ -65,6 +65,10 @@ const carthage: CustomerRow = {
   isActive: true,
   customFields: {},
   mergedInto: null,
+  toCheck: false,
+  checkNote: null,
+  checkReasons: [],
+  missingIdentifiers: [],
 };
 
 describe('customer forms', () => {
@@ -84,6 +88,7 @@ describe('customer forms', () => {
       ['status', false],
       ['group', true],
       ['regime', true],
+      ['toCheck', false],
     ]);
     expect(CUSTOMERS_LIST.ranges?.map((range) => [range.id, range.kind])).toEqual([
       ['createdAt', 'day'],
@@ -114,6 +119,7 @@ describe('customer forms', () => {
       groupIds: ['0199a1b2-0000-7000-8000-000000000001'],
       regimes: ['exempt', 'export'],
       isActive: false,
+      toCheck: null,
       intervals: { 'createdAt.from': '2026-03-01' },
       order: { key: 'customerGroup', direction: 'desc' },
     });
@@ -183,6 +189,7 @@ describe('customer forms', () => {
       'billing',
       'shipping',
       'terms',
+      'check',
       'notes',
     ]);
     expect(field('identifier__matricule_fiscal')).toMatchObject({
@@ -238,8 +245,10 @@ describe('customer forms', () => {
       ...carthage,
       id: undefined,
       version: undefined,
-      // A form never writes the merge, which only « Fusionner… » does.
+      // A form never writes the merge, which only « Fusionner… » does, nor what the API works out.
       mergedInto: undefined,
+      checkReasons: undefined,
+      missingIdentifiers: undefined,
       shippingAddress: {
         line1: null,
         line2: null,
@@ -248,6 +257,65 @@ describe('customer forms', () => {
         countryCode: null,
       },
     });
+  });
+
+  it('narrows the list to the customers to check, or to those with nothing to check', () => {
+    const asked = (toCheck: string | undefined) =>
+      customerSearch({
+        query: '',
+        filters: toCheck === undefined ? {} : { toCheck },
+        sort: null,
+        pageIndex: 0,
+        pageSize: 25,
+      }).toCheck;
+    expect([asked('yes'), asked('no'), asked(undefined), asked('maybe')]).toEqual([
+      true,
+      false,
+      null,
+      null,
+    ]);
+    const filter = CUSTOMERS_LIST.filters?.find((candidate) => candidate.id === 'toCheck');
+    expect(filter?.label).toBe('check.filter.to_check');
+    expect(filter?.options.map((option) => [option.value, option.label])).toEqual([
+      ['yes', 'check.filter.yes'],
+      ['no', 'check.filter.no'],
+    ]);
+    const row = { ...carthage, groupName: null };
+    expect(
+      [
+        row,
+        { ...row, toCheck: true },
+        { ...row, checkReasons: ['identifier_missing' as const] },
+      ].map((candidate) => filter?.value(candidate)),
+    ).toEqual(['no', 'yes', 'yes']);
+  });
+
+  it('marks a customer to check with its note, and unticking drops the note with the mark', () => {
+    const section = customerForm(options, groups).sections.find((each) => each.id === 'check');
+    expect(section?.title).toBe('check.form.section');
+    expect(section?.fields.map((field) => [field.id, field.kind])).toEqual([
+      ['toCheck', 'checkbox'],
+      ['checkNote', 'textarea'],
+    ]);
+    expect(section?.fields[0]?.hint).toBe('check.form.to_check_hint_customer');
+    expect(section?.fields[1]).toMatchObject({
+      maxLength: 500,
+      visibleWhen: { field: 'toCheck', oneOf: ['true'] },
+    });
+
+    const marked = { ...carthage, toCheck: true, checkNote: 'matricule à demander' };
+    const values = customerValues(marked, options);
+    expect([values['toCheck'], values['checkNote']]).toEqual([true, 'matricule à demander']);
+    expect(customerInput(values, options)).toMatchObject({
+      toCheck: true,
+      checkNote: 'matricule à demander',
+    });
+    expect(customerInput({ ...values, checkNote: '  ' }, options).checkNote).toBeNull();
+    expect(customerInput({ ...values, toCheck: false }, options)).toMatchObject({
+      toCheck: false,
+      checkNote: null,
+    });
+    expect(customerValues(null, options)).toMatchObject({ toCheck: false, checkNote: '' });
   });
 
   it("drops an individual's identifiers and a group left empty", () => {

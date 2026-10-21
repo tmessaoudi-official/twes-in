@@ -25,6 +25,7 @@ import type {
   CustomerAccountCustomerAccountRead,
 } from '../api/types.gen';
 import {
+  CUSTOMER_CHECK_REASONS,
   CUSTOMER_KINDS,
   type ContactInput,
   type ContactRow,
@@ -330,6 +331,7 @@ function toSearchParams(search: CustomerSearch): HttpParams {
   for (const id of search.groupIds) params = params.append('customerGroupId[]', id);
   for (const code of search.regimes) params = params.append('taxRegime[]', code);
   if (search.isActive !== null) params = params.set('isActive', search.isActive);
+  if (search.toCheck !== null) params = params.set('toCheck', search.toCheck);
   for (const [key, value] of Object.entries(search.intervals)) {
     params = params.set(apiRangeKey(key), value);
   }
@@ -376,6 +378,13 @@ function toCustomer(raw: CustomerCustomerRead | CustomerJsonldCustomerRead): Cus
     isActive: raw.isActive ?? true,
     customFields: { ...(raw.customFields ?? {}) },
     mergedInto: raw.mergedInto ?? null,
+    toCheck: raw.toCheck ?? false,
+    checkNote: raw.checkNote ?? null,
+    // A reason this screen does not know is left out rather than shown raw.
+    checkReasons: CUSTOMER_CHECK_REASONS.filter((reason) =>
+      (raw.checkReasons ?? []).includes(reason),
+    ),
+    missingIdentifiers: [...(raw.missingIdentifiers ?? [])],
   };
 }
 
