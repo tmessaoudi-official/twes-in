@@ -518,6 +518,19 @@ describe('ExpensePage', () => {
     );
   });
 
+  it('keeps what is typed into the payment when the options are read again unchanged', async () => {
+    // Recording an expense reads the options again too: equal options are no reason to rebuild the payment.
+    expense.set({ ...draft, status: 'recorded' });
+    await open('e1');
+    type('field-withholdingRate', '150');
+    await settle();
+
+    optionsState.set({ ...options });
+    await settle();
+
+    expect((q('field-withholdingRate') as HTMLInputElement).value).toBe('150');
+  });
+
   it('says a refused payment under the field it names, and puts the person on it', async () => {
     expense.set({ ...draft, status: 'recorded' });
     await open('e1');
@@ -622,6 +635,18 @@ describe('ExpensePage', () => {
     await settle();
     expect(q('expense-tej')?.getAttribute('data-code')).toBe('RS7_000006');
     expect(q('expense-tej')?.textContent).toContain('RS7_000006 — Honoraires exonérés');
+  });
+
+  it('keeps the TEJ operation being chosen when the options are read again unchanged', async () => {
+    optionsState.set(tunisian);
+    expense.set({ ...draft, status: 'paid', paidOn: '2026-09-12' });
+    await open('e1');
+    classification()!.get('withholdingOperationCode')!.setValue('RS7_000006');
+
+    optionsState.set({ ...tunisian });
+    await settle();
+
+    expect(classification()!.get('withholdingOperationCode')!.value).toBe('RS7_000006');
   });
 
   it('says nothing of TEJ outside Tunisia, nor offers a reader to change it', async () => {
