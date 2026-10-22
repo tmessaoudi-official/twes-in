@@ -63,6 +63,7 @@
     "company_at_sign_in_on": "Always open the same company",
     "company_at_sign_in_off": "Otherwise, the company used last opens.",
     "company_at_sign_in_pick": "Company",
+    "pin_failed": "The company at sign-in could not be saved: nothing changed. Try again in a moment.",
     "shortcuts": "Keyboard shortcuts",
     "shortcuts_intro": "One key, without Ctrl or Alt, for each action. It does nothing while you type in a field. Ctrl K always opens the search.",
     "shortcuts_restore": "Restore",

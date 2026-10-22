@@ -215,6 +215,7 @@
   },
   "company": {
     "choose": "Choose a company",
+    "switch_failed": "That company could not open: you are still working in the same one. Try again in a moment.",
     "unread": "{{count}} unread {count, plural, one {notification} other {notifications}}",
     "unread_elsewhere": "{{count}} unread {count, plural, one {notification} other {notifications}} in your other companies",
     "profile": {
@@ -652,6 +653,7 @@
     "empty": "No notifications.",
     "mark_all": "Mark all as read",
     "empty_unread": "No unread notifications.",
+    "failed": "The notifications could not be read just now; try again in a moment.",
     "close": "Close notifications",
     "filter": "Show",
     "filter_all": "All",
@@ -1629,6 +1631,7 @@
       "collect": "Collect",
       "record": "Record the payment",
       "recorded": "The payment has been recorded.",
+      "deleted": "The {{amount}} payment is deleted; what it paid is due again.",
       "delete": "Delete the payment of {{amount}}",
       "delete_short": "Delete",
       "confirm_delete": "Confirm deletion",
@@ -1742,6 +1745,7 @@
       "issue_message": "It receives its number and no longer changes: a mistake is then corrected with a credit note.",
       "issue_credit_note_title": "Issue this credit note?",
       "issue_credit_note_message": "It receives its number and no longer changes.",
+      "issue_credit_note_message_numbered": "It will be numbered {{number}}, for {{total}} credited to {{customer}}, and will no longer change.",
       "confirm_issue": "Issue",
       "apply_credit": "Apply the credit",
       "record_overpayment": "Record an overpayment",
@@ -2394,7 +2398,9 @@
       "followed_many": "{{count}} {count, plural, one {price followed its cost} other {prices followed their cost}}.",
       "undo": "Undo",
       "restored": "Price of {{name}} put back to {{price}}.",
-      "moved_many": "The margin of {{count}} {count, plural, one {product} other {products}} moved."
+      "moved_many": "The margin of {{count}} {count, plural, one {product} other {products}} moved.",
+      "followed_and_moved": "{{followed}} {followed, plural, one {price followed its cost} other {prices followed their cost}}, and the margin of {{moved}} {moved, plural, one {product} other {products}} moved.",
+      "restored_many": "{{count}} {count, plural, one {price put back as it was} other {prices put back as they were}}."
     }
   },
   "inventory": {
@@ -2790,7 +2796,6 @@
       "no_category": "No category",
       "category_hint": "Only active categories are offered.",
       "notes_hint": "For your team only.",
-      "withholding_hint": "Proposed at 1% from 1,000 TND including VAT; enter 0 for an excluded purchase or an exempt supplier, or the rate that applies to the supplier.",
       "tej_hint": "The TEJ platform code under which this withholding is declared."
     },
     "payment_methods": {
@@ -2979,6 +2984,7 @@
     "retry": "Try again",
     "offline": "You are offline: nothing can be saved for now.",
     "restored": "Connection restored.",
+    "page_failed": "This page could not open. Reload it, then try again.",
     "close": "Close",
     "submission_in_progress": "This is still being saved: wait a moment, then read the page again.",
     "submission_unanswered": "This was already saved, but its answer was lost: reload the page to see it."

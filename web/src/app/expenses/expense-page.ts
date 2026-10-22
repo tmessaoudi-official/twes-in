@@ -252,7 +252,7 @@ export class ExpensePage {
 
   protected readonly paymentDescriptor = computed(() => {
     const options = this.facade.options();
-    return options === null ? null : paymentForm(options);
+    return options === null ? null : paymentForm(options, this.format);
   });
   /**
    * What the payment's form is of. Reading the expense or the options again yields new objects with the same content, as

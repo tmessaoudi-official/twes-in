@@ -188,7 +188,6 @@ export class InvoicePage {
   protected readonly mayCredit = computed(() => this.auth.hasPermission('invoice.credit'));
   /** The invoice's « Historique », for a reader of the activity journal. */
   protected readonly mayHistory = computed(() => this.auth.hasPermission('audit.read'));
-  protected readonly confirmingCancel = signal(false);
   protected readonly confirmingPaymentDelete = signal<string | null>(null);
 
   /** Null while a new invoice is filled in; undefined until the document asked for has been read. */
@@ -599,14 +598,21 @@ export class InvoicePage {
     const current = this.current();
     const preview = this.nextNumber();
     const scale = this.scale();
+    const creditNote = this.isCreditNote();
     if (!current || preview === null || scale === null)
-      return { message: 'invoices.actions.issue_message' };
+      return {
+        message: creditNote
+          ? 'invoices.actions.issue_credit_note_message'
+          : 'invoices.actions.issue_message',
+      };
     const operations = this.chosenOperations() ?? preview.operationCategory;
     const asked = this.options()?.operationCategory === true;
     return {
-      message: !asked
-        ? 'invoices.actions.issue_message_numbered'
-        : `invoices.actions.issue_message_numbered_${operations ?? 'unsaid'}`,
+      message: creditNote
+        ? 'invoices.actions.issue_credit_note_message_numbered'
+        : !asked
+          ? 'invoices.actions.issue_message_numbered'
+          : `invoices.actions.issue_message_numbered_${operations ?? 'unsaid'}`,
       messageParams: {
         number: preview.number,
         total:
@@ -621,7 +627,7 @@ export class InvoicePage {
       ? {
           kind: 'definitif',
           title: 'invoices.actions.issue_credit_note_title',
-          message: 'invoices.actions.issue_credit_note_message',
+          ...this.issuePreview(),
           confirmLabel: 'invoices.actions.confirm_issue',
           keepLabel: 'invoices.actions.keep',
         }
@@ -905,7 +911,6 @@ export class InvoicePage {
       const companyId = this.company()?.id;
       const id = this.id();
       untracked(() => {
-        this.confirmingCancel.set(false);
         this.confirmingPaymentDelete.set(null);
         if (companyId) {
           void this.facade.loadInvoice(companyId, id);
@@ -1094,7 +1099,12 @@ export class InvoicePage {
     const id = this.id();
     this.confirmingPaymentDelete.set(null);
     if (!companyId || id === null || this.busy()) return;
-    await this.facade.deletePayment(companyId, id, payment.id);
+    if (await this.facade.deletePayment(companyId, id, payment.id)) {
+      // The row goes and the amount due rises, out of sight on a phone: both are said.
+      this.feedback.success('invoices.payments.deleted', {
+        amount: this.format.amount(payment.amount, this.scale()),
+      });
+    }
   }
 
   /** The document taxes the saved document is charged, as a new form would choose them. */

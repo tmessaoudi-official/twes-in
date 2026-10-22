@@ -170,6 +170,16 @@ describe('fieldError', () => {
     expect(errorOf(vat, '1234567A/A/M/000')).toBeNull();
   });
 
+  it("says a field's own format sentence when its value is outside the pattern", () => {
+    const phone: FormField = {
+      ...vat,
+      hint: 'c.vat_hint',
+      patternError: 'import.rejections.invalid_phone',
+    };
+    expect(errorOf(phone, 'fr 12')).toEqual({ key: 'import.rejections.invalid_phone' });
+    expect(errorOf(phone, '1234567A/A/M/000')).toBeNull();
+  });
+
   it('accepts only one of the options a select offers', () => {
     expect(errorOf(currency, 'USD')).toEqual({ key: 'form.errors.option' });
     expect(errorOf(currency, 'EUR')).toBeNull();

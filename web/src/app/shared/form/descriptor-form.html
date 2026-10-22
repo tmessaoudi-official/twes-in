@@ -40,7 +40,7 @@
                 </mat-checkbox>
                 @if (field.hint) {
                   <span class="px-2 text-xs text-on-surface-variant">{{
-                    field.hint | translate
+                    field.hint | translate: field.hintParams
                   }}</span>
                 }
                 @if (errorFor(field); as error) {
@@ -116,7 +116,7 @@
                     [clearable]="!field.required"
                     [noneLabel]="field.noneLabel ?? 'form.none' | translate"
                     [noneFoundLabel]="field.noneFoundLabel ?? 'form.none_found' | translate"
-                    [hint]="field.hint ? (field.hint | translate) : ''"
+                    [hint]="field.hint ? (field.hint | translate: field.hintParams) : ''"
                     (picked)="takePicked(field, $event)"
                   />
                   @if (errorFor(field); as error) {
@@ -177,7 +177,7 @@
                         [search]="picker.search"
                         [clearsAfterPick]="true"
                         [noneFoundLabel]="field.noneFoundLabel ?? 'form.none_found' | translate"
-                        [hint]="field.hint ? (field.hint | translate) : ''"
+                        [hint]="field.hint ? (field.hint | translate: field.hintParams) : ''"
                         (picked)="addPick(field, $event)"
                       />
                     }
@@ -244,7 +244,7 @@
                     />
                     <app-day-calendar-button matSuffix [field]="day" />
                     @if (field.hint) {
-                      <mat-hint>{{ field.hint | translate }}</mat-hint>
+                      <mat-hint>{{ field.hint | translate: field.hintParams }}</mat-hint>
                     }
                     @if (errorFor(field); as error) {
                       <mat-error [attr.data-testid]="'field-error-' + field.id">
@@ -338,7 +338,7 @@
                       </button>
                     }
                     @if (field.hint) {
-                      <mat-hint>{{ field.hint | translate }}</mat-hint>
+                      <mat-hint>{{ field.hint | translate: field.hintParams }}</mat-hint>
                     }
                     @if (errorFor(field); as error) {
                       <mat-error [attr.data-testid]="'field-error-' + field.id">

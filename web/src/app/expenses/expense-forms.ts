@@ -690,8 +690,14 @@ export function billChargeOptions(
   return [...offered, ...kept];
 }
 
-/** How and when a recorded expense was paid. */
-export function paymentForm(options: ExpenseOptions): FormDescriptor {
+/** How and when a recorded expense was paid; `say` writes the hint's figures in the screen's formats. */
+export function paymentForm(
+  options: ExpenseOptions,
+  say: {
+    amount(value: string, scale: number | null): string;
+    decimal(value: string): string;
+  },
+): FormDescriptor {
   return {
     id: 'expense-payment',
     sections: [
@@ -710,14 +716,7 @@ export function paymentForm(options: ExpenseOptions): FormDescriptor {
             })),
           },
           { id: 'paidOn', label: `${FIELDS}.paidOn`, kind: 'date', required: true },
-          {
-            id: 'withholdingRate',
-            label: `${FIELDS}.withholdingRate`,
-            kind: 'decimal',
-            maxLength: 7,
-            pattern: '(0|[1-9][0-9]{0,2})([.,][0-9]{1,3})?',
-            hint: 'expenses.form.withholding_hint',
-          },
+          ...withholdingField(options, say),
           ...(options.withholdingOperationCodes.length === 0
             ? []
             : [{ ...operationField(options), hint: 'expenses.form.tej_hint' }]),
@@ -725,6 +724,44 @@ export function paymentForm(options: ExpenseOptions): FormDescriptor {
       },
     ],
   };
+}
+
+/**
+ * The rate a payment withholds, asked only where the company has a withholding on a total: its hint says the company's
+ * own rate and threshold, which it can revise in Taxes, never figures fixed in its words. With several, which one
+ * applies depends on the supplier, and the hint says so.
+ */
+function withholdingField(
+  options: ExpenseOptions,
+  say: Parameters<typeof paymentForm>[1],
+): FormField[] {
+  const [only, ...more] = options.withholdings;
+  if (only === undefined) return [];
+  // The API writes three decimals: 1.000 reads « 1 », 1.500 « 1,5 », 10 stays 10.
+  const rate = say.decimal(only.rate.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, ''));
+  const hint: Pick<FormField, 'hint' | 'hintParams'> =
+    more.length > 0
+      ? { hint: 'expenses.form.withholding_hint_several' }
+      : only.threshold === null
+        ? { hint: 'expenses.form.withholding_hint_always', hintParams: { rate } }
+        : {
+            hint: 'expenses.form.withholding_hint_from',
+            hintParams: {
+              rate,
+              threshold: `${say.amount(only.threshold, options.currencyScale)} ${options.currency}`,
+            },
+          };
+  return [
+    {
+      id: 'withholdingRate',
+      label: `${FIELDS}.withholdingRate`,
+      kind: 'decimal',
+      maxLength: 7,
+      pattern: '(0|[1-9][0-9]{0,2})([.,][0-9]{1,3})?',
+      patternError: 'import.rejections.invalid_withholding_rate',
+      ...hint,
+    },
+  ];
 }
 
 /** The TEJ operation of a paid expense, given afterwards (docs/SPEC.md § 7, 2026-09-26 00:22). */

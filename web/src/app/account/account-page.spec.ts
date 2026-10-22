@@ -519,6 +519,34 @@ describe('AccountPage', () => {
     expect(company.pinAtSignIn).toHaveBeenLastCalledWith(null);
   });
 
+  // A refused pin left the toggle and the choice where the click put them, which read as saved (U4).
+  it('puts the toggle and the choice back, and says so, when the pin is refused', async () => {
+    const root = await render('preferences');
+    company.pinAtSignIn.mockResolvedValue(false);
+    const toggle = () =>
+      byTestId(root, 'account-company-at-sign-in')
+        ?.querySelector('button')
+        ?.getAttribute('aria-checked');
+
+    byTestId(root, 'account-company-at-sign-in')?.querySelector('button')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(toggle()).toBe('false');
+
+    companies.set([{ ...acme, pinned: true }, globex]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await choose(root, 'account-company-at-sign-in-pick', 'c2');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(shownIn(root, 'account-company-at-sign-in-pick')).toBe(acme.name);
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said.map((said) => said.key)).toEqual([
+      'account.pin_failed',
+      'account.pin_failed',
+    ]);
+  });
+
   it('offers no company to pin to somebody in one company only', async () => {
     companies.set([acme]);
     const root = await render('preferences');

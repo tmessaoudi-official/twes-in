@@ -250,6 +250,7 @@ describe('ExpensesPage', () => {
       charges: [],
       paymentMethods: ['transfer'],
       withholdingOperationCodes: [],
+      withholdings: [],
     });
     facade.pickVendors.mockResolvedValue([
       {
@@ -290,6 +291,7 @@ describe('ExpensesPage', () => {
       charges: [],
       paymentMethods: ['transfer'],
       withholdingOperationCodes: [{ code: 'RS7_000006', label: 'Honoraires' }],
+      withholdings: [],
     });
     fixture.detectChanges();
     expect(q('expenses-tej-file')).not.toBeNull();

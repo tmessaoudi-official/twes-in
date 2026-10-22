@@ -251,16 +251,18 @@ health turns red when a message waited over 600 seconds or any message failed fo
 
 ## A stock movement went missing
 
-Untried on staging; `app:stock:replay-delivery-note` has its test.
+Untried on staging; `app:stock:replay-delivery-note` and `app:stock:replay-invoice` have their tests.
 
 The nightly `app:data:check` mails the operators the check, the company and a count, never a document's contents.
-Stock moves when a delivery note is validated or cancelled in a listener after the commit, so a crash between the two can
-lose the move.
+Stock moves when a delivery note is validated or cancelled, or an invoice or credit note issued, in a listener after the
+commit, so a crash between the two can lose the move; the stock keepers are notified with the document's number.
 
 1. Run the check by hand to see the current state: `docker compose … exec api bin/console app:data:check`.
 2. For a delivery note whose move is missing: `… exec api bin/console app:stock:replay-delivery-note <company id>
    <delivery note id>`. It moves what the note says, and answers « already moved: nothing to do » for a note whose stock moved.
-3. Anything else the check names has no replay command yet: read the record, correct it through the screens (an
+3. For an issued invoice or credit note whose move is missing: `… exec api bin/console app:stock:replay-invoice <company id>
+   <invoice id>`. It runs the move its issue ran, from the same lines, and answers the same way for one whose stock moved.
+4. Anything else the check names has no replay command yet: read the record, correct it through the screens (an
    inventory adjustment says why), and tell the company.
 
 ## A suspected breach

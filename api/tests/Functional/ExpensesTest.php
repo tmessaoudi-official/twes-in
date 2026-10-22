@@ -544,6 +544,28 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame([], $this->json()['withholdingOperationCodes'] ?? null);
     }
 
+    /** The payment's withholding field and its hint read the company's own withholdings, never words fixed for Tunisia. */
+    public function testTheOptionsNameTheCompanysWithholdingsWithTheirRateAndThreshold(): void
+    {
+        $this->signedIn(['expense.read']);
+        $this->getJson($this->companyPath().'/expense-options');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([['code' => 'RS1', 'rate' => '1.000', 'threshold' => '1000.000']], array_map(
+            static fn (mixed $withholding): array => \is_array($withholding) ? array_intersect_key($withholding, ['code' => 1, 'rate' => 1, 'threshold' => 1]) : [],
+            $this->arrayAt($this->json(), 'withholdings'),
+        ));
+
+        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->em()->persist($durand);
+        $this->em()->flush();
+        $this->createUser('retenues@durand.fr', 'password-1234', $durand, ['expense.read'], 'member');
+        $this->login('retenues@durand.fr', 'password-1234');
+        $this->getJson('/api/companies/'.$durand->getId()->toRfc4122().'/expense-options');
+
+        self::assertSame([], $this->json()['withholdings'] ?? null);
+    }
+
     /** A euro has two decimals: a net finer than that is told two, however much finer it is. */
     public function testANetFinerThanTheCurrencyIsToldTheCurrencysDecimals(): void
     {

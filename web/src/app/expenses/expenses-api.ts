@@ -564,5 +564,6 @@ function toOptions(raw: ExpenseOptionsExpenseOptionsRead): ExpenseOptions {
     charges: (raw.charges ?? []).map((charge) => ({ ...charge })),
     paymentMethods: [...(raw.paymentMethods ?? [])],
     withholdingOperationCodes: (raw.withholdingOperationCodes ?? []).map((each) => ({ ...each })),
+    withholdings: (raw.withholdings ?? []).map((each) => ({ ...each })),
   };
 }

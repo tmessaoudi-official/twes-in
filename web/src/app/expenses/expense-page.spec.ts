@@ -87,6 +87,9 @@ const options: ExpenseOptions = {
   charges: [],
   paymentMethods: ['transfer', 'cash'],
   withholdingOperationCodes: [],
+  withholdings: [
+    { code: 'RS1', name: 'Retenue à la source', rate: '1.000', threshold: '1000.000' },
+  ],
 };
 const tunisian: ExpenseOptions = {
   ...options,

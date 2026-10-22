@@ -736,6 +736,18 @@ class Invoice implements CompanyOwned
         $this->issuedAt = $now;
         $this->issuedBy = $issue->issuedBy;
         $this->updatedAt = $now;
+        $this->events[] = $this->issuedEvent();
+    }
+
+    /**
+     * What issuing said: the lines it sold, returned or took from delivery notes. Built again for an issued document whose
+     * stock move failed, so that move can be made again from the same facts (`app:stock:replay-invoice`).
+     */
+    public function issuedEvent(): InvoiceIssued
+    {
+        if (null === $this->number || null === $this->issueDate || InvoiceStatus::Draft === $this->status) {
+            throw new \LogicException('Only an issued document says what it sold.');
+        }
         $sources = array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $this->getLines())));
         $direct = InvoiceType::Invoice !== $this->documentType ? [] : array_values(array_filter(array_map(
             static fn (InvoiceLine $line): ?InvoicedQuantity => null === $line->getProduct() || null !== $line->getSourceDeliveryNoteLineId() ? null : new InvoicedQuantity($line->getProduct()->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode()),
@@ -747,7 +759,8 @@ class Invoice implements CompanyOwned
         )));
         // What the corrected invoice sold through delivery notes is returned against those notes' own movements.
         $correctedSources = null === $this->correctsInvoice || [] === $returned ? [] : array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $this->correctsInvoice->getLines())));
-        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, $sources, $direct, $this->correctsInvoice?->getId(), $returned, $correctedSources);
+
+        return new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $this->number, $this->issueDate, $sources, $direct, $this->correctsInvoice?->getId(), $returned, $correctedSources);
     }
 
     /**

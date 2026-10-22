@@ -417,6 +417,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     const payment = page.locator('[data-testid^="payment-"][data-testid$="-delete"]');
     await payment.click();
     await page.locator('[data-testid$="-delete-confirm"]').click();
+    await expect(toast(page)).toContainText('est supprimé');
     await expect(page.getByTestId('invoice-payments-none')).toBeVisible();
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
     await expect(page.getByTestId('invoice-amount-due')).toHaveText(due);

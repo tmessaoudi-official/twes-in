@@ -71,6 +71,11 @@ export interface FormField {
   max?: number;
   /** A regular expression the whole value must match. */
   pattern?: string;
+  /**
+   * What a value outside `pattern` is told: its format, an example and what to do, the very sentence the API
+   * refuses it with (`import.rejections.*`), since the browser's check answers first.
+   */
+  patternError?: string;
   /** Required for `select`; the choices of a `multiselect`. */
   options?: FieldOption[];
   /** A select whose options are language tags: the dropdown names each language itself (`Select.languages`). */
@@ -79,6 +84,8 @@ export interface FormField {
   noneLabel?: string;
   noneFoundLabel?: string;
   hint?: string;
+  /** What the hint names, read from data rather than written in its words: a rate, a threshold. */
+  hintParams?: Record<string, string>;
   /** How many of the section's two grid columns the field spans on a wide screen; phones always use one. */
   span?: 1 | 2;
   defaultValue?: FieldValue;

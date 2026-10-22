@@ -56,6 +56,7 @@ const options: ExpenseOptions = {
   charges: [],
   paymentMethods: ['transfer'],
   withholdingOperationCodes: [],
+  withholdings: [],
 };
 
 describe('ExpensesFacade', () => {

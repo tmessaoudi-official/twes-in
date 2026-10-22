@@ -201,6 +201,7 @@ export function vendorForm(
           kind: 'tel',
           maxLength: 40,
           pattern: '\\+?[0-9 ().\\-]{3,40}',
+          patternError: 'import.rejections.invalid_phone',
         },
         {
           id: 'website',
@@ -208,6 +209,7 @@ export function vendorForm(
           kind: 'text',
           maxLength: 200,
           pattern: 'https?://\\S+',
+          patternError: 'import.rejections.invalid_website',
           span: 2,
         },
       ]),
@@ -252,8 +254,10 @@ export function vendorForm(
           id: 'bic',
           label: `${FIELDS}.bic`,
           kind: 'text',
-          maxLength: 11,
-          pattern: '[A-Za-z]{6}[A-Za-z0-9]{2}([A-Za-z0-9]{3})?',
+          maxLength: 14,
+          // The groups apart or not, as a RIB prints it: the API drops the spaces before its own check.
+          pattern: '[A-Za-z]{4} ?[A-Za-z]{2} ?[A-Za-z0-9]{2}( ?[A-Za-z0-9]{3})?',
+          patternError: 'import.rejections.invalid_bic',
         },
         {
           id: 'paymentTermsDays',

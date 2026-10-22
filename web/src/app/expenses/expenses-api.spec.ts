@@ -312,9 +312,13 @@ describe('ExpensesApi', () => {
       currency: 'TND',
       currencyScale: 3,
       withholdingOperationCodes: [{ code: 'RS7_000006', label: 'Honoraires exonérés' }],
+      withholdings: [{ code: 'RS1', name: 'Retenue', rate: '1.000', threshold: '1000.000' }],
     });
     expect((await options).withholdingOperationCodes).toEqual([
       { code: 'RS7_000006', label: 'Honoraires exonérés' },
+    ]);
+    expect((await options).withholdings).toEqual([
+      { code: 'RS1', name: 'Retenue', rate: '1.000', threshold: '1000.000' },
     ]);
 
     const paid = api.payExpense('c1', 'e1', {
@@ -595,6 +599,7 @@ describe('ExpensesApi', () => {
       charges: [{ id: 's1', code: 'TIMBRE', name: 'Droit de timbre', amount: '1.000' }],
       paymentMethods: ['transfer', 'cash'],
       withholdingOperationCodes: [],
+      withholdings: [],
     });
 
     // The book of suppliers is asked for a few at a time, never handed over with the options.

@@ -233,10 +233,70 @@ describe('PriceReviewOffer', () => {
     ]);
 
     expect(api.product).not.toHaveBeenCalled();
-    expect(successToasts()).toEqual([
-      'products.price_review.followed_many',
-      'products.price_review.moved_many',
+    // One toast: a second would replace the first before it is read.
+    expect(successToasts()).toEqual(['products.price_review.followed_and_moved']);
+    expect(said()[0]?.params).toEqual({ followed: 30, moved: 2 });
+    expect(offeredNext()).toBeNull();
+  });
+
+  it('says one toast for a receipt whose prices followed their costs, whose « Annuler » puts them all back', async () => {
+    api.product.mockImplementation(async (_company: string, id: string) => ({
+      ...unmoved,
+      id,
+      version: id === 'p1' ? 4 : 7,
+      unitPriceNet: '1375.0000',
+    }));
+    api.settlePriceReview.mockResolvedValue({ ...unmoved, unitPriceNet: '1250.0000' });
+    await offer().said([
+      { kind: 'product.price_followed', id: 'p1', params: { previousPrice: '1250.0000' } },
+      { kind: 'product.price_followed', id: 'p2', params: { previousPrice: '900.0000' } },
     ]);
-    expect(said().map((toast) => toast.params)).toEqual([{ count: 30 }, { count: 2 }]);
+
+    expect(successToasts()).toEqual(['products.price_review.followed_many']);
+    expect(said()[0]?.params).toEqual({ count: 2 });
+    const next = offeredNext();
+    expect(next?.key).toBe('products.price_review.undo');
+
+    next?.run();
+    await vi.waitFor(() =>
+      expect(effectToasts()).toEqual(['products.price_review.restored_many:corrigeable']),
+    );
+    expect(api.settlePriceReview.mock.calls).toEqual([
+      ['c1', 'p1', 'restore', 4],
+      ['c1', 'p2', 'restore', 7],
+    ]);
+    expect(said().at(-1)?.params).toEqual({ count: 2 });
+  });
+
+  it('says one toast when a receipt moved a margin and a price both, its « Annuler » the price’s', async () => {
+    api.product.mockImplementation(async (_company: string, id: string) =>
+      id === 'p1' ? moved : { ...unmoved, unitPriceNet: '1375.0000' },
+    );
+    await offer().said([
+      marginMoved('p1'),
+      { kind: 'product.price_followed', id: 'p2', params: { previousPrice: '1250.0000' } },
+    ]);
+
+    expect(successToasts()).toEqual(['products.price_review.followed_and_moved']);
+    expect(said()[0]?.params).toEqual({ followed: 1, moved: 1 });
+    offeredNext()?.run();
+    await vi.waitFor(() =>
+      expect(api.settlePriceReview).toHaveBeenCalledWith('c1', 'p2', 'restore', 4),
+    );
+  });
+
+  it('says why the prices were not all put back', async () => {
+    api.product.mockImplementation(async (_company: string, id: string) => ({ ...unmoved, id }));
+    api.settlePriceReview
+      .mockResolvedValueOnce({ ...unmoved, unitPriceNet: '1250.0000' })
+      .mockRejectedValueOnce(new ProductsRefused('not_restorable', []));
+    await offer().said([
+      { kind: 'product.price_followed', id: 'p1', params: { previousPrice: '1250.0000' } },
+      { kind: 'product.price_followed', id: 'p2', params: { previousPrice: '900.0000' } },
+    ]);
+
+    offeredNext()?.run();
+    await vi.waitFor(() => expect(failureToasts()).toEqual(['products.errors.not_restorable']));
+    expect(effectToasts()).toEqual([]);
   });
 });

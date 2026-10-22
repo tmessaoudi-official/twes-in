@@ -130,6 +130,7 @@ export function profileForm(profile: CompanyProfile): FormDescriptor {
           kind: 'tel',
           maxLength: 40,
           pattern: '\\+?[0-9 ().\\-]{3,40}',
+          patternError: 'import.rejections.invalid_phone',
           autocomplete: 'tel',
         },
         {
@@ -138,6 +139,7 @@ export function profileForm(profile: CompanyProfile): FormDescriptor {
           kind: 'text',
           maxLength: 255,
           pattern: 'https?://\\S+',
+          patternError: 'import.rejections.invalid_website',
           autocomplete: 'url',
         },
       ]),
@@ -155,8 +157,10 @@ export function profileForm(profile: CompanyProfile): FormDescriptor {
           id: 'bic',
           label: label('bic'),
           kind: 'text',
-          maxLength: 11,
-          pattern: '[A-Za-z]{6}[A-Za-z0-9]{2}([A-Za-z0-9]{3})?',
+          maxLength: 14,
+          // The groups apart or not, as a RIB prints it: the API drops the spaces before its own check.
+          pattern: '[A-Za-z]{4} ?[A-Za-z]{2} ?[A-Za-z0-9]{2}( ?[A-Za-z0-9]{3})?',
+          patternError: 'import.rejections.invalid_bic',
         },
       ]),
       section('documents', [

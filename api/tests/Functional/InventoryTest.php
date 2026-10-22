@@ -891,6 +891,48 @@ final class InventoryTest extends ApiTestCase
         self::assertSame(['7.000'], array_column($this->levels(), 'quantity'));
     }
 
+    /** An issued invoice's or credit note's stock move that failed is made again by a person naming it, once. */
+    public function testAnInvoiceAndACreditNoteWhoseStockNeverMovedAreReplayedOnceByTheCommand(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
+        $customerId = $this->customer();
+        $invoice = $this->issuedInvoice($customerId, [['productId' => $this->laptopId, 'quantity' => '3']]);
+        $companyId = $this->company->getId()->toRfc4122();
+        // What a failed listener leaves behind: an issued invoice and no movement of it.
+        $this->em()->getConnection()->executeStatement("DELETE FROM stock_movement WHERE source_type = 'invoice'");
+        self::assertSame(['10.000'], array_column($this->levels(), 'quantity'));
+
+        [$first, $second] = [$this->replayInvoice($companyId, $invoice), $this->replayInvoice($companyId, $invoice)];
+        self::assertSame([0, 0], [$first->getStatusCode(), $second->getStatusCode()], $first->getDisplay().$second->getDisplay());
+        self::assertStringContainsString('1 movement', $first->getDisplay());
+        self::assertStringContainsString('already moved', $second->getDisplay());
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'));
+
+        $this->postJson($this->path('invoices', $invoice).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $creditNote = $this->stringAt($this->json(), 'id');
+        $this->sendJson('PUT', $this->path('invoices', $creditNote), ['version' => $this->storedVersion('invoice', $creditNote), 'customerId' => $customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->laptopId, 'quantity' => '1', 'returned' => true]]]);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path('invoices', $creditNote).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $this->em()->getConnection()->executeStatement("DELETE FROM stock_movement WHERE source_type = 'credit_note'");
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'));
+
+        [$first, $second] = [$this->replayInvoice($companyId, $creditNote), $this->replayInvoice($companyId, $creditNote)];
+        self::assertSame([0, 0], [$first->getStatusCode(), $second->getStatusCode()], $first->getDisplay().$second->getDisplay());
+        self::assertStringContainsString('1 movement', $first->getDisplay());
+        self::assertStringContainsString('already moved', $second->getDisplay());
+        self::assertSame(['8.000'], array_column($this->levels(), 'quantity'));
+
+        $this->postJson($this->path('invoices'), ['customerId' => $customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->laptopId, 'quantity' => '1']]]);
+        $draft = $this->stringAt($this->json(), 'id');
+        foreach ([[$companyId, $draft], [$this->createCompany('Globex')->getId()->toRfc4122(), $invoice], [$companyId, 'not-an-id']] as [$company, $document]) {
+            self::assertSame(1, $this->replayInvoice($company, $document)->getStatusCode(), $company.' '.$document);
+        }
+        self::assertSame(['8.000'], array_column($this->levels(), 'quantity'));
+    }
+
     public function testAProductWhoseStockWasMovedKeepsItsUnitEvenWithInventoryOff(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
@@ -1178,6 +1220,14 @@ final class InventoryTest extends ApiTestCase
     {
         $tester = new CommandTester((new Application(static::$kernel ?? throw new \LogicException('kernel not booted')))->find('app:stock:replay-delivery-note'));
         $tester->execute(['company' => $arguments[0], 'delivery-note' => $arguments[1]]);
+
+        return $tester;
+    }
+
+    private function replayInvoice(string $companyId, string $invoiceId): CommandTester
+    {
+        $tester = new CommandTester((new Application(static::$kernel ?? throw new \LogicException('kernel not booted')))->find('app:stock:replay-invoice'));
+        $tester->execute(['company' => $companyId, 'invoice' => $invoiceId]);
 
         return $tester;
     }

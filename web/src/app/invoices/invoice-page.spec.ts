@@ -69,6 +69,7 @@ class StaticLoader implements TranslateLoader {
           issue_message_numbered_both: 'N° {{number}} · biens et services',
           issue_message_numbered_services: 'N° {{number}} · services',
           issue_message_numbered_unsaid: 'N° {{number}} · nature à choisir',
+          issue_credit_note_message_numbered: 'Avoir N° {{number}} · {{total}} · {{customer}}',
         },
         credit_note: { reason_shown: 'Motif : {{reason}}' },
         fixed: { issued: 'Émis, il se corrige par un avoir.' },
@@ -1009,6 +1010,20 @@ describe('InvoicePage', () => {
     expect(message).toMatch(/2\s?143/);
   });
 
+  it('says before issuing a credit note the number it will carry, its amount and whom it credits', async () => {
+    facade.nextNumber.mockResolvedValue({ number: 'AV-2026-00007', operationCategory: null });
+    invoice.set({ ...draft, type: 'credit_note', correctsInvoiceId: 'i0' });
+    await open('i1');
+
+    q('document-action-issue')!.click();
+    await settle();
+
+    const message = over('confirm-message')?.textContent ?? '';
+    expect(message).toContain('Avoir N° AV-2026-00007');
+    expect(message).toContain('Carthage');
+    expect(message).toMatch(/2\s?143/);
+  });
+
   it('says before issuing a French invoice what its operations will be, the choice typed first, or that one is needed', async () => {
     optionsShown.set({ ...options, operationCategory: true });
     facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: 'both' });
@@ -1805,6 +1820,18 @@ describe('InvoicePage', () => {
     q('payment-y1-delete-confirm')!.click();
     await settle();
     expect(facade.deletePayment).toHaveBeenCalledWith('c1', 'i1', 'y1');
+    expect(successToasts()).toContain('invoices.payments.deleted');
+  });
+
+  it("says nothing was deleted when the payment's delete is refused", async () => {
+    facade.deletePayment.mockResolvedValue(false);
+    invoice.set(issued);
+    await open('i1');
+    q('payment-y1-delete')!.click();
+    await settle();
+    q('payment-y1-delete-confirm')!.click();
+    await settle();
+    expect(successToasts()).not.toContain('invoices.payments.deleted');
   });
 
   it('offers no payment on an invoice with nothing left due, nor to someone who may not record one', async () => {

@@ -102,4 +102,26 @@ final class ExpenseOptionsResource
     ])]
     #[Groups([self::READ])]
     public array $withholdingOperationCodes = [];
+
+    /**
+     * The company's active withholdings on a total, which a payment may withhold: its rate, and the gross less fixed
+     * charges from which it is offered, or null when offered whatever the amount; none for a company without one.
+     *
+     * @var list<array{code: string, name: string, rate: string, threshold: string|null}>
+     */
+    #[ApiProperty(schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['code', 'name', 'rate', 'threshold'],
+            'properties' => [
+                'code' => ['type' => 'string'],
+                'name' => ['type' => 'string'],
+                'rate' => ['type' => 'string', 'description' => 'A percentage, three decimals.'],
+                'threshold' => ['type' => ['string', 'null'], 'description' => 'In the company currency.'],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $withholdings = [];
 }

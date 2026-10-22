@@ -34,6 +34,7 @@ import { ErasureBanner } from '../data-erasure/erasure-banner';
 import { SupportBanner } from '../support-access/support-banner';
 import { DemoBanner } from '../auth/demo-banner';
 import { AuthFacade } from '../auth/auth-facade';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { SubscriptionNoticeBar } from '../licensing/subscription-notice';
 import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
@@ -171,6 +172,7 @@ const TOP_BAR_HEIGHT = '--twes-top-bar-height';
 })
 export class AppShell {
   private readonly auth = inject(AuthFacade);
+  private readonly unsaved = inject(UnsavedChanges);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly guide = inject(TourGuide);
@@ -442,6 +444,7 @@ export class AppShell {
       untracked(() => {
         this.activity.acknowledgeExpiry();
         this.auth.sessionEnded();
+        this.unsaved.sessionEnded();
         void this.router.navigateByUrl(signInAddress(this.router.url, true));
       });
     });

@@ -81,6 +81,25 @@ describe('UnsavedChanges', () => {
     expect(openedWith).toMatchObject({ kind: 'definitif', title: 'form.leave.title' });
   });
 
+  // The question after a session ended asked « Quitter sans enregistrer ? » as if the person had chosen to go (U8).
+  it('names the session that ended in the question its navigation asks, then asks the usual one again', async () => {
+    const page = TestBed.createComponent(Page);
+    page.componentInstance.changes.set(1);
+    page.detectChanges();
+    answer = false;
+
+    TestBed.inject(UnsavedChanges).sessionEnded();
+    await leaving();
+    expect(openedWith).toMatchObject({
+      kind: 'definitif',
+      title: 'auth.login.session_expired',
+      message: 'form.leave.message',
+    });
+
+    await leaving();
+    expect(openedWith).toMatchObject({ title: 'form.leave.title' });
+  });
+
   it('treats a dismissed question as staying, never as leaving', async () => {
     // Escape answers `undefined`: reading anything but an explicit yes as "go" would throw the work away on the
     // key a person presses to get rid of a dialog they did not read.

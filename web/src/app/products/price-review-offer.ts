@@ -24,50 +24,109 @@ export class PriceReviewOffer {
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
 
-  /** Says each margin moved and each price followed, one toast per product, or a count when the answer folded them. */
+  /**
+   * Says what the receipt did in one toast, since a second replaces the first before it is read: the product itself
+   * when one margin or one price moved, else how many, with one « Annuler » putting back every price that followed.
+   */
   async said(effects: readonly SaidEffect[]): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
     if (companyId === undefined || !this.auth.hasPermission('product.cost.read')) return;
     const moved = new Set<string>();
     const followed = new Map<string, string>();
+    // What the answer folded names no product: it is counted, never offered.
+    let folded = { followed: 0, moved: 0 };
     for (const effect of effects) {
       if (effect.id === null || effect.count !== undefined) {
-        this.feedback.success(
+        const count = effect.count ?? 1;
+        folded =
           effect.kind === PRICE_FOLLOWED
-            ? 'products.price_review.followed_many'
-            : 'products.price_review.moved_many',
-          { count: effect.count ?? 1 },
-        );
+            ? { ...folded, followed: folded.followed + count }
+            : { ...folded, moved: folded.moved + count };
       } else if (effect.kind === MARGIN_MOVED) {
         moved.add(effect.id);
       } else if (typeof effect.params['previousPrice'] === 'string') {
         followed.set(effect.id, effect.params['previousPrice']);
       }
     }
-    await Promise.all([
-      ...[...moved].map(async (id) => {
-        const product = await this.api.product(companyId, id).catch(() => null);
-        if (product?.priceReview != null) this.say(companyId, product);
-      }),
-      ...[...followed].map(async ([id, previousPrice]) => {
-        const product = await this.api.product(companyId, id).catch(() => null);
-        if (product === null) return;
-        const params = {
-          name: product.name,
-          before: this.format.amount(previousPrice, null),
-          after: this.format.amount(product.unitPriceNet, null),
-        };
-        if (!this.auth.hasPermission('product.write') || product.mergedInto !== null) {
-          this.feedback.success('products.price_review.followed', params);
-          return;
-        }
-        // Undo first: the server puts back the price the receipt replaced while the price is still the one it set.
-        this.feedback.success('products.price_review.followed', params, {
-          key: 'products.price_review.undo',
-          run: () => void this.settle(companyId, product, 'restore'),
-        });
-      }),
+    const read = (id: string) => this.api.product(companyId, id).catch(() => null);
+    const [reviewed, prices] = await Promise.all([
+      Promise.all([...moved].map(read)).then((rows) =>
+        rows.filter((row): row is ProductRow => row?.priceReview != null),
+      ),
+      Promise.all(
+        [...followed].map(async ([id, previousPrice]) => {
+          const product = await read(id);
+          return product === null ? null : { product, previousPrice };
+        }),
+      ).then((rows) => rows.filter((row) => row !== null)),
     ]);
+    const counts = {
+      followed: prices.length + folded.followed,
+      moved: reviewed.length + folded.moved,
+    };
+    if (counts.followed + counts.moved === 0) return;
+    const [onlyPrice] = prices;
+    const [onlyReview] = reviewed;
+    if (counts.moved === 0 && counts.followed === 1 && onlyPrice !== undefined) {
+      this.sayFollowed(companyId, onlyPrice.product, onlyPrice.previousPrice);
+      return;
+    }
+    if (counts.followed === 0 && counts.moved === 1 && onlyReview !== undefined) {
+      this.say(companyId, onlyReview);
+      return;
+    }
+    const message =
+      counts.moved === 0
+        ? { key: 'products.price_review.followed_many', params: { count: counts.followed } }
+        : counts.followed === 0
+          ? { key: 'products.price_review.moved_many', params: { count: counts.moved } }
+          : { key: 'products.price_review.followed_and_moved', params: counts };
+    const restorable = this.auth.hasPermission('product.write')
+      ? prices.map(({ product }) => product).filter((product) => product.mergedInto === null)
+      : [];
+    if (restorable.length === 0) {
+      this.feedback.success(message.key, message.params);
+      return;
+    }
+    // Undo first: each price the receipt set goes back to the one it replaced, while it is still the one it set.
+    this.feedback.success(message.key, message.params, {
+      key: 'products.price_review.undo',
+      run: () => void this.restoreAll(companyId, restorable),
+    });
+  }
+
+  private sayFollowed(companyId: string, product: ProductRow, previousPrice: string): void {
+    const params = {
+      name: product.name,
+      before: this.format.amount(previousPrice, null),
+      after: this.format.amount(product.unitPriceNet, null),
+    };
+    if (!this.auth.hasPermission('product.write') || product.mergedInto !== null) {
+      this.feedback.success('products.price_review.followed', params);
+      return;
+    }
+    this.feedback.success('products.price_review.followed', params, {
+      key: 'products.price_review.undo',
+      run: () => void this.settle(companyId, product, 'restore'),
+    });
+  }
+
+  /** Puts every followed price back, one after another; the first refusal is said, and what was put back stays so. */
+  private async restoreAll(companyId: string, products: readonly ProductRow[]): Promise<void> {
+    for (const product of products) {
+      try {
+        await this.api.settlePriceReview(companyId, product.id, 'restore', product.version);
+      } catch (error) {
+        const code = error instanceof ProductsRefused ? error.code : 'network';
+        this.feedback.failure(`products.errors.${code}`);
+        return;
+      }
+    }
+    this.feedback.effect(
+      'products.price_review.restored_many',
+      { count: products.length },
+      'corrigeable',
+    );
   }
 
   private say(companyId: string, product: ProductRow): void {

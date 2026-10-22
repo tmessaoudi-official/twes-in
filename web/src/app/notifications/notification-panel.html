@@ -48,6 +48,12 @@
 </div>
 
 <div id="notification-list" role="tabpanel" class="relative min-h-0 flex-1 overflow-y-auto pb-4">
+  <!-- The list read last, or nothing, is not « Aucune notification. » when the read or a mark failed: said as such. -->
+  @if (failed()) {
+    <p class="px-6 pt-3 text-sm text-error" role="status" data-testid="notifications-failed">
+      {{ 'notifications.failed' | translate }}
+    </p>
+  }
   @for (group of groups(); track group.key) {
     <section [attr.aria-labelledby]="'notifications-day-' + group.key">
       <h3
@@ -84,11 +90,13 @@
       </ul>
     </section>
   } @empty {
-    <p class="px-6 py-8 text-center text-on-surface-variant" data-testid="notifications-empty">
-      {{
-        (filter() === 'unread' ? 'notifications.empty_unread' : 'notifications.empty') | translate
-      }}
-    </p>
+    @if (!failed()) {
+      <p class="px-6 py-8 text-center text-on-surface-variant" data-testid="notifications-empty">
+        {{
+          (filter() === 'unread' ? 'notifications.empty_unread' : 'notifications.empty') | translate
+        }}
+      </p>
+    }
   }
 </div>
 

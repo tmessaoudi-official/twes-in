@@ -333,6 +333,7 @@ export function customerForm(
           kind: 'tel',
           maxLength: 40,
           pattern: PHONE_PATTERN,
+          patternError: 'import.rejections.invalid_phone',
         },
         {
           id: 'website',
@@ -340,6 +341,7 @@ export function customerForm(
           kind: 'text',
           maxLength: 200,
           pattern: 'https?://\\S+',
+          patternError: 'import.rejections.invalid_website',
           span: 2,
         },
       ]),
@@ -605,6 +607,7 @@ export const CONTACT_FORM: FormDescriptor = {
           kind: 'tel',
           maxLength: 40,
           pattern: PHONE_PATTERN,
+          patternError: 'import.rejections.invalid_phone',
         },
         { id: 'isPrimary', label: `${CONTACT_FIELDS}.isPrimary`, kind: 'checkbox' },
       ],

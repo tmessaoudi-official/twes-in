@@ -97,6 +97,11 @@
         "startsOn": "Le premier brouillon se fait aujourd’hui ou plus tard, jamais un jour passé.",
         "endsOn": "Le dernier jour vient le jour du premier brouillon ou après."
       }
+    },
+    "form": {
+      "withholding_hint_from": "Proposée à {{rate}} % dès {{threshold}} taxes comprises, sans les montants fixes comme le timbre ; indiquez 0 pour un achat exclu ou un fournisseur exonéré, ou le taux qui s’applique au fournisseur.",
+      "withholding_hint_always": "Proposée à {{rate}} % ; indiquez 0 pour un achat exclu ou un fournisseur exonéré, ou le taux qui s’applique au fournisseur.",
+      "withholding_hint_several": "Indiquez le taux qui s’applique au fournisseur, ou 0 pour un achat exclu ou un fournisseur exonéré."
     }
   }
 }

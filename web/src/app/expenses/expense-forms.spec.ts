@@ -67,13 +67,23 @@ const options: ExpenseOptions = {
   charges: [],
   paymentMethods: ['transfer', 'cash'],
   withholdingOperationCodes: [],
+  withholdings: [],
 };
 const tunisian: ExpenseOptions = {
   ...options,
+  withholdings: [
+    { code: 'RS1', name: 'Retenue à la source', rate: '1.000', threshold: '1000.000' },
+  ],
   withholdingOperationCodes: [
     { code: 'RS1_000001', label: 'Traitements et salaires' },
     { code: 'RS7_000006', label: 'Honoraires exonérés' },
   ],
+};
+
+// The screen's formats, marked so a test sees which value went through which.
+const say = {
+  amount: (value: string, scale: number | null) => `«${value}/${scale}»`,
+  decimal: (value: string) => `«${value}»`,
 };
 
 describe('expense forms', () => {
@@ -280,9 +290,9 @@ describe('expense forms', () => {
   it('asks for the TEJ operation on a payment only where the company declares to TEJ', () => {
     const ids = (descriptor: ReturnType<typeof paymentForm>) =>
       descriptor.sections.flatMap((section) => section.fields.map((field) => field.id));
-    expect(ids(paymentForm(options))).not.toContain('withholdingOperationCode');
+    expect(ids(paymentForm(options, say))).not.toContain('withholdingOperationCode');
 
-    const field = paymentForm(tunisian)
+    const field = paymentForm(tunisian, say)
       .sections.flatMap((section) => section.fields)
       .find((each) => each.id === 'withholdingOperationCode');
     expect(field?.kind).toBe('select');
@@ -312,6 +322,31 @@ describe('expense forms', () => {
     });
   });
 
+  // A withholding is asked only where the company has one, and its hint says the company's own rate and threshold.
+  it('asks for a withholding only where the company has one, its hint read from it', () => {
+    const field = (withholdings: ExpenseOptions['withholdings']) =>
+      paymentForm({ ...options, withholdings }, say)
+        .sections.flatMap((section) => section.fields)
+        .find((each) => each.id === 'withholdingRate');
+    const rs1 = tunisian.withholdings[0]!;
+
+    expect(field([])).toBeUndefined();
+    expect(field([rs1])).toMatchObject({
+      hint: 'expenses.form.withholding_hint_from',
+      hintParams: { rate: '«1»', threshold: '«1000.000/3» TND' },
+    });
+    expect(field([{ ...rs1, rate: '1.500', threshold: null }])).toMatchObject({
+      hint: 'expenses.form.withholding_hint_always',
+      hintParams: { rate: '«1.5»' },
+    });
+    expect(field([{ ...rs1, rate: '10.000', threshold: null }])?.hintParams).toEqual({
+      rate: '«10»',
+    });
+    expect(field([rs1, { ...rs1, code: 'RS2', rate: '15.000' }])).toMatchObject({
+      hint: 'expenses.form.withholding_hint_several',
+    });
+  });
+
   // The TEJ file is declared for a month that is over: the one before today's first, then a year back.
   it('offers the twelve months that are over, the latest first, across a new year', () => {
     const months = tejMonths('2026-09-26');
@@ -323,7 +358,7 @@ describe('expense forms', () => {
 
   // docs/SPEC.md § 7, 2026-09-24 11:40 (RPT-09): the withholding on a supplier, said on the payment.
   it('proposes the withholding the API suggests, and sends an emptied one as none', () => {
-    const field = paymentForm(options).sections[0]?.fields.find(
+    const field = paymentForm(tunisian, say).sections[0]?.fields.find(
       (each) => each.id === 'withholdingRate',
     );
     expect(field?.kind).toBe('decimal');

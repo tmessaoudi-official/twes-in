@@ -123,8 +123,33 @@ export class LiveChanges {
     });
   }
 
-  /** Reads a screen's data again when one of these kinds changes, quietly, since nobody on it asked for the reload. */
+  /**
+   * Reads a screen's data again when one of these kinds changes, quietly, since nobody on it asked for the reload.
+   * One read at a time: reads side by side pile up on a slow answer, and an older one landing last shows what was
+   * there before. What changes during a read is read once after it, so the screen ends on the latest state.
+   */
   reloadOn(kinds: readonly string[], reload: () => Promise<unknown>, destroyRef: DestroyRef): void {
-    this.on(kinds, () => void this.injector.get(RequestActivity).quietly(reload), destroyRef);
+    let reading = false;
+    let again = false;
+    const read = async (): Promise<void> => {
+      again = reading;
+      if (reading) return;
+      reading = true;
+      let failure: { readonly error: unknown } | undefined;
+      do {
+        again = false;
+        // Read again if something changed meanwhile; a failure still left goes on as it did before, unhandled.
+        failure = await this.injector
+          .get(RequestActivity)
+          .quietly(reload)
+          .then(
+            () => undefined,
+            (error: unknown) => ({ error }),
+          );
+      } while (again);
+      reading = false;
+      if (failure) throw failure.error;
+    };
+    this.on(kinds, () => void read(), destroyRef);
   }
 }

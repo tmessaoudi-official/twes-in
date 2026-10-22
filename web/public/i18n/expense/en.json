@@ -97,6 +97,11 @@
         "startsOn": "The first draft is made today or later, never on a past day.",
         "endsOn": "The last day comes on or after the first draft's day."
       }
+    },
+    "form": {
+      "withholding_hint_from": "Proposed at {{rate}}% from {{threshold}} including taxes, without fixed amounts such as the stamp; enter 0 for an excluded purchase or an exempt supplier, or the rate that applies to the supplier.",
+      "withholding_hint_always": "Proposed at {{rate}}%; enter 0 for an excluded purchase or an exempt supplier, or the rate that applies to the supplier.",
+      "withholding_hint_several": "Enter the rate that applies to the supplier, or 0 for an excluded purchase or an exempt supplier."
     }
   }
 }

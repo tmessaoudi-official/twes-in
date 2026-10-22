@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { failureToasts, provideQuietFeedback } from '../shared/testing/feedback';
 import { CompanyApi, CompanyRefused } from './company-api';
 import { CompanyFacade } from './company-facade';
 import type { CompanyOption } from './company-types';
@@ -52,6 +53,7 @@ describe('CompanyFacade', () => {
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: UnsavedChanges, useValue: unsaved },
+        provideQuietFeedback(),
       ],
     });
     facade = TestBed.inject(CompanyFacade);
@@ -118,6 +120,26 @@ describe('CompanyFacade', () => {
     expect(moved).toBe(false);
     expect(facade.error()).toBe('not_found');
     expect(auth.load).not.toHaveBeenCalled();
+  });
+
+  // A switch that fails used to close the menu on the old company with nothing said (U4).
+  it('says a company that could not open, and reads the list again so a company gone from it goes', async () => {
+    api.companies.mockResolvedValue([acme]);
+    api.switchTo.mockRejectedValue(new CompanyRefused('not_found'));
+
+    await facade.switchTo('c2');
+
+    expect(failureToasts()).toEqual(['company.switch_failed']);
+    expect(api.companies).toHaveBeenCalled();
+    expect(facade.companies()).toEqual([acme]);
+  });
+
+  it('says nothing when the person chose to stay with what they typed', async () => {
+    unsaved.confirmLeave.mockReturnValue(of(false));
+
+    expect(await facade.switchTo('c2')).toBe(false);
+
+    expect(failureToasts()).toEqual([]);
   });
 
   it('is no longer switching once a refusal is handled', async () => {

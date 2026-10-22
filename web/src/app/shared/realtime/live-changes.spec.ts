@@ -192,4 +192,50 @@ describe('LiveChanges', () => {
     expect(quietly).toHaveBeenCalledOnce();
     expect(reload).toHaveBeenCalledOnce();
   });
+
+  it('reads once at a time: what changes during a slow read is read once after it, never beside it', async () => {
+    const answers: (() => void)[] = [];
+    const reload = vi.fn(() => new Promise<void>((resolve) => answers.push(resolve)));
+    const injector = TestBed.inject(Injector);
+    const destroyRef = { onDestroy: () => () => undefined } as unknown as DestroyRef;
+    runInInjectionContext(injector, () => live.reloadOn(['vendor'], reload, destroyRef));
+
+    live.receive(customer({ kind: 'vendor' }));
+    await vi.advanceTimersByTimeAsync(LIVE_BATCH_MS);
+    for (let burst = 0; burst < 3; burst++) {
+      live.receive(customer({ kind: 'vendor' }));
+      await vi.advanceTimersByTimeAsync(LIVE_BATCH_MS);
+    }
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    answers[0]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(reload).toHaveBeenCalledTimes(2);
+
+    answers[1]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(reload).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads again after a read that failed, when something changed meanwhile', async () => {
+    const answers: ((failed: boolean) => void)[] = [];
+    const reload = vi.fn(
+      () =>
+        new Promise<void>((resolve, reject) =>
+          answers.push((failed) => (failed ? reject(new Error('down')) : resolve())),
+        ),
+    );
+    const injector = TestBed.inject(Injector);
+    const destroyRef = { onDestroy: () => () => undefined } as unknown as DestroyRef;
+    runInInjectionContext(injector, () => live.reloadOn(['vendor'], reload, destroyRef));
+
+    live.receive(customer({ kind: 'vendor' }));
+    await vi.advanceTimersByTimeAsync(LIVE_BATCH_MS);
+    live.receive(customer({ kind: 'vendor' }));
+    await vi.advanceTimersByTimeAsync(LIVE_BATCH_MS);
+    answers[0](true);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(reload).toHaveBeenCalledTimes(2);
+  });
 });
