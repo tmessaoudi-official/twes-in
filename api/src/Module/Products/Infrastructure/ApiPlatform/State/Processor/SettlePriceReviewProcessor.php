@@ -18,6 +18,7 @@ use App\Module\Products\Application\ProductCheckScopes;
 use App\Module\Products\Application\ProductMergedAway;
 use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Application\ReviewProductPrice;
+use App\Module\Products\Infrastructure\ApiPlatform\Output\ProductGrossPrice;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductPriceReviewResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
@@ -36,6 +37,7 @@ final readonly class SettlePriceReviewProcessor implements ProcessorInterface
         private ProductPhotos $photos,
         private CurrencyScales $scales,
         private ProductCheckScopes $checkScopes,
+        private ProductGrossPrice $gross,
     ) {
     }
 
@@ -60,6 +62,6 @@ final readonly class SettlePriceReviewProcessor implements ProcessorInterface
             throw new ConflictHttpException($settled->getMessage(), $settled);
         }
 
-        return ProductResource::of($product, $this->checkScopes->of($company, true), $this->scales->of($company->getCurrency()), $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null);
+        return ProductResource::of($product, $this->checkScopes->of($company, true), $this->scales->of($company->getCurrency()), $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null, unitPriceGross: $this->gross->of($product));
     }
 }

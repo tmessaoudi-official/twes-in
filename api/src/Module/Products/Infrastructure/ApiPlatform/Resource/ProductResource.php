@@ -20,6 +20,7 @@ use App\Module\Products\Application\ProductCheckInput;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\ValueObject\Margin;
 use App\Module\Products\Domain\ValueObject\ProductCheckReason;
 use App\Module\Products\Domain\ValueObject\ProductCheckScope;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
@@ -168,6 +169,25 @@ final class ProductResource
     public ?string $costPrice = null;
 
     /**
+     * What one unit sells for, taxes included: one line of a document at the net price with the line taxes the product
+     * starts a line with, counted by the invoices' calculator at the currency's decimals. Null when its taxes cannot be
+     * counted together.
+     */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null']])]
+    #[Groups([self::READ])]
+    public ?string $unitPriceGross = null;
+
+    /** The net price less the cost, at four decimals; null without a cost, and for a caller without product.cost.read. */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null']])]
+    #[Groups([self::READ])]
+    public ?string $margin = null;
+
+    /** The margin as a percentage of the net price, to one decimal; null also for a price of nothing. */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null']])]
+    #[Groups([self::READ])]
+    public ?string $marginPercent = null;
+
+    /**
      * The margin a receipt's cost moved under the price: the cost the price was set against, the cost now, the price, the
      * price that keeps the margin, at the currency's decimals, and the margin before and now as percentages of the price. Null when nothing moved it, and for a caller without
      * product.cost.read. Settled at POST .../price-review.
@@ -277,10 +297,11 @@ final class ProductResource
     public ?array $mergedInto = null;
 
     /**
-     * @param ProductCheckScope $scope      what the caller may be told: the cost only with product.cost.read
-     * @param int               $priceScale the decimals of the company's currency, which a suggested price is given at
+     * @param ProductCheckScope $scope          what the caller may be told: the cost only with product.cost.read
+     * @param int               $priceScale     the decimals of the company's currency, which a suggested price is given at
+     * @param string|null       $unitPriceGross what one unit sells for taxes included (CustomerPrice), when counted
      */
-    public static function of(Product $product, ProductCheckScope $scope, int $priceScale, ?string $mainPhotoId = null): self
+    public static function of(Product $product, ProductCheckScope $scope, int $priceScale, ?string $mainPhotoId = null, ?string $unitPriceGross = null): self
     {
         $withCosts = $scope->seesCosts;
         $details = $product->getDetails();
@@ -295,6 +316,10 @@ final class ProductResource
         $resource->unitId = $product->getUnit()->getId()->toRfc4122();
         $resource->unitPriceNet = $details->unitPriceNet;
         $resource->costPrice = $withCosts ? $details->costPrice : null;
+        $resource->unitPriceGross = $unitPriceGross;
+        $margin = $withCosts ? Margin::of($details->unitPriceNet, $details->costPrice) : null;
+        $resource->margin = $margin?->amount;
+        $resource->marginPercent = $margin?->percent;
         $review = $withCosts ? $product->priceReview() : null;
         $resource->priceReview = null === $review ? null : ['previousCost' => $review->previousCost, 'cost' => $review->cost, 'price' => $review->price, 'suggestedPrice' => $review->suggestedPrice($priceScale), 'previousMargin' => $review->previousMargin(), 'margin' => $review->margin()];
         $resource->categoryId = $product->getCategory()?->getId()->toRfc4122();

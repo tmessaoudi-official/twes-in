@@ -91,6 +91,20 @@
       <ng-template appDataListCell="price" let-row>
         {{ row.unitPriceNet | amount: scale() }}
       </ng-template>
+      <ng-template appDataListCell="priceGross" let-row>
+        {{ row.unitPriceGross | amount: scale() }}
+      </ng-template>
+      <ng-template appDataListCell="cost" let-row>
+        {{ row.costPrice | amount: scale() }}
+      </ng-template>
+      <ng-template appDataListCell="margin" let-row>
+        {{ row.margin | amount: scale() }}
+      </ng-template>
+      <ng-template appDataListCell="marginPercent" let-row>
+        @if (row.marginPercent !== null) {
+          {{ 'products.margin_percent' | translate: { percent: decimal(row.marginPercent) } }}
+        }
+      </ng-template>
     </app-data-list>
   </section>
 </app-page-tabs>

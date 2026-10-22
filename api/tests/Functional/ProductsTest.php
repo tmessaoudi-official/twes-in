@@ -97,6 +97,43 @@ final class ProductsTest extends ApiTestCase
         self::assertSame([1], array_column($this->jsonList(), 'productCount'));
     }
 
+    /**
+     * The list's prix TTC, marge and marge % (row 55, ruled 2026-10-21): the price taxes included counted by the
+     * invoices' calculator, the margin over the cost and as a percentage of the price, the margin only to whoever may
+     * read costs, as it tells the cost.
+     */
+    public function testAProductSaysItsPriceTaxesIncludedAndItsMarginToACostReader(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->postJson($this->path(), $this->product(['defaultTaxComponentIds' => [$this->taxId('TVA19')], 'costPrice' => '1000']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->path(), $this->product(['reference' => 'ART-002', 'unitPriceNet' => '0', 'costPrice' => '12.5']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->path(), $this->product(['reference' => 'ART-003']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->getJson($this->path());
+
+        self::assertResponseIsSuccessful();
+        $figures = static fn (array $row): array => [$row['reference'] ?? null, $row['unitPriceGross'] ?? null, $row['margin'] ?? null, $row['marginPercent'] ?? null];
+        self::assertSame([
+            ['ART-001', '1487.500', '250.0000', '20.0'],
+            ['ART-002', '0.000', '-12.5000', null],
+            ['ART-003', '1250.000', null, null],
+        ], array_map($figures, $this->jsonList()), 'a price of nothing leaves no percentage, a cost of nothing no margin');
+
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $this->createUser('clerk@twes.local', 'password-1234', $company, ['product.read'], 'counter');
+        $this->login('clerk@twes.local', 'password-1234');
+        $this->getJson($this->path());
+        self::assertSame([
+            ['ART-001', '1487.500', null, null],
+            ['ART-002', '0.000', null, null],
+            ['ART-003', '1250.000', null, null],
+        ], array_map($figures, $this->jsonList()), 'a margin tells the cost');
+    }
+
     public function testWhatTheCompanyOrTheShapeRefusesAnswersUnprocessableNamingTheField(): void
     {
         $this->signedIn(['product.read', 'product.write', 'product.cost.read']);

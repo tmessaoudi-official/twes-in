@@ -82,6 +82,11 @@ export interface ProductRow {
   /** A decimal string at four decimals, "1250.5000". */
   unitPriceNet: string;
   costPrice: string | null;
+  /** What one unit sells for taxes included, counted by the API at the currency's decimals; null when its taxes cannot be. */
+  unitPriceGross: string | null;
+  /** The net price less the cost, and that as a percentage of the price, said only to a cost reader; null without a cost. */
+  margin: string | null;
+  marginPercent: string | null;
   categoryId: string | null;
   /** The codes it answers to, unit first; written on their own (`ProductsApi.replaceBarcodes`). */
   barcodes: ProductBarcode[];
@@ -186,6 +191,9 @@ export type ProductInput = Omit<
   ProductRow,
   | 'id'
   | 'version'
+  | 'unitPriceGross'
+  | 'margin'
+  | 'marginPercent'
   | 'barcodes'
   | 'mainPhotoId'
   | 'mergedInto'

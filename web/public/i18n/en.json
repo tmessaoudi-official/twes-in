@@ -2070,6 +2070,7 @@
     }
   },
   "products": {
+    "margin_percent": "{{percent}}%",
     "tabs": {
       "record": "Record",
       "defaults": "Defaults",
@@ -2121,6 +2122,9 @@
       "unitPriceNet": "Net unit price",
       "price": "Net unit price",
       "costPrice": "Cost price",
+      "unitPriceGross": "Unit price incl. taxes",
+      "margin": "Margin",
+      "marginPercent": "Margin %",
       "description": "Description",
       "tracking": "Traceability",
       "substitutionGroup": "Substitution group",

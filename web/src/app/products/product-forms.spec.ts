@@ -70,6 +70,9 @@ const laptop: ProductRow = {
   unitId: 'u-unit',
   unitPriceNet: '1250.5000',
   costPrice: '900.1250',
+  unitPriceGross: null,
+  margin: null,
+  marginPercent: null,
   categoryId: 'k2',
   barcodes: [],
   defaultTaxComponentIds: ['t-vat'],
@@ -204,9 +207,41 @@ describe('product forms', () => {
       'category',
       'unit',
       'price',
+      'priceGross',
       'status',
       'custom__warranty',
     ]);
+  });
+
+  // docs/SPEC.md § 7: prix TTC, marge and marge % hidden until placed; a field the person cannot read is no column.
+  it('offers the price taxes included to everyone and the cost and margins to a cost reader only, all hidden', () => {
+    const ids = (costs: boolean) => productsList([], [], costs).columns.map((column) => column.id);
+    expect(ids(false)).not.toEqual(expect.arrayContaining(['cost']));
+    expect(ids(false).filter((id) => ['margin', 'marginPercent'].includes(id))).toEqual([]);
+    expect(ids(true)).toEqual([
+      'photo',
+      'reference',
+      'name',
+      'kind',
+      'category',
+      'unit',
+      'price',
+      'priceGross',
+      'cost',
+      'margin',
+      'marginPercent',
+      'status',
+    ]);
+    const columns = productsList([], [], true).columns;
+    for (const id of ['priceGross', 'cost', 'margin', 'marginPercent']) {
+      expect(columns.find((column) => column.id === id)?.defaultHidden).toBe(true);
+    }
+    const row = { ...laptop, categoryName: null, unitName: '' };
+    const value = (id: string, of: typeof row) =>
+      columns.find((column) => column.id === id)?.value(of);
+    expect(value('marginPercent', { ...row, marginPercent: '20.0' })).toBe('20.0');
+    expect(value('margin', { ...row, margin: null })).toBe('');
+    expect(value('priceGross', { ...row, unitPriceGross: '1487.500' })).toBe('1487.500');
   });
 
   // docs/SPEC.md § 7, 2026-09-17 (3): a new product left without a reference is given one; a product keeps its own.

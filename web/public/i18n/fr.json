@@ -2070,6 +2070,7 @@
     }
   },
   "products": {
+    "margin_percent": "{{percent}} %",
     "tabs": {
       "record": "Fiche",
       "defaults": "Valeurs par défaut",
@@ -2121,6 +2122,9 @@
       "unitPriceNet": "Prix unitaire HT",
       "price": "Prix unitaire HT",
       "costPrice": "Prix de revient",
+      "unitPriceGross": "Prix unitaire TTC",
+      "margin": "Marge",
+      "marginPercent": "Marge %",
       "description": "Description",
       "tracking": "Traçabilité",
       "substitutionGroup": "Groupe de substitution",

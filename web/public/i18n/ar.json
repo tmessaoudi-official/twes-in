@@ -2070,6 +2070,7 @@
     }
   },
   "products": {
+    "margin_percent": "{{percent}}%",
     "tabs": {
       "record": "البطاقة",
       "defaults": "القيم الافتراضية",
@@ -2121,6 +2122,9 @@
       "unitPriceNet": "سعر الوحدة دون اعتبار الأداءات",
       "price": "سعر الوحدة دون اعتبار الأداءات",
       "costPrice": "سعر الكلفة",
+      "unitPriceGross": "سعر الوحدة باعتبار الأداءات",
+      "margin": "الهامش",
+      "marginPercent": "الهامش %",
       "description": "الوصف",
       "tracking": "التتبّع",
       "substitutionGroup": "مجموعة البدائل",
