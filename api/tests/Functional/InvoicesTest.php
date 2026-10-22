@@ -1082,6 +1082,41 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame(['issued', $due, []], [$this->json()['status'], $this->json()['amountDue'], $this->json()['payments']], 'an instrument is still not money');
     }
 
+    public function testAHeldChequePutBackFromTheBinNeverPromisesMoreThanTheInvoiceStillOwes(): void
+    {
+        // The cap is checked when an instrument is received; the bin put one back without it, so the portfolio could
+        // hold two cheques for one debt.
+        $this->signedIn(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $id = $this->issuedInvoice();
+        $due = $this->stringAt($this->json(), 'amountDue');
+        $instruments = $this->path($id).'/instruments';
+        $this->postJson($instruments, ['kind' => 'check', 'amount' => $due, 'dueOn' => $today, 'number' => 'CHQ-1']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $first = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'payment_instrument', 'ids' => [$first]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $removal = $this->stringAt($this->json(), 'id');
+        $this->postJson($instruments, ['kind' => 'check', 'amount' => $due, 'dueOn' => $today, 'number' => 'CHQ-2']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'the first one out, the whole amount is free again');
+        $second = $this->stringAt($this->json(), 'id');
+
+        $this->postJson($this->companyPath().'/record-removals/'.$removal.'/restore', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['error' => 'restore_conflict', 'table' => 'payment_instrument'], $this->json());
+        $this->getJson($instruments);
+        self::assertSame([$second], array_column($this->json(), 'id'), 'refused whole: the first stays in the bin');
+
+        // Once the second is out, the first fits again and comes back.
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'payment_instrument', 'ids' => [$second]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->companyPath().'/record-removals/'.$removal.'/restore', null);
+        self::assertResponseIsSuccessful();
+        $this->getJson($instruments);
+        self::assertSame([$first], array_column($this->json(), 'id'));
+    }
+
     public function testInstrumentsNeedPaymentWriteToChangeAndStayInTheirCompany(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
