@@ -12,6 +12,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { FileSaver } from '../shared/files/save-file';
+import { StepUp } from '../shared/step-up/step-up';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -44,6 +45,7 @@ describe('TejFileDialog', () => {
   const facade = { tejFile: vi.fn(), busy: signal(false).asReadonly() };
   const saver = { save: vi.fn() };
   const ref = { close: vi.fn() };
+  const stepUp = { request: vi.fn() };
   const data: TejFileDialogData = {
     companyId: 'c1',
     months: [
@@ -64,6 +66,7 @@ describe('TejFileDialog', () => {
     facade.tejFile.mockReset();
     saver.save.mockReset();
     ref.close.mockReset();
+    stepUp.request.mockReset();
     TestBed.configureTestingModule({
       imports: [TejFileDialog],
       providers: [
@@ -78,6 +81,7 @@ describe('TejFileDialog', () => {
         { provide: MatDialogRef, useValue: ref },
         { provide: ExpensesFacade, useValue: facade },
         { provide: FileSaver, useValue: saver },
+        { provide: StepUp, useValue: stepUp },
         {
           provide: Session,
           useValue: {
@@ -104,6 +108,34 @@ describe('TejFileDialog', () => {
     expect(facade.tejFile).toHaveBeenCalledWith('c1', '2026-08');
     expect(saver.save).toHaveBeenCalledWith(file, '1234567A-2026-08-0.xml');
     expect(ref.close).toHaveBeenCalledWith(true);
+  });
+
+  it('asks who is at the screen to prove it when the API waits for that, then fetches the file again', async () => {
+    const file = new Blob(['<DeclarationsRS/>']);
+    facade.tejFile
+      .mockResolvedValueOnce({ kind: 'step_up' } satisfies TejFileAnswer)
+      .mockResolvedValueOnce({ kind: 'file', file, filename: 'f.xml' } satisfies TejFileAnswer);
+    stepUp.request.mockResolvedValue(true);
+    const fixture = open();
+    q(fixture.nativeElement, 'tej-download')!.click();
+    await fixture.whenStable();
+
+    expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_export');
+    expect(facade.tejFile).toHaveBeenCalledTimes(2);
+    expect(saver.save).toHaveBeenCalledWith(file, 'f.xml');
+    expect(ref.close).toHaveBeenCalledWith(true);
+  });
+
+  it('stays open with nothing saved when the person gives up proving it', async () => {
+    facade.tejFile.mockResolvedValue({ kind: 'step_up' } satisfies TejFileAnswer);
+    stepUp.request.mockResolvedValue(false);
+    const fixture = open();
+    q(fixture.nativeElement, 'tej-download')!.click();
+    await fixture.whenStable();
+
+    expect(facade.tejFile).toHaveBeenCalledTimes(1);
+    expect(saver.save).not.toHaveBeenCalled();
+    expect(ref.close).not.toHaveBeenCalled();
   });
 
   it('asks for the month chosen', async () => {

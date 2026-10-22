@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
-import { inACompany, signIn } from './session';
+import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
+import { proveIfHeldBack } from './step-up';
 import { choose, expectFacetCount } from './select';
 import { wcagViolations } from './axe';
 
@@ -299,7 +300,12 @@ test('the month’s TEJ file is downloaded, or the page says in words what holds
   expect(await wcagViolations(page)).toEqual([]);
 
   const downloaded = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null);
+  // The file waits, as every export does, for who is at the screen to prove it again.
+  const answered = page.waitForResponse((response) =>
+    response.url().includes('/withholding-declarations/tej/'),
+  );
   await page.getByTestId('tej-download').click();
+  await proveIfHeldBack(page, OPERATOR_PASSWORD, answered);
   const refusal = page.getByTestId('tej-refusal');
   const outcome = await Promise.race([
     downloaded.then((file) => (file === null ? null : { file })),

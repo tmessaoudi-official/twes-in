@@ -27,6 +27,7 @@ import type {
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
+import { stepUpAsked } from '../shared/list/export-api';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import type {
   ExpenseAttachment,
@@ -250,7 +251,7 @@ export class ExpensesApi {
 
   /**
    * A month's TEJ file, `YYYY-MM`: fetched rather than linked, so a 422 can say in the page which payments hold the
-   * month back. Any other failure is refused as usual.
+   * month back, and the step-up every export waits for is asked in the page. Any other failure is refused as usual.
    */
   async tejFile(companyId: string, month: string): Promise<TejFileAnswer> {
     const url = `${path(companyId, 'withholding-declarations')}/tej/${month}`;
@@ -271,6 +272,7 @@ export class ExpensesApi {
       ) {
         return toTejRefusal(JSON.parse(await error.error.text()) as RawTejRefusal);
       }
+      if (await stepUpAsked(error)) return { kind: 'step_up' };
       throw refusedFor(error, new ExpensesRefused(codeOf(error, EXPENSE)));
     }
   }

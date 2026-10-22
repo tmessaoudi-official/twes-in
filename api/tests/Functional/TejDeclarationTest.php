@@ -20,6 +20,8 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * A month's withholdings as the file the TEJ platform takes (docs/research/tax-data-tunisia.md § 2.2): read with
  * expense.read, for the company acting only, and answered with a reason instead of a file the platform would refuse.
+ * It carries every vendor withheld that month out in one file, so it asks who is at the screen again, as every export
+ * does, and each file handed out is recorded.
  */
 final class TejDeclarationTest extends ApiTestCase
 {
@@ -128,6 +130,7 @@ final class TejDeclarationTest extends ApiTestCase
 
         $this->sendJson('POST', '/api/auth/logout');
         $this->login('reader@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
         $this->client->request('GET', $this->declarationPath());
         self::assertResponseIsSuccessful('reading the expenses is enough');
 
@@ -135,6 +138,34 @@ final class TejDeclarationTest extends ApiTestCase
         $this->login('vendors@twes.local', 'password-1234');
         $this->client->request('GET', $this->declarationPath());
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the vendor book’s permission is not the expenses’');
+    }
+
+    public function testTheFileWaitsUntilThePersonProvesWhoTheyAreAgainAndEachFileHandedOutIsRecorded(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write'], prove: false);
+        $this->paidExpense('1000', 'RS7_000001');
+
+        $this->client->request('GET', $this->declarationPath());
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('step_up_required', $this->stringAt($this->json(), 'error'));
+        self::assertSame([], $this->filesHandedOut());
+
+        $this->stepUp('password-1234');
+        $this->client->request('GET', $this->declarationPath());
+        self::assertResponseIsSuccessful();
+        $handed = $this->filesHandedOut();
+        self::assertCount(1, $handed);
+        self::assertSame('export', $handed[0]['entity_type'], 'no open screen reloads on a file handed out');
+        self::assertEquals(['subject' => 'tej', 'month' => $this->today->format('Y-m')], json_decode($handed[0]['changes'], true, flags: \JSON_THROW_ON_ERROR));
+    }
+
+    /** @return list<array{entity_type: string, changes: string}> */
+    private function filesHandedOut(): array
+    {
+        /** @var list<array{entity_type: string, changes: string}> $rows */
+        $rows = $this->em()->getConnection()->fetchAllAssociative("SELECT entity_type, changes FROM audit_log WHERE action = 'export.downloaded'");
+
+        return $rows;
     }
 
     /** A recorded expense of today, paid today at 1.5 % under the code given; its id. */
@@ -157,11 +188,14 @@ final class TejDeclarationTest extends ApiTestCase
     }
 
     /** @param list<string> $permissions */
-    private function signedIn(array $permissions): void
+    private function signedIn(array $permissions, bool $prove = true): void
     {
         $this->createUser('buyer@twes.local', 'password-1234', $this->company, $permissions, 'member');
         $this->login('buyer@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
+        if ($prove) {
+            $this->stepUp('password-1234');
+        }
     }
 
     private function companyPath(?Company $company = null): string

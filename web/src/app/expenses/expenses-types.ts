@@ -247,9 +247,10 @@ export interface TejRefusedExpense {
   problems: string[];
 }
 
-/** A month's TEJ file, or why it cannot be written yet. */
+/** A month's TEJ file, or why it cannot be written yet, or `step_up` while it waits for who is at the screen to prove it. */
 export type TejFileAnswer =
   | { kind: 'file'; file: Blob; filename: string }
+  | { kind: 'step_up' }
   | {
       kind: 'refused';
       code: TejRefusalCode;
