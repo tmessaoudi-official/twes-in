@@ -73,8 +73,9 @@ final class RoleResource
 
     /**
      * Why a write was refused, as a stable token the refusal's `detail` begins with — the same shape
-     * `CompanyGuard::SUBSCRIPTION_*` already uses. Three of these answer one status (422), and the screen has three
-     * different things to say about them; matching on the English sentence instead would break the day it is
+     * `CompanyGuard::SUBSCRIPTION_*` already uses — or, for `IN_USE`, the reason of its violation on `role`, whose
+     * parameters name the holders for the screen's own sentence. Three of these answer one status (422), and the screen
+     * has three different things to say about them; matching on the English sentence instead would break the day it is
      * reworded, and it says nothing at all once the API is translated.
      */
     public const string BUILT_IN = 'role_built_in';

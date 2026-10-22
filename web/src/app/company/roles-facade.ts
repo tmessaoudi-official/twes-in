@@ -5,7 +5,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { requestState } from '../shared/feedback/request-state';
 import { StepUp } from '../shared/step-up/step-up';
 import { RolesApi, RolesRefused } from './roles-api';
-import type { PermissionGroupRow, RoleRow } from './roles-types';
+import type { PermissionGroupRow, RoleHolders, RoleRow } from './roles-types';
 import { refusedFor } from '../shared/errors/said-already';
 
 /** The roles of the company being worked in, the catalogue they are ticked from, and the writes. */
@@ -17,21 +17,18 @@ export class RolesFacade {
   private readonly rolesSignal = signal<readonly RoleRow[]>([]);
   private readonly groupsSignal = signal<readonly PermissionGroupRow[]>([]);
   private readonly state = requestState((error) => refusalOf(error).code);
-  private readonly detailSignal = signal('');
+  private readonly heldSignal = signal<RoleHolders | null>(null);
 
   readonly roles = this.rolesSignal.asReadonly();
   readonly groups = this.groupsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
 
-  /**
-   * What the API said beyond the code — for a role in use, who holds it. The screen shows it as the API wrote it,
-   * because the names in it are data and no translation of ours would carry them.
-   */
-  readonly detail = this.detailSignal.asReadonly();
+  /** Who holds a role a delete was refused for, which the screen names in its own sentence; null otherwise. */
+  readonly held = this.heldSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
-    this.detailSignal.set('');
+    this.heldSignal.set(null);
     await this.state.read(
       async () => {
         // The catalogue and the roles together: a matrix missing either half has nothing to draw.
@@ -42,7 +39,7 @@ export class RolesFacade {
         this.rolesSignal.set(roles);
         this.groupsSignal.set(groups);
       },
-      { failed: (error) => this.detailSignal.set(detailOf(error)) },
+      { failed: (error) => this.heldSignal.set(refusalOf(error).held) },
     );
   }
 
@@ -69,11 +66,11 @@ export class RolesFacade {
 
   clearError(): void {
     this.state.clearError();
-    this.detailSignal.set('');
+    this.heldSignal.set(null);
   }
 
   private async write(companyId: string, call: () => Promise<unknown>): Promise<boolean> {
-    this.detailSignal.set('');
+    this.heldSignal.set(null);
     return this.state.write(
       async () => {
         // A role changed waits for the person to prove who they are again.
@@ -88,16 +85,11 @@ export class RolesFacade {
         // `load`: a moment without the API after a successful write is not a sign-out.
         await this.auth.refresh();
       },
-      { failed: (error) => this.detailSignal.set(detailOf(error)) },
+      { failed: (error) => this.heldSignal.set(refusalOf(error).held) },
     );
   }
 }
 
 function refusalOf(error: unknown): RolesRefused {
   return error instanceof RolesRefused ? error : refusedFor(error, new RolesRefused('network'));
-}
-
-/** The sentence after the code: the token is what the code matched on; a person reads what follows it. */
-function detailOf(error: unknown): string {
-  return refusalOf(error).detail.replace(/^[a-z_]+:\s*/, '');
 }

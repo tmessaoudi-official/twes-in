@@ -25,3 +25,11 @@ export interface PermissionGroupRow {
   readonly labelKey: string;
   readonly permissions: readonly string[];
 }
+
+/** Who holds a role a delete was refused for, as the API named them: the first few, and whether there are others. */
+export interface RoleHolders {
+  readonly role: string;
+  /** Their addresses as the API listed them, already joined. */
+  readonly holders: string;
+  readonly more: boolean;
+}

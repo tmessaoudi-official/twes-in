@@ -246,10 +246,15 @@ final class RolesTest extends ApiTestCase
 
         $this->sendJson('DELETE', $this->path($role['id']));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        // The screen tells these two apart by the token, never by the sentence: a reworded or translated message
+        // The screen tells these two apart by the reason, never by the sentence: a reworded or translated message
         // must not silently turn "somebody holds it" into "the release owns it".
-        self::assertRefusedWith(RoleResource::IN_USE, $this->json());
         self::assertStringContainsString('sami@twes.local', (string) $this->client->getResponse()->getContent(), 'it names who holds it');
+        // The names reach the screen as parameters of its own sentence: a French owner never reads « The cashier role
+        // is held by … ».
+        self::assertSame(
+            [['propertyPath' => 'role', 'reason' => RoleResource::IN_USE, 'params' => ['role' => 'cashier', 'holders' => 'sami@twes.local', 'more' => 0]]],
+            self::violationsOf($this->json()),
+        );
     }
 
     public function testARoleAPendingInvitationNamesIsNotDeletedEither(): void
@@ -269,8 +274,11 @@ final class RolesTest extends ApiTestCase
 
         $this->sendJson('DELETE', $this->path($role['id']));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertRefusedWith(RoleResource::IN_USE, $this->json());
         self::assertStringContainsString('invited@twes.local', (string) $this->client->getResponse()->getContent());
+        self::assertSame(
+            [['propertyPath' => 'role', 'reason' => RoleResource::IN_USE, 'params' => ['role' => 'runner', 'holders' => 'invited@twes.local', 'more' => 0]]],
+            self::violationsOf($this->json()),
+        );
     }
 
     public function testNobodyPutsInARoleAPermissionTheyDoNotHoldAndAnOwnerMay(): void
@@ -395,6 +403,28 @@ final class RolesTest extends ApiTestCase
 
         $this->postJson($this->path(), ['name' => 'barista', 'permissions' => ['customer.read']]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * Each violation as a screen reads it: the field, the reason and that text's parameters.
+     *
+     * @param array<string, mixed> $body
+     *
+     * @return list<array{propertyPath: mixed, reason: mixed, params: mixed}>
+     */
+    private static function violationsOf(array $body): array
+    {
+        $violations = $body['violations'] ?? null;
+        self::assertIsArray($violations, 'the refusal names its field');
+        $read = [];
+        foreach ($violations as $violation) {
+            self::assertIsArray($violation);
+            $payload = $violation['payload'] ?? [];
+            self::assertIsArray($payload);
+            $read[] = ['propertyPath' => $violation['propertyPath'] ?? null, 'reason' => $payload['reason'] ?? null, 'params' => $payload['params'] ?? null];
+        }
+
+        return $read;
     }
 
     /** @param array<string, mixed> $body */

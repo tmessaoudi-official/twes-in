@@ -1,11 +1,12 @@
-# The shop's switch for an off-site copy, over compose.backup-local.yaml (docs/START.md § 16): each night the backup
-# service copies the whole local folder, both repositories as they are (already encrypted), into a restic repository
-# in a bucket, under the instance's prefix and its own passphrase. A night without the internet only misses that
-# night's copy: archiving stays local and never waits on it. Switched on by BACKUP_OFFSITE=on in the install's values,
-# which then require every bucket value.
+# The shop's switch for an off-site copy, over compose.backup-local.yaml (docs/START.md § 16): every hour the computer
+# is on (BACKUP_OFFSITE_EVERY seconds, blank for twes-backup's own period) the backup service copies the whole local
+# folder, both repositories as they are (already encrypted), into a restic repository in a bucket, under the instance's
+# prefix, opened with the files' passphrase (`backup_files_passphrase`, compose.backup.yaml). An hour without the internet only misses that copy: archiving stays local and never
+# waits on it. Switched on by BACKUP_OFFSITE=on in the install's values, which then require every bucket value.
 x-offsite-environment: &offsite-environment
   OFFSITE_REPOSITORY: "s3:https://${BACKUP_S3_ENDPOINT:?set BACKUP_S3_ENDPOINT, the bucket service's host name}:${BACKUP_S3_PORT:-443}/${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX:-}offsite"
   BACKUP_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
+  OFFSITE_EVERY: "${BACKUP_OFFSITE_EVERY:-}"
   AWS_ACCESS_KEY_ID: "${BACKUP_S3_KEY:?set BACKUP_S3_KEY}"
   AWS_DEFAULT_REGION: "${BACKUP_S3_REGION:?set BACKUP_S3_REGION}"
 
