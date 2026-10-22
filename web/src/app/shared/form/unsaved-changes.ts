@@ -26,6 +26,8 @@ export class UnsavedChanges {
   private readonly sources = signal<readonly Signal<number>[]>([]);
   /** The question the next navigation asks is already answered: consumed by that navigation alone. */
   private answered = false;
+  /** The next question is asked because the session ended, not because the person chose to go. */
+  private ended = false;
 
   /** How many fields on the page hold something other than what was last saved. */
   readonly count: Signal<number> = computed(() =>
@@ -65,7 +67,17 @@ export class UnsavedChanges {
     this.answered = true;
   }
 
+  /**
+   * The session ended and the shell is sending the person to sign in: the question that navigation asks says so,
+   * rather than asking as if they had chosen to go. Staying keeps the page, to copy what was typed; saving cannot.
+   */
+  sessionEnded(): void {
+    this.ended = true;
+  }
+
   confirmLeave(): Observable<boolean> {
+    const ended = this.ended;
+    this.ended = false;
     if (this.answered) {
       this.answered = false;
       return of(true);
@@ -80,7 +92,7 @@ export class UnsavedChanges {
             // Typed work that was never saved cannot be got back, so leaving it is definitive.
             data: {
               kind: 'definitif',
-              title: 'form.leave.title',
+              title: ended ? 'auth.login.session_expired' : 'form.leave.title',
               message: 'form.leave.message',
               confirmLabel: 'form.leave.leave',
               keepLabel: 'form.leave.stay',

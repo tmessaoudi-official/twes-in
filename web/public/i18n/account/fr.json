@@ -63,6 +63,7 @@
     "company_at_sign_in_on": "Toujours ouvrir la même société",
     "company_at_sign_in_off": "Sinon, la dernière société utilisée s’ouvre.",
     "company_at_sign_in_pick": "Société",
+    "pin_failed": "La société à l’ouverture n’a pas pu être enregistrée : rien n’a changé. Réessayez dans un instant.",
     "shortcuts": "Raccourcis clavier",
     "shortcuts_intro": "Une touche, sans Ctrl ni Alt, pour chaque action. Elle ne fait rien quand vous écrivez dans un champ. Ctrl K ouvre toujours la recherche.",
     "shortcuts_restore": "Rétablir",

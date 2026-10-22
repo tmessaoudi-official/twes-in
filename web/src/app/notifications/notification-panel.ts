@@ -55,6 +55,8 @@ export class NotificationPanel {
   private readonly panel = inject<MatDialogRef<NotificationPanel>>(MatDialogRef);
 
   protected readonly unread = this.facade.unread;
+  /** The last read or mark failed: what shows is the list read before, or nothing. */
+  protected readonly failed = this.facade.error;
   protected readonly filters: readonly Filter[] = ['all', 'unread'];
   protected readonly filter = signal<Filter>('all');
   /** Moves once a minute, so "il y a 5 minutes" keeps up while the panel stays open. */

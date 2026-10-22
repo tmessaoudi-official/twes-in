@@ -139,6 +139,7 @@ export function fieldError(control: AbstractControl, field: FormField): FieldErr
   if (errors['date']) return { key: 'form.errors.date' };
   if (errors['colour']) return { key: 'form.errors.colour' };
   if (errors['option']) return { key: 'form.errors.option' };
+  if (errors['pattern'] && field.patternError) return { key: field.patternError };
   if (errors['pattern'])
     return field.hint
       ? { key: 'form.errors.pattern', hint: field.hint }

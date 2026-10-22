@@ -8,13 +8,14 @@ import {
   input,
   type OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgModel } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { type MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -220,6 +221,7 @@ export class AccountPage implements OnInit {
   protected readonly pinned = computed(
     () => this.companies().find((company) => company.pinned) ?? null,
   );
+  private readonly pickModel = viewChild<NgModel>('pickModel');
 
   constructor() {
     inject(UnsavedChanges).declare(this.passwordTyped);
@@ -266,13 +268,31 @@ export class AccountPage implements OnInit {
     void this.language.use(language);
   }
 
-  /** Switched on, every sign-in opens the company worked in now; the list then offers the others. */
-  protected pinAtSignIn(on: boolean): void {
-    void this.company.pinAtSignIn(on ? (this.company.current()?.id ?? null) : null);
+  /**
+   * Switched on, every sign-in opens the company worked in now; the list then offers the others. A refused write
+   * leaves `pinned()` as it was, so Angular pushes nothing and the toggle would stay where the click put it, reading as
+   * saved: it is put back by hand, and the refusal said.
+   */
+  protected async pinAtSignIn(change: MatSlideToggleChange): Promise<void> {
+    if (
+      !(await this.company.pinAtSignIn(
+        change.checked ? (this.company.current()?.id ?? null) : null,
+      ))
+    ) {
+      change.source.checked = this.pinned() !== null;
+      this.feedback.failure('account.pin_failed');
+    }
   }
 
-  protected pick(companyId: string): void {
-    void this.company.pinAtSignIn(companyId);
+  protected async pick(companyId: string): Promise<void> {
+    if (!(await this.company.pinAtSignIn(companyId))) {
+      // Back on screen only: a write reported as a change would pick again, be refused again, and never stop.
+      this.pickModel()?.control.setValue(this.pinned()?.id ?? null, {
+        emitEvent: false,
+        emitViewToModelChange: false,
+      });
+      this.feedback.failure('account.pin_failed');
+    }
   }
 
   /**

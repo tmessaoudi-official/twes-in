@@ -53,6 +53,16 @@ final readonly class ExpenseOptionsProvider implements ProviderInterface
             if ($tax->isActive() && TaxKind::FixedDocument === $tax->getKind()) {
                 $options->charges[] = ['id' => $tax->getId()->toRfc4122(), 'code' => $tax->getCode(), 'name' => $tax->getName(), 'amount' => Decimal::format(Decimal::of($tax->getAmount() ?? '0'), $options->currencyScale)];
             }
+            $rate = $tax->getRate();
+            if ($tax->isActive() && TaxKind::WithholdingTotal === $tax->getKind() && null !== $rate) {
+                $threshold = $tax->getThreshold();
+                $options->withholdings[] = [
+                    'code' => $tax->getCode(),
+                    'name' => $tax->getName(),
+                    'rate' => Decimal::format(Decimal::of($rate), 3),
+                    'threshold' => null === $threshold ? null : Decimal::format(Decimal::of($threshold), $options->currencyScale),
+                ];
+            }
         }
         $options->paymentMethods = ExpenseResource::methods();
         if (TejOperationCode::PRESET === $company->getFiscalPreset()) {

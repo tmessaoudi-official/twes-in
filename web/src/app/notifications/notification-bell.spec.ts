@@ -28,6 +28,7 @@ class StaticLoader implements TranslateLoader {
         title: 'Notifications',
         empty: 'Aucune notification',
         empty_unread: 'Rien de non lu',
+        failed: 'Les notifications ne répondent pas',
         mark_all: 'Tout marquer comme lu',
         close: 'Fermer',
         filter: 'Afficher',
@@ -98,10 +99,11 @@ describe('NotificationBell', () => {
   const items = signal<readonly InboxEntry[]>([]);
   const unread = signal(0);
   const permitted = signal(true);
+  const failed = signal(false);
   const facade = {
     items: items.asReadonly(),
     unread: unread.asReadonly(),
-    error: signal(false).asReadonly(),
+    error: failed.asReadonly(),
     connect: vi.fn(),
     disconnect: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -116,6 +118,7 @@ describe('NotificationBell', () => {
     items.set([]);
     unread.set(0);
     permitted.set(true);
+    failed.set(false);
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [NotificationBell],
@@ -538,6 +541,22 @@ describe('NotificationBell', () => {
     items.set([{ ...unreadEntry, readAt: '2026-09-14T08:58:00+00:00' }]);
     await settle(fixture);
     expect(text(tab('notifications-empty'))).toBe('Rien de non lu');
+  });
+
+  // A list that could not be read said « Aucune notification. », and a mark that failed said nothing (U4).
+  it('says the notifications could not be read, rather than that there are none, and keeps what it showed', async () => {
+    failed.set(true);
+    const fixture = render();
+    await open(fixture);
+    expect(text(document.querySelector('[data-testid="notifications-failed"]'))).toBe(
+      'Les notifications ne répondent pas',
+    );
+    expect(document.querySelector('[data-testid="notifications-empty"]')).toBeNull();
+
+    items.set([unreadEntry]);
+    await settle(fixture);
+    expect(all('notification-item')).toHaveLength(1);
+    expect(document.querySelector('[data-testid="notifications-failed"]')).not.toBeNull();
   });
 
   it('offers to mark everything read only when something is unread', async () => {

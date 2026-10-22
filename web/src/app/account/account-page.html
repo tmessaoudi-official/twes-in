@@ -203,7 +203,7 @@
                   <mat-slide-toggle
                     data-testid="account-company-at-sign-in"
                     [checked]="pinned() !== null"
-                    (change)="pinAtSignIn($event.checked)"
+                    (change)="pinAtSignIn($event)"
                     >{{ 'account.company_at_sign_in_on' | translate }}</mat-slide-toggle
                   >
                   @if (pinned(); as pinned) {
@@ -212,6 +212,7 @@
                         [label]="'account.company_at_sign_in_pick' | translate"
                         [labelInside]="true"
                         [options]="companyOptions()"
+                        #pickModel="ngModel"
                         [ngModel]="pinned.id"
                         (ngModelChange)="pick($event)"
                         [ngModelOptions]="{ standalone: true }"

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import { dirtyCount } from '../shared/form/dirty-count';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { profileChanges, profileForm, profileValues } from './company-profile-form';
@@ -104,6 +105,30 @@ describe('profileForm', () => {
       iban.setValue(refused);
       expect(iban.errors?.['pattern'], refused).toBeTruthy();
     }
+  });
+
+  // The BIC as a RIB prints it, its groups apart: the API drops the spaces before its own check.
+  it('takes a BIC written with its groups apart', () => {
+    const bic = buildFormGroup(profileForm(profile), profileValues(profile)).controls['bic']!;
+    for (const taken of ['BIATTNTT', 'BIAT TN TT', 'biat tn tt', 'BNORFRPPBDX', 'BNOR FR PP BDX']) {
+      bic.setValue(taken);
+      expect(bic.errors, taken).toBeNull();
+    }
+    for (const refused of ['BIAT', 'BIATTNTT1', 'BIAT  TN TT', 'BIAT TN TT 1']) {
+      bic.setValue(refused);
+      expect(bic.errors?.['pattern'] ?? bic.errors?.['maxlength'], refused).toBeTruthy();
+    }
+  });
+
+  // A pattern the browser checks answers first, so its refusal says the format and an example, as the API's would.
+  it('says the format of every field it checks against a pattern', () => {
+    const unsaid = profileForm(profile)
+      .sections.flatMap((section) => section.fields)
+      // A preset identifier's hint is the preset's (row 103): the API sends it beside the pattern.
+      .filter((field) => !field.id.startsWith(IDENTIFIER_FIELD_PREFIX))
+      .filter((field) => field.pattern !== undefined && !field.patternError && !field.hint)
+      .map((field) => field.id);
+    expect(unsaid).toEqual([]);
   });
 
   it('groups the profile the way an invoice header reads it', () => {

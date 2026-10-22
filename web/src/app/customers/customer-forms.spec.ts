@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import {
+  CONTACT_FORM,
   contactInput,
   contactValues,
   customerForm,
@@ -167,6 +169,17 @@ describe('customer forms', () => {
       'city',
       'status',
     ]);
+  });
+
+  // A pattern the browser checks answers first, so its refusal says the format and an example, as the API's would.
+  it('says the format of every field it checks against a pattern, on the customer and on a contact', () => {
+    const unsaid = [customerForm(options, groups), CONTACT_FORM]
+      .flatMap((form) => form.sections.flatMap((section) => section.fields))
+      // A preset identifier's hint is the preset's (row 103): the API sends it beside the pattern.
+      .filter((field) => !field.id.startsWith(IDENTIFIER_FIELD_PREFIX))
+      .filter((field) => field.pattern !== undefined && !field.patternError && !field.hint)
+      .map((field) => field.id);
+    expect(unsaid).toEqual([]);
   });
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: the discount rate shows and takes the locale's decimal separator.

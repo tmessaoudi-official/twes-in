@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -1630,6 +1631,7 @@ describe('AppShell', () => {
 
   it('sends the person back to sign in, saying why, when their session ends while the page is open', async () => {
     const { fixture } = await render();
+    const ended = vi.spyOn(TestBed.inject(UnsavedChanges), 'sessionEnded');
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
 
     sessionExpired.set(true);
@@ -1638,6 +1640,8 @@ describe('AppShell', () => {
     expect(auth.sessionEnded).toHaveBeenCalledOnce();
     expect(navigate).toHaveBeenCalledWith('/login?expired=1');
     expect(sessionExpired()).toBe(false);
+    // The question that navigation may ask about unsaved work names the session that ended (U8).
+    expect(ended).toHaveBeenCalledOnce();
   });
 
   it('keeps the page the session ended on, so signing in again returns to it', async () => {

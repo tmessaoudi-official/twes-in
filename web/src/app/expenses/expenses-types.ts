@@ -226,6 +226,16 @@ export interface ExpenseOptions {
   /** The TEJ operations a withholding may be declared under, labelled as the administration publishes them; empty
    * for a company that does not declare to TEJ (docs/SPEC.md § 7, 2026-09-26 00:22). */
   withholdingOperationCodes: TejOperation[];
+  /** The company's withholdings on a total: a payment is asked one only where there is one. */
+  withholdings: ExpenseWithholding[];
+}
+
+/** A withholding a payment may make: its rate, and the gross less fixed charges it is offered from, or null for any. */
+export interface ExpenseWithholding {
+  code: string;
+  name: string;
+  rate: string;
+  threshold: string | null;
 }
 
 /** Why the API refused a month's TEJ file (docs/SPEC.md § 7, 2026-09-26 00:22). */

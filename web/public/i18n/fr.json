@@ -215,6 +215,7 @@
   },
   "company": {
     "choose": "Choisir une entreprise",
+    "switch_failed": "Cette entreprise n’a pas pu s’ouvrir : vous travaillez toujours dans la même. Réessayez dans un instant.",
     "unread": "{{count}} {count, plural, one {notification non lue} other {notifications non lues}}",
     "unread_elsewhere": "{{count}} {count, plural, one {notification non lue} other {notifications non lues}} dans vos autres entreprises",
     "profile": {
@@ -652,6 +653,7 @@
     "empty": "Aucune notification.",
     "mark_all": "Tout marquer comme lu",
     "empty_unread": "Aucune notification non lue.",
+    "failed": "Les notifications n’ont pas pu être lues à l’instant ; réessayez dans un moment.",
     "close": "Fermer les notifications",
     "filter": "Afficher",
     "filter_all": "Toutes",
@@ -1629,6 +1631,7 @@
       "collect": "Encaisser",
       "record": "Enregistrer le paiement",
       "recorded": "Le paiement a été enregistré.",
+      "deleted": "Le paiement de {{amount}} est supprimé ; ce qu’il réglait est de nouveau dû.",
       "delete": "Supprimer le paiement de {{amount}}",
       "delete_short": "Supprimer",
       "confirm_delete": "Confirmer la suppression",
@@ -1742,6 +1745,7 @@
       "issue_message": "Elle reçoit son numéro et ne se modifie plus : une erreur se corrige ensuite par un avoir.",
       "issue_credit_note_title": "Émettre cet avoir ?",
       "issue_credit_note_message": "Il reçoit son numéro et ne se modifie plus.",
+      "issue_credit_note_message_numbered": "Il recevra le numéro {{number}}, pour {{total}} au crédit de {{customer}}, et ne se modifiera plus.",
       "confirm_issue": "Émettre",
       "apply_credit": "Appliquer le crédit",
       "record_overpayment": "Enregistrer un trop-perçu",
@@ -2394,7 +2398,9 @@
       "followed_many": "{{count}} {count, plural, one {prix a suivi son coût} other {prix ont suivi leur coût}}.",
       "undo": "Annuler",
       "restored": "Prix de {{name}} remis à {{price}}.",
-      "moved_many": "La marge de {{count}} {count, plural, one {produit} other {produits}} a bougé."
+      "moved_many": "La marge de {{count}} {count, plural, one {produit} other {produits}} a bougé.",
+      "followed_and_moved": "{{followed}} {followed, plural, one {prix a suivi son coût} other {prix ont suivi leur coût}}, et la marge de {{moved}} {moved, plural, one {produit} other {produits}} a bougé.",
+      "restored_many": "{{count}} {count, plural, one {prix remis comme avant} other {prix remis comme avant}}."
     }
   },
   "inventory": {
@@ -2790,7 +2796,6 @@
       "no_category": "Aucune catégorie",
       "category_hint": "Seules les catégories actives sont proposées.",
       "notes_hint": "Pour votre équipe uniquement.",
-      "withholding_hint": "Proposée à 1 % dès 1 000 TND TTC ; indiquez 0 pour un achat exclu ou un fournisseur exonéré, ou le taux qui s’applique au fournisseur.",
       "tej_hint": "Code de la plateforme TEJ, à indiquer pour déclarer cette retenue."
     },
     "payment_methods": {
@@ -2979,6 +2984,7 @@
     "retry": "Réessayer",
     "offline": "Vous êtes hors ligne : rien ne peut être enregistré pour l’instant.",
     "restored": "Connexion rétablie.",
+    "page_failed": "Cette page n’a pas pu s’ouvrir. Rechargez-la, puis réessayez.",
     "close": "Fermer",
     "submission_in_progress": "Cet envoi est encore en cours d’enregistrement : attendez un instant, puis relisez la page.",
     "submission_unanswered": "Cet envoi a déjà été enregistré, mais sa réponse s’est perdue : rechargez la page pour le voir."

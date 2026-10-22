@@ -3,6 +3,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, CompanyOption } from './company-types';
@@ -16,6 +17,7 @@ export class CompanyFacade {
   private readonly api = inject(CompanyApi);
   private readonly auth = inject(AuthFacade);
   private readonly unsaved = inject(UnsavedChanges);
+  private readonly feedback = inject(Feedback);
   private readonly companiesSignal = signal<readonly CompanyOption[]>([]);
   private readonly switchingSignal = signal(false);
   private readonly errorSignal = signal<CompanyError | null>(null);
@@ -74,6 +76,11 @@ export class CompanyFacade {
       await this.auth.load();
       return true;
     } catch (error) {
+      // Said here, for every caller: the menu closes and the bar still names the company the session stayed in. The
+      // list is read again, so a company suspended or a membership removed since it was read is no longer offered;
+      // what stays in error is the switch, not that read.
+      this.feedback.failure('company.switch_failed');
+      await this.load();
       this.errorSignal.set(error instanceof CompanyRefused ? error.code : 'network');
       return false;
     } finally {
