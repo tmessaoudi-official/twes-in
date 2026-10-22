@@ -19,6 +19,25 @@ export function towardsEnd(dx: number, direction: Direction): number {
   return direction === 'rtl' ? -dx : dx;
 }
 
+/**
+ * Brings an item into view along the line inside its own scroll box, moving that box alone: `scrollIntoView` scrolls
+ * every scrolling box around it too, so a page scrolled down jumped back up to a tab bar whose labels changed size.
+ * The distance is read on screen from the item's and the box's edges, the same in either direction, and moves a box
+ * scrolled negative in right to left the same way.
+ */
+export function revealAlongLine(box: HTMLElement, item: HTMLElement): void {
+  const outer = box.getBoundingClientRect();
+  const inner = item.getBoundingClientRect();
+  // physical-direction: screen coordinates, which scrollLeft counts in whatever way the line runs
+  const shift =
+    inner.left < outer.left
+      ? inner.left - outer.left
+      : inner.right > outer.right
+        ? inner.right - outer.right
+        : 0;
+  if (shift !== 0) box.scrollLeft += shift;
+}
+
 /** How far a box is scrolled from the line's start: browsers count it negative in right to left. */
 export function scrolledFromStart(box: { readonly scrollLeft: number }): number {
   return Math.abs(box.scrollLeft);

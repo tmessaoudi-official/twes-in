@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { afterNextRender, DestroyRef, Directive, ElementRef, inject } from '@angular/core';
+import { revealAlongLine } from '../i18n/inline-direction';
 
 /**
  * Keeps the open tab of a sideways-scrolling tab bar in view: when the page opens on it, when another is chosen, and
@@ -29,10 +30,10 @@ export class SelectedTabInView {
     });
   }
 
-  /** `scrollIntoView` is optional because jsdom has none, as in the menu's scroller. */
+  /** The bar's own box scrolls, never the page: the tab bar's labels change size wherever the page is scrolled. */
   private reveal(): void {
-    this.host
-      .querySelector<HTMLElement>('a[aria-selected="true"]')
-      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    const open = this.host.querySelector<HTMLElement>('a[aria-selected="true"]');
+    const bar = this.host.querySelector<HTMLElement>('.mat-mdc-tab-link-container');
+    if (open !== null && bar !== null) revealAlongLine(bar, open);
   }
 }
