@@ -11,7 +11,8 @@ export type ProductsError =
   | 'invalid'
   | 'barcode_taken'
   | 'record_changed'
-  | 'settled';
+  | 'settled'
+  | 'not_restorable';
 
 export type ProductKind = 'goods' | 'service';
 export const PRODUCT_KINDS: readonly ProductKind[] = ['goods', 'service'];
@@ -136,8 +137,11 @@ export interface ProductPriceReview {
   margin: string;
 }
 
-/** What settles a moved margin: the price that keeps it, or the price as it is. */
-export type PriceReviewDecision = 'adjust' | 'keep';
+/**
+ * What settles a moved margin: the price that keeps it, or the price as it is; or, for a price that followed its cost,
+ * the price the move replaced (« Annuler »).
+ */
+export type PriceReviewDecision = 'adjust' | 'keep' | 'restore';
 
 /** The product a product merged away points at, which lists show in its place. */
 export interface ProductMergedInto {

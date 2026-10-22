@@ -18,6 +18,7 @@ use App\Module\Products\Application\ProductCheckScopes;
 use App\Module\Products\Application\ProductMergedAway;
 use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Application\ReviewProductPrice;
+use App\Module\Products\Domain\ValueObject\PriceReviewDecision;
 use App\Module\Products\Infrastructure\ApiPlatform\Output\ProductGrossPrice;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductPriceReviewResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource;
@@ -53,7 +54,7 @@ final readonly class SettlePriceReviewProcessor implements ProcessorInterface
         }
 
         try {
-            $product = $this->review->handle($company, CompanyPath::identifier($uriVariables, 'productId'), 'adjust' === $data->decision, $data->version, $this->guard->account()->getId());
+            $product = $this->review->handle($company, CompanyPath::identifier($uriVariables, 'productId'), PriceReviewDecision::from($data->decision), $data->version, $this->guard->account()->getId());
         } catch (ProductMergedAway $merged) {
             throw new RecordChangedProblem($merged);
         } catch (ProductNotFound $absent) {

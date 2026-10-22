@@ -91,6 +91,13 @@ class Product implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 4, nullable: true)]
     private ?string $priceReviewCost = null;
 
+    /**
+     * The price a cost moved away when the price followed it (the company's setting), kept while the price is the one
+     * the follow set, so « Annuler » puts back that price and no other; null once the price moves again.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 4, nullable: true)]
+    private ?string $priceFollowedFrom = null;
+
     #[ORM\ManyToOne(targetEntity: ProductCategory::class)]
     #[ORM\JoinColumn(name: 'category_id', nullable: true)]
     private ?ProductCategory $category = null;
@@ -498,6 +505,41 @@ class Product implements CompanyOwned
         return $price;
     }
 
+    /**
+     * Moves the price with its cost, as the company's setting asks, and keeps the price it had for « Annuler ».
+     *
+     * @return string the price set, at `$scale`
+     */
+    public function followCostWithPrice(int $scale, \DateTimeImmutable $now): string
+    {
+        $before = $this->unitPriceNet;
+        $price = $this->adjustPriceToReview($scale, $now);
+        $this->priceFollowedFrom = Decimal::format(Decimal::of($before), 4);
+
+        return $price;
+    }
+
+    public function mayRestoreFollowedPrice(): bool
+    {
+        return null !== $this->priceFollowedFrom;
+    }
+
+    /**
+     * Puts back the price a cost moved away when the price followed it, under the cost the move left, and closes any
+     * review: the price kept, as « Garder le prix » would.
+     *
+     * @return string the price put back
+     */
+    public function restoreFollowedPrice(\DateTimeImmutable $now): string
+    {
+        $price = $this->priceFollowedFrom ?? throw new \LogicException('No price followed its cost on this product since it was last set.');
+        $this->apply($this->getDetails()->withUnitPriceNet($price));
+        $this->priceReviewCost = null;
+        $this->updatedAt = $now;
+
+        return $price;
+    }
+
     /** Keeps the price as it is under the new cost, and closes the review. */
     public function closePriceReview(\DateTimeImmutable $now): bool
     {
@@ -663,6 +705,10 @@ class Product implements CompanyOwned
         $this->name = $details->name;
         $this->description = $details->description;
         $this->kind = $details->kind;
+        // Unset only while the product is being created, with nothing followed yet.
+        if (isset($this->unitPriceNet) && 0 !== Decimal::of($this->unitPriceNet)->compare(Decimal::of($details->unitPriceNet))) {
+            $this->priceFollowedFrom = null;
+        }
         $this->unitPriceNet = $details->unitPriceNet;
         if (0 !== Decimal::of($this->unitPriceNet)->compare(0)) {
             $this->zeroPriceIntended = false;

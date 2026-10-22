@@ -21,8 +21,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * The margin a receipt's cost moved under a kept price, settled by someone who writes products and reads costs:
  * `adjust` sets the price that keeps the margin the product had (its `priceReview.suggestedPrice`), `keep` keeps the
- * price. The answer is the product. Without either permission, or for a product of nobody, 404; a product saved since
- * it was read, 409 `/problems/record-changed`; one whose margin nothing moved, 409.
+ * price, `restore` puts back the price a cost moved away when the price followed it (« Annuler »). The answer is the
+ * product. Without either permission, or for a product of nobody, 404; a product saved since it was read, 409
+ * `/problems/record-changed`; one whose margin nothing moved, or with no followed price to put back, 409.
  */
 #[ApiResource(
     shortName: 'ProductPriceReview',
@@ -44,9 +45,9 @@ final class ProductPriceReviewResource
 {
     public const string WRITE = 'product_price_review:write';
 
-    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['adjust', 'keep']])]
+    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['adjust', 'keep', 'restore']])]
     #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
-    #[Assert\Choice(choices: ['adjust', 'keep'], groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
+    #[Assert\Choice(choices: ['adjust', 'keep', 'restore'], groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::WRITE])]
     public string $decision = '';
 
